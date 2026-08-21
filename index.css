@@ -1,0 +1,349 @@
+/* Author: Gemini */
+/* OS support: Web/Node */
+/* Description: Global Tailwind CSS v4 styling rules and custom color tokens */
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-primary: #22c55e;
+  --color-secondary: #64748b;
+  --color-accent: #3b82f6;
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-danger: #ef4444;
+
+  --color-status-waiting: var(--status-waiting-bg);
+  --color-status-waiting-fg: var(--status-waiting-fg);
+  --color-status-inlab: var(--status-inlab-bg);
+  --color-status-inlab-fg: var(--status-inlab-fg);
+  --color-status-returned: var(--status-returned-bg);
+  --color-status-returned-fg: var(--status-returned-fg);
+  --color-status-overdue: var(--status-overdue-bg);
+  --color-status-overdue-fg: var(--status-overdue-fg);
+
+  --color-tester-1: var(--tester-1-bg);
+  --color-tester-1-fg: var(--tester-1-fg);
+  --color-tester-2: var(--tester-2-bg);
+  --color-tester-2-fg: var(--tester-2-fg);
+  --color-tester-3: var(--tester-3-bg);
+  --color-tester-3-fg: var(--tester-3-fg);
+  --color-tester-4: var(--tester-4-bg);
+  --color-tester-4-fg: var(--tester-4-fg);
+  --color-tester-5: var(--tester-5-bg);
+  --color-tester-5-fg: var(--tester-5-fg);
+  --color-tester-6: var(--tester-6-bg);
+  --color-tester-6-fg: var(--tester-6-fg);
+  --color-tester-7: var(--tester-7-bg);
+  --color-tester-7-fg: var(--tester-7-fg);
+  --color-tester-8: var(--tester-8-bg);
+  --color-tester-8-fg: var(--tester-8-fg);
+  --color-tester-other: var(--tester-other-bg);
+  --color-tester-other-fg: var(--tester-other-fg);
+
+  --color-machine-inv: var(--machine-inv-bg);
+  --color-machine-inv-fg: var(--machine-inv-fg);
+  --color-machine-mono: var(--machine-mono-bg);
+  --color-machine-mono-fg: var(--machine-mono-fg);
+}
+
+@layer base {
+  body {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  #root {
+    zoom: 1;
+    width: 100%;
+    min-height: 100%;
+  }
+
+  #portrait-only-message {
+    display: none;
+  }
+}
+
+@layer components {
+  /* Compact density applies to the authenticated app shell only. */
+  .ddt-compact {
+    font-size: 0.8125rem;
+  }
+
+  .ddt-compact .text-xs {
+    font-size: 0.6875rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .ddt-compact .text-sm {
+    font-size: 0.75rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .ddt-compact .text-base {
+    font-size: 0.8125rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .ddt-compact .text-lg {
+    font-size: 0.9375rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .ddt-compact .text-xl {
+    font-size: 1.0625rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .ddt-compact [class~="gap-3"] {
+    gap: 0.5rem !important;
+  }
+
+  .ddt-compact [class~="gap-4"] {
+    gap: 0.625rem !important;
+  }
+
+  .ddt-compact [class~="gap-5"] {
+    gap: 0.75rem !important;
+  }
+
+  .ddt-compact [class~="gap-6"] {
+    gap: 0.875rem !important;
+  }
+
+  .ddt-compact [class~="gap-8"] {
+    gap: 1rem !important;
+  }
+
+  .ddt-compact [class~="space-y-3"] > :not([hidden]) ~ :not([hidden]) {
+    margin-block-start: 0.375rem !important;
+  }
+
+  .ddt-compact [class~="space-y-4"] > :not([hidden]) ~ :not([hidden]) {
+    margin-block-start: 0.5rem !important;
+  }
+
+  .ddt-compact [class~="space-y-6"] > :not([hidden]) ~ :not([hidden]) {
+    margin-block-start: 0.75rem !important;
+  }
+
+  .ddt-compact [class~="p-3"] {
+    padding: 0.5rem !important;
+  }
+
+  .ddt-compact [class~="p-4"] {
+    padding: 0.625rem !important;
+  }
+
+  .ddt-compact [class~="p-6"] {
+    padding: 1rem !important;
+  }
+
+  .ddt-compact [class~="p-8"] {
+    padding: 1.25rem !important;
+  }
+
+  .ddt-compact [class~="px-3"] {
+    padding-inline: 0.5rem !important;
+  }
+
+  .ddt-compact [class~="px-4"] {
+    padding-inline: 0.625rem !important;
+  }
+
+  .ddt-compact [class~="py-3"] {
+    padding-block: 0.5rem !important;
+  }
+
+  .ddt-compact [class~="py-4"] {
+    padding-block: 0.625rem !important;
+  }
+
+  .ddt-compact .ddt-compact-header {
+    height: 3.25rem !important;
+  }
+
+  .ddt-compact .ddt-compact-sidebar nav {
+    padding-block: 0.625rem !important;
+    padding-inline: 0.625rem !important;
+  }
+
+  .ddt-compact .ddt-compact-sidebar nav button {
+    padding-block: 0.45rem !important;
+  }
+
+  .ddt-compact .ddt-compact-sidebar > div:first-child {
+    padding: 0.75rem !important;
+  }
+
+  .ddt-compact .ddt-compact-sidebar > div:last-child {
+    padding: 0.625rem !important;
+  }
+
+  .ddt-compact .mobile-touch-target {
+    /* Keep the mobile media-query touch target contract below intact. */
+  }
+
+  @media (min-width: 768px) {
+    .ddt-compact [class~="md:p-4"] {
+      padding: 0.75rem !important;
+    }
+
+    .ddt-compact [class~="md:p-6"] {
+      padding: 1rem !important;
+    }
+
+    .ddt-compact [class~="md:px-4"] {
+      padding-inline: 0.75rem !important;
+    }
+
+    .ddt-compact [class~="md:gap-4"] {
+      gap: 0.625rem !important;
+    }
+  }
+
+  .portrait-only-card {
+    display: flex;
+    width: min(20rem, calc(100vw - 2rem));
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid #a7f3d0;
+    border-radius: 1rem;
+    background: #ffffff;
+    padding: 1.5rem;
+    color: #064e3b;
+    text-align: center;
+    box-shadow: 0 20px 45px rgb(6 78 59 / 0.16);
+  }
+
+  .portrait-only-icon {
+    display: inline-flex;
+    width: 3rem;
+    height: 3rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: #d1fae5;
+    color: #059669;
+    font-size: 1.75rem;
+    font-weight: 700;
+  }
+
+  .portrait-only-card > span:last-child {
+    color: #475569;
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+@media screen and (orientation: landscape) and (pointer: coarse) and (max-height: 600px) and (max-width: 1024px) {
+    #root {
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    #portrait-only-message {
+      position: fixed;
+      z-index: 2147483647;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100vw;
+      height: 100dvh;
+      background: #ecfdf5;
+      padding: 1rem;
+    }
+  }
+
+  .mobile-safe-bottom {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  .mobile-scroll-x {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-touch-target {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @media (max-width: 767px) {
+    .mobile-touch-target {
+      min-width: 2.75rem;
+      min-height: 2.75rem;
+    }
+  }
+
+  .report-form-compact .text-sm {
+    font-size: 0.75rem !important;
+  }
+
+  .report-form-compact .text-base {
+    font-size: 0.875rem !important;
+  }
+
+  .report-form-compact .text-lg {
+    font-size: 1rem !important;
+  }
+
+  .report-form-compact :is(input, textarea, select) {
+    font-size: 0.75rem !important;
+  }
+
+  .report-form-compact h2 {
+    font-size: 1rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .report-form-compact h3 {
+    font-size: 0.875rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .report-form-compact :is(h4, h5) {
+    font-size: 0.75rem !important;
+    line-height: 1.25 !important;
+  }
+
+  /* Report previews retain their own spacing scale inside the compact shell. */
+  .ddt-compact .report-form-compact [class~="gap-3"] {
+    gap: 0.75rem !important;
+  }
+
+  .ddt-compact .report-form-compact [class~="gap-4"] {
+    gap: 1rem !important;
+  }
+
+  .ddt-compact .report-form-compact [class~="gap-6"] {
+    gap: 1.5rem !important;
+  }
+
+  .ddt-compact .report-form-compact [class~="space-y-6"] > :not([hidden]) ~ :not([hidden]) {
+    margin-block-start: 1.5rem !important;
+  }
+
+  .ddt-compact .report-form-compact [class~="p-3"] {
+    padding: 0.75rem !important;
+  }
+
+  .ddt-compact .report-form-compact [class~="p-4"] {
+    padding: 1rem !important;
+  }
+
+  .ddt-compact .report-form-compact [class~="p-6"] {
+    padding: 1.5rem !important;
+  }
+
+  .ddt-compact .report-form-compact [class~="p-8"] {
+    padding: 2rem !important;
+  }
+}
+
+/* --- End of index.css --- */

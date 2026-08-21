@@ -1,0 +1,7 @@
+export const MAHOA_CODES = [
+  "IEMM.00/HQA/0000.0A-SP-M00",
+  "IEMM.00/HQA/0000.1A-SP",
+  "TĐC-0000-00",
+  "TTP-0000-00",
+  "VIC/00.HQ/0000/00-00"
+];

@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+service-account.json
+node_modules
+dist
+.git
+.worktrees
+docs/superpowers/plans
+scratch

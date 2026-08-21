@@ -1,0 +1,30 @@
+{
+  "_comment_author": "Gemini",
+  "_comment_os": "Web/Node",
+  "_comment_desc": "Web App Manifest for PWA installation and homescreen shortcut",
+  "name": "PTN Điện - Điện tử | TVCI Lab",
+  "short_name": "PTN Điện - Điện tử",
+  "description": "Hệ thống quản lý yêu cầu thử nghiệm DDT Lab",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "/icons/tvci-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/tvci-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "_comment_footer": "--- End of manifest.json ---"
+}

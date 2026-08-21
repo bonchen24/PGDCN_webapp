@@ -1,0 +1,8 @@
+{
+  "name": "DDT lab web app upgrade ",
+  "description": "Hệ thống quản lý thử nghiệm Phòng Điện - Điện tử",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

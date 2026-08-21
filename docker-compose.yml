@@ -1,0 +1,25 @@
+services:
+  webapp:
+    build: .
+    environment:
+      NODE_ENV: production
+      PORT: 2359
+      POSTGRES_HOST: supabase-db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Load the Supabase env file with --env-file}
+      POSTGRES_DB: ddt_lab
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      SUPABASE_STORAGE_URL: ${SUPABASE_STORAGE_URL:-}
+      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-ddt-files}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      KQTN_PDF_MAX_BYTES: ${KQTN_PDF_MAX_BYTES:-26214400}
+    ports:
+      - "2359:2359"
+    networks:
+      - supabase_default
+    restart: unless-stopped
+
+networks:
+  supabase_default:
+    external: true
