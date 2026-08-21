@@ -9,10 +9,11 @@ import {
   deleteDoc,
   fetchCollection,
   fetchCollectionWithMeta,
+  fetchCollectionsMeta,
   saveDoc
 } from './postgresApi';
 
-export { fetchCollection, fetchCollectionWithMeta };
+export { fetchCollection, fetchCollectionWithMeta, fetchCollectionsMeta };
 
 export const deleteDocFromPostgres = deleteDoc;
 export const batchDeleteFromPostgres = batchDelete;

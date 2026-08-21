@@ -728,6 +728,38 @@ async function startServer() {
     }
   });
 
+  app.get("/api/db-meta", async (req, res) => {
+    const rawNames = String(req.query.collections || "").split(",").map(s => s.trim()).filter(Boolean);
+    const names = Array.from(new Set(rawNames)).filter(n => DB_COLLECTIONS.has(n));
+    if (names.length === 0) {
+      res.json({ meta: {} });
+      return;
+    }
+    try {
+      const result = await pool.query(
+        `SELECT collection_name, COUNT(*)::int AS count, MAX(updated_at) AS max_updated_at
+         FROM app_documents
+         WHERE collection_name = ANY($1::text[])
+         GROUP BY collection_name`,
+        [names]
+      );
+      const meta: Record<string, { count: number; maxUpdatedAt: string | null }> = {};
+      for (const name of names) {
+        meta[name] = { count: 0, maxUpdatedAt: null };
+      }
+      for (const row of result.rows) {
+        meta[row.collection_name] = {
+          count: row.count,
+          maxUpdatedAt: row.max_updated_at ? new Date(row.max_updated_at).toISOString() : null,
+        };
+      }
+      res.json({ meta });
+    } catch (error: any) {
+      console.error("PostgreSQL collection meta read error:", error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
   app.get("/api/db/:collection", async (req, res) => {
     const collectionName = getDbCollection(req, res);
     if (!collectionName) return;

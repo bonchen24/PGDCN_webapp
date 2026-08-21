@@ -9,9 +9,15 @@ export interface FetchCollectionResult<T = any> {
   count: number;
 }
 
+export interface CollectionMeta {
+  count: number;
+  maxUpdatedAt: string | null;
+}
+
 export interface PostgresClient {
   fetchCollectionWithMeta<T = any>(collectionPath: string, forceServer?: boolean): Promise<FetchCollectionResult<T>>;
   fetchCollection<T = any>(collectionPath: string, forceServer?: boolean): Promise<T[]>;
+  fetchCollectionsMeta(collectionPaths: string[]): Promise<Record<string, CollectionMeta>>;
   saveDoc(collectionPath: string, docId: string, data: any): Promise<void>;
   deleteDoc(collectionPath: string, docId: string): Promise<void>;
   batchSave(collectionPath: string, items: any[]): Promise<void>;
@@ -85,6 +91,27 @@ export function createPostgresClient(fetchImpl: typeof fetch = fetch): PostgresC
       return result.items;
     },
 
+    async fetchCollectionsMeta(collectionPaths: string[]): Promise<Record<string, CollectionMeta>> {
+      const names = Array.from(new Set((collectionPaths || []).filter(Boolean)));
+      if (names.length === 0) return {};
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        try {
+          const response = await fetchImpl(`/api/db-meta?collections=${encodeURIComponent(names.join(','))}`, {
+            headers: { 'content-type': 'application/json' },
+            signal: controller.signal
+          });
+          const payload = await parseResponse(response);
+          return payload?.meta || {};
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      } catch {
+        return {};
+      }
+    },
+
     async saveDoc(collectionPath: string, docId: string, data: any): Promise<void> {
       const cleanData = sanitizeForApi({ ...data });
       delete cleanData.id;
@@ -136,6 +163,7 @@ const defaultClient = createPostgresClient();
 
 export const fetchCollectionWithMeta = defaultClient.fetchCollectionWithMeta;
 export const fetchCollection = defaultClient.fetchCollection;
+export const fetchCollectionsMeta = defaultClient.fetchCollectionsMeta;
 export const saveDoc = defaultClient.saveDoc;
 export const deleteDoc = defaultClient.deleteDoc;
 export const batchSave = defaultClient.batchSave;

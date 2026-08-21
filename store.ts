@@ -55,15 +55,17 @@ import { autoSchedule } from './utils/scheduler';
 import { calculateLotSequenceInYear, formatPhoneNumber, formatTaxId, normalizeDateString } from './utils/formatter';
 import { toast } from 'sonner';
 import { sendWindowsNotification } from './utils/windowNotification';
-import { 
-  fetchCollection, 
+import {
+  fetchCollection,
   fetchCollectionWithMeta,
+  fetchCollectionsMeta,
   fetchCollectionPaginated,
   deleteDocFromPostgres,
   batchDeleteFromPostgres,
   batchSaveToPostgres,
   saveDocToPostgres
 } from './utils/firebase';
+import type { CollectionMeta } from './utils/postgresApi';
 import { getDeletedUserIdsFromConfig, removeDeletedUserMarker } from './utils/systemUserPersistence';
 import { normalizeSystemUserRole, withSystemUserRoleAliases } from './utils/systemUserRole';
 import { isSystemSettingsManager } from './utils/systemSettingsPolicy';
@@ -257,6 +259,62 @@ let isSyncInProgress = false;
 let realtimeSyncIntervalId: any = null;
 const CLIENT_ID = Math.random().toString(36).substring(2, 15);
 let isAnotherSyncNeeded = false;
+
+// Collections that are large/fast-growing enough to benefit from skipping a
+// re-fetch when the backend reports nothing changed since the last poll.
+// systemConfig (deleted-id markers) is intentionally excluded and always
+// fetched fresh because it is small and other merges depend on its freshness.
+const META_CHECKED_COLLECTIONS = [
+  'requests', 'handoverDocs', 'customers', 'products', 'brands',
+  'systemUsers', 'userPreferences', 'notifications', 'kqtnRecords'
+] as const;
+let lastCollectionMeta: Record<string, CollectionMeta> = {};
+let lastRawCollectionData: Record<string, any[]> = {};
+
+async function fetchCollectionsWithMetaSkip(
+  names: readonly string[],
+  softFailNames: ReadonlySet<string> = new Set()
+): Promise<Record<string, any[]>> {
+  let meta: Record<string, CollectionMeta> = {};
+  try {
+    meta = await fetchCollectionsMeta(names as string[]);
+  } catch {
+    meta = {};
+  }
+
+  const results: Record<string, any[]> = {};
+  await Promise.all(names.map(async (name) => {
+    const newMeta = meta[name];
+    const priorMeta = lastCollectionMeta[name];
+    const haveCache = Object.prototype.hasOwnProperty.call(lastRawCollectionData, name);
+    const unchanged = !!newMeta && !!priorMeta && haveCache
+      && newMeta.count === priorMeta.count
+      && newMeta.maxUpdatedAt === priorMeta.maxUpdatedAt;
+
+    if (unchanged) {
+      results[name] = lastRawCollectionData[name];
+      return;
+    }
+
+    try {
+      const data = await fetchCollection(name, true);
+      results[name] = data;
+      lastRawCollectionData[name] = data;
+      if (newMeta) {
+        lastCollectionMeta[name] = newMeta;
+      } else {
+        delete lastCollectionMeta[name];
+      }
+    } catch (error) {
+      if (softFailNames.has(name)) {
+        results[name] = lastRawCollectionData[name] || [];
+        return;
+      }
+      throw error;
+    }
+  }));
+  return results;
+}
 
 const triggerDebouncedSync = (get: any, set: any) => {
   set({ hasUnsyncedChanges: true });
@@ -1084,29 +1142,19 @@ export const useStore = create<AppState>()(
 
     set({ isSyncing: true, syncError: null });
     try {
-      const [
-        cloudRequests,
-        cloudHandoverDocs,
-        cloudCustomers,
-        cloudConfigsRaw,
-        cloudProducts,
-        cloudBrandsRaw,
-        cloudUsers,
-        cloudUserPrefs,
-        cloudNotifsRaw,
-        cloudKqtnRaw
-      ] = await Promise.all([
-        fetchCollection("requests", true),
-        fetchCollection("handoverDocs", true),
-        fetchCollection("customers", true),
-        fetchCollection("systemConfig", true),
-        fetchCollection("products", true),
-        fetchCollection("brands", true),
-        fetchCollection("systemUsers", true),
-        fetchCollection("userPreferences", true),
-        fetchCollection("notifications", true).catch(() => []),
-        fetchCollection("kqtnRecords", true).catch(() => [])
+      const [metaCheckedData, cloudConfigsRaw] = await Promise.all([
+        fetchCollectionsWithMetaSkip(META_CHECKED_COLLECTIONS, new Set(['notifications', 'kqtnRecords'])),
+        fetchCollection("systemConfig", true)
       ]);
+      const cloudRequests = metaCheckedData.requests;
+      const cloudHandoverDocs = metaCheckedData.handoverDocs;
+      const cloudCustomers = metaCheckedData.customers;
+      const cloudProducts = metaCheckedData.products;
+      const cloudBrandsRaw = metaCheckedData.brands;
+      const cloudUsers = metaCheckedData.systemUsers;
+      const cloudUserPrefs = metaCheckedData.userPreferences;
+      const cloudNotifsRaw = metaCheckedData.notifications;
+      const cloudKqtnRaw = metaCheckedData.kqtnRecords;
 
       const cloudConfigs = cloudConfigsRaw.map(c => ({
         configKey: c.id,
