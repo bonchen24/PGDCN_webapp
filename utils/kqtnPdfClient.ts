@@ -4,11 +4,27 @@
 
 import type { KqtnPdfMetadata } from '../types';
 import { getGeminiHeaders } from './gemini';
-import type { KqtnBulkStructurePage } from './kqtnBulkSplit';
+import type { KqtnBulkFooterPage, KqtnBulkStructurePage } from './kqtnBulkSplit';
 
-async function parseResponse(response: Response): Promise<any> {
+export const KQTN_STRUCTURE_TIMEOUT_CODE = 'KQTN_STRUCTURE_TIMEOUT';
+
+function isStructureTimeoutStatus(status: number): boolean {
+  return status === 504 || status === 524;
+}
+
+export function isKqtnStructureTimeoutError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error || '');
+  return message.includes(KQTN_STRUCTURE_TIMEOUT_CODE) || /KQTN PDF request failed \((504|524)\)/.test(message);
+}
+
+async function parseResponse(response: Response, options: { structureTimeout?: boolean } = {}): Promise<any> {
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || `KQTN PDF request failed (${response.status}).`);
+  if (!response.ok) {
+    if (options.structureTimeout && (payload.code === KQTN_STRUCTURE_TIMEOUT_CODE || isStructureTimeoutStatus(response.status))) {
+      throw new Error(`${KQTN_STRUCTURE_TIMEOUT_CODE}: ${payload.error || 'KQTN structure extraction timed out; manual split is required.'}`);
+    }
+    throw new Error(payload.error || `KQTN PDF request failed (${response.status}).`);
+  }
   return payload;
 }
 
@@ -56,8 +72,25 @@ export async function extractKqtnBulkStructure(
     headers: { ...getGeminiHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ base64Data, mimeType: 'application/pdf', pageOffset }),
   });
-  const payload = await parseResponse(response);
+  const payload = await parseResponse(response, { structureTimeout: true });
   return Array.isArray(payload.pages) ? payload.pages as KqtnBulkStructurePage[] : [];
+}
+
+export async function extractKqtnBulkFooter(
+  base64Data: string,
+  pageOffset = 0,
+): Promise<KqtnBulkFooterPage[]> {
+  const response = await fetch('/api/gemini/extract-kqtn-bulk-structure', {
+    method: 'POST',
+    headers: { ...getGeminiHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ base64Data, mimeType: 'application/pdf', pageOffset, mode: 'footer' }),
+  });
+  const payload = await parseResponse(response, { structureTimeout: true });
+  return Array.isArray(payload.pages) ? payload.pages.map((page: any, index: number) => ({
+    pageNumber: Number(page?.pageNumber) || pageOffset + index + 1,
+    isBlank: Boolean(page?.isBlank),
+    footerKey: String(page?.footerKey || '').trim(),
+  })) as KqtnBulkFooterPage[] : [];
 }
 
 // --- End of kqtnPdfClient.ts ---

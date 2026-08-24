@@ -626,4 +626,17 @@ Toàn bộ Type định nghĩa hệ thống nằm ở file `/types.ts`.
 - Với PDF ghép, nút xác nhận phải thể hiện rõ “Tách PDF con và lưu vào mẫu đích”; hệ thống tạo PDF con rồi gọi API PDF đơn hiện tại để lưu vào đúng KQTN đích đã chọn, đồng thời giữ trạng thái thành công/thất bại theo từng nhóm và cho phép retry nhóm lỗi.
 - Đóng modal chỉ ẩn modal và giữ nguyên phiên xử lý trong bộ nhớ của trang. Chỉ “Xóa phiên/Bắt đầu lại” mới xóa file, mapping và trạng thái; không yêu cầu khôi phục sau reload cứng vì PDF nguồn là dữ liệu tạm của phiên.
 - Candidate chưa có KQTN thực (`id` dạng `sample-head:*` hoặc `isPending=true`) phải hiển thị “Chưa có KQTN” và không được chọn làm mẫu đích; Bulk Upload không tự tạo bản ghi KQTN mới.
+
+### 11.2. Scanned combined PDF segmentation
+- PDF scan không có text layer vẫn phải được xử lý theo từng trang. Với PDF ghép, lượt đầu chỉ OCR footer để lấy `footerKey` ổn định theo từng báo cáo; lượt sau chỉ OCR toàn trang đầu của từng segment ứng viên để lấy `sampleCode`, model và brand phục vụ mapping. Không OCR toàn bộ mọi trang để mapping.
+- Footer chỉ là tín hiệu tìm mốc ứng viên, không phải bằng chứng đủ để upload: chỉ tạo mốc tự động khi `footerKey` khác nhóm trước và được xác nhận lặp lại ở trang kế tiếp; bỏ qua số trang, ngày tháng và footer không đọc rõ. Nếu không có chuỗi footer ổn định hoặc mốc đầu tiên không xác định được, chuyển sang manual split.
+- Khi `isReportCover` bị bỏ sót nhưng cùng trang có `reportNo` hoặc `sampleCode` cùng ít nhất một trường nhận dạng mẫu, hệ thống được phép nâng trang thành mốc bắt đầu có độ tin cậy thấp/trung bình; không được dùng một trường footer lặp lại đơn độc làm marker.
+- Mỗi marker mạnh tạo đúng một segment liên tục tới trước marker kế tiếp. Trang trắng ở biên được loại khỏi PDF con; trang trắng nằm giữa nội dung chỉ được loại khi AI xác nhận là trang phân cách. Mọi segment phải giữ `pageStart`, `pageEnd`, metadata marker và mapping về một `sampleKey` duy nhất.
+- Nếu scan không đủ rõ để xác định marker hoặc có marker trùng/không map duy nhất với đầu mẫu hiện hữu, UI phải hiển thị nhóm `Cần rà soát`, cho phép sửa mốc trang/chọn mẫu, và chặn upload tự động cho nhóm đó.
+- Structure extraction phải có ngân sách thời gian hữu hạn thấp hơn timeout của reverse proxy; cấu hình hiện hành là 45 giây, không retry SDK và chỉ dùng một model đã chọn cho mỗi request. Khi vượt thời gian, API trả `504` với mã `KQTN_STRUCTURE_TIMEOUT`, UI chuyển ngay sang tách thủ công và không phát sinh thêm retry page-level cho cùng lỗi timeout.
+
+### 11.3. Bulk Upload confirmation gate
+- Việc chọn file chỉ tạo một lựa chọn chờ xác nhận; không được gọi AI metadata/structure extraction và không được bắt đầu đọc, tách hoặc upload PDF ở bước này.
+- UI phải hiển thị rõ file đã chọn và nút `Xác nhận và bắt đầu phân tích`. Chỉ sau thao tác xác nhận này hệ thống mới bắt đầu phân tích PDF tương ứng với mode `Nhiều PDF đơn` hoặc `Một PDF ghép`.
+- Người dùng có thể bỏ chọn hoặc chọn lại trước khi xác nhận. Thao tác này không được làm mất phiên Bulk Upload đang có; chỉ khi xác nhận mới thay thế nguồn/đợt phân tích tương ứng.
 <!-- --- End of design.md --- -->

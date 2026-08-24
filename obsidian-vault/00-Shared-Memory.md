@@ -17,6 +17,16 @@ Description: Shared working memory for the DDT Lab repository and GitHub workflo
 - Project rules: `AGENTS.md` requires `design.md` to remain the single source of truth for architecture, data, UI/UX, and coding conventions.
 - Ports: Local Dev (`npm run dev`) on `1359`, Docker Desktop Production on `2359`.
 
+## 2026-08-24 — KQTN Bulk: footer-first segmentation và OCR trang đầu
+
+- Nguyên nhân lỗi `524` tại `/api/gemini/extract-kqtn-bulk-structure`: request đồng bộ gửi batch nhiều trang scan vào Gemini, cộng thêm retry/fallback, vượt timeout reverse proxy.
+- `design.md` mục 11.2 đã cập nhật: PDF ghép lượt đầu chỉ OCR footer để lấy `footerKey`; chỉ OCR toàn trang đầu của từng segment để mapping `sampleCode/model/brand`. Footer chỉ là marker ứng viên, không đủ để tự upload.
+- `server.ts`: bulk endpoint có timeout 45 giây, một model/một attempt; hỗ trợ `mode: "footer"`, trả `KQTN_STRUCTURE_TIMEOUT`/HTTP 504 khi quá hạn.
+- `KqtnBulkPdfUploadModal.tsx`: PDF ghép gửi footer batch 6 trang, tạo mốc khi `footerKey` đổi và lặp lại ở trang kế tiếp; sau đó OCR trang đầu từng segment. Footer nhiễu, footer tĩnh, thiếu trang hoặc timeout đều chuyển manual split. PDF đơn tiếp tục chỉ OCR trang đầu.
+- `utils/kqtnBulkSplit.ts`: thêm `buildKqtnFooterSegments`; không tự tách nếu footer không xác định được ít nhất một mốc thay đổi ổn định.
+- Verification: `npm test` 272/272 pass, `npm run lint` pass, `npm run build` pass, `git diff --check` pass.
+- Runtime: port `1359` đang hoạt động ở PID `22268`, root và module Bulk Upload trả HTTP 200 và đang phục vụ source mới. `npm run dev` trực tiếp có thể lỗi `uv_os_get_passwd ENOMEM`; dùng `NODE_OPTIONS=--require=E:\CODING\DDT_webapp\scripts\test-node-userinfo-preload.cjs` để vượt lỗi này. Không tự ý dừng PID chưa xác minh.
+
 ## 2026-08-24 — Form Báo cáo: Quy chuẩn Bảng Công suất nhiễu EMC chỉ hiển thị 1 hàng (tự động lấy hàng 1)
 
 - Documented in `design.md`: Power Disturbance tables (`tablePower*`) across all EMC reports strictly display and persist **1 row only**.

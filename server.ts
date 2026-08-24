@@ -64,6 +64,8 @@ dotenv.config();
 const upload = multer({ storage: multer.memoryStorage() });
 
 const KQTN_PDF_MAX_BYTES = Number(process.env.KQTN_PDF_MAX_BYTES || 25 * 1024 * 1024);
+const KQTN_BULK_STRUCTURE_TIMEOUT_MS = 45_000;
+const KQTN_STRUCTURE_TIMEOUT_CODE = "KQTN_STRUCTURE_TIMEOUT";
 const kqtnPdfUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: KQTN_PDF_MAX_BYTES },
@@ -249,16 +251,29 @@ async function withPgTransaction<T>(callback: (client: any) => Promise<T>): Prom
 
 const CANDIDATE_MODELS = ["gemini-flash-latest", "gemini-3.6-flash", "gemini-3.1-flash-lite"];
 
+function isGeminiRequestTimeout(error: any): boolean {
+  const errorName = String(error?.name || "");
+  const errorMessage = String(error?.message || error || "");
+  return errorName === "AbortError" || /timed?\s*out|timeout|deadline exceeded|ETIMEDOUT/i.test(errorMessage);
+}
+
+interface GeminiGenerationOptions {
+  modelNames?: string[];
+  attemptsPerModel?: number;
+}
+
 async function generateContentWithRetryAndFallback(
   activeAi: GoogleGenAI,
   params: { contents: any; config?: any },
-  preferredModel?: string
+  preferredModel?: string,
+  options: GeminiGenerationOptions = {},
 ) {
   let lastError: any = null;
-  const modelsToTry = preferredModel ? [preferredModel, ...CANDIDATE_MODELS.filter(m => m !== preferredModel)] : CANDIDATE_MODELS;
+  const modelsToTry = options.modelNames || (preferredModel ? [preferredModel, ...CANDIDATE_MODELS.filter(m => m !== preferredModel)] : CANDIDATE_MODELS);
+  const attemptsPerModel = Math.max(1, Math.floor(options.attemptsPerModel || 2));
 
   for (const modelName of modelsToTry) {
-    let retries = 2;
+    let retries = attemptsPerModel;
     while (retries > 0) {
       try {
         console.log(`Calling Gemini API with model: ${modelName} (retries left: ${retries - 1})...`);
@@ -390,7 +405,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-  const getGeminiClient = (req: express.Request) => {
+  const getGeminiClient = (req: express.Request, options: { timeout?: number } = {}) => {
     const resolvedApiKey = resolveGeminiApiKey(apiKey, req.headers['x-gemini-api-key']);
     if (!resolvedApiKey) {
       throw new Error(GEMINI_API_KEY_MISSING_MESSAGE);
@@ -400,7 +415,8 @@ async function startServer() {
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
-        }
+        },
+        ...(options.timeout !== undefined ? { timeout: options.timeout } : {}),
       }
     });
   };
@@ -1556,17 +1572,35 @@ Trả về đúng định dạng JSON khớp schema đã cung cấp.
 
   app.post("/api/gemini/extract-kqtn-bulk-structure", async (req, res) => {
     try {
-      const { base64Data, pageOffset } = req.body || {};
+      const { base64Data, pageOffset, mode } = req.body || {};
       if (!base64Data) {
         res.status(400).json({ error: "Missing PDF batch data." });
         return;
       }
+      const analysisMode = mode === "footer" ? "footer" : "structure";
       const parsedOffset = Number(pageOffset);
       const safeOffset = Number.isFinite(parsedOffset) ? Math.max(0, Math.floor(parsedOffset)) : 0;
-      const activeAi = getGeminiClient(req);
+      const activeAi = getGeminiClient(req, {
+        timeout: KQTN_BULK_STRUCTURE_TIMEOUT_MS,
+      });
       const preferredModel = req.headers["x-gemini-model"] as string | undefined;
-      const prompt = `
+      const prompt = analysisMode === "footer" ? `
 Bạn đang xem một batch PDF gồm nhiều trang liên tiếp của một hoặc nhiều báo cáo kết quả thử nghiệm Điện - Điện tử.
+Lưu ý: PDF có thể là bản scan ảnh, trang có thể bị xoay 90 độ; hãy đọc nội dung sau khi xoay đúng hướng.
+Chỉ kiểm tra dải footer ở mép dưới mỗi trang và trả về đúng một phần tử cho mỗi trang, theo thứ tự trang.
+
+Quy tắc nhận diện footer:
+- pageNumber là số trang cục bộ trong batch, bắt đầu từ 1.
+- isBlank=true chỉ khi trang trắng hoặc gần như trắng.
+- footerKey chỉ chứa mã báo cáo, số phiếu hoặc mã mẫu ổn định được in lặp lại trong footer; giữ nguyên nội dung nhìn thấy.
+- Không lấy số trang, ngày tháng, tên file, chữ bản quyền hoặc nội dung thay đổi theo từng trang làm footerKey.
+- Nếu footer không có mã ổn định hoặc không đọc rõ, trả footerKey là chuỗi rỗng.
+- Không suy đoán, không dùng nội dung ngoài tài liệu và không đánh dấu mốc tách chỉ vì footer khác nhau một lần.
+
+Không lấy số trang làm footerKey. Trả về JSON theo schema đã cung cấp, không thêm markdown.
+` : `
+Bạn đang xem một batch PDF gồm nhiều trang liên tiếp của một hoặc nhiều báo cáo kết quả thử nghiệm Điện - Điện tử.
+Lưu ý: PDF có thể là bản scan ảnh, trang có thể bị xoay 90 độ; hãy đọc nội dung sau khi xoay đúng hướng.
 Hãy kiểm tra từng trang trong batch và trả về đúng một phần tử cho mỗi trang, theo thứ tự trang.
 
 Quy tắc nhận diện:
@@ -1574,12 +1608,55 @@ Quy tắc nhận diện:
 - isReportCover=true chỉ khi trang có dấu hiệu rõ ràng là trang bìa báo cáo: tiêu đề báo cáo/phiếu kết quả, số báo cáo, mã hóa mẫu hoặc bảng thông tin mẫu. Không suy đoán từ một trang dữ liệu đơn lẻ.
 - isBlank=true chỉ khi trang trắng hoặc gần như trắng. Không đánh dấu trang phân cách nằm giữa nội dung là blank nếu trang đó có nội dung đáng kể.
 - reportNo là số báo cáo/phiếu nếu nhìn rõ; không dùng số báo cáo để thay thế sampleCode.
+- Số báo cáo hoặc mã mẫu lặp trong footer không đủ để đánh dấu trang bìa; chỉ dùng khi có bảng thông tin mẫu hoặc tiêu đề báo cáo trên cùng trang.
 - sampleCode là số mã hóa/mã hiệu mẫu nếu nhìn rõ.
 - model, brand, sealStamp, sampleName chỉ lấy giá trị nhìn thấy trên trang bìa; trường không rõ trả chuỗi rỗng.
 - Không bịa dữ liệu và không dùng kiến thức ngoài tài liệu.
+- Nếu trang có tiêu đề báo cáo và bảng thông tin mẫu nhưng cờ nhận diện không chắc chắn, vẫn đánh dấu isReportCover=true; không đánh dấu các trang kết quả chỉ vì footer lặp lại.
 
 Trả về JSON theo schema đã cung cấp, không thêm markdown.
 `;
+      const responseSchema = analysisMode === "footer" ? {
+        type: Type.OBJECT,
+        properties: {
+          pages: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                pageNumber: { type: Type.INTEGER },
+                isBlank: { type: Type.BOOLEAN },
+                footerKey: { type: Type.STRING },
+              },
+              required: ["pageNumber", "isBlank", "footerKey"],
+            },
+          },
+        },
+        required: ["pages"],
+      } : {
+        type: Type.OBJECT,
+        properties: {
+          pages: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                pageNumber: { type: Type.INTEGER },
+                isReportCover: { type: Type.BOOLEAN },
+                isBlank: { type: Type.BOOLEAN },
+                reportNo: { type: Type.STRING },
+                sampleCode: { type: Type.STRING },
+                model: { type: Type.STRING },
+                brand: { type: Type.STRING },
+                sealStamp: { type: Type.STRING },
+                sampleName: { type: Type.STRING },
+              },
+              required: ["pageNumber", "isReportCover", "isBlank", "reportNo", "sampleCode", "model", "brand", "sealStamp", "sampleName"],
+            },
+          },
+        },
+        required: ["pages"],
+      };
       const response = await generateContentWithRetryAndFallback(activeAi, {
         contents: {
           parts: [
@@ -1590,37 +1667,22 @@ Trả về JSON theo schema đã cung cấp, không thêm markdown.
         config: {
           temperature: 0,
           responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              pages: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    pageNumber: { type: Type.INTEGER },
-                    isReportCover: { type: Type.BOOLEAN },
-                    isBlank: { type: Type.BOOLEAN },
-                    reportNo: { type: Type.STRING },
-                    sampleCode: { type: Type.STRING },
-                    model: { type: Type.STRING },
-                    brand: { type: Type.STRING },
-                    sealStamp: { type: Type.STRING },
-                    sampleName: { type: Type.STRING },
-                  },
-                  required: ["pageNumber", "isReportCover", "isBlank", "reportNo", "sampleCode", "model", "brand", "sealStamp", "sampleName"],
-                },
-              },
-            },
-            required: ["pages"],
-          },
+          responseSchema,
         },
-      }, preferredModel);
+      }, preferredModel, {
+        modelNames: [preferredModel || CANDIDATE_MODELS[0]],
+        attemptsPerModel: 1,
+      });
       const text = response.text;
       if (!text) throw new Error("AI returned no PDF structure.");
       const cleanedText = text.split(String.fromCharCode(96)).join("").trim();
       const parsed = JSON.parse(cleanedText);
-      const pages = Array.isArray(parsed.pages) ? parsed.pages.map((page: any, index: number) => ({
+      const pages = Array.isArray(parsed.pages) ? parsed.pages.map((page: any, index: number) => analysisMode === "footer" ? ({
+        pageNumber: safeOffset + Math.max(1, Math.floor(Number(page?.pageNumber) || index + 1)),
+        isReportCover: false,
+        isBlank: Boolean(page?.isBlank),
+        footerKey: String(page?.footerKey || "").trim(),
+      }) : ({
         pageNumber: safeOffset + Math.max(1, Math.floor(Number(page?.pageNumber) || index + 1)),
         isReportCover: Boolean(page?.isReportCover),
         isBlank: Boolean(page?.isBlank),
@@ -1634,6 +1696,13 @@ Trả về JSON theo schema đã cung cấp, không thêm markdown.
       res.json({ pages });
     } catch (error: any) {
       console.error("KQTN bulk structure extraction error:", error);
+      if (isGeminiRequestTimeout(error)) {
+        res.status(504).json({
+          code: KQTN_STRUCTURE_TIMEOUT_CODE,
+          error: "KQTN structure extraction timed out; manual split is required.",
+        });
+        return;
+      }
       res.status(500).json({ error: error?.message || String(error) });
     }
   });

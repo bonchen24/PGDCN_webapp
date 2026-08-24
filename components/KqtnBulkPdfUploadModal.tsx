@@ -23,20 +23,23 @@ import { matchKqtnBulkFile, type KqtnBulkCandidate } from '../utils/kqtnBulkMatc
 import { normalizeKqtnSampleKey } from '../utils/kqtnIdentity';
 import {
   buildKqtnBulkSegments,
+  buildKqtnFooterSegments,
   normalizeKqtnBulkSegmentRange,
   validateKqtnBulkSegments,
   type KqtnBulkSegmentDraft,
+  type KqtnBulkFooterPage,
   type KqtnBulkStructurePage,
 } from '../utils/kqtnBulkSplit';
 import { buildKqtnBulkUploadPlan, isKqtnBulkUploadTarget } from '../utils/kqtnBulkWorkflow';
 import {
-  extractKqtnBulkStructure,
+  extractKqtnBulkFooter,
   extractKqtnPdfMetadata,
+  isKqtnStructureTimeoutError,
   uploadKqtnPdf,
 } from '../utils/kqtnPdfClient';
 
 const KQTN_PDF_MAX_BYTES = 25 * 1024 * 1024;
-const STRUCTURE_BATCH_SIZE = 6;
+const FOOTER_BATCH_SIZE = 6;
 
 type BulkItemStatus = 'needs-review' | 'ready' | 'uploading' | 'uploaded' | 'skipped' | 'failed';
 type CombinedPhase = 'idle' | 'detecting' | 'review' | 'uploading';
@@ -63,6 +66,8 @@ interface CombinedSegment extends KqtnBulkSegmentDraft {
   needsManualSelection: boolean;
   manualSelection: boolean;
   status: 'needs-review' | 'ready' | 'uploading' | 'uploaded' | 'skipped' | 'failed';
+  splitFile?: File;
+  splitFileReady: boolean;
   resultPdf?: KqtnPdfMetadata;
   error?: string;
 }
@@ -170,6 +175,7 @@ function buildCombinedSegment(draft: KqtnBulkSegmentDraft, index: number, candid
     needsManualSelection: match.needsManualSelection,
     manualSelection: false,
     status: match.candidateId && !match.needsManualSelection ? 'ready' : 'needs-review',
+    splitFileReady: false,
   };
 }
 
@@ -191,6 +197,8 @@ function confidenceLabel(confidence: CombinedSegment['confidence'] | BulkItem['c
 export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, onUploaded, onBulkCompleted }: KqtnBulkPdfUploadModalProps) {
   const [mode, setMode] = useState<UploadMode>('single-files');
   const [items, setItems] = useState<BulkItem[]>([]);
+  const [pendingSingleFiles, setPendingSingleFiles] = useState<File[]>([]);
+  const [pendingCombinedFile, setPendingCombinedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isInspectingAi, setIsInspectingAi] = useState(false);
   const [combinedFile, setCombinedFile] = useState<File | null>(null);
@@ -200,7 +208,6 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
   const [combinedProgress, setCombinedProgress] = useState('');
   const sourcePdfRef = useRef<PDFDocument | null>(null);
   const combinedGroupIdRef = useRef<string | null>(null);
-  const preserveSessionOnResetRef = useRef(false);
 
   const candidateMap = useMemo(() => new Map(candidates.map((candidate) => [candidate.id, candidate])), [candidates]);
   const rangeErrors = useMemo(() => validateKqtnBulkSegments(combinedSegments, combinedTotalPages), [combinedSegments, combinedTotalPages]);
@@ -211,16 +218,14 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
     });
     return [...counts.entries()].filter(([, count]) => count > 1).map(([id]) => id);
   }, [combinedSegments]);
-  const hasDraft = items.length > 0 || combinedFile !== null || combinedSegments.length > 0;
+  const hasDraft = items.length > 0 || combinedFile !== null || combinedSegments.length > 0 || pendingSingleFiles.length > 0 || pendingCombinedFile !== null;
 
   if (!isOpen) return null;
 
   const resetState = () => {
-    if (preserveSessionOnResetRef.current) {
-      preserveSessionOnResetRef.current = false;
-      return;
-    }
     setItems([]);
+    setPendingSingleFiles([]);
+    setPendingCombinedFile(null);
     setCombinedFile(null);
     setCombinedTotalPages(0);
     setCombinedSegments([]);
@@ -242,23 +247,23 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
 
   const handleClose = () => {
     if (isUploading || isInspectingAi || combinedPhase === 'detecting') return;
-    preserveSessionOnResetRef.current = true;
-    resetState();
     onClose();
   };
 
   const selectMode = (nextMode: UploadMode) => {
     if (isUploading || isInspectingAi || combinedPhase === 'detecting') return;
     setMode(nextMode);
-    resetState();
   };
 
-  const handleSingleFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSingleFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []).filter((file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
     event.target.value = '';
-    setItems(files.map((file) => inspectFile(file, candidates)));
     if (files.length === 0) return;
+    setPendingSingleFiles(files);
+  };
 
+  const analyzeSingleFiles = async (files: File[]) => {
+    setItems(files.map((file) => inspectFile(file, candidates)));
     setIsInspectingAi(true);
     for (const [index, file] of files.entries()) {
       try {
@@ -288,31 +293,78 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
       const totalPages = sourceDoc.getPageCount();
       sourcePdfRef.current = sourceDoc;
       setCombinedTotalPages(totalPages);
-      const detectedPages: KqtnBulkStructurePage[] = [];
+      const detectedFooterPages: KqtnBulkFooterPage[] = [];
       let structureFailed = false;
 
-      for (let batchStart = 1; batchStart <= totalPages; batchStart += STRUCTURE_BATCH_SIZE) {
-        const batchEnd = Math.min(totalPages, batchStart + STRUCTURE_BATCH_SIZE - 1);
-        setCombinedProgress(`Đang nhận diện trang ${batchStart}-${batchEnd}/${totalPages}...`);
+      for (let batchStart = 1; batchStart <= totalPages; batchStart += FOOTER_BATCH_SIZE) {
+        const batchEnd = Math.min(totalPages, batchStart + FOOTER_BATCH_SIZE - 1);
+        setCombinedProgress(`Đang đọc footer trang ${batchStart}-${batchEnd}/${totalPages}...`);
         try {
           const batchFile = await createPdfSegmentFile(sourceDoc, batchStart, batchEnd, `${fileStem(file.name)}-batch.pdf`);
-          detectedPages.push(...await extractKqtnBulkStructure(await fileToBase64(batchFile), batchStart - 1));
+          const batchPages = await extractKqtnBulkFooter(await fileToBase64(batchFile), batchStart - 1);
+          const expectedBatchPageCount = batchEnd - batchStart + 1;
+          const batchPageNumbers = new Set(batchPages.map((page) => page.pageNumber));
+          const hasEveryBatchPage = Array.from({ length: expectedBatchPageCount }, (_, index) => batchStart + index).every((pageNumber) => batchPageNumbers.has(pageNumber));
+          if (batchPages.length !== expectedBatchPageCount || batchPageNumbers.size !== expectedBatchPageCount || !hasEveryBatchPage) {
+            throw new Error('AI trả thiếu metadata footer của batch PDF.');
+          }
+          detectedFooterPages.push(...batchPages);
         } catch (error) {
-          console.warn('KQTN bulk structure extraction failed; switching to manual split.', error);
+          if (isKqtnStructureTimeoutError(error)) {
+            console.warn('KQTN footer extraction timed out; switching to manual split.', error);
+            structureFailed = true;
+            break;
+          }
+          console.warn('KQTN footer extraction failed; switching to manual split.', error);
           structureFailed = true;
           break;
         }
       }
 
-      const detectedPageNumbers = new Set(detectedPages.map((page) => page.pageNumber));
+      const detectedPageNumbers = new Set(detectedFooterPages.map((page) => page.pageNumber));
       const hasEverySourcePage = Array.from({ length: totalPages }, (_, index) => index + 1).every((pageNumber) => detectedPageNumbers.has(pageNumber));
-      const structureIncomplete = detectedPages.length !== totalPages || detectedPageNumbers.size !== totalPages || !hasEverySourcePage;
-      const structurePages = structureFailed || structureIncomplete ? makeManualPages(totalPages) : detectedPages;
-      const drafts = buildKqtnBulkSegments(structurePages, totalPages, file.name);
-      setCombinedSegments(drafts.map((draft, index) => buildCombinedSegment(draft, index, candidates)));
+      const footerIncomplete = detectedFooterPages.length !== totalPages || detectedPageNumbers.size !== totalPages || !hasEverySourcePage;
+      const drafts = structureFailed || footerIncomplete
+        ? buildKqtnBulkSegments(makeManualPages(totalPages), totalPages, file.name)
+        : buildKqtnFooterSegments(detectedFooterPages, totalPages, file.name);
+      let segments = drafts.map((draft, index) => buildCombinedSegment(draft, index, candidates));
+      setCombinedSegments(segments);
+
+      if (!structureFailed && !footerIncomplete && drafts.some((draft) => draft.detection === 'footer')) {
+        for (const [index, draft] of drafts.entries()) {
+          if (draft.detection !== 'footer') continue;
+          try {
+            setCombinedProgress(`Đang OCR trang đầu nhóm ${draft.pageStart}-${draft.pageEnd}...`);
+            const firstPageFile = await createPdfSegmentFile(sourceDoc, draft.pageStart, draft.pageStart, `${fileStem(file.name)}-first-page-${draft.pageStart}.pdf`);
+            const metadata = await extractKqtnPdfMetadata(await fileToBase64(firstPageFile), 'application/pdf');
+            const enrichedDraft: KqtnBulkSegmentDraft = {
+              ...draft,
+              metadata: {
+                ...draft.metadata,
+                isReportCover: true,
+                sampleCode: metadata.sampleCode || '',
+                model: metadata.model || '',
+                brand: metadata.brand || '',
+              },
+            };
+            segments = segments.map((segment, segmentIndex) => segmentIndex === index
+              ? buildCombinedSegment(enrichedDraft, index, candidates)
+              : segment);
+            setCombinedSegments(segments);
+          } catch (error: any) {
+            console.warn('KQTN first-page metadata extraction failed; keeping manual mapping.', error);
+            segments = segments.map((segment, segmentIndex) => segmentIndex === index
+              ? { ...segment, needsManualSelection: true, status: 'needs-review', reason: 'OCR trang đầu thất bại; cần chọn mẫu thủ công.', error: error?.message || 'Không đọc được trang đầu.' }
+              : segment);
+            setCombinedSegments(segments);
+          }
+        }
+      }
+
       setCombinedPhase('review');
-      setCombinedProgress(structureFailed || structureIncomplete ? 'Không nhận diện đủ cấu trúc; hãy nhập mốc trang và chọn đầu mẫu.' : 'Đã đề xuất các nhóm trang; hãy rà soát trước khi upload.');
-      if (structureFailed || structureIncomplete) toast.warning('AI không nhận diện đủ cấu trúc. Đã chuyển sang chế độ tách thủ công.');
+      const manualFallback = structureFailed || footerIncomplete || drafts.some((draft) => draft.detection === 'manual');
+      setCombinedProgress(manualFallback ? 'Không xác định được footer ổn định; hãy nhập mốc trang và chọn đầu mẫu.' : 'Đã nhận diện footer và OCR trang đầu từng nhóm; hãy rà soát trước khi upload.');
+      if (manualFallback) toast.warning('Footer không đủ ổn định. Đã chuyển sang chế độ tách thủ công.');
     } catch (error: any) {
       sourcePdfRef.current = null;
       setCombinedFile(null);
@@ -325,7 +377,28 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
   const handleCombinedFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = Array.from(event.target.files || []).find((candidate) => candidate.type === 'application/pdf' || candidate.name.toLowerCase().endsWith('.pdf'));
     event.target.value = '';
-    if (file) void analyzeCombinedFile(file);
+    if (file) setPendingCombinedFile(file);
+  };
+
+  const confirmPendingAnalysis = () => {
+    if (isUploading || isInspectingAi || combinedPhase === 'detecting') return;
+    if (mode === 'single-files' && pendingSingleFiles.length > 0) {
+      const files = pendingSingleFiles;
+      setPendingSingleFiles([]);
+      void analyzeSingleFiles(files);
+      return;
+    }
+    if (mode === 'combined' && pendingCombinedFile) {
+      const file = pendingCombinedFile;
+      setPendingCombinedFile(null);
+      void analyzeCombinedFile(file);
+    }
+  };
+
+  const clearPendingAnalysis = () => {
+    if (isUploading || isInspectingAi || combinedPhase === 'detecting') return;
+    if (mode === 'single-files') setPendingSingleFiles([]);
+    else setPendingCombinedFile(null);
   };
 
   const setSingleCandidate = (index: number, candidateId: string) => {
@@ -340,7 +413,15 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
     setCombinedSegments((current) => current.map((segment, segmentIndex) => {
       if (segmentIndex !== index) return segment;
       const next = normalizeKqtnBulkSegmentRange(field === 'pageStart' ? value : segment.pageStart, field === 'pageEnd' ? value : segment.pageEnd, combinedTotalPages);
-      return { ...segment, ...next, detection: 'manual', status: segment.status === 'uploaded' ? segment.status : segment.candidateId && segment.manualSelection ? 'ready' : 'needs-review' };
+      return {
+        ...segment,
+        ...next,
+        detection: 'manual',
+        splitFile: undefined,
+        splitFileReady: false,
+        error: undefined,
+        status: segment.status === 'uploaded' ? segment.status : segment.candidateId && segment.manualSelection ? 'ready' : 'needs-review',
+      };
     }));
   };
 
@@ -375,6 +456,40 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
       popup?.close();
       toast.error(error?.message || 'Không thể tạo PDF con để preview.');
     }
+  };
+
+  const splitCombinedSegments = async () => {
+    if (!sourcePdfRef.current || !combinedFile) return;
+    if (rangeErrors.length > 0) { toast.warning(rangeErrors[0]); return; }
+    const segmentsToSplit = combinedSegments.filter((segment) => segment.status !== 'uploaded' && segment.status !== 'skipped');
+    if (segmentsToSplit.length === 0) return;
+
+    setIsUploading(true);
+    setCombinedPhase('uploading');
+    let failed = 0;
+    for (const segment of segmentsToSplit) {
+      if (segment.splitFileReady && segment.splitFile) continue;
+      const segmentIndex = combinedSegments.indexOf(segment);
+      try {
+        setCombinedProgress(`Đang tạo PDF con trang ${segment.pageStart}-${segment.pageEnd}...`);
+        const splitFile = await createPdfSegmentFile(sourcePdfRef.current, segment.pageStart, segment.pageEnd, makeSegmentFileName(segment.sourceFileName, segment.pageStart, segment.pageEnd));
+        if (splitFile.size > KQTN_PDF_MAX_BYTES) throw new Error(`PDF con vượt giới hạn ${Math.round(KQTN_PDF_MAX_BYTES / 1024 / 1024)} MB.`);
+        updateCombinedSegment(segmentIndex, {
+          splitFile,
+          splitFileReady: true,
+          error: undefined,
+          status: segment.candidateId && (!segment.needsManualSelection || segment.manualSelection) ? 'ready' : 'needs-review',
+        });
+      } catch (error: any) {
+        failed += 1;
+        updateCombinedSegment(segmentIndex, { splitFile: undefined, splitFileReady: false, status: 'failed', error: error?.message || 'Không thể tạo PDF con.' });
+      }
+    }
+    setIsUploading(false);
+    setCombinedPhase('review');
+    setCombinedProgress(failed > 0 ? `${failed} nhóm chưa tách được; có thể retry.` : 'Đã tách PDF con. Hãy chọn mẫu đích cho từng nhóm rồi lưu.');
+    if (failed > 0) toast.error(`${failed} nhóm chưa tạo được PDF con.`);
+    else toast.success('Đã tách xong PDF con; hãy rà soát mapping mẫu đích.');
   };
 
   const validateSingleItems = (): boolean => {
@@ -436,6 +551,7 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
     if (rangeErrors.length > 0) { toast.warning(rangeErrors[0]); return; }
     const uploadPlan = buildKqtnBulkUploadPlan(combinedSegments, candidates, retryOnlyFailed);
     const pending = uploadPlan.queue.map(({ segment }) => segment);
+    if (uploadPlan.unsplitSegmentIds.length > 0) { toast.warning('Hãy bấm “Tách PDF con” trước khi lưu vào mẫu đích.'); return; }
     if (uploadPlan.missingSegmentIds.length > 0) { toast.warning('Còn nhóm chưa được gán mẫu đích.'); return; }
     if (uploadPlan.pendingSegmentIds.length > 0) { toast.warning('Mẫu đích chưa có KQTN; hãy lưu KQTN trước khi upload.'); return; }
     if (uploadPlan.duplicateTargetIds.length > 0) { toast.warning('Có nhiều nhóm đang gán vào cùng một mẫu đích.'); return; }
@@ -458,10 +574,9 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
       if (candidate.hasPdf && !window.confirm(`PDF của ${candidate.sampleCode} đã tồn tại (trang ${segment.pageStart}-${segment.pageEnd}). Ghi đè?`)) { skipped += 1; updateCombinedSegment(segmentIndex, { status: 'skipped' }); continue; }
       updateCombinedSegment(segmentIndex, { status: 'uploading', error: undefined });
       try {
-        const segmentFile = await createPdfSegmentFile(sourcePdfRef.current, segment.pageStart, segment.pageEnd, makeSegmentFileName(segment.sourceFileName, segment.pageStart, segment.pageEnd));
-        if (segmentFile.size > KQTN_PDF_MAX_BYTES) throw new Error(`PDF con vượt giới hạn ${Math.round(KQTN_PDF_MAX_BYTES / 1024 / 1024)} MB.`);
+        if (!segment.splitFileReady || !segment.splitFile) throw new Error('PDF con chưa được tạo.');
         setCombinedProgress(`Đang upload ${segment.pageStart}-${segment.pageEnd}...`);
-        const resultPdf = await uploadKqtnPdf(candidate.id, segmentFile);
+        const resultPdf = await uploadKqtnPdf(candidate.id, segment.splitFile);
         await onUploaded(candidate.id, resultPdf);
         uploaded += 1;
         updateCombinedSegment(segmentIndex, { status: 'uploaded', resultPdf });
@@ -480,8 +595,8 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
     else if (pending.length > 0) { toast.success('Đã tách và upload xong PDF ghép.'); resetState(); onClose(); }
   };
 
-  const renderCandidateSelect = (value: string | undefined, onChange: (value: string) => void) => (
-    <select value={value || ''} onChange={(event) => onChange(event.target.value)} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700">
+  const renderCandidateSelect = (value: string | undefined, onChange: (value: string) => void, disabled = false) => (
+    <select value={value || ''} onChange={(event) => onChange(event.target.value)} disabled={disabled} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">
       <option value="">-- Chọn đầu mẫu đích --</option>
       {candidates.map((option) => {
         const isPendingTarget = Boolean(option.isPending || option.id.startsWith('sample-head:'));
@@ -492,15 +607,37 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
     </select>
   );
 
+  const hasUnsplitSegments = combinedSegments.some((segment) => segment.status !== 'uploaded' && segment.status !== 'skipped' && !segment.splitFileReady);
+
+  const pendingAnalysisCard = (mode === 'single-files' ? pendingSingleFiles.length > 0 : Boolean(pendingCombinedFile)) ? (
+    <div className="mb-4 rounded-sm border border-blue-200 bg-blue-50 p-4 text-xs text-blue-900">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="font-black">Đã chọn file, chưa bắt đầu phân tích</div>
+          <div className="mt-1 text-[11px] text-blue-700">{mode === 'single-files' ? 'Đã chọn ' + pendingSingleFiles.length + ' PDF đơn.' : 'Đã chọn PDF ghép: ' + (pendingCombinedFile?.name || '')}</div>
+        </div>
+        <span className="font-semibold text-blue-700">Bước tiếp theo: xác nhận tiến hành</span>
+      </div>
+      <div className="mt-2 max-h-20 overflow-y-auto rounded-sm border border-blue-100 bg-white/70 px-3 py-2 text-[11px] text-slate-600">
+        {mode === 'single-files' ? pendingSingleFiles.map((file, index) => <div key={index + '-' + file.name} className="truncate">{file.name}</div>) : pendingCombinedFile?.name}
+      </div>
+      <div className="mt-3 flex flex-wrap justify-end gap-2">
+        <button type="button" onClick={clearPendingAnalysis} disabled={isUploading || isInspectingAi || combinedPhase === 'detecting'} className="rounded-sm border border-blue-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-600 disabled:opacity-50">Bỏ chọn</button>
+        <button type="button" onClick={confirmPendingAnalysis} disabled={isUploading || isInspectingAi || combinedPhase === 'detecting'} className="flex items-center gap-2 rounded-sm bg-blue-600 px-3 py-2 text-[11px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"><Upload size={13} /> Xác nhận và bắt đầu phân tích</button>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/50 p-4">
       <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4"><div><h2 className="flex items-center gap-2 text-sm font-black text-slate-900"><Upload className="h-4 w-4 text-emerald-600" /> Bulk Upload PDF KQTN</h2><p className="mt-1 text-xs text-slate-500">Chọn PDF đơn hoặc PDF ghép nhiều kết quả; luôn rà soát mapping trước khi lưu.</p></div><button onClick={handleClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-200" aria-label="Đóng"><X size={17} /></button></div>
-        <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-3">          <div className="flex flex-wrap items-stretch gap-2" role="tablist" aria-label="Chọn loại PDF">            <button type="button" onClick={() => selectMode('single-files')} disabled={isUploading || isInspectingAi} className={`flex min-w-[220px] flex-col items-start rounded-sm border px-3 py-2 text-left text-xs ${mode === 'single-files' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}><span className="font-black">Nhiều PDF đơn</span><span className={`mt-1 text-[11px] ${mode === 'single-files' ? 'text-emerald-50' : 'text-slate-500'}`}>Mỗi file = 1 KQTN, không cắt</span></button>            <button type="button" onClick={() => selectMode('combined')} disabled={isUploading || isInspectingAi} className={`flex min-w-[260px] items-start gap-2 rounded-sm border px-3 py-2 text-left text-xs ${mode === 'combined' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}><Scissors size={14} className="mt-0.5 shrink-0" /><span><span className="block font-black">Một PDF ghép</span><span className={`mt-1 block text-[11px] ${mode === 'combined' ? 'text-emerald-50' : 'text-slate-500'}`}>1 file → cắt theo nhóm trang → gán mẫu đích</span></span></button>            {mode === 'single-files' ? <label className="ml-auto flex cursor-pointer items-center gap-2 self-center rounded-sm bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"><Upload size={14} /> Chọn nhiều file PDF<input type="file" accept="application/pdf,.pdf" multiple className="hidden" disabled={isInspectingAi || isUploading} onChange={handleSingleFiles} /></label> : <label className="ml-auto flex cursor-pointer items-center gap-2 self-center rounded-sm bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"><Upload size={14} /> Chọn PDF ghép<input type="file" accept="application/pdf,.pdf" className="hidden" disabled={combinedPhase === 'detecting' || isUploading} onChange={handleCombinedFile} /></label>}          </div>          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500"><span className="font-bold text-slate-700">Quy trình:</span><span>Chọn nguồn</span><span>→</span><span>Rà soát mapping</span><span>→</span><span>{mode === 'combined' ? 'Cắt PDF con và lưu vào mẫu đích' : 'Upload và lưu PDF'}</span>{(isInspectingAi || combinedPhase === 'detecting') && <span className="ml-auto flex items-center gap-1 font-semibold text-blue-600"><Loader2 size={12} className="animate-spin" /> {combinedProgress || 'Đang phân tích PDF...'}</span>}</div>        </div>
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-3">          <div className="flex flex-wrap items-stretch gap-2" role="tablist" aria-label="Chọn loại PDF">            <button type="button" onClick={() => selectMode('single-files')} disabled={isUploading || isInspectingAi} className={`flex min-w-[220px] flex-col items-start rounded-sm border px-3 py-2 text-left text-xs ${mode === 'single-files' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}><span className="font-black">PDF đơn (nhiều file)</span><span className={`mt-1 text-[11px] ${mode === 'single-files' ? 'text-emerald-50' : 'text-slate-500'}`}>Mỗi file PDF là một kết quả, không tách</span></button>            <button type="button" onClick={() => selectMode('combined')} disabled={isUploading || isInspectingAi} className={`flex min-w-[260px] items-start gap-2 rounded-sm border px-3 py-2 text-left text-xs ${mode === 'combined' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}><Scissors size={14} className="mt-0.5 shrink-0" /><span><span className="block font-black">PDF ghép (1 file, nhiều kết quả)</span><span className={`mt-1 block text-[11px] ${mode === 'combined' ? 'text-emerald-50' : 'text-slate-500'}`}>Cắt theo nhóm trang rồi gán mẫu đích</span></span></button>            {mode === 'single-files' ? <label className="ml-auto flex cursor-pointer items-center gap-2 self-center rounded-sm bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"><Upload size={14} /> Chọn nhiều file PDF<input type="file" accept="application/pdf,.pdf" multiple className="hidden" disabled={isInspectingAi || isUploading} onChange={handleSingleFiles} /></label> : <label className="ml-auto flex cursor-pointer items-center gap-2 self-center rounded-sm bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"><Upload size={14} /> Chọn PDF ghép<input type="file" accept="application/pdf,.pdf" className="hidden" disabled={combinedPhase === 'detecting' || isUploading} onChange={handleCombinedFile} /></label>}          </div>          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500"><span className="font-bold text-slate-700">Quy trình:</span><span>1. Chọn nguồn</span><span>→</span><span>2. Rà soát mapping</span><span>→</span><span>3. {mode === 'combined' ? 'Tách PDF con' : 'Upload PDF đơn'}</span><span>→</span><span>4. {mode === 'combined' ? 'Lưu các PDF con vào mẫu đích' : 'Hoàn tất'}</span>{(isInspectingAi || combinedPhase === 'detecting') && <span className="ml-auto flex items-center gap-1 font-semibold text-blue-600"><Loader2 size={12} className="animate-spin" /> {combinedProgress || 'Đang phân tích PDF...'}</span>}</div>        </div>
+          {pendingAnalysisCard}
           <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          {mode === 'single-files' ? items.length === 0 ? <div className="rounded-sm border border-dashed border-slate-300 p-12 text-center text-xs text-slate-500"><FileText className="mx-auto mb-2 h-8 w-8 text-slate-300" />Chọn các file PDF kết quả thử nghiệm để bắt đầu upload.</div> : <div className="space-y-2">{items.map((item, index) => { const candidate = item.candidateId ? candidateMap.get(item.candidateId) : undefined; return <div key={`${item.file.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)_auto] items-center gap-3 rounded-sm border border-slate-200 p-3 text-xs"><div className="min-w-0"><div className="flex items-center gap-2 font-bold text-slate-800"><FileText size={14} className="shrink-0 text-red-500" /><span className="truncate" title={item.file.name}>{item.file.name}</span></div><div className="mt-1 text-[11px] text-slate-500">{item.reason} · {confidenceLabel(item.confidence)}</div>{item.error && <div className="mt-1 text-[11px] text-red-600">{item.error}</div>}</div>{renderCandidateSelect(item.candidateId, (value) => setSingleCandidate(index, value))}{item.status === 'uploaded' || candidate && item.status === 'ready' ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <span className="text-[10px] font-bold text-amber-600">{statusLabel(item.status)}</span>}</div>; })}</div> : combinedFile ? <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-slate-200 bg-slate-50 p-3 text-xs"><div className="flex min-w-0 items-center gap-2 font-bold text-slate-800"><FileText size={15} className="text-red-500" /><span className="truncate">{combinedFile.name}</span></div><span className="font-semibold text-slate-500">{combinedTotalPages} trang · {combinedSegments.length} nhóm · {combinedProgress}</span></div>{rangeErrors.length > 0 && <div className="flex items-start gap-2 rounded-sm border border-red-200 bg-red-50 p-3 text-xs text-red-700"><AlertCircle size={14} className="mt-0.5 shrink-0" /><div>{rangeErrors.map((error) => <div key={error}>{error}</div>)}</div></div>}{duplicateCombinedTargets.length > 0 && <div className="rounded-sm border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">Có nhóm trùng đầu mẫu: {duplicateCombinedTargets.map((id) => candidateMap.get(id)?.sampleCode || id).join(', ')}.</div>}{combinedSegments.map((segment, index) => { const candidate = segment.candidateId ? candidateMap.get(segment.candidateId) : undefined; return <div key={segment.id} className={`rounded-sm border p-3 text-xs ${segment.status === 'failed' ? 'border-red-200 bg-red-50/30' : segment.status === 'needs-review' ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200'}`}><div className="flex flex-wrap items-start justify-between gap-2"><div><div className="font-bold text-slate-800">Nhóm {index + 1} · trang {segment.pageStart}-{segment.pageEnd}</div><div className="mt-1 text-[11px] text-slate-500">{segment.reason} · {confidenceLabel(segment.confidence)} · {segment.detection === 'ai' ? 'AI đề xuất' : 'Thủ công'}</div>{segment.error && <div className="mt-1 text-[11px] text-red-700">{segment.error}</div>}</div><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${segment.status === 'uploaded' ? 'bg-emerald-100 text-emerald-700' : segment.status === 'failed' ? 'bg-red-100 text-red-700' : segment.status === 'needs-review' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{statusLabel(segment.status)}</span></div><div className="mt-3 grid gap-2 md:grid-cols-[120px_120px_minmax(0,1fr)_auto_auto] md:items-end"><label className="text-[11px] font-semibold text-slate-600">Trang bắt đầu<input type="number" min={1} max={combinedTotalPages} value={segment.pageStart} disabled={segment.status === 'uploaded'} onChange={(event) => updateCombinedRange(index, 'pageStart', Number(event.target.value))} className="mt-1 w-full rounded-sm border border-slate-200 px-2 py-2 text-xs" /></label><label className="text-[11px] font-semibold text-slate-600">Trang kết thúc<input type="number" min={1} max={combinedTotalPages} value={segment.pageEnd} disabled={segment.status === 'uploaded'} onChange={(event) => updateCombinedRange(index, 'pageEnd', Number(event.target.value))} className="mt-1 w-full rounded-sm border border-slate-200 px-2 py-2 text-xs" /></label><div>{renderCandidateSelect(segment.candidateId, (value) => setCombinedCandidate(index, value))}</div><button onClick={() => void previewCombinedSegment(segment)} disabled={segment.status === 'uploaded' || !sourcePdfRef.current} className="flex items-center justify-center gap-1 rounded-sm border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-600 disabled:opacity-50"><Eye size={13} /> Xem PDF con</button><button onClick={() => removeCombinedSegment(index)} disabled={segment.status === 'uploaded'} className="flex items-center justify-center gap-1 rounded-sm border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-500 disabled:opacity-50"><Trash2 size={13} /> Xóa nhóm</button></div>{candidate && <div className="mt-2 text-[11px] text-slate-500">{candidate.sampleCode} · {candidate.sampleName || candidate.model}{candidate.hasPdf ? ' · sẽ hỏi xác nhận ghi đè' : ''}</div>}</div>; })}<button onClick={addManualSegment} disabled={combinedPhase === 'uploading' || combinedTotalPages === 0} className="flex items-center gap-1 rounded-sm border border-dashed border-slate-300 px-3 py-2 text-xs font-bold text-slate-600"><Plus size={13} /> Thêm nhóm thủ công</button></div> : <div className="rounded-sm border border-dashed border-slate-300 p-12 text-center text-xs text-slate-500"><Scissors className="mx-auto mb-2 h-8 w-8 text-slate-300" />Chọn một PDF lớn chứa nhiều kết quả để phân tích và tách theo nhóm trang.</div>}
+          {mode === 'single-files' ? items.length === 0 ? <div className="rounded-sm border border-dashed border-slate-300 p-12 text-center text-xs text-slate-500"><FileText className="mx-auto mb-2 h-8 w-8 text-slate-300" />Chọn các file PDF kết quả thử nghiệm để bắt đầu upload.</div> : <div className="space-y-2">{items.map((item, index) => { const candidate = item.candidateId ? candidateMap.get(item.candidateId) : undefined; return <div key={`${item.file.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)_auto] items-center gap-3 rounded-sm border border-slate-200 p-3 text-xs"><div className="min-w-0"><div className="flex items-center gap-2 font-bold text-slate-800"><FileText size={14} className="shrink-0 text-red-500" /><span className="truncate" title={item.file.name}>{item.file.name}</span></div><div className="mt-1 text-[11px] text-slate-500">{item.reason} · {confidenceLabel(item.confidence)}</div>{item.error && <div className="mt-1 text-[11px] text-red-600">{item.error}</div>}</div>{renderCandidateSelect(item.candidateId, (value) => setSingleCandidate(index, value), isUploading)}{item.status === 'uploaded' || candidate && item.status === 'ready' ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <span className="text-[10px] font-bold text-amber-600">{statusLabel(item.status)}</span>}</div>; })}</div> : combinedFile ? <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-slate-200 bg-slate-50 p-3 text-xs"><div className="flex min-w-0 items-center gap-2 font-bold text-slate-800"><FileText size={15} className="text-red-500" /><span className="truncate">{combinedFile.name}</span></div><span className="font-semibold text-slate-500">{combinedTotalPages} trang · {combinedSegments.length} nhóm · {combinedProgress}</span></div>{rangeErrors.length > 0 && <div className="flex items-start gap-2 rounded-sm border border-red-200 bg-red-50 p-3 text-xs text-red-700"><AlertCircle size={14} className="mt-0.5 shrink-0" /><div>{rangeErrors.map((error) => <div key={error}>{error}</div>)}</div></div>}{duplicateCombinedTargets.length > 0 && <div className="rounded-sm border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">Có nhóm trùng đầu mẫu: {duplicateCombinedTargets.map((id) => candidateMap.get(id)?.sampleCode || id).join(', ')}.</div>}{combinedSegments.map((segment, index) => { const candidate = segment.candidateId ? candidateMap.get(segment.candidateId) : undefined; return <div key={segment.id} className={`rounded-sm border p-3 text-xs ${segment.status === 'failed' ? 'border-red-200 bg-red-50/30' : segment.status === 'needs-review' ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200'}`}><div className="flex flex-wrap items-start justify-between gap-2"><div><div className="font-bold text-slate-800">Nhóm {index + 1} · trang {segment.pageStart}-{segment.pageEnd}</div><div className="mt-1 text-[11px] text-slate-500">{segment.reason} · {confidenceLabel(segment.confidence)} · {segment.detection === 'ai' ? 'AI đề xuất' : 'Thủ công'}</div>{segment.error && <div className="mt-1 text-[11px] text-red-700">{segment.error}</div>}</div><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${segment.status === 'uploaded' ? 'bg-emerald-100 text-emerald-700' : segment.status === 'failed' ? 'bg-red-100 text-red-700' : segment.status === 'needs-review' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{statusLabel(segment.status)}</span></div><div className="mt-3 grid gap-2 md:grid-cols-[120px_120px_minmax(0,1fr)_auto_auto] md:items-end"><label className="text-[11px] font-semibold text-slate-600">Trang bắt đầu<input type="number" min={1} max={combinedTotalPages} value={segment.pageStart} disabled={isUploading || segment.status === 'uploaded'} onChange={(event) => updateCombinedRange(index, 'pageStart', Number(event.target.value))} className="mt-1 w-full rounded-sm border border-slate-200 px-2 py-2 text-xs" /></label><label className="text-[11px] font-semibold text-slate-600">Trang kết thúc<input type="number" min={1} max={combinedTotalPages} value={segment.pageEnd} disabled={isUploading || segment.status === 'uploaded'} onChange={(event) => updateCombinedRange(index, 'pageEnd', Number(event.target.value))} className="mt-1 w-full rounded-sm border border-slate-200 px-2 py-2 text-xs" /></label><div>{renderCandidateSelect(segment.candidateId, (value) => setCombinedCandidate(index, value), isUploading || segment.status === 'uploaded')}</div><button onClick={() => void previewCombinedSegment(segment)} disabled={segment.status === 'uploaded' || !sourcePdfRef.current} className="flex items-center justify-center gap-1 rounded-sm border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-600 disabled:opacity-50"><Eye size={13} /> Xem PDF con</button><button onClick={() => removeCombinedSegment(index)} disabled={isUploading || segment.status === 'uploaded'} className="flex items-center justify-center gap-1 rounded-sm border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-500 disabled:opacity-50"><Trash2 size={13} /> Xóa nhóm</button></div>{candidate && <div className="mt-2 text-[11px] text-slate-500">{candidate.sampleCode} · {candidate.sampleName || candidate.model}{candidate.hasPdf ? ' · sẽ hỏi xác nhận ghi đè' : ''}</div>}{segment.splitFileReady && segment.splitFile && <div className="mt-1 text-[11px] font-semibold text-emerald-700">Đã tách PDF con: {segment.splitFile.name} · {(segment.splitFile.size / 1024 / 1024).toFixed(2)} MB</div>}</div>; })}<button onClick={addManualSegment} disabled={combinedPhase === 'uploading' || combinedTotalPages === 0} className="flex items-center gap-1 rounded-sm border border-dashed border-slate-300 px-3 py-2 text-xs font-bold text-slate-600"><Plus size={13} /> Thêm nhóm thủ công</button></div> : <div className="rounded-sm border border-dashed border-slate-300 p-12 text-center text-xs text-slate-500"><Scissors className="mx-auto mb-2 h-8 w-8 text-slate-300" />Chọn một PDF lớn chứa nhiều kết quả để phân tích và tách theo nhóm trang.</div>}
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">{hasDraft && <button onClick={clearSession} disabled={isUploading || isInspectingAi || combinedPhase === 'detecting'} className="mr-auto rounded-sm border border-amber-200 bg-white px-4 py-2 text-xs font-bold text-amber-700 disabled:opacity-50">Xóa phiên</button>}<button onClick={handleClose} disabled={isUploading || isInspectingAi || combinedPhase === 'detecting'} className="rounded-sm border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 disabled:opacity-50">Hủy</button>{mode === 'combined' && combinedSegments.some((segment) => segment.status === 'failed') && <button onClick={() => void uploadCombinedSegments(true)} disabled={combinedPhase === 'uploading' || combinedPhase === 'detecting'} className="flex items-center gap-1 rounded-sm border border-red-200 bg-white px-4 py-2 text-[11px] font-bold text-red-700 disabled:opacity-50"><RotateCcw size={13} /> Retry nhóm lỗi</button>}{mode === 'single-files' ? <button disabled={isUploading || isInspectingAi || items.length === 0} onClick={() => void uploadSingleItems()} className="flex items-center gap-2 rounded-sm bg-emerald-600 px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{isUploading && <Loader2 size={14} className="animate-spin" />} Upload và lưu PDF</button> : <button disabled={combinedPhase === 'uploading' || combinedPhase === 'detecting' || combinedSegments.length === 0} onClick={() => void uploadCombinedSegments(false)} className="flex items-center gap-2 rounded-sm bg-emerald-600 px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{combinedPhase === 'uploading' && <Loader2 size={14} className="animate-spin" />} Tách PDF con và lưu vào mẫu đích</button>}</div>
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">{hasDraft && <button onClick={clearSession} disabled={isUploading || isInspectingAi || combinedPhase === 'detecting'} className="mr-auto rounded-sm border border-amber-200 bg-white px-4 py-2 text-xs font-bold text-amber-700 disabled:opacity-50">Xóa phiên</button>}<button onClick={handleClose} disabled={isUploading || isInspectingAi || combinedPhase === 'detecting'} className="rounded-sm border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 disabled:opacity-50">Hủy</button>{mode === 'combined' && combinedSegments.some((segment) => segment.status === 'failed') && <button onClick={() => void (hasUnsplitSegments ? splitCombinedSegments() : uploadCombinedSegments(true))} disabled={combinedPhase === 'uploading' || combinedPhase === 'detecting'} className="flex items-center gap-1 rounded-sm border border-red-200 bg-white px-4 py-2 text-[11px] font-bold text-red-700 disabled:opacity-50"><RotateCcw size={13} /> Retry nhóm lỗi</button>}{mode === 'single-files' ? <button disabled={isUploading || isInspectingAi || items.length === 0} onClick={() => void uploadSingleItems()} className="flex items-center gap-2 rounded-sm bg-emerald-600 px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{isUploading && <Loader2 size={14} className="animate-spin" />} Upload và lưu PDF</button> : <button disabled={combinedPhase === 'uploading' || combinedPhase === 'detecting' || combinedSegments.length === 0} onClick={() => void (hasUnsplitSegments ? splitCombinedSegments() : uploadCombinedSegments(false))} title="Tách PDF con và lưu vào mẫu đích" className="flex items-center gap-2 rounded-sm bg-emerald-600 px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{combinedPhase === 'uploading' && <Loader2 size={14} className="animate-spin" />} {hasUnsplitSegments ? 'Tách PDF con và lưu vào mẫu đích' : 'Lưu các PDF con vào mẫu đích'}</button>}</div>
       </div>
     </div>
   );

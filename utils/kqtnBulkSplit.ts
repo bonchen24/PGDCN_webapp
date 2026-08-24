@@ -12,9 +12,16 @@ export interface KqtnBulkStructurePage {
   brand?: string;
   sealStamp?: string;
   sampleName?: string;
+  footerKey?: string;
 }
 
-export type KqtnBulkSegmentDetection = 'ai' | 'manual' | 'single-file';
+export interface KqtnBulkFooterPage {
+  pageNumber: number;
+  isBlank: boolean;
+  footerKey: string;
+}
+
+export type KqtnBulkSegmentDetection = 'ai' | 'footer' | 'manual' | 'single-file';
 
 export interface KqtnBulkSegmentDraft {
   sourceFileName: string;
@@ -33,6 +40,18 @@ function clampPage(value: number, totalPages: number): number {
   return Math.min(Math.max(Math.floor(Number.isFinite(value) ? value : 1), 1), totalPages);
 }
 
+function hasText(value: string | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isStrongKqtnBulkCoverMarker(page: KqtnBulkStructurePage): boolean {
+  if (page.isReportCover) return true;
+
+  const hasReportIdentifier = hasText(page.reportNo) || hasText(page.sampleCode);
+  const hasCoverContext = hasText(page.sampleName) || hasText(page.model);
+  return hasReportIdentifier && hasCoverContext;
+}
+
 export function normalizeKqtnBulkSegmentRange(
   pageStart: number,
   pageEnd: number,
@@ -42,6 +61,83 @@ export function normalizeKqtnBulkSegmentRange(
   const start = clampPage(pageStart, safeTotalPages);
   const end = clampPage(pageEnd, safeTotalPages);
   return { pageStart: start, pageEnd: Math.max(start, end) };
+}
+
+function normalizeFooterKey(value: string | undefined): string {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[|]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([:/_-])\s*/g, '$1')
+    .trim();
+}
+
+function buildManualFooterSegment(totalPages: number, sourceFileName: string): KqtnBulkSegmentDraft[] {
+  return [{
+    sourceFileName,
+    pageStart: 1,
+    pageEnd: Math.max(1, Math.floor(totalPages)),
+    metadata: {
+      pageNumber: 1,
+      isReportCover: false,
+      isBlank: false,
+    },
+    detection: 'manual',
+  }];
+}
+
+export function buildKqtnFooterSegments(
+  footerPages: KqtnBulkFooterPage[],
+  totalPages: number,
+  sourceFileName: string,
+): KqtnBulkSegmentDraft[] {
+  const safeTotalPages = Math.max(0, Math.floor(totalPages));
+  if (safeTotalPages === 0) return [];
+
+  const pagesByNumber = new Map(
+    footerPages
+      .filter((page) => page.pageNumber >= 1 && page.pageNumber <= safeTotalPages)
+      .map((page) => [page.pageNumber, page]),
+  );
+  if (pagesByNumber.size !== safeTotalPages) return buildManualFooterSegment(safeTotalPages, sourceFileName);
+
+  const normalizedKeys = Array.from({ length: safeTotalPages }, (_, index) => normalizeFooterKey(pagesByNumber.get(index + 1)?.footerKey));
+  if (!normalizedKeys[0] || safeTotalPages < 2 || normalizedKeys[1] !== normalizedKeys[0]) {
+    return buildManualFooterSegment(safeTotalPages, sourceFileName);
+  }
+
+  const starts = [1];
+  for (let pageNumber = 2; pageNumber <= safeTotalPages; pageNumber += 1) {
+    const currentKey = normalizedKeys[pageNumber - 1];
+    const previousKey = normalizedKeys[pageNumber - 2];
+    if (!currentKey || currentKey === previousKey) continue;
+    const nextKey = normalizedKeys[pageNumber] || '';
+    if (nextKey !== currentKey) return buildManualFooterSegment(safeTotalPages, sourceFileName);
+    starts.push(pageNumber);
+  }
+  if (starts.length < 2) return buildManualFooterSegment(safeTotalPages, sourceFileName);
+
+  return starts.flatMap((pageStart, index) => {
+    const nextStart = starts[index + 1] || safeTotalPages + 1;
+    let pageEnd = nextStart - 1;
+    while (pageEnd > pageStart && pagesByNumber.get(pageEnd)?.isBlank) pageEnd -= 1;
+    if (pageStart > pageEnd) return [];
+    const footerPage = pagesByNumber.get(pageStart);
+    return [{
+      sourceFileName,
+      pageStart,
+      pageEnd,
+      metadata: {
+        pageNumber: pageStart,
+        isReportCover: false,
+        isBlank: Boolean(footerPage?.isBlank),
+        footerKey: footerPage?.footerKey?.trim() || normalizedKeys[pageStart - 1],
+      },
+      detection: 'footer' as const,
+    }];
+  });
 }
 
 export function buildKqtnBulkSegments(
@@ -58,7 +154,7 @@ export function buildKqtnBulkSegments(
       .map((page) => [page.pageNumber, page]),
   );
   const covers = [...pagesByNumber.values()]
-    .filter((page) => page.isReportCover)
+    .filter(isStrongKqtnBulkCoverMarker)
     .sort((left, right) => left.pageNumber - right.pageNumber);
 
   if (covers.length === 0) {
