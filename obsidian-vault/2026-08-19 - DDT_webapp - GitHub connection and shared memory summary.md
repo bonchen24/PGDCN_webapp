@@ -61,6 +61,15 @@ Connect the local DDT Lab workspace to `bonchen24/DDT-app-v3.0`, synchronize the
 - Regression tests cover numeric ordering, composite PNG dimensions, DOCX embedding, and no post-mapping `anh_*` overwrite.
 - Verification: focused tests `8/8`, TypeScript, and production build passed. Full suite has one unrelated pre-existing Compose contract failure.
 
+## Follow-up: Dashboard staffing, PEAK removal, and complete file backup (2026-08-22)
+
+- The Dashboard now derives visible staff from real scheduled request assignments (`scheduledDate` + a non-placeholder `testerName`), not from configured default tester lists. Completed assignments remain eligible; `-log-`, `Chưa giao`, and `Khác` do not create staff columns.
+- `App.tsx` no longer renders or computes the `PEAK MODE` warning.
+- `design.md` was updated before implementation as the source of truth for the new Dashboard staffing rule and the complete backup contract.
+- The Admin reminder now offers a server-side **Sao lưu đầy đủ** action. New `.zip` archives contain the PostgreSQL dump, `file_assets` manifest, and KQTN PDF objects; restore restores the database first and then uploads the archived objects. JSON/CSV remain portable exports only. OCR/report images remain session-only and are excluded.
+- Verification: focused tests `11/11`, `npm run lint`, production build, and `git diff --check` passed. Full suite was `220/222`; the two remaining failures are pre-existing contract mismatches for the Supabase Compose service-role variable and the old `systemUsers` fetch expectation.
+- No commit was created; pre-existing dirty workspace changes were preserved.
+
 ## Related notes
 
 - [[TVCI_APP/00-current-context]]

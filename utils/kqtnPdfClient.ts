@@ -4,6 +4,7 @@
 
 import type { KqtnPdfMetadata } from '../types';
 import { getGeminiHeaders } from './gemini';
+import type { KqtnBulkStructurePage } from './kqtnBulkSplit';
 
 async function parseResponse(response: Response): Promise<any> {
   const payload = await response.json().catch(() => ({}));
@@ -44,6 +45,19 @@ export async function extractKqtnPdfMetadata(base64Data: string, mimeType = 'app
     body: JSON.stringify({ base64Data, mimeType }),
   });
   return parseResponse(response);
+}
+
+export async function extractKqtnBulkStructure(
+  base64Data: string,
+  pageOffset = 0,
+): Promise<KqtnBulkStructurePage[]> {
+  const response = await fetch('/api/gemini/extract-kqtn-bulk-structure', {
+    method: 'POST',
+    headers: { ...getGeminiHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ base64Data, mimeType: 'application/pdf', pageOffset }),
+  });
+  const payload = await parseResponse(response);
+  return Array.isArray(payload.pages) ? payload.pages as KqtnBulkStructurePage[] : [];
 }
 
 // --- End of kqtnPdfClient.ts ---

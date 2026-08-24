@@ -6,6 +6,91 @@ Description: Persistent project memory and verified deployment observations for 
 
 # DDT Lab — Project Memory & Observations
 
+## Lưu ý vận hành hiện tại — Môi trường chạy & Cổng dịch vụ
+
+- **Môi trường Development cục bộ (`npm run dev`)**: Chạy Node/Express server trực tiếp tại `http://localhost:1359`.
+- **Môi trường Docker Desktop (`docker-compose.supabase.yml`)**: Container web app chạy tại `http://localhost:2359`.
+- Môi trường test/deploy hiện tại là Docker Desktop trên máy local, dùng `docker-compose.supabase.yml` và PostgreSQL/Supabase network hiện có.
+- Không deploy project lên Synology NAS; SSH/rsync tới NAS không thuộc quy trình hiện tại.
+- `deploy.sh` đã được chuyển thành script build/restart Docker Desktop local. Script không đồng bộ `.env`, service account hoặc secret ra máy từ xa.
+- Sau khi deploy, kiểm tra `http://localhost:2359/api/health` và `http://localhost:2359/api/db/health`.
+- Dùng `COMPOSE_ENV_FILE` để chỉ định Supabase env file khác khi cần; mặc định là `E:/CODING/TVCI_APP/supabase-docker/.env`.
+
+## Cập nhật 2026-08-24 — Form Báo cáo: Quy chuẩn Bảng Công suất nhiễu EMC chỉ hiển thị 1 hàng (tự động lấy hàng 1)
+
+- **Quy chuẩn Toàn hệ thống (`design.md`)**:
+  - Bổ sung quy định chung: Bảng kết quả Công suất nhiễu (Phần 6 / `tablePower*`) trên tất cả các form báo cáo EMC chỉ hiển thị và sử dụng duy nhất **1 hàng** kết quả.
+  - Khi tải file Radimation hoặc khi dán dữ liệu (paste): nếu tệp có từ 2 hàng trở lên, hệ thống tự động **chỉ lấy hàng 1** và bỏ qua các hàng phía sau.
+- **Thực thi Code**:
+  - `EmcBepDien1VungNauForm.tsx`:
+    - `RadimationUploader`: Với các bảng `isPower` (`tablePower*`), tự động lấy hàng 1 (`targetRows[startIndex] || targetRows[0]`) và gán `[mappedObj]`.
+    - `TablePowerDisturbance`: Giới hạn render bảng `data[tableName].slice(0, 1)`.
+    - `handlePaste`: Khi paste vào `tablePower*`, chỉ xử lý hàng đầu tiên và giữ độ dài bảng bằng 1.
+  - `server.ts`: Áp dụng `.slice(0, 1)` cho toàn bộ các trường `tablePower*`, `table_6_3_*`, `table_7_3_*` khi xuất DOCX template.
+- **Kiểm thử**:
+  - `test/report-docx-image-integration.test.ts` (12/12 pass), `npm run lint` (0 errors), `npm run build` (pass).
+
+## Cập nhật 2026-08-24 — Form Báo cáo: Bổ sung mục 6.3.2.1 EMC Máy khoan (Công suất nhiễu 2 chiều quay)
+
+- **Đồng bộ Design & Form Đánh giá**:
+  - Cập nhật mục 4.4 trong `design.md` làm Single Source of Truth cho cấu hình bài đo Công suất nhiễu của **EMC Máy khoan** (`emc_may_khoan`).
+  - Trong `EmcBepDien1VungNauForm.tsx`, tách riêng cấu hình Section 6 cho máy khoan gồm đầy đủ 2 chiều quay song song:
+    1. **6.3.1. Thử nghiệm khi EUT quay cùng chiều kim đồng hồ**: Dòng con `6.3.1.1. Kết quả công suất nhiễu của dây dẫn nguồn` (ảnh `powerDisturbance`, bảng `tablePower`).
+    2. **6.3.2. Thử nghiệm khi EUT quay ngược chiều kim đồng hồ**: Dòng con `6.3.2.1. Kết quả công suất nhiễu của dây dẫn nguồn` (ảnh `powerDisturbance_2`, bảng `tablePower_2`).
+- **Template DOCX**:
+  - Đồng bộ `maykhoan placeholder.docx` (trong `public/` và `dist/`) bổ sung đầy đủ khối `6.3.2` & `6.3.2.1` với `{%image_6_3_2_1}`, `{#table_6_3_2_1}...{/table_6_3_2_1}` và `Bảng 14`.
+- **Kiểm thử**:
+  - `test/report-*.test.ts` (11/11 pass), `npm run lint` (0 errors), `npm run build` (pass).
+
+## Cập nhật 2026-08-24 — Form Báo cáo: Bổ sung trường Phụ trách phòng TN (managerName) & Droplist chọn nhanh
+
+- **Đồng bộ Design & Schema**:
+  - Cập nhật mục 4.4 trong `design.md` làm Single Source of Truth cho 2 trường ký duyệt báo cáo: `testerName` (`{testerName}`) và `managerName` (`{managerName}` / `{managerNam}`).
+  - Thêm `managerName?: string;` vào `KQTNRecord` trong `types.ts`.
+- **Giao diện ReportGeneratorView**:
+  - Mở rộng state `reportMeta` với trường `managerName`.
+  - Tái cấu trúc khu vực chữ ký thành 2 cột song song (responsive grid): **Người thử nghiệm** (`testerName`) và **Phụ trách phòng TN** (`managerName`).
+  - Trang bị **Droplist chọn nhanh** cho `managerName` chỉ nhận diện các nhân sự giữ chức danh **Trưởng phòng hoặc Phó trưởng phòng** (mặc định gồm: **Vũ Việt Anh** và **Lương Xuân Hùng**), đồng thời giữ giá trị cũ khi tải lại KQTN.
+  - Trang bị `<datalist>` danh sách nhân sự cho `testerName`.
+  - Hiển thị thông tin **Phụ trách PTN** trong modal chi tiết của `KQTNView.tsx`.
+- **Backend & DOCX Template Mapping**:
+  - `server.ts` (`POST /api/generate-docx`): Ánh xạ `managerName` và alias `managerNam` vào template data của Docxtemplater.
+- **Verification**:
+  - `test/report-docx-image-integration.test.ts` & `test/report-docx-metadata.test.ts` (7/7 pass).
+  - `npm run lint` (0 errors), `npm run build` (pass, bundle tạo thành công).
+
+## Cập nhật 2026-08-24 — Docx Template Settings Modal & Code Conventions Update
+
+- **DocxSettingsModal & Quản lý Biểu mẫu Word**:
+  - Cập nhật mục 4.6 trong `design.md` làm source of truth.
+  - Tạo `lib/reportTemplatesCatalog.ts` tổng hợp 43 định nghĩa template DOCX (An toàn điện 5699, EMC QCVN 9, Dây cáp điện 6610, PYC, BMGN).
+  - Thêm 4 REST API routes trong `server.ts` (`GET /api/templates`, `GET /api/templates/:filename/download`, `POST /api/templates/upload`, `POST /api/templates/:filename/reset`) với cơ chế sao lưu tự động `.bak` trước khi ghi đè.
+  - Tạo `components/DocxSettingsModal.tsx` và gắn nút "Cài đặt docx" vào header của `ReportGeneratorView.tsx`.
+  - Hỗ trợ tìm kiếm tức thì, lọc theo nhóm tab, tải về, chọn file/kéo thả để cập nhật và khôi phục bản gốc.
+- **Loại bỏ quy chuẩn Header/Footer khi coding**:
+  - Đã cập nhật `AGENTS.md` và `design.md` (Mục 8) loại bỏ hoàn toàn yêu cầu bắt buộc header `// Author: Gemini` và footer `// --- End of [filename] ---`.
+- **Quy định cổng chạy**:
+  - Ghi nhớ cổng Dev server là `1359`, cổng Docker Desktop production là `2359`.
+- **Verification**: `test/docx-template-settings.test.ts` (4/4 pass), `test/report-*.test.ts` (9/9 pass), audit scripts (2/2 pass), `npm run lint` (0 errors), `npm run build` (pass).
+- **Production deployment**: Rebuilt image `ddt_webapp-webapp:latest` và recreate container `ddt_webapp-webapp-1` trên Docker Desktop (cổng 2359).
+
+## Cập nhật 2026-08-22 — Bulk Upload KQTN trên Docker Desktop
+
+- Bulk Upload Plan B đã được build/recreate trên Docker Desktop local bằng `docker-compose.supabase.yml`.
+- Container `ddt_webapp-webapp-1` đang chạy trên cổng `2359`; `/api/health` và `/api/db/health` đều trả HTTP 200 sau deploy.
+- Bản deploy gồm luồng PDF ghép nhiều kết quả, tách PDF con, review mapping, upload tuần tự, retry nhóm lỗi và activity log tổng hợp.
+
+## Cập nhật 2026-08-22 — Dashboard staffing, bỏ PEAK và backup file đầy đủ
+
+- Dashboard Tổng quan hiện chỉ đưa nhân viên lên bảng công việc, KPI và menu **Tùy chỉnh nhân sự** khi có ít nhất một phiếu có `scheduledDate` và `testerName` thực tế; loại `Chưa giao`, `Khác` và các bản ghi lịch sử `-log-`. Phân công đã hoàn thành vẫn được giữ trong tập nhân sự vì từng thuộc một lịch thử nghiệm.
+- Logic lọc được tách vào `utils/dashboardStaffing.ts`; `App.tsx` không còn lấy nhân sự từ `defaultTestersAtd`, `defaultTestersChamber1` hoặc `defaultTestersChamber2` cho Dashboard.
+- Đã xóa banner và toàn bộ phép tính riêng phục vụ cảnh báo `PEAK MODE` trong `App.tsx`.
+- Cập nhật `design.md` để làm source of truth cho phạm vi nhân sự theo lịch thực tế và hợp đồng backup đầy đủ.
+- Cảnh báo Admin có nút **Sao lưu đầy đủ** gọi server backup. `utils/backupManager.ts` tạo archive `.zip` chứa `database.dump`, `storage/manifest.json` và object PDF KQTN từ Supabase Storage; restore chạy `pg_restore` trước rồi khôi phục object. Backup JSON/CSV chỉ còn là bản portable, không được tính là backup file đầy đủ.
+- Ảnh OCR và ảnh lập báo cáo vẫn là dữ liệu tạm, không đưa vào backup hoặc `file_assets`; PDF KQTN là file nghiệp vụ và được backup.
+- Verification: test Dashboard/PEAK/backup `11/11`, `npm run lint` pass, `npm run build` pass, `git diff --check` pass. Full suite `220/222` pass; hai lỗi còn lại là contract Compose đang kỳ vọng không có `SUPABASE_SERVICE_ROLE_KEY` và test cũ kỳ vọng store gọi trực tiếp `fetchCollection("systemUsers", true)`, đều nằm ngoài thay đổi này.
+- Workspace vẫn có các thay đổi chưa commit từ trước; lượt này không reset hoặc ghi đè các thay đổi ngoài phạm vi.
+
 ## Cập nhật 2026-08-20 — Bản nháp phiếu yêu cầu và reset form
 
 - Đã cập nhật `design.md` quy định bản nháp chỉ áp dụng cho modal tạo phiếu mới, lưu cục bộ theo tài khoản bằng IndexedDB, không lưu ảnh/OCR hoặc trạng thái UI tạm thời.

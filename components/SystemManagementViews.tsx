@@ -3,17 +3,26 @@
 // Description: Custom system management views for Brands, Customers, Products, and System Settings with inline table editing
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Search, Plus, Pencil, Trash2, Save, Users, UserPlus, Tag, Package, Settings, 
-  Building, Download, Upload, UploadCloud, Loader2, AlertCircle, Edit2, ShieldAlert, X, Check, ShieldCheck, Lock, Activity
+import {
+  Search, Plus, Pencil, Trash2, Save, Users, UserPlus, Tag, Package, Settings,
+  Building, Download, Upload, UploadCloud, Loader2, AlertCircle, Edit2, ShieldAlert, X, Check, ShieldCheck, Lock, Activity,
+  RefreshCw, History, RotateCcw
 } from 'lucide-react';
 import { useStore } from '../store';
 import { AppSettings, DayConfig } from '../types';
 import { toast } from 'sonner';
 import { fetchCollection, deleteDocFromPostgres } from '../utils/firebase';
 import { formatDateVN, removeAccents } from '../utils/formatter';
-import { buildBackupPayload } from '../utils/notificationBackup';
+import { buildBackupPayload, downloadBackupJson } from '../utils/notificationBackup';
 import { activityLogClient } from '../utils/activityLogApi';
+import {
+  deleteBackupFile,
+  downloadBackupFile,
+  fetchBackupList,
+  restoreServerBackup,
+  triggerServerBackup,
+  type ServerBackupInfo,
+} from '../utils/backupApi';
 import {
   canEditOperationalSettings,
   canViewSystemSettings,
@@ -23,6 +32,8 @@ import {
 } from '../utils/systemSettingsPolicy';
 import { AdminBackupReminder } from './AdminBackupReminder';
 import { normalizeSystemUserRole, withSystemUserRoleAliases } from '../utils/systemUserRole';
+
+const DEFAULT_PASSWORD = 'Abc123456';
 
 export const BrandsManagementView = () => {
   const { brands, addBrand, updateBrand, deleteBrand } = useStore();
@@ -954,11 +965,24 @@ export const SystemSettingsView = () => {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmResetPasswordId, setConfirmResetPasswordId] = useState<string | null>(null);
   const [resetRequests, setResetRequests] = useState<any[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [restoreConfirmData, setRestoreConfirmData] = useState<any>(null);
   const [uploadConfirmOpen, setUploadConfirmOpen] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoringJson, setIsRestoringJson] = useState(false);
+  const [isUploadingToPostgres, setIsUploadingToPostgres] = useState(false);
+
+  const [serverBackups, setServerBackups] = useState<ServerBackupInfo[]>([]);
+  const [pgToolAvailable, setPgToolAvailable] = useState(true);
+  const [isLoadingBackups, setIsLoadingBackups] = useState(false);
+  const [isRunningServerBackup, setIsRunningServerBackup] = useState(false);
+  const [restoreTargetFile, setRestoreTargetFile] = useState<string | null>(null);
+  const [restoreConfirmText, setRestoreConfirmText] = useState('');
+  const [isRestoringServerBackup, setIsRestoringServerBackup] = useState(false);
+  const [deleteTargetFile, setDeleteTargetFile] = useState<string | null>(null);
+  const [isDeletingBackupFile, setIsDeletingBackupFile] = useState<string | null>(null);
 
   useEffect(() => {
     if (settings) setLocalSettings(settings);
@@ -974,10 +998,34 @@ export const SystemSettingsView = () => {
           });
           setResetRequests(sorted);
         })
-        .catch(err => console.error(err))
+        .catch(err => {
+          console.error(err);
+          toast.error('Lỗi khi tải danh sách yêu cầu đặt lại mật khẩu: ' + (err?.message || err));
+        })
         .finally(() => setLoadingRequests(false));
     }
   }, [currentUser]);
+
+  const loadServerBackups = async () => {
+    if (!currentUser?.username) return;
+    setIsLoadingBackups(true);
+    try {
+      const { items, pgToolAvailable: available } = await fetchBackupList(currentUser.username);
+      setServerBackups(items);
+      setPgToolAvailable(available);
+    } catch (err: any) {
+      toast.error('Lỗi khi tải danh sách sao lưu: ' + (err?.message || err));
+    } finally {
+      setIsLoadingBackups(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdminOnlyAction) {
+      loadServerBackups();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdminOnlyAction, currentUser?.username]);
 
   const handleDeleteRequest = async (id: string) => {
     if (!isAdminOnlyAction) {
@@ -1172,7 +1220,7 @@ export const SystemSettingsView = () => {
       responsibilities: addForm.responsibilities,
       phone: addForm.phone.trim(),
       email: addForm.email.trim(),
-      ...(addForm.password.trim() ? { password: addForm.password.trim() } : { password: 'Abc123456' })
+      ...(addForm.password.trim() ? { password: addForm.password.trim() } : { password: DEFAULT_PASSWORD })
     }, normalizeSystemUserRole({ role: addForm.role }, 'tester'));
 
     try {
@@ -1206,15 +1254,8 @@ export const SystemSettingsView = () => {
       const backupTimestamp = new Date().toISOString();
       const activityLogs = await activityLogClient.fetchAll();
       const backupData = buildBackupPayload(state, backupTimestamp, activityLogs);
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Backup_DDTLab_${backupTimestamp.slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      updateSettings({ lastBackupDate: backupTimestamp });
-      toast.success('Đã xuất file sao lưu đầy đủ thành công!');
+      downloadBackupJson(backupData);
+      toast.success('Đã xuất JSON portable; dùng backup máy chủ để kèm file PDF KQTN.');
     } catch (e: any) {
       toast.error(`Lỗi xuất file sao lưu: ${e?.message || e}`);
     } finally {
@@ -1284,6 +1325,9 @@ export const SystemSettingsView = () => {
         toast.error("Lỗi phục hồi dữ liệu: " + (err.message || err));
       }
     };
+    reader.onerror = () => {
+      toast.error("Không thể đọc file đã chọn. Vui lòng thử lại.");
+    };
     reader.readAsText(file);
     e.target.value = '';
   };
@@ -1292,12 +1336,15 @@ export const SystemSettingsView = () => {
     if (!restoreConfirmData) return;
     const { data } = restoreConfirmData;
     setRestoreConfirmData(null);
+    setIsRestoringJson(true);
     const toastId = toast.loading("Đang tải dữ liệu vào bộ đệm...");
     try {
       await useStore.getState().restoreFromBackup(data);
       toast.success("Tải dữ liệu vào bộ đệm thành công! Vui lòng bấm 'Xác nhận & Lưu lên PostgreSQL' để đẩy dữ liệu.", { id: toastId });
     } catch (err: any) {
       toast.error("Lỗi phục hồi dữ liệu: " + (err.message || err), { id: toastId });
+    } finally {
+      setIsRestoringJson(false);
     }
   };
 
@@ -1307,12 +1354,15 @@ export const SystemSettingsView = () => {
       return;
     }
     setUploadConfirmOpen(false);
+    setIsUploadingToPostgres(true);
     const toastId = toast.loading("Đang đẩy toàn bộ dữ liệu lên PostgreSQL, vui lòng không tắt trình duyệt...");
     try {
       await useStore.getState().uploadToPostgres();
       toast.success("Đẩy dữ liệu lên PostgreSQL thành công!", { id: toastId });
     } catch (err: any) {
       toast.error("Lỗi đẩy dữ liệu: " + (err.message || err), { id: toastId });
+    } finally {
+      setIsUploadingToPostgres(false);
     }
   };
 
@@ -1322,6 +1372,97 @@ export const SystemSettingsView = () => {
 
   const handleCancelRestore = () => {
     setRestoreConfirmData(null);
+  };
+
+  const handleRunServerBackup = async () => {
+    if (!isAdminOnlyAction) {
+      toast.error('Chỉ Admin mới có quyền sao lưu dữ liệu hệ thống!');
+      return;
+    }
+    if (!currentUser?.username) return;
+    setIsRunningServerBackup(true);
+    try {
+      await triggerServerBackup(currentUser.username);
+      updateSettings({ lastBackupDate: new Date().toISOString() });
+      toast.success('Đã tạo bản sao lưu đầy đủ database và file PDF trên máy chủ!');
+      await loadServerBackups();
+    } catch (err: any) {
+      toast.error('Lỗi khi sao lưu trên máy chủ: ' + (err?.message || err));
+    } finally {
+      setIsRunningServerBackup(false);
+    }
+  };
+
+  const handleDownloadServerBackup = async (filename: string) => {
+    if (!currentUser?.username) return;
+    try {
+      await downloadBackupFile(currentUser.username, filename);
+    } catch (err: any) {
+      toast.error('Lỗi khi tải file sao lưu: ' + (err?.message || err));
+    }
+  };
+
+  const handleConfirmRestoreServerBackup = async () => {
+    if (!restoreTargetFile || !currentUser?.username) return;
+    if (restoreConfirmText !== 'KHOIPHUC') {
+      toast.error('Vui lòng gõ đúng "KHOIPHUC" để xác nhận.');
+      return;
+    }
+    setIsRestoringServerBackup(true);
+    const toastId = toast.loading('Đang khôi phục dữ liệu từ bản sao lưu, vui lòng không tắt trình duyệt...');
+    try {
+      await restoreServerBackup(currentUser.username, restoreTargetFile);
+      toast.success('Đã khôi phục dữ liệu từ bản sao lưu thành công!', { id: toastId });
+      setRestoreTargetFile(null);
+      setRestoreConfirmText('');
+    } catch (err: any) {
+      toast.error('Lỗi khi khôi phục: ' + (err?.message || err), { id: toastId });
+    } finally {
+      setIsRestoringServerBackup(false);
+    }
+  };
+
+  const handleConfirmDeleteServerBackup = async () => {
+    if (!deleteTargetFile || !currentUser?.username) return;
+    setIsDeletingBackupFile(deleteTargetFile);
+    try {
+      await deleteBackupFile(currentUser.username, deleteTargetFile);
+      toast.success('Đã xoá bản sao lưu!');
+      setDeleteTargetFile(null);
+      await loadServerBackups();
+    } catch (err: any) {
+      toast.error('Lỗi khi xoá bản sao lưu: ' + (err?.message || err));
+    } finally {
+      setIsDeletingBackupFile(null);
+    }
+  };
+
+  const handleResetUserPassword = async (user: any, uUsername: string) => {
+    try {
+      const updatedUser = {
+        ...user,
+        'Mật khẩu': DEFAULT_PASSWORD,
+        'password': DEFAULT_PASSWORD
+      };
+      await updateUser(user.id, updatedUser);
+      if (uUsername) {
+        await updateUserPreferences(uUsername, { customPassword: '' });
+      }
+      if (user.id && user.id !== uUsername) {
+        await updateUserPreferences(user.id, { customPassword: '' });
+      }
+      toast.success(`Đã khôi phục mật khẩu của @${uUsername} về mặc định (${DEFAULT_PASSWORD}) thành công!`);
+    } catch (err: any) {
+      toast.error('Lỗi khi khôi phục mật khẩu: ' + err.message);
+    } finally {
+      setConfirmResetPasswordId(null);
+    }
+  };
+
+  const formatBackupSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -1498,15 +1639,20 @@ export const SystemSettingsView = () => {
             </h3>
             <div className="space-y-3">
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                Sao lưu hoặc phục hồi toàn bộ dữ liệu hệ thống thông qua tệp tin JSON để đảm bảo an toàn thông tin.
+                JSON portable dùng cho xuất/nhập dữ liệu nghiệp vụ; backup máy chủ bên dưới mới bao gồm cả file PDF KQTN.
               </p>
+              {settings?.lastBackupDate && (
+                <p className="text-[10px] text-slate-400">
+                  Lần backup đầy đủ gần nhất: <b className="text-slate-600">{formatDateVN(settings.lastBackupDate)}</b>
+                </p>
+              )}
               <div className="space-y-2">
                 <button
                   onClick={handleBackup}
                   disabled={!isAdminOnlyAction || isBackingUp}
                   className={`w-full py-2.5 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 ${!isAdminOnlyAction || isBackingUp ? 'bg-slate-300 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'}`}
                 >
-                  {isBackingUp ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {isBackingUp ? 'Đang tạo backup...' : 'Tải file backup (.json)'}
+                  {isBackingUp ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {isBackingUp ? 'Đang xuất JSON...' : 'Xuất JSON portable'}
                 </button>
                 <input
                   type="file"
@@ -1517,28 +1663,165 @@ export const SystemSettingsView = () => {
                 />
                 <button
                   onClick={() => document.getElementById('restore-json-input')?.click()}
-                  disabled={!isAdminOnlyAction}
+                  disabled={!isAdminOnlyAction || isRestoringJson}
                   className={`w-full py-2.5 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 ${
-                    !isAdminOnlyAction ? 'bg-slate-300 cursor-not-allowed opacity-60' : 'bg-amber-500 hover:bg-amber-600 cursor-pointer'
+                    !isAdminOnlyAction || isRestoringJson ? 'bg-slate-300 cursor-not-allowed opacity-60' : 'bg-amber-500 hover:bg-amber-600 cursor-pointer'
                   }`}
                 >
-                  <Upload size={14} /> Khôi phục từ file JSON
+                  {isRestoringJson ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} {isRestoringJson ? 'Đang tải vào bộ đệm...' : 'Khôi phục từ file JSON'}
                 </button>
               </div>
-              
+
               <div className="pt-2 border-t border-slate-100">
                 <button
                   onClick={() => setUploadConfirmOpen(true)}
-                  disabled={!isAdminOnlyAction}
+                  disabled={!isAdminOnlyAction || isUploadingToPostgres}
                   className={`w-full py-2.5 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 ${
-                    !isAdminOnlyAction ? 'bg-slate-300 cursor-not-allowed opacity-60' : 'bg-blue-500 hover:bg-blue-600 cursor-pointer'
+                    !isAdminOnlyAction || isUploadingToPostgres ? 'bg-slate-300 cursor-not-allowed opacity-60' : 'bg-blue-500 hover:bg-blue-600 cursor-pointer'
                   }`}
                 >
-                  <UploadCloud size={14} /> Xác nhận & Lưu lên PostgreSQL
+                  {isUploadingToPostgres ? <Loader2 size={14} className="animate-spin" /> : <UploadCloud size={14} />} {isUploadingToPostgres ? 'Đang đẩy dữ liệu...' : 'Xác nhận & Lưu lên PostgreSQL'}
                 </button>
               </div>
             </div>
           </div>
+
+          {isSystemSettingsAdmin && (
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5 text-slate-700">
+                  <History size={14} className="text-emerald-500" /> Sao lưu tự động (Server)
+                </h3>
+                <button
+                  onClick={loadServerBackups}
+                  disabled={isLoadingBackups}
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-all cursor-pointer disabled:opacity-50"
+                  title="Làm mới danh sách"
+                >
+                  <RefreshCw size={13} className={isLoadingBackups ? 'animate-spin' : ''} />
+                </button>
+              </div>
+
+              {!pgToolAvailable && (
+                <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-2.5 leading-relaxed">
+                  Chưa cài đặt <code>pg_dump</code>/<code>pg_restore</code> trên máy chủ nên tính năng sao lưu tự động tạm thời không khả dụng.
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Sao lưu đầy đủ PostgreSQL, metadata file và object PDF KQTN (định dạng .zip) tự động theo lịch, lưu trên máy chủ.
+              </p>
+
+              <button
+                onClick={handleRunServerBackup}
+                disabled={!isAdminOnlyAction || isRunningServerBackup || !pgToolAvailable}
+                className={`w-full py-2.5 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 ${
+                  !isAdminOnlyAction || isRunningServerBackup || !pgToolAvailable ? 'bg-slate-300 cursor-not-allowed opacity-60' : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer'
+                }`}
+              >
+                {isRunningServerBackup ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {isRunningServerBackup ? 'Đang sao lưu...' : 'Sao lưu ngay'}
+              </button>
+
+              {isLoadingBackups ? (
+                <div className="flex items-center gap-2 text-xs text-slate-400 py-4 justify-center">
+                  <Loader2 size={14} className="animate-spin text-emerald-500" />
+                  Đang tải danh sách...
+                </div>
+              ) : serverBackups.length === 0 ? (
+                <div className="text-center text-[10px] text-slate-400 italic py-4">
+                  Chưa có bản sao lưu nào trên máy chủ.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {serverBackups.map((backup) => (
+                    <div key={backup.filename} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-[10px] text-slate-700 truncate" title={backup.filename}>{backup.filename}</span>
+                        <span className="text-[9px] text-slate-400 shrink-0">{formatBackupSize(backup.sizeBytes)}</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400">{formatDateVN(backup.createdAt)}</div>
+
+                      {deleteTargetFile === backup.filename ? (
+                        <div className="flex items-center gap-1 bg-red-50 p-1 rounded-lg border border-red-100">
+                          <span className="text-[9px] text-red-600 font-bold px-1.5">Xóa bản sao lưu này?</span>
+                          <button
+                            onClick={handleConfirmDeleteServerBackup}
+                            disabled={isDeletingBackupFile === backup.filename}
+                            className="px-2 py-0.5 bg-red-500 text-white text-[9px] font-bold rounded-md hover:bg-red-600 cursor-pointer disabled:opacity-60"
+                          >
+                            {isDeletingBackupFile === backup.filename ? 'Đang xóa...' : 'Có'}
+                          </button>
+                          <button
+                            onClick={() => setDeleteTargetFile(null)}
+                            className="px-2 py-0.5 bg-slate-200 text-slate-700 text-[9px] font-bold rounded-md hover:bg-slate-300 cursor-pointer"
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      ) : restoreTargetFile === backup.filename ? (
+                        <div className="bg-amber-50 p-2 rounded-lg border border-amber-200 space-y-1.5">
+                          <p className="text-[9px] text-amber-800 font-semibold leading-relaxed">
+                            Thao tác này sẽ GHI ĐÈ toàn bộ dữ liệu hiện tại. Gõ "KHOIPHUC" để xác nhận.
+                          </p>
+                          <input
+                            type="text"
+                            value={restoreConfirmText}
+                            onChange={(e) => setRestoreConfirmText(e.target.value)}
+                            className="w-full px-2 py-1 border border-amber-300 rounded-lg text-[10px]"
+                            placeholder="KHOIPHUC"
+                          />
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={handleConfirmRestoreServerBackup}
+                              disabled={isRestoringServerBackup || restoreConfirmText !== 'KHOIPHUC'}
+                              className="px-2 py-0.5 bg-amber-600 text-white text-[9px] font-bold rounded-md hover:bg-amber-700 cursor-pointer disabled:opacity-60"
+                            >
+                              {isRestoringServerBackup ? 'Đang khôi phục...' : 'Xác nhận khôi phục'}
+                            </button>
+                            <button
+                              onClick={() => { setRestoreTargetFile(null); setRestoreConfirmText(''); }}
+                              disabled={isRestoringServerBackup}
+                              className="px-2 py-0.5 bg-slate-200 text-slate-700 text-[9px] font-bold rounded-md hover:bg-slate-300 cursor-pointer"
+                            >
+                              Hủy
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleDownloadServerBackup(backup.filename)}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                            title="Tải xuống"
+                          >
+                            <Download size={12} />
+                          </button>
+                          {isAdminOnlyAction && (
+                            <>
+                              <button
+                                onClick={() => setRestoreTargetFile(backup.filename)}
+                                className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all cursor-pointer"
+                                title="Khôi phục từ bản sao lưu này"
+                              >
+                                <RotateCcw size={12} />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTargetFile(backup.filename)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                                title="Xóa"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {isSystemSettingsAdmin && (
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
@@ -1569,7 +1852,7 @@ export const SystemSettingsView = () => {
                         Liên hệ: <b className="text-slate-700">{req.contact}</b>
                       </div>
                       <div className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-100 p-1.5 rounded-lg mt-1 font-medium">
-                        {req.details || 'Đã tự động đặt lại về mật khẩu mặc định (Abc123456)'}
+                        {req.details || `Đã tự động đặt lại về mật khẩu mặc định (${DEFAULT_PASSWORD})`}
                       </div>
                       <div className="flex justify-end mt-1">
                         <button
@@ -1672,6 +1955,20 @@ export const SystemSettingsView = () => {
                         className="w-full px-2 py-1 border border-indigo-200 rounded-lg text-xs outline-none"
                         placeholder="Chức danh"
                       />
+                      <input
+                        type="text"
+                        value={addForm.phone}
+                        onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
+                        className="w-full px-2 py-1 border border-indigo-200 rounded-lg text-xs outline-none"
+                        placeholder="Số điện thoại"
+                      />
+                      <input
+                        type="text"
+                        value={addForm.email}
+                        onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                        className="w-full px-2 py-1 border border-indigo-200 rounded-lg text-xs outline-none"
+                        placeholder="Email"
+                      />
                     </td>
                     <td className="p-3 text-right pr-4">
                       <div className="flex items-center justify-end gap-1.5">
@@ -1697,6 +1994,8 @@ export const SystemSettingsView = () => {
                   const uName = user['Họ và Tên'] || user['name'] || '';
                   const uRole = normalizeSystemUserRole(user);
                   const uPosition = user['Chức vụ'] || user['position'] || '';
+                  const uPhone = user['Số điện thoại'] || user['phone'] || '';
+                  const uEmail = user['Email'] || user['email'] || '';
                   const isEditing = editingUserId === (user.id || uUsername);
 
                   return (
@@ -1734,34 +2033,30 @@ export const SystemSettingsView = () => {
                             className="w-full px-2 py-1 border border-indigo-200 rounded-lg text-xs"
                             placeholder="Mật khẩu mới (bỏ trống nếu không đổi)"
                           />
+                        ) : confirmResetPasswordId === user.id ? (
+                          <div className="flex items-center gap-1 bg-amber-50 p-1 rounded-lg border border-amber-100">
+                            <span className="text-[9px] text-amber-700 font-bold px-1">Reset?</span>
+                            <button
+                              onClick={() => handleResetUserPassword(user, uUsername)}
+                              className="px-2 py-0.5 bg-amber-500 text-white text-[9px] font-bold rounded-md hover:bg-amber-600 cursor-pointer"
+                            >
+                              Có
+                            </button>
+                            <button
+                              onClick={() => setConfirmResetPasswordId(null)}
+                              className="px-2 py-0.5 bg-slate-200 text-slate-700 text-[9px] font-bold rounded-md hover:bg-slate-300 cursor-pointer"
+                            >
+                              Hủy
+                            </button>
+                          </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
                             <span className="text-slate-300">••••••••</span>
                             {isAdminOnlyAction && (
                               <button
-                                onClick={async () => {
-                                  const confirmed = window.confirm(`Bạn có chắc chắn muốn khôi phục mật khẩu của @${uUsername} về mặc định (Abc123456)?`);
-                                  if (!confirmed) return;
-                                  try {
-                                    const updatedUser = {
-                                      ...user,
-                                      'Mật khẩu': 'Abc123456',
-                                      'password': 'Abc123456'
-                                    };
-                                    await updateUser(user.id, updatedUser);
-                                    if (uUsername) {
-                                      await updateUserPreferences(uUsername, { customPassword: '' });
-                                    }
-                                    if (user.id && user.id !== uUsername) {
-                                      await updateUserPreferences(user.id, { customPassword: '' });
-                                    }
-                                    toast.success(`Đã khôi phục mật khẩu của @${uUsername} về mặc định (Abc123456) thành công!`);
-                                  } catch (err: any) {
-                                    toast.error('Lỗi khi khôi phục mật khẩu: ' + err.message);
-                                  }
-                                }}
+                                onClick={() => setConfirmResetPasswordId(user.id)}
                                 className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/50 rounded transition-all cursor-pointer"
-                                title="Khôi phục về mật khẩu mặc định (Abc123456)"
+                                title={`Khôi phục về mật khẩu mặc định (${DEFAULT_PASSWORD})`}
                               >
                                 Reset
                               </button>
@@ -1793,14 +2088,36 @@ export const SystemSettingsView = () => {
                       </td>
                       <td className="p-3">
                         {isEditing ? (
-                          <input
-                            type="text"
-                            value={editForm.position}
-                            onChange={(e) => setEditForm({ ...editForm, position: e.target.value })}
-                            className="w-full px-2 py-1 border border-indigo-200 rounded-lg text-xs"
-                          />
+                          <div className="space-y-1">
+                            <input
+                              type="text"
+                              value={editForm.position}
+                              onChange={(e) => setEditForm({ ...editForm, position: e.target.value })}
+                              className="w-full px-2 py-1 border border-indigo-200 rounded-lg text-xs"
+                              placeholder="Chức danh"
+                            />
+                            <input
+                              type="text"
+                              value={editForm.phone}
+                              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                              className="w-full px-2 py-1 border border-indigo-200 rounded-lg text-xs"
+                              placeholder="Số điện thoại"
+                            />
+                            <input
+                              type="text"
+                              value={editForm.email}
+                              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                              className="w-full px-2 py-1 border border-indigo-200 rounded-lg text-xs"
+                              placeholder="Email"
+                            />
+                          </div>
                         ) : (
-                          <span className="text-slate-500">{uPosition || 'Kỹ thuật viên'}</span>
+                          <div className="space-y-0.5">
+                            <div className="text-slate-500">{uPosition || 'Kỹ thuật viên'}</div>
+                            {(uPhone || uEmail) && (
+                              <div className="text-[10px] text-slate-400">{[uPhone, uEmail].filter(Boolean).join(' · ')}</div>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="p-3 text-right pr-4">

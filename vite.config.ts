@@ -16,6 +16,9 @@ export default defineConfig(({ mode }) => {
         allowedHosts: ['ddtdev.tvci.id.vn'],
       },
       plugins: [react(), tailwindcss()],
+      optimizeDeps: {
+        include: ['emf-converter', 'react-image-crop'],
+      },
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)

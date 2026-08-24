@@ -7,6 +7,7 @@
 import React, { useMemo, useState, useRef } from 'react';
 
 import SelectSampleModal from './SelectSampleModal';
+import DocxSettingsModal from './DocxSettingsModal';
 import { TestRequest, KQTNRecord } from '../types';
 import { useStore } from '../store';
 import { toast } from 'sonner';
@@ -28,7 +29,7 @@ import EmcBepDien1VungNauForm, { EmcData, emptyPhaseRow, emptyPowerRow } from ".
 import DayCapDienForm, { initialDayCapDienData, DayCapDienData } from '../components/DayCapDienForm';
 import { stripTransientKqtnImages } from '../utils/transientReportImages';
 import { getKqtnSampleKey } from '../utils/kqtnIdentity';
-import { X, Crop, Search, AlertTriangle, CheckCircle2, ShieldCheck, FileCheck, Camera, Info, Sparkles, Check, Loader2, Plus, Trash2, ArrowLeft, Layers, FileText, Save, FileDown,
+import { X, Crop, Search, AlertTriangle, CheckCircle2, ShieldCheck, FileCheck, Camera, Info, Sparkles, Check, Loader2, Plus, Trash2, ArrowLeft, Layers, FileText, Save, FileDown, FileCog,
   Flame, Wind, Coffee, Thermometer, Zap, Shirt, Snowflake, Activity, Plug, Box, Shield, Monitor
 } from 'lucide-react';
 
@@ -58,10 +59,23 @@ const getStandardIcon = (id: string) => {
 
 
 export default function ReportGeneratorView() {
-  const { kqtnRecords, addKqtnRecord, updateKqtnRecord, currentUser } = useStore();
+  const { kqtnRecords, addKqtnRecord, updateKqtnRecord, currentUser, testers } = useStore();
   const [mounted, setMounted] = useState(false);
   const [isSelectSampleOpen, setIsSelectSampleOpen] = useState(false);
+  const [isDocxSettingsOpen, setIsDocxSettingsOpen] = useState(false);
   const [selectedSample, setSelectedSample] = useState<TestRequest | null>(null);
+
+  const labManagerOptions = useMemo(() => {
+    const managers = (testers || []).filter(t => {
+      if (!t || !t.name || t.name === 'Khác') return false;
+      const pos = (t.position || '').toLowerCase();
+      return pos.includes('trưởng phòng') || pos.includes('phó trưởng phòng') || pos.includes('phó phòng') || pos.includes('trưởng') || pos.includes('phó') || t.name === 'Vũ Việt Anh' || t.name === 'Lương Xuân Hùng';
+    }).map(t => t.name);
+
+    if (!managers.includes('Vũ Việt Anh')) managers.unshift('Vũ Việt Anh');
+    if (!managers.includes('Lương Xuân Hùng')) managers.push('Lương Xuân Hùng');
+    return Array.from(new Set(managers));
+  }, [testers]);
 
   const handleSelectSample = (req: TestRequest) => {
     setSelectedSample(req);
@@ -157,6 +171,7 @@ export default function ReportGeneratorView() {
     model: '',
     brand: '',
     testerName: '',
+    managerName: '',
     manufacturer: '',
     countryOfOrigin: '',
     deviceNameVi: '',
@@ -973,6 +988,7 @@ export default function ReportGeneratorView() {
         testDate: reportMeta.testDate,
         reportDate: reportMeta.reportDate,
         testerName: reportMeta.testerName,
+        managerName: reportMeta.managerName,
         criteriaType: criteriaType || undefined,
         subOptionTitle: subOptionTitle || undefined,
         version: 1,
@@ -1163,6 +1179,17 @@ export default function ReportGeneratorView() {
                     <span className="font-bold text-slate-800 truncate">{subOptionTitle || (criteriaType === 'full' ? 'Đầy đủ chỉ tiêu' : 'Giảm chỉ tiêu')}</span>
                 </>
             )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsDocxSettingsOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg text-xs sm:text-sm font-semibold transition shadow-xs border border-slate-200"
+              title="Quản lý và cập nhật biểu mẫu Word (.docx)"
+            >
+              <FileCog className="w-4 h-4 text-emerald-600" />
+              <span>Cài đặt docx</span>
+            </button>
           </div>
         </header>
 
@@ -1382,9 +1409,35 @@ export default function ReportGeneratorView() {
                       </div>
                     </>
                   )}
-                  <div className="flex flex-col col-span-2">
+                  <div className="flex flex-col col-span-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-0.5">Người thử nghiệm</label>
-                    <input type="text" className="border-b border-slate-300 py-1 px-0 text-sm bg-transparent outline-none focus:border-emerald-500 transition-colors w-full" value={reportMeta.testerName} onChange={e => setReportMeta({...reportMeta, testerName: e.target.value})} />
+                    <input 
+                      type="text" 
+                      list="testerNamesList"
+                      className="border-b border-slate-300 py-1 px-0 text-sm bg-transparent outline-none focus:border-emerald-500 transition-colors w-full" 
+                      value={reportMeta.testerName} 
+                      onChange={e => setReportMeta({...reportMeta, testerName: e.target.value})} 
+                      placeholder="VD: Lã Trung Sơn"
+                    />
+                    <datalist id="testerNamesList">
+                      {(testers || []).filter(t => t.name !== 'Khác').map(t => <option key={t.name} value={t.name} />)}
+                    </datalist>
+                  </div>
+                  <div className="flex flex-col col-span-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-0.5">Phụ trách phòng TN</label>
+                    <select 
+                      className="border-b border-slate-300 py-1 px-0 text-sm bg-transparent outline-none focus:border-emerald-500 transition-colors w-full cursor-pointer font-medium text-slate-800" 
+                      value={reportMeta.managerName} 
+                      onChange={e => setReportMeta({...reportMeta, managerName: e.target.value})}
+                    >
+                      <option value="">-- Chọn phụ trách PTN --</option>
+                      {labManagerOptions.map(name => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                      {reportMeta.managerName && !labManagerOptions.includes(reportMeta.managerName) && (
+                        <option value={reportMeta.managerName}>{reportMeta.managerName}</option>
+                      )}
+                    </select>
                   </div>
                   
                   {selectedStandard?.id === 'day_cap_dien' && (
@@ -1676,10 +1729,14 @@ export default function ReportGeneratorView() {
            onCancel={closeCropper}
         />
       )}
-<SelectSampleModal 
+      <SelectSampleModal 
         isOpen={isSelectSampleOpen}
         onClose={() => setIsSelectSampleOpen(false)}
         onSelectSample={handleSelectSample}
+      />
+      <DocxSettingsModal 
+        isOpen={isDocxSettingsOpen}
+        onClose={() => setIsDocxSettingsOpen(false)}
       />
     </div>
   );

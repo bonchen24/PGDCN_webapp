@@ -14,6 +14,16 @@ test('server exposes upload, inline view, download, and delete routes for KQTN P
   assert.match(source, /SUPABASE_STORAGE_URL/);
   assert.match(source, /KQTN_PDF_MAX_BYTES/);
   assert.match(source, /\/api\/gemini\/extract-kqtn-metadata/);
+  assert.match(source, /\/api\/gemini\/extract-kqtn-bulk-structure/);
+  assert.match(source, /isReportCover/);
+  assert.match(source, /pageOffset/);
+});
+
+test('browser client exposes combined-PDF structure extraction', () => {
+  const source = fs.readFileSync(new URL('../utils/kqtnPdfClient.ts', import.meta.url), 'utf8');
+  assert.match(source, /extractKqtnBulkStructure/);
+  assert.match(source, /extract-kqtn-bulk-structure/);
+  assert.match(source, /pageOffset/);
 });
 
 test('storage client supports downloading a private object', () => {

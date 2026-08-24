@@ -35,8 +35,19 @@ import { buildReportDocxImageSlots, combineReportDocxLabelImages, getReportDocxL
 import { buildReportDocxMetadata } from "./lib/reportDocxMetadata.js";
 import { getDocxGraphSize } from "./lib/reportDocxImageSizing.js";
 import { buildActivityLog, isValidActivityTimestamp } from "./utils/activityLog.js";
+import { REPORT_TEMPLATES_CATALOG, ReportTemplateMetadata } from "./lib/reportTemplatesCatalog.js";
 import { createHash } from "crypto";
 import { createSupabaseStorageClient } from "./utils/supabaseStorage.js";
+import { normalizeSystemUserRole } from "./utils/systemUserRole.js";
+import {
+  applyRetention,
+  createBackup,
+  deleteBackup,
+  getBackupPath,
+  isPgToolAvailable,
+  listBackups,
+  restoreBackup,
+} from "./utils/backupManager.js";
 
 const dynamicImport = new Function("modulePath", "return import(modulePath)");
 let _emfOrWmfToSvg: any = null;
@@ -196,6 +207,29 @@ function validateActivityLogPayload(value: any): string | null {
   if (!String(value.summary || "").trim()) return "Activity log thiếu summary";
   if (!ACTIVITY_LOG_SOURCES.has(String(value.source))) return "Activity log có source không hợp lệ";
   return null;
+}
+
+async function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const username = String(req.headers["x-user-name"] || "").trim();
+  if (!username) {
+    res.status(401).json({ error: "Thiếu thông tin người dùng." });
+    return;
+  }
+  try {
+    const result = await pool.query(
+      `SELECT data FROM app_documents WHERE collection_name = 'systemUsers' AND document_id = $1`,
+      [username]
+    );
+    const role = result.rows[0] ? normalizeSystemUserRole(result.rows[0].data) : null;
+    if (role !== "admin") {
+      res.status(403).json({ error: "Chỉ Admin mới có quyền thực hiện thao tác này." });
+      return;
+    }
+    next();
+  } catch (error: any) {
+    console.error("Admin auth check error:", error);
+    res.status(500).json({ error: error?.message || String(error) });
+  }
 }
 
 async function withPgTransaction<T>(callback: (client: any) => Promise<T>): Promise<T> {
@@ -868,6 +902,73 @@ async function startServer() {
     }
   });
 
+  app.get("/api/backups", requireAdmin, async (req, res) => {
+    try {
+      const [items, pgToolAvailable] = await Promise.all([
+        Promise.resolve(listBackups()),
+        isPgToolAvailable(),
+      ]);
+      res.json({ items, pgToolAvailable });
+    } catch (error: any) {
+      console.error("List backups error:", error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post("/api/backups/run", requireAdmin, async (req, res) => {
+    try {
+      if (!(await isPgToolAvailable())) {
+        res.status(503).json({ error: "pg_dump chưa được cài đặt trên máy chủ. Vui lòng cài PostgreSQL client tools." });
+        return;
+      }
+      const backup = await createBackup("manual");
+      applyRetention(Number(process.env.BACKUP_RETENTION_COUNT || 14));
+      res.json(backup);
+    } catch (error: any) {
+      console.error("Manual backup error:", error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.get("/api/backups/:filename/download", requireAdmin, async (req, res) => {
+    try {
+      const filePath = getBackupPath(String(req.params.filename || ""));
+      res.download(filePath);
+    } catch (error: any) {
+      console.error("Backup download error:", error);
+      res.status(400).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post("/api/backups/:filename/restore", requireAdmin, async (req, res) => {
+    const filename = String(req.params.filename || "");
+    if (req.body?.confirm !== "KHOIPHUC") {
+      res.status(400).json({ error: "Thiếu xác nhận khôi phục." });
+      return;
+    }
+    try {
+      if (!(await isPgToolAvailable())) {
+        res.status(503).json({ error: "pg_restore chưa được cài đặt trên máy chủ. Vui lòng cài PostgreSQL client tools." });
+        return;
+      }
+      await restoreBackup(filename);
+      res.json({ restored: filename });
+    } catch (error: any) {
+      console.error("Backup restore error:", error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.delete("/api/backups/:filename", requireAdmin, async (req, res) => {
+    try {
+      deleteBackup(String(req.params.filename || ""));
+      res.json({ deleted: req.params.filename });
+    } catch (error: any) {
+      console.error("Backup delete error:", error);
+      res.status(400).json({ error: error?.message || String(error) });
+    }
+  });
+
   app.get('/api/tieuchuan', (req, res) => {
     try {
       const filePath = path.join(process.cwd(), 'public', 'tieuchuan.xlsx');
@@ -886,6 +987,195 @@ async function startServer() {
     } catch (error) {
       console.error('Error reading tieuchuan.xlsx:', error);
       return res.status(500).json({ error: 'Failed to read standards', data: [] });
+    }
+  });
+
+  // --- DOCX Templates Management APIs ---
+  app.get("/api/templates", (req, res) => {
+    try {
+      const publicDir = path.join(process.cwd(), "public");
+      const distDir = path.join(process.cwd(), "dist");
+
+      const items: ReportTemplateMetadata[] = REPORT_TEMPLATES_CATALOG.map((tpl) => {
+        let filePath = path.join(publicDir, tpl.filename);
+        if (!fs.existsSync(filePath) && fs.existsSync(path.join(distDir, tpl.filename))) {
+          filePath = path.join(distDir, tpl.filename);
+        }
+
+        const exists = fs.existsSync(filePath);
+        let size = 0;
+        let updatedAt = "";
+
+        if (exists) {
+          try {
+            const stats = fs.statSync(filePath);
+            size = stats.size;
+            updatedAt = stats.mtime.toISOString();
+          } catch {
+            // ignore stat errors
+          }
+        }
+
+        const bakPath = path.join(publicDir, `${tpl.filename}.bak`);
+        const defaultBakPath = tpl.defaultBackupFilename ? path.join(publicDir, tpl.defaultBackupFilename) : null;
+        const hasBackup = fs.existsSync(bakPath) || (defaultBakPath ? fs.existsSync(defaultBakPath) : false);
+
+        return {
+          ...tpl,
+          size,
+          updatedAt,
+          exists,
+          hasBackup,
+        };
+      });
+
+      res.json({ success: true, data: items });
+    } catch (error: any) {
+      console.error("Error fetching templates metadata:", error);
+      res.status(500).json({ success: false, error: error?.message || "Failed to fetch templates" });
+    }
+  });
+
+  app.get("/api/templates/:filename/download", (req, res) => {
+    try {
+      const rawFilename = decodeURIComponent(req.params.filename || "");
+      const safeFilename = path.basename(rawFilename);
+      if (!safeFilename || !safeFilename.endsWith(".docx")) {
+        return res.status(400).json({ error: "Invalid docx filename" });
+      }
+
+      let filePath = path.join(process.cwd(), "public", safeFilename);
+      if (!fs.existsSync(filePath)) {
+        filePath = path.join(process.cwd(), "dist", safeFilename);
+      }
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: "Template file not found" });
+      }
+
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(safeFilename)}"`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.sendFile(filePath);
+    } catch (error: any) {
+      console.error("Error downloading template:", error);
+      res.status(500).json({ error: error?.message || "Failed to download template" });
+    }
+  });
+
+  app.post("/api/templates/upload", upload.single("file"), async (req, res) => {
+    try {
+      const file = req.file;
+      const targetFilename = String(req.body.filename || "").trim();
+      const safeFilename = path.basename(targetFilename);
+
+      if (!file) {
+        return res.status(400).json({ success: false, error: "No file uploaded" });
+      }
+      if (!safeFilename || !safeFilename.endsWith(".docx")) {
+        return res.status(400).json({ success: false, error: "Target filename must be a valid .docx file" });
+      }
+
+      const catalogItem = REPORT_TEMPLATES_CATALOG.find((t) => t.filename === safeFilename);
+      if (!catalogItem) {
+        return res.status(400).json({ success: false, error: "Filename is not in the system templates catalog" });
+      }
+
+      const publicDir = path.join(process.cwd(), "public");
+      const distDir = path.join(process.cwd(), "dist");
+      const targetPublicPath = path.join(publicDir, safeFilename);
+      const targetDistPath = path.join(distDir, safeFilename);
+
+      const bakPath = path.join(publicDir, `${safeFilename}.bak`);
+      if (fs.existsSync(targetPublicPath) && !fs.existsSync(bakPath)) {
+        try {
+          fs.copyFileSync(targetPublicPath, bakPath);
+        } catch (bakErr) {
+          console.warn("Could not create .bak backup for template:", bakErr);
+        }
+      }
+
+      fs.writeFileSync(targetPublicPath, file.buffer);
+
+      if (fs.existsSync(distDir)) {
+        try {
+          fs.writeFileSync(targetDistPath, file.buffer);
+        } catch {
+          // ignore dist sync error if any
+        }
+      }
+
+      const stats = fs.statSync(targetPublicPath);
+
+      return res.json({
+        success: true,
+        message: `Đã cập nhật biểu mẫu ${safeFilename} thành công!`,
+        data: {
+          filename: safeFilename,
+          size: stats.size,
+          updatedAt: stats.mtime.toISOString(),
+        },
+      });
+    } catch (error: any) {
+      console.error("Error uploading template:", error);
+      return res.status(500).json({ success: false, error: error?.message || "Failed to update template" });
+    }
+  });
+
+  app.post("/api/templates/:filename/reset", async (req, res) => {
+    try {
+      const rawFilename = decodeURIComponent(req.params.filename || "");
+      const safeFilename = path.basename(rawFilename);
+      if (!safeFilename || !safeFilename.endsWith(".docx")) {
+        return res.status(400).json({ success: false, error: "Invalid docx filename" });
+      }
+
+      const catalogItem = REPORT_TEMPLATES_CATALOG.find((t) => t.filename === safeFilename);
+      if (!catalogItem) {
+        return res.status(400).json({ success: false, error: "Filename is not in the system templates catalog" });
+      }
+
+      const publicDir = path.join(process.cwd(), "public");
+      const distDir = path.join(process.cwd(), "dist");
+      const targetPublicPath = path.join(publicDir, safeFilename);
+      const targetDistPath = path.join(distDir, safeFilename);
+
+      const bakPath = path.join(publicDir, `${safeFilename}.bak`);
+      const defaultBakPath = catalogItem.defaultBackupFilename ? path.join(publicDir, catalogItem.defaultBackupFilename) : null;
+
+      let sourcePath: string | null = null;
+      if (fs.existsSync(bakPath)) {
+        sourcePath = bakPath;
+      } else if (defaultBakPath && fs.existsSync(defaultBakPath)) {
+        sourcePath = defaultBakPath;
+      }
+
+      if (!sourcePath) {
+        return res.status(404).json({ success: false, error: "Không tìm thấy bản lưu gốc để khôi phục" });
+      }
+
+      fs.copyFileSync(sourcePath, targetPublicPath);
+      if (fs.existsSync(distDir)) {
+        try {
+          fs.copyFileSync(sourcePath, targetDistPath);
+        } catch {
+          // ignore dist copy
+        }
+      }
+
+      const stats = fs.statSync(targetPublicPath);
+
+      return res.json({
+        success: true,
+        message: `Đã khôi phục biểu mẫu gốc ${safeFilename}!`,
+        data: {
+          filename: safeFilename,
+          size: stats.size,
+          updatedAt: stats.mtime.toISOString(),
+        },
+      });
+    } catch (error: any) {
+      console.error("Error resetting template:", error);
+      return res.status(500).json({ success: false, error: error?.message || "Failed to reset template" });
     }
   });
 
@@ -1218,14 +1508,31 @@ async function startServer() {
       }
       const activeAi = getGeminiClient(req);
       const preferredModel = req.headers["x-gemini-model"] as string | undefined;
+      const prompt = `
+Bạn đang xem trang bìa (trang 1) của một báo cáo/phiếu kết quả thử nghiệm thuộc phòng Điện - Điện tử, có thể là bản scan chất lượng thấp, có dấu mộc, chữ viết tay hoặc bảng biểu chồng lên nhau.
+
+Hãy đọc kỹ toàn bộ trang và trích xuất chính xác ba trường sau:
+- "sampleCode": Số mã hóa/mã hiệu của mẫu thử (thường xuất hiện gần nhãn "Số mã hóa", "Mã mẫu", "Mã hiệu", "Encode No.", "Sample code", có thể là chuỗi số-chữ có dấu gạch ngang hoặc chấm). Ưu tiên giá trị được đóng dấu hoặc in đậm/khung nếu có nhiều số xuất hiện.
+- "model": Model/ký hiệu sản phẩm (nhãn "Model", "Kiểu loại", "Type").
+- "brand": Tên hãng/nhãn hiệu sản xuất (nhãn "Hãng sản xuất", "Nhãn hiệu", "Manufacturer", "Brand").
+
+Quy tắc bắt buộc:
+1. Chỉ lấy giá trị thực sự nhìn thấy trên trang; tuyệt đối không suy đoán, không tự bịa, không lấy từ kiến thức ngoài tài liệu.
+2. Giữ nguyên định dạng gốc của mã (chữ hoa/thường, dấu gạch ngang, khoảng trắng) như in trên phiếu, không tự chuẩn hóa.
+3. Nếu một trường không xuất hiện trên trang hoặc không đọc rõ, trả về chuỗi rỗng "" cho trường đó thay vì đoán.
+4. Nếu có nhiều mã số nghi ngờ là sampleCode, chọn mã gắn với nhãn ghi rõ ràng nhất; không chọn số phiếu/số báo cáo (report No.) làm sampleCode trừ khi không có mã nào khác.
+
+Trả về đúng định dạng JSON khớp schema đã cung cấp.
+`;
       const response = await generateContentWithRetryAndFallback(activeAi, {
         contents: {
           parts: [
             { inlineData: { mimeType: mimeType || "application/pdf", data: base64Data } },
-            { text: "Read this test-result PDF. Extract the exact sample encoding code, product model, and brand. Do not guess. Return empty strings when a value is absent." },
+            { text: prompt },
           ],
         },
         config: {
+          temperature: 0,
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -1243,6 +1550,90 @@ async function startServer() {
       res.json(JSON.parse(cleanedText));
     } catch (error: any) {
       console.error("KQTN metadata extraction error:", error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post("/api/gemini/extract-kqtn-bulk-structure", async (req, res) => {
+    try {
+      const { base64Data, pageOffset } = req.body || {};
+      if (!base64Data) {
+        res.status(400).json({ error: "Missing PDF batch data." });
+        return;
+      }
+      const parsedOffset = Number(pageOffset);
+      const safeOffset = Number.isFinite(parsedOffset) ? Math.max(0, Math.floor(parsedOffset)) : 0;
+      const activeAi = getGeminiClient(req);
+      const preferredModel = req.headers["x-gemini-model"] as string | undefined;
+      const prompt = `
+Bạn đang xem một batch PDF gồm nhiều trang liên tiếp của một hoặc nhiều báo cáo kết quả thử nghiệm Điện - Điện tử.
+Hãy kiểm tra từng trang trong batch và trả về đúng một phần tử cho mỗi trang, theo thứ tự trang.
+
+Quy tắc nhận diện:
+- pageNumber là số trang cục bộ trong batch, bắt đầu từ 1.
+- isReportCover=true chỉ khi trang có dấu hiệu rõ ràng là trang bìa báo cáo: tiêu đề báo cáo/phiếu kết quả, số báo cáo, mã hóa mẫu hoặc bảng thông tin mẫu. Không suy đoán từ một trang dữ liệu đơn lẻ.
+- isBlank=true chỉ khi trang trắng hoặc gần như trắng. Không đánh dấu trang phân cách nằm giữa nội dung là blank nếu trang đó có nội dung đáng kể.
+- reportNo là số báo cáo/phiếu nếu nhìn rõ; không dùng số báo cáo để thay thế sampleCode.
+- sampleCode là số mã hóa/mã hiệu mẫu nếu nhìn rõ.
+- model, brand, sealStamp, sampleName chỉ lấy giá trị nhìn thấy trên trang bìa; trường không rõ trả chuỗi rỗng.
+- Không bịa dữ liệu và không dùng kiến thức ngoài tài liệu.
+
+Trả về JSON theo schema đã cung cấp, không thêm markdown.
+`;
+      const response = await generateContentWithRetryAndFallback(activeAi, {
+        contents: {
+          parts: [
+            { inlineData: { mimeType: "application/pdf", data: base64Data } },
+            { text: prompt },
+          ],
+        },
+        config: {
+          temperature: 0,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              pages: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    pageNumber: { type: Type.INTEGER },
+                    isReportCover: { type: Type.BOOLEAN },
+                    isBlank: { type: Type.BOOLEAN },
+                    reportNo: { type: Type.STRING },
+                    sampleCode: { type: Type.STRING },
+                    model: { type: Type.STRING },
+                    brand: { type: Type.STRING },
+                    sealStamp: { type: Type.STRING },
+                    sampleName: { type: Type.STRING },
+                  },
+                  required: ["pageNumber", "isReportCover", "isBlank", "reportNo", "sampleCode", "model", "brand", "sealStamp", "sampleName"],
+                },
+              },
+            },
+            required: ["pages"],
+          },
+        },
+      }, preferredModel);
+      const text = response.text;
+      if (!text) throw new Error("AI returned no PDF structure.");
+      const cleanedText = text.split(String.fromCharCode(96)).join("").trim();
+      const parsed = JSON.parse(cleanedText);
+      const pages = Array.isArray(parsed.pages) ? parsed.pages.map((page: any, index: number) => ({
+        pageNumber: safeOffset + Math.max(1, Math.floor(Number(page?.pageNumber) || index + 1)),
+        isReportCover: Boolean(page?.isReportCover),
+        isBlank: Boolean(page?.isBlank),
+        reportNo: String(page?.reportNo || "").trim(),
+        sampleCode: String(page?.sampleCode || "").trim(),
+        model: String(page?.model || "").trim(),
+        brand: String(page?.brand || "").trim(),
+        sealStamp: String(page?.sealStamp || "").trim(),
+        sampleName: String(page?.sampleName || "").trim(),
+      })) : [];
+      res.json({ pages });
+    } catch (error: any) {
+      console.error("KQTN bulk structure extraction error:", error);
       res.status(500).json({ error: error?.message || String(error) });
     }
   });
@@ -1967,6 +2358,8 @@ ${appContext || "Chưa có thông tin hoặc hệ thống đang trống."}
         manufacturer: docxMetadata.manufacturer,
         countryOfOrigin: docxMetadata.countryOfOrigin,
         testerName: reportMeta?.testerName || "",
+        managerName: reportMeta?.managerName || "",
+        managerNam: reportMeta?.managerName || "",
         reportDate: docxMetadata.reportDate,
         sampleReceiptDate: formattedSampleReceiptDate,
         testDate: formattedTestDate,
@@ -2001,19 +2394,19 @@ ${appContext || "Chưa có thông tin hoặc hệ thống đang trống."}
 
         isAirConNoLoad: subOptionTitle?.toLowerCase().includes("không có đầu nối tải") || false,
 
-        table_6_3_1_1: subOptionTitle === "Bếp từ 4 vùng nấu" || subOptionTitle === "Bếp từ 3 vùng nấu" || subOptionTitle === "Bếp từ 2 vùng nấu + 1 vùng nấu hồng ngoại" || subOptionTitle === "Bếp từ + hồng ngoại" || subOptionTitle === "Bếp từ 2 vùng nấu" ? emcData.tableMag1_A || [] : emcData?.tablePower || [],
-        table_6_3_1_2: subOptionTitle === "loại hai chiều" || standard?.id === "emc_dieu_hoa" ? emcData?.tablePowerDisturbance_indoor || [] : emcData.tableMag1_B || [],
-        table_6_3_1_3: subOptionTitle === "loại hai chiều" || standard?.id === "emc_dieu_hoa" ? emcData?.tablePowerDisturbance_outdoor || [] : emcData.tableMag1_C || [],
-        table_6_3_2_1: subOptionTitle === "Bếp từ 4 vùng nấu" || subOptionTitle === "Bếp từ 3 vùng nấu" || subOptionTitle === "Bếp từ 2 vùng nấu + 1 vùng nấu hồng ngoại" || subOptionTitle === "Bếp từ + hồng ngoại" || subOptionTitle === "Bếp từ 2 vùng nấu" ? emcData.tableMag2_A || [] : emcData?.tablePower_2 || [],
-        table_6_3_2_2: subOptionTitle === "loại hai chiều" || standard?.id === "emc_dieu_hoa" ? emcData?.tablePowerDisturbance_indoor_2 || [] : emcData.tableMag2_B || [],
-        table_6_3_2_3: subOptionTitle === "loại hai chiều" || standard?.id === "emc_dieu_hoa" ? emcData?.tablePowerDisturbance_outdoor_2 || [] : emcData.tableMag2_C || [],
-        table_7_3_1_1: emcData.tablePower || [],
-        table_7_3_2_1: emcData.tablePower_2 || [],
+        table_6_3_1_1: subOptionTitle === "Bếp từ 4 vùng nấu" || subOptionTitle === "Bếp từ 3 vùng nấu" || subOptionTitle === "Bếp từ 2 vùng nấu + 1 vùng nấu hồng ngoại" || subOptionTitle === "Bếp từ + hồng ngoại" || subOptionTitle === "Bếp từ 2 vùng nấu" ? emcData.tableMag1_A || [] : (emcData?.tablePower || []).slice(0, 1),
+        table_6_3_1_2: subOptionTitle === "loại hai chiều" || standard?.id === "emc_dieu_hoa" ? (emcData?.tablePowerDisturbance_indoor || []).slice(0, 1) : emcData.tableMag1_B || [],
+        table_6_3_1_3: subOptionTitle === "loại hai chiều" || standard?.id === "emc_dieu_hoa" ? (emcData?.tablePowerDisturbance_outdoor || []).slice(0, 1) : emcData.tableMag1_C || [],
+        table_6_3_2_1: subOptionTitle === "Bếp từ 4 vùng nấu" || subOptionTitle === "Bếp từ 3 vùng nấu" || subOptionTitle === "Bếp từ 2 vùng nấu + 1 vùng nấu hồng ngoại" || subOptionTitle === "Bếp từ + hồng ngoại" || subOptionTitle === "Bếp từ 2 vùng nấu" ? emcData.tableMag2_A || [] : (emcData?.tablePower_2 || []).slice(0, 1),
+        table_6_3_2_2: subOptionTitle === "loại hai chiều" || standard?.id === "emc_dieu_hoa" ? (emcData?.tablePowerDisturbance_indoor_2 || []).slice(0, 1) : emcData.tableMag2_B || [],
+        table_6_3_2_3: subOptionTitle === "loại hai chiều" || standard?.id === "emc_dieu_hoa" ? (emcData?.tablePowerDisturbance_outdoor_2 || []).slice(0, 1) : emcData.tableMag2_C || [],
+        table_7_3_1_1: (emcData.tablePower || []).slice(0, 1),
+        table_7_3_2_1: (emcData.tablePower_2 || []).slice(0, 1),
         table_5_3_1: emcData?.tablePhaseL || [],
         tablePhaseN: emcData?.tablePhaseN || [],
         table_5_3_2: emcData?.tablePhaseN || [],
-        tablePower: emcData?.tablePower || [],
-        table_6_3_1: emcData?.tablePower || [],
+        tablePower: (emcData?.tablePower || []).slice(0, 1),
+        table_6_3_1: (emcData?.tablePower || []).slice(0, 1),
         image_5_3_1_1: emcData?.images?.phaseL || "",
         image_5_3_1_1_1: emcData?.images?.phaseL || "",
         table_5_3_1_1: emcData?.tablePhaseL || [],
@@ -2128,19 +2521,19 @@ ${appContext || "Chưa có thông tin hoặc hệ thống đang trống."}
         data.table_6_3_2 = emcData?.tableMag1_B || [];
         data.table_6_3_3 = emcData?.tableMag1_C || [];
         data.image_7_3_1 = emcData?.images?.powerDisturbance || "";
-        data.table_7_3_1 = emcData?.tablePower || [];
+        data.table_7_3_1 = (emcData?.tablePower || []).slice(0, 1);
         data.image_8_3_1 = emcData?.images?.discontinuousPhaseN || "";
       }
 
       if (standard?.id === "emc_may_giat" || standard?.id === "emc_may_hut_bui" || standard?.id === "emc_may_say_toc" || standard?.id === "emc_may_xay" || standard?.id === "emc_may_khoan") {
         data.image_6_3_1_1 = emcData?.images?.powerDisturbance || "";
-        data.table_6_3_1_1 = emcData?.tablePower || [];
+        data.table_6_3_1_1 = (emcData?.tablePower || []).slice(0, 1);
         data.image_6_3_2_1 = emcData?.images?.powerDisturbance_2 || "";
-        data.table_6_3_2_1 = emcData?.tablePower_2 || [];
+        data.table_6_3_2_1 = (emcData?.tablePower_2 || []).slice(0, 1);
 
         if (subOptionTitle === "Có chức năng sấy") {
           data.image_6_3_3_1 = emcData?.images?.powerDisturbance_3 || "";
-          data.table_6_3_3_1 = emcData?.tablePower_3 || [];
+          data.table_6_3_3_1 = (emcData?.tablePower_3 || []).slice(0, 1);
         }
       }
 
@@ -2574,10 +2967,46 @@ HƯỚNG DẪN QUAN TRỌNG:
   }
 
   await initDbSchema();
+  await scheduleAutoBackups();
 
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+}
+
+async function scheduleAutoBackups() {
+  const enabled = String(process.env.BACKUP_ENABLED ?? "true").toLowerCase() !== "false";
+  if (!enabled) {
+    console.log("Automatic backups disabled via BACKUP_ENABLED=false.");
+    return;
+  }
+  if (!(await isPgToolAvailable())) {
+    console.warn("pg_dump not found on PATH — automatic backups are disabled. Install PostgreSQL client tools to enable them.");
+    return;
+  }
+
+  const intervalHours = Number(process.env.BACKUP_INTERVAL_HOURS || 24);
+  const retentionCount = Number(process.env.BACKUP_RETENTION_COUNT || 14);
+  const intervalMs = intervalHours * 60 * 60 * 1000;
+
+  const runScheduledBackup = async () => {
+    try {
+      await createBackup("auto");
+      applyRetention(retentionCount);
+      console.log("Automatic backup completed.");
+    } catch (error: any) {
+      console.error("Automatic backup failed:", error?.message || error);
+    }
+  };
+
+  const autoBackups = listBackups().filter(b => b.filename.startsWith("ddt_lab_auto_"));
+  const latest = autoBackups[0];
+  const isStale = !latest || (Date.now() - new Date(latest.createdAt).getTime()) >= intervalMs;
+
+  if (isStale) {
+    setTimeout(runScheduledBackup, 30 * 1000);
+  }
+  setInterval(runScheduledBackup, intervalMs);
 }
 
 startServer();

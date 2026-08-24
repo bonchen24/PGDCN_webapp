@@ -7,7 +7,7 @@ Description: Shared working memory for the DDT Lab repository and GitHub workflo
 # DDT Lab — Shared Working Memory
 
 > Vault: `E:\CODING\DDT_webapp\obsidian-vault`
-> Last updated: 2026-08-20 (Asia/Ho_Chi_Minh)
+> Last updated: 2026-08-24 (Asia/Ho_Chi_Minh)
 
 ## Project context
 
@@ -15,6 +15,39 @@ Description: Shared working memory for the DDT Lab repository and GitHub workflo
 - GitHub account connected: `bonchen24`
 - Target repository: [`bonchen24/DDT-app-v3.0`](https://github.com/bonchen24/DDT-app-v3.0)
 - Project rules: `AGENTS.md` requires `design.md` to remain the single source of truth for architecture, data, UI/UX, and coding conventions.
+- Ports: Local Dev (`npm run dev`) on `1359`, Docker Desktop Production on `2359`.
+
+## 2026-08-24 — Form Báo cáo: Quy chuẩn Bảng Công suất nhiễu EMC chỉ hiển thị 1 hàng (tự động lấy hàng 1)
+
+- Documented in `design.md`: Power Disturbance tables (`tablePower*`) across all EMC reports strictly display and persist **1 row only**.
+- When uploading Radimation file or pasting data: automatically select only Row 1 and drop excess rows.
+- Updated `EmcBepDien1VungNauForm.tsx` (`RadimationUploader`, `TablePowerDisturbance`, `handlePaste`) and `server.ts` (`.slice(0, 1)` for DOCX export).
+- Verification: `test/report-docx-image-integration.test.ts` (12/12 pass), `npm run lint` (0 errors), `npm run build` (pass).
+
+## 2026-08-24 — Form Báo cáo: Bổ sung mục 6.3.2.1 EMC Máy khoan (Công suất nhiễu 2 chiều quay)
+
+- Updated Section 4.4 in `design.md` for dual-direction disturbance power testing on Handheld Drills (`emc_may_khoan`).
+- `EmcBepDien1VungNauForm.tsx`: implemented dedicated Section 6 with 6.3.1 (quay cùng chiều kim đồng hồ -> 6.3.1.1 `powerDisturbance`, `tablePower`) and 6.3.2 (quay ngược chiều kim đồng hồ -> 6.3.2.1 `powerDisturbance_2`, `tablePower_2`).
+- `public/maykhoan placeholder.docx` & `dist/maykhoan placeholder.docx`: synchronized template with both 6.3.1.1 (`image_6_3_1_1`, `table_6_3_1_1`) and 6.3.2.1 (`image_6_3_2_1`, `table_6_3_2_1`) blocks.
+- Verification: all tests passed, `npm run lint` (0 errors), `npm run build` (pass).
+
+## 2026-08-24 — Form Báo cáo: Bổ sung trường Phụ trách phòng TN (managerName) & Droplist chọn nhanh
+
+- Updated Section 4.4 in `design.md` for dual signature fields (`testerName` and `managerName`).
+- Added `managerName?: string;` to `KQTNRecord` in `types.ts`.
+- `ReportGeneratorView.tsx`: added `managerName` to `reportMeta`, split signature section into 2 side-by-side columns with a quick-select `<select>` droplist for `managerName` filtering strictly for leadership positions (Trưởng phòng / Phó trưởng phòng: **Vũ Việt Anh**, **Lương Xuân Hùng**).
+- `server.ts` (`POST /api/generate-docx`): mapped `managerName` and alias `managerNam` to docxtemplater render payload.
+- `KQTNView.tsx`: displayed **Phụ trách PTN** in detail modal.
+- Verification: `test/report-docx-image-integration.test.ts` & `test/report-docx-metadata.test.ts` pass, `npm run lint` (0 errors), `npm run build` (pass).
+
+## 2026-08-24 — Docx Template Settings Modal and Code Conventions update
+
+- Added Mục 4.6 in `design.md` and created `lib/reportTemplatesCatalog.ts` covering 43 DOCX templates.
+- Added 4 backend endpoints in `server.ts` (`GET /api/templates`, `GET /api/templates/:filename/download`, `POST /api/templates/upload`, `POST /api/templates/:filename/reset`) with `.bak` automatic backup.
+- Created `DocxSettingsModal.tsx` and integrated it into `ReportGeneratorView.tsx` with instant search, category filters, download, drag-and-drop replacement, and reset.
+- Removed mandatory header/footer coding conventions from `AGENTS.md` and `design.md`.
+- Verification: `test/docx-template-settings.test.ts` (4/4 pass), `test/report-*.test.ts` (9/9 pass), audit scripts (2/2 pass), `npm run lint` (0 errors), `npm run build` (pass).
+- Production deployment: Docker Desktop container `ddt_webapp-webapp-1` recreated on port `2359`.
 
 ## 2026-08-20 — RequestModal draft persistence and reset
 

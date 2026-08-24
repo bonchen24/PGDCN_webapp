@@ -222,6 +222,7 @@ interface AppState {
   updateDayConfig: (date: string, config: Partial<DayConfig>) => void;
   updateRequest: (id: string, updates: Partial<TestRequest>, skipSync?: boolean) => void;
   markAllEmcAsPrinted: () => void;
+  logBulkKqtnUpload: (summary: { groupId: string; sourceFileName: string; mode: 'single-files' | 'combined'; uploaded: number; failed: number; skipped: number }) => void;
   notifications: AppNotification[];
   addNotification: (notification: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => void;
   markNotificationAsRead: (id: string) => void;
@@ -3013,6 +3014,23 @@ export const useStore = create<AppState>()(
   },
 
   markAllEmcAsPrinted: () => {},
+
+  logBulkKqtnUpload: (summary) => {
+    appendActivityLog(get, set, {
+      action: 'IMPORTED',
+      entityType: 'SYSTEM',
+      entityId: summary.groupId,
+      entityLabel: 'Bulk Upload PDF KQTN',
+      summary: `Bulk Upload KQTN (${summary.mode === 'combined' ? 'PDF ghép' : 'nhiều PDF đơn'}): ${summary.uploaded} thành công, ${summary.failed} lỗi, ${summary.skipped} bỏ qua — ${summary.sourceFileName}`,
+      changes: [
+        { field: 'uploaded', before: 0, after: summary.uploaded },
+        { field: 'failed', before: 0, after: summary.failed },
+        { field: 'skipped', before: 0, after: summary.skipped },
+      ],
+      source: 'UI',
+      groupId: summary.groupId,
+    });
+  },
 
   saveKqtnRecord: async (record: KQTNRecord, options = {}) => {
     const now = new Date().toISOString();

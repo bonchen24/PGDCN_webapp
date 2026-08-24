@@ -41,6 +41,14 @@ The Supabase production mode connects DDT to the existing `supabase-db` containe
 
 The standalone `ddt_webapp-postgres_db` container and its Docker volumes were removed after the Supabase migration and health checks were verified. Production data now lives in Supabase PostgreSQL database `ddt_lab`.
 
+## Current test and deployment target
+
+The current test/deployment target is Docker Desktop on the local workstation. Do not deploy this project to the Synology NAS. Use `deploy.sh`, or run the equivalent Compose command directly:
+
+`docker compose --env-file E:\CODING\TVCI_APP\supabase-docker\.env -f docker-compose.supabase.yml up --build -d`
+
+The deployment keeps the Supabase environment file on the local machine; it does not rsync `.env` or other secrets to a remote host. Verify `http://localhost:2359/api/health` and `http://localhost:2359/api/db/health` after the container starts.
+
 ## Image persistence boundary
 
 Images used by OCR and the report form are session-only. They remain available for crop, OCR and DOCX generation during the current session, but saving a KQTN record strips the image fields and `emcData.images` before PostgreSQL persistence. New report images are not sent to Supabase Storage either.

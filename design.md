@@ -22,6 +22,9 @@ Description: File thiết kế chi tiết kiến trúc, dữ liệu, Frontend UI
    - 4.1. [RequestModal (Tạo/Sửa Phiếu & AI OCR)](#41-requestmodal-tạosửa-phiếu--ai-ocr)
    - 4.2. [TestExecutionModal (Nhập KQTN & AI Extract)](#42-testexecutionmodal-nhập-kqtn--ai-extract)
    - 4.3. [HandoverModal & PrintFormModal](#43-handovermodal--printformmodal)
+   - 4.4. [ReportGeneratorView & KQTN Management](#44-reportgeneratorview--kqtn-management-trình-tạo-báo-cáo-thử-nghiệm--quản-lý-kqtn)
+   - 4.5. [Phân Hệ Sổ Kết Quả Thử Nghiệm](#45-phân-hệ-sổ-kết-quả-thử-nghiệm-kqtn-redesign--modern-data-grid-architecture)
+   - 4.6. [DocxSettingsModal & Quản Lý Biểu Mẫu DOCX Template](#46-docxsettingsmodal--quản-lý-biểu-mẫu-docx-template)
 5. [CẤU TRÚC LAYOUT TỔNG THỂ & BẢNG ĐIỀU HƯỚNG](#5-cấu-trúc-layout-tổng-thể--bảng-điều-hướng)
    - 5.2. [Tỷ lệ hiển thị giao diện toàn cục](#52-tỷ-lệ-hiển-thị-giao-diện-toàn-cục)
    - 5.3. [Chuẩn responsive cho mobile](#53-chuẩn-responsive-cho-mobile)
@@ -234,6 +237,9 @@ Hiển thị trong Màn hình Nhật Ký Hoạt Động & Sổ Tổng Hợp (`Su
 - **Nhập liệu có thể xóa trắng**:
   - Các trường input trong `RequestModal` phải giữ được giá trị rỗng tạm thời trong lúc người dùng chỉnh sửa, không tự động ghi đè bằng giá trị mặc định ngay khi ô phát sinh chuỗi rỗng.
   - Giá trị mặc định/tự động của số lượng, số bản kết quả, số lần Fail, MTT, đơn vị tính và tem niêm phong chỉ được áp dụng khi khởi tạo mẫu hoặc chuẩn hóa lúc thêm/lưu phiếu.
+- **Quy tắc tem niêm phong theo bên phát hành**:
+  - Chỉ tem có tiền tố `IEMM` (không phân biệt hoa/thường, sau khi bỏ khoảng trắng đầu chuỗi) mới dùng cơ chế tự sinh hậu tố `M01`, `M02`... theo thứ tự mẫu.
+  - Tem của các bên khác được nhập và lưu theo free style; hệ thống không tự nối hậu tố, không chuẩn hóa cấu trúc mã và khi sửa phiếu phải giữ nguyên mã riêng của từng mẫu.
 
 ### 4.2. TestExecutionModal (Nhập KQTN & AI Extract)
 - **Cụm thông số đo đạc**: Công suất làm lạnh, Công suất tiêu thụ điện, Chỉ số hiệu suất năng lượng (CSPF), Cấp sao năng lượng (1-5 sao).
@@ -276,20 +282,34 @@ Hiển thị trong Màn hình Nhật Ký Hoạt Động & Sổ Tổng Hợp (`Su
 
 - **Thông tin Báo cáo (Report Metadata Sidebar)**:
   - Cho phép chọn mẫu từ danh sách PYC (`SelectSampleModal`) để tự động điền các trường: Số mã hóa, Tem niêm phong (`sealStamp`), Tên mẫu, Model, Nhãn hiệu, Đơn vị gửi mẫu, Địa chỉ, Ngày nhận mẫu, Ngày thử nghiệm (`testDate` lấy từ lịch trình thử nghiệm trên DB `scheduledDate`/`endDate` hoặc `result.testDate`), Người thử nghiệm; `reportNo` nội bộ được đồng bộ theo số mã hóa.
+  - **Trường Ký duyệt Báo cáo (Người thử nghiệm & Phụ trách PTN)**:
+    - Bố trí 2 trường nhập liệu ký duyệt gồm: **Người thử nghiệm** (`testerName` ứng với `{testerName}`) và **Phụ trách phòng TN** (`managerName` ứng với `{managerName}`/`{managerNam}`) cạnh nhau trên cùng một hàng (grid 2 cột trên desktop/tablet).
+    - Trường **Phụ trách phòng TN** chỉ nhận diện và hiển thị trong droplist các nhân sự giữ chức danh **Trưởng phòng hoặc Phó trưởng phòng** (mặc định gồm: **Vũ Việt Anh** và **Lương Xuân Hùng**).
+    - Trường **Người thử nghiệm** tích hợp `<datalist>` gợi ý danh sách nhân sự từ cấu hình `testers` để KTV chọn nhanh hoặc nhập tự do.
   - **Trường Ngày thử nghiệm thống nhất (Unified Test Date Field)**:
     - Thay thế giao diện 2 ô ngày riêng biệt (bắt đầu - kết thúc) bằng **1 trường nhập liệu chung** duy nhất (`Ngày thử nghiệm`), hỗ trợ hiển thị và nhập linh hoạt cả ngày đơn (`14/08/2026`) lẫn dải ngày (`10/08/2026 – 14/08/2026`).
     - Đối với các thử nghiệm EMC (và các loại thử nghiệm khác), khi kỹ thuật viên bấm **"Chọn mẫu"**, hệ thống tự động trích xuất ngày thử nghiệm đã lưu trên DB (từ `scheduledDate`, `endDate`, hoặc `result.testDate`), chuyển đổi định dạng chuẩn `DD/MM/YYYY` (hoặc `DD/MM/YYYY – DD/MM/YYYY`) và tự động điền vào trường `Ngày thử nghiệm`.
   - Cho phép người dùng chỉnh sửa trực tiếp trường "Tem niêm phong" và "Ngày thử nghiệm" trên giao diện cột thông tin báo cáo.
-  - Xuất file `.docx` báo cáo tự động truyền đầy đủ `sealStamp` và `{testDate}` vào dữ liệu template biểu mẫu Word.
+  - Xuất file `.docx` báo cáo tự động truyền đầy đủ `sealStamp`, `{testDate}`, `{testerName}`, `{managerName}` (và alias `{managerNam}`) vào dữ liệu template biểu mẫu Word.
   - Trường ngày tiếng Anh trong báo cáo phải dùng tên tháng đầy đủ theo mẫu `August 18, 2026`; không được xuất ngày tháng dạng số ở phần tiếng Anh. Phần tiếng Việt tiếp tục giữ định dạng hành chính hiện tại.
   - Khi không có giá trị ngày hợp lệ, không tự suy diễn ngày; giữ dữ liệu trống để người dùng xử lý.
-  - Lưu trữ và phiên bản hóa Kết quả thử nghiệm (`KQTNRecord`) bao gồm trường `sealStamp` và `testDate`.
+  - Lưu trữ và phiên bản hóa Kết quả thử nghiệm (`KQTNRecord`) bao gồm các trường `sealStamp`, `testDate`, `testerName` và `managerName`.
 - **Đầy đủ dòng nhập liệu cho mẫu TCVN 5699-2-23**:
   - Form `hair_dryer` phải hiển thị và cho phép nhập kết quả cho các dòng con của Điều 22.32, Điều 24.2 và Điều 30.2 theo biểu mẫu chuẩn, giữ `displayId` rỗng cho các dòng con không có số điều riêng.
   - Bảng chi tiết Điều 30 phải có thêm nhóm **Thử nghiệm ngọn lửa hình kim** gồm 3 dòng kết quả, với giới hạn lần lượt `≤ 30`, `≤ 30` và `≤ 15` giây; dữ liệu phải được lưu cùng `testResultsData` và truyền qua luồng xuất DOCX hiện tại.
   - Cấu hình `hair_dryer` phải khớp toàn bộ các placeholder đánh giá của template `5699-2-23 placeholder.docx`, bao gồm các dòng con tại Điều 13.1, 22.2, 22.14, 22.32, 22.36, 24.2, 27.1, 27.3, 30.1 và 30.2.
   - Với các module TCVN khác có cặp template đầy đủ/rút gọn, cấu hình clause phải khớp các placeholder đánh giá `{eval_*}` của DOCX tương ứng; các dòng con trong template phải được khai báo thành trường nhập liệu riêng, giữ `displayId` rỗng khi không có số điều riêng.
   - Với các module EMC và dây cáp điện, mọi placeholder dữ liệu dạng scalar, bảng, ảnh và trường kết quả trong DOCX phải có nguồn từ form/state tương ứng và được kiểm tra hồi quy trước khi phát hành báo cáo.
+  - **Quy chuẩn Bảng Công suất nhiễu EMC (Phần 6 / `TablePowerDisturbance` / `tablePower*`)**:
+    - Áp dụng chung cho tất cả các mẫu báo cáo EMC (Bếp từ, Điều hòa, Máy giặt, Máy hút bụi, Máy sấy tóc, Máy khoan, v.v.):
+    - Bảng kết quả công suất nhiễu chỉ hiển thị và sử dụng **duy nhất 1 hàng**.
+    - Khi tải dữ liệu từ file Radimation hoặc khi dán dữ liệu (paste): nếu dữ liệu có từ 2 hàng trở lên, hệ thống **tự động chỉ lấy hàng 1** và bỏ các hàng thừa.
+    - Khi xuất báo cáo Word DOCX, hệ thống luôn đảm bảo bảng công suất nhiễu chỉ render tối đa 1 hàng kết quả.
+  - **Cấu hình EMC Máy khoan (`emc_may_khoan`) Phần 6 (Công suất nhiễu)**:
+    - Hiển thị đầy đủ 2 bài đo công suất nhiễu cho 2 chiều quay của máy khoan:
+      1. **6.3.1. Thử nghiệm khi EUT quay cùng chiều kim đồng hồ (Testing when EUT rotate clockwise)**: Dòng con `6.3.1.1. Kết quả công suất nhiễu của dây dẫn nguồn (Result of Main line disturbance power)` (ảnh `powerDisturbance` mapping `image_6_3_1_1`, bảng `tablePower` mapping `table_6_3_1_1`).
+      2. **6.3.2. Thử nghiệm khi EUT quay ngược chiều kim đồng hồ (Testing when EUT rotate counterclockwise)**: Dòng con `6.3.2.1. Kết quả công suất nhiễu của dây dẫn nguồn (Result of Main line disturbance power)` (ảnh `powerDisturbance_2` mapping `image_6_3_2_1`, bảng `tablePower_2` mapping `table_6_3_2_1`).
+    - Biểu mẫu Word `maykhoan placeholder.docx` đồng bộ đầy đủ cả 2 mục 6.3.1.1 và 6.3.2.1 tương ứng.
 
 - **Cơ chế Quản lý Đa Tem Nhãn Linh Hoạt & AI OCR Tổng Hợp (Dynamic Multi-nameplate & Batch OCR)**:
   - **Quản lý Đa Tem Nhãn Động cho tất cả thiết bị**:
@@ -351,6 +371,28 @@ Hiển thị trong Màn hình Nhật Ký Hoạt Động & Sổ Tổng Hợp (`Su
     - Tab 4: Lịch sử phiên bản (`Version History`) theo dõi dòng thời gian sửa đổi, người sửa và ghi chú lý do.
   - **Xuất dữ liệu Excel / CSV**: Xuất tức thời theo danh sách cột đang hiển thị và bộ lọc hiện hành.
   - **Xóa bản ghi**: Bảo vệ phân quyền Admin với hộp thoại xác nhận an toàn.
+
+### 4.6. DocxSettingsModal & Quản Lý Biểu Mẫu DOCX Template (Docx Template Management)
+- **Mục đích & Vị trí điều hướng**:
+  - Nằm trên trang **Lập báo cáo** (`ReportGeneratorView.tsx`), nút **"Cài đặt biểu mẫu"** (icon `Settings`/`FileCog`) được bố trí tại Header thanh điều hướng, cho phép người dùng mở modal quản lý ở cả giao diện Dashboard danh sách chuẩn lẫn form chi tiết tiêu chuẩn.
+- **Giao diện Modal Quản lý Biểu mẫu (`DocxSettingsModal.tsx`)**:
+  - **Kiến trúc Header & Bộ lọc**:
+    - Header modal hiện đại, hiển thị rõ số lượng template đang quản lý trong hệ thống.
+    - Ô tìm kiếm tức thời theo Tên tiêu chuẩn (TCVN 5699, QCVN 9, TCVN 6610...), Chủng loại thiết bị (Nồi cơm điện, Lò nướng, Điều hòa, Bếp từ...) hoặc Tên file biểu mẫu (`.docx`).
+    - Phân nhóm nhanh bằng thẻ Tab Pill: `Tất cả`, `An toàn điện (TCVN)`, `Tương thích điện từ (EMC)`, `Dây cáp điện`, `Hồ sơ chung (PYC/BMGN)`.
+  - **Bảng Danh mục Biểu mẫu (Template Catalog Grid)**:
+    - Hiển thị danh mục chi tiết 40+ biểu mẫu chuẩn hóa kèm icon nhận diện thiết bị.
+    - Thể hiện rõ tên chuẩn, chủng loại thiết bị, biến thể (Đầy đủ / Giảm thiểu / Số vùng nấu / Có sấy...).
+    - Hiển thị tên file `.docx` vật lý, trạng thái file (`Sẵn sàng` / `Chưa có file`), dung lượng (KB/MB) và ngày cập nhật gần nhất.
+  - **Hệ Thống Thao Tác Biểu Mẫu**:
+    - **Tải về (`Download`)**: Tải trực tiếp file `.docx` hiện tại về máy tính để kiểm tra nội dung hoặc chỉnh sửa cấu trúc placeholder.
+    - **Cập nhật File mới (`Upload/Update`)**: Cho phép chọn file từ máy hoặc kéo thả file `.docx` mới để ghi đè cập nhật cho từng module cụ thể; kiểm tra định dạng MIME wordprocessingml/docx hợp lệ trước khi ghi.
+    - **Khôi phục File gốc (`Reset/Restore`)**: Cho phép hoàn tác về biểu mẫu gốc mặc định khi cần thiết.
+- **Hợp đồng REST API Quản trị Template**:
+  - `GET /api/templates`: Danh sách metadata toàn bộ các template biểu mẫu của hệ thống.
+  - `GET /api/templates/:filename/download`: Tải file template `.docx` theo tên file.
+  - `POST /api/templates/upload`: Tiếp nhận file `.docx` mới qua `multipart/form-data`, lưu an toàn vào `public/` (và `dist/` nếu có) kèm cơ chế sao lưu tự động.
+  - `POST /api/templates/:filename/reset`: Khôi phục file `.docx` từ bản lưu gốc.
 
 ---
 
@@ -431,7 +473,7 @@ Toàn bộ Type định nghĩa hệ thống nằm ở file `/types.ts`.
 - **`ProductRef`**: Định mức sản phẩm (Tên loại máy, Định mức phút thử ATD, Định mức phút thử EMC).
 - **`Tester`**: Danh sách KTV (Tên, Tên viết tắt, Mã màu Badge, Vị trí).
 - **`AppSettings`**: Cấu hình hệ thống (Chế độ làm việc T7/CN, KTV mặc định và sao lưu). Trường `geminiModel` cũ chỉ được giữ để tương thích dữ liệu; không còn là trường chỉnh sửa trong Thiết lập hệ thống.
-- **Phạm vi nhân sự trên Tổng quan**: Bảng công việc, KPI và danh sách **Tùy chỉnh nhân sự** chỉ hiển thị các nhân viên có tên nằm trong ít nhất một danh sách phòng thử của Thiết lập hệ thống (`defaultTestersAtd`, `defaultTestersChamber1`, hoặc `defaultTestersChamber2`). Danh sách hiển thị là hợp nhất của ba cấu hình này; `defaultTesters` tổng quát không được dùng để đưa nhân sự lên Dashboard. Nếu cả ba danh sách đều rỗng, Dashboard không hiển thị cột/KPI nhân sự nào.
+- **Phạm vi nhân sự trên Tổng quan**: Bảng công việc, KPI và danh sách **Tùy chỉnh nhân sự** chỉ hiển thị các nhân viên thực sự được giao ít nhất một phiếu vào lịch thử nghiệm. Một phân công hợp lệ là phiếu có `scheduledDate` và `testerName` khác rỗng, `Chưa giao` hoặc `Khác`; không dùng các danh sách KTV mặc định (`defaultTesters*`) để đưa nhân sự chưa được giao việc lên Dashboard. Phân công đã hoàn thành vẫn thuộc phạm vi lịch đã từng được giao; nếu không có phân công hợp lệ nào, Dashboard không hiển thị cột/KPI nhân sự.
 - **`UserPreferences`**: Cấu hình riêng theo tài khoản, gồm mật khẩu tùy chỉnh, API Key Gemini, mô hình Gemini (`geminiModel`) và ảnh đại diện. Trường `displayName` từ dữ liệu cũ (nếu còn) không được đọc, ghi hoặc dùng để thay đổi danh tính người dùng.
 
 ### Quy tắc định danh người dùng trên giao diện
@@ -463,7 +505,7 @@ Toàn bộ Type định nghĩa hệ thống nằm ở file `/types.ts`.
 6. **Cấu hình Gemini theo tài khoản**: API Key và `geminiModel` được lưu trong collection `userPreferences` theo username chuẩn hóa. Mọi luồng gọi AI ưu tiên model cá nhân; tài khoản chưa có trường `geminiModel` mới tạm dùng giá trị `AppSettings.geminiModel` legacy rồi mới fallback về model mặc định của server. Nút kiểm tra danh sách model Google nằm trong **Cài đặt cá nhân**, không nằm trong Thiết lập hệ thống dành cho Admin.
 7. **Ranh giới danh mục khởi tạo**: `systemUsers` trong Thiết lập hệ thống là danh sách runtime đọc từ collection PostgreSQL `systemUsers`; dữ liệu mặc định chỉ được seed vào collection này khi DB chưa có tài khoản. Các file `brands.csv`, `products.csv` và `customers.csv` chỉ được preload một lần trong lúc khởi tạo app để tạo dữ liệu cục bộ ban đầu, không được đọc lại trong mỗi chu kỳ đồng bộ và không được tự động ghi các dòng CSV vào PostgreSQL. Các danh mục do người dùng thêm, sửa hoặc xóa vẫn được lưu theo luồng CRUD DB hiện hành.
 8. **Supabase PostgreSQL production mode**: Production Docker Desktop chạy webapp trên PostgreSQL của Supabase self-host qua network `supabase_default` và service `supabase-db`. DDT dùng database riêng `ddt_lab` trong instance Supabase, không dùng chung hoặc xóa các schema/database hệ thống của Supabase. Container và volume PostgreSQL độc lập của DDT đã được xóa sau khi migration và health check hoàn tất.
-9. **Supabase Storage file boundary**: Bucket private `ddt-files` vẫn tồn tại nhưng đang rỗng; 114 object legacy và toàn bộ 114 dòng `file_assets` đã được xóa sau khi xác nhận cleanup. Production webapp không nhận service-role key và không tạo file asset mới cho ảnh OCR/Lập báo cáo.
+9. **Supabase Storage file boundary**: Bucket private `ddt-files` lưu các file PDF KQTN nghiệp vụ và metadata tương ứng trong `file_assets`; các object ảnh legacy và metadata legacy đã được cleanup. Production webapp không tạo file asset mới cho ảnh OCR/Lập báo cáo.
 10. **Ảnh OCR và ảnh lập báo cáo là dữ liệu tạm**: Ảnh tải lên/dán vào luồng OCR hoặc form Lập báo cáo chỉ được giữ trong state của phiên hiện tại để xử lý OCR, crop và xuất DOCX. Khi lưu `kqtnRecords`, ứng dụng phải loại bỏ `productPhoto*`, `nameplatePhoto*`, `nameplatePhotos` và `emcData.images`; không tạo file asset mới và không ghi Base64 ảnh vào PostgreSQL. Dữ liệu ảnh legacy đã được cleanup, và ảnh mới không được tiếp tục nhân bản khi chỉnh sửa/lưu báo cáo.
 11. **Ranh giới đồng bộ khi lưu phiếu**: `RequestModal` chỉ đọc riêng collection `requests` trước khi lưu để kiểm tra mã phiếu trùng; không thực hiện full sync cho bước kiểm tra. Sau khi cập nhật state cục bộ, luồng tạo/sửa phiếu phải thực hiện đúng một full sync hậu lưu để ghi phiếu, notification, các thay đổi liên quan và hòa giải hai chiều. `addRequests` chỉ bỏ qua sync trong chính luồng `RequestModal`; các caller khác vẫn giữ cơ chế sync mặc định. Nhật ký hoạt động tiếp tục ghi trực tiếp qua `/api/activity-logs` và không được gộp vào full sync.
 12. **Bản nháp Phiếu Yêu Cầu**: Khi tạo phiếu mới, `RequestModal` tự lưu bản nháp theo tài khoản trong IndexedDB cục bộ để người dùng có thể tiếp tục sau khi đóng modal ngoài ý muốn. Bản nháp chỉ chứa các trường nghiệp vụ có thể tuần tự hóa gồm thông tin chung, danh sách mẫu, mẫu đang nhập và tùy chọn thông tin hóa đơn; không lưu ảnh/file OCR, trạng thái quét hoặc dữ liệu UI tạm thời. Nếu phát hiện bản nháp khi mở modal tạo mới, người dùng phải chủ động chọn khôi phục hoặc xóa. Nút `Xóa bản nháp` xóa dữ liệu cục bộ, đưa form đang mở về đúng trạng thái ban đầu như vừa mở modal và giữ modal hiển thị; không áp dụng cơ chế bản nháp cho modal chỉnh sửa nhóm phiếu. Sau khi lưu phiếu thành công, bản nháp tương ứng phải được xóa.
@@ -510,8 +552,8 @@ Toàn bộ Type định nghĩa hệ thống nằm ở file `/types.ts`.
 - **Đồng bộ xóa danh mục an toàn**: Áp dụng cơ chế danh sách xóa định danh (`deletedUserIds`) trong cấu hình hệ thống (`systemConfig`) để đảm bảo tài khoản đã xóa không bị khôi phục nhầm trong các chu kỳ đồng bộ hai chiều, đồng thời không gây ảnh hưởng đến dữ liệu thử nghiệm.
 
 ### 7.6. Chuẩn Hóa Sao Lưu & Khôi Phục Dữ Liệu Toàn Diện (Backup & Restore Specification):
-- **Cấu trúc gói sao lưu JSON**: Bao gồm đầy đủ `requests`, `handoverDocs`, `kqtnRecords`, `customers`, `products`, `brands`, `dayConfigs`, `systemUsers`, `notifications`, `activityLogs`, `settings`, `timestamp`.
-- **Sao lưu file legacy**: Gói backup ba phần (`ddt_lab`, metadata schema `storage`, thư mục Storage) chỉ cần giữ nếu cần phục hồi trạng thái trước cleanup. Ảnh OCR/Lập báo cáo mới là dữ liệu tạm nên không thuộc backup và không được đưa vào `file_assets`.
+- **Cấu trúc gói sao lưu JSON**: Bao gồm đầy đủ `requests`, `handoverDocs`, `kqtnRecords`, `customers`, `products`, `brands`, `dayConfigs`, `systemUsers`, `notifications`, `activityLogs`, `settings`, `timestamp`; trường `resultPdf` chỉ chứa metadata/pointer, không nhúng byte file.
+- **Sao lưu đầy đủ phía Admin**: Bản sao lưu máy chủ dạng archive phải chứa dump PostgreSQL của `ddt_lab` (bao gồm `file_assets`), manifest metadata file và toàn bộ object PDF KQTN tương ứng trong Supabase Storage. Ảnh OCR/Lập báo cáo mới là dữ liệu tạm nên không thuộc backup và không được đưa vào `file_assets`.
 - **Migrate file có thể lặp lại**: Job migrate dùng checksum và object path ổn định để chạy lại an toàn, không xóa Base64 nguồn trước khi consumer đã chuyển sang Storage và đã kiểm tra restore.
 - **Quy trình khôi phục an toàn (Safe Restore Flow)**:
   1. Kiểm tra cấu trúc và tính hợp lệ của tệp sao lưu JSON.
@@ -520,6 +562,7 @@ Toàn bộ Type định nghĩa hệ thống nằm ở file `/types.ts`.
   4. Gom nhóm lưu hàng loạt (`POST /api/db/:collection/batch`) toàn bộ danh mục mới vào PostgreSQL.
   5. Đặt lại toàn bộ danh sách xóa định danh (`deleted*Ids`) về rỗng trên `systemConfig` để tránh xung đột xóa nhầm trong chu kỳ đồng bộ tiếp theo.
   6. Cập nhật Store Zustand và tải lại dữ liệu mới nhất từ REST API PostgreSQL trên giao diện người dùng.
+- **Khôi phục file nghiệp vụ**: Sau khi khôi phục dump PostgreSQL, phải khôi phục object PDF từ archive trước khi báo thành công; metadata `file_assets` và `resultPdf.objectPath` phải trỏ tới object tồn tại. File ngoài danh sách backup không được tự động đưa trở lại dữ liệu nghiệp vụ.
 
 ---
 
@@ -527,41 +570,11 @@ Toàn bộ Type định nghĩa hệ thống nằm ở file `/types.ts`.
 
 ### ⚠️ QUY TẮC BẮT BUỘC KHI CẬP NHẬT HOẶC TẠO FILE:
 
-1. **Header File bắt buộc (ở dòng đầu tiên của file)**:
-   - Đối với file JS/TS/TSX:
-     ```typescript
-     // Author: Gemini
-     // OS support: Web/Node
-     // Description: [Một dòng tóm tắt chức năng chính của file]
-     ```
-   - Đối với file Markdown:
-     ```markdown
-     <!--
-     Author: Gemini
-     OS support: Web/Node
-     Description: [Một dòng tóm tắt nội dung chính của file]
-     -->
-     ```
-
-2. **Footer File bắt buộc (ở dòng cuối cùng của file)**:
-   - Đối với file JS/TS/TSX:
-     ```typescript
-     // --- End of [filename] ---
-     ```
-   - Đối với file Markdown:
-     ```markdown
-     <!-- --- End of [filename] --- -->
-     ```
-
-3. **Xóa toàn bộ Comment dư thừa**:
-   - Bắt buộc xóa sạch toàn bộ comment cũ dư thừa trong file trước khi ghi đè hoặc lưu trữ.
-   - Không thêm các comment giải thích mã rườm rà trong code trừ header và footer bắt buộc.
-
-4. **Bảo mật File Môi trường (`.env`)**:
+1. **Bảo mật File Môi trường (`.env`)**:
    - Mọi thao tác tác động lên file `.env` đều phải được sự đồng ý rõ ràng từ người dùng.
 
-5. **Quản lý Server & Testing**:
-   - Khi thay đổi các cấu hình server hoặc backend, bắt buộc kill tiến trình cũ và khởi chạy server mới trên cổng 3000 để kiểm thử.
+2. **Quản lý Server & Testing**:
+   - Khi thay đổi các cấu hình server hoặc backend, bắt buộc kill tiến trình cũ và khởi chạy server mới trên cổng 1359 để kiểm thử.
 
 ## 9. QUY CHUẨN KÍCH THƯỚC VÀ TỶ LỆ HÌNH ẢNH TRONG BÁO CÁO (.DOCX)
 
@@ -598,8 +611,19 @@ Toàn bộ Type định nghĩa hệ thống nằm ở file `/types.ts`.
 - Bảng KQTN có cột `File PDF`: chưa có file thì Upload; có file thì Xem file, Download hoặc Ghi đè. Ghi đè chỉ hoàn tất khi file mới lưu thành công và object cũ đã bị xóa.
 - `KQTNRecord.resultPdf` chỉ lưu metadata/pointer private gồm `assetId`, `objectPath`, `originalName`, `mimeType`, `byteSize`, `sha256`, `uploadedAt`, `uploadedBy`; không lưu Base64 PDF trong JSONB.
 - Header KQTN có `Bulk Upload`. AI đọc mã hóa/model từ tên file và nội dung PDF để đề xuất đầu mẫu; người dùng sửa mapping thủ công từng file, xem cảnh báo độ tin cậy và xác nhận riêng các trường hợp ghi đè.
+- `Bulk Upload` hỗ trợ cả nhiều PDF đơn và một PDF nguồn ghép nhiều báo cáo. Với PDF ghép, các trang được chia thành các nhóm liên tục bắt đầu từ trang bìa báo cáo; trang trắng phân cách ở đầu/cuối nhóm bị loại khỏi PDF con. Hệ thống đề xuất mốc tách và thông tin nhận diện gồm `reportNo`, `sampleCode`, `model`, `brand`, `sealStamp`, nhưng người dùng phải rà soát và có thể sửa mốc/mapping thủ công trước khi upload.
+- Việc nhận diện PDF ghép là best-effort: khi AI/OCR không xác định được trang bìa hoặc mapping không duy nhất, nhóm chuyển sang trạng thái cần chọn thủ công và không được tự động upload. `reportNo` chỉ là tín hiệu matching, không tự động thay thế `sampleCode` chuẩn của đầu mẫu.
+- PDF nguồn ghép chỉ tồn tại tạm trong phiên xử lý; hệ thống tạo PDF con rồi đi qua cùng API PDF đơn hiện tại. Giới hạn kích thước PDF kết quả vẫn áp dụng cho từng PDF con, độc lập với kích thước PDF nguồn; không lưu byte PDF nguồn vào JSONB hoặc tạo thêm bản ghi KQTN.
+- Bulk upload xử lý độc lập từng nhóm, hiển thị tiến độ/thành công/thất bại và cho phép retry nhóm lỗi. Một thao tác ghép nhiều nhóm được ghi thành một activity log tổng hợp; mỗi nhóm vẫn tuân thủ duy nhất `sampleKey` và xác nhận ghi đè riêng.
 - PDF kết quả là file nghiệp vụ trong bucket private `ddt-files` của Supabase Storage; metadata được kiểm kê trong `file_assets`. Quy tắc ảnh OCR/ảnh lập báo cáo chỉ lưu tạm vẫn giữ nguyên.
 - API PDF: `POST /api/kqtn/:recordId/pdf`, `GET /api/kqtn/:recordId/pdf`, `GET /api/kqtn/:recordId/pdf?download=1`, `DELETE /api/kqtn/:recordId/pdf`. Admin/Tester được ghi/ghi đè; Viewer/Guest chỉ đọc/download theo quyền KQTN.
 - Backup JSON chỉ lưu metadata PDF, không nhúng byte PDF. Backup đầy đủ phải gồm metadata `file_assets` và object PDF; restore phải khôi phục object trước khi xác nhận pointer hoạt động.
 
+<!-- --- End of design.md --- -->
+<!-- Codex bulk upload clarification -->
+### 11.1. Bulk Upload session and target mapping
+- Header KQTN phải tách rõ **Nhiều PDF đơn** (mỗi file là một kết quả, không cắt) và **Một PDF ghép** (một file nguồn chứa nhiều kết quả, cắt theo nhóm trang rồi gán từng nhóm vào mẫu đích).
+- Với PDF ghép, nút xác nhận phải thể hiện rõ “Tách PDF con và lưu vào mẫu đích”; hệ thống tạo PDF con rồi gọi API PDF đơn hiện tại để lưu vào đúng KQTN đích đã chọn, đồng thời giữ trạng thái thành công/thất bại theo từng nhóm và cho phép retry nhóm lỗi.
+- Đóng modal chỉ ẩn modal và giữ nguyên phiên xử lý trong bộ nhớ của trang. Chỉ “Xóa phiên/Bắt đầu lại” mới xóa file, mapping và trạng thái; không yêu cầu khôi phục sau reload cứng vì PDF nguồn là dữ liệu tạm của phiên.
+- Candidate chưa có KQTN thực (`id` dạng `sample-head:*` hoặc `isPending=true`) phải hiển thị “Chưa có KQTN” và không được chọn làm mẫu đích; Bulk Upload không tự tạo bản ghi KQTN mới.
 <!-- --- End of design.md --- -->

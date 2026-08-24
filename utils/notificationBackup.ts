@@ -40,6 +40,18 @@ export const buildBackupPayload = (
   timestamp,
 });
 
+export const downloadBackupJson = (payload: BackupPayload): void => {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Backup_DDTLab_${payload.timestamp.slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
 export const normalizeBackupNotifications = (rawNotifications: unknown, now = new Date().toISOString()): AppNotification[] => {
   if (!Array.isArray(rawNotifications)) return [];
 

@@ -1,6 +1,6 @@
 FROM node:22-alpine
 
-RUN apk add --no-cache fontconfig ttf-liberation
+RUN apk add --no-cache fontconfig ttf-liberation postgresql16-client
 
 WORKDIR /app
 

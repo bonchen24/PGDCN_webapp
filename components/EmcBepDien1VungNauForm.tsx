@@ -550,28 +550,33 @@ interface Props {
                }
 
                if (targetRows.length > 0) {
-                 let currentTable = [...((((newData as any)[tableName]) as any[]) || [])];
-                 
                  let startIndex = 0;
                  if (Array.isArray(targetRows[0]) && targetRows[0].length > 0 && isNaN(Number(targetRows[0][0]))) {
                    startIndex = 1;
                  }
                  
                  const isPower = tableName.startsWith('tablePower');
-                 let rowIdx = 0;
-                 
-                 for (let i = startIndex; i < targetRows.length; i++) {
-                   const row = targetRows[i];
-                   const mappedObj = isPower ? normalizePowerRow(row) : normalizePhaseRow(row);
+                 if (isPower) {
+                   const firstRow = targetRows[startIndex] || targetRows[0];
+                   const mappedObj = normalizePowerRow(firstRow);
+                   (newData as any)[tableName] = [mappedObj];
+                 } else {
+                   let currentTable = [...((((newData as any)[tableName]) as any[]) || [])];
+                   let rowIdx = 0;
                    
-                   if (rowIdx < currentTable.length) {
-                     currentTable[rowIdx] = { ...currentTable[rowIdx], ...mappedObj };
-                   } else {
-                     currentTable.push(mappedObj);
+                   for (let i = startIndex; i < targetRows.length; i++) {
+                     const row = targetRows[i];
+                     const mappedObj = normalizePhaseRow(row);
+                     
+                     if (rowIdx < currentTable.length) {
+                       currentTable[rowIdx] = { ...currentTable[rowIdx], ...mappedObj };
+                     } else {
+                       currentTable.push(mappedObj);
+                     }
+                     rowIdx++;
                    }
-                   rowIdx++;
+                   (newData as any)[tableName] = currentTable;
                  }
-                 (newData as any)[tableName] = currentTable;
                }
              } else {
                if (result.tablePhaseL && result.tablePhaseL.length > 0) {
@@ -581,7 +586,7 @@ interface Props {
                  newData.tablePhaseN = result.tablePhaseN.map(normalizePhaseRow);
                }
                if (result.tablePower && result.tablePower.length > 0) {
-                 newData.tablePower = result.tablePower.map(normalizePowerRow);
+                 newData.tablePower = result.tablePower.map(normalizePowerRow).slice(0, 1);
                }
              }
 
@@ -725,7 +730,7 @@ interface Props {
           </tr>
         </thead>
         <tbody>
-          {((data[tableName] && data[tableName].length > 0) ? data[tableName] : [{ nr: '', frequency: '', pkValue: '', avgValue: '', qpValue: '', avgLimit: '', qpLimit: '', result: 'Pass', distance: '' }]).map((row: TablePowerRow, idx: number) => (
+          {((data[tableName] && data[tableName].length > 0) ? data[tableName].slice(0, 1) : [{ nr: '', frequency: '', pkValue: '', avgValue: '', qpValue: '', avgLimit: '', qpLimit: '', result: 'Pass', distance: '' }]).map((row: TablePowerRow, idx: number) => (
             <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
               <td className="border-b border-r border-slate-200 p-0"><input type="text" className="w-full text-center outline-none py-1 px-0.5 bg-transparent font-mono focus:bg-emerald-50 focus:text-emerald-900 transition-colors" value={row.nr || ''} onChange={e => handleTableChange(tableName, idx, 'nr', e.target.value)} onPaste={(e) => handlePaste(e, tableName, idx, 'nr')} /></td>
               <td className="border-b border-r border-slate-200 p-0"><input type="text" className="w-full text-center outline-none py-1 px-0.5 bg-transparent font-mono focus:bg-emerald-50 focus:text-emerald-900 transition-colors" value={row.frequency || ''} onChange={e => handleTableChange(tableName, idx, 'frequency', e.target.value)} onPaste={(e) => handlePaste(e, tableName, idx, 'frequency')} /></td>
@@ -940,11 +945,15 @@ export default function EmcBepDien1VungNauForm({ data, setData, title, standardI
     if (startColIndex === -1) return;
 
     setData(prev => {
+      const isPower = tableName.startsWith('tablePower');
       const currentTable = (prev as any)[tableName] || [];
-      const newTable = [...currentTable];
+      const newTable = isPower 
+        ? (currentTable.length > 0 ? [{ ...currentTable[0] }] : [{ nr: '', frequency: '', pkValue: '', avgValue: '', qpValue: '', avgLimit: '', qpLimit: '', result: 'Pass', distance: '' }]) 
+        : [...currentTable];
       
       dataGrid.forEach((rowValues, i) => {
-        const targetRowIndex = startRowIndex + i;
+        if (isPower && i > 0) return; // Chỉ lấy hàng đầu tiên đối với các bảng công suất nhiễu
+        const targetRowIndex = isPower ? 0 : startRowIndex + i;
         if (targetRowIndex < newTable.length) {
           const updatedRow = { ...newTable[targetRowIndex] };
           rowValues.forEach((val, j) => {
@@ -958,7 +967,7 @@ export default function EmcBepDien1VungNauForm({ data, setData, title, standardI
         }
       });
       
-      return { ...prev, [tableName]: newTable };
+      return { ...prev, [tableName]: isPower ? newTable.slice(0, 1) : newTable };
     });
   };
 
@@ -1552,7 +1561,33 @@ export default function EmcBepDien1VungNauForm({ data, setData, title, standardI
       <section className="mb-4">
         <h3 className="text-[13px] font-bold text-emerald-800 mb-3 border-b border-slate-300 pb-1 uppercase tracking-wide">{getSectionNum(6)}.3. Kết quả thử nghiệm (Testing result)</h3>
         
-        {standardId === 'emc_dieu_hoa' ? (
+        {isDrill ? (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 xl:gap-4 ml-1">
+            <div className="mb-2 pl-3 border-l-2 border-emerald-500 py-1 mb-4">
+              <h4 className="font-bold text-slate-700 mb-2 border-b pb-1">
+                6.3.1. Thử nghiệm khi EUT quay cùng chiều kim đồng hồ (Testing when EUT rotate clockwise)
+              </h4>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1 mt-2">
+                <h4 className="font-bold text-slate-700 text-xs">6.3.1.1. Kết quả công suất nhiễu của dây dẫn nguồn (Result of Main line disturbance power):</h4>
+                <RadimationUploader setData={setData} field="powerDisturbance" tableName="tablePower" />
+              </div>
+              <ImageUploader data={data} setData={setData} handleImageUpload={handleImageUpload} field="powerDisturbance" label="Ảnh kết quả công suất nhiễu - Quay cùng chiều kim đồng hồ" />
+              <TablePowerDisturbance tableName="tablePower" data={data} handleTableChange={handleTableChange} handlePaste={handlePaste} />
+            </div>
+
+            <div className="mb-2 pl-3 border-l-2 border-emerald-500 py-1 mb-4">
+              <h4 className="font-bold text-slate-700 mb-2 border-b pb-1">
+                6.3.2. Thử nghiệm khi EUT quay ngược chiều kim đồng hồ (Testing when EUT rotate counterclockwise)
+              </h4>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1 mt-2">
+                <h4 className="font-bold text-slate-700 text-xs">6.3.2.1. Kết quả công suất nhiễu của dây dẫn nguồn (Result of Main line disturbance power):</h4>
+                <RadimationUploader setData={setData} field="powerDisturbance_2" tableName="tablePower_2" />
+              </div>
+              <ImageUploader data={data} setData={setData} handleImageUpload={handleImageUpload} field="powerDisturbance_2" label="Ảnh kết quả công suất nhiễu - Quay ngược chiều kim đồng hồ" />
+              <TablePowerDisturbance tableName="tablePower_2" data={data} handleTableChange={handleTableChange} handlePaste={handlePaste} />
+            </div>
+          </div>
+        ) : standardId === 'emc_dieu_hoa' ? (
           <div className={`grid grid-cols-1 ${zones.length > 1 ? 'xl:grid-cols-2' : ''} gap-4 ml-1`}>
             {zones.map((zone, idx) => (
               <div key={zone.id} className="pl-3 border-l-2 border-emerald-500 py-1 mb-4 h-full">

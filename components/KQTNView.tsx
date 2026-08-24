@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { MAHOA_CODES } from '../lib/mahoa-codes';
 import { mergeKqtnSampleHeads } from '../utils/kqtnRows';
 import { getKqtnPdfUrl, uploadKqtnPdf } from '../utils/kqtnPdfClient';
-import KqtnBulkPdfUploadModal from './KqtnBulkPdfUploadModal';
+import KqtnBulkPdfUploadModal, { type KqtnBulkUploadSummary } from './KqtnBulkPdfUploadModal';
 
 interface ColumnConfig {
   id: string;
@@ -47,7 +47,7 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
 
 export default function KQTNView() {
   const { 
-    kqtnRecords, requests, currentUser, deleteKqtnRecord, updateKqtnRecord
+    kqtnRecords, requests, currentUser, deleteKqtnRecord, updateKqtnRecord, logBulkKqtnUpload
   } = useStore();
 
   const isAdmin = currentUser?.role === 'admin';
@@ -336,8 +336,13 @@ export default function KQTNView() {
     id: row.id,
     sampleCode: row.sampleCode,
     sampleKey: row.sampleKey || row.sampleCode,
+    reportNo: row.reportNo,
+    sampleName: row.sampleName,
     model: row.model,
+    brand: row.brand,
+    sealStamp: row.sealStamp,
     hasPdf: Boolean(row.resultPdf),
+    isPending: Boolean(row.isPending || row.id.startsWith('sample-head:')),
   })), [sampleHeadRows]);
 
   const handleUploadPdf = async (record: KQTNRecord & { isPending?: boolean }, file?: File) => {
@@ -358,6 +363,10 @@ export default function KQTNView() {
 
   const handleBulkUploaded = async (recordId: string, resultPdf: any) => {
     await updateKqtnRecord(recordId, { resultPdf }, 'Bulk uploaded KQTN PDF');
+  };
+
+  const handleBulkCompleted = (summary: KqtnBulkUploadSummary) => {
+    logBulkKqtnUpload(summary);
   };
 
   const exportToCSV = () => {
@@ -1079,6 +1088,9 @@ export default function KQTNView() {
                       
                       <span className="text-slate-500 font-medium">KTV Thử nghiệm:</span> 
                       <strong className="text-slate-900">{selectedRecordForDetail.testerName || '-'}</strong>
+
+                      <span className="text-slate-500 font-medium">Phụ trách PTN:</span> 
+                      <strong className="text-slate-900">{selectedRecordForDetail.managerName || '-'}</strong>
                     </div>
                   </div>
                 </div>
@@ -1406,6 +1418,7 @@ export default function KQTNView() {
         candidates={bulkCandidates}
         onClose={() => setShowBulkPdfUpload(false)}
         onUploaded={handleBulkUploaded}
+        onBulkCompleted={handleBulkCompleted}
       />
     </div>
   );

@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import { getAssignedTesterNames } from '../utils/dashboardStaffing';
 
 const app = fs.readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 const store = fs.readFileSync(new URL('../store.ts', import.meta.url), 'utf8');
@@ -50,15 +51,32 @@ test('opens dashboard staffing customization with a click', () => {
   assert.match(dashboard, /isTesterCustomizationOpen \? 'flex' : 'hidden'/);
 });
 
-test('limits dashboard staffing to employees assigned to a configured test room', () => {
-  assert.match(dashboard, /const \{ testers, settings, currentUser \} = useStore\(\);/);
-  assert.match(dashboard, /const assignedTesterNames = new Set\(\[/);
-  assert.match(dashboard, /\.\.\.\(settings\?\.defaultTestersAtd \|\| \[\]\)/);
-  assert.match(dashboard, /\.\.\.\(settings\?\.defaultTestersChamber1 \|\| \[\]\)/);
-  assert.match(dashboard, /\.\.\.\(settings\?\.defaultTestersChamber2 \|\| \[\]\)/);
+test('limits dashboard staffing to employees assigned to a real test schedule', () => {
+  assert.match(dashboard, /const \{ testers, currentUser \} = useStore\(\);/);
+  assert.match(dashboard, /const assignedTesterNames = getAssignedTesterNames\(requests\);/);
+  assert.doesNotMatch(dashboard, /defaultTesters(?:Atd|Chamber1|Chamber2)/);
   assert.match(dashboard, /const assignedTesters = testers\.filter\(t => t\.name !== 'Khác' && assignedTesterNames\.has\(t\.name\)\)/);
   assert.match(dashboard, /const boardTesters = assignedTesters\.filter/);
   assert.match(dashboard, /assignedTesters\.map\(t => \(/);
+});
+
+test('collects only non-placeholder employees from scheduled requests', () => {
+  assert.deepEqual(
+    [...getAssignedTesterNames([
+      { scheduledDate: '2026-08-20', testerName: 'Nguyễn Văn A' },
+      { scheduledDate: null, testerName: 'Nguyễn Văn B' },
+      { scheduledDate: '2026-08-21', testerName: '' },
+      { scheduledDate: '2026-08-22', testerName: 'Chưa giao' },
+      { scheduledDate: '2026-08-23', testerName: 'Khác' },
+      { scheduledDate: '2026-08-24', testerName: 'Nguyễn Văn A' },
+      { id: 'request-1-log-1', scheduledDate: '2026-08-25', testerName: 'Nguyễn Văn B' },
+    ])],
+    ['Nguyễn Văn A'],
+  );
+});
+
+test('removes the dashboard PEAK warning', () => {
+  assert.doesNotMatch(app, /Cảnh báo Cao điểm|PEAK MODE/);
 });
 
 // --- End of request-dashboard-ui.test.ts ---

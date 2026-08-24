@@ -1,24 +1,35 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Author: Gemini
-# OS support: Web/Node
-# Description: Script to deploy app to Synology NAS
+# OS support: Docker Desktop / Bash
+# Description: Build and restart the DDT webapp locally with Docker Desktop.
 
-NAS_USER="xuanhung"
-NAS_IP="192.168.20.250"
-NAS_PATH="/volume1/web/DDT_webapp"
+set -euo pipefail
 
-echo "Deploying to $NAS_USER@$NAS_IP:$NAS_PATH..."
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.supabase.yml}"
+COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-E:/CODING/TVCI_APP/supabase-docker/.env}"
 
-# Sync files (excluding node_modules, .git, and build artifacts)
-rsync -avz --exclude 'node_modules' \
-           --exclude '.git' \
-           --exclude 'dist' \
-           --exclude '.env.local' \
-           -e "ssh -p 22" \
-           ./ $NAS_USER@$NAS_IP:$NAS_PATH
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Docker CLI không khả dụng. Hãy mở Docker Desktop trước khi deploy."
+  exit 1
+fi
 
-# Run docker-compose on NAS
-echo "Restarting Docker containers on NAS..."
-ssh -p 22 $NAS_USER@$NAS_IP "cd $NAS_PATH && docker-compose down && docker-compose build --no-cache && docker-compose up -d"
+if [ ! -f "$COMPOSE_ENV_FILE" ]; then
+  echo "Không tìm thấy Supabase env file: $COMPOSE_ENV_FILE"
+  echo "Có thể truyền đường dẫn khác qua COMPOSE_ENV_FILE."
+  exit 1
+fi
 
-echo "Deploy completed!"
+echo "Building and restarting DDT with Docker Desktop..."
+docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" up --build -d
+
+if command -v curl >/dev/null 2>&1; then
+  echo "Checking application health..."
+  curl --fail --silent --show-error http://localhost:2359/api/health
+  echo
+  curl --fail --silent --show-error http://localhost:2359/api/db/health
+  echo
+fi
+
+echo "Docker Desktop deployment completed."
+
+# --- End of deploy.sh ---

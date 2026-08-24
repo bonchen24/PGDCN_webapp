@@ -23,7 +23,6 @@ import {
   X,
   Undo2,
   Redo2,
-  Zap,
   LayoutDashboard,
   CheckCircle2,
   UserCheck,
@@ -63,11 +62,9 @@ import {
   PriorityLevel, 
   HandoverType,
   SampleStatus,
-  LAB_CONSTANTS,
   Tester,
   HandoverDoc,
   TestCategory,
-  getProductDefaultTime,
   AppNotification,
 } from './types';
 import { calculateInternalDeadline } from './utils/scheduler'; 
@@ -76,6 +73,7 @@ import { canViewNotification } from './utils/notificationEvents';
 import { getNotificationDestination } from './utils/notificationNavigation';
 import { isActivityLogVisibleToUser } from './utils/activityLog';
 import { canViewSystemSettings } from './utils/systemSettingsPolicy';
+import { getAssignedTesterNames } from './utils/dashboardStaffing';
 
 import { RequestModal } from './components/RequestModal';
 import { PrintFormModal } from './components/PrintFormModal';
@@ -831,7 +829,7 @@ const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, code, count, affectedD
 };
 
 const DashboardView = ({ requests, onReceiveRequest, onHandoverRequest, isAdmin }: { requests: TestRequest[]; onReceiveRequest: () => void; onHandoverRequest: () => void; isAdmin: boolean }) => {
-  const { testers, settings, currentUser } = useStore();
+  const { testers, currentUser } = useStore();
   const isAdminUser = currentUser?.role === 'admin' || 
                   currentUser?.position?.toLowerCase().includes('quản lý') || 
                   currentUser?.position?.toLowerCase().includes('trưởng phòng');
@@ -843,11 +841,7 @@ const DashboardView = ({ requests, onReceiveRequest, onHandoverRequest, isAdmin 
   const [isKpiExpanded, setIsKpiExpanded] = useState<boolean>(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const assignedTesterNames = new Set([
-    ...(settings?.defaultTestersAtd || []),
-    ...(settings?.defaultTestersChamber1 || []),
-    ...(settings?.defaultTestersChamber2 || [])
-  ]);
+  const assignedTesterNames = getAssignedTesterNames(requests);
   const assignedTesters = testers.filter(t => t.name !== 'Khác' && assignedTesterNames.has(t.name));
 
   const toggleFullscreen = () => {
@@ -1442,52 +1436,10 @@ export default function App() {
     }
   }, [currentUser?.username, currentUser?.role]);
   
-  const emcActiveHours = useMemo(() => {
-    return requests
-      .filter(r => 
-        (r.testCategory === TestCategory.EMC || r.testCategory === TestCategory.BOTH) &&
-        r.sampleStatus === SampleStatus.IN_LAB &&
-        [RequestStatus.PENDING, RequestStatus.SAMPLES_RECEIVED, RequestStatus.SCHEDULED, RequestStatus.TESTING, RequestStatus.REQ_SUPPLEMENT].includes(r.status)
-      )
-      .reduce((sum, r) => {
-        const matchedProduct = products?.find(p => String(p.name || '').trim().toLowerCase() === String(r.type || '').trim().toLowerCase());
-        const defaults = getProductDefaultTime(r.type || '');
-        const prodTime = matchedProduct?.testTimeEMC !== undefined ? matchedProduct.testTimeEMC : defaults.testTimeEMC;
-        const testTime = r.testTimeEMC !== undefined && r.testTimeEMC !== null ? r.testTimeEMC : (prodTime || 0);
-        const hoursPerSample = testTime / 60;
-        return sum + (r.quantity * hoursPerSample);
-      }, 0);
-  }, [requests, products]);
-
-  const itdActiveHours = useMemo(() => {
-    return requests
-      .filter(r => 
-        (r.testCategory === TestCategory.ATD || r.testCategory === TestCategory.BOTH) &&
-        r.sampleStatus === SampleStatus.IN_LAB &&
-        [RequestStatus.PENDING, RequestStatus.SAMPLES_RECEIVED, RequestStatus.SCHEDULED, RequestStatus.TESTING, RequestStatus.REQ_SUPPLEMENT].includes(r.status)
-      )
-      .reduce((sum, r) => {
-        const matchedProduct = products?.find(p => String(p.name || '').trim().toLowerCase() === String(r.type || '').trim().toLowerCase());
-        const defaults = getProductDefaultTime(r.type || '');
-        const prodTime = matchedProduct?.testTimeATD !== undefined ? matchedProduct.testTimeATD : defaults.testTimeATD;
-        const testTime = r.testTimeATD !== undefined && r.testTimeATD !== null ? r.testTimeATD : (prodTime || 0);
-        const hoursPerSample = testTime / 60;
-        return sum + (r.quantity * hoursPerSample);
-      }, 0);
-  }, [requests, products]);
-
-  const activeLoadCount = useMemo(() => requests.filter(r => 
-    !r.id.includes('-log-') &&
-    r.sampleStatus === SampleStatus.IN_LAB && 
-    [RequestStatus.PENDING, RequestStatus.SAMPLES_RECEIVED, RequestStatus.SCHEDULED, RequestStatus.REQ_SUPPLEMENT].includes(r.status)
-  ).length, [requests]);
-
   const nonLogRequests = useMemo(() => requests.filter(r => !r.id.includes('-log-')), [requests]);
 
   const handoverReceiveCount = useMemo(() => handoverDocs.filter(d => d.type === HandoverType.RECEIVE).length, [handoverDocs]);
   const handoverReturnCount = useMemo(() => handoverDocs.filter(d => d.type === HandoverType.RETURN).length, [handoverDocs]);
-
-  const isPeakLoad = emcActiveHours > 80 || itdActiveHours > 80;
 
   const uniqueHandoverMonths = useMemo(() => {
     const months = new Set<string>();
@@ -2092,7 +2044,6 @@ export default function App() {
           </div>
         </div>
       </header>
-      {isPeakLoad && ( <div className="bg-orange-600 text-white px-3 py-1 flex items-center justify-between shadow-lg relative z-30 animate-in slide-in-from-top-2" role="alert"> <div className="flex items-center gap-2"> <Zap className="animate-pulse" size={14} fill="white" aria-hidden="true" /> <div className="flex flex-col md:flex-row md:items-baseline md:gap-2"> <span className="font-black uppercase text-[10px]">Cảnh báo Cao điểm (EMC / ITD)</span> <span className="text-[9px] opacity-90 hidden md:inline"> Tổng giờ thử nghiệm hoạt động: {emcActiveHours > 80 ? `EMC (${Math.round(emcActiveHours)}h)` : ''} {emcActiveHours > 80 && itdActiveHours > 80 ? 'và' : ''} {itdActiveHours > 80 ? `ITD (${Math.round(itdActiveHours)}h)` : ''} vượt ngưỡng 80h. </span> </div> </div> <span className="text-[9px] font-bold bg-white/20 px-1.5 py-0 rounded">PEAK MODE</span> </div> )}
       <main className="flex-1 overflow-hidden relative" id="main-content">
         {activeTab === 'dashboard' && currentUser?.role !== 'guest' && (
           <DashboardView 

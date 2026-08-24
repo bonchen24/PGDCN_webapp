@@ -455,6 +455,7 @@ export interface KQTNRecord {
   testDate?: string;
   reportDate?: string;
   testerName?: string;
+  managerName?: string;
   testResultsData?: Record<string, any>;
   emcData?: any;
   dayCapDienData?: any;

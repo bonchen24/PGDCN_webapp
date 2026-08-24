@@ -32,4 +32,15 @@ test('DOCX generation combines dynamic labels and keeps anh_1 as their only targ
   assert.doesNotMatch(source.slice(mappingIndex), /data\.anh_[1-6]\s*=/);
 });
 
+test('DOCX generation maps managerName and managerNam to reportMeta.managerName', () => {
+  assert.match(source, /managerName:\s*reportMeta\?\.managerName/);
+  assert.match(source, /managerNam:\s*reportMeta\?\.managerName/);
+});
+
+test('DOCX generation limits power disturbance tables to at most 1 row', () => {
+  assert.match(source, /table_6_3_1_1:\s*subOptionTitle[\s\S]*?\(emcData\?\.tablePower\s*\|\|\s*\[\]\)\.slice\(0,\s*1\)/);
+  assert.match(source, /table_6_3_2_1:\s*subOptionTitle[\s\S]*?\(emcData\?\.tablePower_2\s*\|\|\s*\[\]\)\.slice\(0,\s*1\)/);
+  assert.match(source, /tablePower:\s*\(emcData\?\.tablePower\s*\|\|\s*\[\]\)\.slice\(0,\s*1\)/);
+});
+
 // --- End of report-docx-image-integration.test.ts ---

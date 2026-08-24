@@ -10,6 +10,7 @@ import { generateSequenceCode, calculateLotSequenceInYear, generateSampleEncodeN
 import { fileToGenerativePart, extractRequestsFromFile } from '../utils/gemini';
 import { searchCustomers, searchBrands } from '../utils/referenceData';
 import { deleteRequestModalDraft, getRequestDraftKey, loadRequestModalDraft, saveRequestModalDraft, type RequestDraftRecord, type RequestModalDraft } from '../utils/requestDraft';
+import { isIemmSealStamp, normalizeSealStampBase, applySealStampPolicy } from '../utils/sealStampPolicy';
 import { useStore } from '../store';
 import { CustomDatePicker } from './CustomDatePicker';
 
@@ -321,12 +322,12 @@ export const RequestModal = ({ isOpen, onClose, requests, existingGroup }: Reque
   const [isDragging, setIsDragging] = useState(false);
 
   const reorderSampleList = (list: SampleItem[], encodeNum: string, baseSeal: string): SampleItem[] => {
+    const sealStamps = applySealStampPolicy(list.map(sample => sample.sealStamp || ''), baseSeal);
     return list.map((sample, idx) => {
       const updated = { ...sample };
       if (!updated.mtt) {
         updated.mtt = `M${String(idx + 1).padStart(2, '0')}`;
       }
-      const mttSuffix = updated.mtt;
 
       if (updated.atdEncodeNumber) {
         updated.atdEncodeNumber = generateSampleEncodeNumber('ITDC', encodeNum, updated.mtt);
@@ -338,12 +339,8 @@ export const RequestModal = ({ isOpen, onClose, requests, existingGroup }: Reque
         updated.itdEncodeNumber = generateSampleEncodeNumber('ITD', encodeNum, updated.mtt);
       }
 
-      if (baseSeal) {
-        if (list.length === 1) {
-          updated.sealStamp = baseSeal;
-        } else {
-          updated.sealStamp = `${baseSeal}-${mttSuffix}`;
-        }
+      if (isIemmSealStamp(baseSeal)) {
+        updated.sealStamp = sealStamps[idx];
       }
       return updated;
     });
@@ -385,23 +382,9 @@ export const RequestModal = ({ isOpen, onClose, requests, existingGroup }: Reque
       if (existingGroup && existingGroup.length > 0) {
         setDraftStatus('inactive');
         const first = existingGroup[0];
-        let initialSealStamp = '';
-        if (first.sealStamp) {
-          if (first.sealStamp.includes('-M')) {
-            const parts = first.sealStamp.split('-M');
-            const lastPart = parts[parts.length - 1];
-            if (/^\d+$/.test(lastPart)) {
-              parts.pop();
-              initialSealStamp = parts.join('-M');
-            } else {
-              initialSealStamp = first.sealStamp;
-            }
-          } else if (first.sealStamp.includes('-MTT')) {
-            initialSealStamp = first.sealStamp.split('-MTT')[0];
-          } else {
-            initialSealStamp = first.sealStamp;
-          }
-        }
+        const initialSealStamp = isIemmSealStamp(first.sealStamp)
+          ? normalizeSealStampBase(first.sealStamp)
+          : (first.sealStamp || '');
 
         let initialEncodeNumber = first.encodeNumber || '';
         if (!initialEncodeNumber) {
@@ -941,10 +924,12 @@ export const RequestModal = ({ isOpen, onClose, requests, existingGroup }: Reque
             emcEncodeNumber: emcCode,
             itdEncodeNumber: itdCode,
             mtt: mttVal,
-            sealStamp: currentSealStamp ? `${currentSealStamp}-${mttVal}` : ''
+            sealStamp: isIemmSealStamp(currentSealStamp)
+              ? `${currentSealStamp}-${mttVal}`
+              : ((s as any).sealStamp || (index === 0 ? currentSealStamp : ''))
           };
         });
-        setSampleList(prev => reorderSampleList([...prev, ...newSamples], generalInfo.encodeNumber, generalInfo.sealStamp));
+        setSampleList(prev => reorderSampleList([...prev, ...newSamples], generalInfo.encodeNumber, data.sealStamp || generalInfo.sealStamp));
         toast.dismiss(loadingToast);
         toast.success(`AI đã tìm thấy ${newSamples.length} mẫu.`);
         setScanFiles([]);
@@ -971,7 +956,9 @@ export const RequestModal = ({ isOpen, onClose, requests, existingGroup }: Reque
     }
 
     const nextIdx = sampleList.length;
-    const defaultSeal = generalInfo.sealStamp ? (nextIdx === 0 ? generalInfo.sealStamp : `${generalInfo.sealStamp}-M${String(nextIdx + 1).padStart(2, '0')}`) : '';
+    const defaultSeal = isIemmSealStamp(generalInfo.sealStamp)
+      ? (nextIdx === 0 ? generalInfo.sealStamp : `${generalInfo.sealStamp}-M${String(nextIdx + 1).padStart(2, '0')}`)
+      : (nextIdx === 0 ? generalInfo.sealStamp : '');
     const sampleToAdd = { 
         ...currentSample, 
         id: `manual-${Date.now()}`,
@@ -1695,6 +1682,7 @@ export const RequestModal = ({ isOpen, onClose, requests, existingGroup }: Reque
                                     onChange={e => setGeneralInfo({...generalInfo, sealStamp: e.target.value})} 
                                     placeholder="Ví dụ: NP2026 (Các mẫu sẽ tự động sinh: NP2026-M01, NP2026-M02...)" 
                                 />
+                                <span className="text-[10px] text-slate-500">IEMM sẽ tự sinh M01, M02...; tem bên khác nhập tự do theo từng mẫu.</span>
                             </InputGroup>
                         </div>
                     </div>
@@ -1972,6 +1960,7 @@ export const RequestModal = ({ isOpen, onClose, requests, existingGroup }: Reque
                                         onChange={e => setCurrentSample({...currentSample, sealStamp: e.target.value})}
                                         placeholder="Tự động sinh theo tem chung..." 
                                     />
+                                        <span className="text-[10px] text-slate-500">Tem IEMM tự động theo MTT; mã bên khác giữ nguyên free style.</span>
                                 </InputGroup>
                             </div>
                             <div className="md:col-span-2">

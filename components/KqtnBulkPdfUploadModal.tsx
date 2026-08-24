@@ -1,14 +1,46 @@
 // Author: Gemini
 // OS support: Web/Node
-// Description: Bulk PDF assignment modal with deterministic code/model matching and manual fallback.
+// Description: Bulk KQTN PDF assignment with single-file and combined-PDF review flows.
 
-import React, { useMemo, useState } from 'react';
-import { CheckCircle2, FileText, Loader2, Upload, X } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Eye,
+  FileText,
+  Loader2,
+  Plus,
+  RotateCcw,
+  Scissors,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react';
+import { PDFDocument } from 'pdf-lib';
 import { toast } from 'sonner';
 import type { KqtnPdfMetadata } from '../types';
 import { matchKqtnBulkFile, type KqtnBulkCandidate } from '../utils/kqtnBulkMatching';
 import { normalizeKqtnSampleKey } from '../utils/kqtnIdentity';
-import { extractKqtnPdfMetadata, uploadKqtnPdf } from '../utils/kqtnPdfClient';
+import {
+  buildKqtnBulkSegments,
+  normalizeKqtnBulkSegmentRange,
+  validateKqtnBulkSegments,
+  type KqtnBulkSegmentDraft,
+  type KqtnBulkStructurePage,
+} from '../utils/kqtnBulkSplit';
+import { buildKqtnBulkUploadPlan, isKqtnBulkUploadTarget } from '../utils/kqtnBulkWorkflow';
+import {
+  extractKqtnBulkStructure,
+  extractKqtnPdfMetadata,
+  uploadKqtnPdf,
+} from '../utils/kqtnPdfClient';
+
+const KQTN_PDF_MAX_BYTES = 25 * 1024 * 1024;
+const STRUCTURE_BATCH_SIZE = 6;
+
+type BulkItemStatus = 'needs-review' | 'ready' | 'uploading' | 'uploaded' | 'skipped' | 'failed';
+type CombinedPhase = 'idle' | 'detecting' | 'review' | 'uploading';
+type UploadMode = 'single-files' | 'combined';
 
 interface BulkItem {
   file: File;
@@ -19,6 +51,29 @@ interface BulkItem {
   resultPdf?: KqtnPdfMetadata;
   manualSelection?: boolean;
   aiSource?: boolean;
+  status: BulkItemStatus;
+  error?: string;
+}
+
+interface CombinedSegment extends KqtnBulkSegmentDraft {
+  id: string;
+  candidateId?: string;
+  reason: string;
+  confidence: 'high' | 'medium' | 'low' | 'none';
+  needsManualSelection: boolean;
+  manualSelection: boolean;
+  status: 'needs-review' | 'ready' | 'uploading' | 'uploaded' | 'skipped' | 'failed';
+  resultPdf?: KqtnPdfMetadata;
+  error?: string;
+}
+
+export interface KqtnBulkUploadSummary {
+  groupId: string;
+  sourceFileName: string;
+  mode: UploadMode;
+  uploaded: number;
+  failed: number;
+  skipped: number;
 }
 
 interface KqtnBulkPdfUploadModalProps {
@@ -26,10 +81,10 @@ interface KqtnBulkPdfUploadModalProps {
   candidates: KqtnBulkCandidate[];
   onClose: () => void;
   onUploaded: (recordId: string, resultPdf: KqtnPdfMetadata) => Promise<void>;
+  onBulkCompleted?: (summary: KqtnBulkUploadSummary) => Promise<void> | void;
 }
 
-async function fileToBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
+function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   const chunkSize = 0x8000;
   for (let offset = 0; offset < bytes.length; offset += chunkSize) {
@@ -38,9 +93,40 @@ async function fileToBase64(file: File): Promise<string> {
   return btoa(binary);
 }
 
-function inspectFile(file: File, candidates: KqtnBulkCandidate[]) {
+async function fileToBase64(file: File): Promise<string> {
+  return bytesToBase64(new Uint8Array(await file.arrayBuffer()));
+}
+
+async function createPdfSegmentFile(sourceDoc: PDFDocument, pageStart: number, pageEnd: number, fileName: string): Promise<File> {
+  const segmentDoc = await PDFDocument.create();
+  const pageIndexes = Array.from({ length: pageEnd - pageStart + 1 }, (_, index) => pageStart - 1 + index);
+  const pages = await segmentDoc.copyPages(sourceDoc, pageIndexes);
+  pages.forEach((page) => segmentDoc.addPage(page));
+  const bytes = await segmentDoc.save();
+  return new File([bytes as unknown as BlobPart], fileName, { type: 'application/pdf' });
+}
+
+function fileStem(fileName: string): string {
+  return fileName.replace(/\.pdf$/i, '').trim() || 'kqtn-result';
+}
+
+function makeSegmentFileName(sourceFileName: string, pageStart: number, pageEnd: number): string {
+  return `${fileStem(sourceFileName)}__p${pageStart}-${pageEnd}.pdf`;
+}
+
+function makeManualPages(totalPages: number): KqtnBulkStructurePage[] {
+  return Array.from({ length: totalPages }, (_, index) => ({ pageNumber: index + 1, isReportCover: false, isBlank: false }));
+}
+
+function makeSegmentId(index: number, draft: KqtnBulkSegmentDraft): string {
+  return `${draft.sourceFileName}:${draft.pageStart}-${draft.pageEnd}:${index}`;
+}
+
+function inspectFile(file: File, candidates: KqtnBulkCandidate[]): BulkItem {
   const normalizedName = normalizeKqtnSampleKey(file.name);
-  const codeCandidate = candidates.find((candidate) => normalizedName.includes(candidate.sampleKey));
+  const codeCandidate = candidates.find((candidate) => [candidate.sampleKey, candidate.sampleCode, candidate.reportNo]
+    .map((value) => normalizeKqtnSampleKey(value))
+    .some((value) => value.length > 2 && normalizedName.includes(value)));
   const modelCandidate = candidates.find((candidate) => {
     const modelKey = normalizeKqtnSampleKey(candidate.model);
     return modelKey.length > 2 && normalizedName.includes(modelKey);
@@ -48,7 +134,10 @@ function inspectFile(file: File, candidates: KqtnBulkCandidate[]) {
   const match = matchKqtnBulkFile({
     fileName: file.name,
     sampleCode: codeCandidate?.sampleCode,
+    reportNo: codeCandidate?.reportNo,
     model: modelCandidate?.model,
+    brand: modelCandidate?.brand,
+    sealStamp: modelCandidate?.sealStamp,
   }, candidates);
   return {
     file,
@@ -58,144 +147,360 @@ function inspectFile(file: File, candidates: KqtnBulkCandidate[]) {
     needsManualSelection: match.needsManualSelection,
     manualSelection: false,
     aiSource: false,
-  } satisfies BulkItem;
+    status: match.candidateId && !match.needsManualSelection ? 'ready' : 'needs-review',
+  };
 }
 
-export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, onUploaded }: KqtnBulkPdfUploadModalProps) {
+function buildCombinedSegment(draft: KqtnBulkSegmentDraft, index: number, candidates: KqtnBulkCandidate[]): CombinedSegment {
+  const metadata = draft.metadata;
+  const match = matchKqtnBulkFile({
+    fileName: draft.sourceFileName,
+    sampleCode: metadata.sampleCode,
+    reportNo: metadata.reportNo,
+    model: metadata.model,
+    brand: metadata.brand,
+    sealStamp: metadata.sealStamp,
+  }, candidates);
+  return {
+    ...draft,
+    id: makeSegmentId(index, draft),
+    candidateId: match.candidateId,
+    reason: match.reason,
+    confidence: match.confidence,
+    needsManualSelection: match.needsManualSelection,
+    manualSelection: false,
+    status: match.candidateId && !match.needsManualSelection ? 'ready' : 'needs-review',
+  };
+}
+
+function statusLabel(status: CombinedSegment['status'] | BulkItemStatus): string {
+  switch (status) {
+    case 'ready': return 'Sẵn sàng';
+    case 'uploading': return 'Đang upload';
+    case 'uploaded': return 'Đã upload';
+    case 'skipped': return 'Đã bỏ qua';
+    case 'failed': return 'Lỗi - có thể retry';
+    default: return 'Cần rà soát';
+  }
+}
+
+function confidenceLabel(confidence: CombinedSegment['confidence'] | BulkItem['confidence']): string {
+  return confidence === 'high' ? 'Tin cậy cao' : confidence === 'medium' ? 'Tin cậy vừa' : confidence === 'low' ? 'Tin cậy thấp' : 'Chưa xác định';
+}
+
+export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, onUploaded, onBulkCompleted }: KqtnBulkPdfUploadModalProps) {
+  const [mode, setMode] = useState<UploadMode>('single-files');
   const [items, setItems] = useState<BulkItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isInspectingAi, setIsInspectingAi] = useState(false);
+  const [combinedFile, setCombinedFile] = useState<File | null>(null);
+  const [combinedTotalPages, setCombinedTotalPages] = useState(0);
+  const [combinedSegments, setCombinedSegments] = useState<CombinedSegment[]>([]);
+  const [combinedPhase, setCombinedPhase] = useState<CombinedPhase>('idle');
+  const [combinedProgress, setCombinedProgress] = useState('');
+  const sourcePdfRef = useRef<PDFDocument | null>(null);
+  const combinedGroupIdRef = useRef<string | null>(null);
+  const preserveSessionOnResetRef = useRef(false);
 
   const candidateMap = useMemo(() => new Map(candidates.map((candidate) => [candidate.id, candidate])), [candidates]);
+  const rangeErrors = useMemo(() => validateKqtnBulkSegments(combinedSegments, combinedTotalPages), [combinedSegments, combinedTotalPages]);
+  const duplicateCombinedTargets = useMemo(() => {
+    const counts = new Map<string, number>();
+    combinedSegments.filter((segment) => segment.status !== 'skipped' && segment.status !== 'uploaded').forEach((segment) => {
+      if (segment.candidateId) counts.set(segment.candidateId, (counts.get(segment.candidateId) || 0) + 1);
+    });
+    return [...counts.entries()].filter(([, count]) => count > 1).map(([id]) => id);
+  }, [combinedSegments]);
+  const hasDraft = items.length > 0 || combinedFile !== null || combinedSegments.length > 0;
 
   if (!isOpen) return null;
 
-  const handleFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const resetState = () => {
+    if (preserveSessionOnResetRef.current) {
+      preserveSessionOnResetRef.current = false;
+      return;
+    }
+    setItems([]);
+    setCombinedFile(null);
+    setCombinedTotalPages(0);
+    setCombinedSegments([]);
+    setCombinedPhase('idle');
+    setCombinedProgress('');
+    sourcePdfRef.current = null;
+    combinedGroupIdRef.current = null;
+  };
+
+  const createBulkGroupId = () => `kqtn-bulk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const clearSession = () => {
+    if (isUploading || isInspectingAi || combinedPhase === 'detecting') return;
+    if (!hasDraft) return;
+    if (!window.confirm('Xóa phiên Bulk Upload hiện tại?')) return;
+    resetState();
+    toast.success('Đã xóa phiên Bulk Upload.');
+  };
+
+  const handleClose = () => {
+    if (isUploading || isInspectingAi || combinedPhase === 'detecting') return;
+    preserveSessionOnResetRef.current = true;
+    resetState();
+    onClose();
+  };
+
+  const selectMode = (nextMode: UploadMode) => {
+    if (isUploading || isInspectingAi || combinedPhase === 'detecting') return;
+    setMode(nextMode);
+    resetState();
+  };
+
+  const handleSingleFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []).filter((file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
-    const initialItems = files.map((file) => inspectFile(file, candidates));
-    setItems(initialItems);
     event.target.value = '';
+    setItems(files.map((file) => inspectFile(file, candidates)));
     if (files.length === 0) return;
 
     setIsInspectingAi(true);
-    let aiMatches = 0;
     for (const [index, file] of files.entries()) {
       try {
-        const base64Data = await fileToBase64(file);
-        const metadata = await extractKqtnPdfMetadata(base64Data, file.type || 'application/pdf');
-        const match = matchKqtnBulkFile({ fileName: file.name, sampleCode: metadata.sampleCode, model: metadata.model }, candidates);
+        const firstPageDoc = await PDFDocument.load(await file.arrayBuffer());
+        const firstPageOnly = firstPageDoc.getPageCount() > 1 ? await createPdfSegmentFile(firstPageDoc, 1, 1, `${fileStem(file.name)}-cover.pdf`) : file;
+        const metadata = await extractKqtnPdfMetadata(await fileToBase64(firstPageOnly), 'application/pdf');
+        const match = matchKqtnBulkFile({ fileName: file.name, ...metadata }, candidates);
         setItems((current) => current.map((item, itemIndex) => itemIndex === index && !item.manualSelection
-          ? { ...item, candidateId: match.candidateId, reason: 'AI: ' + match.reason, confidence: match.confidence, needsManualSelection: match.needsManualSelection, aiSource: true }
+          ? { ...item, candidateId: match.candidateId, reason: `AI: ${match.reason}`, confidence: match.confidence, needsManualSelection: match.needsManualSelection, aiSource: true, status: match.candidateId && !match.needsManualSelection ? 'ready' : 'needs-review' }
           : item));
-        aiMatches += 1;
       } catch (error) {
         console.warn('KQTN PDF AI metadata extraction failed; keeping deterministic match.', error);
       }
     }
     setIsInspectingAi(false);
-    if (aiMatches > 0) toast.success('AI metadata analysis completed; please review the mapping.');
+    toast.success('AI metadata analysis completed; please review the mapping.');
   };
 
-  const setCandidate = (index: number, candidateId: string) => {
-    setItems((current) => current.map((item, itemIndex) => itemIndex === index
-      ? { ...item, candidateId: candidateId || undefined, needsManualSelection: !candidateId, manualSelection: true, reason: candidateId ? 'Manually selected sample head.' : 'Sample head is not selected.' }
-      : item));
+  const analyzeCombinedFile = async (file: File) => {
+    combinedGroupIdRef.current = null;
+    setCombinedFile(file);
+    setCombinedSegments([]);
+    setCombinedPhase('detecting');
+    setCombinedProgress('Đang đọc số trang PDF...');
+    try {
+      const sourceDoc = await PDFDocument.load(await file.arrayBuffer());
+      const totalPages = sourceDoc.getPageCount();
+      sourcePdfRef.current = sourceDoc;
+      setCombinedTotalPages(totalPages);
+      const detectedPages: KqtnBulkStructurePage[] = [];
+      let structureFailed = false;
+
+      for (let batchStart = 1; batchStart <= totalPages; batchStart += STRUCTURE_BATCH_SIZE) {
+        const batchEnd = Math.min(totalPages, batchStart + STRUCTURE_BATCH_SIZE - 1);
+        setCombinedProgress(`Đang nhận diện trang ${batchStart}-${batchEnd}/${totalPages}...`);
+        try {
+          const batchFile = await createPdfSegmentFile(sourceDoc, batchStart, batchEnd, `${fileStem(file.name)}-batch.pdf`);
+          detectedPages.push(...await extractKqtnBulkStructure(await fileToBase64(batchFile), batchStart - 1));
+        } catch (error) {
+          console.warn('KQTN bulk structure extraction failed; switching to manual split.', error);
+          structureFailed = true;
+          break;
+        }
+      }
+
+      const detectedPageNumbers = new Set(detectedPages.map((page) => page.pageNumber));
+      const hasEverySourcePage = Array.from({ length: totalPages }, (_, index) => index + 1).every((pageNumber) => detectedPageNumbers.has(pageNumber));
+      const structureIncomplete = detectedPages.length !== totalPages || detectedPageNumbers.size !== totalPages || !hasEverySourcePage;
+      const structurePages = structureFailed || structureIncomplete ? makeManualPages(totalPages) : detectedPages;
+      const drafts = buildKqtnBulkSegments(structurePages, totalPages, file.name);
+      setCombinedSegments(drafts.map((draft, index) => buildCombinedSegment(draft, index, candidates)));
+      setCombinedPhase('review');
+      setCombinedProgress(structureFailed || structureIncomplete ? 'Không nhận diện đủ cấu trúc; hãy nhập mốc trang và chọn đầu mẫu.' : 'Đã đề xuất các nhóm trang; hãy rà soát trước khi upload.');
+      if (structureFailed || structureIncomplete) toast.warning('AI không nhận diện đủ cấu trúc. Đã chuyển sang chế độ tách thủ công.');
+    } catch (error: any) {
+      sourcePdfRef.current = null;
+      setCombinedFile(null);
+      setCombinedTotalPages(0);
+      setCombinedPhase('idle');
+      toast.error(error?.message || 'Không thể đọc PDF nguồn.');
+    }
   };
 
-  const uploadAll = async () => {
-    const unresolved = items.find((item) => !item.candidateId);
-    if (unresolved) {
-      toast.warning('Vui lòng chọn đầu mẫu cho tất cả file chưa ghép được.');
-      return;
+  const handleCombinedFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = Array.from(event.target.files || []).find((candidate) => candidate.type === 'application/pdf' || candidate.name.toLowerCase().endsWith('.pdf'));
+    event.target.value = '';
+    if (file) void analyzeCombinedFile(file);
+  };
+
+  const setSingleCandidate = (index: number, candidateId: string) => {
+    setItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, candidateId: candidateId || undefined, needsManualSelection: false, manualSelection: true, status: candidateId ? 'ready' : 'needs-review', reason: candidateId ? 'Đã chọn đầu mẫu thủ công.' : 'Chưa chọn đầu mẫu.' } : item));
+  };
+
+  const updateCombinedSegment = (index: number, updates: Partial<CombinedSegment>) => {
+    setCombinedSegments((current) => current.map((segment, segmentIndex) => segmentIndex === index ? { ...segment, ...updates } : segment));
+  };
+
+  const updateCombinedRange = (index: number, field: 'pageStart' | 'pageEnd', value: number) => {
+    setCombinedSegments((current) => current.map((segment, segmentIndex) => {
+      if (segmentIndex !== index) return segment;
+      const next = normalizeKqtnBulkSegmentRange(field === 'pageStart' ? value : segment.pageStart, field === 'pageEnd' ? value : segment.pageEnd, combinedTotalPages);
+      return { ...segment, ...next, detection: 'manual', status: segment.status === 'uploaded' ? segment.status : segment.candidateId && segment.manualSelection ? 'ready' : 'needs-review' };
+    }));
+  };
+
+  const setCombinedCandidate = (index: number, candidateId: string) => {
+    const candidate = candidateMap.get(candidateId);
+    updateCombinedSegment(index, { candidateId: candidateId || undefined, manualSelection: true, needsManualSelection: false, reason: candidate ? 'Đã chọn đầu mẫu thủ công.' : 'Chưa chọn đầu mẫu.', confidence: candidate ? 'high' : 'none', status: candidate ? 'ready' : 'needs-review', error: undefined });
+  };
+
+  const addManualSegment = () => {
+    if (!combinedFile || combinedTotalPages === 0) return;
+    const nextStart = Math.min(combinedTotalPages, Math.max(1, combinedSegments.reduce((max, segment) => Math.max(max, segment.pageEnd), 0) + 1));
+    const draft: KqtnBulkSegmentDraft = { sourceFileName: combinedFile.name, pageStart: nextStart, pageEnd: nextStart, metadata: { pageNumber: nextStart, isReportCover: false, isBlank: false }, detection: 'manual' };
+    setCombinedSegments((current) => [...current, buildCombinedSegment(draft, current.length, candidates)]);
+  };
+
+  const removeCombinedSegment = (index: number) => setCombinedSegments((current) => current.filter((_, segmentIndex) => segmentIndex !== index));
+
+  const previewCombinedSegment = async (segment: CombinedSegment) => {
+    if (!sourcePdfRef.current) return;
+    const popup = window.open('', '_blank');
+    try {
+      const file = await createPdfSegmentFile(sourcePdfRef.current, segment.pageStart, segment.pageEnd, makeSegmentFileName(segment.sourceFileName, segment.pageStart, segment.pageEnd));
+      const url = URL.createObjectURL(file);
+      if (popup) {
+        popup.location.href = url;
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      } else {
+        URL.revokeObjectURL(url);
+        toast.warning('Trình duyệt đã chặn cửa sổ preview PDF.');
+      }
+    } catch (error: any) {
+      popup?.close();
+      toast.error(error?.message || 'Không thể tạo PDF con để preview.');
+    }
+  };
+
+  const validateSingleItems = (): boolean => {
+    if (items.some((item) => !item.candidateId || (item.needsManualSelection && !item.manualSelection))) {
+      toast.warning('Vui lòng rà soát và chọn đầu mẫu cho mọi file chưa chắc chắn.');
+      return false;
     }
     const assignedIds = items.map((item) => item.candidateId).filter(Boolean) as string[];
-    const duplicateTarget = assignedIds.find((candidateId, index) => assignedIds.indexOf(candidateId) !== index);
-    if (duplicateTarget) {
-      toast.warning('Multiple PDF files target the same sample head. Keep only one file per sample.');
-      return;
+    if (assignedIds.some((id, index) => assignedIds.indexOf(id) !== index)) {
+      toast.warning('Không thể gán nhiều PDF vào cùng một đầu mẫu trong một batch.');
+      return false;
     }
-
-    const pendingRows = items
-      .map((item) => candidateMap.get(item.candidateId || ''))
-      .filter((candidate) => !candidate || candidate.id.startsWith('sample-head:'));
-    if (pendingRows.length > 0) {
+    if (items.some((item) => {
+      const candidate = candidateMap.get(item.candidateId || '');
+      return candidate && !isKqtnBulkUploadTarget(candidate);
+    })) {
       toast.warning('Cần lưu kết quả KQTN trước khi nhận PDF cho đầu mẫu đó.');
-      return;
+      return false;
     }
+    return true;
+  };
 
+  const uploadSingleItems = async () => {
+    if (!validateSingleItems()) return;
     setIsUploading(true);
-    try {
-      for (const item of items) {
-        const candidate = candidateMap.get(item.candidateId || '');
-        if (!candidate) continue;
-        if (candidate.hasPdf && !window.confirm(`File PDF của ${candidate.sampleCode} đã tồn tại. Ghi đè file cũ?`)) continue;
+    let failed = 0;
+    let uploaded = 0;
+    let skipped = 0;
+    const groupId = createBulkGroupId();
+    for (const [index, item] of items.entries()) {
+      const candidate = candidateMap.get(item.candidateId || '');
+      if (!candidate || item.status === 'uploaded' || item.status === 'skipped') continue;
+      if (candidate.hasPdf && !window.confirm(`File PDF của ${candidate.sampleCode} đã tồn tại. Ghi đè file cũ?`)) {
+        skipped += 1;
+        setItems((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, status: 'skipped' } : row));
+        continue;
+      }
+      setItems((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, status: 'uploading', error: undefined } : row));
+      try {
         const resultPdf = await uploadKqtnPdf(candidate.id, item.file);
         await onUploaded(candidate.id, resultPdf);
+        uploaded += 1;
+        setItems((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, status: 'uploaded', resultPdf } : row));
+      } catch (error: any) {
+        failed += 1;
+        setItems((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, status: 'failed', error: error?.message || 'Upload thất bại.' } : row));
       }
-      toast.success(`Đã xử lý ${items.length} file PDF KQTN.`);
-      setItems([]);
-      onClose();
-    } catch (error: any) {
-      toast.error(error?.message || 'Không thể upload PDF KQTN.');
-    } finally {
-      setIsUploading(false);
     }
+    setIsUploading(false);
+    if (uploaded > 0 || failed > 0 || skipped > 0) {
+      await onBulkCompleted?.({ groupId, sourceFileName: `${items.length} file PDF`, mode: 'single-files', uploaded, failed, skipped });
+    }
+    if (failed > 0) toast.error(`${failed} file upload lỗi; hãy kiểm tra và retry.`);
+    else { toast.success(`Đã xử lý ${items.length} file PDF KQTN.`); resetState(); onClose(); }
   };
+
+  const uploadCombinedSegments = async (retryOnlyFailed = false) => {
+    if (!sourcePdfRef.current || !combinedFile) return;
+    if (rangeErrors.length > 0) { toast.warning(rangeErrors[0]); return; }
+    const uploadPlan = buildKqtnBulkUploadPlan(combinedSegments, candidates, retryOnlyFailed);
+    const pending = uploadPlan.queue.map(({ segment }) => segment);
+    if (uploadPlan.missingSegmentIds.length > 0) { toast.warning('Còn nhóm chưa được gán mẫu đích.'); return; }
+    if (uploadPlan.pendingSegmentIds.length > 0) { toast.warning('Mẫu đích chưa có KQTN; hãy lưu KQTN trước khi upload.'); return; }
+    if (uploadPlan.duplicateTargetIds.length > 0) { toast.warning('Có nhiều nhóm đang gán vào cùng một mẫu đích.'); return; }
+
+    if (pending.some((segment) => !segment.candidateId || (segment.needsManualSelection && !segment.manualSelection))) { toast.warning('Còn nhóm cần rà soát hoặc chọn đầu mẫu thủ công.'); return; }
+    if (duplicateCombinedTargets.length > 0) { toast.warning('Có nhiều nhóm đang gán vào cùng một đầu mẫu.'); return; }
+    if (pending.some((segment) => candidateMap.get(segment.candidateId || '')?.id.startsWith('sample-head:'))) { toast.warning('Cần lưu kết quả KQTN trước khi nhận PDF cho đầu mẫu đó.'); return; }
+
+    setIsUploading(true);
+    setCombinedPhase('uploading');
+    let failed = 0;
+    let uploaded = 0;
+    let skipped = 0;
+    const groupId = combinedGroupIdRef.current || createBulkGroupId();
+    combinedGroupIdRef.current = groupId;
+    for (const segment of pending) {
+      const candidate = candidateMap.get(segment.candidateId || '');
+      if (!candidate) continue;
+      const segmentIndex = combinedSegments.indexOf(segment);
+      if (candidate.hasPdf && !window.confirm(`PDF của ${candidate.sampleCode} đã tồn tại (trang ${segment.pageStart}-${segment.pageEnd}). Ghi đè?`)) { skipped += 1; updateCombinedSegment(segmentIndex, { status: 'skipped' }); continue; }
+      updateCombinedSegment(segmentIndex, { status: 'uploading', error: undefined });
+      try {
+        const segmentFile = await createPdfSegmentFile(sourcePdfRef.current, segment.pageStart, segment.pageEnd, makeSegmentFileName(segment.sourceFileName, segment.pageStart, segment.pageEnd));
+        if (segmentFile.size > KQTN_PDF_MAX_BYTES) throw new Error(`PDF con vượt giới hạn ${Math.round(KQTN_PDF_MAX_BYTES / 1024 / 1024)} MB.`);
+        setCombinedProgress(`Đang upload ${segment.pageStart}-${segment.pageEnd}...`);
+        const resultPdf = await uploadKqtnPdf(candidate.id, segmentFile);
+        await onUploaded(candidate.id, resultPdf);
+        uploaded += 1;
+        updateCombinedSegment(segmentIndex, { status: 'uploaded', resultPdf });
+      } catch (error: any) {
+        failed += 1;
+        updateCombinedSegment(segmentIndex, { status: 'failed', error: error?.message || 'Upload thất bại.' });
+      }
+    }
+    setIsUploading(false);
+    setCombinedPhase('review');
+    setCombinedProgress(failed > 0 ? `${failed} nhóm lỗi; có thể retry riêng.` : 'Đã xử lý xong các nhóm hợp lệ.');
+    if (uploaded > 0 || failed > 0 || skipped > 0) {
+      await onBulkCompleted?.({ groupId, sourceFileName: combinedFile.name, mode: 'combined', uploaded, failed, skipped });
+    }
+    if (failed > 0) toast.error(`${failed} nhóm upload lỗi; hãy bấm Retry nhóm lỗi.`);
+    else if (pending.length > 0) { toast.success('Đã tách và upload xong PDF ghép.'); resetState(); onClose(); }
+  };
+
+  const renderCandidateSelect = (value: string | undefined, onChange: (value: string) => void) => (
+    <select value={value || ''} onChange={(event) => onChange(event.target.value)} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700">
+      <option value="">-- Chọn đầu mẫu đích --</option>
+      {candidates.map((option) => {
+        const isPendingTarget = Boolean(option.isPending || option.id.startsWith('sample-head:'));
+        return <option key={option.id} value={option.id} disabled={isPendingTarget}>
+          {option.sampleCode} · {option.model}{option.hasPdf ? ' · đã có PDF' : ''}{isPendingTarget ? ' · Chưa có KQTN' : ''}
+        </option>;
+      })}
+    </select>
+  );
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/50 p-4">
-      <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
-          <div>
-            <h2 className="flex items-center gap-2 text-sm font-black text-slate-900"><Upload className="h-4 w-4 text-emerald-600" /> Bulk Upload PDF KQTN</h2>
-            <p className="mt-1 text-xs text-slate-500">Ghép theo mã hóa trước, model sau; trường hợp chưa chắc chắn có thể chọn đầu mẫu thủ công.</p>
-          </div>
-          <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-200" aria-label="Đóng"><X size={17} /></button>
+      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4"><div><h2 className="flex items-center gap-2 text-sm font-black text-slate-900"><Upload className="h-4 w-4 text-emerald-600" /> Bulk Upload PDF KQTN</h2><p className="mt-1 text-xs text-slate-500">Chọn PDF đơn hoặc PDF ghép nhiều kết quả; luôn rà soát mapping trước khi lưu.</p></div><button onClick={handleClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-200" aria-label="Đóng"><X size={17} /></button></div>
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-3">          <div className="flex flex-wrap items-stretch gap-2" role="tablist" aria-label="Chọn loại PDF">            <button type="button" onClick={() => selectMode('single-files')} disabled={isUploading || isInspectingAi} className={`flex min-w-[220px] flex-col items-start rounded-sm border px-3 py-2 text-left text-xs ${mode === 'single-files' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}><span className="font-black">Nhiều PDF đơn</span><span className={`mt-1 text-[11px] ${mode === 'single-files' ? 'text-emerald-50' : 'text-slate-500'}`}>Mỗi file = 1 KQTN, không cắt</span></button>            <button type="button" onClick={() => selectMode('combined')} disabled={isUploading || isInspectingAi} className={`flex min-w-[260px] items-start gap-2 rounded-sm border px-3 py-2 text-left text-xs ${mode === 'combined' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}><Scissors size={14} className="mt-0.5 shrink-0" /><span><span className="block font-black">Một PDF ghép</span><span className={`mt-1 block text-[11px] ${mode === 'combined' ? 'text-emerald-50' : 'text-slate-500'}`}>1 file → cắt theo nhóm trang → gán mẫu đích</span></span></button>            {mode === 'single-files' ? <label className="ml-auto flex cursor-pointer items-center gap-2 self-center rounded-sm bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"><Upload size={14} /> Chọn nhiều file PDF<input type="file" accept="application/pdf,.pdf" multiple className="hidden" disabled={isInspectingAi || isUploading} onChange={handleSingleFiles} /></label> : <label className="ml-auto flex cursor-pointer items-center gap-2 self-center rounded-sm bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"><Upload size={14} /> Chọn PDF ghép<input type="file" accept="application/pdf,.pdf" className="hidden" disabled={combinedPhase === 'detecting' || isUploading} onChange={handleCombinedFile} /></label>}          </div>          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500"><span className="font-bold text-slate-700">Quy trình:</span><span>Chọn nguồn</span><span>→</span><span>Rà soát mapping</span><span>→</span><span>{mode === 'combined' ? 'Cắt PDF con và lưu vào mẫu đích' : 'Upload và lưu PDF'}</span>{(isInspectingAi || combinedPhase === 'detecting') && <span className="ml-auto flex items-center gap-1 font-semibold text-blue-600"><Loader2 size={12} className="animate-spin" /> {combinedProgress || 'Đang phân tích PDF...'}</span>}</div>        </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          {mode === 'single-files' ? items.length === 0 ? <div className="rounded-sm border border-dashed border-slate-300 p-12 text-center text-xs text-slate-500"><FileText className="mx-auto mb-2 h-8 w-8 text-slate-300" />Chọn các file PDF kết quả thử nghiệm để bắt đầu upload.</div> : <div className="space-y-2">{items.map((item, index) => { const candidate = item.candidateId ? candidateMap.get(item.candidateId) : undefined; return <div key={`${item.file.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)_auto] items-center gap-3 rounded-sm border border-slate-200 p-3 text-xs"><div className="min-w-0"><div className="flex items-center gap-2 font-bold text-slate-800"><FileText size={14} className="shrink-0 text-red-500" /><span className="truncate" title={item.file.name}>{item.file.name}</span></div><div className="mt-1 text-[11px] text-slate-500">{item.reason} · {confidenceLabel(item.confidence)}</div>{item.error && <div className="mt-1 text-[11px] text-red-600">{item.error}</div>}</div>{renderCandidateSelect(item.candidateId, (value) => setSingleCandidate(index, value))}{item.status === 'uploaded' || candidate && item.status === 'ready' ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <span className="text-[10px] font-bold text-amber-600">{statusLabel(item.status)}</span>}</div>; })}</div> : combinedFile ? <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-slate-200 bg-slate-50 p-3 text-xs"><div className="flex min-w-0 items-center gap-2 font-bold text-slate-800"><FileText size={15} className="text-red-500" /><span className="truncate">{combinedFile.name}</span></div><span className="font-semibold text-slate-500">{combinedTotalPages} trang · {combinedSegments.length} nhóm · {combinedProgress}</span></div>{rangeErrors.length > 0 && <div className="flex items-start gap-2 rounded-sm border border-red-200 bg-red-50 p-3 text-xs text-red-700"><AlertCircle size={14} className="mt-0.5 shrink-0" /><div>{rangeErrors.map((error) => <div key={error}>{error}</div>)}</div></div>}{duplicateCombinedTargets.length > 0 && <div className="rounded-sm border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">Có nhóm trùng đầu mẫu: {duplicateCombinedTargets.map((id) => candidateMap.get(id)?.sampleCode || id).join(', ')}.</div>}{combinedSegments.map((segment, index) => { const candidate = segment.candidateId ? candidateMap.get(segment.candidateId) : undefined; return <div key={segment.id} className={`rounded-sm border p-3 text-xs ${segment.status === 'failed' ? 'border-red-200 bg-red-50/30' : segment.status === 'needs-review' ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200'}`}><div className="flex flex-wrap items-start justify-between gap-2"><div><div className="font-bold text-slate-800">Nhóm {index + 1} · trang {segment.pageStart}-{segment.pageEnd}</div><div className="mt-1 text-[11px] text-slate-500">{segment.reason} · {confidenceLabel(segment.confidence)} · {segment.detection === 'ai' ? 'AI đề xuất' : 'Thủ công'}</div>{segment.error && <div className="mt-1 text-[11px] text-red-700">{segment.error}</div>}</div><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${segment.status === 'uploaded' ? 'bg-emerald-100 text-emerald-700' : segment.status === 'failed' ? 'bg-red-100 text-red-700' : segment.status === 'needs-review' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{statusLabel(segment.status)}</span></div><div className="mt-3 grid gap-2 md:grid-cols-[120px_120px_minmax(0,1fr)_auto_auto] md:items-end"><label className="text-[11px] font-semibold text-slate-600">Trang bắt đầu<input type="number" min={1} max={combinedTotalPages} value={segment.pageStart} disabled={segment.status === 'uploaded'} onChange={(event) => updateCombinedRange(index, 'pageStart', Number(event.target.value))} className="mt-1 w-full rounded-sm border border-slate-200 px-2 py-2 text-xs" /></label><label className="text-[11px] font-semibold text-slate-600">Trang kết thúc<input type="number" min={1} max={combinedTotalPages} value={segment.pageEnd} disabled={segment.status === 'uploaded'} onChange={(event) => updateCombinedRange(index, 'pageEnd', Number(event.target.value))} className="mt-1 w-full rounded-sm border border-slate-200 px-2 py-2 text-xs" /></label><div>{renderCandidateSelect(segment.candidateId, (value) => setCombinedCandidate(index, value))}</div><button onClick={() => void previewCombinedSegment(segment)} disabled={segment.status === 'uploaded' || !sourcePdfRef.current} className="flex items-center justify-center gap-1 rounded-sm border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-600 disabled:opacity-50"><Eye size={13} /> Xem PDF con</button><button onClick={() => removeCombinedSegment(index)} disabled={segment.status === 'uploaded'} className="flex items-center justify-center gap-1 rounded-sm border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-500 disabled:opacity-50"><Trash2 size={13} /> Xóa nhóm</button></div>{candidate && <div className="mt-2 text-[11px] text-slate-500">{candidate.sampleCode} · {candidate.sampleName || candidate.model}{candidate.hasPdf ? ' · sẽ hỏi xác nhận ghi đè' : ''}</div>}</div>; })}<button onClick={addManualSegment} disabled={combinedPhase === 'uploading' || combinedTotalPages === 0} className="flex items-center gap-1 rounded-sm border border-dashed border-slate-300 px-3 py-2 text-xs font-bold text-slate-600"><Plus size={13} /> Thêm nhóm thủ công</button></div> : <div className="rounded-sm border border-dashed border-slate-300 p-12 text-center text-xs text-slate-500"><Scissors className="mx-auto mb-2 h-8 w-8 text-slate-300" />Chọn một PDF lớn chứa nhiều kết quả để phân tích và tách theo nhóm trang.</div>}
         </div>
-
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-          <label className="flex cursor-pointer items-center gap-2 rounded-sm bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700">
-            <Upload size={14} /> Chọn nhiều file PDF
-            <input type="file" accept="application/pdf,.pdf" multiple className="hidden" disabled={isInspectingAi} onChange={handleFiles} />
-          </label>
-          {isInspectingAi && <span className="flex items-center gap-1 text-xs font-semibold text-blue-600"><Loader2 size={12} className="animate-spin" /> AI is reading PDF metadata...</span>}
-          <span className="text-xs font-semibold text-slate-500">{items.length} file đã chọn</span>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          {items.length === 0 ? (
-            <div className="rounded-sm border border-dashed border-slate-300 p-12 text-center text-xs text-slate-500">
-              <FileText className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-              Chọn các file PDF kết quả thử nghiệm để bắt đầu ghép.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {items.map((item, index) => {
-                const candidate = item.candidateId ? candidateMap.get(item.candidateId) : undefined;
-                return (
-                  <div key={`${item.file.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)_auto] items-center gap-3 rounded-sm border border-slate-200 p-3 text-xs">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 font-bold text-slate-800"><FileText size={14} className="shrink-0 text-red-500" /><span className="truncate" title={item.file.name}>{item.file.name}</span></div>
-                      <div className="mt-1 text-[11px] text-slate-500">{item.reason}</div>
-                    </div>
-                    <select value={item.candidateId || ''} onChange={(event) => setCandidate(index, event.target.value)} className="w-full rounded-sm border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700">
-                      <option value="">-- Chọn đầu mẫu --</option>
-                      {candidates.map((option) => <option key={option.id} value={option.id}>{option.sampleCode} · {option.model}{option.hasPdf ? ' · đã có PDF' : ''}</option>)}
-                    </select>
-                    {candidate ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <span className="text-[10px] font-bold text-amber-600">Cần chọn</span>}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">
-          <button onClick={onClose} className="rounded-sm border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600">Hủy</button>
-          <button disabled={isUploading || isInspectingAi || items.length === 0} onClick={uploadAll} className="flex items-center gap-2 rounded-sm bg-emerald-600 px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">
-            {isUploading && <Loader2 size={14} className="animate-spin" />} Upload và lưu PDF
-          </button>
-        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">{hasDraft && <button onClick={clearSession} disabled={isUploading || isInspectingAi || combinedPhase === 'detecting'} className="mr-auto rounded-sm border border-amber-200 bg-white px-4 py-2 text-xs font-bold text-amber-700 disabled:opacity-50">Xóa phiên</button>}<button onClick={handleClose} disabled={isUploading || isInspectingAi || combinedPhase === 'detecting'} className="rounded-sm border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 disabled:opacity-50">Hủy</button>{mode === 'combined' && combinedSegments.some((segment) => segment.status === 'failed') && <button onClick={() => void uploadCombinedSegments(true)} disabled={combinedPhase === 'uploading' || combinedPhase === 'detecting'} className="flex items-center gap-1 rounded-sm border border-red-200 bg-white px-4 py-2 text-[11px] font-bold text-red-700 disabled:opacity-50"><RotateCcw size={13} /> Retry nhóm lỗi</button>}{mode === 'single-files' ? <button disabled={isUploading || isInspectingAi || items.length === 0} onClick={() => void uploadSingleItems()} className="flex items-center gap-2 rounded-sm bg-emerald-600 px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{isUploading && <Loader2 size={14} className="animate-spin" />} Upload và lưu PDF</button> : <button disabled={combinedPhase === 'uploading' || combinedPhase === 'detecting' || combinedSegments.length === 0} onClick={() => void uploadCombinedSegments(false)} className="flex items-center gap-2 rounded-sm bg-emerald-600 px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{combinedPhase === 'uploading' && <Loader2 size={14} className="animate-spin" />} Tách PDF con và lưu vào mẫu đích</button>}</div>
       </div>
     </div>
   );

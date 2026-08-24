@@ -399,8 +399,7 @@ export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       a.download = `Backup_DDTLab_${backupTimestamp.split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      updateSettings({ lastBackupDate: backupTimestamp });
-      toast.success("Đã tải xuống file sao lưu JSON và cập nhật ngày sao lưu!");
+      toast.success("Đã xuất JSON portable; file PDF KQTN được sao lưu bằng backup máy chủ.");
     } catch (error: any) {
       console.error('Activity log backup failed:', error);
       toast.error(`Không thể tải lịch sử hoạt động vào backup: ${error?.message || error}`);

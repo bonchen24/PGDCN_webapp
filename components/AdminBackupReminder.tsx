@@ -1,17 +1,19 @@
 // Author: Gemini
 // OS support: Web/Node
-// Description: Admin reminder component displaying day counter since last backup with one-click JSON/CSV exports and counter reset
+// Description: Admin reminder for complete server backups with portable export options
 import React from 'react';
 import { ShieldAlert, Download, FileSpreadsheet, RefreshCw, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import { useStore } from '../store';
 import { formatDateVN } from '../utils/formatter';
 import { exportAllToCSV } from '../utils/exportCsv';
-import { buildBackupPayload } from '../utils/notificationBackup';
+import { buildBackupPayload, downloadBackupJson } from '../utils/notificationBackup';
 import { activityLogClient } from '../utils/activityLogApi';
+import { triggerServerBackup } from '../utils/backupApi';
 import { toast } from 'sonner';
 
 export const AdminBackupReminder: React.FC<{ className?: string }> = ({ className = '' }) => {
   const { settings, updateSettings, requests, handoverDocs, customers, products, brands, currentUser } = useStore();
+  const [isServerBackingUp, setIsServerBackingUp] = React.useState(false);
 
   const isAdmin = currentUser?.role === 'admin';
 
@@ -32,30 +34,35 @@ export const AdminBackupReminder: React.FC<{ className?: string }> = ({ classNam
       const backupTimestamp = new Date().toISOString();
       const activityLogs = await activityLogClient.fetchAll();
       const data = buildBackupPayload(state, backupTimestamp, activityLogs);
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Backup_DDTLab_${backupTimestamp.split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      downloadBackupJson(data);
 
-      updateSettings({ lastBackupDate: backupTimestamp });
-      toast.success("Đã tải xuống file sao lưu đầy đủ và đặt lại bộ đếm ngày về 0!");
+      toast.success("Đã xuất JSON portable; để sao lưu cả file PDF, hãy dùng 'Sao lưu đầy đủ'.");
     } catch (error: any) {
       console.error('Complete JSON backup failed:', error);
       toast.error(`Không thể tạo file sao lưu: ${error?.message || error}`);
     }
   };
 
+  const handleServerBackup = async () => {
+    if (!currentUser?.username || isServerBackingUp) return;
+    setIsServerBackingUp(true);
+    try {
+      await triggerServerBackup(currentUser.username);
+      const nowIso = new Date().toISOString();
+      updateSettings({ lastBackupDate: nowIso });
+      toast.success('Đã sao lưu đầy đủ database và file PDF KQTN trên máy chủ!');
+    } catch (error: any) {
+      console.error('Complete server backup failed:', error);
+      toast.error(`Không thể sao lưu đầy đủ trên máy chủ: ${error?.message || error}`);
+    } finally {
+      setIsServerBackingUp(false);
+    }
+  };
+
   const handleCsvExport = () => {
     try {
       exportAllToCSV(requests, handoverDocs, customers, products, brands);
-      const nowIso = new Date().toISOString();
-      updateSettings({ lastBackupDate: nowIso });
-      toast.success("Đã xuất danh mục CSV thành công và đặt lại bộ đếm ngày về 0!");
+      toast.success("Đã xuất danh mục CSV portable thành công.");
     } catch (err: any) {
       toast.error("Lỗi khi xuất CSV: " + err.message);
     }
@@ -87,7 +94,7 @@ export const AdminBackupReminder: React.FC<{ className?: string }> = ({ classNam
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="text-sm font-black text-slate-800 tracking-tight">
-                Bộ đếm ngày & Nhắc nhở sao lưu hệ thống (Admin)
+                Bộ đếm ngày & Nhắc nhở sao lưu đầy đủ (Admin)
               </h4>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                 isWarning 
@@ -101,7 +108,7 @@ export const AdminBackupReminder: React.FC<{ className?: string }> = ({ classNam
             <p className="text-xs text-slate-600 leading-relaxed">
               {isWarning ? (
                 <span className="font-semibold text-amber-800">
-                  ⚠️ Đã {daysSinceLastBackup} ngày bạn chưa xuất file sao lưu! Hãy xuất bản lưu JSON/CSV để phòng ngừa sự cố dữ liệu.
+                  ⚠️ Đã {daysSinceLastBackup} ngày chưa chạy backup đầy đủ trên máy chủ. Backup này gồm database, metadata file và file PDF KQTN.
                 </span>
               ) : (
                 <span>Dữ liệu phòng thử nghiệm an toàn. Lần sao lưu gần nhất: <b>{lastBackup ? formatDateVN(lastBackup) : 'Hôm nay'}</b>.</span>
@@ -111,6 +118,16 @@ export const AdminBackupReminder: React.FC<{ className?: string }> = ({ classNam
         </div>
 
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <button
+            onClick={handleServerBackup}
+            disabled={isServerBackingUp}
+            className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer disabled:cursor-wait"
+            title="Sao lưu database và toàn bộ file PDF KQTN lên máy chủ"
+          >
+            <Download size={14} />
+            <span>{isServerBackingUp ? 'Đang sao lưu...' : 'Sao lưu đầy đủ'}</span>
+          </button>
+
           <button
             onClick={handleJsonBackup}
             className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
