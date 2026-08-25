@@ -62,6 +62,8 @@ KQTN result PDFs are different from session-only report images. They are stored 
 - `SUPABASE_STORAGE_BUCKET` (default: `ddt-files`)
 - `KQTN_PDF_MAX_BYTES` (default: 26214400)
 
+When using `docker-compose.supabase.yml` with `E:\CODING\TVCI_APP\supabase-docker\.env`, the Compose file maps that file's `SERVICE_ROLE_KEY` to the runtime `SUPABASE_SERVICE_ROLE_KEY` and defaults the internal storage URL to `http://supabase-storage:5000`. Do not copy the secret into source code or a tracked env file.
+
 The KQTN page can upload one PDF per sample head, view/download it, replace it after confirmation, or use Bulk Upload with manual mapping.
 When Bulk Upload AI matching is used, each selected PDF is sent to the configured Gemini endpoint only to extract sample code, model, and brand. The AI output is a suggestion; the user must review or manually change the target before upload.
 

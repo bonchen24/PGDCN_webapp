@@ -221,6 +221,17 @@ Description: Persistent project memory and verified deployment observations for 
 - Không dùng lại port `5432` trên host cho project vì có dịch vụ khác; port public của database project là `15432`.
 - Docker Desktop phải đang chạy và Docker Engine phải cho phép CLI truy cập trước khi dùng `docker compose`.
 
+## Cập nhật 2026-08-25 — Hoàn tất Bulk Upload KQTN, Storage PDF và cảnh báo footer
+
+- Bulk Upload PDF ghép đã chuyển sang luồng PaddleOCR footer-first dùng chung `tvci_ocr_service`: upload nguồn một lần, tạo footer job bất đồng bộ, polling tiến độ và chỉ OCR trang ứng viên/trang đầu nhóm cần nhận diện; Gemini chỉ là fallback metadata khi OCR local chưa đủ rõ.
+- Với file scan 116 trang đã xác nhận mapping đúng 6 nhóm: `1132-26-M02` trang 1–20, `M03` 21–39, `M04` 40–59, `M05` 60–78, `M06` 79–96 và `M07` 97–116. Các trang kết quả/phụ lục lặp không còn bị nâng thành nhóm thừa.
+- Mapping mẫu đích dùng combobox tìm kiếm/lọc; candidate chưa có KQTN vẫn chọn được và hiển thị cảnh báo. Khi upload, hệ thống tạo bản ghi KQTN tối thiểu nếu cần; mẫu đã có PDF sẽ hỏi xác nhận ghi đè. Ô trang bắt đầu/kết thúc giữ được giá trị rỗng tạm thời khi người dùng đang edit.
+- Footer OCR có `current/total` được đối chiếu với số trang thực tế. Nếu lệch, UI báo cảnh báo nhưng vẫn cho phép tách và lưu theo mốc/mapping người dùng đã rà soát; chỉ khoảng trang không hợp lệ mới chặn.
+- Sửa lỗi lưu PDF production: Compose mặc định dùng `http://supabase-storage:5000` và map cả `SUPABASE_SERVICE_ROLE_KEY` lẫn alias `SERVICE_ROLE_KEY` từ env Supabase bên ngoài; không ghi secret vào repository. Giới hạn hiện tại là 25 MiB cho PDF đơn/PDF con, 100 MiB cho PDF nguồn ghép và chưa có giới hạn cứng số trang.
+- Production Docker `ddt_webapp-webapp-1` đã rebuild/recreate trên cổng `2359`. Health app/DB trả HTTP 200; storage smoke upload/delete trả HTTP 200; bucket duplicate trả `statusCode=409` đúng contract.
+- Verification cuối: `npm test` **311/311 pass**, `npm run lint` pass, `npm run build` pass (chỉ còn cảnh báo chunk >500 kB), `git diff --check` exit 0.
+- Attachment ảnh người dùng và mọi secret/env thật không đưa vào commit.
+
 ## Files quan trọng
 
 - `server.ts`: Express API, PostgreSQL routes, HMR integration và Gemini endpoints.
@@ -246,7 +257,6 @@ Description: Persistent project memory and verified deployment observations for 
 
 ## Trạng thái Git và tích hợp
 
-- Workspace `E:\CODING\DDT_webapp` hiện không có `.git` local nên không thể tạo commit bằng local Git.
-- GitHub connector đã được thử lại ngày 17/08/2026 nhưng `github_get_profile` và `github_list_repositories` đều trả lỗi MCP internal error; chưa xác định được repository đích để commit an toàn.
+- Workspace `E:\CODING\DDT_webapp` hiện là Git checkout trên nhánh `master`; có thể tạo commit local. Remote/push chưa được yêu cầu trong lượt này.
 
 <!-- --- End of PROJECT_MEMORY.md --- -->

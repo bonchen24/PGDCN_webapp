@@ -20,7 +20,7 @@ test('personal settings no longer expose or persist a display name', () => {
 });
 
 test('system users are read from PostgreSQL and rendered from store state', () => {
-  assert.match(store, /fetchCollection\("systemUsers", true\)/);
+  assert.match(store, /fetchCollectionWithMeta\("systemUsers", true\)/);
   assert.match(read('components/SettingsModal.tsx'), /systemUsers\.map/);
 });
 

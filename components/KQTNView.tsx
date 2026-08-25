@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { MAHOA_CODES } from '../lib/mahoa-codes';
 import { mergeKqtnSampleHeads } from '../utils/kqtnRows';
 import { getKqtnPdfUrl, uploadKqtnPdf } from '../utils/kqtnPdfClient';
+import type { KqtnBulkCandidate } from '../utils/kqtnBulkMatching';
+import { mergeColumnConfig, shouldPersistColumnConfig } from '../utils/columnConfigPersistence';
 import KqtnBulkPdfUploadModal, { type KqtnBulkUploadSummary } from './KqtnBulkPdfUploadModal';
 
 interface ColumnConfig {
@@ -47,46 +49,43 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
 
 export default function KQTNView() {
   const { 
-    kqtnRecords, requests, currentUser, deleteKqtnRecord, updateKqtnRecord, logBulkKqtnUpload
+    kqtnRecords, requests, currentUser, deleteKqtnRecord, updateKqtnRecord, saveKqtnRecord, logBulkKqtnUpload
   } = useStore();
 
   const isAdmin = currentUser?.role === 'admin';
 
-  const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
-  const isColumnsLoaded = useRef(false);
+  const currentUsername = currentUser?.username;
+  const [columns, setColumns] = useState<ColumnConfig[]>(() => DEFAULT_COLUMNS.map(column => ({ ...column })));
+  const [loadedColumnsUsername, setLoadedColumnsUsername] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) return;
-    const storageKey = `lab_kqtn_cols_${currentUser.username}`;
+    if (!currentUsername) {
+      setLoadedColumnsUsername(null);
+      return;
+    }
+
+    const storageKey = `lab_kqtn_cols_${currentUsername}`;
     const saved = localStorage.getItem(storageKey);
+    let parsed: unknown = null;
+
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const merged = DEFAULT_COLUMNS.map(defCol => {
-            const found = parsed.find((p: any) => p.id === defCol.id);
-            if (found) {
-              return {
-                ...defCol,
-                width: typeof found.width === 'number' ? found.width : defCol.width,
-                visible: typeof found.visible === 'boolean' ? found.visible : defCol.visible
-              };
-            }
-            return defCol;
-          });
-          setColumns(merged);
-        }
-      } catch (e) {}
+        parsed = JSON.parse(saved);
+      } catch (e) {
+        parsed = null;
+      }
     }
-    isColumnsLoaded.current = true;
-  }, [currentUser]);
+
+    setColumns(mergeColumnConfig(DEFAULT_COLUMNS, parsed));
+    setLoadedColumnsUsername(currentUsername);
+  }, [currentUsername]);
 
   useEffect(() => {
-    if (isColumnsLoaded.current && currentUser) {
-      const storageKey = `lab_kqtn_cols_${currentUser.username}`;
+    if (shouldPersistColumnConfig(loadedColumnsUsername, currentUsername)) {
+      const storageKey = `lab_kqtn_cols_${currentUsername}`;
       localStorage.setItem(storageKey, JSON.stringify(columns));
     }
-  }, [columns, currentUser]);
+  }, [columns, currentUsername, loadedColumnsUsername]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [standardFilter, setStandardFilter] = useState<string>('ALL');
@@ -236,7 +235,7 @@ export default function KQTNView() {
   };
 
   const resetColumnsToDefault = () => {
-    setColumns(DEFAULT_COLUMNS);
+    setColumns(DEFAULT_COLUMNS.map(column => ({ ...column })));
     if (currentUser) {
       localStorage.removeItem(`lab_kqtn_cols_${currentUser.username}`);
     }
@@ -263,7 +262,8 @@ export default function KQTNView() {
     const newWidth = Math.max(50, startWidthRef.current + diff);
     setColumns(cols => {
       const nextCols = [...cols];
-      nextCols[resizingColRef.current as number].width = newWidth;
+      const index = resizingColRef.current as number;
+      nextCols[index] = { ...nextCols[index], width: newWidth };
       return nextCols;
     });
   };
@@ -342,19 +342,26 @@ export default function KQTNView() {
     brand: row.brand,
     sealStamp: row.sealStamp,
     hasPdf: Boolean(row.resultPdf),
-    isPending: Boolean(row.isPending || row.id.startsWith('sample-head:')),
+    isPending: Boolean(row.isPending),
   })), [sampleHeadRows]);
+
+  const ensureKqtnUploadTarget = async (target: Pick<KqtnBulkCandidate, 'id'> & { isPending?: boolean }): Promise<string> => {
+    if (!target.isPending) return target.id;
+    const pendingRow = sampleHeadRows.find((row) => row.id === target.id);
+    if (!pendingRow) throw new Error('Không tìm thấy thông tin đầu mẫu để tạo bản ghi KQTN.');
+    const { sourceRequest: _sourceRequest, isPending: _isPending, ...record } = pendingRow;
+    await saveKqtnRecord({ ...record, id: pendingRow.id }, { overwrite: false });
+    return pendingRow.id;
+  };
 
   const handleUploadPdf = async (record: KQTNRecord & { isPending?: boolean }, file?: File) => {
     if (!file) return;
-    if (record.isPending || record.id.startsWith('sample-head:')) {
-      toast.warning('Save the KQTN result before attaching a PDF.');
-      return;
-    }
+    if (record.isPending) toast.warning('Mẫu chưa có KQTN; hệ thống sẽ tạo bản ghi trước khi gắn PDF.');
     if (record.resultPdf && !window.confirm('This sample head already has a PDF. Replace the old file?')) return;
     try {
-      const resultPdf = await uploadKqtnPdf(record.id, file);
-      await updateKqtnRecord(record.id, { resultPdf }, 'Attached or replaced KQTN PDF');
+      const targetId = await ensureKqtnUploadTarget(record);
+      const resultPdf = await uploadKqtnPdf(targetId, file);
+      await updateKqtnRecord(targetId, { resultPdf }, 'Attached or replaced KQTN PDF');
       toast.success('KQTN PDF saved.');
     } catch (error: any) {
       toast.error(error?.message || 'Unable to save KQTN PDF.');
@@ -703,9 +710,9 @@ export default function KQTNView() {
                                     <label htmlFor={inputId} className="cursor-pointer rounded p-1 text-slate-500 hover:bg-amber-50 hover:text-amber-600" title="Replace PDF"><Upload size={13} /><input id={inputId} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(event) => handleUploadPdf(req, event.target.files?.[0])} /></label>
                                   </>
                                 ) : (
-                                  <label htmlFor={inputId} className={`flex cursor-pointer items-center gap-1 rounded-sm px-2 py-1 text-[10px] font-bold ${req.isPending ? 'cursor-not-allowed bg-slate-100 text-slate-400' : 'bg-red-50 text-red-600 hover:bg-red-100'}`} title={req.isPending ? 'Save KQTN result first' : 'Upload PDF'}>
+                                  <label htmlFor={inputId} className={`flex cursor-pointer items-center gap-1 rounded-sm px-2 py-1 text-[10px] font-bold ${req.isPending ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-red-50 text-red-600 hover:bg-red-100'}`} title={req.isPending ? 'Chưa có KQTN; upload sẽ tạo bản ghi' : 'Upload PDF'}>
                                     <Upload size={12} /> Upload
-                                    <input id={inputId} type="file" accept="application/pdf,.pdf" disabled={req.isPending} className="hidden" onChange={(event) => handleUploadPdf(req, event.target.files?.[0])} />
+                                    <input id={inputId} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(event) => handleUploadPdf(req, event.target.files?.[0])} />
                                   </label>
                                 )}
                               </div>
@@ -1417,6 +1424,7 @@ export default function KQTNView() {
         isOpen={showBulkPdfUpload}
         candidates={bulkCandidates}
         onClose={() => setShowBulkPdfUpload(false)}
+        onEnsureUploadTarget={ensureKqtnUploadTarget}
         onUploaded={handleBulkUploaded}
         onBulkCompleted={handleBulkCompleted}
       />

@@ -2,7 +2,7 @@
 // OS support: Web/Node
 // Description: SummaryLogView component displaying test requests logs summary table with customized columns and filtering
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, SlidersHorizontal, Sliders, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   Download, Eye, EyeOff, Edit2, Copy, Trash2, RefreshCw, Sliders as FilterIcon, HelpCircle,
@@ -14,6 +14,7 @@ import {
 } from '../types';
 import { formatDateVN, removeAccents } from '../utils/formatter';
 import { toast } from 'sonner';
+import { mergeColumnConfig, shouldPersistColumnConfig } from '../utils/columnConfigPersistence';
 
 interface ColumnConfig {
   id: string;
@@ -58,59 +59,39 @@ function SummaryLogView() {
 
   const isAdmin = currentUser?.role === 'admin';
 
-    const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
-  const isColumnsLoaded = useRef(false);
+  const currentUsername = currentUser?.username;
+  const [columns, setColumns] = useState<ColumnConfig[]>(() => DEFAULT_COLUMNS.map(column => ({ ...column })));
+  const [loadedColumnsUsername, setLoadedColumnsUsername] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) return;
-    const storageKey = `lab_summary_log_cols_${currentUser.username}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const merged = DEFAULT_COLUMNS.map(defCol => {
-            const found = parsed.find((p: any) => p.id === defCol.id);
-            if (found) {
-              return {
-                ...defCol,
-                width: typeof found.width === 'number' ? found.width : defCol.width,
-                visible: typeof found.visible === 'boolean' ? found.visible : defCol.visible
-              };
-            }
-            return defCol;
-          });
-          setColumns(merged);
-        }
-      } catch (e) {}
-    } else {
-        // Fallback to legacy key if no user-specific key exists
-        const legacySaved = localStorage.getItem('lab_summary_log_cols_v2');
-        if (legacySaved) {
-            try {
-                const parsed = JSON.parse(legacySaved);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    const merged = DEFAULT_COLUMNS.map(defCol => {
-                        const found = parsed.find((p: any) => p.id === defCol.id);
-                        if (found) {
-                            return { ...defCol, width: typeof found.width === 'number' ? found.width : defCol.width, visible: typeof found.visible === 'boolean' ? found.visible : defCol.visible };
-                        }
-                        return defCol;
-                    });
-                    setColumns(merged);
-                }
-            } catch (e) {}
-        }
+    if (!currentUsername) {
+      setLoadedColumnsUsername(null);
+      return;
     }
-    isColumnsLoaded.current = true;
-  }, [currentUser]);
 
-    useEffect(() => {
-    if (isColumnsLoaded.current && currentUser) {
-      const storageKey = `lab_summary_log_cols_${currentUser.username}`;
+    const storageKey = `lab_summary_log_cols_${currentUsername}`;
+    const saved = localStorage.getItem(storageKey);
+    const source = saved ?? localStorage.getItem('lab_summary_log_cols_v2');
+    let parsed: unknown = null;
+
+    if (source) {
+      try {
+        parsed = JSON.parse(source);
+      } catch (e) {
+        parsed = null;
+      }
+    }
+
+    setColumns(mergeColumnConfig(DEFAULT_COLUMNS, parsed));
+    setLoadedColumnsUsername(currentUsername);
+  }, [currentUsername]);
+
+  useEffect(() => {
+    if (shouldPersistColumnConfig(loadedColumnsUsername, currentUsername)) {
+      const storageKey = `lab_summary_log_cols_${currentUsername}`;
       localStorage.setItem(storageKey, JSON.stringify(columns));
     }
-  }, [columns, currentUser]);
+  }, [columns, currentUsername, loadedColumnsUsername]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | RequestStatus>('ALL');

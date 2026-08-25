@@ -8,3 +8,16 @@
 1. **Kiểm tra Spec**: Đối chiếu yêu cầu người dùng với `design.md`.
 2. **Cập nhật Document trước**: Nếu có thay đổi về luồng nghiệp vụ, schema hoặc UI, phải được người dùng xác nhận và cập nhật vào `design.md` trước.
 3. **Thực thi Code**: Sửa đổi code chuẩn xác theo `design.md`.
+
+## 3. CHÍNH SÁCH NẠP NGỮ CẢNH `design.md`
+- `design.md` vẫn là **nguồn chuẩn duy nhất**; không tạo hoặc duy trì một bản sao chuẩn thứ hai trong Obsidian.
+- Không đọc toàn bộ `design.md` theo mặc định. Trước tiên xác định phạm vi yêu cầu, tìm heading liên quan trong mục lục, rồi chỉ đọc mục đó và các mục phụ thuộc trực tiếp.
+- Định tuyến context mặc định:
+  - UI/UX, Card, Modal, Layout: mục 2–5.
+  - Data model, schema, persistence, API, RBAC, notification, backup: mục 6–7.
+  - Quy chuẩn mã nguồn: mục 8.
+  - DOCX, hình ảnh, PDF và KQTN: mục 9 và 11.
+  - Sync, local store và chẩn đoán dữ liệu: mục 10.
+- Nếu yêu cầu trải qua nhiều miền, chỉ nạp các nhóm tương ứng; không nạp các phần còn lại nếu không cần.
+- Khi phạm vi chưa rõ, chỉ đọc mục lục và danh sách heading trước để chọn context, không nạp toàn bộ tài liệu.
+- Obsidian chỉ được dùng như bản tham chiếu cá nhân tùy chọn, không phải nguồn để Agent quyết định khi coding.

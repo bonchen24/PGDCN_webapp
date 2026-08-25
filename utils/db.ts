@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: true });
 
 const { Pool } = pg;
 
@@ -16,13 +16,28 @@ export function buildPostgresConnectionString(env: Record<string, string | undef
     `postgresql://${env.POSTGRES_USER || 'ddt_admin'}:${env.POSTGRES_PASSWORD || 'ddt_dev_password'}@${env.POSTGRES_HOST || 'localhost'}:${env.POSTGRES_PORT || '15432'}/${env.POSTGRES_DB || 'ddt_lab'}`;
 }
 
-const connectionString = buildPostgresConnectionString(process.env);
+export const pool = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+      }
+    : {
+        host: process.env.POSTGRES_HOST || 'localhost',
+        port: Number(process.env.POSTGRES_PORT || 5432),
+        user: process.env.POSTGRES_USER || 'postgres',
+        password: process.env.POSTGRES_PASSWORD || '',
+        database: process.env.POSTGRES_DB || 'ddt_lab',
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+      }
+);
 
-export const pool = new Pool({
-  connectionString,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+pool.on('error', (err) => {
+  console.warn('PostgreSQL idle client notice/warning:', err?.message || err);
 });
 
 export async function initDbSchema(): Promise<void> {

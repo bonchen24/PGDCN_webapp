@@ -33,6 +33,14 @@ test('browser client exposes footer-only combined-PDF extraction', () => {
   assert.match(source, /footerKey/);
 });
 
+test('browser client exposes PaddleOCR page and footer extraction', () => {
+  const source = fs.readFileSync(new URL('../utils/kqtnPdfClient.ts', import.meta.url), 'utf8');
+  assert.match(source, /extractKqtnFooterWithPaddle/);
+  assert.match(source, /extractKqtnPageTextWithPaddle/);
+  assert.match(source, /\/api\/kqtn\/ocr\/footer/);
+  assert.match(source, /\/api\/kqtn\/ocr\/page/);
+});
+
 test('browser client identifies proxy and API structure timeouts', () => {
   const source = fs.readFileSync(new URL('../utils/kqtnPdfClient.ts', import.meta.url), 'utf8');
   assert.match(source, /isKqtnStructureTimeoutError/);
@@ -70,6 +78,72 @@ test('bulk structure endpoint supports a footer-only analysis mode', () => {
   assert.match(source, /mode === "footer"/);
   assert.match(source, /footerKey/);
   assert.match(source, /Không lấy số trang/);
+});
+
+test('bulk structure endpoint logs safe request diagnostics', () => {
+  const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  assert.match(source, /KQTN \$\{analysisMode\} request/);
+  assert.match(source, /pageOffset=\$\{safeOffset\}/);
+  assert.match(source, /payloadBytes/);
+});
+
+test('server proxies KQTN page and footer OCR through the internal PaddleOCR service', () => {
+  const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  assert.match(source, /OCR_SERVICE_URL/);
+  assert.match(source, /\/api\/kqtn\/ocr\/footer/);
+  assert.match(source, /\/api\/kqtn\/ocr\/page/);
+  assert.match(source, /\/ocr\/pdf\/\$\{mode\}/);
+  assert.match(source, /new FormData\(\)/);
+  assert.match(source, /AbortController/);
+});
+
+test('large scanned combined PDFs use one asynchronous multipart footer job', () => {
+  const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  assert.match(source, /KQTN_BULK_SOURCE_MAX_BYTES/);
+  assert.match(source, /footer-jobs/);
+  assert.match(source, /multer/);
+  assert.match(source, /jobId/);
+  assert.match(source, /processedPages/);
+  assert.match(source, /footer-fast/);
+  assert.match(source, /extractKqtnFooterKey/);
+  assert.match(source, /KQTN_FOOTER_JOB_MAX_ACTIVE/);
+  assert.match(source, /KQTN_FOOTER_JOB_BUSY/);
+});
+
+test('large scan footer job uses the fast whole-file candidate endpoint', () => {
+  const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const jobStart = source.indexOf('const runKqtnFooterJob');
+  const jobEnd = source.indexOf('const handleKqtnFooterJobUpload', jobStart);
+  const jobBlock = source.slice(jobStart, jobEnd);
+  assert.match(jobBlock, /\/ocr\/pdf\/footer-fast/);
+  assert.match(jobBlock, /strategy/);
+  assert.match(jobBlock, /candidate/);
+  assert.match(jobBlock, /const candidateScore = Number\(page\?\.candidate_score/);
+  assert.match(jobBlock, /candidateScore,/);
+  assert.match(source, /type KqtnFooterJobStrategy = "native-text" \| "visual-candidates"/);
+});
+
+test('bulk footer job sends the whole PDF without a crop-only footer option', () => {
+  const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const jobStart = source.indexOf('const runKqtnFooterJob');
+  const jobEnd = source.indexOf('const handleKqtnFooterJobUpload', jobStart);
+  const jobBlock = source.slice(jobStart, jobEnd);
+  assert.doesNotMatch(jobBlock, /searchParams\.set\("footer_ratio"/);
+  assert.match(jobBlock, /searchParams\.set\("thumbnail_dpi", "60"\)/);
+  assert.match(jobBlock, /searchParams\.set\("ocr_dpi", "100"\)/);
+  assert.match(jobBlock, /searchParams\.set\("chunk_size", "8"\)/);
+  assert.match(jobBlock, /searchParams\.set\("max_candidates", "32"\)/);
+});
+
+test('browser client exposes asynchronous footer-job start and polling', () => {
+  const source = fs.readFileSync(new URL('../utils/kqtnPdfClient.ts', import.meta.url), 'utf8');
+  assert.match(source, /startKqtnFooterJob/);
+  assert.match(source, /getKqtnFooterJob/);
+  assert.match(source, /FormData/);
+  assert.match(source, /footer-jobs/);
+  assert.match(source, /strategy/);
+  assert.match(source, /page\?\.text/);
+  assert.match(source, /candidateScore: Number\(page\?\.candidateScore/);
 });
 
 // --- End of kqtn-pdf-api-contract.test.ts ---

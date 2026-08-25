@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const composePath = new URL('../docker-compose.supabase.yml', import.meta.url);
+const supabaseFullComposePath = new URL('../../TVCI_APP/supabase-docker/docker-compose.full.yml', import.meta.url);
 
 test('Supabase production Compose uses the existing Supabase network and DDT database', () => {
   assert.equal(fs.existsSync(composePath), true);
@@ -14,8 +15,15 @@ test('Supabase production Compose uses the existing Supabase network and DDT dat
   assert.match(source, /supabase-db/);
   assert.match(source, /supabase_default/);
   assert.match(source, /POSTGRES_DB:\s*ddt_lab/);
-  assert.doesNotMatch(source, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(source, /SUPABASE_STORAGE_URL:\s*\$\{SUPABASE_STORAGE_URL:-http:\/\/supabase-storage:5000\}/);
+  assert.match(source, /SUPABASE_SERVICE_ROLE_KEY:\s*\$\{SUPABASE_SERVICE_ROLE_KEY:-\$\{SERVICE_ROLE_KEY:-\}\}/);
   assert.doesNotMatch(source, /^\s+postgres_db:/m);
+});
+
+test('Supabase DB exposes a loopback-only direct port for host development', () => {
+  const source = fs.readFileSync(supabaseFullComposePath, 'utf8');
+  const dbBlock = source.slice(source.indexOf('  db:'), source.indexOf('  vector:'));
+  assert.match(dbBlock, /127\.0\.0\.1:15432:5432/);
 });
 
 // --- End of supabase-postgres-compose.test.mjs ---

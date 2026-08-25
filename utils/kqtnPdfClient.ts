@@ -5,6 +5,7 @@
 import type { KqtnPdfMetadata } from '../types';
 import { getGeminiHeaders } from './gemini';
 import type { KqtnBulkFooterPage, KqtnBulkStructurePage } from './kqtnBulkSplit';
+import { extractKqtnFooterKey } from './kqtnOcrMetadata';
 
 export const KQTN_STRUCTURE_TIMEOUT_CODE = 'KQTN_STRUCTURE_TIMEOUT';
 
@@ -54,6 +55,72 @@ export interface KqtnPdfAiMetadata {
   brand?: string;
 }
 
+export interface KqtnPaddleOcrResult {
+  success: boolean;
+  page: number;
+  text: string;
+  confidence: number;
+  word_count: number;
+  processing_time_s: number;
+}
+
+export interface KqtnFooterJobStatus {
+  jobId: string;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  strategy?: 'native-text' | 'visual-candidates';
+  totalPages: number;
+  processedPages: number;
+  pages: KqtnBulkFooterPage[];
+  error?: string;
+}
+
+export async function startKqtnFooterJob(
+  file: File,
+  totalPages = 0,
+): Promise<KqtnFooterJobStatus> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('totalPages', String(Math.max(0, Math.floor(totalPages))));
+  const response = await fetch('/api/kqtn/ocr/footer-jobs', {
+    method: 'POST',
+    body: formData,
+  });
+  const payload = await parseResponse(response);
+  if (!payload.jobId) throw new Error('KQTN footer OCR job không trả về jobId.');
+  return {
+    jobId: String(payload.jobId),
+    status: payload.status,
+    strategy: payload.strategy === 'native-text' || payload.strategy === 'visual-candidates' ? payload.strategy : undefined,
+    totalPages: Number(payload.totalPages) || totalPages,
+    processedPages: Number(payload.processedPages) || 0,
+    pages: [],
+  };
+}
+
+export async function getKqtnFooterJob(jobId: string): Promise<KqtnFooterJobStatus> {
+  const response = await fetch('/api/kqtn/ocr/footer-jobs/' + encodeURIComponent(jobId));
+  const payload = await parseResponse(response);
+  return {
+    jobId: String(payload.jobId || jobId),
+    status: payload.status,
+    strategy: payload.strategy === 'native-text' || payload.strategy === 'visual-candidates' ? payload.strategy : undefined,
+    totalPages: Number(payload.totalPages) || 0,
+    processedPages: Number(payload.processedPages) || 0,
+    pages: Array.isArray(payload.pages) ? payload.pages.map((page: any, index: number) => ({
+      pageNumber: Number(page?.pageNumber) || index + 1,
+      isBlank: Boolean(page?.isBlank),
+      footerKey: String(page?.footerKey || '').trim(),
+      text: typeof page?.text === 'string' ? page.text : undefined,
+      confidence: Number(page?.confidence || 0),
+    candidateScore: Number(page?.candidateScore ?? page?.candidate_score ?? 0),
+    isCandidate: page?.isCandidate !== false,
+    footerCurrentPage: Number(page?.footerCurrentPage ?? page?.footer_current_page) || undefined,
+    footerTotalPages: Number(page?.footerTotalPages ?? page?.footer_total_pages) || undefined,
+  })) : [],
+    ...(payload.error ? { error: String(payload.error) } : {}),
+  };
+}
+
 export async function extractKqtnPdfMetadata(base64Data: string, mimeType = 'application/pdf'): Promise<KqtnPdfAiMetadata> {
   const response = await fetch('/api/gemini/extract-kqtn-metadata', {
     method: 'POST',
@@ -61,6 +128,35 @@ export async function extractKqtnPdfMetadata(base64Data: string, mimeType = 'app
     body: JSON.stringify({ base64Data, mimeType }),
   });
   return parseResponse(response);
+}
+
+export async function extractKqtnFooterWithPaddle(
+  base64Data: string,
+  pageNumber = 1,
+): Promise<KqtnBulkFooterPage> {
+  const response = await fetch('/api/kqtn/ocr/footer', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ base64Data, pageNumber }),
+  });
+  const payload = await parseResponse(response) as KqtnPaddleOcrResult;
+  return {
+    pageNumber,
+    isBlank: !String(payload.text || '').trim() && Number(payload.confidence || 0) <= 0,
+    footerKey: extractKqtnFooterKey(String(payload.text || '')),
+  };
+}
+
+export async function extractKqtnPageTextWithPaddle(
+  base64Data: string,
+  pageNumber = 1,
+): Promise<KqtnPaddleOcrResult> {
+  const response = await fetch('/api/kqtn/ocr/page', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ base64Data, pageNumber }),
+  });
+  return parseResponse(response) as Promise<KqtnPaddleOcrResult>;
 }
 
 export async function extractKqtnBulkStructure(

@@ -1,6 +1,6 @@
 // Author: Gemini
 // OS support: Web/Node
-// Description: Builds safe upload plans that map split KQTN PDF segments to real targets.
+// Description: Builds upload plans that map split KQTN PDF segments to selected targets.
 
 import type { KqtnBulkCandidate } from './kqtnBulkMatching';
 
@@ -10,6 +10,7 @@ export interface KqtnBulkUploadPlanSegment {
   candidateId?: string;
   pageStart: number;
   pageEnd: number;
+  splitFileReady: boolean;
 }
 
 export interface KqtnBulkUploadPlan<T extends KqtnBulkUploadPlanSegment> {
@@ -17,10 +18,13 @@ export interface KqtnBulkUploadPlan<T extends KqtnBulkUploadPlanSegment> {
   pendingSegmentIds: string[];
   missingSegmentIds: string[];
   duplicateTargetIds: string[];
+  unsplitSegmentIds: string[];
 }
 
 export function isKqtnBulkUploadTarget(candidate: KqtnBulkCandidate | undefined): boolean {
-  return Boolean(candidate && !candidate.isPending && !candidate.id.startsWith('sample-head:'));
+  // A pending sample head is a valid target. The UI warns about the missing
+  // KQTN record and prepares it immediately before the PDF upload.
+  return Boolean(candidate);
 }
 
 export function buildKqtnBulkUploadPlan<T extends KqtnBulkUploadPlanSegment>(
@@ -29,20 +33,20 @@ export function buildKqtnBulkUploadPlan<T extends KqtnBulkUploadPlanSegment>(
   retryOnlyFailed = false,
 ): KqtnBulkUploadPlan<T> {
   const candidateMap = new Map(candidates.map((candidate) => [candidate.id, candidate]));
-  const pending = segments.filter((segment) => {
-    if (segment.status === 'uploaded' || segment.status === 'skipped') return false;
-    if (retryOnlyFailed && segment.status !== 'failed') return false;
-    return Boolean(segment.candidateId && !isKqtnBulkUploadTarget(candidateMap.get(segment.candidateId)) && candidateMap.get(segment.candidateId));
-  });
   const missing = segments.filter((segment) => {
     if (segment.status === 'uploaded' || segment.status === 'skipped') return false;
     if (retryOnlyFailed && segment.status !== 'failed') return false;
     return !segment.candidateId || !candidateMap.has(segment.candidateId);
   });
+  const unsplit = segments.filter((segment) => {
+    if (segment.status === 'uploaded' || segment.status === 'skipped') return false;
+    if (retryOnlyFailed && segment.status !== 'failed') return false;
+    return !segment.splitFileReady;
+  });
   const candidatesForQueue = segments.filter((segment) => {
     if (segment.status === 'uploaded' || segment.status === 'skipped') return false;
     if (retryOnlyFailed && segment.status !== 'failed') return false;
-    return isKqtnBulkUploadTarget(candidateMap.get(segment.candidateId || ''));
+    return segment.splitFileReady && isKqtnBulkUploadTarget(candidateMap.get(segment.candidateId || ''));
   });
   const queue = candidatesForQueue.map((segment) => ({
     segment,
@@ -53,9 +57,12 @@ export function buildKqtnBulkUploadPlan<T extends KqtnBulkUploadPlanSegment>(
 
   return {
     queue,
-    pendingSegmentIds: pending.map((segment) => segment.id),
+    // Missing KQTN is a warning-only state; an unavailable target is handled
+    // by missingSegmentIds instead of being silently dropped from the queue.
+    pendingSegmentIds: [],
     missingSegmentIds: missing.map((segment) => segment.id),
     duplicateTargetIds: [...counts.entries()].filter(([, count]) => count > 1).map(([id]) => id),
+    unsplitSegmentIds: unsplit.map((segment) => segment.id),
   };
 }
 

@@ -17,15 +17,17 @@ test('KQTN view exposes a PDF column and bulk upload control', () => {
 
 test('bulk modal exposes automatic matching and manual candidate selection', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
+  const comboboxSource = fs.readFileSync(new URL('../components/KqtnCandidateCombobox.tsx', import.meta.url), 'utf8');
   assert.match(source, /matchKqtnBulkFile/);
-  assert.match(source, /Chọn đầu mẫu/);
+  assert.match(comboboxSource, /Tìm và chọn đầu mẫu/);
   assert.match(source, /uploadKqtnPdf/);
   assert.match(source, /extractKqtnPdfMetadata/);
 });
 
 test('bulk modal supports combined PDF review, page ranges, preview, and retry', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
-  assert.match(source, /extractKqtnBulkFooter/);
+  assert.match(source, /startKqtnFooterJob/);
+  assert.match(source, /extractKqtnPageTextWithPaddle/);
   assert.match(source, /buildKqtnBulkSegments/);
   assert.match(source, /pageStart/);
   assert.match(source, /pageEnd/);
@@ -33,6 +35,25 @@ test('bulk modal supports combined PDF review, page ranges, preview, and retry',
   assert.match(source, /Retry/);
   assert.match(source, /needs-review/);
   assert.match(source, /onBulkCompleted/);
+});
+
+test('combined page range editors preserve a blank transient edit until blur', () => {
+  const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
+  assert.match(source, /rangeInputValues/);
+  assert.match(source, /handleCombinedRangeInput/);
+  assert.match(source, /commitCombinedRangeInput/);
+  assert.match(source, /rawValue\.trim\(\) === ''/);
+  assert.match(source, /onBlur=\{\(\) => commitCombinedRangeInput/);
+});
+
+test('footer page-count mismatches warn without blocking split or save', () => {
+  const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
+  const splitSection = source.slice(source.indexOf('const splitCombinedSegments'), source.indexOf('const validateSingleItems'));
+  const uploadSection = source.slice(source.indexOf('const uploadCombinedSegments'), source.indexOf('const renderCandidateSelect'));
+  for (const section of [splitSection, uploadSection]) {
+    assert.match(section, /if \(footerPageCountErrors\.length > 0\) \{\s*toast\.warning\(footerPageCountErrors\[0\]\);\s*\}/);
+    assert.doesNotMatch(section, /footerPageCountErrors\[0\]\);\s*return/);
+  }
 });
 
 test('KQTN view records an aggregate activity entry for bulk upload', () => {
@@ -63,10 +84,14 @@ test('switching the PDF mode does not silently clear the active session', () => 
   assert.doesNotMatch(modeSection, /resetState\(\)/);
 });
 
-test('pending sample heads are visible but cannot be selected as upload targets', () => {
+test('pending sample heads remain selectable and show warnings instead of being locked', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
-  assert.match(source, /isPending/);
-  assert.match(source, /Chưa có KQTN/);
+  const comboboxSource = fs.readFileSync(new URL('../components/KqtnCandidateCombobox.tsx', import.meta.url), 'utf8');
+  assert.match(source + comboboxSource, /isPending/);
+  assert.match(comboboxSource, /isPending/);
+  assert.match(comboboxSource, /Chưa có KQTN/);
+  assert.doesNotMatch(comboboxSource, /disabled=\{pending\}/);
+  assert.match(source, /candidate\.hasPdf/);
   assert.match(source, /Tách PDF con và lưu vào mẫu đích/);
 });
 
@@ -86,16 +111,20 @@ test('combined flow materializes child PDFs before uploading them to selected ta
   assert.match(source, /hasUnsplitSegments \? 'Tách PDF con và lưu vào mẫu đích'/);
 });
 
-test('bulk target mapping and ranges are locked while upload is in flight', () => {
+test('bulk target mapping uses a searchable combobox and remains locked while upload is in flight', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
-  assert.match(source, /const renderCandidateSelect = \(value: string \| undefined, onChange: \(value: string\) => void, disabled = false\)/);
+  const comboboxSource = fs.readFileSync(new URL('../components/KqtnCandidateCombobox.tsx', import.meta.url), 'utf8');
+  assert.match(source, /KqtnCandidateCombobox/);
+  assert.match(source, /renderCandidateCombobox/);
   assert.match(source, /disabled=\{disabled\}/);
+  assert.match(comboboxSource, /role="combobox"/);
   assert.match(source, /disabled=\{isUploading \|\| segment\.status === 'uploaded'\}/);
 });
 
-test('single upload also rejects pending target flags', () => {
+test('single upload allows pending targets after the warning-only change', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
-  assert.match(source, /isKqtnBulkUploadTarget/);
+  assert.doesNotMatch(source, /Cần lưu kết quả KQTN trước khi nhận PDF/);
+  assert.match(source, /ensureKqtnUploadTarget/);
 });
 
 
@@ -107,29 +136,53 @@ test('new combined source starts a fresh activity group', () => {
 
 
 
-test('combined scan uses footer batches before manual fallback', () => {
+test('combined scan submits one asynchronous footer job before manual fallback', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
   const analyzeSection = source.slice(source.indexOf('const analyzeCombinedFile'), source.indexOf('const handleCombinedFile'));
-  assert.match(source, /const FOOTER_BATCH_SIZE = 6/);
-  assert.match(analyzeSection, /extractKqtnBulkFooter/);
+  assert.match(analyzeSection, /startKqtnFooterJob/);
+  assert.match(analyzeSection, /getKqtnFooterJob/);
+  assert.match(analyzeSection, /processedPages/);
+  assert.doesNotMatch(analyzeSection, /extractKqtnFooterWithPaddle/);
   assert.match(analyzeSection, /buildKqtnFooterSegments/);
   assert.doesNotMatch(analyzeSection, /extractKqtnBulkStructure/);
 });
 
-test('combined structure timeout switches directly to manual split', () => {
+test('combined footer job failure switches directly to manual split', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
   const analyzeSection = source.slice(source.indexOf('const analyzeCombinedFile'), source.indexOf('const handleCombinedFile'));
-  assert.match(source, /const FOOTER_BATCH_SIZE = 6/);
-  assert.match(analyzeSection, /isKqtnStructureTimeoutError\(error\)/);
-  assert.match(analyzeSection, /if \(isKqtnStructureTimeoutError\(error\)\) \{[\s\S]*?structureFailed = true;[\s\S]*?break;/);
+  assert.match(analyzeSection, /getKqtnFooterJob/);
+  assert.match(analyzeSection, /status === 'failed'/);
+  assert.match(analyzeSection, /structureFailed = true/);
+});
+
+test('combined fast scan maps visual candidates without waiting for every page OCR result', () => {
+  const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
+  const analyzeSection = source.slice(source.indexOf('const analyzeCombinedFile'), source.indexOf('const handleCombinedFile'));
+  assert.match(analyzeSection, /strategy/);
+  assert.match(analyzeSection, /visual-candidates/);
+  assert.match(analyzeSection, /buildKqtnFastCandidateSegments/);
+  assert.match(analyzeSection, /detectedFooterPages/);
+  assert.doesNotMatch(analyzeSection, /isReportCover: page\.isCandidate/);
+  assert.doesNotMatch(analyzeSection, /hasEverySourcePage/);
 });
 
 test('combined mapping OCRs only each detected segment first page', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
   const analyzeSection = source.slice(source.indexOf('const analyzeCombinedFile'), source.indexOf('const handleCombinedFile'));
+  assert.match(analyzeSection, /extractKqtnPageTextWithPaddle/);
+  assert.match(analyzeSection, /parseKqtnOcrMetadata/);
   assert.match(analyzeSection, /extractKqtnPdfMetadata/);
   assert.match(analyzeSection, /draft\.pageStart, draft\.pageStart/);
   assert.match(analyzeSection, /first-page|trang đầu/i);
+});
+
+test('single-file mapping uses first-page PaddleOCR before Gemini fallback', () => {
+  const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
+  const analyzeSection = source.slice(source.indexOf('const analyzeSingleFiles'), source.indexOf('const analyzeCombinedFile'));
+  assert.match(analyzeSection, /extractKqtnPageTextWithPaddle/);
+  assert.match(analyzeSection, /parseKqtnOcrMetadata/);
+  assert.match(analyzeSection, /extractKqtnPdfMetadata/);
+  assert.match(analyzeSection, /extractKqtnPageTextWithPaddle[\s\S]*?extractKqtnPdfMetadata/);
 });
 
 test('bulk file selection waits for explicit confirmation before AI analysis', () => {

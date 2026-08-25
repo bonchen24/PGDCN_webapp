@@ -107,6 +107,16 @@ Description: Shared working memory for the DDT Lab repository and GitHub workflo
 - Remote-only content, including `LapBaoCao/**`, was removed from the snapshot branch because the selected scope was the full local snapshot.
 - No pull request was opened.
 
+## 2026-08-25 — KQTN Bulk Upload storage and footer warning completion
+
+- Bulk Upload now uses the shared TVCI PaddleOCR footer-first job for large scanned PDFs: one multipart source upload, asynchronous polling, visual-candidate OCR and first-page metadata OCR instead of 116 browser page requests. Gemini remains only a metadata fallback.
+- The 116-page scan was validated as six semantic groups: M02 `1-20`, M03 `21-39`, M04 `40-59`, M05 `60-78`, M06 `79-96`, M07 `97-116`.
+- Target mapping is a searchable/filterable combobox. Pending sample heads are selectable with a no-KQTN warning; upload creates the minimal KQTN record when needed. Existing PDF targets show an overwrite confirmation. Blank transient page-range edits are preserved until blur.
+- Footer `current/total` mismatches are warning-only and no longer block split/save. Invalid or overlapping ranges remain blocking.
+- Production storage wiring is fixed: Docker Compose defaults to `http://supabase-storage:5000` and maps both `SUPABASE_SERVICE_ROLE_KEY` and the canonical self-host Supabase `SERVICE_ROLE_KEY` from the external env file. No secret is stored in source. Limits: 25 MiB per single/result PDF, 100 MiB per combined source, no hard page-count limit.
+- Docker production was rebuilt/recreated as `ddt_webapp-webapp-1` on port `2359`. App/DB health returned 200; temporary storage upload/delete returned 200; duplicate bucket response matched the storage client contract.
+- Final verification: `npm test` 311/311, `npm run lint`, `npm run build`, and `git diff --check` passed. Build retains the existing non-blocking large-chunk warning.
+
 ## Collaboration rules for future work
 
 - Read `AGENTS.md` and `design.md` before changing code.

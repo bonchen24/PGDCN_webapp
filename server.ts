@@ -36,9 +36,10 @@ import { buildReportDocxMetadata } from "./lib/reportDocxMetadata.js";
 import { getDocxGraphSize } from "./lib/reportDocxImageSizing.js";
 import { buildActivityLog, isValidActivityTimestamp } from "./utils/activityLog.js";
 import { REPORT_TEMPLATES_CATALOG, ReportTemplateMetadata } from "./lib/reportTemplatesCatalog.js";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { createSupabaseStorageClient } from "./utils/supabaseStorage.js";
 import { normalizeSystemUserRole } from "./utils/systemUserRole.js";
+import { extractKqtnFooterKey, extractKqtnFooterPageNumber } from "./utils/kqtnOcrMetadata.js";
 import {
   applyRetention,
   createBackup,
@@ -64,12 +65,57 @@ dotenv.config();
 const upload = multer({ storage: multer.memoryStorage() });
 
 const KQTN_PDF_MAX_BYTES = Number(process.env.KQTN_PDF_MAX_BYTES || 25 * 1024 * 1024);
+const KQTN_BULK_SOURCE_MAX_BYTES = Number(process.env.KQTN_BULK_SOURCE_MAX_BYTES || 100 * 1024 * 1024);
 const KQTN_BULK_STRUCTURE_TIMEOUT_MS = 45_000;
 const KQTN_STRUCTURE_TIMEOUT_CODE = "KQTN_STRUCTURE_TIMEOUT";
+const KQTN_OCR_TIMEOUT_MS = 120_000;
+const KQTN_FOOTER_JOB_TIMEOUT_MS = 5 * 60_000;
+const KQTN_FOOTER_JOB_TTL_MS = 10 * 60_000;
+const KQTN_FOOTER_JOB_MAX_ACTIVE = 1;
+
+function getKqtnOcrServiceUrl(): string {
+  const configuredUrl = String(process.env.OCR_SERVICE_URL || '').trim().replace(/\/+$/, '');
+  if (configuredUrl) return configuredUrl;
+  return process.env.NODE_ENV === 'production' ? 'http://tvci_ocr_service:8100' : 'http://127.0.0.1:8100';
+}
+
 const kqtnPdfUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: KQTN_PDF_MAX_BYTES },
 });
+const kqtnBulkSourceUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: KQTN_BULK_SOURCE_MAX_BYTES },
+});
+
+type KqtnFooterJobState = "queued" | "running" | "completed" | "failed";
+type KqtnFooterJobStrategy = "native-text" | "visual-candidates";
+
+interface KqtnFooterJobPage {
+  pageNumber: number;
+  isBlank: boolean;
+  footerKey: string;
+  text?: string;
+  confidence?: number;
+  candidateScore?: number;
+  isCandidate?: boolean;
+  footerCurrentPage?: number;
+  footerTotalPages?: number;
+  error?: string;
+}
+
+interface KqtnFooterJobRecord {
+  jobId: string;
+  status: KqtnFooterJobState;
+  totalPages: number;
+  processedPages: number;
+  pages: KqtnFooterJobPage[];
+  strategy?: KqtnFooterJobStrategy;
+  error?: string;
+  createdAt: number;
+}
+
+const kqtnFooterJobs = new Map<string, KqtnFooterJobRecord>();
 
 function getKqtnStorageClient() {
   const baseUrl = String(process.env.SUPABASE_STORAGE_URL || '').trim();
@@ -420,6 +466,215 @@ async function startServer() {
       }
     });
   };
+
+  const proxyKqtnOcr = async (req: express.Request, res: express.Response, mode: "footer" | "page") => {
+    const base64Data = String(req.body?.base64Data || "").replace(/^data:application\/pdf;base64,/i, "");
+    const sourcePage = Math.max(1, Math.floor(Number(req.body?.pageNumber) || 1));
+    if (!base64Data) {
+      res.status(400).json({ error: "Missing PDF data." });
+      return;
+    }
+
+    const ocrServiceUrl = getKqtnOcrServiceUrl();
+
+    const pdfBuffer = Buffer.from(base64Data, "base64");
+    if (pdfBuffer.length === 0 || pdfBuffer.subarray(0, 5).toString("ascii") !== "%PDF-") {
+      res.status(415).json({ error: "Only valid PDF data is accepted." });
+      return;
+    }
+
+    const ocrUrl = new URL(`${ocrServiceUrl}/ocr/pdf/${mode}`);
+    ocrUrl.searchParams.set("page", "1");
+    // Bulk identity OCR only needs the footer band or the first-page fields;
+    // keep the rendered payload light enough for Docker Desktop/Cloudflare.
+    ocrUrl.searchParams.set("dpi", mode === "footer" ? "120" : "150");
+    if (mode === "footer") ocrUrl.searchParams.set("footer_ratio", "0.2");
+
+    const formData = new FormData();
+    formData.append("file", new Blob([new Uint8Array(pdfBuffer)], { type: "application/pdf" }), `kqtn-page-${sourcePage}.pdf`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), KQTN_OCR_TIMEOUT_MS);
+    console.log(`KQTN PaddleOCR ${mode} request: sourcePage=${sourcePage}, payloadBytes=${pdfBuffer.length}`);
+
+    try {
+      const response = await fetch(ocrUrl, {
+        method: "POST",
+        body: formData,
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        res.status(response.status >= 500 ? 503 : response.status).json({
+          code: "KQTN_OCR_UNAVAILABLE",
+          error: payload.detail || payload.error || `PaddleOCR request failed (${response.status}).`,
+        });
+        return;
+      }
+      res.json({ ...payload, sourcePage, mode });
+    } catch (error: any) {
+      console.error(`KQTN PaddleOCR ${mode} error:`, error?.message || String(error));
+      res.status(503).json({
+        code: "KQTN_OCR_UNAVAILABLE",
+        error: error?.name === "AbortError" ? "PaddleOCR request timed out." : "PaddleOCR service unavailable.",
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  };
+
+  app.post("/api/kqtn/ocr/footer", (req, res) => proxyKqtnOcr(req, res, "footer"));
+  app.post("/api/kqtn/ocr/page", (req, res) => proxyKqtnOcr(req, res, "page"));
+
+  const expireKqtnFooterJob = (jobId: string) => {
+    setTimeout(() => {
+      kqtnFooterJobs.delete(jobId);
+    }, KQTN_FOOTER_JOB_TTL_MS);
+  };
+
+  const runKqtnFooterJob = async (jobId: string, sourceBytes: Buffer) => {
+    const job = kqtnFooterJobs.get(jobId);
+    if (!job) return;
+
+    job.status = "running";
+    let sourceBuffer = sourceBytes;
+    let controller: AbortController | undefined;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const ocrServiceUrl = getKqtnOcrServiceUrl();
+
+      const ocrUrl = new URL(ocrServiceUrl + "/ocr/pdf/footer-fast");
+      ocrUrl.searchParams.set("thumbnail_dpi", "60");
+      ocrUrl.searchParams.set("ocr_dpi", "100");
+      ocrUrl.searchParams.set("chunk_size", "8");
+      ocrUrl.searchParams.set("max_candidates", "32");
+      const formData = new FormData();
+      formData.append("file", new Blob([new Uint8Array(sourceBuffer)], { type: "application/pdf" }), "kqtn-combined-source.pdf");
+      controller = new AbortController();
+      timeout = setTimeout(() => controller?.abort(), KQTN_FOOTER_JOB_TIMEOUT_MS);
+
+      console.log("KQTN footer job running: jobId=" + jobId + ", payloadBytes=" + sourceBuffer.length);
+      const response = await fetch(ocrUrl, {
+        method: "POST",
+        body: formData,
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.detail || payload.error || "PaddleOCR fast scan failed (" + response.status + ").");
+      }
+
+      const rawPages = Array.isArray(payload.pages) ? payload.pages : [];
+      job.totalPages = Math.max(job.totalPages, Math.floor(Number(payload.total_pages) || 0));
+      job.strategy = payload.strategy === "native-text" ? "native-text" : "visual-candidates";
+      job.pages = rawPages.map((page: any, index: number) => {
+        const text = String(page?.text || "").trim();
+        const confidence = Number(page?.confidence || 0);
+        const candidateScore = Number(page?.candidate_score || 0);
+        const footerPageNumber = extractKqtnFooterPageNumber(text);
+        return {
+          pageNumber: Math.max(1, Math.floor(Number(page?.page) || index + 1)),
+          isBlank: !text && confidence <= 0,
+          footerKey: extractKqtnFooterKey(text),
+          text,
+          confidence,
+          candidateScore,
+          isCandidate: page?.is_candidate !== false,
+          footerCurrentPage: footerPageNumber?.currentPage,
+          footerTotalPages: footerPageNumber?.totalPages,
+        };
+      }).sort((left: KqtnFooterJobPage, right: KqtnFooterJobPage) => left.pageNumber - right.pageNumber);
+      job.processedPages = job.pages.length;
+      if (job.strategy === "native-text" && job.totalPages > 0 && job.processedPages < job.totalPages) {
+        throw new Error("PDF text layer trả thiếu trang (" + job.processedPages + "/" + job.totalPages + ").");
+      }
+      if (job.strategy === "visual-candidates" && job.pages.length === 0) {
+        throw new Error("Không tìm được trang ứng viên để OCR nhanh.");
+      }
+      job.status = "completed";
+      console.log("KQTN footer job completed: jobId=" + jobId + ", strategy=" + job.strategy + ", candidates=" + job.processedPages + "/" + job.totalPages + ", elapsed=" + Number(payload.processing_time_s || 0) + "s");
+    } catch (error: any) {
+      job.status = "failed";
+      job.pages = [];
+      job.error = error?.name === "AbortError"
+        ? "PaddleOCR fast scan timed out."
+        : error?.message || String(error);
+      console.error("KQTN footer job failed: jobId=" + jobId, job.error);
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      controller = undefined;
+      sourceBuffer = Buffer.alloc(0);
+      expireKqtnFooterJob(jobId);
+    }
+  };
+
+  const handleKqtnFooterJobUpload = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    kqtnBulkSourceUpload.single("file")(req, res, (error: any) => {
+      if (!error) {
+        next();
+        return;
+      }
+      const status = error?.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+      res.status(status).json({ code: "KQTN_FOOTER_JOB_UPLOAD_FAILED", error: error?.message || "Không thể nhận PDF scan." });
+    });
+  };
+
+  app.post("/api/kqtn/ocr/footer-jobs", handleKqtnFooterJobUpload, (req, res) => {
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: "A combined PDF file is required." });
+      return;
+    }
+    if (file.buffer.subarray(0, 5).toString("ascii") !== "%PDF-") {
+      res.status(415).json({ error: "Only valid PDF files are accepted." });
+      return;
+    }
+    const hasActiveFooterJob = [...kqtnFooterJobs.values()].some((job) => job.status === "queued" || job.status === "running");
+    if (hasActiveFooterJob && KQTN_FOOTER_JOB_MAX_ACTIVE <= 1) {
+      res.status(429).json({ code: "KQTN_FOOTER_JOB_BUSY", error: "Đang có một PDF scan được OCR; vui lòng chờ job hiện tại hoàn tất." });
+      return;
+    }
+
+    const parsedTotalPages = Number(req.body?.totalPages);
+    const totalPages = Number.isFinite(parsedTotalPages) ? Math.max(0, Math.floor(parsedTotalPages)) : 0;
+    const jobId = "kqtn-footer-" + randomUUID();
+    const job: KqtnFooterJobRecord = {
+      jobId,
+      status: "queued",
+      totalPages,
+      processedPages: 0,
+      pages: [],
+      createdAt: Date.now(),
+    };
+    kqtnFooterJobs.set(jobId, job);
+    console.log("KQTN footer job accepted: jobId=" + jobId + ", pages=" + totalPages + ", payloadBytes=" + file.buffer.length);
+    void runKqtnFooterJob(jobId, file.buffer);
+    res.status(202).json({
+      jobId,
+      status: job.status,
+      strategy: job.strategy,
+      totalPages: job.totalPages,
+      processedPages: job.processedPages,
+      pages: job.pages,
+    });
+  });
+
+  app.get("/api/kqtn/ocr/footer-jobs/:jobId", (req, res) => {
+    const jobId = String(req.params.jobId || "").trim();
+    const job = kqtnFooterJobs.get(jobId);
+    if (!job) {
+      res.status(404).json({ code: "KQTN_FOOTER_JOB_NOT_FOUND", error: "Footer OCR job không còn tồn tại hoặc đã hết hạn." });
+      return;
+    }
+    res.json({
+      jobId: job.jobId,
+      status: job.status,
+      strategy: job.strategy,
+      totalPages: job.totalPages,
+      processedPages: job.processedPages,
+      pages: job.pages,
+      ...(job.error ? { error: job.error } : {}),
+    });
+  });
 
 
   app.post("/api/kqtn/:recordId/pdf", kqtnPdfUpload.single("file"), async (req, res) => {
@@ -1571,15 +1826,17 @@ Trả về đúng định dạng JSON khớp schema đã cung cấp.
   });
 
   app.post("/api/gemini/extract-kqtn-bulk-structure", async (req, res) => {
+    const analysisMode = req.body?.mode === "footer" ? "footer" : "structure";
     try {
-      const { base64Data, pageOffset, mode } = req.body || {};
+      const { base64Data, pageOffset } = req.body || {};
       if (!base64Data) {
         res.status(400).json({ error: "Missing PDF batch data." });
         return;
       }
-      const analysisMode = mode === "footer" ? "footer" : "structure";
       const parsedOffset = Number(pageOffset);
       const safeOffset = Number.isFinite(parsedOffset) ? Math.max(0, Math.floor(parsedOffset)) : 0;
+      const payloadBytes = Math.floor((String(base64Data).length * 3) / 4);
+      console.log(`KQTN ${analysisMode} request: pageOffset=${safeOffset}, payloadBytes=${payloadBytes}`);
       const activeAi = getGeminiClient(req, {
         timeout: KQTN_BULK_STRUCTURE_TIMEOUT_MS,
       });
@@ -1695,7 +1952,7 @@ Trả về JSON theo schema đã cung cấp, không thêm markdown.
       })) : [];
       res.json({ pages });
     } catch (error: any) {
-      console.error("KQTN bulk structure extraction error:", error);
+      console.error(`KQTN ${analysisMode} extraction error:`, error);
       if (isGeminiRequestTimeout(error)) {
         res.status(504).json({
           code: KQTN_STRUCTURE_TIMEOUT_CODE,
