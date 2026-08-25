@@ -223,7 +223,7 @@ Description: Persistent project memory and verified deployment observations for 
 
 ## Cập nhật 2026-08-25 — Hoàn tất Bulk Upload KQTN, Storage PDF và cảnh báo footer
 
-- Bulk Upload PDF ghép đã chuyển sang luồng PaddleOCR footer-first dùng chung `tvci_ocr_service`: upload nguồn một lần, tạo footer job bất đồng bộ, polling tiến độ và chỉ OCR trang ứng viên/trang đầu nhóm cần nhận diện; Gemini chỉ là fallback metadata khi OCR local chưa đủ rõ.
+- Bulk Upload PDF ghép đã chuyển sang luồng PaddleOCR footer-first dùng chung `tvci_ocr_service`: upload nguồn một lần, tạo footer job bất đồng bộ, polling tiến độ và chỉ OCR trang ứng viên/trang đầu nhóm cần nhận diện. Bulk mapping không phụ thuộc Gemini; nếu PaddleOCR không đủ metadata hoặc lỗi thì giữ trạng thái rà soát/chọn mẫu thủ công, không gọi Gemini tự động.
 - Với file scan 116 trang đã xác nhận mapping đúng 6 nhóm: `1132-26-M02` trang 1–20, `M03` 21–39, `M04` 40–59, `M05` 60–78, `M06` 79–96 và `M07` 97–116. Các trang kết quả/phụ lục lặp không còn bị nâng thành nhóm thừa.
 - Mapping mẫu đích dùng combobox tìm kiếm/lọc; candidate chưa có KQTN vẫn chọn được và hiển thị cảnh báo. Khi upload, hệ thống tạo bản ghi KQTN tối thiểu nếu cần; mẫu đã có PDF sẽ hỏi xác nhận ghi đè. Ô trang bắt đầu/kết thúc giữ được giá trị rỗng tạm thời khi người dùng đang edit.
 - Footer OCR có `current/total` được đối chiếu với số trang thực tế. Nếu lệch, UI báo cảnh báo nhưng vẫn cho phép tách và lưu theo mốc/mapping người dùng đã rà soát; chỉ khoảng trang không hợp lệ mới chặn.
@@ -231,6 +231,14 @@ Description: Persistent project memory and verified deployment observations for 
 - Production Docker `ddt_webapp-webapp-1` đã rebuild/recreate trên cổng `2359`. Health app/DB trả HTTP 200; storage smoke upload/delete trả HTTP 200; bucket duplicate trả `statusCode=409` đúng contract.
 - Verification cuối: `npm test` **311/311 pass**, `npm run lint` pass, `npm run build` pass (chỉ còn cảnh báo chunk >500 kB), `git diff --check` exit 0.
 - Attachment ảnh người dùng và mọi secret/env thật không đưa vào commit.
+
+## Cập nhật 2026-08-25 — Bulk mapping không chặn bởi Gemini
+
+- Docker logs xác nhận footer job PaddleOCR hoàn tất `116/116` trang, nhưng mapping production cũ vẫn gọi Gemini và nhận `400 API key not valid`; đây là lỗi cấu hình Gemini, không phải lỗi Storage/PaddleOCR.
+- `components/KqtnBulkPdfUploadModal.tsx` đã bỏ fallback Gemini khỏi cả PDF đơn và PDF ghép. Matching dùng PaddleOCR trang đầu + tên file; khi không có metadata, UI xóa đề xuất không chắc chắn và yêu cầu người dùng chọn qua combobox tìm kiếm.
+- `design.md` đã cập nhật quy tắc Bulk Upload: Gemini là tùy chọn cho luồng khác, không phải dependency của bulk; lỗi/thiếu key không được chặn tách hoặc mapping thủ công.
+- Verification sau thay đổi: `npm test` **312/312 pass**, `npm run lint` (tsc) pass, `npm run build` pass, `git diff --check` pass. Build chỉ còn cảnh báo chunk lớn hiện hữu.
+- Image production cần rebuild sau commit mới; không đưa `dist` sinh tự động, `.env` hoặc attachment vào commit.
 
 ## Files quan trọng
 

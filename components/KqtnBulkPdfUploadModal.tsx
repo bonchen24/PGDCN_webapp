@@ -36,7 +36,6 @@ import {
 import { buildKqtnBulkUploadPlan } from '../utils/kqtnBulkWorkflow';
 import {
   extractKqtnPageTextWithPaddle,
-  extractKqtnPdfMetadata,
   getKqtnFooterJob,
   startKqtnFooterJob,
   uploadKqtnPdf,
@@ -282,27 +281,35 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
         const firstPageDoc = await PDFDocument.load(await file.arrayBuffer());
         const firstPageOnly = firstPageDoc.getPageCount() > 1 ? await createPdfSegmentFile(firstPageDoc, 1, 1, `${fileStem(file.name)}-cover.pdf`) : file;
         const firstPageBase64 = await fileToBase64(firstPageOnly);
-        let metadata;
+        let metadata = parseKqtnOcrMetadata('');
         try {
           const paddlePage = await extractKqtnPageTextWithPaddle(firstPageBase64, 1);
-          const localMetadata = parseKqtnOcrMetadata(paddlePage.text);
-          metadata = localMetadata.sampleCode || localMetadata.model || localMetadata.brand
-            ? localMetadata
-            : await extractKqtnPdfMetadata(firstPageBase64, 'application/pdf');
+          metadata = parseKqtnOcrMetadata(paddlePage.text);
+          if (!metadata.sampleCode && !metadata.model && !metadata.brand) {
+            console.warn('KQTN first-page PaddleOCR returned no structured metadata; keeping manual mapping.');
+          }
         } catch (paddleError) {
-          console.warn('KQTN first-page PaddleOCR failed; using Gemini metadata fallback.', paddleError);
-          metadata = await extractKqtnPdfMetadata(firstPageBase64, 'application/pdf');
+          console.warn('KQTN first-page PaddleOCR failed; keeping manual mapping without Gemini fallback.', paddleError);
         }
+        const hasOcrMetadata = Boolean(metadata.sampleCode || metadata.model || metadata.brand);
         const match = matchKqtnBulkFile({ fileName: file.name, ...metadata }, candidates);
         setItems((current) => current.map((item, itemIndex) => itemIndex === index && !item.manualSelection
-          ? { ...item, candidateId: match.candidateId, reason: `AI: ${match.reason}`, confidence: match.confidence, needsManualSelection: match.needsManualSelection, aiSource: true, status: match.candidateId && !match.needsManualSelection ? 'ready' : 'needs-review' }
+          ? {
+            ...item,
+            candidateId: hasOcrMetadata ? match.candidateId : undefined,
+            reason: hasOcrMetadata ? `OCR Paddle: ${match.reason}` : `OCR Paddle chưa đủ metadata; cần chọn mẫu thủ công. ${match.reason}`,
+            confidence: hasOcrMetadata ? match.confidence : 'none',
+            needsManualSelection: hasOcrMetadata ? match.needsManualSelection : true,
+            aiSource: false,
+            status: hasOcrMetadata && match.candidateId && !match.needsManualSelection ? 'ready' : 'needs-review',
+          }
           : item));
       } catch (error) {
-        console.warn('KQTN PDF AI metadata extraction failed; keeping deterministic match.', error);
+        console.warn('KQTN PDF OCR metadata extraction failed; keeping manual mapping.', error);
       }
     }
     setIsInspectingAi(false);
-    toast.success('AI metadata analysis completed; please review the mapping.');
+    toast.success('Đã quét OCR Paddle trang đầu; hãy rà soát mapping.');
   };
 
   const analyzeCombinedFile = async (file: File) => {
@@ -367,18 +374,9 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
               const firstPageFile = await createPdfSegmentFile(sourceDoc, draft.pageStart, draft.pageStart, `${fileStem(file.name)}-first-page-${draft.pageStart}.pdf`);
               const firstPageBase64 = await fileToBase64(firstPageFile);
               const paddlePage = await extractKqtnPageTextWithPaddle(firstPageBase64, 1);
-              const paddleMetadata = parseKqtnOcrMetadata(paddlePage.text);
-              if (paddleMetadata.sampleCode || paddleMetadata.model || paddleMetadata.brand) {
-                metadata = paddleMetadata;
-              } else {
-                const fallbackMetadata = await extractKqtnPdfMetadata(firstPageBase64, 'application/pdf');
-                metadata = {
-                  sampleCode: fallbackMetadata.sampleCode || '',
-                  model: fallbackMetadata.model || '',
-                  brand: fallbackMetadata.brand || '',
-                };
-              }
+              metadata = parseKqtnOcrMetadata(paddlePage.text);
             }
+            const hasOcrMetadata = Boolean(metadata.sampleCode || metadata.model || metadata.brand);
             const enrichedDraft: KqtnBulkSegmentDraft = {
               ...draft,
               metadata: {
@@ -392,6 +390,19 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
             segments = segments.map((segment, segmentIndex) => segmentIndex === index
               ? buildCombinedSegment(enrichedDraft, index, candidates)
               : segment);
+            if (!hasOcrMetadata) {
+              console.warn(`KQTN group ${draft.pageStart}-${draft.pageEnd} has no structured PaddleOCR metadata; keeping manual mapping.`);
+              segments = segments.map((segment, segmentIndex) => segmentIndex === index
+                ? {
+                  ...segment,
+                  candidateId: undefined,
+                  confidence: 'none',
+                  needsManualSelection: true,
+                  status: 'needs-review',
+                  reason: 'OCR Paddle chưa đủ metadata; cần chọn mẫu thủ công.',
+                }
+                : segment);
+            }
             setCombinedSegments(segments);
           } catch (error: any) {
             console.warn('KQTN first-page metadata extraction failed; keeping manual mapping.', error);

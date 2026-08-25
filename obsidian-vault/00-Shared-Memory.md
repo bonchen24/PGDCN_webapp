@@ -109,7 +109,7 @@ Description: Shared working memory for the DDT Lab repository and GitHub workflo
 
 ## 2026-08-25 — KQTN Bulk Upload storage and footer warning completion
 
-- Bulk Upload now uses the shared TVCI PaddleOCR footer-first job for large scanned PDFs: one multipart source upload, asynchronous polling, visual-candidate OCR and first-page metadata OCR instead of 116 browser page requests. Gemini remains only a metadata fallback.
+- Bulk Upload now uses the shared TVCI PaddleOCR footer-first job for large scanned PDFs: one multipart source upload, asynchronous polling, visual-candidate OCR and first-page metadata OCR instead of 116 browser page requests. Gemini is not a required bulk dependency; missing/failed PaddleOCR metadata keeps mapping manual instead of invoking Gemini automatically.
 - The 116-page scan was validated as six semantic groups: M02 `1-20`, M03 `21-39`, M04 `40-59`, M05 `60-78`, M06 `79-96`, M07 `97-116`.
 - Target mapping is a searchable/filterable combobox. Pending sample heads are selectable with a no-KQTN warning; upload creates the minimal KQTN record when needed. Existing PDF targets show an overwrite confirmation. Blank transient page-range edits are preserved until blur.
 - Footer `current/total` mismatches are warning-only and no longer block split/save. Invalid or overlapping ranges remain blocking.

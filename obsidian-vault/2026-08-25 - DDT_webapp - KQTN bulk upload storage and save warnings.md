@@ -11,7 +11,7 @@ Description: Summary of KQTN Bulk Upload segmentation, storage wiring and footer
 
 ## Change summary
 
-- Bulk Upload uses the shared TVCI PaddleOCR footer-first job for large scanned PDFs. The browser uploads the source once and polls the job; recognition uses visual candidates and first-page metadata OCR, with Gemini only as fallback metadata extraction.
+- Bulk Upload uses the shared TVCI PaddleOCR footer-first job for large scanned PDFs. The browser uploads the source once and polls the job; recognition uses visual candidates and first-page metadata OCR. Gemini is not required for bulk mapping; missing/failed local metadata keeps the row in manual review instead of triggering a Gemini request.
 - The validated 116-page scan is split into six groups: `M02 1-20`, `M03 21-39`, `M04 40-59`, `M05 60-78`, `M06 79-96`, `M07 97-116`.
 - Mapping uses a searchable combobox. A pending sample head can be selected with a warning and receives a minimal KQTN record before PDF upload. Existing PDF targets require overwrite confirmation. Page-range inputs preserve blank transient edits.
 - Footer `current/total` mismatches are displayed as warnings and no longer block splitting or saving. Invalid, overlapping or out-of-source ranges still block.
@@ -36,5 +36,11 @@ Description: Summary of KQTN Bulk Upload segmentation, storage wiring and footer
 ## Operational note
 
 - Do not commit `.env`, service-role keys, or the remote attachment image. Production deployment must continue using the external Supabase env file.
+
+## Runtime incident resolved
+
+- Docker logs showed the PaddleOCR footer job completing `116/116`, followed by repeated Gemini `400 API key not valid` responses. The failure was the old automatic Gemini fallback, not Storage or PaddleOCR.
+- The bulk modal now removes that fallback for both single PDFs and combined PDFs. It uses PaddleOCR plus filename matching and explicitly asks for manual combobox mapping when metadata is missing.
+- The production image must be rebuilt after the new commit so the running container contains this fix.
 
 <!-- --- End of 2026-08-25 - DDT_webapp - KQTN bulk upload storage and save warnings.md --- -->
