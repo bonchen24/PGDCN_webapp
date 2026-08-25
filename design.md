@@ -266,6 +266,15 @@ Hiển thị trong Màn hình Nhật Ký Hoạt Động & Sổ Tổng Hợp (`Su
   - Bảng và phần chi tiết mặc định của KQTN không hiển thị `Số KQTN`; `Số mã hóa` là định danh đầu tiên sau số thứ tự.
   - Trường dữ liệu `reportNo` vẫn được giữ trong schema, payload lưu trữ, nhật ký và tương thích xuất file; khi tạo báo cáo, giá trị nội bộ này được đồng bộ theo `codingNumber` thay vì yêu cầu nhập riêng.
   - Ngày báo cáo vẫn được dùng cho validation, lưu KQTN và xuất DOCX nhưng không hiển thị thêm chuỗi diễn giải ngày đầy đủ bên dưới ô chọn ngày.
+    - **Điều 22.12**:
+        + Dòng chính `22.12`: Yêu cầu: *"Tay cầm, nút bấm và các bộ phận tương tự.\nThử nghiệm bằng tay và cố gắng tháo các bộ phận này bằng cách đặt lực hướng trục"*, Kết quả: *"Lực kéo hướng trục: 15N (ít khả năng bị kéo); 30N (nhiều khả năng bị kéo theo hướng trục)\nĐược cố định một cách tin cậy, không bị lỏng khi sử dụng bình thường"*.
+    - **Cấu hình bảng phụ (subTables) cho TCVN 5699-2-23 (Máy sấy tóc)**:
+      - Loại bỏ cấu hình `subTable: "CLAUSE_22"` và `subTable: "CLAUSE_24"` khỏi Điều 22 và Điều 24 (do các bảng đo nhiệt độ nước chỉ áp dụng cho Bình đun nước nóng TCVN 5699-2-21).
+      - Bảng Điều 19 (Hoạt động không bình thường) khởi tạo chính xác các dòng đo không bị trùng lặp hàng đo sàn/vách góc thử nghiệm.
+    - Form `hair_dryer` phải hiển thị và cho phép nhập kết quả cho các dòng con của Điều 22.32, Điều 24.2 và Điều 30.2 theo biểu mẫu chuẩn, giữ `displayId` rỗng cho các dòng con không có số điều riêng.
+    - Bảng chi tiết Điều 30 phải có thêm nhóm **Thử nghiệm ngọn lửa hình kim** gồm 3 dòng kết quả, với giới hạn lần lượt `≤ 30`, `≤ 30` và `≤ 15` giây; dữ liệu phải được lưu cùng `testResultsData` và truyền qua luồng xuất DOCX hiện tại.
+    - Cấu hình `hair_dryer` phải khớp toàn bộ các placeholder đánh giá của template `5699-2-23 placeholder.docx`, bao gồm các dòng con tại Điều 13.1, 22.2, 22.14, 22.32, 22.36, 24.2, 27.1, 27.3, 30.1 và 30.2.
+    - Với các module TCVN khác có cặp template đầy đủ/rút gọn, cấu hình clause phải khớp các placeholder đánh giá `{eval_*}` của DOCX tương ứng; các dòng con trong template phải được khai báo thành trường nhập liệu riêng, giữ `displayId` rỗng khi không có số điều riêng.
 
 - **Chuẩn hóa Định dạng & Phân tách Cột Bảng KQTN (KQTN Table Column Standardization)**:
   - Tách bạch rõ ràng 4 trường dữ liệu độc lập, chuẩn hóa tên gọi nghiệp vụ:
@@ -279,6 +288,18 @@ Hiển thị trong Màn hình Nhật Ký Hoạt Động & Sổ Tổng Hợp (`Su
     - `reportNo` (Số KQTN): gán mặc định theo số mã hóa `ITD...` / `EMC...` / `ITDC...` (hoặc `req.requestCode` nếu chưa có mã hóa).
     - `codingNumber`: gán theo số mã hóa `encodeNum`.
     - `sealStamp`: gán theo `req.sealStamp` (mọi mã có tiền tố `IEMM...`).
+  - **Đầy đủ dòng nhập liệu cho mẫu TCVN 5699-2**:
+    - **Quy chuẩn Điều 22.11 và 22.12 cho các mẫu đầy đủ chỉ tiêu TCVN 5699-2**:
+      - **Điều 22.11**: Chia tách thành 3 dòng:
+        + Dòng chính `22.11`: Yêu cầu: *"Các bộ phận không tháo rời được, dùng để bảo vệ chống chạm bộ phận mang điện"*, Kết quả: *"Được cố định chắc chắn và chịu được ứng suất cơ học xuất hiện trong sử dụng bình thường"*.
+        + Dòng con `22.11_1` (`displayId: ""`): Yêu cầu: *"Thử nghiệm lực đẩy và kéo với bộ phận nhiều khả năng phải tháo ra cho dù chúng được cố định bằng vít, đinh tán hay chi tiết tương tự"*, Kết quả: *"Lực đẩy: 50N\nLực kéo: 50N (bộ phận không thể trượt ngón tay); 30N (bộ phận nhô ra <10mm)"*.
+        + Dòng con `22.11_2` (`displayId: ""`): Yêu cầu: *"Thử nghiệm momen xoắn với bộ phận có thể phải chịu lực xoắn đồng thời với lực kéo và lực đẩy (nếu chỗ nhô ra của bộ phận nắm vào được <10mm thì momen giảm đi 50%)"*, Kết quả: *"2Nm (kích thước ≤ 50mm)\n4Nm (kích thước >50mm)\nCác bộ phận vẫn ở vị trí khóa và không rời ra"*.
+      - **Điều 22.12**:
+        + Dòng chính `22.12`: Yêu cầu: *"Tay cầm, nút bấm và các bộ phận tương tự.\nThử nghiệm bằng tay và cố gắng tháo các bộ phận này bằng cách đặt lực hướng trục"*, Kết quả: *"Lực kéo hướng trục: 15N (ít khả năng bị kéo); 30N (nhiều khả năng bị kéo theo hướng trục)\nĐược cố định một cách tin cậy, không bị lỏng khi sử dụng bình thường"*.
+    - Form `hair_dryer` phải hiển thị và cho phép nhập kết quả cho các dòng con của Điều 22.32, Điều 24.2 và Điều 30.2 theo biểu mẫu chuẩn, giữ `displayId` rỗng cho các dòng con không có số điều riêng.
+    - Bảng chi tiết Điều 30 phải có thêm nhóm **Thử nghiệm ngọn lửa hình kim** gồm 3 dòng kết quả, với giới hạn lần lượt `≤ 30`, `≤ 30` và `≤ 15` giây; dữ liệu phải được lưu cùng `testResultsData` và truyền qua luồng xuất DOCX hiện tại.
+    - Cấu hình `hair_dryer` phải khớp toàn bộ các placeholder đánh giá của template `5699-2-23 placeholder.docx`, bao gồm các dòng con tại Điều 13.1, 22.2, 22.14, 22.32, 22.36, 24.2, 27.1, 27.3, 30.1 và 30.2.
+    - Với các module TCVN khác có cặp template đầy đủ/rút gọn, cấu hình clause phải khớp các placeholder đánh giá `{eval_*}` của DOCX tương ứng; các dòng con trong template phải được khai báo thành trường nhập liệu riêng, giữ `displayId` rỗng khi không có số điều riêng.
 
 - **Thông tin Báo cáo (Report Metadata Sidebar)**:
   - Cho phép chọn mẫu từ danh sách PYC (`SelectSampleModal`) để tự động điền các trường: Số mã hóa, Tem niêm phong (`sealStamp`), Tên mẫu, Model, Nhãn hiệu, Đơn vị gửi mẫu, Địa chỉ, Ngày nhận mẫu, Ngày thử nghiệm (`testDate` lấy từ lịch trình thử nghiệm trên DB `scheduledDate`/`endDate` hoặc `result.testDate`), Người thử nghiệm; `reportNo` nội bộ được đồng bộ theo số mã hóa.

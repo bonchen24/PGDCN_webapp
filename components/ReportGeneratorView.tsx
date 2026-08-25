@@ -496,7 +496,7 @@ export default function ReportGeneratorView() {
           ];
         }
       } else if (clause.subTable === 'ABNORMAL') {
-        if (standard.id === 'microwave') {
+        if (standard.id === 'microwave' || standard.id === 'hair_dryer' || standard.id === 'toaster') {
           subData = {
             ambient: '25°C',
             workFollow: '',
@@ -506,15 +506,32 @@ export default function ReportGeneratorView() {
               { name: 'Độ tăng nhiệt sàn/vách của góc thử nghiệm', unit: '°C', result: '-', limit: '≤ 150' },
             ]
           };
+        } else if (standard.id === 'iron') {
+          subData = {
+            ambient: '24°C',
+            workFollow: '',
+            rows: [
+              { name: 'Độ tăng nhiệt dây nguồn', unit: '°C', result: '-', limit: '≤ 150' },
+              { name: 'Độ tăng nhiệt cuộn dây động cơ', unit: '°C', result: '-', limit: '≤ 215' },
+            ]
+          };
+        } else if (standard.id === 'storage_heater') {
+          subData = {
+            ambient: '25°C',
+            workFollow: '',
+            rows: [
+              { name: 'Độ tăng nhiệt sàn/vách của góc thử nghiệm', unit: '°C', result: '-', limit: '≤ 150' },
+              { name: 'Độ tăng nhiệt dây nguồn', unit: '°C', result: '-', limit: '≤ 150' },
+            ]
+          };
         } else {
           subData = {
             ambient: '25°C',
             workFollow: '',
             rows: [
-              { name: 'Độ tăng nhiệt sàn/vách của góc thử nghiệm', unit: '°C', result: '-', limit: '≤150' },
-              { name: 'Độ tăng nhiệt dây nguồn', unit: '°C', result: '-', limit: '≤150' },
-              { name: 'Độ tăng nhiệt cuộn dây động cơ', unit: '°C', result: '-', limit: '≤215' },
-              { name: 'Độ tăng nhiệt sàn/vách của góc thử nghiệm', unit: '°C', result: '-', limit: '≤150' },
+              { name: 'Độ tăng nhiệt sàn/vách của góc thử nghiệm', unit: '°C', result: '-', limit: '≤ 150' },
+              { name: 'Độ tăng nhiệt dây nguồn', unit: '°C', result: '-', limit: '≤ 150' },
+              { name: 'Độ tăng nhiệt cuộn dây động cơ', unit: '°C', result: '-', limit: '≤ 215' },
             ]
           };
         }
