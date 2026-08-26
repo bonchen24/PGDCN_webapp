@@ -46,11 +46,31 @@ function normalizedValue(value: string | undefined): string {
   return normalizeKqtnSampleKey(value);
 }
 
-function findUniqueByIdentity(value: string | undefined, candidates: KqtnBulkCandidate[]): KqtnBulkCandidate[] {
+function normalizedIdentity(value: string | undefined): string {
   const normalized = normalizedValue(value);
+  const report = normalized.match(/^(ITDC|ITD|EMC|KQTN)(\d{4,10})M0*(\d{1,2})$/);
+  return report ? `${report[1]}${report[2]}M${Number(report[3])}` : normalized;
+}
+
+function candidateCodeIdentityValues(candidate: KqtnBulkCandidate): string[] {
+  return [candidate.sampleKey, candidate.sampleCode, candidate.reportNo]
+    .map(normalizedIdentity)
+    .filter(Boolean);
+}
+
+function findUniqueByIdentity(value: string | undefined, candidates: KqtnBulkCandidate[]): KqtnBulkCandidate[] {
+  const normalized = normalizedIdentity(value);
   if (!normalized) return [];
-  return candidates.filter((candidate) => [candidate.sampleKey, candidate.sampleCode, candidate.reportNo]
-    .some((candidateValue) => normalizedValue(candidateValue) === normalized));
+  return candidates.filter((candidate) => candidateCodeIdentityValues(candidate).includes(normalized));
+}
+
+function identityMatchReason(
+  file: KqtnBulkFileInspection,
+  identity: string,
+  candidate: KqtnBulkCandidate,
+): string {
+  if (identity === file.sampleCode) return 'Khớp chính xác mã mẫu.';
+  return 'Khớp chính xác số báo cáo.';
 }
 
 function brandMatches(left: string | undefined, right: string | undefined): boolean {
@@ -68,7 +88,7 @@ export function matchKqtnBulkFile(
         candidateId: identityMatches[0].id,
         confidence: 'high',
         needsManualSelection: false,
-        reason: identity === file.reportNo ? 'Khớp chính xác số báo cáo.' : 'Khớp chính xác mã hóa đầu mẫu.',
+        reason: identityMatchReason(file, identity, identityMatches[0]),
       };
     }
     if (identityMatches.length > 1) {

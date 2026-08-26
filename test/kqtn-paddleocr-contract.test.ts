@@ -30,12 +30,18 @@ test('shared PaddleOCR service exposes a chunked footer batch endpoint for large
   assert.match(tvciOcrSource, /footer_ratio/);
 });
 
-test('large-PDF batch OCR sends full pages to PaddleOCR and serializes predictor access', () => {
-  const batchStart = tvciOcrSource.indexOf('@app.post("/ocr/pdf/footer-batch"');
-  const batchEnd = tvciOcrSource.indexOf('@app.post("/ocr/pdf", response_model=PDFOCRResponse)', batchStart);
-  const batchBlock = tvciOcrSource.slice(batchStart, batchEnd);
-  assert.match(batchBlock, /ocr_image,\s*preprocess_image\(image\)/);
-  assert.doesNotMatch(batchBlock, /footer_image\s*=\s*image\.crop/);
+test('footer OCR crops the single-page image and DDT pre-crops the batch PDF', () => {
+  const pageStart = tvciOcrSource.indexOf('def ocr_pdf_page(');
+  const pageEnd = tvciOcrSource.indexOf('\n\n# ─── Routes', pageStart);
+  const pageBlock = tvciOcrSource.slice(pageStart, pageEnd);
+  assert.match(pageBlock, /image\s*=\s*image\.crop/);
+  assert.match(pageBlock, /footer_ratio/);
+  assert.match(ddtServerSource, /async function createKqtnFooterOnlyPdfWindows/);
+  assert.match(ddtServerSource, /KQTN_FOOTER_WINDOW_OVERLAP/);
+  assert.match(ddtServerSource, /page\.setMediaBox\(x, y, cropWidth, cropHeight\)/);
+  assert.match(ddtServerSource, /page\.setCropBox\(x, y, cropWidth, cropHeight\)/);
+  assert.match(ddtServerSource, /rotation === 270/);
+  assert.match(ddtServerSource, /KQTN_FOOTER_RATIO\s*=\s*0\.08/);
   assert.match(tvciOcrSource, /_ocr_inference_lock\s*=\s*threading\.Lock\(\)/);
   assert.match(tvciOcrSource, /with\s+_ocr_inference_lock:/);
 });

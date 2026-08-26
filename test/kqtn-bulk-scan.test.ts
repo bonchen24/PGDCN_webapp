@@ -8,6 +8,7 @@ import test from 'node:test';
 import {
   buildKqtnBulkSegments,
   buildKqtnFastCandidateSegments,
+  buildKqtnFooterCandidateSegments,
   buildKqtnFooterSegments,
   classifyKqtnFastCandidate,
   validateKqtnBulkFooterPageCounts,
@@ -146,6 +147,43 @@ test('keeps six semantic report starts and rejects five result-page visual peaks
   ]);
 });
 
+test('recovers the same six groups from footer-only candidate pages and preserves mismatch warnings', () => {
+  const candidate = (pageNumber: number, key: string, currentPage: number, totalGroupPages: number): KqtnBulkFooterPage => footerPage(
+    pageNumber,
+    key,
+    false,
+    currentPage,
+    totalGroupPages,
+  );
+  const segments = buildKqtnFooterCandidateSegments([
+    candidate(1, 'ITD 1132-26-M02', 1, 20),
+    candidate(18, 'ITD 1132-26-M02', 18, 20),
+    candidate(22, 'ITD 1132-26-M03', 2, 19),
+    candidate(36, 'ITD 1132-26-M03', 16, 19),
+    candidate(39, 'ITD 1132-26-M03', 19, 19),
+    candidate(56, 'ITD 1132-26-M04', 16, 19),
+    candidate(59, 'ITD 1132-26-M04', 19, 19),
+    candidate(78, 'ITD 1132-26-M05', 18, 18),
+    candidate(96, 'ITD 1132-26-M06', 18, 18),
+    candidate(112, 'ITD 1132-26-M07', 16, 19),
+    candidate(115, 'ITD 1132-26-M07', 19, 19),
+  ], 116, 'ITD 1132-26-M2 đến M7.pdf');
+
+  assert.deepEqual(segments.map(({ pageStart, pageEnd }) => ({ pageStart, pageEnd })), [
+    { pageStart: 1, pageEnd: 20 },
+    { pageStart: 21, pageEnd: 39 },
+    { pageStart: 40, pageEnd: 59 },
+    { pageStart: 60, pageEnd: 78 },
+    { pageStart: 79, pageEnd: 96 },
+    { pageStart: 97, pageEnd: 116 },
+  ]);
+  assert.deepEqual(validateKqtnBulkFooterPageCounts(segments), [
+    'Nhóm 3 có 20 trang, nhưng footer OCR ghi tổng 19 trang.',
+    'Nhóm 4 có 19 trang, nhưng footer OCR ghi tổng 18 trang.',
+    'Nhóm 6 có 20 trang, nhưng footer OCR ghi tổng 19 trang.',
+  ]);
+});
+
 test('builds combined segments from footer keys repeated across the report run', () => {
   const segments = buildKqtnFooterSegments([
     footerPage(1, 'ITD-02'),
@@ -163,6 +201,38 @@ test('builds combined segments from footer keys repeated across the report run',
   })), [
     { pageStart: 1, pageEnd: 2, detection: 'footer', footerKey: 'ITD-02' },
     { pageStart: 3, pageEnd: 4, detection: 'footer', footerKey: 'ITD-03' },
+  ]);
+});
+
+test('groups the Desktop 116-page scan by footer report codes and keeps count warnings non-blocking', () => {
+  const groups = [
+    { key: 'ITD 1132-26-M02', start: 1, end: 20, total: 20 },
+    { key: 'ITD 1132-26-M03', start: 21, end: 39, total: 19 },
+    { key: 'ITD 1132-26-M04', start: 40, end: 59, total: 19 },
+    { key: 'ITD 1132-26-M05', start: 60, end: 78, total: 18 },
+    { key: 'ITD 1132-26-M06', start: 79, end: 96, total: 18 },
+    { key: 'ITD 1132-26-M07', start: 97, end: 116, total: 19 },
+  ];
+  const pages = groups.flatMap(({ key, start, end, total }) => Array.from(
+    { length: end - start + 1 },
+    (_, offset) => footerPage(start + offset, key, false, offset + 1, total),
+  ));
+
+  const segments = buildKqtnFooterSegments(pages, 116, 'ITD 1132-26-M2 đến M7.pdf');
+
+  assert.deepEqual(segments.map(({ pageStart, pageEnd, metadata }) => ({
+    pageStart,
+    pageEnd,
+    reportNo: metadata.reportNo,
+  })), groups.map(({ key, start, end }) => ({
+    pageStart: start,
+    pageEnd: end,
+    reportNo: key.replace(/\s*[-_/]\s*/g, '-').replace(/\s+/g, '-'),
+  })));
+  assert.deepEqual(validateKqtnBulkFooterPageCounts(segments), [
+    'Nhóm 3 có 20 trang, nhưng footer OCR ghi tổng 19 trang.',
+    'Nhóm 4 có 19 trang, nhưng footer OCR ghi tổng 18 trang.',
+    'Nhóm 6 có 20 trang, nhưng footer OCR ghi tổng 19 trang.',
   ]);
 });
 

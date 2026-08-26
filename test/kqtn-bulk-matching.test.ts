@@ -49,6 +49,41 @@ test('matches a report number as a high-confidence identity signal', () => {
   assert.equal(result.needsManualSelection, false);
 });
 
+test('matches a footer sample code against the target sample code only', () => {
+  const target: KqtnBulkCandidate = {
+    id: 'itd-m07',
+    sampleCode: 'ITD 1132-26-M07',
+    sampleKey: 'ITD113226M07',
+    model: 'HPN695',
+    hasPdf: false,
+  };
+
+  const bySampleCode = matchKqtnBulkFile({ fileName: 'scan.pdf', sampleCode: 'ITD-1132-26-M07' }, [target]);
+  assert.equal(bySampleCode.candidateId, 'itd-m07');
+  assert.equal(bySampleCode.confidence, 'high');
+  assert.equal(bySampleCode.needsManualSelection, false);
+
+  const byModelCode = matchKqtnBulkFile({ fileName: 'scan.pdf', sampleCode: 'HPN695' }, [target]);
+  assert.equal(byModelCode.candidateId, undefined);
+  assert.equal(byModelCode.confidence, 'none');
+  assert.equal(byModelCode.needsManualSelection, true);
+});
+
+test('treats padded and unpadded report sequence suffixes as the same sample code', () => {
+  const target: KqtnBulkCandidate = {
+    id: 'itd-m02',
+    sampleCode: 'ITD 1132-26-M2',
+    sampleKey: 'ITD113226M2',
+    model: 'HPC 3S16H',
+    hasPdf: false,
+  };
+  const result = matchKqtnBulkFile({ fileName: 'scan.pdf', sampleCode: 'ITD-1132-26-M02' }, [target]);
+
+  assert.equal(result.candidateId, 'itd-m02');
+  assert.equal(result.confidence, 'high');
+  assert.equal(result.needsManualSelection, false);
+});
+
 test('matches a seal stamp before falling back to model signals', () => {
   const enriched = candidates.map((candidate, index) => ({
     ...candidate,

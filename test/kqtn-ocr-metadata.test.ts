@@ -78,8 +78,20 @@ test('parses dropped-vowel PaddleOCR labels from the 116-page scan', () => {
 test('prefers a report identifier over a longer TCVN reference on the cover page', () => {
   assert.equal(
     extractKqtnFooterKey('TCVN 5699-1:2010 An toàn\nSố (N°): ITD 1132-26-M02\nTrang 1/20'),
-    'SO (N°): ITD 1132-26-M02',
+    'ITD-1132-26-M02',
   );
+});
+
+test('extracts a sample code from the footer when no report-family code is present', () => {
+  assert.equal(
+    extractKqtnFooterKey('Số mã hóa: HPN695\nTrang 1/20'),
+    'HPN695',
+  );
+});
+
+test('recognizes ITDC as a report-family footer key', () => {
+  assert.equal(extractKqtnFooterKey('Số (N°): ITDC 2026-01-M04\n4/12'), 'ITDC-2026-01-M04');
+  assert.equal(extractKqtnReportKey('ITDC 2026-01-M04'), 'ITDC-2026-01-M04');
 });
 
 test('normalizes OCR report identifiers for footer-based group boundaries', () => {

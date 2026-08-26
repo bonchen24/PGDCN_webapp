@@ -2,7 +2,7 @@
 // OS support: Web/Node
 // Description: Pure page segmentation and validation helpers for combined KQTN PDFs.
 
-import { extractKqtnReportKey, parseKqtnOcrMetadata } from './kqtnOcrMetadata';
+import { extractKqtnFooterKey, extractKqtnReportKey, parseKqtnOcrMetadata } from './kqtnOcrMetadata';
 
 export interface KqtnBulkStructurePage {
   pageNumber: number;
@@ -227,6 +227,8 @@ export function buildKqtnFooterSegments(
     const footerPage = Array.from({ length: pageEnd - pageStart + 1 }, (_, offset) => pagesByNumber.get(pageEnd - offset))
       .find((page) => Number.isFinite(page?.footerCurrentPage) && Number.isFinite(page?.footerTotalPages))
       || pagesByNumber.get(pageStart);
+    const footerKey = extractKqtnFooterKey(footerPage?.footerKey || normalizedKeys[pageStart - 1]);
+    const reportNo = extractKqtnReportKey(footerKey);
     return [{
       sourceFileName,
       pageStart,
@@ -235,9 +237,94 @@ export function buildKqtnFooterSegments(
         pageNumber: pageStart,
         isReportCover: false,
         isBlank: Boolean(footerPage?.isBlank),
-        footerKey: footerPage?.footerKey?.trim() || normalizedKeys[pageStart - 1],
+        reportNo: reportNo || undefined,
+        sampleCode: reportNo ? undefined : footerKey || undefined,
+        footerKey: footerKey || footerPage?.footerKey?.trim() || normalizedKeys[pageStart - 1],
         footerCurrentPage: footerPage?.footerCurrentPage,
         footerTotalPages: footerPage?.footerTotalPages,
+      },
+      detection: 'footer' as const,
+    }];
+  });
+}
+
+export function buildKqtnFooterCandidateSegments(
+  candidatePages: KqtnBulkFooterPage[],
+  totalPages: number,
+  sourceFileName: string,
+): KqtnBulkSegmentDraft[] {
+  const safeTotalPages = Math.max(0, Math.floor(totalPages));
+  if (safeTotalPages === 0) return [];
+
+  const entries = candidatePages
+    .filter((page) => page.pageNumber >= 1 && page.pageNumber <= safeTotalPages)
+    .map((page) => ({
+      page,
+      key: extractKqtnFooterKey(page.footerKey || page.text || ''),
+    }))
+    .filter(({ key }) => Boolean(key))
+    .sort((left, right) => left.page.pageNumber - right.page.pageNumber);
+  if (entries.length < 2 || entries[0].page.pageNumber !== 1) {
+    return buildManualFooterSegment(safeTotalPages, sourceFileName);
+  }
+
+  const groups: Array<{ key: string; entries: typeof entries }> = [];
+  for (const entry of entries) {
+    const previous = groups.at(-1);
+    if (previous?.key === normalizeFooterKey(entry.key)) {
+      previous.entries.push(entry);
+    } else {
+      groups.push({ key: normalizeFooterKey(entry.key), entries: [entry] });
+    }
+  }
+  if (groups.length < 2) return buildManualFooterSegment(safeTotalPages, sourceFileName);
+
+  const starts: number[] = [];
+  for (const [index, group] of groups.entries()) {
+    const first = group.entries[0].page;
+    const estimatedStart = Number.isFinite(first.footerCurrentPage) && (first.footerCurrentPage || 0) >= 1
+      ? first.pageNumber - (first.footerCurrentPage || 1) + 1
+      : first.pageNumber;
+    const previousGroup = groups[index - 1];
+    const previousTerminal = previousGroup?.entries
+      .filter(({ page }) => Number.isFinite(page.footerCurrentPage)
+        && Number.isFinite(page.footerTotalPages)
+        && page.footerCurrentPage === page.footerTotalPages)
+      .at(-1)?.page.pageNumber;
+    const start = index === 0
+      ? estimatedStart
+      : previousTerminal
+        ? previousTerminal + 1
+        : estimatedStart;
+    const normalizedStart = Math.max(starts.at(-1) || 1, Math.min(safeTotalPages, start));
+    starts.push(normalizedStart);
+  }
+  if (starts[0] !== 1 || starts.some((start, index) => index > 0 && start <= starts[index - 1])) {
+    return buildManualFooterSegment(safeTotalPages, sourceFileName);
+  }
+
+  return groups.flatMap((group, index) => {
+    const pageStart = starts[index];
+    const pageEnd = starts[index + 1] ? starts[index + 1] - 1 : safeTotalPages;
+    if (pageStart > pageEnd) return [];
+    const representative = group.entries
+      .filter(({ page }) => Number.isFinite(page.footerCurrentPage) && Number.isFinite(page.footerTotalPages))
+      .at(-1)?.page || group.entries.at(-1)?.page;
+    const footerKey = extractKqtnFooterKey(representative?.footerKey || group.key);
+    const reportNo = extractKqtnReportKey(footerKey);
+    return [{
+      sourceFileName,
+      pageStart,
+      pageEnd,
+      metadata: {
+        pageNumber: pageStart,
+        isReportCover: false,
+        isBlank: false,
+        reportNo: reportNo || undefined,
+        sampleCode: reportNo ? undefined : footerKey || undefined,
+        footerKey: footerKey || group.key,
+        footerCurrentPage: representative?.footerCurrentPage,
+        footerTotalPages: representative?.footerTotalPages,
       },
       detection: 'footer' as const,
     }];

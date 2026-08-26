@@ -31,28 +31,40 @@ function removeDynamicFooterParts(value: string): string {
     .replace(/\s*\/\s*\d+\s*$/g, ''));
 }
 
-function footerCandidateScore(value: string): number {
-  const normalized = stripDiacritics(value).toUpperCase();
-  let score = Math.min(normalized.length, 40) / 100;
-  if (/\d/.test(normalized)) score += 2;
-  if (/[A-Z]{2,}[-_/]\w+/i.test(normalized)) score += 3;
-  if (/\b(?:ITD|EMC|KQTN|TCVN)\b/i.test(normalized)) score += 4;
-  if (/\b(?:ITD|EMC|KQTN)\b/i.test(normalized)) score += 8;
-  return score;
+function normalizeIdentifier(value: string): string {
+  return stripDiacritics(String(value || ''))
+    .toUpperCase()
+    .replace(/[–—−]/g, '-')
+    .replace(/\s*[-_/]\s*/g, '-')
+    .replace(/[^A-Z0-9-]+/g, ' ')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function extractFooterSampleCode(text: string): string {
+  const lines = String(text || '').split(/\r?\n/).map(cleanLine);
+  const labelPattern = /(?:SO\s*MA\s*HOA|SO\s*MA\s*HO\s*A|MA\s*(?:SAN\s*PHAM|SHN\s*PHN|SIN\s*PHSM|MAU|HIEU)|SAMPLE\s*CODE|SAMPLECODE|ENCODE\s*NO|PRODUCT\s*CODE)/i;
+  for (let index = 0; index < lines.length; index += 1) {
+    const normalizedLine = stripDiacritics(lines[index]).toUpperCase();
+    if (!labelPattern.test(normalizedLine)) continue;
+    const inlineValue = lines[index].match(/[:：|]\s*(.+)$/)?.[1] || lines[index].replace(labelPattern, '');
+    const value = removeDynamicFooterParts(inlineValue).trim() || cleanLine(lines[index + 1] || '');
+    const normalizedValue = normalizeIdentifier(value);
+    if (normalizedValue && !/^\d+(?:-\d+){1,2}$/.test(normalizedValue)) return normalizedValue;
+  }
+  return '';
 }
 
 export function extractKqtnFooterKey(text: string): string {
-  const candidates = text
-    .split(/\r?\n/)
-    .map(cleanLine)
-    .map(removeDynamicFooterParts)
-    .filter((line) => line.length >= 3)
-    .filter((line) => /[A-Za-zÀ-ỹ]/.test(line))
-    .filter((line) => /\d/.test(line));
+  // Report-family identifiers are the most stable footer key and must win over
+  // TCVN references, dates, page counters, and OCR labels such as "Số (N°)".
+  const reportKey = extractKqtnReportKey(text);
+  if (reportKey) return reportKey;
 
-  const best = [...new Set(candidates)]
-    .sort((left, right) => footerCandidateScore(right) - footerCandidateScore(left))[0];
-  return best ? stripDiacritics(best).toUpperCase() : '';
+  // Some reports only print the encoded/sample number in the footer. Keep the
+  // value after the label, but never promote a bare date or page fraction.
+  return extractFooterSampleCode(text);
 }
 
 export function extractKqtnFooterPageNumber(text: string): KqtnFooterPageNumber | undefined {
@@ -69,11 +81,11 @@ export function extractKqtnReportKey(text: string): string {
     .replace(/[–—−]/g, '-')
     .replace(/\s+/g, ' ')
     .trim();
-  const detailed = normalized.match(/\b(ITD|EMC|KQTN)\s*[-:]?\s*(\d{2,6})\s*[- ]\s*(\d{1,4})\s*[- ]\s*M\s*0?(\d{1,2})\b/);
+  const detailed = normalized.match(/\b(ITDC|ITD|EMC|KQTN)\s*[-:]?\s*(\d{2,6})\s*[- ]\s*(\d{1,4})\s*[- ]\s*M\s*0?(\d{1,2})\b/);
   if (detailed) {
     return `${detailed[1]}-${detailed[2]}-${detailed[3]}-M${String(Number(detailed[4])).padStart(2, '0')}`;
   }
-  const simple = normalized.match(/\b(ITD|EMC|KQTN)\s*[-:]\s*[A-Z0-9]+(?:\s*[-_]\s*[A-Z0-9]+)*/);
+  const simple = normalized.match(/\b(ITDC|ITD|EMC|KQTN)\s*[-:]?\s*[A-Z0-9]+(?:\s*[-_/]\s*[A-Z0-9]+)*/);
   return simple
     ? simple[0].replace(/\s*[-_]\s*/g, '-').replace(/\s+/g, '')
     : '';

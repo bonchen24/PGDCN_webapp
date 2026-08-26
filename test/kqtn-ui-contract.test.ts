@@ -144,7 +144,7 @@ test('combined scan submits one asynchronous footer job before manual fallback',
   assert.match(analyzeSection, /getKqtnFooterJob/);
   assert.match(analyzeSection, /processedPages/);
   assert.doesNotMatch(analyzeSection, /extractKqtnFooterWithPaddle/);
-  assert.match(analyzeSection, /buildKqtnFooterSegments/);
+  assert.match(analyzeSection, /buildKqtnFooterCandidateSegments/);
   assert.doesNotMatch(analyzeSection, /extractKqtnBulkStructure/);
 });
 
@@ -156,25 +156,33 @@ test('combined footer job failure switches directly to manual split', () => {
   assert.match(analyzeSection, /structureFailed = true/);
 });
 
-test('combined fast scan maps visual candidates without waiting for every page OCR result', () => {
+test('combined scan maps footer OCR pages without full-page candidate classification', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
   const analyzeSection = source.slice(source.indexOf('const analyzeCombinedFile'), source.indexOf('const handleCombinedFile'));
   assert.match(analyzeSection, /strategy/);
-  assert.match(analyzeSection, /visual-candidates/);
-  assert.match(analyzeSection, /buildKqtnFastCandidateSegments/);
+  assert.match(analyzeSection, /footer-batch/);
+  assert.match(analyzeSection, /buildKqtnFooterCandidateSegments/);
+  assert.doesNotMatch(analyzeSection, /visual-candidates/);
+  assert.doesNotMatch(analyzeSection, /buildKqtnFastCandidateSegments/);
   assert.match(analyzeSection, /detectedFooterPages/);
-  assert.doesNotMatch(analyzeSection, /isReportCover: page\.isCandidate/);
-  assert.doesNotMatch(analyzeSection, /hasEverySourcePage/);
+  assert.match(fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8'), /Footer OCR/);
 });
 
-test('combined mapping OCRs only each detected segment first page without Gemini fallback', () => {
+test('combined mapping uses footer identifiers and probes only group-leading pages for model', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
   const analyzeSection = source.slice(source.indexOf('const analyzeCombinedFile'), source.indexOf('const handleCombinedFile'));
+  assert.match(analyzeSection, /footerKey/);
+  assert.match(analyzeSection, /getKqtnModelProbePageNumbers/);
   assert.match(analyzeSection, /extractKqtnPageTextWithPaddle/);
-  assert.match(analyzeSection, /parseKqtnOcrMetadata/);
+  assert.match(analyzeSection, /extractKqtnModelFromProbeTexts/);
+  assert.match(analyzeSection, /createPdfSegmentFile/);
   assert.doesNotMatch(analyzeSection, /extractKqtnPdfMetadata/);
-  assert.match(analyzeSection, /draft\.pageStart, draft\.pageStart/);
-  assert.match(analyzeSection, /first-page|trang đầu/i);
+
+  const combinedBuilderSection = source.slice(source.indexOf('function buildCombinedSegment'), source.indexOf('function statusLabel'));
+  assert.match(combinedBuilderSection, /sampleCode: metadata\.sampleCode/);
+  assert.match(combinedBuilderSection, /reportNo: metadata\.reportNo/);
+  assert.match(combinedBuilderSection, /model: metadata\.model/);
+  assert.doesNotMatch(combinedBuilderSection, /model: metadata\.footerKey/);
 });
 
 test('single-file mapping uses first-page PaddleOCR without Gemini fallback', () => {

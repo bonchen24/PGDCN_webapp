@@ -22,6 +22,7 @@ import { Client as FtpClient } from "basic-ftp";
 import { Readable } from "stream";
 import { Resvg } from "@resvg/resvg-js";
 import { createServer as createHttpServer } from "http";
+import { PDFDocument } from "pdf-lib";
 import { initDbSchema, pool } from "./utils/db.js";
 import {
   GEMINI_API_KEY_MISSING_MESSAGE,
@@ -38,6 +39,7 @@ import { buildActivityLog, isValidActivityTimestamp } from "./utils/activityLog.
 import { REPORT_TEMPLATES_CATALOG, ReportTemplateMetadata } from "./lib/reportTemplatesCatalog.js";
 import { createHash, randomUUID } from "crypto";
 import { createSupabaseStorageClient } from "./utils/supabaseStorage.js";
+import { buildKqtnPdfContentDisposition } from "./utils/kqtnPdfHeaders.js";
 import { normalizeSystemUserRole } from "./utils/systemUserRole.js";
 import { extractKqtnFooterKey, extractKqtnFooterPageNumber } from "./utils/kqtnOcrMetadata.js";
 import {
@@ -72,11 +74,125 @@ const KQTN_OCR_TIMEOUT_MS = 120_000;
 const KQTN_FOOTER_JOB_TIMEOUT_MS = 5 * 60_000;
 const KQTN_FOOTER_JOB_TTL_MS = 10 * 60_000;
 const KQTN_FOOTER_JOB_MAX_ACTIVE = 1;
+const KQTN_FOOTER_RATIO = 0.08;
+const KQTN_FOOTER_WINDOW_SIZE = 32;
+const KQTN_FOOTER_WINDOW_OVERLAP = 3;
+const KQTN_FOOTER_BOUNDARY_PROBE_RADIUS = 2;
 
 function getKqtnOcrServiceUrl(): string {
   const configuredUrl = String(process.env.OCR_SERVICE_URL || '').trim().replace(/\/+$/, '');
   if (configuredUrl) return configuredUrl;
   return process.env.NODE_ENV === 'production' ? 'http://tvci_ocr_service:8100' : 'http://127.0.0.1:8100';
+}
+
+function cropKqtnPageToFooter(page: ReturnType<PDFDocument['addPage']>): void {
+  const width = page.getWidth();
+  const height = page.getHeight();
+  const rotation = ((page.getRotation().angle % 360) + 360) % 360;
+  const footerExtent = Math.max(1, (rotation === 90 || rotation === 270 ? width : height) * KQTN_FOOTER_RATIO);
+  let x = 0;
+  let y = 0;
+  let cropWidth = width;
+  let cropHeight = footerExtent;
+  if (rotation === 90) {
+    x = Math.max(0, width - footerExtent);
+    cropWidth = footerExtent;
+    cropHeight = height;
+  } else if (rotation === 270) {
+    cropWidth = Math.min(width, footerExtent);
+    cropHeight = height;
+  } else if (rotation === 180) {
+    y = Math.max(0, height - footerExtent);
+  }
+  // pdf2image defaults to MediaBox (not CropBox). Set both boxes so the
+  // shared service cannot accidentally render the full source page.
+  page.setMediaBox(x, y, cropWidth, cropHeight);
+  page.setCropBox(x, y, cropWidth, cropHeight);
+}
+
+interface KqtnFooterPdfWindow {
+  startPage: number;
+  endPage: number;
+  bytes: Buffer;
+}
+
+async function createKqtnFooterOnlyPdfWindows(sourceBytes: Buffer): Promise<KqtnFooterPdfWindow[]> {
+  const sourcePdf = await PDFDocument.load(sourceBytes);
+  const totalPages = sourcePdf.getPageCount();
+  const windows: KqtnFooterPdfWindow[] = [];
+  const step = Math.max(1, KQTN_FOOTER_WINDOW_SIZE - KQTN_FOOTER_WINDOW_OVERLAP);
+  for (let startPage = 1; startPage <= totalPages; startPage += step) {
+    const endPage = Math.min(totalPages, startPage + KQTN_FOOTER_WINDOW_SIZE - 1);
+    const windowPdf = await PDFDocument.create();
+    const pages = await windowPdf.copyPages(sourcePdf, Array.from(
+      { length: endPage - startPage + 1 },
+      (_, offset) => startPage - 1 + offset,
+    ));
+    for (const page of pages) {
+      cropKqtnPageToFooter(page);
+      windowPdf.addPage(page);
+    }
+    windows.push({
+      startPage,
+      endPage,
+      bytes: Buffer.from(await windowPdf.save({ useObjectStreams: false })),
+    });
+    if (endPage === totalPages) break;
+  }
+  return windows;
+}
+
+async function createKqtnFooterOnlyPdfPages(sourceBytes: Buffer, pageNumbers: number[]): Promise<Buffer> {
+  const sourcePdf = await PDFDocument.load(sourceBytes);
+  const probePdf = await PDFDocument.create();
+  const pages = await probePdf.copyPages(sourcePdf, pageNumbers.map((pageNumber) => pageNumber - 1));
+  for (const page of pages) {
+    cropKqtnPageToFooter(page);
+    probePdf.addPage(page);
+  }
+  return Buffer.from(await probePdf.save({ useObjectStreams: false }));
+}
+
+function getKqtnFooterBoundaryProbePages(pages: KqtnFooterJobPage[], totalPages: number): number[] {
+  const entries = pages
+    .filter((page) => page.pageNumber >= 1 && page.pageNumber <= totalPages && page.footerKey)
+    .sort((left, right) => left.pageNumber - right.pageNumber);
+  const groups: KqtnFooterJobPage[][] = [];
+  for (const page of entries) {
+    const previousGroup = groups.at(-1);
+    if (previousGroup?.[0]?.footerKey === page.footerKey) previousGroup.push(page);
+    else groups.push([page]);
+  }
+  const probePages = new Set<number>();
+  for (let index = 1; index < groups.length; index += 1) {
+    const first = groups[index][0];
+    const currentPage = first.footerCurrentPage;
+    const estimatedStart = Number.isFinite(currentPage) && (currentPage || 0) >= 1
+      ? first.pageNumber - (currentPage || 1) + 1
+      : first.pageNumber;
+    for (let offset = -KQTN_FOOTER_BOUNDARY_PROBE_RADIUS; offset <= KQTN_FOOTER_BOUNDARY_PROBE_RADIUS; offset += 1) {
+      const pageNumber = estimatedStart + offset;
+      if (pageNumber >= 1 && pageNumber <= totalPages) probePages.add(pageNumber);
+    }
+  }
+  return [...probePages].sort((left, right) => left - right);
+}
+
+function parseKqtnFooterJobPage(page: any, pageNumber: number): KqtnFooterJobPage {
+  const text = String(page?.text || "").trim();
+  const confidence = Number(page?.confidence || 0);
+  const footerPageNumber = extractKqtnFooterPageNumber(text);
+  return {
+    pageNumber,
+    isBlank: !text && confidence <= 0,
+    footerKey: extractKqtnFooterKey(text),
+    text,
+    confidence,
+    candidateScore: Number(page?.candidate_score || 0),
+    isCandidate: true,
+    footerCurrentPage: footerPageNumber?.currentPage,
+    footerTotalPages: footerPageNumber?.totalPages,
+  };
 }
 
 const kqtnPdfUpload = multer({
@@ -89,7 +205,7 @@ const kqtnBulkSourceUpload = multer({
 });
 
 type KqtnFooterJobState = "queued" | "running" | "completed" | "failed";
-type KqtnFooterJobStrategy = "native-text" | "visual-candidates";
+type KqtnFooterJobStrategy = "footer-batch";
 
 interface KqtnFooterJobPage {
   pageNumber: number;
@@ -119,7 +235,9 @@ const kqtnFooterJobs = new Map<string, KqtnFooterJobRecord>();
 
 function getKqtnStorageClient() {
   const baseUrl = String(process.env.SUPABASE_STORAGE_URL || '').trim();
-  const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  const serviceRoleKey = String(
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY || '',
+  ).trim();
   if (!baseUrl || !serviceRoleKey) {
     throw new Error('KQTN PDF storage is not configured. Set SUPABASE_STORAGE_URL and SUPABASE_SERVICE_ROLE_KEY.');
   }
@@ -537,72 +655,110 @@ async function startServer() {
 
     job.status = "running";
     let sourceBuffer = sourceBytes;
+    let footerWindows: KqtnFooterPdfWindow[] = [];
     let controller: AbortController | undefined;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
       const ocrServiceUrl = getKqtnOcrServiceUrl();
 
       const ocrUrl = new URL(ocrServiceUrl + "/ocr/pdf/footer-fast");
-      ocrUrl.searchParams.set("thumbnail_dpi", "60");
-      ocrUrl.searchParams.set("ocr_dpi", "100");
+      ocrUrl.searchParams.set("thumbnail_dpi", "90");
+      ocrUrl.searchParams.set("ocr_dpi", "150");
       ocrUrl.searchParams.set("chunk_size", "8");
       ocrUrl.searchParams.set("max_candidates", "32");
-      const formData = new FormData();
-      formData.append("file", new Blob([new Uint8Array(sourceBuffer)], { type: "application/pdf" }), "kqtn-combined-source.pdf");
+      footerWindows = await createKqtnFooterOnlyPdfWindows(sourceBuffer);
+      if (footerWindows.length === 0) throw new Error("Không tạo được cửa sổ footer từ PDF nguồn.");
       controller = new AbortController();
       timeout = setTimeout(() => controller?.abort(), KQTN_FOOTER_JOB_TIMEOUT_MS);
 
-      console.log("KQTN footer job running: jobId=" + jobId + ", payloadBytes=" + sourceBuffer.length);
-      const response = await fetch(ocrUrl, {
-        method: "POST",
-        body: formData,
-        signal: controller.signal,
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload.detail || payload.error || "PaddleOCR fast scan failed (" + response.status + ").");
+      console.log("KQTN footer job running: jobId=" + jobId + ", payloadBytes=" + sourceBuffer.length + ", windows=" + footerWindows.length);
+      job.strategy = "footer-batch";
+      const pagesByNumber = new Map<number, KqtnFooterJobPage>();
+      let processingSeconds = 0;
+      for (const footerWindow of footerWindows) {
+        const windowUrl = new URL(ocrUrl);
+        const formData = new FormData();
+        formData.append("file", new Blob([new Uint8Array(footerWindow.bytes)], { type: "application/pdf" }), `kqtn-combined-footer-${footerWindow.startPage}-${footerWindow.endPage}.pdf`);
+        const response = await fetch(windowUrl, {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.detail || payload.error || "PaddleOCR footer scan failed (" + response.status + ").");
+        }
+        processingSeconds += Number(payload.processing_time_s || 0);
+        const rawPages = Array.isArray(payload.pages) ? payload.pages : [];
+        for (const [index, page] of rawPages.entries()) {
+          const localPageNumber = Math.max(1, Math.floor(Number(page?.page) || index + 1));
+          const pageNumber = footerWindow.startPage + localPageNumber - 1;
+          if (pageNumber > footerWindow.endPage) continue;
+          const candidatePage = parseKqtnFooterJobPage(page, pageNumber);
+          const existing = pagesByNumber.get(pageNumber);
+          if (!existing || (candidatePage.footerKey && !existing.footerKey) || candidatePage.confidence > Number(existing.confidence || 0)) {
+            pagesByNumber.set(pageNumber, candidatePage);
+          }
+        }
+        job.processedPages = Math.min(job.totalPages || footerWindows.at(-1)?.endPage || footerWindow.endPage, footerWindow.endPage);
+        job.pages = [...pagesByNumber.values()].sort((left, right) => left.pageNumber - right.pageNumber);
+        console.log("KQTN footer window completed: jobId=" + jobId + ", range=" + footerWindow.startPage + "-" + footerWindow.endPage + ", candidates=" + rawPages.length);
       }
-
-      const rawPages = Array.isArray(payload.pages) ? payload.pages : [];
-      job.totalPages = Math.max(job.totalPages, Math.floor(Number(payload.total_pages) || 0));
-      job.strategy = payload.strategy === "native-text" ? "native-text" : "visual-candidates";
-      job.pages = rawPages.map((page: any, index: number) => {
-        const text = String(page?.text || "").trim();
-        const confidence = Number(page?.confidence || 0);
-        const candidateScore = Number(page?.candidate_score || 0);
-        const footerPageNumber = extractKqtnFooterPageNumber(text);
-        return {
-          pageNumber: Math.max(1, Math.floor(Number(page?.page) || index + 1)),
-          isBlank: !text && confidence <= 0,
-          footerKey: extractKqtnFooterKey(text),
-          text,
-          confidence,
-          candidateScore,
-          isCandidate: page?.is_candidate !== false,
-          footerCurrentPage: footerPageNumber?.currentPage,
-          footerTotalPages: footerPageNumber?.totalPages,
-        };
-      }).sort((left: KqtnFooterJobPage, right: KqtnFooterJobPage) => left.pageNumber - right.pageNumber);
-      job.processedPages = job.pages.length;
-      if (job.strategy === "native-text" && job.totalPages > 0 && job.processedPages < job.totalPages) {
-        throw new Error("PDF text layer trả thiếu trang (" + job.processedPages + "/" + job.totalPages + ").");
+      job.totalPages = Math.max(job.totalPages, footerWindows.at(-1)?.endPage || 0);
+      const boundaryProbePages = getKqtnFooterBoundaryProbePages([...pagesByNumber.values()], job.totalPages);
+      if (boundaryProbePages.length > 0) {
+        const boundaryProbeBytes = await createKqtnFooterOnlyPdfPages(sourceBuffer, boundaryProbePages);
+        const boundaryUrl = new URL(ocrServiceUrl + "/ocr/pdf/footer-batch");
+        boundaryUrl.searchParams.set("dpi", "150");
+        boundaryUrl.searchParams.set("chunk_size", "4");
+        const boundaryFormData = new FormData();
+        boundaryFormData.append(
+          "file",
+          new Blob([new Uint8Array(boundaryProbeBytes)], { type: "application/pdf" }),
+          "kqtn-combined-footer-boundary-probe.pdf",
+        );
+        const boundaryResponse = await fetch(boundaryUrl, {
+          method: "POST",
+          body: boundaryFormData,
+          signal: controller.signal,
+        });
+        const boundaryPayload = await boundaryResponse.json().catch(() => ({}));
+        if (!boundaryResponse.ok) {
+          throw new Error(boundaryPayload.detail || boundaryPayload.error || "PaddleOCR footer boundary probe failed (" + boundaryResponse.status + ").");
+        }
+        processingSeconds += Number(boundaryPayload.processing_time_s || 0);
+        const boundaryPages = Array.isArray(boundaryPayload.pages) ? boundaryPayload.pages : [];
+        for (const [index, page] of boundaryPages.entries()) {
+          const pageNumber = boundaryProbePages[index];
+          if (!pageNumber) continue;
+          const probePage = parseKqtnFooterJobPage(page, pageNumber);
+          const existing = pagesByNumber.get(pageNumber);
+          if (!existing || (probePage.footerKey && !existing.footerKey) || (probePage.footerKey && probePage.footerKey !== existing.footerKey) || probePage.confidence >= Number(existing.confidence || 0)) {
+            pagesByNumber.set(pageNumber, probePage);
+          }
+        }
+        job.pages = [...pagesByNumber.values()].sort((left, right) => left.pageNumber - right.pageNumber);
+        console.log("KQTN footer boundary probe completed: jobId=" + jobId + ", pages=" + boundaryProbePages.length + ", candidates=" + boundaryPages.length);
       }
-      if (job.strategy === "visual-candidates" && job.pages.length === 0) {
-        throw new Error("Không tìm được trang ứng viên để OCR nhanh.");
+      job.processedPages = job.totalPages;
+      job.pages = [...pagesByNumber.values()].sort((left, right) => left.pageNumber - right.pageNumber);
+      if (job.pages.length === 0) {
+        throw new Error("PaddleOCR không trả về trang ứng viên footer nào.");
       }
       job.status = "completed";
-      console.log("KQTN footer job completed: jobId=" + jobId + ", strategy=" + job.strategy + ", candidates=" + job.processedPages + "/" + job.totalPages + ", elapsed=" + Number(payload.processing_time_s || 0) + "s");
+      console.log("KQTN footer job completed: jobId=" + jobId + ", strategy=" + job.strategy + ", candidates=" + job.pages.length + "/" + job.totalPages + ", elapsed=" + processingSeconds + "s");
     } catch (error: any) {
       job.status = "failed";
       job.pages = [];
       job.error = error?.name === "AbortError"
-        ? "PaddleOCR fast scan timed out."
+        ? "PaddleOCR footer scan timed out."
         : error?.message || String(error);
       console.error("KQTN footer job failed: jobId=" + jobId, job.error);
     } finally {
       if (timeout) clearTimeout(timeout);
       controller = undefined;
       sourceBuffer = Buffer.alloc(0);
+      footerWindows = [];
       expireKqtnFooterJob(jobId);
     }
   };
@@ -785,10 +941,12 @@ async function startServer() {
         bucketName: pdf.bucketName || getKqtnStorageBucket(),
         objectPath: pdf.objectPath,
       });
-      const safeName = String(pdf.originalName || "result.pdf").replace(/["\\r\\n]/g, "_");
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Length", downloaded.body.byteLength);
-      res.setHeader("Content-Disposition", (req.query.download ? "attachment" : "inline") + "; filename=\"" + safeName + "\"");
+      res.setHeader(
+        "Content-Disposition",
+        buildKqtnPdfContentDisposition(pdf.originalName, req.query.download ? "attachment" : "inline"),
+      );
       res.send(downloaded.body);
     } catch (error: any) {
       console.error("KQTN PDF download error:", error);

@@ -67,7 +67,7 @@ export interface KqtnPaddleOcrResult {
 export interface KqtnFooterJobStatus {
   jobId: string;
   status: 'queued' | 'running' | 'completed' | 'failed';
-  strategy?: 'native-text' | 'visual-candidates';
+  strategy?: 'footer-batch';
   totalPages: number;
   processedPages: number;
   pages: KqtnBulkFooterPage[];
@@ -90,7 +90,7 @@ export async function startKqtnFooterJob(
   return {
     jobId: String(payload.jobId),
     status: payload.status,
-    strategy: payload.strategy === 'native-text' || payload.strategy === 'visual-candidates' ? payload.strategy : undefined,
+    strategy: payload.strategy === 'footer-batch' ? payload.strategy : undefined,
     totalPages: Number(payload.totalPages) || totalPages,
     processedPages: Number(payload.processedPages) || 0,
     pages: [],
@@ -103,7 +103,7 @@ export async function getKqtnFooterJob(jobId: string): Promise<KqtnFooterJobStat
   return {
     jobId: String(payload.jobId || jobId),
     status: payload.status,
-    strategy: payload.strategy === 'native-text' || payload.strategy === 'visual-candidates' ? payload.strategy : undefined,
+    strategy: payload.strategy === 'footer-batch' ? payload.strategy : undefined,
     totalPages: Number(payload.totalPages) || 0,
     processedPages: Number(payload.processedPages) || 0,
     pages: Array.isArray(payload.pages) ? payload.pages.map((page: any, index: number) => ({

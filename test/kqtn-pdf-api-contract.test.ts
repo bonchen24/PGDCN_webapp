@@ -104,35 +104,39 @@ test('large scanned combined PDFs use one asynchronous multipart footer job', ()
   assert.match(source, /multer/);
   assert.match(source, /jobId/);
   assert.match(source, /processedPages/);
-  assert.match(source, /footer-fast/);
+  assert.match(source, /footer-batch/);
   assert.match(source, /extractKqtnFooterKey/);
   assert.match(source, /KQTN_FOOTER_JOB_MAX_ACTIVE/);
   assert.match(source, /KQTN_FOOTER_JOB_BUSY/);
 });
 
-test('large scan footer job uses the fast whole-file candidate endpoint', () => {
+test('large scan footer job uses bounded footer-only windows', () => {
   const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
   const jobStart = source.indexOf('const runKqtnFooterJob');
   const jobEnd = source.indexOf('const handleKqtnFooterJobUpload', jobStart);
   const jobBlock = source.slice(jobStart, jobEnd);
   assert.match(jobBlock, /\/ocr\/pdf\/footer-fast/);
+  assert.match(jobBlock, /createKqtnFooterOnlyPdfWindows/);
+  assert.match(jobBlock, /createKqtnFooterOnlyPdfPages/);
+  assert.match(jobBlock, /getKqtnFooterBoundaryProbePages/);
+  assert.match(source, /KQTN_FOOTER_BOUNDARY_PROBE_RADIUS/);
+  assert.match(jobBlock, /chunk_size/);
+  assert.match(jobBlock, /for \(const footerWindow of footerWindows\)/);
+  assert.match(jobBlock, /\/ocr\/pdf\/footer-batch/);
   assert.match(jobBlock, /strategy/);
-  assert.match(jobBlock, /candidate/);
-  assert.match(jobBlock, /const candidateScore = Number\(page\?\.candidate_score/);
-  assert.match(jobBlock, /candidateScore,/);
-  assert.match(source, /type KqtnFooterJobStrategy = "native-text" \| "visual-candidates"/);
+  assert.match(source, /type KqtnFooterJobStrategy = "footer-batch"/);
 });
 
-test('bulk footer job sends the whole PDF without a crop-only footer option', () => {
+test('bulk footer job requests footer-only candidates with bounded render windows', () => {
   const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
   const jobStart = source.indexOf('const runKqtnFooterJob');
   const jobEnd = source.indexOf('const handleKqtnFooterJobUpload', jobStart);
   const jobBlock = source.slice(jobStart, jobEnd);
-  assert.doesNotMatch(jobBlock, /searchParams\.set\("footer_ratio"/);
-  assert.match(jobBlock, /searchParams\.set\("thumbnail_dpi", "60"\)/);
-  assert.match(jobBlock, /searchParams\.set\("ocr_dpi", "100"\)/);
+  assert.match(jobBlock, /searchParams\.set\("thumbnail_dpi", "90"\)/);
+  assert.match(jobBlock, /searchParams\.set\("ocr_dpi", "150"\)/);
   assert.match(jobBlock, /searchParams\.set\("chunk_size", "8"\)/);
   assert.match(jobBlock, /searchParams\.set\("max_candidates", "32"\)/);
+  assert.doesNotMatch(jobBlock, /footer_ratio/);
 });
 
 test('browser client exposes asynchronous footer-job start and polling', () => {
