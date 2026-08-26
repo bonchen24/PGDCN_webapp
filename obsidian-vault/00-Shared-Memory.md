@@ -27,6 +27,14 @@ Description: Shared working memory for the DDT Lab repository and GitHub workflo
 - Verification: `npm test` 272/272 pass, `npm run lint` pass, `npm run build` pass, `git diff --check` pass.
 - Runtime: port `1359` đang hoạt động ở PID `22268`, root và module Bulk Upload trả HTTP 200 và đang phục vụ source mới. `npm run dev` trực tiếp có thể lỗi `uv_os_get_passwd ENOMEM`; dùng `NODE_OPTIONS=--require=E:\CODING\DDT_webapp\scripts\test-node-userinfo-preload.cjs` để vượt lỗi này. Không tự ý dừng PID chưa xác minh.
 
+## 2026-08-26 — Chuyển mã hóa ITDC cũ sang cột ITD
+
+- Quy tắc nghiệp vụ: copy nguyên chuỗi từ `atdEncodeNumber` sang `itdEncodeNumber`, giữ nguyên tiền tố `ITDC`; chỉ chuyển khi ITD trống, conflict không ghi đè.
+- Đã cập nhật `design.md`, thêm helper `utils/itdcToItdMigration.ts`, script `scripts/migrateItdcToItd.ts` và test `test/itdc-to-itd-migration.test.ts`.
+- Đã tích hợp chuẩn hóa ở `store.ts` cho `addRequest` và `addRequests`; script có dry-run mặc định và transaction khi chạy `--apply`.
+- Kết quả dữ liệu: chuyển **108** bản ghi, **0** conflict; hậu kiểm có `itdItdc=108`, `legacyAtd=0`; dry-run lặp lại không còn bản ghi cần chuyển.
+- Verification: `npm test` **351/351 pass**, lint/build/diff-check pass; build chỉ còn cảnh báo chunk lớn hiện hữu.
+
 ## 2026-08-24 — Form Báo cáo: Quy chuẩn Bảng Công suất nhiễu EMC chỉ hiển thị 1 hàng (tự động lấy hàng 1)
 
 - Documented in `design.md`: Power Disturbance tables (`tablePower*`) across all EMC reports strictly display and persist **1 row only**.

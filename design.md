@@ -497,6 +497,12 @@ Toàn bộ Type định nghĩa hệ thống nằm ở file `/types.ts`.
 - **Phạm vi nhân sự trên Tổng quan**: Bảng công việc, KPI và danh sách **Tùy chỉnh nhân sự** chỉ hiển thị các nhân viên thực sự được giao ít nhất một phiếu vào lịch thử nghiệm. Một phân công hợp lệ là phiếu có `scheduledDate` và `testerName` khác rỗng, `Chưa giao` hoặc `Khác`; không dùng các danh sách KTV mặc định (`defaultTesters*`) để đưa nhân sự chưa được giao việc lên Dashboard. Phân công đã hoàn thành vẫn thuộc phạm vi lịch đã từng được giao; nếu không có phân công hợp lệ nào, Dashboard không hiển thị cột/KPI nhân sự.
 - **`UserPreferences`**: Cấu hình riêng theo tài khoản, gồm mật khẩu tùy chỉnh, API Key Gemini, mô hình Gemini (`geminiModel`) và ảnh đại diện. Trường `displayName` từ dữ liệu cũ (nếu còn) không được đọc, ghi hoặc dùng để thay đổi danh tính người dùng.
 
+### Quy tắc chuyển cột mã hóa ITDC → ITD
+- `itdEncodeNumber` là cột đích chuẩn cho dữ liệu mã hóa An toàn điện/ITD.
+- Dữ liệu cũ trong `atdEncodeNumber` được chuyển sang `itdEncodeNumber` nhưng **giữ nguyên toàn bộ chuỗi mã**, bao gồm tiền tố `ITDC`; không tự đổi `ITDC` thành `ITD`.
+- Bản ghi chỉ được chuyển tự động khi cột ITD đang trống. Nếu cả hai cột đã có giá trị khác nhau, migration phải giữ nguyên dữ liệu và xuất danh sách cần rà soát, tuyệt đối không ghi đè.
+- Migration phải chạy được nhiều lần an toàn, hỗ trợ chế độ dry-run và chỉ xóa giá trị nguồn sau khi bản ghi đã được chuyển thành công và có backup/đối soát.
+
 ### Quy tắc định danh người dùng trên giao diện
 - `username` / `Tên đăng nhập` là khóa kỹ thuật phục vụ đăng nhập, phân quyền, lưu preference và truy vết nội bộ; không phải tên hiển thị.
 - Danh tính người dùng trong giao diện nghiệp vụ phải lấy từ `Họ và Tên` (ánh xạ vào `UserAccount.name`), ưu tiên giá trị này hơn các trường tên tổng quát hoặc bí danh.

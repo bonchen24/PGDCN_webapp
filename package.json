@@ -10,6 +10,7 @@
     "lint": "tsc --noEmit",
     "test": "tsx --test",
     "migrate:json": "tsx scripts/importBackupToPostgres.ts",
+    "migrate:itdc-to-itd": "node --experimental-strip-types scripts/migrateItdcToItd.ts",
     "migrate:storage": "tsx scripts/migrateKqtnImagesToSupabaseStorage.ts",
     "seed": "node --env-file=.env scripts/seedCSV.js"
   },

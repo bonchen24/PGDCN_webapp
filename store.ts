@@ -87,6 +87,7 @@ import {
 import { normalizeBackupNotifications } from './utils/notificationBackup';
 import { normalizeBackupActivityLogs } from './utils/notificationBackup';
 import { buildActivityLog, diffActivityFields, type ActivityLogInput } from './utils/activityLog';
+import { migrateItdcToItdRecord } from './utils/itdcToItdMigration';
 import { activityLogClient } from './utils/activityLogApi';
 import { stripTransientKqtnImages } from './utils/transientReportImages';
 import { getKqtnSampleKey } from './utils/kqtnIdentity';
@@ -2135,21 +2136,22 @@ export const useStore = create<AppState>()(
     const now = new Date().toISOString();
     const currentUser = get().currentUser;
     const creatorName = getActorName(currentUser);
-    const requestDate = normalizeDateString(req.requestDate) || new Date().toISOString().split('T')[0];
+    const normalizedReq = migrateItdcToItdRecord(req as unknown as Record<string, unknown>).record as unknown as TestRequest;
+    const requestDate = normalizeDateString(normalizedReq.requestDate) || new Date().toISOString().split('T')[0];
     const finalReq: TestRequest = {
-      ...req,
+      ...normalizedReq,
       requestDate: requestDate,
-      receivedDate: normalizeDateString(req.receivedDate) || requestDate,
-      scheduledDate: normalizeDateString(req.scheduledDate),
-      endDate: normalizeDateString(req.endDate),
-      customsDeadline: normalizeDateString(req.customsDeadline),
-      returnDate: normalizeDateString(req.returnDate),
-      phone: req.phone ? formatPhoneNumber(req.phone) : '',
-      taxId: req.taxId ? formatTaxId(req.taxId) : '',
-      invoiceTaxId: req.invoiceTaxId ? formatTaxId(req.invoiceTaxId) : '',
-      totalLotDays: req.totalLotDays || 20,
+      receivedDate: normalizeDateString(normalizedReq.receivedDate) || requestDate,
+      scheduledDate: normalizeDateString(normalizedReq.scheduledDate),
+      endDate: normalizeDateString(normalizedReq.endDate),
+      customsDeadline: normalizeDateString(normalizedReq.customsDeadline),
+      returnDate: normalizeDateString(normalizedReq.returnDate),
+      phone: normalizedReq.phone ? formatPhoneNumber(normalizedReq.phone) : '',
+      taxId: normalizedReq.taxId ? formatTaxId(normalizedReq.taxId) : '',
+      invoiceTaxId: normalizedReq.invoiceTaxId ? formatTaxId(normalizedReq.invoiceTaxId) : '',
+      totalLotDays: normalizedReq.totalLotDays || 20,
       order: 999,
-      createdAt: normalizeDateString(req.createdAt, true) || now,
+      createdAt: normalizeDateString(normalizedReq.createdAt, true) || now,
       updatedAt: now
     };
 
@@ -2188,21 +2190,22 @@ export const useStore = create<AppState>()(
     const creatorName = getActorName(currentUser);
 
     const processedReqs = newReqs.map(req => {
-      const reqDate = normalizeDateString(req.requestDate) || new Date().toISOString().split('T')[0];
+      const normalizedReq = migrateItdcToItdRecord(req as unknown as Record<string, unknown>).record as unknown as TestRequest;
+      const reqDate = normalizeDateString(normalizedReq.requestDate) || new Date().toISOString().split('T')[0];
       return {
-        ...req,
+        ...normalizedReq,
         requestDate: reqDate,
-        receivedDate: normalizeDateString(req.receivedDate) || reqDate,
-        scheduledDate: normalizeDateString(req.scheduledDate),
-        endDate: normalizeDateString(req.endDate),
-        customsDeadline: normalizeDateString(req.customsDeadline),
-        returnDate: normalizeDateString(req.returnDate),
-        phone: req.phone ? formatPhoneNumber(req.phone) : '',
-        taxId: req.taxId ? formatTaxId(req.taxId) : '',
-        invoiceTaxId: req.invoiceTaxId ? formatTaxId(req.invoiceTaxId) : '',
-        order: req.order ?? 999,
-        totalLotDays: req.totalLotDays || 20,
-        createdAt: normalizeDateString(req.createdAt, true) || now,
+        receivedDate: normalizeDateString(normalizedReq.receivedDate) || reqDate,
+        scheduledDate: normalizeDateString(normalizedReq.scheduledDate),
+        endDate: normalizeDateString(normalizedReq.endDate),
+        customsDeadline: normalizeDateString(normalizedReq.customsDeadline),
+        returnDate: normalizeDateString(normalizedReq.returnDate),
+        phone: normalizedReq.phone ? formatPhoneNumber(normalizedReq.phone) : '',
+        taxId: normalizedReq.taxId ? formatTaxId(normalizedReq.taxId) : '',
+        invoiceTaxId: normalizedReq.invoiceTaxId ? formatTaxId(normalizedReq.invoiceTaxId) : '',
+        order: normalizedReq.order ?? 999,
+        totalLotDays: normalizedReq.totalLotDays || 20,
+        createdAt: normalizeDateString(normalizedReq.createdAt, true) || now,
         updatedAt: now
       };
     });

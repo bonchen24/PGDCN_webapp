@@ -221,6 +221,15 @@ Description: Persistent project memory and verified deployment observations for 
 - Không dùng lại port `5432` trên host cho project vì có dịch vụ khác; port public của database project là `15432`.
 - Docker Desktop phải đang chạy và Docker Engine phải cho phép CLI truy cập trước khi dùng `docker compose`.
 
+## Cập nhật 2026-08-26 — Chuyển mã hóa ITDC cũ sang cột ITD
+
+- Đã cập nhật `design.md`: `itdEncodeNumber` là cột đích; dữ liệu từ `atdEncodeNumber` được copy nguyên chuỗi, giữ nguyên tiền tố `ITDC`, không đổi thành `ITD`; không ghi đè khi ITD đã có giá trị khác; hỗ trợ dry-run/idempotent và chỉ xóa nguồn sau khi đối soát.
+- Đã thêm `utils/itdcToItdMigration.ts` để lập kế hoạch/chuyển từng record, giữ nguyên record khi có conflict.
+- Đã thêm script `scripts/migrateItdcToItd.ts` và npm command `npm run migrate:itdc-to-itd`; mặc định dry-run, `--apply` chạy transaction và có kiểm tra giá trị nguồn chống cập nhật đồng thời.
+- Đã tích hợp chuẩn hóa tại biên `addRequest`/`addRequests` trong `store.ts` để dữ liệu tạo mới không tiếp tục ghi riêng mã legacy.
+- Migration production đã chạy thành công: **108** bản ghi chuyển, **0** conflict; hậu kiểm `requests`: `itdItdc=108`, `legacyAtd=0`. Dry-run lần sau trả `scanned=0`.
+- Regression test mới: `test/itdc-to-itd-migration.test.ts` (**6/6 pass**). Verification cuối: `npm test` **351/351 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass. Build chỉ còn cảnh báo chunk lớn hiện hữu.
+
 ## Cập nhật 2026-08-25 — Hoàn tất Bulk Upload KQTN, Storage PDF và cảnh báo footer
 
 - Bulk Upload PDF ghép đã chuyển sang luồng PaddleOCR footer-first dùng chung `tvci_ocr_service`: upload nguồn một lần, tạo footer job bất đồng bộ, polling tiến độ và chỉ OCR trang ứng viên/trang đầu nhóm cần nhận diện. Bulk mapping không phụ thuộc Gemini; nếu PaddleOCR không đủ metadata hoặc lỗi thì giữ trạng thái rà soát/chọn mẫu thủ công, không gọi Gemini tự động.
