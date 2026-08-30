@@ -8,6 +8,24 @@ export interface ServerBackupInfo {
   createdAt: string;
 }
 
+export interface ServerBackupVerification {
+  filename: string;
+  format: 'zip' | 'dump';
+  sizeBytes: number;
+  databaseDumpPresent: boolean;
+  manifestPresent: boolean;
+  manifestObjectCount: number;
+  objectEntryCount: number;
+  verifiedObjectCount: number;
+  missingObjectCount: number;
+  invalidObjectCount: number;
+  pgToolAvailable: boolean;
+  dumpReadable: boolean;
+  status: 'VALID' | 'INVALID';
+  ok: boolean;
+  errors: string[];
+}
+
 interface BackupListResponse {
   items: ServerBackupInfo[];
   pgToolAvailable: boolean;
@@ -37,6 +55,13 @@ export async function fetchBackupList(username: string): Promise<BackupListRespo
 
 export async function triggerServerBackup(username: string): Promise<ServerBackupInfo> {
   const response = await fetch('/api/backups/run', { method: 'POST', headers: authHeaders(username) });
+  return parseResponse(response);
+}
+
+export async function verifyBackupFile(username: string, filename: string): Promise<ServerBackupVerification> {
+  const response = await fetch(`/api/backups/${encodeURIComponent(filename)}/verify`, {
+    headers: authHeaders(username),
+  });
   return parseResponse(response);
 }
 

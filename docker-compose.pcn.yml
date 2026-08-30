@@ -1,0 +1,35 @@
+services:
+  webapp:
+    build: .
+    environment:
+      NODE_ENV: production
+      APP_PROFILE: pcn
+      PORT: 2357
+      POSTGRES_HOST: supabase-db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Load the Supabase env file with --env-file}
+      PCN_POSTGRES_DB: ${PCN_POSTGRES_DB:-pcn_certification}
+      POSTGRES_DB: ${PCN_POSTGRES_DB:-pcn_certification}
+      PCN_DATABASE_URL: ${PCN_DATABASE_URL:-}
+      PCN_SESSION_SECRET: ${PCN_SESSION_SECRET:?Set a long random PCN session secret}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      SUPABASE_STORAGE_URL: ${SUPABASE_STORAGE_URL:-http://supabase-storage:5000}
+      SUPABASE_STORAGE_BUCKET: ${PCN_STORAGE_BUCKET:-ddt-files}
+      PCN_FILE_MAX_BYTES: ${PCN_FILE_MAX_BYTES:-26214400}
+      PCN_DOCX_PDF_RENDERER: ${PCN_DOCX_PDF_RENDERER:-}
+      PCN_DOCX_PDF_RENDERER_TIMEOUT_MS: ${PCN_DOCX_PDF_RENDERER_TIMEOUT_MS:-120000}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-${SERVICE_ROLE_KEY:-}}
+      OCR_SERVICE_URL: ${OCR_SERVICE_URL:-http://tvci_ocr_service:8100}
+      KQTN_PDF_MAX_BYTES: ${KQTN_PDF_MAX_BYTES:-26214400}
+      KQTN_BULK_SOURCE_MAX_BYTES: ${KQTN_BULK_SOURCE_MAX_BYTES:-104857600}
+      NEXT_TELEMETRY_DISABLED: '1'
+    ports:
+      - "2357:2357"
+    networks:
+      - supabase_default
+    restart: unless-stopped
+
+networks:
+  supabase_default:
+    external: true

@@ -24,9 +24,9 @@ docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" up --build -d
 
 if command -v curl >/dev/null 2>&1; then
   echo "Checking application health..."
-  curl --fail --silent --show-error http://localhost:2359/api/health
+  curl --fail --silent --show-error http://localhost:2357/api/health
   echo
-  curl --fail --silent --show-error http://localhost:2359/api/db/health
+  curl --fail --silent --show-error http://localhost:2357/api/db/health
   echo
 fi
 

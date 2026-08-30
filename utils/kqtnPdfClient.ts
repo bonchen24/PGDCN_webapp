@@ -49,6 +49,53 @@ export function getKqtnPdfUrl(recordId: string, download = false): string {
   return `/api/kqtn/${encodeURIComponent(recordId)}/pdf${download ? '?download=1' : ''}`;
 }
 
+export async function establishKqtnSession(username: string, password: string): Promise<void> {
+  const response = await fetch('/api/auth/kqtn-session', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: String(username || '').trim(), password: String(password || '') }),
+  });
+  await parseResponse(response);
+}
+
+export async function clearKqtnSession(): Promise<void> {
+  const response = await fetch('/api/auth/kqtn-session', {
+    method: 'DELETE',
+    credentials: 'same-origin',
+  });
+  await parseResponse(response);
+}
+
+export async function downloadKqtnPdf(
+  recordId: string,
+  username: string,
+  fileName = 'kqtn-result.pdf',
+): Promise<void> {
+  const normalizedUsername = String(username || '').trim();
+  if (!normalizedUsername) throw new Error('Thiếu thông tin người dùng để tải PDF KQTN.');
+
+  const response = await fetch(getKqtnPdfUrl(recordId, true), {
+    credentials: 'same-origin',
+    headers: { 'x-user-name': normalizedUsername },
+  });
+  if (!response.ok) {
+    await parseResponse(response);
+    return;
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = String(fileName || 'kqtn-result.pdf').trim() || 'kqtn-result.pdf';
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
 export interface KqtnPdfAiMetadata {
   sampleCode?: string;
   model?: string;

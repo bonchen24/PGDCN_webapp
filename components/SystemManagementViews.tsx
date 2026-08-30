@@ -9,6 +9,7 @@ import {
   RefreshCw, History, RotateCcw
 } from 'lucide-react';
 import { useStore } from '../store';
+import { usePcnStore } from '../store-pcn';
 import { AppSettings, DayConfig } from '../types';
 import { toast } from 'sonner';
 import { fetchCollection, deleteDocFromPostgres } from '../utils/firebase';
@@ -32,8 +33,14 @@ import {
 } from '../utils/systemSettingsPolicy';
 import { AdminBackupReminder } from './AdminBackupReminder';
 import { normalizeSystemUserRole, withSystemUserRoleAliases } from '../utils/systemUserRole';
+import { buildPcnCustomerReconciliation, inspectPcnCustomerImport, parsePcnCustomerCsv } from '../utils/pcnCustomerReconciliation';
 
 const DEFAULT_PASSWORD = 'Abc123456';
+
+function isEmptyPcnCustomer(customer: any): boolean {
+  return !['name', 'address', 'customerCode', 'taxId', 'phone', 'email', 'contactPerson']
+    .some((field) => String(customer?.[field] || '').trim());
+}
 
 export const BrandsManagementView = () => {
   const { brands, addBrand, updateBrand, deleteBrand } = useStore();
@@ -234,12 +241,27 @@ export const BrandsManagementView = () => {
   );
 };
 
-export const CustomersManagementView = () => {
-  const { customers, addCustomer, updateCustomer, deleteCustomer } = useStore();
-  const [searchQuery, setSearchQuery] = useState('');
+export const CustomersManagementView = ({ source = 'legacy', initialSearchQuery = '' }: { source?: 'legacy' | 'pcn'; initialSearchQuery?: string } = {}) => {
+  const legacyStore = useStore();
+  const pcnStore = usePcnStore();
+  const canEditCustomers = source !== 'pcn' || (legacyStore.currentUser?.systemRole !== 'viewer' && legacyStore.currentUser?.role !== 'viewer');
+  const customers = source === 'pcn' ? pcnStore.customers : legacyStore.customers;
+  const addCustomer = source === 'pcn' ? pcnStore.addCustomer : legacyStore.addCustomer;
+  const updateCustomer = source === 'pcn' ? pcnStore.updateCustomer : legacyStore.updateCustomer;
+  const deleteCustomer = source === 'pcn' ? pcnStore.deleteCustomer : legacyStore.deleteCustomer;
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [reconciliation, setReconciliation] = useState<{
+    sourceLabel: string;
+    sourceCount: number;
+    validCount: number;
+    rejectedCount: number;
+    duplicateCount: number;
+    report: ReturnType<typeof buildPcnCustomerReconciliation>;
+  } | null>(null);
 
   const [addForm, setAddForm] = useState({
     name: '',
@@ -261,7 +283,12 @@ export const CustomersManagementView = () => {
     contactPerson: ''
   });
 
+  useEffect(() => {
+    if (source === 'pcn') setSearchQuery(initialSearchQuery);
+  }, [initialSearchQuery, source]);
+
   const handleStartEdit = (c: any) => {
+    if (!canEditCustomers) return;
     setEditingCode(c.customerCode || c.name);
     setEditForm({
       name: c.name || '',
@@ -275,6 +302,7 @@ export const CustomersManagementView = () => {
   };
 
   const handleSaveEdit = () => {
+    if (!canEditCustomers) return;
     const cleanName = editForm.name.trim();
     const cleanCode = editForm.customerCode.trim();
     if (!cleanName) {
@@ -295,6 +323,7 @@ export const CustomersManagementView = () => {
   };
 
   const handleSaveAdd = () => {
+    if (!canEditCustomers) return;
     const cleanName = addForm.name.trim();
     const cleanCode = addForm.customerCode.trim();
     if (!cleanName) {
@@ -329,9 +358,48 @@ export const CustomersManagementView = () => {
   };
 
   const handleDelete = async (key: string) => {
+    if (!canEditCustomers) return;
     await deleteCustomer(key);
     toast.success('Đã xóa khách hàng thành công!');
     setConfirmDelete(null);
+  };
+
+  const handleReconciliationFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || source !== 'pcn') return;
+    setIsReconciling(true);
+    try {
+      const text = await file.text();
+      let incoming: unknown[];
+      if (file.name.toLowerCase().endsWith('.json')) {
+        const payload = JSON.parse(text) as unknown;
+        if (Array.isArray(payload)) {
+          incoming = payload;
+        } else if (payload && typeof payload === 'object' && Array.isArray((payload as { customers?: unknown[] }).customers)) {
+          incoming = (payload as { customers: unknown[] }).customers;
+        } else {
+          throw new Error('File JSON phải là mảng khách hàng hoặc object có trường customers.');
+        }
+      } else {
+        incoming = parsePcnCustomerCsv(text);
+      }
+      const inspection = inspectPcnCustomerImport(incoming);
+      setReconciliation({
+        sourceLabel: file.name,
+        sourceCount: inspection.sourceCount,
+        validCount: inspection.validCount,
+        rejectedCount: inspection.rejected.length,
+        duplicateCount: inspection.duplicateKeys.length,
+        report: buildPcnCustomerReconciliation(inspection.acceptedCustomers, customers),
+      });
+      toast.success('Đã đối soát nguồn trong trình duyệt; chưa ghi dữ liệu.');
+    } catch (error: any) {
+      setReconciliation(null);
+      toast.error(error?.message || 'Không thể đọc file đối soát');
+    } finally {
+      setIsReconciling(false);
+    }
   };
 
   const q = removeAccents(searchQuery).toLowerCase();
@@ -340,7 +408,10 @@ export const CustomersManagementView = () => {
     const addrMatch = removeAccents(String(c.address || '')).toLowerCase().includes(q);
     const taxMatch = removeAccents(String(c.taxId || '')).toLowerCase().includes(q);
     const codeMatch = removeAccents(String(c.customerCode || '')).toLowerCase().includes(q);
-    return nameMatch || addrMatch || taxMatch || codeMatch;
+    const phoneMatch = removeAccents(String(c.phone || '')).toLowerCase().includes(q);
+    const emailMatch = removeAccents(String(c.email || '')).toLowerCase().includes(q);
+    const contactMatch = removeAccents(String(c.contactPerson || '')).toLowerCase().includes(q);
+    return nameMatch || addrMatch || taxMatch || codeMatch || phoneMatch || emailMatch || contactMatch;
   });
 
   return (
@@ -350,9 +421,9 @@ export const CustomersManagementView = () => {
           <h2 className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
             <Building className="text-indigo-500" size={20} /> Quản lý Khách hàng
           </h2>
-          <p className="text-[10px] text-slate-500 font-medium mt-0.5">Danh sách đối tác và khách hàng gửi mẫu thử nghiệm</p>
+          <p className="text-[10px] text-slate-500 font-medium mt-0.5">{source === 'pcn' ? 'Danh sách đối tác và khách hàng phục vụ hồ sơ chứng nhận' : 'Danh sách đối tác và khách hàng gửi mẫu thử nghiệm'}</p>
         </div>
-        {!isAdding && (
+        {!isAdding && canEditCustomers && (
           <button 
             onClick={() => setIsAdding(true)}
             className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
@@ -361,6 +432,62 @@ export const CustomersManagementView = () => {
           </button>
         )}
       </div>
+
+      {source === 'pcn' && (
+        <section className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 shadow-2xs">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="flex items-center gap-2 text-xs font-black text-indigo-900"><History size={15} /> Đối soát nguồn</h3>
+              <p className="mt-1 max-w-2xl text-[10px] leading-4 text-indigo-800/70">Chọn CSV/JSON để đọc và chuẩn hóa ngay trong trình duyệt. Kết quả chỉ để rà soát; không upload, không merge và không ghi DB.</p>
+            </div>
+            <label className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-[10px] font-black text-indigo-700 shadow-2xs hover:border-indigo-400">
+              {isReconciling ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              {isReconciling ? 'Đang đọc...' : 'Chọn file nguồn'}
+              <input type="file" accept=".csv,.json,text/csv,application/json" className="sr-only" onChange={handleReconciliationFile} disabled={isReconciling} />
+            </label>
+          </div>
+
+          {reconciliation && (
+            <div className="mt-3 space-y-3 border-t border-indigo-100 pt-3">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
+                {[
+                  ['Nguồn', reconciliation.sourceCount],
+                  ['Hợp lệ', reconciliation.validCount],
+                  ['Lỗi dòng', reconciliation.rejectedCount],
+                  ['Trùng khóa', reconciliation.duplicateCount],
+                  ['Khóa thiếu', reconciliation.report.missingKeys.length],
+                  ['Khóa thừa', reconciliation.report.extraKeys.length],
+                ].map(([label, value]) => (
+                  <div key={String(label)} className="rounded-lg border border-indigo-100 bg-white px-2.5 py-2">
+                    <div className="text-[9px] font-bold uppercase tracking-wide text-slate-400">{label}</div>
+                    <div className="mt-0.5 text-sm font-black text-slate-800">{value}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-slate-600">
+                <span><b className="text-slate-800">Khác dữ liệu:</b> {reconciliation.report.changedKeys.length}</span>
+                <span><b className="text-slate-800">Dòng thiếu khóa:</b> {reconciliation.report.sourceUnkeyedCount}</span>
+                <span><b className="text-slate-800">Đích thiếu khóa:</b> {reconciliation.report.targetUnkeyedCount}</span>
+              </div>
+              {(reconciliation.report.changedFieldsByKey.length > 0 || reconciliation.report.missingKeys.length > 0 || reconciliation.report.extraKeys.length > 0) && (
+                <div className="grid gap-2 text-[10px] md:grid-cols-3">
+                  <div className="rounded-lg border border-rose-100 bg-rose-50/50 p-2"><b className="text-rose-800">Khóa thiếu:</b> {reconciliation.report.missingKeys.slice(0, 20).join(', ') || 'Không có'}</div>
+                  <div className="rounded-lg border border-amber-100 bg-amber-50/50 p-2"><b className="text-amber-800">Khóa thừa:</b> {reconciliation.report.extraKeys.slice(0, 20).join(', ') || 'Không có'}</div>
+                  <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-2"><b className="text-blue-800">Trường lệch:</b> {reconciliation.report.changedFieldsByKey.slice(0, 20).map((item) => `${item.key}: ${item.fields.join(', ')}`).join(' • ') || 'Không có'}</div>
+                </div>
+              )}
+              {reconciliation.report.possibleAliasMatches.length > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-2 text-[10px] text-amber-900">
+                  <b>Ứng viên alias cần xác nhận:</b>{' '}
+                  {reconciliation.report.possibleAliasMatches.slice(0, 20).map((item) => `${item.sourceKey} → ${item.targetKey}`).join(' • ')}
+                  <span className="ml-1 text-amber-800/80">Chỉ là gợi ý read-only; chưa đổi khóa, merge hoặc ghi DB.</span>
+                </div>
+              )}
+              <p className="text-[10px] text-slate-500">Nguồn: {reconciliation.sourceLabel}. Báo cáo không hiển thị giá trị địa chỉ, điện thoại, email hoặc người liên hệ.</p>
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="space-y-3">
         <div className="max-w-xs relative">
@@ -387,7 +514,7 @@ export const CustomersManagementView = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {isAdding && (
+                {isAdding && canEditCustomers && (
                   <tr className="bg-indigo-50/30">
                     <td className="p-2.5 pl-4">
                       <input
@@ -479,9 +606,10 @@ export const CustomersManagementView = () => {
                   filtered.map((c) => {
                     const cKey = c.customerCode || c.name;
                     const isEditing = editingCode === cKey;
+                    const emptyPcnRecord = source === 'pcn' && isEmptyPcnCustomer(c);
 
                     return (
-                      <tr key={cKey} className={`hover:bg-slate-50/55 transition-colors ${isEditing ? 'bg-indigo-50/20' : ''}`}>
+                      <tr key={cKey} className={`hover:bg-slate-50/55 transition-colors ${isEditing ? 'bg-indigo-50/20' : emptyPcnRecord ? 'bg-amber-50/60' : ''}`}>
                         <td className="p-2.5 pl-4">
                           {isEditing ? (
                             <input
@@ -505,7 +633,10 @@ export const CustomersManagementView = () => {
                               className="w-full px-2 py-1 border border-indigo-300 rounded-md text-xs font-bold"
                             />
                           ) : (
-                            <div className="font-bold text-slate-800 text-xs">{c.name}</div>
+                            <div className="space-y-1">
+                              <div className="font-bold text-slate-800 text-xs">{c.name || 'Chưa có tên khách hàng'}</div>
+                              {emptyPcnRecord && <span title="Không có dữ liệu nghiệp vụ" className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-800"><AlertCircle size={10} /> Cần rà soát</span>}
+                            </div>
                           )}
                         </td>
                         <td className="p-2.5 space-y-1">
@@ -590,7 +721,7 @@ export const CustomersManagementView = () => {
                           )}
                         </td>
                         <td className="p-2.5 text-right pr-4">
-                          <div className="flex items-center justify-end gap-1">
+                          {canEditCustomers && <div className="flex items-center justify-end gap-1">
                             {isEditing ? (
                               <>
                                 <button
@@ -642,7 +773,7 @@ export const CustomersManagementView = () => {
                                 </button>
                               </>
                             )}
-                          </div>
+                          </div>}
                         </td>
                       </tr>
                     );
@@ -1943,6 +2074,7 @@ export const SystemSettingsView = () => {
                       >
                         <option value="admin">Admin hệ thống (toàn quyền)</option>
                         <option value="tester">Thử nghiệm (Tester)</option>
+                        <option value="office_clerk">Văn thư chuyên trách (chỉ KQTN)</option>
                         <option value="guest">Khách hàng (Guest)</option>
                         <option value="viewer">Quan sát (Viewer)</option>
                       </select>
@@ -2073,6 +2205,7 @@ export const SystemSettingsView = () => {
                           >
                             <option value="admin">Admin hệ thống (toàn quyền)</option>
                             <option value="tester">Thử nghiệm (Tester)</option>
+                            <option value="office_clerk">Văn thư chuyên trách (chỉ KQTN)</option>
                             <option value="guest">Khách hàng (Guest)</option>
                             <option value="viewer">Quan sát (Viewer)</option>
                           </select>
@@ -2080,9 +2213,10 @@ export const SystemSettingsView = () => {
                           <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
                             uRole === 'admin' ? 'bg-red-50 text-red-600 border border-red-100' :
                             uRole === 'tester' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
+                            uRole === 'office_clerk' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                             'bg-purple-50 text-purple-600 border border-purple-100'
                           }`}>
-                            {uRole === 'admin' ? 'Admin' : uRole === 'tester' ? 'TNV' : 'Khách'}
+                            {uRole === 'admin' ? 'Admin' : uRole === 'tester' ? 'TNV' : uRole === 'office_clerk' ? 'Văn thư' : 'Khách'}
                           </span>
                         )}
                       </td>

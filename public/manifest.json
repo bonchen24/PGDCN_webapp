@@ -1,10 +1,10 @@
 {
-  "_comment_author": "Gemini",
+  "_comment_author": "Codex",
   "_comment_os": "Web/Node",
-  "_comment_desc": "Web App Manifest for PWA installation and homescreen shortcut",
-  "name": "PTN Điện - Điện tử | TVCI Lab",
-  "short_name": "PTN Điện - Điện tử",
-  "description": "Hệ thống quản lý yêu cầu thử nghiệm DDT Lab",
+  "_comment_desc": "Web App Manifest cho ứng dụng vận hành PCN TVCI",
+  "name": "Phòng Chứng nhận - TVCI",
+  "short_name": "PCN TVCI",
+  "description": "Hệ thống quản lý Đề nghị, hồ sơ và tài liệu chứng nhận theo Lĩnh vực.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -14,13 +14,13 @@
   "theme_color": "#059669",
   "icons": [
     {
-      "src": "/icons/tvci-icon-192.png",
+      "src": "/icons/iemm-logo-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/tvci-icon-512.png",
+      "src": "/icons/iemm-logo-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

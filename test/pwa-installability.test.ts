@@ -82,8 +82,8 @@ test('service worker pre-caches the PWA identity assets', () => {
   const source = read('public/sw.js');
   assert.match(source, /CACHE_NAME\s*=\s*['"]ddt-lab-pwa-v4['"]/);
   assert.match(source, /\/manifest\.json/);
-  assert.match(source, /\/icons\/tvci-icon-192\.png/);
-  assert.match(source, /\/icons\/tvci-icon-512\.png/);
+  assert.match(source, /\/icons\/iemm-logo-192\.png/);
+  assert.match(source, /\/icons\/iemm-logo-512\.png/);
 });
 
 test('service worker handles failed non-navigation fetches without an unhandled rejection', () => {

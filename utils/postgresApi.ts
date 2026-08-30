@@ -18,7 +18,7 @@ export interface PostgresClient {
   fetchCollectionWithMeta<T = any>(collectionPath: string, forceServer?: boolean): Promise<FetchCollectionResult<T>>;
   fetchCollection<T = any>(collectionPath: string, forceServer?: boolean): Promise<T[]>;
   fetchCollectionsMeta(collectionPaths: string[]): Promise<Record<string, CollectionMeta>>;
-  saveDoc(collectionPath: string, docId: string, data: any): Promise<void>;
+  saveDoc(collectionPath: string, docId: string, data: any, options?: { headers?: HeadersInit }): Promise<void>;
   deleteDoc(collectionPath: string, docId: string): Promise<void>;
   batchSave(collectionPath: string, items: any[]): Promise<void>;
   batchDelete(collectionPath: string, docIds: string[]): Promise<void>;
@@ -112,11 +112,12 @@ export function createPostgresClient(fetchImpl: typeof fetch = fetch): PostgresC
       }
     },
 
-    async saveDoc(collectionPath: string, docId: string, data: any): Promise<void> {
+    async saveDoc(collectionPath: string, docId: string, data: any, options: { headers?: HeadersInit } = {}): Promise<void> {
       const cleanData = sanitizeForApi({ ...data });
       delete cleanData.id;
       await request(`${encodePathSegment(collectionPath)}/${encodePathSegment(docId)}`, {
         method: 'PUT',
+        headers: options.headers,
         body: JSON.stringify(cleanData)
       });
     },

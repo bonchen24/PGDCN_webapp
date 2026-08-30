@@ -91,6 +91,23 @@ test('preserves document ids and JSON fields across collection CRUD calls', asyn
   });
 });
 
+test('passes an actor header when a protected document mutation requires server authorization', async () => {
+  let receivedHeaders: HeadersInit | undefined;
+  const client = createPostgresClient(async (_input: RequestInfo | URL, init: RequestInit = {}) => {
+    receivedHeaders = init.headers;
+    return new Response(JSON.stringify({ id: 'kqtn-1' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  });
+
+  await client.saveDoc('kqtnRecords', 'kqtn-1', { customerPaymentConfirmed: true }, {
+    headers: { 'x-user-name': 'nguyenanhthu' },
+  });
+
+  assert.equal(new Headers(receivedHeaders).get('x-user-name'), 'nguyenanhthu');
+});
+
 test('normalizes backup collections into JSONB documents with stable ids', () => {
   const documents = toPostgresDocuments({
     requests: [{ id: 'req-1', modelName: 'Tủ lạnh' }],

@@ -6,6 +6,16 @@ Description: Persistent project memory and verified deployment observations for 
 
 # DDT Lab — Project Memory & Observations
 
+## Cập nhật 2026-08-30 — PCN webapp: bộ hồ sơ và graphic workflow
+
+- Profile đang triển khai là `pcn`, dùng `docker-compose.pcn.yml`, database logic `pcn_certification` trên network `supabase_default`; Docker production của PCN dùng cổng `2357`.
+- Dashboard PCN dùng một bề mặt công việc tại một thời điểm, mặc định là **Bản đồ quy trình** dạng graphic và card hồ sơ; hàng đợi chỉ là góc nhìn phụ, không nhân đôi dossier.
+- Một hồ sơ có `ownerUsername` duy nhất xuyên suốt từ Đề nghị, tài liệu/biên bản, đánh giá, PYC/KQTN, đóng gói đến trình lãnh đạo. Card hồ sơ chưa có chủ có điểm vào **Nhận hồ sơ**; self-claim dùng cùng policy server với hàng đợi.
+- Chi tiết dossier đã có checklist trực quan read-only, upload theo từng yêu cầu với phiên bản, danh sách thành phần bộ hồ sơ, liên kết PYC/KQTN/phát hành và khu vực sinh biểu mẫu Word/PDF/biên bản.
+- Quyền nhận/chuyển chủ hồ sơ không được suy ra từ UI: nhân viên chỉ tự nhận hồ sơ trống của chính mình; Admin/Lãnh đạo mới được điều phối; viewer bị chặn; mutation vẫn qua server boundary và audit.
+- Verification trước triển khai: `npm test` và `npm run lint` phải pass trên tree hiện tại; `npm run build` là bước bắt buộc trước khi dựng image. Không đưa `.env`, secret, attachment hoặc dữ liệu thô trong `tmp/` vào commit.
+- Deploy production sau commit phải dùng `docker compose --env-file <Supabase env> -f docker-compose.pcn.yml up --build -d`; cần có `PCN_SESSION_SECRET` ổn định trong env triển khai, không dùng secret hard-code trong repository.
+
 ## Lưu ý vận hành hiện tại — Môi trường chạy & Cổng dịch vụ
 
 - **Môi trường Development cục bộ (`npm run dev`)**: Chạy Node/Express server trực tiếp tại `http://localhost:1359`.

@@ -496,7 +496,18 @@ export default function ReportGeneratorView() {
           ];
         }
       } else if (clause.subTable === 'ABNORMAL') {
-        if (standard.id === 'microwave' || standard.id === 'hair_dryer' || standard.id === 'toaster') {
+        if (standard.id === 'toaster') {
+          subData = {
+            ambient: '25°C',
+            workFollow: '',
+            rows: [
+              { name: 'Độ tăng nhiệt dây nguồn', unit: '°C', result: '-', limit: '≤ 150' },
+              { name: 'Độ tăng nhiệt cuộn dây động cơ', unit: '°C', result: '-', limit: '≤ 215' },
+              { name: 'Độ tăng nhiệt sàn/vách của góc thử nghiệm', unit: '°C', result: '-', limit: '≤ 150' },
+              { name: 'Độ tăng nhiệt nhiệt độ sôi của dầu', unit: '°C', result: '-', limit: '≤ 270' },
+            ]
+          };
+        } else if (standard.id === 'microwave' || standard.id === 'hair_dryer') {
           subData = {
             ambient: '25°C',
             workFollow: '',
@@ -658,12 +669,13 @@ export default function ReportGeneratorView() {
               { name: 'Điều 21.103', unit: 'W/m2', result: '-', limit: '≤ 50' },
               { name: 'Điều 21.104', unit: 'W/m2', result: '-', limit: '≤ 50' },
               { name: 'Điều 21.105', unit: 'W/m2', result: '-', limit: '≤ 100' },
-              { name: '22.109', unit: 'W/m2', result: '-', limit: '≤ 50' },
-              { name: '22.110', unit: 'W/m2', result: '-', limit: '≤ 50' },
-              { name: '22.111', unit: 'W/m2', result: '-', limit: '≤ 100' },
-              { name: '22.112', unit: 'W/m2', result: '-', limit: '≤ 100' },
-              { name: '22.113', unit: 'W/m2', result: '-', limit: '≤ 50' },
-              { name: '32', unit: 'W/m2', result: '-', limit: '≤ 50' }
+              { name: 'Điều 22.108', unit: 'W/m2', result: '-', limit: '≤ 50' },
+              { name: 'Điều 22.109', unit: 'W/m2', result: '-', limit: '≤ 50' },
+              { name: 'Điều 22.110', unit: 'W/m2', result: '-', limit: '≤ 50' },
+              { name: 'Điều 22.111', unit: 'W/m2', result: '-', limit: '≤ 100' },
+              { name: 'Điều 22.112', unit: 'W/m2', result: '-', limit: '≤ 100' },
+              { name: 'Điều 22.113', unit: 'W/m2', result: '-', limit: '≤ 50' },
+              { name: 'Điều 32', unit: 'W/m2', result: '-', limit: '≤ 50' }
             ]
           };
         } else {
@@ -676,12 +688,13 @@ export default function ReportGeneratorView() {
               { name: 'Điều 21.103', unit: 'W/m2', result: '-', limit: '≤ 50' },
               { name: 'Điều 21.104', unit: 'W/m2', result: '-', limit: '≤ 50' },
               { name: 'Điều 21.105', unit: 'W/m2', result: '-', limit: '≤ 100' },
-              { name: '22.109', unit: 'W/m2', result: '-', limit: '≤ 50' },
-              { name: '22.110', unit: 'W/m2', result: '-', limit: '≤ 50' },
-              { name: '22.111', unit: 'W/m2', result: '-', limit: '≤ 100' },
-              { name: '22.112', unit: 'W/m2', result: '-', limit: '≤ 100' },
-              { name: '22.113', unit: 'W/m2', result: '-', limit: '≤ 50' },
-              { name: '32', unit: 'W/m2', result: '-', limit: '≤ 50' }
+              { name: 'Điều 22.108', unit: 'W/m2', result: '-', limit: '≤ 50' },
+              { name: 'Điều 22.109', unit: 'W/m2', result: '-', limit: '≤ 50' },
+              { name: 'Điều 22.110', unit: 'W/m2', result: '-', limit: '≤ 50' },
+              { name: 'Điều 22.111', unit: 'W/m2', result: '-', limit: '≤ 100' },
+              { name: 'Điều 22.112', unit: 'W/m2', result: '-', limit: '≤ 100' },
+              { name: 'Điều 22.113', unit: 'W/m2', result: '-', limit: '≤ 50' },
+              { name: 'Điều 32', unit: 'W/m2', result: '-', limit: '≤ 50' }
             ]
           };
         }

@@ -51,6 +51,7 @@ test('all authenticated users can view the read-only activity page', () => {
   assert.equal(isActivityLogVisibleToUser({ role: 'tester', position: 'Nhân viên' }), true);
   assert.equal(isActivityLogVisibleToUser({ role: 'viewer', position: 'Quan sát' }), true);
   assert.equal(isActivityLogVisibleToUser({ role: 'guest', position: 'Khách' }), true);
+  assert.equal(isActivityLogVisibleToUser({ role: 'office_clerk', position: 'Văn thư chuyên trách' }), false);
   assert.equal(isActivityLogVisibleToUser(null), false);
 });
 

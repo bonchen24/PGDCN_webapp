@@ -16,9 +16,10 @@ import { formatDateVN } from '../utils/formatter';
 import { toast } from 'sonner';
 import { MAHOA_CODES } from '../lib/mahoa-codes';
 import { mergeKqtnSampleHeads } from '../utils/kqtnRows';
-import { getKqtnPdfUrl, uploadKqtnPdf } from '../utils/kqtnPdfClient';
+import { downloadKqtnPdf, getKqtnPdfUrl, uploadKqtnPdf } from '../utils/kqtnPdfClient';
 import type { KqtnBulkCandidate } from '../utils/kqtnBulkMatching';
 import { mergeColumnConfig, shouldPersistColumnConfig } from '../utils/columnConfigPersistence';
+import { canDownloadKqtnPdf, isKqtnPaymentManager } from '../utils/kqtnPaymentPolicy';
 import KqtnBulkPdfUploadModal, { type KqtnBulkUploadSummary } from './KqtnBulkPdfUploadModal';
 
 interface ColumnConfig {
@@ -33,6 +34,7 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: 'sampleCode', label: 'Số mã hóa', width: 130, visible: true },
   { id: 'sealStamp', label: 'Tem niêm phong', width: 140, visible: true },
   { id: 'resultPdf', label: 'File PDF', width: 180, visible: true },
+  { id: 'paymentStatus', label: 'Thanh toán', width: 180, visible: true },
   { id: 'version', label: 'Version', width: 85, visible: true },
   { id: 'sampleName', label: 'Tên mẫu', width: 200, visible: true },
   { id: 'model', label: 'Model', width: 150, visible: true },
@@ -49,10 +51,11 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
 
 export default function KQTNView() {
   const { 
-    kqtnRecords, requests, currentUser, deleteKqtnRecord, updateKqtnRecord, saveKqtnRecord, logBulkKqtnUpload
+    kqtnRecords, requests, currentUser, deleteKqtnRecord, updateKqtnRecord, setKqtnPaymentConfirmed, saveKqtnRecord, logBulkKqtnUpload
   } = useStore();
 
   const isAdmin = currentUser?.role === 'admin';
+  const isPaymentManager = isKqtnPaymentManager(currentUser);
 
   const currentUsername = currentUser?.username;
   const [columns, setColumns] = useState<ColumnConfig[]>(() => DEFAULT_COLUMNS.map(column => ({ ...column })));
@@ -368,6 +371,33 @@ export default function KQTNView() {
     }
   };
 
+  const handleDownloadPdf = async (record: KQTNRecord) => {
+    try {
+      await downloadKqtnPdf(record.id, currentUser?.username || '', record.resultPdf?.originalName);
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể tải PDF KQTN.');
+    }
+  };
+
+  const handleTogglePayment = async (record: KQTNRecord & { isPending?: boolean }) => {
+    if (!isPaymentManager) {
+      toast.error('Chỉ Admin, Quản lý phòng hoặc Văn thư chuyên trách được cập nhật thanh toán KQTN.');
+      return;
+    }
+    if (record.isPending) {
+      toast.warning('Mẫu chưa có KQTN thực tế để cập nhật thanh toán.');
+      return;
+    }
+    const confirmed = !record.customerPaymentConfirmed;
+    if (confirmed && !window.confirm('Xác nhận khách hàng đã thanh toán và mở khóa tải PDF?')) return;
+    try {
+      await setKqtnPaymentConfirmed(record.id, confirmed);
+      toast.success(confirmed ? 'Đã xác nhận thanh toán và mở khóa tải PDF.' : 'Đã khóa lại quyền tải PDF.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể cập nhật trạng thái thanh toán.');
+    }
+  };
+
   const handleBulkUploaded = async (recordId: string, resultPdf: any) => {
     await updateKqtnRecord(recordId, { resultPdf }, 'Bulk uploaded KQTN PDF');
   };
@@ -383,13 +413,16 @@ export default function KQTNView() {
       const rows = filteredRecords.map((req) => {
         return visibleCols.map(col => {
           const field = col.id as keyof KQTNRecord;
-          const val = req[field];
+          const val = col.id === 'paymentStatus' ? req.customerPaymentConfirmed : req[field];
           if (val === null || val === undefined) return '';
           if (field === 'createdAt' || field === 'updatedAt' || field === 'testDate' || field === 'reportDate') {
             return formatDateVN(String(val));
           }
           if (field === 'resultPdf') {
             return val ? 'PDF' : '';
+          }
+          if (col.id === 'paymentStatus') {
+            return req.customerPaymentConfirmed ? 'Đã thanh toán' : 'Chưa mở khóa tải';
           }
           if (field === 'criteriaType') {
             return val === 'full' ? 'Đầy đủ' : 'Rút gọn';
@@ -706,7 +739,9 @@ export default function KQTNView() {
                                 {req.resultPdf ? (
                                   <>
                                     <button onClick={() => window.open(getKqtnPdfUrl(req.id), '_blank', 'noopener,noreferrer')} className="rounded p-1 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600" title="View PDF"><Eye size={13} /></button>
-                                    <a href={getKqtnPdfUrl(req.id, true)} className="rounded p-1 text-slate-500 hover:bg-blue-50 hover:text-blue-600" title="Download PDF"><Download size={13} /></a>
+                                    {canDownloadKqtnPdf(req, currentUser) && (
+                                      <button onClick={() => handleDownloadPdf(req)} className="rounded p-1 text-slate-500 hover:bg-blue-50 hover:text-blue-600" title="Download PDF"><Download size={13} /></button>
+                                    )}
                                     <label htmlFor={inputId} className="cursor-pointer rounded p-1 text-slate-500 hover:bg-amber-50 hover:text-amber-600" title="Replace PDF"><Upload size={13} /><input id={inputId} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(event) => handleUploadPdf(req, event.target.files?.[0])} /></label>
                                   </>
                                 ) : (
@@ -714,6 +749,28 @@ export default function KQTNView() {
                                     <Upload size={12} /> Upload
                                     <input id={inputId} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(event) => handleUploadPdf(req, event.target.files?.[0])} />
                                   </label>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        }
+
+                        if (fieldId === 'paymentStatus') {
+                          const isConfirmed = Boolean(req.customerPaymentConfirmed);
+                          return (
+                            <td key={`cell-${req.id}-${fieldId}`} className="border-r border-slate-200 px-2 py-1.5" style={{ width: col.width }}>
+                              <div className="flex items-center justify-center gap-1.5">
+                                <span className={`rounded-sm px-1.5 py-1 text-[9px] font-bold ${isConfirmed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                  {isConfirmed ? 'Đã thanh toán' : 'Chưa mở khóa tải'}
+                                </span>
+                                {isPaymentManager && !req.isPending && (
+                                  <button
+                                    onClick={() => handleTogglePayment(req)}
+                                    className={`rounded-sm px-1.5 py-1 text-[9px] font-bold ${isConfirmed ? 'text-slate-500 hover:bg-slate-100' : 'text-emerald-700 hover:bg-emerald-50'}`}
+                                    title={isConfirmed ? 'Khóa lại quyền tải PDF' : 'Đánh dấu khách hàng đã thanh toán và mở khóa tải PDF'}
+                                  >
+                                    {isConfirmed ? 'Khóa' : 'Mở khóa'}
+                                  </button>
                                 )}
                               </div>
                             </td>

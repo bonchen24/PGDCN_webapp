@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import AdmZip from 'adm-zip';
+import { resolveLegacyTemplatePath } from './legacyTemplatePath.mjs';
 
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -82,10 +83,10 @@ export function auditTcvnTemplates(root = workspaceRoot) {
       moduleId,
       standardId,
       criteriaType,
-      templatePath: path.join(root, 'public', filename),
+      templatePath: resolveLegacyTemplatePath(path.join(root, 'public', filename), root),
       clauseExport,
       ...auditTemplateAgainstClauses({
-        templatePath: path.join(root, 'public', filename),
+        templatePath: resolveLegacyTemplatePath(path.join(root, 'public', filename), root),
         standardsPath,
         clauseExport,
       }),

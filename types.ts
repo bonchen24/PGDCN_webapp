@@ -215,6 +215,542 @@ export interface CustomerRef {
   isSynced?: boolean;
 }
 
+export type PcnCertificationFieldCode = string;
+
+export interface PcnCertificationField {
+  code: PcnCertificationFieldCode;
+  name: string;
+  standardRefs: string[];
+  active: boolean;
+}
+
+export type PcnProposalChannel = 'DIRECT' | 'EMAIL' | 'ONLINE_ZALO' | 'OTHER';
+export type PcnProposalStatus = 'DRAFT' | 'RECEIVED' | 'REJECTED' | 'CONVERTED';
+
+export interface CertificationProposal {
+  id: string;
+  proposalCode: string;
+  channel: PcnProposalChannel;
+  status: PcnProposalStatus;
+  dossierId?: string;
+  customerId?: string;
+  customerSnapshot: Pick<CustomerRef, 'name' | 'address' | 'taxId' | 'phone' | 'email' | 'contactPerson'>;
+  warehouseAddress?: string;
+  productName: string;
+  model?: string;
+  brand?: string;
+  productType?: string;
+  specifications?: string;
+  manufacturer?: string;
+  manufacturerAddress?: string;
+  quantity: number;
+  fieldCodes: PcnCertificationFieldCode[];
+  receivedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  historicalImport?: PcnHistoricalImportMetadata;
+  haimyOrigin?: PcnHaimyOrigin;
+}
+
+export type PcnDossierStatus =
+  | 'DRAFT'
+  | 'INTAKE_REVIEW'
+  | 'AWAITING_DOCUMENTS'
+  | 'ASSIGNED'
+  | 'PLAN_PENDING_APPROVAL'
+  | 'FIELD_EVALUATION'
+  | 'AWAITING_SAMPLING'
+  | 'SENT_TO_LAB'
+  | 'AWAITING_RESULTS'
+  | 'CORRECTIVE_ACTION'
+  | 'TECHNICAL_REVIEW'
+  | 'WAITING_APPROVAL'
+  | 'APPROVED'
+  | 'ISSUED'
+  | 'DELIVERED'
+  | 'ARCHIVED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'ON_HOLD';
+
+export type PcnCertificationMethod = 'METHOD_1' | 'METHOD_5' | 'METHOD_7';
+
+export type PcnRetentionState = 'ACTIVE' | 'PAPER_REVIEW_DUE' | 'DIGITAL_REVIEW_DUE' | 'LEGAL_HOLD';
+
+export interface PcnRetentionMetadata {
+  policyVersion: string;
+  retentionStartAt: string;
+  paperRetentionUntil: string;
+  digitalRetentionUntil: string;
+  legalHold: boolean;
+  legalHoldReason?: string;
+  legalHoldBy?: string;
+  legalHoldAt?: string;
+}
+
+export interface CertificationDossier {
+  id: string;
+  dossierCode: string;
+  proposalId: string;
+  /** Snapshot captured when the Đề nghị is converted; optional for legacy rows. */
+  customerSnapshot?: Pick<CustomerRef, 'name' | 'address' | 'taxId' | 'phone' | 'email' | 'contactPerson'>;
+  fieldCodes: PcnCertificationFieldCode[];
+  method: PcnCertificationMethod;
+  status: PcnDossierStatus;
+  /** One accountable PCN operator from intake through packaging and archive. */
+  ownerUsername?: string;
+  /** Explicit operator-confirmed reason for an exception-lane status. */
+  exceptionReason?: string;
+  evaluatorUsername?: string;
+  reviewerUsername?: string;
+  targetDate?: string;
+  evaluationAt?: string;
+  effectiveAt?: string;
+  labRequestIds: string[];
+  returnedResultIds: string[];
+  sampleLotIds?: string[];
+  issuancePackageId?: string;
+  retention?: PcnRetentionMetadata;
+  createdAt?: string;
+  updatedAt?: string;
+  historicalImport?: PcnHistoricalImportMetadata;
+  haimyOrigin?: PcnHaimyOrigin;
+}
+
+export type PcnHistoricalImportReviewStatus = 'PENDING_REVIEW' | 'REVIEWED';
+
+export interface PcnHistoricalImportMetadata {
+  batchId: string;
+  sourceFamily: 'QC4' | 'QC9';
+  sourceFolderName: string;
+  sourceRelativePath: string;
+  /** Source-only test-scope hint; never proves procedural completeness. */
+  variantHint?: string;
+  reviewStatus: PcnHistoricalImportReviewStatus;
+  unresolvedFields: string[];
+  importedAt: string;
+}
+
+export type PcnHistoricalFileKind =
+  | 'PROPOSAL'
+  | 'COMMERCIAL'
+  | 'SAMPLE_HANDOVER'
+  | 'SAMPLE_RETURN'
+  | 'TEST_REPORT'
+  | 'CORRECTIVE_ACTION'
+  | 'CERTIFICATE'
+  | 'DECISION'
+  | 'PHOTO'
+  | 'OTHER';
+
+export type PcnAttachmentMappingStatus = 'AUTO_MAPPED' | 'UNMAPPED' | 'MANUAL_MAPPED';
+
+export interface PcnDossierAttachment {
+  id: string;
+  dossierId: string;
+  fieldCode: PcnCertificationFieldCode;
+  kind: PcnHistoricalFileKind;
+  requirementId?: string;
+  mappingStatus?: PcnAttachmentMappingStatus;
+  mappingReason?: string;
+  fileName: string;
+  sourceRelativePath: string;
+  assetId: string;
+  mimeType: string;
+  byteSize: number;
+  sha256: string;
+  importedAt: string;
+  note?: string;
+}
+
+export type PcnGeneratedDocumentKind = 'DOSSIER_COVER' | 'PROPOSAL_SUMMARY' | 'PROPOSAL_FORM' | 'ASSIGNMENT_FORM' | 'EVALUATION_PLAN' | 'FIELD_INSPECTION' | 'SAMPLE_TAKING' | 'SAMPLE_CODING' | 'EVALUATION_REPORT' | 'SAMPLE_HANDOVER' | 'SAMPLE_RETURN' | 'LAB_REQUEST';
+export type PcnGeneratedDocumentFormat = 'DOCX' | 'PDF';
+
+export interface PcnGeneratedDocument {
+  id: string;
+  dossierId: string;
+  kind: PcnGeneratedDocumentKind;
+  /** Set only for LAB_REQUEST; sample forms use the sampleLotId/sampleRouteId pointers below. */
+  labRequestId?: string;
+  sampleLotId?: string;
+  sampleRouteId?: string;
+  format: PcnGeneratedDocumentFormat;
+  fileAssetId: string;
+  fileName: string;
+  mimeType: string;
+  byteSize: number;
+  sha256: string;
+  contextHash: string;
+  sourceUpdatedAt?: string;
+  generatedAt: string;
+  generatedBy?: string;
+}
+
+export type PcnOfficialDocumentKind =
+  | 'PROPOSAL'
+  | 'CERTIFICATE'
+  | 'DECISION'
+  | 'SAMPLE_HANDOVER'
+  | 'EVALUATION_REPORT';
+
+export type PcnTemplateFormat = 'DOCX' | 'DOC';
+export type PcnTemplateStatus = 'DISCOVERED' | 'NEEDS_ANNOTATION' | 'APPROVED' | 'RETIRED';
+export type PcnTemplateStorageScope = 'PCN_PRIVATE';
+export type PcnTemplateReviewAction = 'APPROVE' | 'REQUEST_ANNOTATION' | 'RETIRE';
+export type PcnTemplatePrivateAssetVerificationIssue =
+  | 'MISSING_ASSET'
+  | 'ASSET_NOT_FOUND'
+  | 'BUCKET_MISMATCH'
+  | 'SOURCE_COLLECTION_MISMATCH'
+  | 'SOURCE_DOCUMENT_MISMATCH'
+  | 'SOURCE_JSON_PATH_MISMATCH'
+  | 'MIME_TYPE_MISMATCH'
+  | 'BYTE_SIZE_MISMATCH'
+  | 'SHA256_MISMATCH';
+
+export interface PcnTemplateFingerprint {
+  /** Relative to the one-time PCN source family; never an absolute Desktop path. */
+  sourceRelativePath: string;
+  byteSize: number;
+  sha256?: string;
+}
+
+export interface PcnTemplateAnnotationMapping {
+  key: string;
+  sourceText: string;
+  occurrence?: number;
+}
+
+export interface PcnTemplateAnnotation {
+  sourceAssetId: string;
+  sourceSha256: string;
+  appliedAt: string;
+  appliedBy: string;
+  mappings: PcnTemplateAnnotationMapping[];
+}
+
+export interface PcnTemplateDefinition {
+  id: string;
+  fieldCode: 'QC4' | 'QC9';
+  documentKind: PcnOfficialDocumentKind;
+  method?: PcnCertificationMethod;
+  variant?: string;
+  displayName: string;
+  sourceLabel: string;
+  format: PcnTemplateFormat;
+  status: PcnTemplateStatus;
+  placeholderKeys: string[];
+  requiredPlaceholderKeys: string[];
+  sourceFingerprint: PcnTemplateFingerprint;
+  sourceOriginalFingerprint?: PcnTemplateFingerprint;
+  annotation?: PcnTemplateAnnotation;
+  fileAssetId?: string;
+  storageScope?: PcnTemplateStorageScope;
+  importedByUsername?: string;
+  importedAt?: string;
+  approvedByUsername?: string;
+  approvedAt?: string;
+  /** Read-only server projection; never persisted in the catalog payload. */
+  privateAssetVerified?: boolean;
+  /** Read-only server projection; safe reason for an unverified private asset. */
+  privateAssetVerificationIssue?: PcnTemplatePrivateAssetVerificationIssue;
+}
+
+export type PcnQualityDocumentCategory = 'VICAS' | 'VIAS' | 'ISO' | 'DESIGNATION' | 'PROCEDURE';
+export type PcnQualityDocumentStatus = 'DRAFT' | 'ACTIVE' | 'EXPIRED' | 'RETIRED';
+
+export interface PcnQualityDocument {
+  id: string;
+  documentCode: string;
+  title: string;
+  category: PcnQualityDocumentCategory;
+  fieldCodes?: Array<'QC4' | 'QC9'>;
+  version: string;
+  status: PcnQualityDocumentStatus;
+  issuedAt?: string;
+  effectiveFrom?: string;
+  validUntil?: string;
+  ownerUsername?: string;
+  fileAssetId?: string;
+  fileName?: string;
+  note?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PcnOfficialGeneratedDocument {
+  id: string;
+  issuanceId: string;
+  dossierId: string;
+  templateId: string;
+  documentKind: PcnOfficialDocumentKind;
+  format: PcnGeneratedDocumentFormat;
+  fileAssetId: string;
+  fileName: string;
+  mimeType: string;
+  byteSize: number;
+  sha256: string;
+  contextHash: string;
+  sourceUpdatedAt?: string;
+  generatedAt: string;
+  generatedBy?: string;
+}
+
+export type PcnDocumentRequirementStage =
+  | 'INTAKE'
+  | 'LAB_ROUTING'
+  | 'TECHNICAL_REVIEW'
+  | 'ISSUANCE'
+  | 'DELIVERY'
+  | 'ARCHIVE';
+
+/** Pipeline stations used to route a checklist item to the exact work area. */
+export type PcnDossierStationKey =
+  | 'INTAKE'
+  | 'DOCUMENTS'
+  | 'ASSIGNMENT'
+  | 'EVALUATION'
+  | 'SAMPLING_LAB'
+  | 'RESULTS'
+  | 'CORRECTION'
+  | 'TECHNICAL_REVIEW'
+  | 'APPROVAL'
+  | 'ISSUANCE'
+  | 'DELIVERY_ARCHIVE'
+  | 'EXCEPTIONS';
+
+export interface PcnDocumentRequirement {
+  id: string;
+  fieldCode: PcnCertificationFieldCode;
+  code: string;
+  name: string;
+  description?: string;
+  stages: PcnDocumentRequirementStage[];
+  /** Optional precise routing; omitted on older configurations for compatibility. */
+  stationKeys?: PcnDossierStationKey[];
+  required: boolean;
+  active: boolean;
+  sortOrder: number;
+}
+
+export interface PcnDossierDocumentVersion {
+  assetId: string;
+  fileName: string;
+  mimeType?: string;
+  byteSize?: number;
+  sha256?: string;
+  uploadedAt: string;
+  uploadedBy?: string;
+  note?: string;
+}
+
+export interface PcnDossierDocument {
+  id: string;
+  dossierId: string;
+  requirementId: string;
+  fieldCode: PcnCertificationFieldCode;
+  currentVersionId?: string;
+  versions: PcnDossierDocumentVersion[];
+  status: 'MISSING' | 'PRESENT';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type PcnSampleLabCode = 'PERFORMANCE' | 'EMC' | 'ELECTRICAL_SAFETY';
+
+export const PCN_SAMPLE_LAB_OPTIONS: Array<{ code: PcnSampleLabCode; name: string }> = [
+  { code: 'PERFORMANCE', name: 'Phòng thử nghiệm Hiệu suất' },
+  { code: 'EMC', name: 'Phòng thử EMC' },
+  { code: 'ELECTRICAL_SAFETY', name: 'Phòng thử An toàn điện' },
+];
+
+export type PcnSampleRouteStatus =
+  | 'PENDING'
+  | 'SENT'
+  | 'RECEIVED'
+  | 'RESULT_RETURNED'
+  | 'RETURNED_TO_PCN'
+  | 'CLOSED'
+  | 'ISSUE'
+  | 'CANCELLED';
+
+export type PcnSampleLotStatus =
+  | 'PREPARED'
+  | 'IN_TRANSIT'
+  | 'AT_LAB'
+  | 'RESULTS_PENDING'
+  | 'RETURNED_TO_PCN'
+  | 'CLOSED'
+  | 'ISSUE';
+
+export type PcnSampleFlowEventType =
+  | 'LOT_CREATED'
+  | 'SENT_TO_LAB'
+  | 'LAB_RECEIVED'
+  | 'RESULT_RETURNED'
+  | 'SAMPLE_RETURNED'
+  | 'CLOSED'
+  | 'ISSUE_RECORDED'
+  | 'UPDATED';
+
+export interface PcnSampleLot {
+  id: string;
+  dossierId: string;
+  lotCode: string;
+  sampleName: string;
+  model?: string;
+  brand?: string;
+  quantity: number;
+  unit?: string;
+  fieldCodes: PcnCertificationFieldCode[];
+  routeIds: string[];
+  status: PcnSampleLotStatus;
+  currentLocation: string;
+  receivedAt?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PcnSampleRoute {
+  id: string;
+  sampleLotId: string;
+  labCode: PcnSampleLabCode;
+  labName: string;
+  status: PcnSampleRouteStatus;
+  labRequestId?: string;
+  sentAt?: string;
+  receivedAt?: string;
+  resultReturnedAt?: string;
+  returnedAt?: string;
+  note?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PcnSampleFlowEvent {
+  id: string;
+  sampleLotId: string;
+  routeId?: string;
+  labRequestId?: string;
+  idempotencyFingerprint?: string;
+  type: PcnSampleFlowEventType;
+  fromStatus?: PcnSampleRouteStatus;
+  toStatus?: PcnSampleRouteStatus;
+  location: string;
+  note?: string;
+  actorUsername?: string;
+  occurredAt: string;
+}
+
+export type PcnLabRequestStatus = 'DRAFT' | 'SENT' | 'RECEIVED' | 'RESULT_RETURNED' | 'CANCELLED';
+
+export type PcnSampleIssueType = 'MISMATCH' | 'DAMAGED' | 'INSUFFICIENT' | 'MISSING_DOCUMENT' | 'OTHER';
+
+export interface PcnSampleIssue {
+  type: PcnSampleIssueType;
+  description: string;
+  reportedAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+}
+
+export interface OutboundLabRequest {
+  id: string;
+  pycNumber: string;
+  dossierId: string;
+  fieldCode: PcnCertificationFieldCode;
+  laboratoryName: string;
+  /** Optional link to the tracked PCN lot/route that this outbound PYC serves. */
+  sampleLotId?: string;
+  sampleRouteId?: string;
+  status: PcnLabRequestStatus;
+  requestedAt: string;
+  targetDate?: string;
+  criteria?: string;
+  handoverDocumentId?: string;
+  handoverAt?: string;
+  receivedAt?: string;
+  handoverNote?: string;
+  sampleIssue?: PcnSampleIssue;
+  returnedResultId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type PcnResultOutcome = 'PASS' | 'FAIL' | 'PENDING';
+
+export interface ReturnedTestResult {
+  id: string;
+  dossierId: string;
+  labRequestId: string;
+  round: number;
+  outcome: PcnResultOutcome;
+  receivedAt: string;
+  reportNumber?: string;
+  fileAssetId?: string;
+  notes?: string;
+  isOfficial?: boolean;
+  sampleIssue?: PcnSampleIssue;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type PcnIssuanceDocumentType = 'CERTIFICATE' | 'DECISION';
+export type PcnApprovalStepStatus = 'PENDING' | 'APPROVED' | 'RETURNED';
+export type PcnApprovalDecision = 'APPROVE' | 'RETURN';
+export type PcnIssuanceStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'RETURNED' | 'APPROVED' | 'ISSUED' | 'DELIVERED' | 'ARCHIVED';
+
+export type PcnSignerDelegationStatus = 'ACTIVE' | 'REVOKED';
+
+export interface PcnSignerDelegation {
+  id: string;
+  grantorUsername: string;
+  delegateUsername: string;
+  fieldCodes: PcnCertificationFieldCode[];
+  effectiveFrom: string;
+  effectiveUntil: string;
+  reason: string;
+  approvedByUsername: string;
+  status: PcnSignerDelegationStatus;
+  createdAt?: string;
+  updatedAt?: string;
+  revokedAt?: string;
+  revokedByUsername?: string;
+}
+
+export interface PcnApprovalStep {
+  id: string;
+  dossierId: string;
+  sequence: number;
+  role: string;
+  assigneeUsername?: string;
+  status: PcnApprovalStepStatus;
+  comment?: string;
+  actedAt?: string;
+  createdAt?: string;
+}
+
+export interface IssuancePackage {
+  id: string;
+  dossierId: string;
+  certificateTemplateCode: string;
+  decisionTemplateCode: string;
+  documentType: PcnIssuanceDocumentType;
+  status: PcnIssuanceStatus;
+  approvalStepIds?: string[];
+  issuanceNumber?: string;
+  issuedAt?: string;
+  signerUsername?: string;
+  fileAssetIds: string[];
+  deliveryRecipient?: string;
+  deliveryNote?: string;
+  deliveredAt?: string;
+  archivedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface ProductRef {
   id?: string;
   name: string;
@@ -233,7 +769,18 @@ export interface Tester {
   phone?: string;
 }
 
-export type NotificationEntityType = 'REQUEST' | 'HANDOVER_DOC' | 'KQTN_RECORD' | 'SCHEDULE';
+export type NotificationEntityType =
+  | 'REQUEST'
+  | 'HANDOVER_DOC'
+  | 'KQTN_RECORD'
+  | 'SCHEDULE'
+  | 'PCN_PROPOSAL'
+  | 'PCN_DOSSIER'
+  | 'PCN_SAMPLE_LOT'
+  | 'PCN_LAB_REQUEST'
+  | 'PCN_RESULT'
+  | 'PCN_APPROVAL'
+  | 'PCN_ISSUANCE';
 
 export type NotificationAction = 'CREATED' | 'UPDATED' | 'DELETED' | 'STATUS_CHANGED' | 'SCHEDULED' | 'UNSCHEDULED' | 'ASSIGNED';
 
@@ -241,6 +788,19 @@ export type ActivityLogAction = NotificationAction | 'IMPORTED' | 'RESTORED' | '
 
 export type ActivityLogEntityType =
   | NotificationEntityType
+  | 'PCN_PROPOSAL'
+  | 'PCN_DOSSIER'
+  | 'PCN_CUSTOMER'
+  | 'PCN_LAB_REQUEST'
+  | 'PCN_RESULT'
+  | 'PCN_APPROVAL'
+  | 'PCN_ISSUANCE'
+  | 'PCN_TEMPLATE'
+  | 'PCN_FIELD'
+  | 'PCN_USER'
+  | 'PCN_SIGNER_DELEGATION'
+  | 'PCN_QUALITY_DOCUMENT'
+  | 'PCN_SAMPLE_LOT'
   | 'USER'
   | 'CUSTOMER'
   | 'PRODUCT'
@@ -269,8 +829,10 @@ export interface ActivityLog {
   reportNo?: string;
   summary: string;
   changes?: ActivityLogChange[];
-  source: 'UI' | 'IMPORT' | 'RESTORE' | 'SYSTEM';
+  source: 'UI' | 'USER_REVIEW' | 'IMPORT' | 'RESTORE' | 'SYSTEM';
   groupId?: string;
+  idempotencyKey?: string;
+  idempotencyFingerprint?: string;
 }
 
 export interface ActivityKpiSummary {
@@ -362,13 +924,138 @@ export const INITIAL_TESTERS: Tester[] = [
 
 export const DEFAULT_TESTER = INITIAL_TESTERS[0].name;
 
-export type UserRole = 'admin' | 'tester' | 'viewer' | 'guest';
+export type UserRole = 'admin' | 'tester' | 'staff' | 'viewer' | 'guest' | 'office_clerk';
+
+export type PcnSystemRole = 'admin' | 'staff' | 'viewer';
+export type PcnDepartmentRoleCode =
+  | 'LEADERSHIP'
+  | 'CERTIFICATION_EXPERT'
+  | 'TECHNICAL_REVIEWER'
+  | 'SAMPLE_COORDINATOR'
+  | 'DOCUMENT_CLERK'
+  | 'UNASSIGNED';
+
+export type PcnHaimyDiscoveryStatus = 'UNCONFIGURED' | 'IMPORT_ONLY' | 'CONTRACT_READY';
+
+export interface PcnHaimyRetryContract {
+  supportsIdempotencyKey: boolean;
+  duplicateResponseSemantics?: string;
+}
+
+export interface PcnHaimyDiscoveryInput {
+  apiEndpoint?: string | null;
+  exportFormats?: string[];
+  identifiers?: string[];
+  retryContract?: PcnHaimyRetryContract | null;
+  credentialConfigured?: boolean;
+}
+
+export interface PcnHaimyDiscoveryReport {
+  provider: 'HAIMY';
+  status: PcnHaimyDiscoveryStatus;
+  importEnabled: boolean;
+  canWriteUpstream: false;
+  confirmedCapabilities: Array<'api' | 'export' | 'identifiers' | 'retry' | 'credentials'>;
+  unknownCapabilities: Array<'api' | 'export' | 'identifiers' | 'retry' | 'credentials'>;
+  writeBlockReason: string;
+}
+
+export interface PcnHaimyExportRecord {
+  sourceSystem?: unknown;
+  externalRegistrationId?: unknown;
+  externalBatchId?: unknown;
+  externalCertificateId?: unknown;
+  registrationCode?: unknown;
+  customerName?: unknown;
+  productName?: unknown;
+  model?: unknown;
+  brand?: unknown;
+  fieldCode?: unknown;
+  quantity?: unknown;
+}
+
+export interface PcnHaimyStagingIssue {
+  code: string;
+  message: string;
+}
+
+export interface PcnHaimyOrigin {
+  provider: 'HAIMY';
+  stagingIdempotencyKey: string;
+  batchId: string;
+  externalRegistrationId?: string;
+  externalBatchId?: string;
+  externalCertificateId?: string;
+}
+
+export interface PcnHaimyPromotionMetadata {
+  proposalId: string;
+  dossierId: string;
+  promotedAt: string;
+  promotedBy?: string;
+  promotionFingerprint: string;
+}
+
+export type PcnHaimyStagingStatus = 'READY_FOR_REVIEW' | 'NEEDS_REVIEW' | 'DUPLICATE_NOOP' | 'CONFLICT' | 'PROMOTED';
+
+export interface PcnHaimyStagingRecord {
+  batchId: string;
+  sourceSystem: string;
+  idempotencyKey: string;
+  sourcePayloadFingerprint: string;
+  batchFingerprint?: string;
+  externalRegistrationId?: string;
+  externalBatchId?: string;
+  externalCertificateId?: string;
+  registrationCode?: string;
+  customerName?: string;
+  productName?: string;
+  model?: string;
+  brand?: string;
+  fieldCode?: string;
+  quantity?: number;
+  status: PcnHaimyStagingStatus;
+  issues: PcnHaimyStagingIssue[];
+  promotion?: PcnHaimyPromotionMetadata;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PcnHaimyImportPlan {
+  batchId: string;
+  mode: 'STAGING_ONLY';
+  items: PcnHaimyStagingRecord[];
+  upstreamActions: [];
+}
+
+export const PCN_DEPARTMENT_ROLE_OPTIONS: Array<{ code: PcnDepartmentRoleCode; name: string }> = [
+  { code: 'LEADERSHIP', name: 'Lãnh đạo phòng' },
+  { code: 'CERTIFICATION_EXPERT', name: 'Chuyên gia chứng nhận' },
+  { code: 'TECHNICAL_REVIEWER', name: 'Người soát xét kỹ thuật' },
+  { code: 'SAMPLE_COORDINATOR', name: 'Điều phối / tiếp nhận mẫu' },
+  { code: 'DOCUMENT_CLERK', name: 'Văn thư hồ sơ' },
+  { code: 'UNASSIGNED', name: 'Chưa phân công' },
+];
 
 export interface UserAccount {
   username: string;
   name: string;
   role: UserRole;
   position?: string;
+  phone?: string;
+  email?: string;
+  systemRole?: PcnSystemRole;
+  departmentRoleCode?: PcnDepartmentRoleCode;
+  fieldCodes?: PcnCertificationFieldCode[];
+  active?: boolean;
+}
+
+export interface PcnUserAccount extends UserAccount {
+  role: PcnSystemRole;
+  systemRole: PcnSystemRole;
+  departmentRoleCode: PcnDepartmentRoleCode;
+  fieldCodes: PcnCertificationFieldCode[];
+  active: boolean;
 }
 
 export interface UserPreferences {
@@ -381,6 +1068,7 @@ export interface UserPreferences {
 export const PRESET_ACCOUNTS: UserAccount[] = [
   { username: 'luongxuanhung', name: 'Lương Xuân Hùng', role: 'admin', position: 'Phó trưởng phòng' },
   { username: 'vuvietanh', name: 'Vũ Việt Anh', role: 'admin', position: 'Phó trưởng phòng' },
+  { username: 'nguyenanhthu', name: 'Nguyễn Anh Thư', role: 'office_clerk', position: 'Văn thư chuyên trách' },
   { username: 'tongdangquy', name: 'Tống Đăng Quý', role: 'tester', position: 'Nhân viên' },
   { username: 'latrungson', name: 'Lã Trung Sơn', role: 'tester', position: 'Nhân viên' },
   { username: 'vunamthai', name: 'Vũ Nam Thái', role: 'tester', position: 'Nhân viên' },
@@ -465,6 +1153,9 @@ export interface KQTNRecord {
   nameplatePhoto2?: string;
   nameplatePhotos?: string[];
   resultPdf?: KqtnPdfMetadata;
+  customerPaymentConfirmed?: boolean;
+  customerPaymentConfirmedAt?: string;
+  customerPaymentConfirmedBy?: string;
   version: number;
   versionHistory: KQTNVersionHistory[];
   createdAt: string;

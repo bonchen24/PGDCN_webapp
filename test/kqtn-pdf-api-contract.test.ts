@@ -19,6 +19,70 @@ test('server exposes upload, inline view, download, and delete routes for KQTN P
   assert.match(source, /pageOffset/);
 });
 
+test('server protects locked KQTN PDF downloads and resolves the requesting role', () => {
+  const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  assert.match(source, /customerPaymentConfirmed/);
+  assert.match(source, /x-user-name/);
+  assert.match(source, /Chưa mở khóa tải PDF/);
+  assert.match(source, /role !== "admin"/);
+  assert.match(source, /download\)/);
+});
+
+test('server protects KQTN payment transitions in the generic document write route', () => {
+  const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  assert.match(source, /isKqtnPaymentStateChanged/);
+  assert.match(source, /isKqtnPaymentManager/);
+  assert.match(source, /position/);
+  assert.match(source, /Chỉ Admin, Quản lý phòng hoặc Văn thư chuyên trách được cập nhật trạng thái thanh toán KQTN/);
+  assert.match(source, /collectionName === "kqtnRecords"/);
+});
+
+test('server binds KQTN privileged actions to a signed HTTP-only login session', () => {
+  const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  assert.match(source, /api\/auth\/kqtn-session/);
+  assert.match(source, /HttpOnly/);
+  assert.match(source, /getKqtnSessionUsername/);
+  assert.match(source, /SESSION_SECRET/);
+  assert.match(source, /userPreferences/);
+  assert.match(source, /customPassword/);
+  assert.match(source, /preferenceKeys/);
+  assert.match(source, /lower\(document_id\) = ANY/);
+});
+
+test('server protects KQTN payment transitions in the batch write route', () => {
+  const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const batchStart = source.indexOf('app.post("/api/db/:collection/batch"');
+  const batchEnd = source.indexOf('app.post("/api/db/:collection/delete-batch"', batchStart);
+  const batchBlock = source.slice(batchStart, batchEnd);
+  assert.match(batchBlock, /kqtnRecords/);
+  assert.match(batchBlock, /authorizeKqtnPaymentMutation/);
+});
+
+test('KQTN writes serialize payment state with the document write', () => {
+  const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const putStart = source.indexOf('app.put("/api/db/:collection/:id"');
+  const putEnd = source.indexOf('app.delete("/api/db/:collection/:id"', putStart);
+  const putBlock = source.slice(putStart, putEnd);
+  assert.match(putBlock, /withPgTransaction/);
+  assert.match(source, /FOR UPDATE/);
+  assert.match(source, /customerPaymentConfirmedAt/);
+  assert.match(source, /customerPaymentConfirmedBy/);
+});
+
+test('KQTN updates await persistence errors instead of swallowing them', () => {
+  const source = fs.readFileSync(new URL('../store.ts', import.meta.url), 'utf8');
+  const saveStart = source.indexOf('saveKqtnRecord: async');
+  const saveEnd = source.indexOf('addKqtnRecord:', saveStart);
+  const saveBlock = source.slice(saveStart, saveEnd);
+  assert.match(saveBlock, /await saveDocToPostgres/);
+  assert.doesNotMatch(saveBlock, /saveDocToPostgres\([\s\S]*?\.catch\(console\.error\)/);
+  const updateStart = source.indexOf('updateKqtnRecord: async');
+  const updateEnd = source.indexOf('setKqtnPaymentConfirmed:', updateStart);
+  const updateBlock = source.slice(updateStart, updateEnd);
+  assert.match(updateBlock, /await saveDocToPostgres/);
+  assert.doesNotMatch(updateBlock, /saveDocToPostgres\([\s\S]*?\.catch\(console\.error\)/);
+});
+
 test('browser client exposes combined-PDF structure extraction', () => {
   const source = fs.readFileSync(new URL('../utils/kqtnPdfClient.ts', import.meta.url), 'utf8');
   assert.match(source, /extractKqtnBulkStructure/);
@@ -52,6 +116,20 @@ test('storage client supports downloading a private object', () => {
   const source = fs.readFileSync(new URL('../utils/supabaseStorage.ts', import.meta.url), 'utf8');
   assert.match(source, /downloadObject/);
   assert.match(source, /response\.arrayBuffer\(\)/);
+});
+
+test('browser client downloads private KQTN PDFs with the authenticated user header', () => {
+  const source = fs.readFileSync(new URL('../utils/kqtnPdfClient.ts', import.meta.url), 'utf8');
+  assert.match(source, /downloadKqtnPdf/);
+  assert.match(source, /x-user-name/);
+  assert.match(source, /response\.blob\(\)/);
+});
+
+test('browser client establishes and clears the server-bound KQTN session', () => {
+  const source = fs.readFileSync(new URL('../utils/kqtnPdfClient.ts', import.meta.url), 'utf8');
+  assert.match(source, /establishKqtnSession/);
+  assert.match(source, /clearKqtnSession/);
+  assert.match(source, /credentials: 'same-origin'/);
 });
 
 

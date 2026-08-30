@@ -5,7 +5,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Download, Filter, History, Loader2, RefreshCw, Search, X } from 'lucide-react';
 import { useStore } from '../store';
-import { PRESET_ACCOUNTS, type ActivityKpiSummary, type ActivityLog, type ActivityLogAction, type ActivityLogEntityType } from '../types';
+import { PRESET_ACCOUNTS, type ActivityKpiSummary, type ActivityLog, type ActivityLogAction, type ActivityLogEntityType, type UserAccount } from '../types';
 import {
   activityActionLabels,
   activityEntityLabels,
@@ -42,6 +42,11 @@ interface ActivityFilters {
   action: ActivityLogAction | '';
   entityType: ActivityLogEntityType | '';
   period: ActivityPeriod;
+}
+
+export interface ActivityLogViewProps {
+  currentUser?: UserAccount | null;
+  systemUsers?: UserAccount[];
 }
 
 const INITIAL_FILTERS: ActivityFilters = {
@@ -92,8 +97,10 @@ const toApiFilters = (
   to: periodBounds.to,
 });
 
-export const ActivityLogView: React.FC = () => {
-  const { currentUser, systemUsers } = useStore();
+export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: providedCurrentUser, systemUsers: providedSystemUsers }) => {
+  const storeState = useStore();
+  const currentUser = providedCurrentUser === undefined ? storeState.currentUser : providedCurrentUser;
+  const systemUsers = providedSystemUsers === undefined ? storeState.systemUsers : providedSystemUsers;
   const [filters, setFilters] = useState<ActivityFilters>(INITIAL_FILTERS);
   const [selectedActors, setSelectedActors] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
@@ -116,7 +123,8 @@ export const ActivityLogView: React.FC = () => {
   const canView = isActivityLogVisibleToUser(currentUser);
 
   const userOptions = useMemo(() => {
-    const merged = [...PRESET_ACCOUNTS, ...(systemUsers || [])]
+    const directory = providedSystemUsers === undefined ? [...PRESET_ACCOUNTS, ...(systemUsers || [])] : systemUsers || [];
+    const merged = directory
       .map(user => ({
         username: String(user.username || user.id || '').trim(),
         name: getUserFullName(user, ''),
@@ -124,7 +132,7 @@ export const ActivityLogView: React.FC = () => {
       .filter(user => user.username && user.name);
     return Array.from(new Map(merged.map(user => [user.username, user])).values())
       .sort((left, right) => left.name.localeCompare(right.name, 'vi'));
-  }, [systemUsers]);
+  }, [providedSystemUsers, systemUsers]);
 
   const filteredUserOptions = useMemo(() => {
     const query = userSearch.trim().toLowerCase();

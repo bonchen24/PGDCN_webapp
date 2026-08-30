@@ -6,30 +6,37 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { buildDatabaseConnectionString, resolveDatabaseConfig } from './pcnDatabase.ts';
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: true });
+// Keep explicit process environment values authoritative so Docker/CI can
+// select the PCN profile and port without being overwritten by .env.
+dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: false });
 
 const { Pool } = pg;
 
 export function buildPostgresConnectionString(env: Record<string, string | undefined>): string {
-  return env.DATABASE_URL ||
-    `postgresql://${env.POSTGRES_USER || 'ddt_admin'}:${env.POSTGRES_PASSWORD || 'ddt_dev_password'}@${env.POSTGRES_HOST || 'localhost'}:${env.POSTGRES_PORT || '15432'}/${env.POSTGRES_DB || 'ddt_lab'}`;
+  return buildDatabaseConnectionString(env);
 }
 
+const databaseConfig = resolveDatabaseConfig(process.env);
+const configuredDatabaseUrl = databaseConfig.profile === 'pcn'
+  ? String(process.env.PCN_DATABASE_URL || '').trim()
+  : String(process.env.DATABASE_URL || '').trim();
+
 export const pool = new Pool(
-  process.env.DATABASE_URL
+  configuredDatabaseUrl
     ? {
-        connectionString: process.env.DATABASE_URL,
+        connectionString: configuredDatabaseUrl,
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 5000,
       }
     : {
-        host: process.env.POSTGRES_HOST || 'localhost',
-        port: Number(process.env.POSTGRES_PORT || 5432),
-        user: process.env.POSTGRES_USER || 'postgres',
-        password: process.env.POSTGRES_PASSWORD || '',
-        database: process.env.POSTGRES_DB || 'ddt_lab',
+        host: databaseConfig.host,
+        port: databaseConfig.port,
+        user: databaseConfig.user,
+        password: databaseConfig.password,
+        database: databaseConfig.database,
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 5000,
@@ -45,7 +52,8 @@ export async function initDbSchema(): Promise<void> {
   try {
     client = await pool.connect();
     console.log('Connected to PostgreSQL successfully.');
-    const schemaPath = path.join(process.cwd(), 'sql', 'schema.sql');
+    const schemaFilename = databaseConfig.profile === 'pcn' ? 'pcn-schema.sql' : 'schema.sql';
+    const schemaPath = path.join(process.cwd(), 'sql', schemaFilename);
     if (fs.existsSync(schemaPath)) {
       const sql = fs.readFileSync(schemaPath, 'utf8');
       await client.query(sql);

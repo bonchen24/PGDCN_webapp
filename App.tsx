@@ -1296,7 +1296,11 @@ export default function App() {
     );
   };
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>(currentUser?.role === 'guest' ? 'requests' : 'dashboard');
+  const [activeTab, setActiveTab] = useState<ActiveTab>(
+    currentUser?.role === 'guest' ? 'requests' :
+    currentUser?.role === 'office_clerk' ? 'kqtn' :
+    'dashboard'
+  );
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('sidebar_collapsed') === 'true';
@@ -1353,6 +1357,10 @@ export default function App() {
   const itemsPerPage = 20;
 
   useEffect(() => {
+    if (currentUser?.role === 'office_clerk') {
+      if (activeTab !== 'kqtn') setActiveTab('kqtn');
+      return;
+    }
     if (activeTab === 'dashboard' && currentUser?.role === 'guest') {
       setActiveTab('requests');
     }
@@ -1746,6 +1754,10 @@ export default function App() {
   };
 
   const handleSelectNotification = (notification: AppNotification) => {
+    if (currentUser?.role === 'office_clerk') {
+      setActiveTab('kqtn');
+      return;
+    }
     const destination = getNotificationDestination(notification);
     if (destination.kind === 'requests') {
       setActiveTab('requests');
@@ -1837,7 +1849,7 @@ export default function App() {
             { id: 'handover', label: 'Giao nhận', icon: Truck, roles: ['admin', 'tester'] },
             { id: 'schedule_itd', label: 'Lịch ITD', icon: CalendarIcon, roles: ['admin', 'tester', 'viewer'] },
             { id: 'schedule_emc', label: 'Lịch EMC', icon: CalendarIcon, roles: ['admin', 'tester', 'viewer'] },
-            { id: 'kqtn', label: 'KQTN', icon: FileSpreadsheet, roles: ['admin', 'tester', 'viewer'] },
+            { id: 'kqtn', label: 'KQTN', icon: FileSpreadsheet, roles: ['admin', 'tester', 'viewer', 'office_clerk'] },
             { id: 'report_generator', label: 'Lập báo cáo', icon: FileText, roles: ['admin', 'tester', 'viewer'] },
             { id: 'brands', label: 'Thương hiệu', icon: Tag, roles: ['admin', 'tester'] },
             { id: 'customers', label: 'Khách hàng', icon: Building, roles: ['admin', 'tester'] },
@@ -2016,10 +2028,11 @@ export default function App() {
                 <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border uppercase tracking-widest shadow-sm ${
                   currentUser.role === 'admin' ? 'bg-gradient-to-r from-red-50 to-orange-50 text-red-600 border-red-200/50' :
                   currentUser.role === 'tester' ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 border-blue-200/50' :
+                  currentUser.role === 'office_clerk' ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border-amber-200/50' :
                   currentUser.role === 'guest' ? 'bg-gradient-to-r from-purple-50 to-pink-50 text-purple-600 border-purple-200/50' :
                   'bg-gradient-to-r from-slate-50 to-gray-50 text-slate-600 border-slate-200/50'
                 }`}>
-                  {currentUser.role === 'admin' ? 'Quản lý' : currentUser.role === 'tester' ? 'Thử nghiệm' : currentUser.role === 'guest' ? 'Khách hàng' : 'Quan sát'}
+                  {currentUser.role === 'admin' ? 'Quản lý' : currentUser.role === 'tester' ? 'Thử nghiệm' : currentUser.role === 'office_clerk' ? 'Văn thư chuyên trách' : currentUser.role === 'guest' ? 'Khách hàng' : 'Quan sát'}
                 </span>
               </div>
             </div>
@@ -2045,7 +2058,7 @@ export default function App() {
         </div>
       </header>
       <main className="flex-1 overflow-hidden relative" id="main-content">
-        {activeTab === 'dashboard' && currentUser?.role !== 'guest' && (
+        {activeTab === 'dashboard' && currentUser?.role !== 'guest' && currentUser?.role !== 'office_clerk' && (
           <DashboardView 
             requests={requests} 
             onReceiveRequest={() => setIsRequestModalOpen(true)} 
@@ -2394,7 +2407,7 @@ export default function App() {
             {id: 'handover', label: 'Giao nhận', icon: Truck, roles: ['admin', 'tester']},
             {id: 'schedule_itd', label: 'ITD', icon: CalendarIcon, roles: ['admin', 'tester', 'viewer']},
             {id: 'schedule_emc', label: 'EMC', icon: CalendarIcon, roles: ['admin', 'tester', 'viewer']},
-            {id: 'kqtn', label: 'KQTN', icon: FileSpreadsheet, roles: ['admin', 'tester', 'viewer']},
+            {id: 'kqtn', label: 'KQTN', icon: FileSpreadsheet, roles: ['admin', 'tester', 'viewer', 'office_clerk']},
              {id: 'report_generator', label: 'Báo cáo', icon: FileText, roles: ['admin', 'tester', 'viewer']},
              {id: 'activity_log', label: 'Nhật ký', icon: History},
              {id: 'system_settings', label: 'Thiết lập', icon: Settings}

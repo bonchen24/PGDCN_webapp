@@ -10,6 +10,7 @@ import Docxtemplater from 'docxtemplater';
 // @ts-ignore
 import ImageModule from 'docxtemplater-image-module-free';
 import { buildReportDocxImageSlots, combineReportDocxLabelImages } from '../lib/reportDocxImageMapping';
+import { resolveLegacyTemplatePath } from '../scripts/legacyTemplatePath.mjs';
 
 const onePixelPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
@@ -25,7 +26,7 @@ test('renders the combined dynamic label photo into the DOCX image module', asyn
       setupVoltage: onePixelPng,
     },
   });
-  const zip = new PizZip(fs.readFileSync('public/tulanh placeholder.docx'));
+  const zip = new PizZip(fs.readFileSync(resolveLegacyTemplatePath('public/tulanh placeholder.docx')));
   const imageModule = new ImageModule({
     getImage: (value: string) => Buffer.from(value.split(',')[1], 'base64'),
     getSize: () => [100, 100],

@@ -7,9 +7,11 @@ import { useStore } from '../store';
 import { User, Lock, Eye, EyeOff, ShieldCheck, Loader2, ArrowLeft, Phone, CheckCircle2, AlertCircle } from 'lucide-react';
 import { removeAccents } from '../utils/formatter';
 import { saveDocToPostgres } from '../utils/firebase';
+import { establishKqtnSession } from '../utils/kqtnPdfClient';
+import { establishPcnSession } from '../utils/pcnAuthApi';
 
-export const LoginScreen: React.FC = () => {
-  const { login, isLoading, systemUsers, updateUser, updateUserPreferences, syncTwoWay, fetchData } = useStore();
+export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'legacy' }) => {
+  const { login, logout, isLoading, systemUsers, updateUser, updateUserPreferences, syncTwoWay, fetchData } = useStore();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -27,37 +29,59 @@ export const LoginScreen: React.FC = () => {
 
   // Load systemUsers on login screen if empty to facilitate verification
   React.useEffect(() => {
-    if (systemUsers.length === 0) {
+    if (mode !== 'pcn' && systemUsers.length === 0) {
       syncTwoWay(false).catch(err => console.error("Initial login screen sync failed:", err));
     }
-  }, [systemUsers, syncTwoWay]);
+  }, [mode, systemUsers, syncTwoWay]);
 
   React.useEffect(() => {
     const savedUsername = localStorage.getItem('rememberedUsername');
     const savedPassword = localStorage.getItem('rememberedPassword');
-    if (savedUsername && savedPassword) {
+    if (mode !== 'pcn' && savedUsername && savedPassword) {
       setUsername(savedUsername);
       setPassword(savedPassword);
       setRememberMe(true);
     }
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
     if (!username) {
       setError('Vui lòng nhập tên tài khoản.');
       return;
     }
-    const success = login(username, password);
+    let success = false;
+    if (mode === 'pcn') {
+      try {
+        const session = await establishPcnSession(username, password);
+        useStore.setState({ currentUser: session.user });
+        success = true;
+      } catch (sessionError: any) {
+        console.error('PCN server session initialization failed:', sessionError);
+        setError(sessionError?.message || 'Tài khoản hoặc mật khẩu không chính xác.');
+      }
+    } else {
+      success = login(username, password, { skipLegacyFetch: false });
+    }
     if (!success) {
       setError('Tài khoản hoặc mật khẩu không chính xác.');
     } else {
       setError('');
-      if (fetchData) {
+      if (mode !== 'pcn') {
+        try {
+          await establishKqtnSession(username, password);
+        } catch (sessionError: any) {
+          console.error('KQTN server session initialization failed:', sessionError);
+          logout();
+          setError('Không thể khởi tạo phiên bảo mật. Vui lòng kiểm tra kết nối máy chủ và thử lại.');
+          return;
+        }
+      }
+      if (mode !== 'pcn' && fetchData) {
         fetchData(false);
       }
-      if (rememberMe) {
+      if (rememberMe && mode !== 'pcn') {
         localStorage.setItem('rememberedUsername', username);
         localStorage.setItem('rememberedPassword', password);
       } else {
@@ -170,15 +194,18 @@ export const LoginScreen: React.FC = () => {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md z-10">
         <div className="flex justify-center">
-          <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-900/30 border border-emerald-500/20 animate-bounce-slow">
+          {mode === 'pcn' ? <div className="flex flex-col items-center gap-2">
+            <img src="/icons/iemm-logo-32.png" alt="IEMM • TVCI" className="h-16 w-16 rounded-2xl bg-white object-contain p-1.5 shadow-xl shadow-emerald-900/30 ring-1 ring-emerald-400/30" />
+            <span className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300">IEMM • TVCI</span>
+          </div> : <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-900/30 border border-emerald-500/20 animate-bounce-slow">
             <ShieldCheck size={36} className="text-white" />
-          </div>
+          </div>}
         </div>
         <h2 className="mt-6 text-center text-2xl font-black tracking-tight text-white uppercase">
-          Hệ thống thử nghiệm
+          {mode === 'pcn' ? 'Hệ thống chứng nhận' : 'Hệ thống thử nghiệm'}
         </h2>
         <p className="mt-2 text-center text-xs text-slate-400 font-medium">
-          Phòng Điện - Điện tử • Quản lý & Lên lịch Tự động
+          {mode === 'pcn' ? 'Phòng Chứng nhận • Quản lý hồ sơ theo Lĩnh vực' : 'Phòng Điện - Điện tử • Quản lý & Lên lịch Tự động'}
         </p>
       </div>
 
@@ -214,7 +241,7 @@ export const LoginScreen: React.FC = () => {
                   <label htmlFor="password" className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
                     Mật khẩu
                   </label>
-                  <div className="flex items-center">
+                  {mode !== 'pcn' && <div className="flex items-center">
                     <input
                       id="remember-me"
                       name="remember-me"
@@ -226,7 +253,7 @@ export const LoginScreen: React.FC = () => {
                     <label htmlFor="remember-me" className="ml-1.5 block text-[11px] font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors">
                       Lưu mật khẩu
                     </label>
-                  </div>
+                  </div>}
                 </div>
                 <div className="relative rounded-2xl shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -244,13 +271,14 @@ export const LoginScreen: React.FC = () => {
                   />
                   <button
                     type="button"
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-300 transition-colors"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-                <div className="mt-2 text-right">
+                {mode !== 'pcn' && <div className="mt-2 text-right">
                   <button
                     type="button"
                     onClick={() => {
@@ -262,7 +290,7 @@ export const LoginScreen: React.FC = () => {
                   >
                     Quên mật khẩu?
                   </button>
-                </div>
+                </div>}
               </div>
 
               {error && (

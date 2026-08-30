@@ -3,7 +3,7 @@ services:
     build: .
     environment:
       NODE_ENV: production
-      PORT: 2359
+      PORT: 2357
       POSTGRES_HOST: supabase-db
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -17,7 +17,7 @@ services:
       KQTN_PDF_MAX_BYTES: ${KQTN_PDF_MAX_BYTES:-26214400}
       KQTN_BULK_SOURCE_MAX_BYTES: ${KQTN_BULK_SOURCE_MAX_BYTES:-104857600}
     ports:
-      - "2359:2359"
+      - "2357:2357"
     networks:
       - supabase_default
     restart: unless-stopped

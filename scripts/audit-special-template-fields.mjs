@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import AdmZip from 'adm-zip';
+import { resolveLegacyTemplatePath } from './legacyTemplatePath.mjs';
 
 const serverSource = fs.readFileSync('server.ts', 'utf8');
 const serverKeys = new Set([
@@ -16,7 +17,7 @@ const serverKeys = new Set([
 ]);
 
 function extractTemplateTokens(template) {
-  const zip = new AdmZip(template);
+  const zip = new AdmZip(resolveLegacyTemplatePath(template));
   const xmls = zip.getEntries()
     .filter((entry) => /^word\/(document|header|footer)[^/]*\.xml$/.test(entry.entryName))
     .map((entry) => entry.getData().toString('utf8'));

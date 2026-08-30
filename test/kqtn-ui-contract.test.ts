@@ -15,6 +15,44 @@ test('KQTN view exposes a PDF column and bulk upload control', () => {
   assert.match(source, /window\.confirm/);
 });
 
+test('KQTN view exposes payment unlock state and role-gated actions', () => {
+  const source = fs.readFileSync(new URL('../components/KQTNView.tsx', import.meta.url), 'utf8');
+  assert.match(source, /customerPaymentConfirmed/);
+  assert.match(source, /isKqtnPaymentManager/);
+  assert.match(source, /Đã thanh toán/);
+  assert.match(source, /Chưa mở khóa tải/);
+  assert.match(source, /downloadKqtnPdf/);
+});
+
+test('office clerk navigation is restricted to the KQTN workbench', () => {
+  const source = fs.readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  assert.match(source, /office_clerk/);
+  assert.match(source, /id: 'kqtn',[\s\S]*?roles: \['admin', 'tester', 'viewer', 'office_clerk'\]/);
+  assert.match(source, /currentUser\?\.role === 'office_clerk' \? 'kqtn'/);
+});
+
+test('office clerk notification clicks cannot open handover workflows', () => {
+  const source = fs.readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  const handlerStart = source.indexOf('const handleSelectNotification');
+  const handlerEnd = source.indexOf('const handleCloseHandoverModal', handlerStart);
+  const handler = source.slice(handlerStart, handlerEnd);
+  const guardOffset = handler.indexOf("currentUser?.role === 'office_clerk'");
+  const destinationOffset = handler.indexOf('const destination = getNotificationDestination');
+  assert.ok(guardOffset >= 0 && guardOffset < destinationOffset);
+  assert.match(handler, /currentUser\?\.role === 'office_clerk'[\s\S]*?setActiveTab\('kqtn'\)[\s\S]*?return/);
+});
+
+test('system management exposes the dedicated office clerk role', () => {
+  const source = fs.readFileSync(new URL('../components/SystemManagementViews.tsx', import.meta.url), 'utf8');
+  assert.match(source, /value="office_clerk"/);
+  assert.match(source, /Văn thư chuyên trách/);
+});
+
+test('login establishes the server session before privileged KQTN actions are used', () => {
+  const source = fs.readFileSync(new URL('../components/LoginScreen.tsx', import.meta.url), 'utf8');
+  assert.match(source, /establishKqtnSession/);
+});
+
 test('bulk modal exposes PaddleOCR matching and manual candidate selection', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
   const comboboxSource = fs.readFileSync(new URL('../components/KqtnCandidateCombobox.tsx', import.meta.url), 'utf8');

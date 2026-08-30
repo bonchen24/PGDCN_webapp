@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       server: {
-        port: 1359,
+        port: 1357,
         host: '0.0.0.0',
         allowedHosts: ['ddtdev.tvci.id.vn'],
       },

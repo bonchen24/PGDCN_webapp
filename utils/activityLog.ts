@@ -2,8 +2,8 @@
 // OS support: Web/Node
 // Description: Pure builders, diff helpers, redaction, and access policy for system activity logs
 
-import type { ActivityLog, ActivityLogAction, ActivityLogChange, ActivityLogEntityType, UserAccount, UserRole } from '../types';
-import { getUserFullName } from './userIdentity';
+import type { ActivityLog, ActivityLogAction, ActivityLogChange, ActivityLogEntityType, UserAccount, UserRole } from '../types.ts';
+import { getUserFullName } from './userIdentity.ts';
 
 export interface ActivityLogActor {
   username?: string;
@@ -12,6 +12,8 @@ export interface ActivityLogActor {
   'Họ và Tên'?: string;
   role?: UserRole;
   position?: string;
+  departmentRoleCode?: string;
+  fieldCodes?: string[];
 }
 
 export interface ActivityLogInput {
@@ -32,6 +34,8 @@ export interface ActivityLogInput {
   changes?: ActivityLogChange[];
   source: ActivityLog['source'];
   groupId?: string;
+  idempotencyKey?: string;
+  idempotencyFingerprint?: string;
 }
 
 const REDACTED = '[REDACTED]';
@@ -114,13 +118,15 @@ export const buildActivityLog = (input: ActivityLogInput): ActivityLog => {
   if (input.docNumber) log.docNumber = String(input.docNumber);
   if (input.reportNo) log.reportNo = String(input.reportNo);
   if (input.groupId) log.groupId = String(input.groupId);
+  if (input.idempotencyKey) log.idempotencyKey = String(input.idempotencyKey);
+  if (input.idempotencyFingerprint) log.idempotencyFingerprint = String(input.idempotencyFingerprint);
   if (input.changes?.length) log.changes = input.changes.map(normalizeChange);
 
   return log;
 };
 
 export const isActivityLogVisibleToUser = (user: Pick<UserAccount, 'role' | 'position'> | null | undefined): boolean => {
-  return Boolean(user);
+  return Boolean(user) && user?.role !== 'office_clerk';
 };
 
 export const activityActionLabels: Record<ActivityLogAction, string> = {
@@ -137,6 +143,19 @@ export const activityActionLabels: Record<ActivityLogAction, string> = {
 };
 
 export const activityEntityLabels: Record<ActivityLogEntityType, string> = {
+  PCN_PROPOSAL: 'Đề nghị PCN',
+  PCN_DOSSIER: 'Hồ sơ chứng nhận PCN',
+  PCN_CUSTOMER: 'Khách hàng PCN',
+  PCN_LAB_REQUEST: 'PYC gửi PTN',
+  PCN_RESULT: 'KQTN trả về PCN',
+  PCN_APPROVAL: 'Phê duyệt PCN',
+  PCN_ISSUANCE: 'Phát hành PCN',
+  PCN_TEMPLATE: 'Biểu mẫu PCN',
+  PCN_FIELD: 'Lĩnh vực',
+  PCN_USER: 'Nhân sự PCN',
+  PCN_SIGNER_DELEGATION: 'Ủy quyền người ký PCN',
+  PCN_QUALITY_DOCUMENT: 'Tài liệu chất lượng PCN',
+  PCN_SAMPLE_LOT: 'Lô mẫu PCN',
   REQUEST: 'Phiếu yêu cầu',
   HANDOVER_DOC: 'Biên bản giao nhận',
   KQTN_RECORD: 'Kết quả thử nghiệm',

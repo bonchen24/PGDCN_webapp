@@ -3,28 +3,7 @@
 // Description: Zustand store definition managing state persistence, sync diagnostic reports, database synchronization, and background tasks
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { get, set, del } from 'idb-keyval';
-
-const idbStorage = {
-  getItem: async (name: string): Promise<string | null> => {
-    let val = (await get(name)) || null;
-    if (!val) {
-      const localVal = localStorage.getItem(name);
-      if (localVal) {
-        await set(name, localVal);
-        val = localVal;
-      }
-    }
-    return val;
-  },
-  setItem: async (name: string, value: string): Promise<void> => {
-    await set(name, value);
-    try { localStorage.removeItem(name); } catch(e) {}
-  },
-  removeItem: async (name: string): Promise<void> => {
-    await del(name);
-  },
-};
+import { idbStorage } from './utils/browserStorage';
 import { 
   TestRequest, 
   HandoverDoc, 
@@ -68,6 +47,8 @@ import {
 import type { CollectionMeta } from './utils/postgresApi';
 import { getDeletedUserIdsFromConfig, removeDeletedUserMarker } from './utils/systemUserPersistence';
 import { normalizeSystemUserRole, withSystemUserRoleAliases } from './utils/systemUserRole';
+import { normalizeCustomerRecord } from './utils/customerRecord';
+import { isKqtnPaymentManager, isKqtnPaymentStateChanged } from './utils/kqtnPaymentPolicy';
 import { isSystemSettingsManager } from './utils/systemSettingsPolicy';
 import { findUserPreference, getCanonicalUserKey, getUserFullName, normalizeUserKey } from './utils/userIdentity';
 import {
@@ -89,6 +70,7 @@ import { normalizeBackupActivityLogs } from './utils/notificationBackup';
 import { buildActivityLog, diffActivityFields, type ActivityLogInput } from './utils/activityLog';
 import { migrateItdcToItdRecord } from './utils/itdcToItdMigration';
 import { activityLogClient } from './utils/activityLogApi';
+import { clearKqtnSession } from './utils/kqtnPdfClient';
 import { stripTransientKqtnImages } from './utils/transientReportImages';
 import { getKqtnSampleKey } from './utils/kqtnIdentity';
 import { findKqtnRecordBySampleKey } from './utils/kqtnRecordPolicy';
@@ -233,12 +215,13 @@ interface AppState {
   addKqtnRecord: (record: KQTNRecord) => Promise<void>;
   saveKqtnRecord: (record: KQTNRecord, options?: { overwrite?: boolean; changeNote?: string }) => Promise<void>;
   updateKqtnRecord: (id: string, updates: Partial<KQTNRecord>, changeNote?: string) => Promise<void>;
+  setKqtnPaymentConfirmed: (id: string, confirmed: boolean) => Promise<void>;
   deleteKqtnRecord: (id: string) => Promise<void>;
   currentUser: UserAccount | null;
   userPreferences: Record<string, UserPreferences>;
   updateUserPreferences: (username: string, prefs: Partial<UserPreferences>) => Promise<void>;
-  login: (username: string, password?: string) => boolean;
-  logout: () => void;
+  login: (username: string, password?: string, options?: { skipLegacyFetch?: boolean }) => boolean;
+  logout: (options?: { skipLegacySession?: boolean }) => void;
   addCustomer: (customer: CustomerRef) => void;
   updateCustomer: (customerCodeOrName: string, updates: Partial<CustomerRef>) => void;
   deleteCustomer: (customerCodeOrName: string) => Promise<void>;
@@ -748,7 +731,7 @@ export const useStore = create<AppState>()(
     }
   },
 
-  login: (username: string, password?: string) => {
+  login: (username: string, password?: string, options: { skipLegacyFetch?: boolean } = {}) => {
     const { systemUsers, userPreferences } = get();
     
     if (username === 'admin' && password === 'admin') {
@@ -759,7 +742,7 @@ export const useStore = create<AppState>()(
           position: 'Quản trị (Dự phòng)'
       };
       set({ currentUser: user });
-      get().fetchData(false);
+      if (!options.skipLegacyFetch) get().fetchData(false);
       toast.success(`Chào mừng quay lại, ${user.name} (Chế độ dự phòng)!`);
       return true;
     }
@@ -813,7 +796,7 @@ export const useStore = create<AppState>()(
               position: userRow['Chức vụ'] || userRow['position'] || ''
           };
           set({ currentUser: user });
-          get().fetchData(false);
+          if (!options.skipLegacyFetch) get().fetchData(false);
           toast.success(`Chào mừng quay lại, ${user.name}!`);
           return true;
       } else {
@@ -826,7 +809,8 @@ export const useStore = create<AppState>()(
     return false;
   },
 
-  logout: () => {
+  logout: (options: { skipLegacySession?: boolean } = {}) => {
+    if (!options.skipLegacySession) void clearKqtnSession().catch(error => console.warn('KQTN session logout failed:', error));
     set({ currentUser: null });
     toast.info("Đã đăng xuất thành công.");
   },
@@ -1510,13 +1494,39 @@ export const useStore = create<AppState>()(
         mergedUsers = usersToSeed;
       }
 
+      const officeClerkPreset = PRESET_ACCOUNTS.find(account => account.username === 'nguyenanhthu');
+      const hasOfficeClerkAccount = mergedUsers.some((user: any) => {
+        const username = user?.username || user?.['Tên đăng nhập'] || user?.id || '';
+        return String(username).trim().toLowerCase() === officeClerkPreset?.username;
+      });
+      const officeClerkWasDeleted = mergedDeletedUserIds.some(
+        deletedId => String(deletedId).trim().toLowerCase() === officeClerkPreset?.username,
+      );
+      if (officeClerkPreset && !hasOfficeClerkAccount && !officeClerkWasDeleted) {
+        const officeClerkUser = {
+          id: officeClerkPreset.username,
+          username: officeClerkPreset.username,
+          "Tên đăng nhập": officeClerkPreset.username,
+          name: officeClerkPreset.name,
+          "Họ và Tên": officeClerkPreset.name,
+          role: officeClerkPreset.role,
+          "Loại tài khoản": officeClerkPreset.role,
+          position: officeClerkPreset.position,
+          "Chức vụ": officeClerkPreset.position,
+          password: 'Abc123456',
+          "Mật khẩu": 'Abc123456',
+          updatedAt: new Date().toISOString(),
+        };
+        mergedUsers = [...mergedUsers, officeClerkUser];
+      }
+
       let mergedTesters = get().testers;
       if (mergedUsers.length > 0) {
         const seenNames = new Set();
         mergedTesters = mergedUsers
         .filter((u: any) => {
            const role = normalizeSystemUserRole(u);
-           if (role === 'guest' || role === 'viewer') return false;
+           if (role === 'guest' || role === 'viewer' || role === 'office_clerk') return false;
             const name = getUserFullName(u, '');
            if (!name || seenNames.has(name)) return false;
            seenNames.add(name);
@@ -1671,10 +1681,17 @@ export const useStore = create<AppState>()(
       const canonicalCurrentUsername = currentUser
         ? getCanonicalUserKey(currentUser.username)
         : '';
+      const currentUserRow = currentUser
+        ? mergedUsers.find((user: any) => {
+            const username = user?.username || user?.['Tên đăng nhập'] || user?.id || '';
+            return String(username).trim().toLowerCase() === String(canonicalCurrentUsername || currentUser.username).trim().toLowerCase();
+          })
+        : null;
       const updatedCurrentUser = currentUser
         ? {
             ...currentUser,
-            username: canonicalCurrentUsername || currentUser.username
+            username: canonicalCurrentUsername || currentUser.username,
+            role: normalizeSystemUserRole(currentUserRow || currentUser),
           }
         : currentUser;
 
@@ -1903,14 +1920,7 @@ export const useStore = create<AppState>()(
   },
 
   addCustomer: (customer) => {
-    const formattedCustomer = {
-      name: customer.name,
-      address: customer.address || '',
-      taxId: customer.taxId ? formatTaxId(customer.taxId) : '',
-      customerCode: customer.customerCode || '',
-      createdAt: customer.createdAt || new Date().toISOString(),
-      updatedAt: getNextTime(customer.updatedAt)
-    };
+    const formattedCustomer = normalizeCustomerRecord(customer, undefined, getNextTime(customer.updatedAt));
     set(state => ({ customers: [formattedCustomer, ...state.customers] }));
     appendActivityLog(get, set, {
       action: 'CREATED',
@@ -1931,14 +1941,7 @@ export const useStore = create<AppState>()(
       customers: state.customers.map(c => {
         const id = c.customerCode || c.name;
         if (id === customerCodeOrName) {
-          return {
-            name: updates.name !== undefined ? updates.name : c.name,
-            address: updates.address !== undefined ? updates.address : c.address,
-            taxId: updates.taxId !== undefined ? formatTaxId(updates.taxId) : c.taxId,
-            customerCode: updates.customerCode !== undefined ? updates.customerCode : (c.customerCode || ''),
-            createdAt: c.createdAt || now,
-            updatedAt: getNextTime(c.updatedAt || now)
-          };
+          return normalizeCustomerRecord(updates, c, getNextTime(c.updatedAt || now));
         }
         return c;
       })
@@ -3047,6 +3050,12 @@ export const useStore = create<AppState>()(
     if (previousKqtn && !options.overwrite && !isSameRecord) {
       throw new Error('KQTN_SAMPLE_HAS_RESULT');
     }
+    const paymentStateChanged = isKqtnPaymentStateChanged(previousKqtn, persistedInput);
+    if (paymentStateChanged && !isKqtnPaymentManager(get().currentUser)) {
+      const message = 'Chỉ Admin, Quản lý phòng hoặc Văn thư chuyên trách được cập nhật trạng thái thanh toán KQTN.';
+      toast.error(message);
+      throw new Error(message);
+    }
 
     const recordId = previousKqtn?.id || persistedInput.id || `kqtn-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const isExistingKqtn = Boolean(previousKqtn);
@@ -3071,6 +3080,9 @@ export const useStore = create<AppState>()(
       ...persistedInput,
       id: recordId,
       sampleKey,
+      customerPaymentConfirmed: previousKqtn?.customerPaymentConfirmed ?? persistedInput.customerPaymentConfirmed ?? false,
+      customerPaymentConfirmedAt: persistedInput.customerPaymentConfirmedAt ?? previousKqtn?.customerPaymentConfirmedAt,
+      customerPaymentConfirmedBy: persistedInput.customerPaymentConfirmedBy ?? previousKqtn?.customerPaymentConfirmedBy,
       version: nextVersion,
       versionHistory,
       createdAt: previousKqtn?.createdAt || persistedInput.createdAt || now,
@@ -3084,6 +3096,23 @@ export const useStore = create<AppState>()(
         item.id !== recordId && getKqtnSampleKey(item) !== sampleKey,
       )],
     }));
+    try {
+      await saveDocToPostgres(
+        'kqtnRecords',
+        newRecord.id,
+        newRecord,
+        paymentStateChanged ? { headers: { 'x-user-name': get().currentUser?.username || '' } } : undefined,
+      );
+    } catch (error) {
+      set(state => ({
+        kqtnRecords: [
+          ...(previousKqtn ? [previousKqtn] : []),
+          ...(state.kqtnRecords || []).filter(item => item.id !== recordId && getKqtnSampleKey(item) !== sampleKey),
+        ],
+      }));
+      throw error;
+    }
+
     appendNotifications(set, [buildKqtnNotification({
       record: newRecord,
       action: isExistingKqtn ? 'UPDATED' : 'CREATED',
@@ -3102,8 +3131,6 @@ export const useStore = create<AppState>()(
         : diffActivityFields({}, newRecord),
       source: 'UI',
     });
-
-    await saveDocToPostgres('kqtnRecords', newRecord.id, newRecord).catch(console.error);
     get().syncWithCloud(true);
   },
 
@@ -3119,7 +3146,14 @@ export const useStore = create<AppState>()(
     const existing = get().kqtnRecords.find(r => r.id === id);
     if (!existing) return;
     const persistedUpdates = stripTransientKqtnImages(updates);
+    const paymentStateChanged = isKqtnPaymentStateChanged(existing, persistedUpdates);
+    if (paymentStateChanged && !isKqtnPaymentManager(get().currentUser)) {
+      const message = 'Chỉ Admin, Quản lý phòng hoặc Văn thư chuyên trách được cập nhật trạng thái thanh toán KQTN.';
+      toast.error(message);
+      throw new Error(message);
+    }
 
+    let updatedRecord: KQTNRecord | undefined;
     set(state => ({
       kqtnRecords: (state.kqtnRecords || []).map(r => {
         if (r.id !== id) return r;
@@ -3131,7 +3165,7 @@ export const useStore = create<AppState>()(
           changeNote: changeNote || `Cập nhật kết quả thử nghiệm phiên bản v${nextVersion}`
         };
 
-        const updated: KQTNRecord = {
+        updatedRecord = {
           ...r,
           ...persistedUpdates,
           version: nextVersion,
@@ -3139,12 +3173,25 @@ export const useStore = create<AppState>()(
           updatedAt: now,
           updatedBy: currentUser
         };
-
-        saveDocToPostgres("kqtnRecords", updated.id, updated).catch(console.error);
-        return updated;
+        return updatedRecord;
       })
     }));
-    const updatedRecord = get().kqtnRecords.find(r => r.id === id);
+    if (!updatedRecord) return;
+
+    try {
+      await saveDocToPostgres(
+        "kqtnRecords",
+        updatedRecord.id,
+        updatedRecord,
+        paymentStateChanged ? { headers: { 'x-user-name': get().currentUser?.username || '' } } : undefined,
+      );
+    } catch (error) {
+      set(state => ({
+        kqtnRecords: (state.kqtnRecords || []).map(record => record.id === id ? existing : record),
+      }));
+      throw error;
+    }
+
     if (updatedRecord) {
       appendNotifications(set, [buildKqtnNotification({
         record: updatedRecord,
@@ -3165,6 +3212,23 @@ export const useStore = create<AppState>()(
     }
 
     get().syncWithCloud(true);
+  },
+
+  setKqtnPaymentConfirmed: async (id: string, confirmed: boolean) => {
+    const actor = get().currentUser;
+    if (!isKqtnPaymentManager(actor)) {
+      const message = 'Chỉ Admin, Quản lý phòng hoặc Văn thư chuyên trách được mở khóa tải PDF KQTN.';
+      toast.error(message);
+      throw new Error(message);
+    }
+    const current = get().kqtnRecords.find(record => record.id === id);
+    if (!current) throw new Error('Không tìm thấy bản ghi KQTN.');
+    const timestamp = new Date().toISOString();
+    await get().updateKqtnRecord(id, {
+      customerPaymentConfirmed: confirmed,
+      customerPaymentConfirmedAt: confirmed ? timestamp : undefined,
+      customerPaymentConfirmedBy: confirmed ? actor?.name || actor.username : undefined,
+    }, confirmed ? 'Đã xác nhận khách hàng thanh toán và mở khóa tải PDF' : 'Đã khóa lại quyền tải PDF KQTN');
   },
 
   deleteKqtnRecord: async (id: string) => {
