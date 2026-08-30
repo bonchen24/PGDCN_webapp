@@ -16,6 +16,16 @@ Description: Persistent project memory and verified deployment observations for 
 - Verification trước triển khai: `npm test` và `npm run lint` phải pass trên tree hiện tại; `npm run build` là bước bắt buộc trước khi dựng image. Không đưa `.env`, secret, attachment hoặc dữ liệu thô trong `tmp/` vào commit.
 - Deploy production sau commit phải dùng `docker compose --env-file <Supabase env> -f docker-compose.pcn.yml up --build -d`; cần có `PCN_SESSION_SECRET` ổn định trong env triển khai, không dùng secret hard-code trong repository.
 
+## Observation triển khai 2026-08-30 — PCN production Docker Desktop
+
+- Commit code đã tạo: `cd0d0dac97f215e13204c400006402407714fbc7` (`feat(pcn): add certification workspace and workflow`).
+- Docker image đã build thành công: `pcn_webapp-webapp:latest`, image digest `sha256:1449b235609f47022b7c4216960e8fc2d8d5b2ece158a87e5c890500c65a2a5d`.
+- Container đang chạy: `pcn_webapp-webapp-1`, publish `0.0.0.0:2357->2357/tcp`.
+- Kiểm tra runtime: `GET /api/health` trả HTTP 200 với `{"status":"ok"}`; PostgreSQL `supabase-db:5432` accepting connections và truy vấn runtime xác nhận `pcn_certification|postgres`.
+- `GET /api/db/health` không kèm phiên đăng nhập trả HTTP 401 (`Phiên PCN không hợp lệ hoặc đã hết hạn.`), phù hợp với lớp bảo vệ xác thực của API.
+- Build context ban đầu phình khoảng 1,8 GB do `.next`; `.dockerignore` đã bổ sung `.next`, `tmp`, `obsidian-vault` và `.codex-remote-attachments`, context lần build thành công còn khoảng 7,54 MB.
+- Lần deploy này dùng `PCN_SESSION_SECRET` sinh tạm trong phiên compose vì file env Supabase hiện chưa có biến này. Cần đặt một secret ổn định trong env triển khai trước lần recreate/restart tiếp theo; không ghi secret vào repository hoặc memory.
+
 ## Lưu ý vận hành hiện tại — Môi trường chạy & Cổng dịch vụ
 
 - **Môi trường Development cục bộ (`npm run dev`)**: Chạy Node/Express server trực tiếp tại `http://localhost:1359`.

@@ -3,9 +3,13 @@
 !.env.example
 service-account.json
 node_modules
+.next
 dist
 .git
 .worktrees
 docs/superpowers/plans
 scratch
+tmp
+obsidian-vault
+.codex-remote-attachments
 backups
