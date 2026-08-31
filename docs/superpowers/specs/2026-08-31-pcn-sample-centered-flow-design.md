@@ -6,9 +6,11 @@
 
 ## Quyết định nghiệp vụ đã duyệt
 
-- Một mẫu/lô mẫu có một tuyến phòng thử tuần tự. Ví dụ tuyến QC4/QC9 có thể là `Hiệu suất → EMC → An toàn điện`; QC20 mặc định là tuyến `Phân tích thành phần hóa học / Hóa lý`.
-- Các mẫu/lô mẫu khác nhau trong cùng một hồ sơ chạy song song. Trạng thái hoặc sự cố của mẫu này không khóa các luồng mẫu khác.
+- Mỗi mẫu/model trong lô có một tuyến phòng thử tuần tự theo các route áp dụng cho item đó. Ví dụ tuyến QC4/QC9 có thể là `Hiệu suất → EMC → An toàn điện`; QC20 mặc định là tuyến `Phân tích thành phần hóa học / Hóa lý`.
+- Các mẫu/model trong cùng một lô và các lô khác nhau trong cùng một hồ sơ chạy song song độc lập. Trạng thái hoặc sự cố của mẫu này không khóa các luồng mẫu khác.
 - PYC là chứng từ outbound của từng chặng, không phải đối tượng bao ngoài mẫu. Mỗi chặng phải chỉ rõ `Đã có PYC` hoặc `Chưa có PYC`.
+- Một PYC tương ứng đúng một lô. Một lô có thể có nhiều mẫu/model, nhiều loại mẫu và mỗi mẫu có quantity riêng từ 1 trở lên. PYC gửi tới từng phòng thử vẫn chỉ chứa một lô; nếu cùng lô đi nhiều phòng thì mỗi phòng có PYC riêng cùng liên kết về `pcnLotId`.
+- `PcnSampleItem` là đối tượng nghiệp vụ chính bên trong lô. Mọi projection, payload tích hợp và trạng thái thực thi mới phải giữ được liên kết `pcnSampleItemId`; các trường mẫu đơn trên `PcnSampleLot` chỉ dùng tương thích dữ liệu cũ.
 - Projection quản lý là read-only về dữ liệu nghiệp vụ. Người dùng được tạo và gửi PYC trong card hồ sơ; server PCN chịu trách nhiệm gửi sang app phòng thử và nhận ACK. Giao/nhận mẫu, cập nhật route và tiếp nhận KQTN vẫn đi qua các boundary tương ứng.
 - PCN là nguồn chuẩn của `PcnSampleLot`, thứ tự route, PYC và khóa liên kết; app phòng thử là nguồn chuẩn của lịch thực thi, thời điểm bắt đầu/kết thúc và trạng thái thử tại phòng. PCN không dùng chung database với app đích.
 - Kết quả `FAIL` do app phòng thử báo được lưu như snapshot thực thi để điều phối nhanh. KQTN chính thức vẫn là `ReturnedTestResult` của PCN sau khi người dùng tiếp nhận bản scan/kết quả theo boundary hiện hành.
@@ -35,7 +37,22 @@
 
 ## Mô hình dữ liệu và projection
 
-`PcnSampleLot` vẫn là nguồn dữ liệu mẫu. `PcnSampleRoute` được mở rộng với `sequence?: number` để tương thích record cũ; dữ liệu mới sinh từ flow phải có sequence bắt đầu từ 1. Khi record cũ không có sequence, helper browser-safe dùng thứ tự danh mục `PCN_SAMPLE_LAB_OPTIONS` và `createdAt`/`id` làm tie-breaker ổn định, không ghi ngược vào database.
+`PcnSampleLot` là aggregate của lô; `PcnSampleItem` là collection con và là nguồn dữ liệu mẫu/model. `PcnSampleRoute` được mở rộng với `sequence?: number` và `sampleItemIds?: string[]` để tương thích record cũ; route mới phải có sequence bắt đầu từ 1 và có phạm vi item rõ nếu chỉ thử một phần lô. Khi record cũ không có sequence, helper browser-safe dùng thứ tự danh mục `PCN_SAMPLE_LAB_OPTIONS` và `createdAt`/`id` làm tie-breaker ổn định, không ghi ngược vào database. Route không có `sampleItemIds` được hiểu là áp dụng cho toàn bộ item trong lô chỉ trong projection tương thích. Readiness, execution snapshot và vị trí hiện tại được tính theo từng item; vì vậy nhiều mẫu trong cùng lô có thể đồng thời ở các chặng khác nhau.
+
+```ts
+interface PcnSampleItem {
+  id: string;
+  sampleLotId: string;
+  sampleCode: string;
+  sampleType: string;
+  model: string;
+  brand?: string;
+  quantity: number;
+  unit?: string;
+  serialNumbers?: string[];
+  notes?: string;
+}
+```
 
 Mỗi route có thêm snapshot thực thi tùy chọn và liên kết app đích:
 
@@ -91,8 +108,10 @@ interface PcnSampleFlowProjection {
   productName: string;
   lotId: string;
   lotCode: string;
-  sampleName: string;
-  model?: string;
+  sampleItemId: string;
+  sampleCode: string;
+  sampleType: string;
+  model: string;
   brand?: string;
   quantity: number;
   unit?: string;
@@ -110,6 +129,7 @@ interface PcnSampleFlowRouteProjection {
   labCode: PcnSampleRoute['labCode'];
   labName: string;
   routeStatus: PcnSampleRoute['status'];
+  sampleItemIds?: string[];
   readiness: 'COMPLETED' | 'CURRENT' | 'READY' | 'BLOCKED' | 'CANCELLED';
   labRequestId?: string;
   pycNumber?: string;
@@ -199,7 +219,7 @@ PCN kiểm tra chữ ký/replay window, khóa route/PYC, bỏ qua event trùng, 
 4. Route stepper: ordered lab nodes with route status, PYC status, execution status, scheduled date, start/completion milestones and result outcome. The current node is visually emphasized; missing PYC and sync errors are explicit.
 5. Actions: open canonical dossier card, create/send PYC for the selected route, and reconcile an acknowledged route through server callbacks. Projection itself does not mutate route data directly.
 
-Search must cover dossier code, proposal code, customer, product, lot code, sample name, model, brand, lab name/code, PYC number, current location and issue text. Mobile uses horizontal scrolling for the route stepper while keeping sample identity and current location visible before the scroll area.
+Search must cover dossier code, proposal code, customer, product, lot code, sample code/type, model, brand, lab name/code, PYC number, current location and issue text. Mobile uses horizontal scrolling for the route stepper while keeping sample identity and current location visible before the scroll area.
 
 The old route-row builder may remain as a compatibility adapter only if existing callers/tests depend on it; the active view must consume the sample-grouped projection. The screen copy must not describe itself as “Tổng hợp PYC outbound” when the primary object is the sample.
 

@@ -1,10 +1,66 @@
 <!--
 Author: Gemini
 OS support: Web/Node
-Description: Persistent project memory and verified deployment observations for DDT Lab
+Description: Persistent project memory and verified deployment observations for TVCI PCN and legacy DDT
 -->
 
-# DDT Lab — Project Memory & Observations
+# TVCI — Project Memory & Observations
+
+## Cập nhật 2026-08-31 — Mô hình mẫu thử trung tâm và tích hợp PYC phòng thử
+
+- `PcnSampleItem` là đối tượng nghiệp vụ chính bên trong `PcnSampleLot`; một PYC mới bắt buộc gắn đúng một lô và một tuyến phòng thử. Một lô có thể có nhiều mẫu/model, loại mẫu và số lượng riêng.
+- Các mẫu/model trong cùng lô và các lô khác nhau trong cùng hồ sơ có projection/luồng độc lập, có thể chạy song song. Route có thể giới hạn `sampleItemIds`; webhook item-level cập nhật `itemSnapshots` mà không ghi đè trạng thái mẫu khác.
+- `PcnLabOperationsView` hiển thị một card cho mỗi mẫu/model, gồm vị trí hiện tại, phòng thử theo thứ tự, PYC đã có/chưa có, lịch thử, tiến độ thực hiện, PASS/FAIL, KQTN và trạng thái đồng bộ.
+- PCN không dùng chung database với DDT/Hiệu suất. Server PCN gửi PYC bằng HMAC server-to-server, nhận ACK, nhận webhook trạng thái có idempotency/sequence guard và hỗ trợ reconcile khi thất lạc webhook.
+- Hợp đồng tích hợp nằm trong `docs/superpowers/specs/2026-08-31-pcn-sample-centered-flow-design.md`; prompt triển khai cho app phòng thử cần giữ các khóa `pcnLabRequestId`, `pcnRouteId`, `pcnLotId`, `pcnSampleItemId`, `externalRequestId` và `externalRequestCode`.
+- Verification lượt hoàn thiện: `npm test` **559/559 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` exit 0. Chưa chạy kết nối live với DDT/Hiệu suất vì chưa có endpoint/secret tích hợp thật trong môi trường này.
+
+## Tổng kết hiện trạng PCN và audit mobile — 2026-08-31
+
+### Phạm vi sản phẩm đã chốt
+
+- Runtime sản phẩm là PCN của Trung tâm TVCI, dùng Next.js App Router; không dùng logic Phòng Giám định/DDT, Haimy, Cutover hoặc các màn hình historical làm luồng vận hành.
+- Đầu vào là **Đề nghị**. Mỗi Đề nghị tạo đúng một bộ hồ sơ/card; **PYC** chỉ phát sinh khi PCN gửi yêu cầu tới phòng thử nghiệm khác.
+- Hồ sơ đi qua năm trạm tuần tự: tiếp nhận/đề nghị, chuẩn bị đánh giá & lấy mẫu, thử nghiệm/liên kết PYC và nhận KQTN, soát xét/phê duyệt, phát hành & giao khách hàng. Tài liệu hoặc ngoại lệ bị bỏ qua phải được đánh dấu và nêu lý do.
+- QC4, QC9, QC20 là các nhánh/lĩnh vực trong cùng pipeline. Mẫu được mã hóa theo lô, hiển thị dạng bảng cell tổng hợp và theo dõi flow riêng qua Hiệu suất, EMC, An toàn điện hoặc tuyến cấu hình tương ứng.
+- KQTN do phòng thử nghiệm cấp; PCN lưu bản scan, OCR chỉ tạo dữ liệu nháp có nguồn/độ tin cậy và phải được người dùng xác nhận.
+- Giữ Danh sách khách hàng. Nhân sự PCN tách khỏi khách hàng, có **system role** và **department role** riêng; Lương Xuân Hùng là Admin, các tài khoản nhân viên PCN được ánh xạ từ danh sách khách DDT theo roster đã xác nhận.
+- Database logic PCN và private Storage PCN tách riêng; file hồ sơ, DOCX/PDF sinh ra và metadata đi qua boundary PCN.
+
+### Audit responsive mobile vừa hoàn tất
+
+- `design.md` §5.3 đã bổ sung contract `pcn-page-surface`: page root có `min-width: 0`/`min-height: 100%`, shell `main` là chủ sở hữu duy nhất của scroll dọc cấp trang.
+- `index.css` bổ sung khóa tràn ngang cho `html/body`, `pcn-page-surface`, safe-area cho bottom navigation và fallback `overflow-x: hidden` cho `mobile-scroll-y`.
+- `PcnWorkspace` giữ một vùng cuộn chính; bottom navigation có thể cuộn ngang và nút có vùng chạm tối thiểu khoảng 44px.
+- Các PCN workspace root đã bỏ kiểu `h-full overflow-y-auto` gây scroll lồng; các bảng/timeline và vùng dữ liệu rộng vẫn dùng scroll ngang riêng.
+- Modal Đề nghị, PYC, KQTN, giao nhận mẫu, sinh tài liệu, template và form nghiệp vụ dùng vùng nội dung cuộn độc lập; header/footer giữ cố định trong khung modal. Form nghiệp vụ đã tách footer khỏi vùng cuộn.
+- Đã kiểm tra runtime không tràn ngang ở viewport 320, 375, 390 và 430px trên native `1357` và production `2357` (browser kiểm tra tại màn hình đăng nhập, không nhập credential).
+
+### Verification và triển khai mới nhất
+
+- `npm test`: **540/540 pass**; `npm run lint`: pass; `npm run build`: pass; `git diff --check`: exit 0.
+- Test contract responsive riêng: **5/5 pass**.
+- Production Docker image đã build/recreate thành công; container `pcn_webapp-webapp-1` chạy trên `0.0.0.0:2357->2357/tcp`.
+- `GET http://localhost:2357/api/health` trả HTTP 200 với `{"status":"ok"}`; không thay đổi `.env` và không tạo secret mới, cấu hình được lấy từ container production đang chạy.
+- Không tạo branch mới, không commit và không reset/dọn các thay đổi cũ trong workspace. Các mục bên dưới có thể là lịch sử DDT hoặc checkpoint PCN trước đó; mục này là trạng thái mới nhất cho PCN.
+
+## Ranh giới runtime PCN hiện tại — 2026-08-31
+
+- PCN có các lối vào/workspace nghiệp vụ: **Tổng quan**, **Đề nghị**, **Sổ điều hành**, **PYC & luân chuyển mẫu**, **Soạn thảo tài liệu**, **Trợ lý tiến trình** và **Danh sách khách hàng**; **Nhân sự PCN** và **Cài đặt PCN** chỉ nằm trong nhóm **Quản trị** cho Admin.
+- QC4, QC9, QC20 và các nhánh quy chuẩn khác là bộ lọc/nhánh trong Tổng quan và Đề nghị, không phải các trang độc lập.
+- Mỗi Đề nghị là một bộ hồ sơ/card; khi mở card chỉ dùng năm vùng làm việc: Tổng quan, Tài liệu hồ sơ, Mẫu & PYC, KQTN, Phê duyệt & phát hành. Sinh biểu mẫu, tệp liên kết và lịch sử là các khối gấp trong vùng tương ứng.
+- Các trang lịch sử, cutover, Haimy, backup, toàn vẹn dữ liệu, nhật ký, agent, kho lưu trữ, quản lý template và các trang workflow đứng riêng là phạm vi đã loại khỏi runtime PCN; không dùng các ghi chú cũ bên dưới làm yêu cầu tạo màn hình mới.
+- Kiểm chứng sau khi thu gọn: `npm run lint`, `npm run build`, nhóm test scope/pipeline/sidebar/notification và `git diff --check` đều pass. Không commit và không tạo worktree mới.
+
+## Cập nhật 2026-08-30 — PCN: upload tài liệu theo node graphic và kiểm chứng cuối lượt
+
+- Chi tiết hồ sơ PCN dùng graphic workflow làm điểm điều hướng chính. Khi nhân viên chọn một node, checklist **Tài liệu tại bước** và các nút upload được dẫn xuất theo đúng `stationKey` của node đó, thay vì luôn lấy theo trạng thái hồ sơ hiện tại.
+- Mỗi mục checklist có nút **Tải phiên mới** ngay cạnh tài liệu; upload vẫn đi qua `uploadDossierDocument` và private Storage boundary hiện hành, giữ phiên cũ, không tạo bảng/collection trạng thái mới và không ghi byte file vào JSON/DB.
+- Khu vực kiểm tra trực quan vẫn read-only; người có quyền xử lý thao tác upload tại checklist của node đang chọn. Tài khoản viewer/quản lý chỉ xem theo capability hiện hành.
+- Đã cập nhật `design.md` để ghi rõ node graphic đang chọn là nguồn của panel upload theo bước. Test hồi quy mới kiểm tra checklist chọn đúng node `SAMPLING_LAB` dù dossier đang ở trạng thái `AWAITING_DOCUMENTS`.
+- Kiểm chứng cuối lượt: focused pipeline test **23/23 pass**, toàn bộ `npm test` **955/955 pass**, `npm run lint` (TypeScript) pass, `npm run build` pass, `git diff --check` exit 0.
+- PCN native development dùng `http://localhost:1357`; PCN Docker production dùng `http://localhost:2357` theo `design.md`. Endpoint hiện tại `http://127.0.0.1:2357/` trả HTTP 200; chưa xác minh được container đã rebuild từ source mới nhất vì Docker API trên máy đang trả `permission denied`.
+- Không commit, không thay đổi `.env` và không đưa secret/dữ liệu hồ sơ thật vào memory. Workspace đang có nhiều thay đổi cũ của người dùng; không dọn hoặc reset các thay đổi đó.
 
 ## Cập nhật 2026-08-30 — PCN webapp: bộ hồ sơ và graphic workflow
 
@@ -28,13 +84,14 @@ Description: Persistent project memory and verified deployment observations for 
 
 ## Lưu ý vận hành hiện tại — Môi trường chạy & Cổng dịch vụ
 
-- **Môi trường Development cục bộ (`npm run dev`)**: Chạy Node/Express server trực tiếp tại `http://localhost:1359`.
-- **Môi trường Docker Desktop (`docker-compose.supabase.yml`)**: Container web app chạy tại `http://localhost:2359`.
-- Môi trường test/deploy hiện tại là Docker Desktop trên máy local, dùng `docker-compose.supabase.yml` và PostgreSQL/Supabase network hiện có.
+- **PCN native development (`npm run dev:pcn`)**: Chạy Node/Express server trực tiếp tại `http://localhost:1357`.
+- **PCN Docker Desktop production (`docker-compose.pcn.yml`)**: Container web app publish tại `http://localhost:2357`.
+- Các ghi chú DDT legacy trong tài liệu lịch sử dùng cổng `1359`/`2359`; không dùng nhầm các cổng đó cho profile PCN.
+- Môi trường PCN dùng PostgreSQL/Supabase network hiện có; trước khi recreate Docker cần có `PCN_SESSION_SECRET` ổn định trong env triển khai.
 - Không deploy project lên Synology NAS; SSH/rsync tới NAS không thuộc quy trình hiện tại.
 - `deploy.sh` đã được chuyển thành script build/restart Docker Desktop local. Script không đồng bộ `.env`, service account hoặc secret ra máy từ xa.
 - Sau khi deploy, kiểm tra `http://localhost:2359/api/health` và `http://localhost:2359/api/db/health`.
-- Dùng `COMPOSE_ENV_FILE` để chỉ định Supabase env file khác khi cần; mặc định là `E:/CODING/TVCI_APP/supabase-docker/.env`.
+- Dùng `COMPOSE_ENV_FILE` để chỉ định env file của stack Supabase khi cần; PCN không có dependency mặc định vào thư mục tham chiếu bên ngoài workspace.
 
 ## Cập nhật 2026-08-24 — Form Báo cáo: Quy chuẩn Bảng Công suất nhiễu EMC chỉ hiển thị 1 hàng (tự động lấy hàng 1)
 

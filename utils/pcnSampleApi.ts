@@ -6,6 +6,7 @@ import type {
   ActivityLog,
   CertificationDossier,
   PcnSampleFlowEvent,
+  PcnSampleItem,
   PcnSampleLot,
   PcnSampleRoute,
   PcnSampleRouteStatus,
@@ -14,6 +15,7 @@ import type { PcnSampleLotDraft, PcnSampleRouteUpdate } from './pcnSampleFlow.ts
 
 export interface PcnSampleLotMutationResponse {
   lot: PcnSampleLot;
+  items: PcnSampleItem[];
   routes: PcnSampleRoute[];
   dossier: CertificationDossier;
   event?: PcnSampleFlowEvent;

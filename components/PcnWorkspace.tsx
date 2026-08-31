@@ -2,98 +2,62 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Archive,
   Activity,
   Award,
-  AlertTriangle,
-  Bot,
   Bell,
-  Boxes,
-  Building2,
   ChevronRight,
   ClipboardCheck,
   ClipboardList,
-  FileCheck2,
-  FileSearch,
   FilePlus2,
-  FileSpreadsheet,
-  FileText,
   FolderOpen,
-  LayoutDashboard,
-  LogOut,
   Menu,
   Plus,
   Send,
   ShieldCheck,
-  ShieldAlert,
-  Users,
   UserRound,
   X,
 } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 
-import { LoginScreen } from './LoginScreen';
-import { CustomersManagementView } from './SystemManagementViews';
-import { PcnIssuanceView } from './PcnIssuanceView';
-import { PcnLabRequestView } from './PcnLabRequestView';
-import { PcnResultReturnView } from './PcnResultReturnView';
+import PcnLoginScreen from './PcnLoginScreen';
+import PcnCustomersManagementView from './PcnCustomersManagementView';
 import { PcnDossierDetailView } from './PcnDossierDetailView';
-import { PcnArchiveView } from './PcnArchiveView';
 import { PcnUserManagementView } from './PcnUserManagementView';
-import { PcnSampleFlowView } from './PcnSampleFlowView';
-import { PcnTemplateManagementView } from './PcnTemplateManagementView';
-import { PcnBackupView } from './PcnBackupView';
-import { ActivityLogView } from './ActivityLogView';
-import { PcnOperationsRegisterView } from './PcnOperationsRegisterView';
-import { PcnQualityDocumentsView } from './PcnQualityDocumentsView';
-import { PcnHistoricalDiscoveryView } from './PcnHistoricalDiscoveryView';
-import { PcnHaimyImportView } from './PcnHaimyImportView';
+import PcnSettingsView from './PcnSettingsView';
+import PcnPersonalSettingsPanel from './PcnPersonalSettingsPanel';
+import PcnOcrPanel from './PcnOcrPanel';
 import { PcnNotificationDropdown } from './PcnNotificationDropdown';
 import { PcnWorkQueueView } from './PcnWorkQueueView';
 import { PcnPipelineBoard } from './PcnPipelineBoard';
-import { PcnDataIntegrityView } from './PcnDataIntegrityView';
-import { PcnCutoverVerificationView } from './PcnCutoverVerificationView';
-import { PcnAgentWorkspaceView } from './PcnAgentWorkspaceView';
+import PcnOperationsRegisterView from './PcnOperationsRegisterView';
+import PcnLabOperationsView from './PcnLabOperationsView';
+import PcnAssistantView from './PcnAssistantView';
+import PcnDraftingWorkspaceView from './PcnDraftingWorkspaceView';
 import PcnSidebar, { PCN_SECTION_ICONS } from './PcnSidebar';
 import { usePcnStore } from '../store-pcn';
-import { useStore } from '../store';
+import { usePcnSessionStore } from '../utils/pcnSessionState';
 import { clearPcnSession, getPcnSession } from '../utils/pcnAuthApi';
-import type { AppNotification, CertificationDossier, CertificationProposal, PcnDossierStatus, PcnCertificationField } from '../types';
-import type { PcnHistoricalReviewInput } from '../utils/pcnHistoricalReview';
+import type { AppNotification, CertificationDossier, CertificationProposal, PcnDossierStatus, PcnCertificationField, PcnQc20ScopeSnapshot } from '../types';
 import type { PcnProposalUpdateInput } from '../utils/pcnProposalApi';
 import { PcnIntakeApiError } from '../utils/pcnIntakeApi';
 import { formatPcnIntakeValidationIssues, indexPcnIntakeValidationIssues, validatePcnProposalIntake } from '../utils/pcnIntakePolicy';
 import { getPcnDashboardMetrics } from '../utils/pcnReporting';
-import { getPcnDataIntegrityReport, getPcnIntegrityDossierTab, PCN_DATA_INTEGRITY_COLLECTION_LABELS, type PcnDataIntegrityCollection } from '../utils/pcnDataIntegrity';
 import { canViewNotification } from '../utils/notificationEvents';
 import { downloadPcnDossierPackage } from '../utils/pcnDossierPackageApi';
-import { getPcnDossierStationTab, getPcnNotificationDossierTab } from '../utils/pcnDossierNavigation';
-import { getPcnPipelineStation } from '../utils/pcnDossierPipeline';
+import { getPcnNotificationDossierTab } from '../utils/pcnDossierNavigation';
 import { reviewPcnCodes } from '../utils/pcnCodePolicy';
 import { PCN_MOBILE_NAVIGATION, type PcnSection } from '../utils/pcnNavigation';
-import type { PcnWorkQueueSection } from '../utils/pcnWorkQueue';
 
 const sectionLabels: Record<PcnSection, string> = {
   dashboard: 'Tổng quan',
-  dataIntegrity: 'Kiểm tra dữ liệu',
-  cutover: 'Đối soát cutover',
-  operationsRegister: 'Sổ điều hành',
-  historicalDiscovery: 'Kiểm kê hồ sơ lịch sử',
-  agent: 'AI Trợ lý',
-  proposals: 'Quản lý Đề nghị',
-  fields: 'Hồ sơ',
-  samples: 'Mẫu theo lô',
+  proposals: 'Đề nghị',
+  operations: 'Sổ điều hành',
+  'lab-operations': 'PYC & luân chuyển mẫu',
+  drafting: 'Soạn thảo tài liệu',
+  assistant: 'Trợ lý tiến trình',
   customers: 'Danh sách khách hàng',
-  labRequests: 'PYC gửi PTN',
-  results: 'KQTN trả về',
-  issuance: 'Phê duyệt & Phát hành',
-  templates: 'Biểu mẫu PCN',
-  qualityDocuments: 'Tài liệu chất lượng',
-  haimy: 'Tích hợp Haimy',
-  backup: 'Sao lưu & khôi phục',
-  archive: 'Kho hồ sơ',
-  activityLogs: 'Nhật ký hệ thống',
   users: 'Nhân sự PCN',
+  settings: 'Cài đặt PCN',
 };
 
 const statusLabels: Record<PcnDossierStatus, string> = {
@@ -158,7 +122,6 @@ function KpiCard({ label, value, icon: Icon, tone }: { label: string; value: num
 }
 
 function PcnDashboard({
-  customers,
   proposals,
   dossiers,
   fields,
@@ -167,18 +130,13 @@ function PcnDashboard({
   users,
   labRequests,
   results,
-  sampleLots,
-  sampleRoutes,
-  issuancePackages,
-  templates,
   currentUser,
   canEdit,
+  onCreateProposal,
   onOpenSection,
-  onOpenModule,
   onOpenDossier,
   onClaimDossier,
 }: {
-  customers: import('../types').CustomerRef[];
   proposals: CertificationProposal[];
   dossiers: CertificationDossier[];
   fields: PcnCertificationField[];
@@ -187,14 +145,10 @@ function PcnDashboard({
   users?: import('../types').PcnUserAccount[];
   labRequests: import('../types').OutboundLabRequest[];
   results: import('../types').ReturnedTestResult[];
-  sampleLots: import('../types').PcnSampleLot[];
-  sampleRoutes: import('../types').PcnSampleRoute[];
-  issuancePackages: import('../types').IssuancePackage[];
-  templates: import('../types').PcnTemplateDefinition[];
   currentUser: import('../types').UserAccount | null;
   canEdit: boolean;
+  onCreateProposal: () => void;
   onOpenSection: (section: PcnSection, fieldCode?: string) => void;
-  onOpenModule: (section: PcnWorkQueueSection, dossierId: string) => void;
   onOpenDossier: (dossier: CertificationDossier, initialTab?: import('../utils/pcnDossierNavigation').PcnDossierDetailTab) => void;
   onClaimDossier: (dossier: CertificationDossier) => Promise<void>;
 }) {
@@ -204,28 +158,16 @@ function PcnDashboard({
   const boardRequirements = documentRequirements?.length ? documentRequirements : storedDocumentRequirements;
   const boardUsers = users?.length ? users : storedUsers;
   const metrics = getPcnDashboardMetrics(dossiers, labRequests, results);
-  const integrityReport = getPcnDataIntegrityReport({ customers, proposals, dossiers, sampleLots, sampleRoutes, labRequests, returnedResults: results, issuancePackages, templates });
-  const integritySection: Record<PcnDataIntegrityCollection, PcnSection> = {
-    customers: 'customers',
-    certificationProposals: 'proposals',
-    certificationDossiers: 'fields',
-    pcnSampleLots: 'samples',
-    pcnSampleRoutes: 'samples',
-    labRequests: 'labRequests',
-    returnedResults: 'results',
-    issuancePackages: 'issuance',
-    pcnTemplateDefinitions: 'templates',
-  };
 
   return (
-    <div className="p-3 md:p-5 space-y-4 h-full overflow-y-auto mobile-safe-bottom bg-slate-50/60">
+    <div className="pcn-page-surface min-w-0 p-3 md:p-5 space-y-4 mobile-safe-bottom bg-slate-50/60">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Phòng Chứng nhận • TVCI</p>
           <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mt-1">Tổng quan hồ sơ chứng nhận</h1>
           <p className="text-[11px] text-slate-500 mt-1">Theo dõi Đề nghị, Lĩnh vực, PYC liên phòng và phát hành.</p>
         </div>
-        {canEdit && <button onClick={() => onOpenSection('proposals')} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white shadow-sm hover:bg-emerald-500">
+        {canEdit && <button onClick={onCreateProposal} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white shadow-sm hover:bg-emerald-500">
           <Plus size={14} /> Tạo Đề nghị
         </button>}
       </div>
@@ -240,32 +182,21 @@ function PcnDashboard({
         <KpiCard label="Đã phát hành" value={metrics.issued} icon={Award} tone="bg-emerald-50 text-emerald-600" />
         <KpiCard label="Quá hạn" value={metrics.overdue} icon={Activity} tone="bg-red-50 text-red-600" />
       </div>
-
-      <section className={`rounded-xl border p-3 md:p-4 shadow-sm ${integrityReport.issueCount > 0 ? 'border-amber-200 bg-amber-50/70' : 'border-emerald-200 bg-emerald-50/60'}`} aria-live="polite">
-        <div className="flex items-start gap-3">
-          <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${integrityReport.issueCount > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}><AlertTriangle size={16} /></div>
-          <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2"><h2 className="text-sm font-black text-slate-800">Toàn vẹn dữ liệu</h2><span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${integrityReport.issueCount > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>{integrityReport.issueCount > 0 ? `${integrityReport.issueCount} cảnh báo` : 'Đang ổn định'}</span></div>
-            {integrityReport.issueCount === 0 ? <p className="mt-1 text-[10px] text-emerald-800">Các khóa và liên kết PCN trong snapshot hiện tại đã qua kiểm tra read-only.</p> : <><p className="mt-1 text-[10px] text-amber-900">Có {integrityReport.affectedRecordCount} bản ghi cần người có quyền rà soát. Hệ thống không tự sửa hoặc xóa dữ liệu.</p><div className="mt-3 space-y-1.5">{integrityReport.issues.slice(0, 5).map((issue, index) => <div key={`${issue.collection}-${issue.entityId}-${issue.code}-${index}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-white/70 px-2.5 py-2"><div className="min-w-0"><p className="truncate text-[10px] font-black text-slate-700">{PCN_DATA_INTEGRITY_COLLECTION_LABELS[issue.collection]} • <span className="font-mono">{issue.entityId}</span></p><p className="text-[10px] text-amber-900">{issue.message}</p></div><button type="button" onClick={() => onOpenSection(integritySection[issue.collection], issue.entityId)} className="shrink-0 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-800 hover:bg-amber-100">Mở module</button></div>)}{integrityReport.issues.length > 5 && <p className="text-[10px] font-bold text-amber-800">Còn {integrityReport.issues.length - 5} cảnh báo khác trong snapshot.</p>}</div></>}
-          </div>
-        </div>
-      </section>
-
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 md:p-4">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div>
             <h2 className="text-sm font-black text-slate-800">Lĩnh vực</h2>
             <p className="text-[10px] text-slate-400 mt-0.5">Mỗi hồ sơ có thể liên kết nhiều lĩnh vực.</p>
           </div>
-          <button onClick={() => onOpenSection('fields')} className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700">Xem tất cả <ChevronRight className="inline" size={12} /></button>
+          <button onClick={() => onOpenSection('proposals')} className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700">Xem Đề nghị <ChevronRight className="inline" size={12} /></button>
         </div>
         <div className="grid md:grid-cols-2 gap-3">
           {fields.map((field) => {
             const count = dossiers.filter((item) => item.fieldCodes.includes(field.code)).length;
             return (
-              <button key={field.code} onClick={() => onOpenSection('fields', field.code)} className="text-left rounded-lg border border-slate-200 p-3 hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors">
+              <button key={field.code} onClick={() => onOpenSection('proposals', field.code)} className="text-left rounded-lg border border-slate-200 p-3 hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><ClipboardList size={16} /></span><span><span className="block text-xs font-black text-slate-800">{field.name}</span><span className="block text-[10px] text-slate-400 font-mono">{field.code}</span></span></div>
+                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><ClipboardList size={16} /></span><span><span className="block text-xs font-black text-slate-800">{field.name}</span><span className="block text-[10px] text-slate-400 font-mono">{field.code}</span>{field.scopeStatus === 'NEEDS_PCN_CONFIRMATION' && <span className="mt-1 inline-block rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">Chờ xác nhận phạm vi</span>}</span></div>
                   <span className="text-lg font-black text-slate-700">{count}</span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1">{field.standardRefs.map((standard) => <span key={standard} className="rounded bg-slate-50 border border-slate-100 px-1.5 py-0.5 text-[9px] text-slate-500">{standard}</span>)}</div>
@@ -290,7 +221,7 @@ function PcnDashboard({
           {dashboardWorkSurface === 'WORKFLOW' ? (
             <PcnPipelineBoard dossiers={dossiers} proposals={proposals} fields={fields} requirements={boardRequirements} documents={dossierDocuments} users={boardUsers} currentUser={currentUser} onClaimDossier={onClaimDossier} onOpenDossier={onOpenDossier} />
           ) : (
-            <PcnWorkQueueView dossiers={dossiers} proposals={proposals} documentRequirements={boardRequirements} dossierDocuments={dossierDocuments} users={boardUsers} currentUser={currentUser} onOpenDossier={onOpenDossier} onOpenModule={onOpenModule} onClaimDossier={onClaimDossier} />
+            <PcnWorkQueueView dossiers={dossiers} proposals={proposals} documentRequirements={boardRequirements} dossierDocuments={dossierDocuments} users={boardUsers} currentUser={currentUser} onOpenDossier={onOpenDossier} onClaimDossier={onClaimDossier} />
           )}
         </div>
       </section>
@@ -303,7 +234,7 @@ function EmptyState({ title, description, action, onAction }: { title: string; d
 }
 
 function ProposalRegisterRow({ proposal, dossier, canEdit, onOpenDossier, onEdit }: { proposal: CertificationProposal; dossier: CertificationDossier; canEdit: boolean; onOpenDossier: () => void; onEdit?: () => void }) {
-  const proposalEditingAllowed = Boolean(onEdit && ['INTAKE_REVIEW', 'AWAITING_DOCUMENTS'].includes(dossier.status) && proposal.historicalImport?.reviewStatus !== 'PENDING_REVIEW' && dossier.historicalImport?.reviewStatus !== 'PENDING_REVIEW');
+  const proposalEditingAllowed = Boolean(onEdit && ['INTAKE_REVIEW', 'AWAITING_DOCUMENTS'].includes(dossier.status));
   return (
     <article className="group overflow-hidden rounded-xl border border-indigo-200 bg-indigo-50 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md">
       <div className="border-b border-indigo-100 bg-white/80 p-3">
@@ -343,26 +274,105 @@ function ProposalRegisterRow({ proposal, dossier, canEdit, onOpenDossier, onEdit
   );
 }
 
-function FieldRegisterRow({ field, dossier, proposal, onOpenDossier }: { field: PcnCertificationField; dossier: CertificationDossier; proposal?: CertificationProposal; onOpenDossier: () => void }) {
-  return <article className="rounded-lg border border-slate-200 bg-white p-3 transition-colors hover:border-emerald-200"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-black text-emerald-700">{field.code}</span><span className="font-mono text-xs font-black text-slate-800">{dossier.dossierCode}</span><span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusClasses[dossier.status]}`}>{statusLabels[dossier.status]}</span></div><p className="mt-1 text-[11px] font-bold text-slate-700">{field.name}</p><p className="text-[10px] text-slate-500">{proposal?.customerSnapshot.name || 'Chưa gắn khách hàng'} · {proposal?.productName || 'Chưa có sản phẩm'}{proposal?.model ? ` · ${proposal.model}` : ''}</p></div><button type="button" onClick={onOpenDossier} className="shrink-0 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-black text-indigo-700 hover:bg-indigo-100">Mở hồ sơ chuẩn</button></div><div className="mt-2 flex flex-wrap gap-1">{field.standardRefs.map((standard) => <span key={standard} className="rounded bg-slate-50 px-1.5 py-0.5 text-[9px] text-slate-500">{standard}</span>)}</div><p className="mt-2 text-[9px] text-slate-400">Lọc theo Lĩnh vực chỉ để tra cứu; checklist và thao tác hồ sơ nằm trong hồ sơ chuẩn.</p></article>;
+type PcnQc20FormScope = {
+  productForm: string;
+  grade: string;
+  nominalDimensions: string;
+  hsCode: string;
+  appliedStandard: string;
+  lotDefinition: PcnQc20ScopeSnapshot['lotDefinition'] | '';
+  manufacturerLotCode: string;
+  importer: string;
+  countryOfOrigin: string;
+  chromiumMinPercent: string;
+  carbonMaxPercent: string;
+};
+
+type PcnProposalForm = {
+  proposalCode: string;
+  channel: CertificationProposal['channel'];
+  customerName: string;
+  customerId: string;
+  address: string;
+  warehouseAddress: string;
+  contactPerson: string;
+  taxId: string;
+  phone: string;
+  email: string;
+  productName: string;
+  model: string;
+  brand: string;
+  productType: string;
+  specifications: string;
+  manufacturer: string;
+  manufacturerAddress: string;
+  quantity: string;
+  fieldCodes: string[];
+  qc20Scope: PcnQc20FormScope;
+};
+
+function emptyPcnQc20Scope(): PcnQc20FormScope {
+  return {
+    productForm: '',
+    grade: '',
+    nominalDimensions: '',
+    hsCode: '',
+    appliedStandard: '',
+    lotDefinition: '',
+    manufacturerLotCode: '',
+    importer: '',
+    countryOfOrigin: '',
+    chromiumMinPercent: '',
+    carbonMaxPercent: '',
+  };
 }
 
-function ProposalView({ fields, proposals, dossiers, customers, canEdit, initialDossierId, onSave, onUpdateProposal, onOpenDossier }: { fields: PcnCertificationField[]; proposals: CertificationProposal[]; dossiers: CertificationDossier[]; customers: Array<{ name: string; address?: string; customerCode?: string; taxId?: string; phone?: string; email?: string; contactPerson?: string }>; canEdit: boolean; initialDossierId?: string; onSave: (proposal: CertificationProposal) => Promise<void>; onUpdateProposal: (proposalId: string, updates: PcnProposalUpdateInput) => Promise<void>; onOpenDossier: (dossier: CertificationDossier) => void }) {
+function toPcnQc20Scope(scope: PcnQc20FormScope, active: boolean): PcnQc20ScopeSnapshot | undefined {
+  if (!active) return undefined;
+  const normalized: PcnQc20ScopeSnapshot = {};
+  for (const key of ['productForm', 'grade', 'nominalDimensions', 'hsCode', 'appliedStandard', 'manufacturerLotCode', 'importer', 'countryOfOrigin'] as const) {
+    const value = scope[key].trim();
+    if (value) normalized[key] = value;
+  }
+  if (scope.lotDefinition) normalized.lotDefinition = scope.lotDefinition;
+  const compositionRequirements: NonNullable<PcnQc20ScopeSnapshot['chemicalCompositionRequirements']> = [];
+  const chromiumMinPercent = scope.chromiumMinPercent.trim() ? Number(scope.chromiumMinPercent) : Number.NaN;
+  const carbonMaxPercent = scope.carbonMaxPercent.trim() ? Number(scope.carbonMaxPercent) : Number.NaN;
+  if (Number.isFinite(chromiumMinPercent)) compositionRequirements.push({ element: 'Cr', minPercent: chromiumMinPercent, source: 'Thông tin đối chiếu QC20' });
+  if (Number.isFinite(carbonMaxPercent)) compositionRequirements.push({ element: 'C', maxPercent: carbonMaxPercent, source: 'Thông tin đối chiếu QC20' });
+  if (compositionRequirements.length > 0) normalized.chemicalCompositionRequirements = compositionRequirements;
+  for (const [key, value] of [['chromiumMinPercent', scope.chromiumMinPercent], ['carbonMaxPercent', scope.carbonMaxPercent] ] as const) {
+    if (!value.trim()) continue;
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) normalized[key] = numeric;
+  }
+  return normalized;
+}
+
+function ProposalView({ fields, proposals, dossiers, customers, canEdit, initialDossierId, initialFieldCode, openFormRequest, onSave, onUpdateProposal, onOpenDossier }: { fields: PcnCertificationField[]; proposals: CertificationProposal[]; dossiers: CertificationDossier[]; customers: Array<{ name: string; address?: string; customerCode?: string; taxId?: string; phone?: string; email?: string; contactPerson?: string }>; canEdit: boolean; initialDossierId?: string; initialFieldCode?: string; openFormRequest?: number; onSave: (proposal: CertificationProposal) => Promise<void>; onUpdateProposal: (proposalId: string, updates: PcnProposalUpdateInput) => Promise<void>; onOpenDossier: (dossier: CertificationDossier) => void }) {
   const [openForm, setOpenForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingProposal, setEditingProposal] = useState<CertificationProposal>();
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PcnDossierStatus | ''>('');
-  const [fieldFilter, setFieldFilter] = useState('');
+  const [fieldFilter, setFieldFilter] = useState(initialFieldCode || '');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const emptyForm = () => ({
     proposalCode: '', channel: 'DIRECT' as CertificationProposal['channel'], customerName: '', customerId: '', address: '', warehouseAddress: '',
     contactPerson: '', taxId: '', phone: '', email: '', productName: '', model: '', brand: '', productType: '', specifications: '',
-    manufacturer: '', manufacturerAddress: '', quantity: '1', fieldCodes: [],
+    manufacturer: '', manufacturerAddress: '', quantity: '1', fieldCodes: [], qc20Scope: emptyPcnQc20Scope(),
   });
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<PcnProposalForm>(emptyForm());
   const codeReview = reviewPcnCodes(form.fieldCodes, form.proposalCode);
   const reset = () => { setForm(emptyForm()); setEditingProposal(undefined); setValidationErrors({}); };
+
+  useEffect(() => {
+    if (!openFormRequest) return;
+    setForm(emptyForm());
+    setEditingProposal(undefined);
+    setValidationErrors({});
+    setOpenForm(true);
+  }, [openFormRequest]);
 
   const openEdit = (proposal: CertificationProposal) => {
     setEditingProposal(proposal);
@@ -386,6 +396,12 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
       manufacturerAddress: proposal.manufacturerAddress || '',
       quantity: String(proposal.quantity || 1),
       fieldCodes: proposal.fieldCodes,
+      qc20Scope: {
+        ...emptyPcnQc20Scope(),
+        ...(proposal.qc20Scope || {}),
+        chromiumMinPercent: proposal.qc20Scope?.chromiumMinPercent === undefined ? '' : String(proposal.qc20Scope.chromiumMinPercent),
+        carbonMaxPercent: proposal.qc20Scope?.carbonMaxPercent === undefined ? '' : String(proposal.qc20Scope.carbonMaxPercent),
+      },
     });
     setOpenForm(true);
   };
@@ -398,10 +414,37 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
     }));
   };
 
+  const applyProposalOcr = (ocrFields: Record<string, string>) => {
+    const allowedFieldCodes = new Set(fields.map((field) => field.code));
+    const recognizedFieldCodes = String(ocrFields.fieldCodes || '').split(/[,;\s]+/).map((code) => code.trim().toUpperCase()).filter((code) => allowedFieldCodes.has(code as any));
+    setForm((previous) => ({
+      ...previous,
+      ...(ocrFields.proposalCode ? { proposalCode: ocrFields.proposalCode } : {}),
+      ...(ocrFields.customerName ? { customerName: ocrFields.customerName } : {}),
+      ...(ocrFields.address ? { address: ocrFields.address } : {}),
+      ...(ocrFields.contactPerson ? { contactPerson: ocrFields.contactPerson } : {}),
+      ...(ocrFields.taxId ? { taxId: ocrFields.taxId } : {}),
+      ...(ocrFields.phone ? { phone: ocrFields.phone } : {}),
+      ...(ocrFields.email ? { email: ocrFields.email } : {}),
+      ...(ocrFields.warehouseAddress ? { warehouseAddress: ocrFields.warehouseAddress } : {}),
+      ...(ocrFields.productName ? { productName: ocrFields.productName } : {}),
+      ...(ocrFields.productType ? { productType: ocrFields.productType } : {}),
+      ...(ocrFields.model ? { model: ocrFields.model } : {}),
+      ...(ocrFields.brand ? { brand: ocrFields.brand } : {}),
+      ...(ocrFields.specifications ? { specifications: ocrFields.specifications } : {}),
+      ...(ocrFields.manufacturer ? { manufacturer: ocrFields.manufacturer } : {}),
+      ...(ocrFields.manufacturerAddress ? { manufacturerAddress: ocrFields.manufacturerAddress } : {}),
+      ...(ocrFields.quantity && Number(ocrFields.quantity) > 0 ? { quantity: String(Math.round(Number(ocrFields.quantity))) } : {}),
+      ...(recognizedFieldCodes.length > 0 ? { fieldCodes: recognizedFieldCodes } : {}),
+    }));
+    toast.success('Đã điền bản nháp OCR vào form; hãy kiểm tra trước khi tạo Đề nghị.');
+  };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (saving) return;
     if (!canEdit) return;
+    const qc20Scope = toPcnQc20Scope(form.qc20Scope, form.fieldCodes.includes('QC20'));
     const intakeValidation = validatePcnProposalIntake({
       customerSnapshot: {
         name: form.customerName,
@@ -418,6 +461,7 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
       manufacturer: form.manufacturer,
       quantity: form.quantity,
       fieldCodes: form.fieldCodes,
+      qc20Scope,
     });
     if (!intakeValidation.valid) {
       setValidationErrors(indexPcnIntakeValidationIssues(intakeValidation.issues));
@@ -441,6 +485,7 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
           manufacturer: form.manufacturer.trim() || undefined,
           manufacturerAddress: form.manufacturerAddress.trim() || undefined,
           quantity: Number(form.quantity),
+          qc20Scope,
         });
         toast.success('Đã lưu thay đổi Đề nghị.');
       } else {
@@ -454,6 +499,7 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
           productName: form.productName.trim(), model: form.model.trim() || undefined, brand: form.brand.trim() || undefined,
           productType: form.productType.trim() || undefined, specifications: form.specifications.trim() || undefined,
           manufacturer: form.manufacturer.trim() || undefined, manufacturerAddress: form.manufacturerAddress.trim() || undefined, quantity: Math.max(1, Number(form.quantity) || 1), fieldCodes: form.fieldCodes,
+          ...(qc20Scope ? { qc20Scope } : {}),
           receivedAt: now, createdAt: now, updatedAt: now,
         };
         await onSave(proposal);
@@ -493,9 +539,9 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
   }, [dossierByProposalId, fieldFilter, initialDossierId, proposals, query, statusFilter]);
 
   return (
-    <div className="p-3 md:p-5 space-y-4 h-full overflow-y-auto mobile-safe-bottom bg-slate-50/60">
+    <div className="pcn-page-surface min-w-0 p-3 md:p-5 space-y-4 mobile-safe-bottom bg-slate-50/60">
       <div className="flex items-start justify-between gap-3"><div><h1 className="text-xl font-black text-slate-900">Quản lý Đề nghị</h1><p className="text-[11px] text-slate-500 mt-1">Mỗi thẻ là một Đề nghị và một bộ hồ sơ liên kết. PYC chỉ phát sinh khi cần kết nối phòng thử nghiệm khác.</p></div>{!openForm && canEdit && <button onClick={() => { reset(); setOpenForm(true); }} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white"><Plus size={14} /> Tạo Đề nghị</button>}</div>
-      {openForm && <form onSubmit={submit} className="rounded-xl border border-emerald-200 bg-white p-3 md:p-4 shadow-sm space-y-3"><div className="flex items-center justify-between"><div><h2 className="text-sm font-black text-slate-800">{editingProposal ? 'Sửa thông tin Đề nghị' : 'Thông tin Đề nghị / bộ hồ sơ'}</h2>{editingProposal && <p className="mt-1 text-[10px] text-amber-700">Chỉ sửa được ở giai đoạn đầu vào; mã Đề nghị và Lĩnh vực được giữ nguyên.</p>}</div><button type="button" onClick={() => { reset(); setOpenForm(false); }} disabled={saving} className="text-slate-400 hover:text-slate-700 disabled:opacity-40"><X size={16} /></button></div><div className="grid md:grid-cols-3 gap-2"><Field label="Mã Đề nghị / mã đăng ký"><input value={form.proposalCode} disabled={Boolean(editingProposal)} onChange={(event) => setForm({ ...form, proposalCode: event.target.value })} placeholder="Ví dụ: 0665, 0109-01 hoặc IEMM 0105" />{codeReview.needsReview && <p role="status" className="mt-1 text-[9px] font-bold leading-4 text-amber-700">{codeReview.message}{codeReview.normalized ? ` Giá trị chuẩn hóa: ${codeReview.normalized}` : ''}</p>}</Field><Field label="Kênh tiếp nhận"><select value={form.channel} onChange={(event) => setForm({ ...form, channel: event.target.value as CertificationProposal['channel'] })}><option value="DIRECT">Trực tiếp</option><option value="EMAIL">Email</option><option value="ONLINE_ZALO">Online / Zalo</option><option value="OTHER">Khác</option></select></Field><Field label="Số lượng mẫu *" error={validationErrors.quantity}><input type="number" min="1" value={form.quantity} aria-invalid={Boolean(validationErrors.quantity)} onChange={(event) => setForm({ ...form, quantity: event.target.value })} /></Field></div><div className="grid md:grid-cols-2 gap-2"><Field label="Khách hàng *" error={validationErrors['customerSnapshot.name']}><input list="pcn-customer-options" value={form.customerName} aria-invalid={Boolean(validationErrors['customerSnapshot.name'])} onChange={(event) => handleCustomerChange(event.target.value)} placeholder="Chọn hoặc nhập tên khách hàng" /><datalist id="pcn-customer-options">{customers.map((customer) => <option key={customer.customerCode || customer.name} value={customer.name}>{customer.customerCode || ''}</option>)}</datalist></Field><Field label="Địa chỉ khách hàng *" error={validationErrors['customerSnapshot.address']}><input value={form.address} aria-invalid={Boolean(validationErrors['customerSnapshot.address'])} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="Tự điền từ Danh sách khách hàng" /></Field></div><div className="grid md:grid-cols-4 gap-2"><Field label="Người liên hệ hoặc Mã số thuế *" error={validationErrors['customerSnapshot.contactPerson']}><input value={form.contactPerson} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} onChange={(event) => setForm({ ...form, contactPerson: event.target.value })} /></Field><Field label="Mã số thuế"><input value={form.taxId} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} onChange={(event) => setForm({ ...form, taxId: event.target.value })} /></Field><Field label="Điện thoại"><input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></Field><Field label="Email"><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></Field></div><Field label="Địa chỉ/kho liên quan *" error={validationErrors.warehouseAddress}><input value={form.warehouseAddress} aria-invalid={Boolean(validationErrors.warehouseAddress)} onChange={(event) => setForm({ ...form, warehouseAddress: event.target.value })} placeholder="Nơi lấy/giao mẫu hoặc kho liên quan" /></Field><div className="grid md:grid-cols-4 gap-2"><Field label="Tên sản phẩm *" error={validationErrors.productName}><input value={form.productName} aria-invalid={Boolean(validationErrors.productName)} onChange={(event) => setForm({ ...form, productName: event.target.value })} /></Field><Field label="Kiểu/loại sản phẩm *" error={validationErrors.productType}><input value={form.productType} aria-invalid={Boolean(validationErrors.productType)} onChange={(event) => setForm({ ...form, productType: event.target.value })} /></Field><Field label="Model *" error={validationErrors.model}><input value={form.model} aria-invalid={Boolean(validationErrors.model)} onChange={(event) => setForm({ ...form, model: event.target.value })} /></Field><Field label="Nhãn hiệu *" error={validationErrors.brand}><input value={form.brand} aria-invalid={Boolean(validationErrors.brand)} onChange={(event) => setForm({ ...form, brand: event.target.value })} /></Field></div><div className="grid md:grid-cols-3 gap-2"><Field label="Nhà sản xuất *" error={validationErrors.manufacturer}><input value={form.manufacturer} aria-invalid={Boolean(validationErrors.manufacturer)} onChange={(event) => setForm({ ...form, manufacturer: event.target.value })} /></Field><Field label="Địa chỉ nhà sản xuất"><input value={form.manufacturerAddress} onChange={(event) => setForm({ ...form, manufacturerAddress: event.target.value })} /></Field><Field label="Thông số kỹ thuật / mô tả *" error={validationErrors.specifications}><textarea rows={2} value={form.specifications} aria-invalid={Boolean(validationErrors.specifications)} onChange={(event) => setForm({ ...form, specifications: event.target.value })} /></Field></div><div><div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Lĩnh vực *</div><div className="flex flex-wrap gap-2">{fields.map((field) => <label key={field.code} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold cursor-pointer ${form.fieldCodes.includes(field.code) ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}><input type="checkbox" checked={form.fieldCodes.includes(field.code)} aria-invalid={Boolean(validationErrors.fieldCodes)} disabled={Boolean(editingProposal)} onChange={(event) => setForm({ ...form, fieldCodes: event.target.checked ? [...form.fieldCodes, field.code] : form.fieldCodes.filter((code) => code !== field.code) })} />{field.name}</label>)}</div>{validationErrors.fieldCodes && <p role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{validationErrors.fieldCodes}</p>}</div><div className="flex justify-end gap-2"><button type="button" onClick={() => { reset(); setOpenForm(false); }} disabled={saving} className="rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-600 disabled:opacity-40">Hủy</button><button type="submit" disabled={saving} aria-busy={saving} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : editingProposal ? 'Lưu thay đổi' : 'Tạo Đề nghị & bộ hồ sơ'}</button></div></form>}
+      {openForm && <form onSubmit={submit} className="rounded-xl border border-emerald-200 bg-white p-3 md:p-4 shadow-sm space-y-3"><div className="flex items-center justify-between"><div><h2 className="text-sm font-black text-slate-800">{editingProposal ? 'Sửa thông tin Đề nghị' : 'Thông tin Đề nghị / bộ hồ sơ'}</h2>{editingProposal && <p className="mt-1 text-[10px] text-amber-700">Chỉ sửa được ở giai đoạn đầu vào; mã Đề nghị và Lĩnh vực được giữ nguyên.</p>}</div><button type="button" onClick={() => { reset(); setOpenForm(false); }} disabled={saving} className="text-slate-400 hover:text-slate-700 disabled:opacity-40"><X size={16} /></button></div><PcnOcrPanel context="proposal" onApply={applyProposalOcr} disabled={saving} /><div className="grid md:grid-cols-3 gap-2"><Field label="Mã Đề nghị / mã đăng ký"><input value={form.proposalCode} disabled={Boolean(editingProposal)} onChange={(event) => setForm({ ...form, proposalCode: event.target.value })} placeholder="Ví dụ: 0665, 0109-01 hoặc IEMM 0105" />{codeReview.needsReview && <p role="status" className="mt-1 text-[9px] font-bold leading-4 text-amber-700">{codeReview.message}{codeReview.normalized ? ` Giá trị chuẩn hóa: ${codeReview.normalized}` : ''}</p>}</Field><Field label="Kênh tiếp nhận"><select value={form.channel} onChange={(event) => setForm({ ...form, channel: event.target.value as CertificationProposal['channel'] })}><option value="DIRECT">Trực tiếp</option><option value="EMAIL">Email</option><option value="ONLINE_ZALO">Online / Zalo</option><option value="OTHER">Khác</option></select></Field><Field label="Số lượng mẫu *" error={validationErrors.quantity}><input type="number" min="1" value={form.quantity} aria-invalid={Boolean(validationErrors.quantity)} onChange={(event) => setForm({ ...form, quantity: event.target.value })} /></Field></div><div className="grid md:grid-cols-2 gap-2"><Field label="Khách hàng *" error={validationErrors['customerSnapshot.name']}><input list="pcn-customer-options" value={form.customerName} aria-invalid={Boolean(validationErrors['customerSnapshot.name'])} onChange={(event) => handleCustomerChange(event.target.value)} placeholder="Chọn hoặc nhập tên khách hàng" /><datalist id="pcn-customer-options">{customers.map((customer) => <option key={customer.customerCode || customer.name} value={customer.name}>{customer.customerCode || ''}</option>)}</datalist></Field><Field label="Địa chỉ khách hàng *" error={validationErrors['customerSnapshot.address']}><input value={form.address} aria-invalid={Boolean(validationErrors['customerSnapshot.address'])} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="Tự điền từ Danh sách khách hàng" /></Field></div><div className="grid md:grid-cols-4 gap-2"><Field label="Người liên hệ hoặc Mã số thuế *" error={validationErrors['customerSnapshot.contactPerson']}><input value={form.contactPerson} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} onChange={(event) => setForm({ ...form, contactPerson: event.target.value })} /></Field><Field label="Mã số thuế"><input value={form.taxId} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} onChange={(event) => setForm({ ...form, taxId: event.target.value })} /></Field><Field label="Điện thoại"><input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></Field><Field label="Email"><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></Field></div><Field label="Địa chỉ/kho liên quan *" error={validationErrors.warehouseAddress}><input value={form.warehouseAddress} aria-invalid={Boolean(validationErrors.warehouseAddress)} onChange={(event) => setForm({ ...form, warehouseAddress: event.target.value })} placeholder="Nơi lấy/giao mẫu hoặc kho liên quan" /></Field><div className="grid md:grid-cols-4 gap-2"><Field label="Tên sản phẩm *" error={validationErrors.productName}><input value={form.productName} aria-invalid={Boolean(validationErrors.productName)} onChange={(event) => setForm({ ...form, productName: event.target.value })} /></Field><Field label="Kiểu/loại sản phẩm *" error={validationErrors.productType}><input value={form.productType} aria-invalid={Boolean(validationErrors.productType)} onChange={(event) => setForm({ ...form, productType: event.target.value })} /></Field><Field label="Model *" error={validationErrors.model}><input value={form.model} aria-invalid={Boolean(validationErrors.model)} onChange={(event) => setForm({ ...form, model: event.target.value })} /></Field><Field label="Nhãn hiệu *" error={validationErrors.brand}><input value={form.brand} aria-invalid={Boolean(validationErrors.brand)} onChange={(event) => setForm({ ...form, brand: event.target.value })} /></Field></div><div className="grid md:grid-cols-3 gap-2"><Field label="Nhà sản xuất *" error={validationErrors.manufacturer}><input value={form.manufacturer} onChange={(event) => setForm({ ...form, manufacturer: event.target.value })} /></Field><Field label="Địa chỉ nhà sản xuất"><input value={form.manufacturerAddress} onChange={(event) => setForm({ ...form, manufacturerAddress: event.target.value })} /></Field><Field label="Thông số kỹ thuật / mô tả *" error={validationErrors.specifications}><textarea rows={2} value={form.specifications} aria-invalid={Boolean(validationErrors.specifications)} onChange={(event) => setForm({ ...form, specifications: event.target.value })} /></Field></div><div><div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Lĩnh vực *</div><div className="flex flex-wrap gap-2">{fields.map((field) => <label key={field.code} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold cursor-pointer ${form.fieldCodes.includes(field.code) ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}><input type="checkbox" checked={form.fieldCodes.includes(field.code)} aria-invalid={Boolean(validationErrors.fieldCodes)} disabled={Boolean(editingProposal)} onChange={(event) => setForm({ ...form, fieldCodes: event.target.checked ? [...form.fieldCodes, field.code] : form.fieldCodes.filter((code) => code !== field.code) })} />{field.name}{field.scopeStatus === 'NEEDS_PCN_CONFIRMATION' && <span className="rounded bg-amber-50 px-1 py-0.5 text-[8px] font-black text-amber-700">xác nhận phạm vi</span>}</label>)}</div>{validationErrors.fieldCodes && <p role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{validationErrors.fieldCodes}</p>}</div>{form.fieldCodes.includes('QC20') && <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3"><div className="text-[10px] font-black text-amber-900">Phạm vi QC20 / nhận diện lô</div><p className="mt-1 text-[9px] leading-4 text-amber-800">Nhập theo hồ sơ thực tế; các ngưỡng Cr/C chỉ là dữ liệu đối chiếu, không thay thế kết luận đánh giá phạm vi.</p><div className="mt-2 grid gap-2 md:grid-cols-3"><Field label="Dạng sản phẩm *" error={validationErrors['qc20Scope.productForm']}><input value={form.qc20Scope.productForm} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, productForm: event.target.value } })} /></Field><Field label="Mác thép *" error={validationErrors['qc20Scope.grade']}><input value={form.qc20Scope.grade} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, grade: event.target.value } })} /></Field><Field label="Kích thước danh nghĩa *" error={validationErrors['qc20Scope.nominalDimensions']}><input value={form.qc20Scope.nominalDimensions} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, nominalDimensions: event.target.value } })} /></Field><Field label="Mã HS *" error={validationErrors['qc20Scope.hsCode']}><input value={form.qc20Scope.hsCode} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, hsCode: event.target.value } })} /></Field><Field label="Tiêu chuẩn áp dụng *" error={validationErrors['qc20Scope.appliedStandard']}><input value={form.qc20Scope.appliedStandard} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, appliedStandard: event.target.value } })} placeholder="TCVN / ASTM / tiêu chuẩn áp dụng" /></Field><Field label="Cách xác định lô *" error={validationErrors['qc20Scope.lotDefinition']}><select value={form.qc20Scope.lotDefinition} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, lotDefinition: event.target.value as PcnProposalForm['qc20Scope']['lotDefinition'] } })}><option value="">Chọn cách xác định lô</option><option value="PRODUCT_LOT">Lô sản phẩm</option><option value="SHIPMENT_LOT">Lô hàng hóa</option></select></Field><Field label="Số lô nhà sản xuất / lô hàng"><input value={form.qc20Scope.manufacturerLotCode} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, manufacturerLotCode: event.target.value } })} /></Field><Field label="Nhà nhập khẩu"><input value={form.qc20Scope.importer} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, importer: event.target.value } })} /></Field><Field label="Nước xuất xứ"><input value={form.qc20Scope.countryOfOrigin} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, countryOfOrigin: event.target.value } })} /></Field><Field label="Cr tối thiểu (%)"><input type="number" min="0" max="100" step="0.01" value={form.qc20Scope.chromiumMinPercent} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, chromiumMinPercent: event.target.value } })} /></Field><Field label="C tối đa (%)"><input type="number" min="0" max="100" step="0.01" value={form.qc20Scope.carbonMaxPercent} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, carbonMaxPercent: event.target.value } })} /></Field></div></div>}<div className="flex justify-end gap-2"><button type="button" onClick={() => { reset(); setOpenForm(false); }} disabled={saving} className="rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-600 disabled:opacity-40">Hủy</button><button type="submit" disabled={saving} aria-busy={saving} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : editingProposal ? 'Lưu thay đổi' : 'Tạo Đề nghị & bộ hồ sơ'}</button></div></form>}
       <div className="grid gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-[minmax(0,1fr)_190px_170px_auto]">
         <label className="block"><span className="sr-only">Tìm Đề nghị</span><input aria-label="Tìm Đề nghị" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã, khách hàng, sản phẩm, model..." className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px] outline-none focus:border-emerald-400" /></label>
         <select aria-label="Lọc trạng thái hồ sơ" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as PcnDossierStatus | '')} className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="">Tất cả trạng thái</option>{Object.entries(statusLabels).map(([status, label]) => <option key={status} value={status}>{label}</option>)}</select>
@@ -508,18 +554,13 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
   );
 }
 
-function FieldDossierView({ fields, dossiers, proposals, selectedField, initialDossierId, onSelectField, onOpenDossier }: { fields: PcnCertificationField[]; dossiers: CertificationDossier[]; proposals: CertificationProposal[]; selectedField?: string; initialDossierId?: string; onSelectField: (field?: string) => void; onOpenDossier: (dossier: CertificationDossier) => void }) {
-  const visible = dossiers.filter((dossier) => (!initialDossierId || dossier.id === initialDossierId) && (!selectedField || dossier.fieldCodes.includes(selectedField)));
-  return <div className="p-3 md:p-5 space-y-4 h-full overflow-y-auto mobile-safe-bottom bg-slate-50/60"><div><h1 className="text-xl font-black text-slate-900">Hồ sơ chứng nhận</h1><p className="text-[11px] text-slate-500 mt-1">Tra cứu hồ sơ theo quy chuẩn; tiến độ và thao tác nằm trong hồ sơ chuẩn.</p>{initialDossierId && <p className="mt-1 text-[10px] font-bold text-indigo-700">Đang tập trung hồ sơ: {dossiers.find((dossier) => dossier.id === initialDossierId)?.dossierCode || initialDossierId}</p>}</div><div className="flex flex-wrap gap-2"><button onClick={() => onSelectField(undefined)} className={`rounded-lg border px-3 py-1.5 text-[10px] font-black ${!selectedField ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600'}`}>Tất cả lĩnh vực</button>{fields.map((field) => <button key={field.code} onClick={() => onSelectField(field.code)} className={`rounded-lg border px-3 py-1.5 text-[10px] font-black ${selectedField === field.code ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600'}`}>{field.name}</button>)}</div>{visible.length === 0 ? <EmptyState title="Chưa có hồ sơ trong lĩnh vực" description="Hồ sơ được mở sau khi Đề nghị được tiếp nhận hợp lệ." /> : <div className="space-y-2">{visible.map((dossier) => <FieldRegisterRow key={dossier.id} field={fields.find((field) => field.code === selectedField) || fields.find((field) => dossier.fieldCodes.includes(field.code)) || { code: selectedField || 'PCN', name: 'Lĩnh vực hồ sơ', standardRefs: [], active: true } as PcnCertificationField} dossier={dossier} proposal={proposals.find((proposal) => proposal.id === dossier.proposalId)} onOpenDossier={() => onOpenDossier(dossier)} />)}</div>}</div>;
-}
-
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return <label className="block"><span className="block text-[10px] font-black text-slate-500 mb-1">{label}</span><div className={`[&_input]:w-full [&_input]:rounded-md [&_input]:border [&_input]:px-2.5 [&_input]:py-1.5 [&_input]:text-[11px] [&_input]:outline-none [&_input]:focus:border-emerald-400 [&_select]:w-full [&_select]:rounded-md [&_select]:border [&_select]:bg-white [&_select]:px-2.5 [&_select]:py-1.5 [&_select]:text-[11px] [&_textarea]:w-full [&_textarea]:rounded-md [&_textarea]:border [&_textarea]:px-2.5 [&_textarea]:py-1.5 [&_textarea]:text-[11px] [&_textarea]:outline-none ${error ? '[&_input]:border-rose-300 [&_select]:border-rose-300 [&_textarea]:border-rose-300 [&_input]:bg-rose-50/40 [&_select]:bg-rose-50/40 [&_textarea]:bg-rose-50/40' : '[&_input]:border-slate-200 [&_select]:border-slate-200 [&_textarea]:border-slate-200'}`}>{children}</div>{error && <p role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{error}</p>}</label>;
 }
 
 export function PcnWorkspace() {
-  const currentUser = useStore((state) => state.currentUser);
-  const logout = useStore((state) => state.logout);
+  const currentUser = usePcnSessionStore((state) => state.currentUser);
+  const clearCurrentUser = usePcnSessionStore((state) => state.clearCurrentUser);
   const pcn = usePcnStore();
   const resetPcn = usePcnStore((state) => state.reset);
   const [pcnSessionChecked, setPcnSessionChecked] = useState(false);
@@ -527,6 +568,7 @@ export function PcnWorkspace() {
   const [selectedField, setSelectedField] = useState<string | undefined>();
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [focusedDossierId, setFocusedDossierId] = useState<string | undefined>();
+  const [proposalFormRequest, setProposalFormRequest] = useState(0);
   const [selectedDossierId, setSelectedDossierId] = useState<string | undefined>();
   const [selectedDossierTab, setSelectedDossierTab] = useState<import('../utils/pcnDossierNavigation').PcnDossierDetailTab | undefined>();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -535,6 +577,7 @@ export function PcnWorkspace() {
     return false;
   });
   const [pcnNotificationOpen, setPcnNotificationOpen] = useState(false);
+  const [personalSettingsOpen, setPersonalSettingsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -542,14 +585,14 @@ export function PcnWorkspace() {
       .then((session) => {
         if (!cancelled) {
           if (!session) resetPcn();
-          useStore.setState({ currentUser: session?.user || null });
+          usePcnSessionStore.getState().setCurrentUser(session?.user || null);
         }
       })
       .catch((error) => {
         console.error('PCN session check failed:', error);
         if (!cancelled) {
           resetPcn();
-          useStore.setState({ currentUser: null });
+          usePcnSessionStore.getState().clearCurrentUser();
         }
       })
       .finally(() => {
@@ -564,13 +607,11 @@ export function PcnWorkspace() {
     if (!selectedDossierId || selectedDossierTab) return;
     const dossier = pcn.dossiers.find((item) => item.id === selectedDossierId);
     if (!dossier) return;
-    const station = getPcnPipelineStation(dossier.status);
-    const proposal = pcn.proposals.find((item) => item.id === dossier.proposalId);
-    setSelectedDossierTab(getPcnDossierStationTab(station.key, Boolean(dossier.historicalImport || proposal?.historicalImport)));
+    setSelectedDossierTab('documents');
   }, [pcn.dossiers, pcn.proposals, selectedDossierId, selectedDossierTab]);
 
   if (!pcnSessionChecked) return <div className="flex min-h-[100dvh] items-center justify-center bg-slate-950 text-xs font-bold text-slate-300">Đang xác thực phiên PCN...</div>;
-  if (!currentUser) return <LoginScreen mode="pcn" />;
+  if (!currentUser) return <PcnLoginScreen />;
 
   const handleLogout = async () => {
     try {
@@ -579,7 +620,7 @@ export function PcnWorkspace() {
       console.warn('PCN session logout failed:', error);
     } finally {
       resetPcn();
-      logout({ skipLegacySession: true });
+      clearCurrentUser();
     }
   };
 
@@ -591,58 +632,17 @@ export function PcnWorkspace() {
     });
   };
 
-  const openSection = (section: PcnSection, entityKey?: string) => { setActiveSection(section); setFocusedDossierId(undefined); setSelectedField(section === 'fields' ? entityKey : undefined); setCustomerSearchQuery(section === 'customers' ? (entityKey || '') : ''); setMobileMenuOpen(false); };
-  const openDossierAtCurrentStation = (dossier: CertificationDossier, initialTab?: import('../utils/pcnDossierNavigation').PcnDossierDetailTab) => {
-    const proposal = pcn.proposals.find((item) => item.id === dossier.proposalId);
-    const station = getPcnPipelineStation(dossier.status);
-    setSelectedDossierTab(initialTab || getPcnDossierStationTab(station.key, Boolean(dossier.historicalImport || proposal?.historicalImport)));
-    setSelectedDossierId(dossier.id);
-  };
-  const openWorkQueueModule = (section: PcnWorkQueueSection, dossierId: string) => {
-    if (section === 'historicalDiscovery') {
-      setSelectedDossierTab(undefined);
-      setSelectedDossierId(dossierId);
-      return;
-    }
-    setActiveSection(section);
-    setFocusedDossierId(dossierId);
+  const openSection = (section: PcnSection, entityKey?: string) => { setActiveSection(section); setFocusedDossierId(undefined); setSelectedField(section === 'proposals' ? entityKey : undefined); setCustomerSearchQuery(section === 'customers' ? (entityKey || '') : ''); setMobileMenuOpen(false); };
+  const openNewProposal = () => {
+    setActiveSection('proposals');
+    setFocusedDossierId(undefined);
     setSelectedField(undefined);
-    setCustomerSearchQuery('');
+    setProposalFormRequest((current) => current + 1);
     setMobileMenuOpen(false);
   };
-  const handleIntegrityNavigation = (collection: PcnDataIntegrityCollection, entityId: string) => {
-    const sectionByCollection: Record<PcnDataIntegrityCollection, PcnSection> = {
-      customers: 'customers',
-      certificationProposals: 'proposals',
-      certificationDossiers: 'fields',
-      pcnSampleLots: 'samples',
-      pcnSampleRoutes: 'samples',
-      labRequests: 'labRequests',
-      returnedResults: 'results',
-      issuancePackages: 'issuance',
-      pcnTemplateDefinitions: 'templates',
-    };
-    const dossier = collection === 'certificationProposals'
-      ? pcn.dossiers.find((item) => item.proposalId === entityId)
-      : collection === 'certificationDossiers'
-        ? pcn.dossiers.find((item) => item.id === entityId)
-        : collection === 'pcnSampleLots'
-          ? pcn.dossiers.find((item) => item.id === pcn.sampleLots.find((lot) => lot.id === entityId)?.dossierId)
-          : collection === 'pcnSampleRoutes'
-            ? pcn.dossiers.find((item) => item.id === pcn.sampleLots.find((lot) => lot.id === pcn.sampleRoutes.find((route) => route.id === entityId)?.sampleLotId)?.dossierId)
-            : collection === 'labRequests'
-              ? pcn.dossiers.find((item) => item.id === pcn.labRequests.find((request) => request.id === entityId)?.dossierId)
-              : collection === 'returnedResults'
-                ? pcn.dossiers.find((item) => item.id === pcn.returnedResults.find((result) => result.id === entityId)?.dossierId)
-                : collection === 'issuancePackages'
-                  ? pcn.dossiers.find((item) => item.id === pcn.issuancePackages.find((issuance) => issuance.id === entityId)?.dossierId)
-                  : undefined;
-    if (dossier) {
-      setSelectedDossierTab(getPcnIntegrityDossierTab(collection));
-      setSelectedDossierId(dossier.id);
-      return;
-    }
-    openSection(sectionByCollection[collection], collection === 'customers' ? entityId : undefined);
+  const openDossierAtCurrentStation = (dossier: CertificationDossier, initialTab?: import('../utils/pcnDossierNavigation').PcnDossierDetailTab) => {
+    setSelectedDossierTab(initialTab || 'documents');
+    setSelectedDossierId(dossier.id);
   };
   const findNotificationDossier = (notification: AppNotification): CertificationDossier | undefined => {
     if (notification.entityType === 'PCN_PROPOSAL') {
@@ -682,16 +682,11 @@ export function PcnWorkspace() {
       setSelectedDossierId(dossier.id);
       return;
     }
-    const sectionByEntity: Partial<Record<NonNullable<AppNotification['entityType']>, PcnSection>> = {
-      PCN_PROPOSAL: 'proposals',
-      PCN_DOSSIER: 'fields',
-      PCN_SAMPLE_LOT: 'samples',
-      PCN_LAB_REQUEST: 'labRequests',
-      PCN_RESULT: 'results',
-      PCN_APPROVAL: 'issuance',
-      PCN_ISSUANCE: 'issuance',
-    };
-    const section = notification.entityType ? sectionByEntity[notification.entityType] : undefined;
+    const section: PcnSection | undefined = notification.entityType === 'PCN_PROPOSAL'
+      ? 'proposals'
+      : notification.entityType
+        ? 'proposals'
+        : undefined;
     if (section) openSection(section);
   };
   const selectedDossier = pcn.dossiers.find((dossier) => dossier.id === selectedDossierId);
@@ -731,19 +726,6 @@ export function PcnWorkspace() {
   const archivePackage = async (issuanceId: string) => {
     try { await pcn.archivePackage(issuanceId); toast.success('Đã đưa hồ sơ vào Kho hồ sơ.'); } catch (error: any) { toast.error(error?.message || 'Không thể lưu trữ hồ sơ'); }
   };
-  const setDossierLegalHold = async (dossierId: string, input: { legalHold: boolean; reason?: string }) => {
-    try {
-      await pcn.setDossierLegalHold(dossierId, input);
-      toast.success(input.legalHold ? 'Đã đặt giữ pháp lý cho hồ sơ.' : 'Đã gỡ giữ pháp lý cho hồ sơ.');
-    } catch (error: any) {
-      toast.error(error?.message || 'Không thể cập nhật giữ pháp lý');
-      throw error;
-    }
-  };
-
-  const reviewHistoricalDossier = async (dossierId: string, input: PcnHistoricalReviewInput) => {
-    await pcn.reviewHistoricalDossier(dossierId, input);
-  };
 
   const sidebarWidthClass = isSidebarCollapsed ? 'w-16' : 'w-64';
   const mobileNavItems = PCN_MOBILE_NAVIGATION.map((key) => ({ key, icon: PCN_SECTION_ICONS[key] }));
@@ -751,7 +733,6 @@ export function PcnWorkspace() {
 
   const content = activeSection === 'dashboard' ? (
     <PcnDashboard
-      customers={pcn.customers}
       proposals={pcn.proposals}
       dossiers={pcn.dossiers}
       fields={pcn.fields}
@@ -760,60 +741,30 @@ export function PcnWorkspace() {
       users={pcn.users}
       labRequests={pcn.labRequests}
       results={pcn.returnedResults}
-      sampleLots={pcn.sampleLots}
-      sampleRoutes={pcn.sampleRoutes}
-      issuancePackages={pcn.issuancePackages}
-      templates={pcn.templates}
       currentUser={currentUser}
       canEdit={canMutatePcn}
+      onCreateProposal={openNewProposal}
       onOpenSection={openSection}
-      onOpenModule={openWorkQueueModule}
       onOpenDossier={openDossierAtCurrentStation}
       onClaimDossier={claimPcnDossier}
     />
-  ) : activeSection === 'dataIntegrity' ? (
-    <PcnDataIntegrityView
-      snapshot={{ customers: pcn.customers, proposals: pcn.proposals, dossiers: pcn.dossiers, sampleLots: pcn.sampleLots, sampleRoutes: pcn.sampleRoutes, labRequests: pcn.labRequests, returnedResults: pcn.returnedResults, issuancePackages: pcn.issuancePackages, templates: pcn.templates }}
-      onOpenIssue={handleIntegrityNavigation}
-    />
-  ) : activeSection === 'cutover' ? (
-    <PcnCutoverVerificationView currentUser={currentUser} customers={pcn.customers} onImported={async () => { await pcn.load(true); }} />
-  ) : activeSection === 'operationsRegister' ? (
-    <PcnOperationsRegisterView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} issuancePackages={pcn.issuancePackages} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} users={pcn.users} onOpenDossier={(dossier, initialTab) => { setSelectedDossierTab(initialTab); setSelectedDossierId(dossier.id); }} />
-  ) : activeSection === 'historicalDiscovery' ? (
-    <PcnHistoricalDiscoveryView currentUser={currentUser} dossiers={pcn.dossiers} attachments={pcn.dossierAttachments} activityLogs={pcn.activityLogs} onImported={async () => { await pcn.load(true); }} onOpenSection={openSection} />
-  ) : activeSection === 'agent' ? (
-    <PcnAgentWorkspaceView currentUser={currentUser} dossiers={pcn.dossiers} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'proposals' ? (
-    <ProposalView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} customers={pcn.customers} canEdit={canMutatePcn} initialDossierId={focusedDossierId} onSave={(proposal) => pcn.addProposal(proposal)} onUpdateProposal={(proposalId, updates) => pcn.updateProposal(proposalId, updates)} onOpenDossier={(dossier) => { setSelectedDossierTab('proposal'); setSelectedDossierId(dossier.id); }} />
-  ) : activeSection === 'fields' ? (
-    <FieldDossierView fields={pcn.fields} dossiers={pcn.dossiers} proposals={pcn.proposals} selectedField={selectedField} initialDossierId={focusedDossierId} onSelectField={(field) => { setSelectedField(field); }} onOpenDossier={(dossier) => openDossierAtCurrentStation(dossier)} />
-  ) : activeSection === 'samples' ? (
-    <PcnSampleFlowView sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} dossiers={pcn.dossiers} proposals={pcn.proposals} fields={pcn.fields} currentUser={currentUser} initialDossierId={focusedDossierId} onCreate={pcn.addSampleLot} onRouteStatusChange={pcn.updateSampleRoute} />
+    <ProposalView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} customers={pcn.customers} canEdit={canMutatePcn} initialDossierId={focusedDossierId} initialFieldCode={selectedField} openFormRequest={proposalFormRequest} onSave={(proposal) => pcn.addProposal(proposal)} onUpdateProposal={(proposalId, updates) => pcn.updateProposal(proposalId, updates)} onOpenDossier={(dossier) => { setSelectedDossierTab('documents'); setSelectedDossierId(dossier.id); }} />
+  ) : activeSection === 'operations' ? (
+    <PcnOperationsRegisterView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} issuancePackages={pcn.issuancePackages} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} users={pcn.users} onOpenDossier={openDossierAtCurrentStation} />
+  ) : activeSection === 'lab-operations' ? (
+    <PcnLabOperationsView dossiers={pcn.dossiers} proposals={pcn.proposals} sampleLots={pcn.sampleLots} sampleItems={pcn.sampleItems} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} onOpenDossier={openDossierAtCurrentStation} />
+  ) : activeSection === 'drafting' ? (
+    <PcnDraftingWorkspaceView proposals={pcn.proposals} dossiers={pcn.dossiers} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} onToast={(message, type) => type === 'error' ? toast.error(message) : toast.success(message)} />
+  ) : activeSection === 'assistant' ? (
+    <PcnAssistantView dossiers={pcn.dossiers} proposals={pcn.proposals} requirements={pcn.documentRequirements} documents={pcn.dossierDocuments} labRequests={pcn.labRequests} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} returnedResults={pcn.returnedResults} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'customers' ? (
-    <CustomersManagementView source="pcn" initialSearchQuery={customerSearchQuery} />
-  ) : activeSection === 'labRequests' ? (
-    <PcnLabRequestView fields={pcn.fields} dossiers={pcn.dossiers} proposals={pcn.proposals} requests={pcn.labRequests} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} generatedDocuments={pcn.generatedDocuments} canEdit={canMutatePcn} initialDossierId={focusedDossierId} onSave={pcn.addLabRequest} onStatusChange={pcn.updateLabRequest} onOpenDossier={(dossierId) => { setSelectedDossierTab('lab'); setSelectedDossierId(dossierId); }} />
-  ) : activeSection === 'results' ? (
-    <PcnResultReturnView fields={pcn.fields} dossiers={pcn.dossiers} proposals={pcn.proposals} requests={pcn.labRequests} results={pcn.returnedResults} canEdit={canMutatePcn} initialDossierId={focusedDossierId} onSave={pcn.addReturnedResult} onAttachFile={pcn.attachResultFile} />
-  ) : activeSection === 'issuance' ? (
-    <PcnIssuanceView dossiers={pcn.dossiers} proposals={pcn.proposals} issuancePackages={pcn.issuancePackages} approvalSteps={pcn.approvalSteps} templates={pcn.templates} officialDocuments={pcn.officialDocuments} initialDossierId={focusedDossierId} onPrepare={prepareIssuance} onApproveStep={approveStep} onIssue={issuePackage} onDeliver={deliverPackage} onArchive={archivePackage} onAttachFile={pcn.attachIssuanceFile} onPreflightOfficialDocuments={pcn.preflightOfficialDocuments} onGenerateOfficialDocuments={pcn.generateOfficialDocuments} currentUser={currentUser} canMutate={canMutatePcn} users={pcn.users} fields={pcn.fields} signerDelegations={pcn.signerDelegations} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} onOpenDossier={(dossierId) => { setSelectedDossierTab('documents'); setSelectedDossierId(dossierId); }} onCreateSignerDelegation={pcn.addSignerDelegation} onRevokeSignerDelegation={pcn.revokeSignerDelegation} />
-  ) : activeSection === 'templates' ? (
-    <PcnTemplateManagementView templates={pcn.templates} currentUser={currentUser} onReview={pcn.reviewPcnTemplate} onAnnotate={pcn.annotatePcnTemplate} onImport={pcn.importPcnTemplate} onPreflightSources={pcn.preflightPcnTemplateSources} documentRequirements={pcn.documentRequirements} />
-  ) : activeSection === 'qualityDocuments' ? (
-    <PcnQualityDocumentsView documents={pcn.qualityDocuments} fields={pcn.fields} users={pcn.users} currentUser={currentUser} onCreate={pcn.addQualityDocument} onUpdate={pcn.updateQualityDocument} onRetire={pcn.retireQualityDocument} />
-  ) : activeSection === 'haimy' ? (
-    <PcnHaimyImportView currentUser={currentUser} onPromoted={async (response) => { await pcn.load(true); openDossierAtCurrentStation(response.dossier); }} onOpenDossier={(dossierId) => { const dossier = pcn.dossiers.find((item) => item.id === dossierId); if (dossier) openDossierAtCurrentStation(dossier); else setSelectedDossierId(dossierId); }} />
-  ) : activeSection === 'backup' ? (
-    <PcnBackupView currentUser={currentUser} onRestored={async () => { await pcn.load(true); }} />
-  ) : activeSection === 'activityLogs' ? (
-    <ActivityLogView currentUser={currentUser} systemUsers={pcn.users} />
-  ) : activeSection === 'users' ? (
+    <PcnCustomersManagementView initialSearchQuery={customerSearchQuery} />
+  ) : activeSection === 'settings' && isPcnAdmin ? (
+    <PcnSettingsView currentUser={currentUser} templates={pcn.templates} onReviewTemplate={pcn.reviewPcnTemplate} onAnnotateTemplate={pcn.annotatePcnTemplate} />
+  ) : activeSection === 'users' && isPcnAdmin ? (
     <PcnUserManagementView users={pcn.users} roles={pcn.departmentRoles} fields={pcn.fields} currentUser={currentUser} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
-  ) : (
-    <PcnArchiveView fields={pcn.fields} dossiers={pcn.dossiers} proposals={pcn.proposals} issuancePackages={pcn.issuancePackages} initialDossierId={focusedDossierId} onOpenDossier={(dossier) => { setSelectedDossierTab('issuance'); setSelectedDossierId(dossier.id); }} canEdit={canMutatePcn} onSetLegalHold={setDossierLegalHold} />
-  );
-
+  ) : null;
   const systemRoleLabel = currentUser.systemRole || currentUser.role;
   const departmentRoleLabel = currentUser.departmentRoleCode || 'Chưa phân công';
   return (
@@ -823,7 +774,6 @@ export function PcnWorkspace() {
         <PcnSidebar
           currentUser={currentUser}
           activeSection={activeSection}
-          fields={pcn.fields}
           sectionLabels={sectionLabels}
           isPcnAdmin={isPcnAdmin}
           isSidebarCollapsed={isSidebarCollapsed}
@@ -834,6 +784,7 @@ export function PcnWorkspace() {
           onToggleSidebar={toggleSidebar}
           onOpenSection={openSection}
           onCloseMobileMenu={() => setMobileMenuOpen(false)}
+          onOpenPersonalSettings={() => setPersonalSettingsOpen(true)}
           onLogout={handleLogout}
         />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -867,16 +818,17 @@ export function PcnWorkspace() {
               <PcnNotificationDropdown isOpen={pcnNotificationOpen} onClose={() => setPcnNotificationOpen(false)} notifications={pcn.notifications} currentUser={currentUser} onMarkRead={pcn.markPcnNotificationAsRead} onMarkAllRead={pcn.markAllPcnNotificationsAsRead} onClear={pcn.clearPcnNotifications} onSelect={handlePcnNotificationSelect} />
             </div>
           </header>
-          <main className="min-h-0 flex-1">{content}</main>
-          <nav className="flex shrink-0 items-center justify-around border-t border-slate-200 bg-white p-1.5 lg:hidden" aria-label="Menu di động">
+          <main className="min-h-0 min-w-0 flex-1 mobile-scroll-y overflow-x-hidden overflow-y-auto">{content}</main>
+          <nav className="pcn-mobile-nav mobile-scroll-x flex shrink-0 items-center justify-start gap-1 border-t border-slate-200 bg-white p-1.5 lg:hidden" aria-label="Menu di động">
             {mobileNavItems.map(({ key, icon: Icon }) => {
               const isActive = activeSection === key;
-              return <button type="button" key={key} onClick={() => openSection(key)} aria-current={isActive ? 'page' : undefined} className={isActive ? 'flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-md bg-emerald-50 px-1 py-1.5 text-[8px] font-bold text-emerald-700' : 'flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-[8px] font-bold text-slate-400'}><Icon size={15} /><span className="truncate">{sectionLabels[key]}</span></button>;
+              return <button type="button" key={key} onClick={() => openSection(key)} aria-current={isActive ? 'page' : undefined} className={isActive ? 'mobile-touch-target flex min-h-11 min-w-[4.5rem] shrink-0 flex-col items-center gap-0.5 rounded-md bg-emerald-50 px-1 py-1.5 text-[8px] font-bold text-emerald-700' : 'mobile-touch-target flex min-h-11 min-w-[4.5rem] shrink-0 flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-[8px] font-bold text-slate-400'}><Icon size={15} /><span className="truncate">{sectionLabels[key]}</span></button>;
             })}
           </nav>
         </div>
       </div>
-      {selectedDossier && <PcnDossierDetailView dossier={selectedDossier} proposal={pcn.proposals.find((proposal) => proposal.id === selectedDossier.proposalId)} fields={pcn.fields} templates={pcn.templates} labRequests={pcn.labRequests} results={pcn.returnedResults} approvalSteps={pcn.approvalSteps} issuancePackages={pcn.issuancePackages} activityLogs={pcn.activityLogs} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} dossierAttachments={pcn.dossierAttachments} generatedDocuments={pcn.generatedDocuments} officialDocuments={pcn.officialDocuments} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} users={pcn.users} currentUser={currentUser} initialTab={selectedDossierTab} onUploadDocument={(requirementId, file) => pcn.uploadDossierDocument(selectedDossier.id, requirementId, file)} onUpdateStatus={(status, exceptionReason) => pcn.updateDossier(selectedDossier.id, { status, ...(exceptionReason !== undefined ? { exceptionReason } : {}) })} onUpdateDossier={(updates) => pcn.updateDossier(selectedDossier.id, updates)} canEditMilestones={currentUser.systemRole !== 'viewer' && currentUser.role !== 'viewer'} onReviewHistorical={(input) => reviewHistoricalDossier(selectedDossier.id, input)} onMapHistoricalAttachment={(attachmentId, requirementId) => pcn.mapHistoricalAttachment(selectedDossier.id, attachmentId, requirementId)} onPreflight={(kind, sampleRouteId, labRequestId) => pcn.preflightDossierDocuments(selectedDossier.id, kind, sampleRouteId, labRequestId)} onGenerateDocuments={(kind, formats, sampleRouteId, expectedContextHash, labRequestId) => pcn.generateDossierDocuments(selectedDossier.id, kind, formats, sampleRouteId, expectedContextHash, labRequestId)} onDownloadPackage={() => downloadDossierPackage(selectedDossier)} onOpenApprovalModule={() => { setActiveSection('issuance'); setFocusedDossierId(selectedDossier.id); setSelectedDossierTab(undefined); setSelectedDossierId(undefined); }} onClose={() => { setSelectedDossierTab(undefined); setSelectedDossierId(undefined); }} />}
+      {personalSettingsOpen && <PcnPersonalSettingsPanel currentUser={currentUser} onClose={() => setPersonalSettingsOpen(false)} />}
+      {selectedDossier && <PcnDossierDetailView dossier={selectedDossier} proposal={pcn.proposals.find((proposal) => proposal.id === selectedDossier.proposalId)} fields={pcn.fields} templates={pcn.templates} labRequests={pcn.labRequests} results={pcn.returnedResults} approvalSteps={pcn.approvalSteps} issuancePackages={pcn.issuancePackages} activityLogs={pcn.activityLogs} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} dossierAttachments={pcn.dossierAttachments} generatedDocuments={pcn.generatedDocuments} officialDocuments={pcn.officialDocuments} signerDelegations={pcn.signerDelegations} sampleLots={pcn.sampleLots} sampleItems={pcn.sampleItems} sampleRoutes={pcn.sampleRoutes} users={pcn.users} currentUser={currentUser} initialTab={selectedDossierTab} onUploadDocument={(requirementId, file) => pcn.uploadDossierDocument(selectedDossier.id, requirementId, file)} onUpdateStatus={(status, exceptionReason) => pcn.updateDossier(selectedDossier.id, { status, ...(exceptionReason !== undefined ? { exceptionReason } : {}) })} onUpdateDossier={(updates) => pcn.updateDossier(selectedDossier.id, updates)} canEditMilestones={currentUser.systemRole !== 'viewer' && currentUser.role !== 'viewer'} onPreflight={(kind, sampleRouteId, labRequestId) => pcn.preflightDossierDocuments(selectedDossier.id, kind, sampleRouteId, labRequestId)} onGenerateDocuments={(kind, formats, sampleRouteId, expectedContextHash, labRequestId) => pcn.generateDossierDocuments(selectedDossier.id, kind, formats, sampleRouteId, expectedContextHash, labRequestId)} onDownloadPackage={() => downloadDossierPackage(selectedDossier)} onCreateSampleLot={pcn.addSampleLot} onUpdateSampleRoute={pcn.updateSampleRoute} onSaveLabRequest={pcn.addLabRequest} onUpdateLabRequest={pcn.updateLabRequest} onDispatchLabRequest={pcn.dispatchLabRequest} onReconcileLabRequest={pcn.reconcileLabRequest} onSaveHandover={(request, details) => pcn.updateLabRequest(request.id, request.status, { handoverDetails: details })} onSaveResult={pcn.addReturnedResult} onAttachResultFile={pcn.attachResultFile} onPrepareIssuance={prepareIssuance} onApproveStep={approveStep} onIssue={issuePackage} onDeliver={deliverPackage} onArchive={archivePackage} onAttachIssuanceFile={pcn.attachIssuanceFile} onPreflightOfficialDocuments={pcn.preflightOfficialDocuments} onGenerateOfficialDocuments={pcn.generateOfficialDocuments} onCreateSignerDelegation={pcn.addSignerDelegation} onRevokeSignerDelegation={pcn.revokeSignerDelegation} onClose={() => { setSelectedDossierTab(undefined); setSelectedDossierId(undefined); }} />}
     </>
   );
 }

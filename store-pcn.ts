@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { useStore } from './store';
 
 import type {
   CertificationDossier,
@@ -19,6 +18,7 @@ import type {
   PcnCertificationField,
   PcnUserAccount,
   PcnSampleFlowEvent,
+  PcnSampleItem,
   PcnSampleLot,
   PcnSampleRoute,
   PcnTemplateDefinition,
@@ -32,13 +32,11 @@ import type {
 import { batchDelete, fetchCollection, saveDoc } from './utils/postgresApi';
 import { mergeNotifications } from './utils/notificationEvents';
 import { normalizeCustomerRecord } from './utils/customerRecord';
-import { DEFAULT_PCN_CERTIFICATION_FIELDS, isPcnDossierTransitionAllowed } from './utils/pcnWorkflow';
+import { DEFAULT_PCN_CERTIFICATION_FIELDS, isPcnDossierTransitionAllowed, mergePcnCertificationFields } from './utils/pcnWorkflow';
 import { mergePcnTemplateCatalog, mergePcnTemplateRuntimeProjection } from './utils/pcnTemplateCatalog';
 import { generatePcnOfficialDocuments, preflightPcnOfficialDocuments } from './utils/pcnOfficialDocumentApi';
 import type { PcnOfficialPreflightResponse } from './utils/pcnOfficialDocumentApi';
-import { importPcnTemplateOnServer, preflightPcnTemplateSourcesOnServer, reviewPcnTemplate as reviewPcnTemplateApi } from './utils/pcnTemplateApi';
-import type { PcnTemplateImportInput, PcnTemplateImportResponse } from './utils/pcnTemplateApi';
-import type { PcnTemplateSourceCoverageReport } from './utils/pcnTemplateSourceCoverage';
+import { reviewPcnTemplate as reviewPcnTemplateApi } from './utils/pcnTemplateApi';
 import { annotatePcnTemplate as annotatePcnTemplateApi } from './utils/pcnTemplateAnnotationApi';
 import { getPcnDocumentId, mergePcnCustomers } from './utils/pcnStorePolicy';
 import { getPcnIssuanceReadiness } from './utils/pcnIssuance';
@@ -53,16 +51,13 @@ import { createPcnIntake } from './utils/pcnIntakeApi';
 import { updatePcnProposal, type PcnProposalUpdateInput } from './utils/pcnProposalApi';
 import { updatePcnDossier, type PcnDossierUpdateInput } from './utils/pcnDossierApi';
 import { confirmPcnGeneratedDocumentIntoChecklist, uploadPcnDossierDocument } from './utils/pcnDossierDocumentApi';
-import { reviewPcnHistoricalDossier } from './utils/pcnHistoricalReviewApi';
-import type { PcnHistoricalReviewInput } from './utils/pcnHistoricalReview';
-import { mapPcnHistoricalAttachment } from './utils/pcnHistoricalAttachmentMappingApi';
 import { generatePcnDossierDocuments, preflightPcnDossierDocuments } from './utils/pcnDocumentGenerationApi';
 import type { PcnDossierDocumentContext } from './utils/pcnDocumentGeneration';
 import { createPcnSampleLot as createPcnSampleLotApi, updatePcnSampleRoute as updatePcnSampleRouteApi } from './utils/pcnSampleApi';
-import { createPcnLabRequest as createPcnLabRequestApi, updatePcnLabRequest as updatePcnLabRequestApi } from './utils/pcnLabRequestApi';
+import { createPcnLabRequest as createPcnLabRequestApi, dispatchPcnLabRequest, reconcilePcnLabRequest, updatePcnLabRequest as updatePcnLabRequestApi, type PcnLabRequestMutationResponse } from './utils/pcnLabRequestApi';
 import { createPcnSignerDelegation, fetchPcnSignerDelegations, issuePcnIssuance, revokePcnSignerDelegation, type PcnSignerDelegationInput } from './utils/pcnSignerDelegationApi';
 import { assertPcnSignerAuthorized } from './utils/pcnSignerAuthorization';
-import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS } from './utils/pcnDossierDocuments';
+import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, mergePcnDocumentRequirements } from './utils/pcnDossierDocuments';
 import { createPcnUser, deletePcnUser as deletePcnUserApi, fetchPcnDepartmentRoles, fetchPcnUsers, resetPcnUserPassword, updatePcnUser, type PcnDepartmentRole, type PcnUserInput } from './utils/pcnUserApi';
 import { buildPcnQualityDocument } from './utils/pcnQualityDocuments';
 import { attachPcnQualityDocumentFile, createPcnQualityDocument, updatePcnQualityDocument } from './utils/pcnQualityDocumentApi';
@@ -70,6 +65,8 @@ import { createPcnCustomer, deletePcnCustomer, updatePcnCustomer } from './utils
 import type { PcnSampleLotDraft, PcnSampleRouteUpdate } from './utils/pcnSampleFlow';
 import type { ActivityLog } from './types';
 import { assertPcnClientAdmin, assertPcnClientMutationAllowed } from './utils/pcnRbac';
+import { filterPcnFutureWorkRelations, filterPcnFutureWorkSnapshot } from './utils/pcnActiveData';
+import { usePcnSessionStore } from './utils/pcnSessionState';
 
 interface PcnStoreState {
   fields: PcnCertificationField[];
@@ -88,6 +85,7 @@ interface PcnStoreState {
   issuancePackages: IssuancePackage[];
   activityLogs: ActivityLog[];
   sampleLots: PcnSampleLot[];
+  sampleItems: PcnSampleItem[];
   sampleRoutes: PcnSampleRoute[];
   sampleFlowEvents: PcnSampleFlowEvent[];
   users: PcnUserAccount[];
@@ -108,18 +106,16 @@ interface PcnStoreState {
   uploadDossierDocument: (dossierId: string, requirementId: string, file: File) => Promise<void>;
   confirmGeneratedDocument: (dossierId: string, generated: PcnGeneratedDocument, requirement: PcnDocumentRequirement) => Promise<void>;
   updateDossier: (dossierId: string, updates: PcnDossierUpdateInput) => Promise<void>;
-  reviewHistoricalDossier: (dossierId: string, input: PcnHistoricalReviewInput) => Promise<void>;
-  mapHistoricalAttachment: (dossierId: string, attachmentId: string, requirementId: string) => Promise<void>;
   preflightDossierDocuments: (dossierId: string, kind?: PcnGeneratedDocumentKind, sampleRouteId?: string, labRequestId?: string) => Promise<PcnDossierDocumentContext>;
   generateDossierDocuments: (dossierId: string, kind?: PcnGeneratedDocumentKind, formats?: PcnGeneratedDocumentFormat[], sampleRouteId?: string, expectedContextHash?: string, labRequestId?: string) => Promise<PcnGeneratedDocument[]>;
   preflightOfficialDocuments: (issuanceId: string, formats?: PcnGeneratedDocumentFormat[]) => Promise<PcnOfficialPreflightResponse>;
   generateOfficialDocuments: (issuanceId: string, formats?: PcnGeneratedDocumentFormat[], expectedContextHash?: string) => Promise<PcnOfficialGeneratedDocument[]>;
   reviewPcnTemplate: (templateId: string, action: PcnTemplateReviewAction, reason?: string) => Promise<PcnTemplateDefinition>;
   annotatePcnTemplate: (templateId: string, mappings: PcnTemplateAnnotationMapping[]) => Promise<PcnTemplateDefinition>;
-  importPcnTemplate: (input: PcnTemplateImportInput) => Promise<PcnTemplateImportResponse>;
-  preflightPcnTemplateSources: (sourceRoot: string) => Promise<PcnTemplateSourceCoverageReport>;
   addLabRequest: (request: OutboundLabRequest) => Promise<void>;
-  updateLabRequest: (requestId: string, status: OutboundLabRequest['status'], updates?: Partial<Pick<OutboundLabRequest, 'handoverAt' | 'receivedAt' | 'handoverNote' | 'handoverDocumentId' | 'sampleIssue' | 'returnedResultId'>>, idempotencyKey?: string) => Promise<void>;
+  updateLabRequest: (requestId: string, status: OutboundLabRequest['status'], updates?: Partial<Pick<OutboundLabRequest, 'handoverAt' | 'receivedAt' | 'handoverNote' | 'handoverDocumentId' | 'handoverDetails' | 'sampleIssue' | 'returnedResultId'>>, idempotencyKey?: string) => Promise<void>;
+  dispatchLabRequest: (requestId: string) => Promise<void>;
+  reconcileLabRequest: (requestId: string) => Promise<void>;
   addReturnedResult: (result: ReturnedTestResult) => Promise<void>;
   attachResultFile: (resultId: string, file: File) => Promise<void>;
   createIssuanceBundle: (dossierId: string, idempotencyKey?: string) => Promise<void>;
@@ -146,16 +142,30 @@ interface PcnStoreState {
   updateSampleRoute: (routeId: string, status: PcnSampleRoute['status'], update?: PcnSampleRouteUpdate) => Promise<void>;
 }
 
+function mergePcnLabMutationState(state: PcnStoreState, result: PcnLabRequestMutationResponse): Partial<PcnStoreState> {
+  const mergeOne = <T extends { id: string }>(items: T[], next?: T): T[] => next ? [next, ...items.filter((item) => item.id !== next.id)] : items;
+  return {
+    labRequests: mergeOne(state.labRequests, result.request),
+    dossiers: mergeOne(state.dossiers, result.dossier),
+    sampleLots: mergeOne(state.sampleLots, result.lot),
+    sampleRoutes: mergeOne(state.sampleRoutes, result.route),
+    sampleFlowEvents: mergeOne(state.sampleFlowEvents, result.event),
+    activityLogs: result.activityLogs.length > 0
+      ? [...result.activityLogs, ...state.activityLogs.filter((item) => !result.activityLogs.some((next) => next.id === item.id))]
+      : state.activityLogs,
+  };
+}
+
 function byUpdatedAt<T extends { updatedAt?: string }>(left: T, right: T): number {
   return String(right.updatedAt || '').localeCompare(String(left.updatedAt || ''));
 }
 
 function assertPcnStoreMutationAllowed(): void {
-  assertPcnClientMutationAllowed(useStore.getState().currentUser);
+  assertPcnClientMutationAllowed(usePcnSessionStore.getState().currentUser);
 }
 
 function assertPcnStoreAdminMutationAllowed(): void {
-  assertPcnClientAdmin(useStore.getState().currentUser);
+  assertPcnClientAdmin(usePcnSessionStore.getState().currentUser);
 }
 
 export const usePcnStore = create<PcnStoreState>((set, get) => ({
@@ -175,6 +185,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
   issuancePackages: [],
   activityLogs: [],
   sampleLots: [],
+  sampleItems: [],
   sampleRoutes: [],
   sampleFlowEvents: [],
   users: [],
@@ -202,6 +213,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     issuancePackages: [],
     activityLogs: [],
     sampleLots: [],
+    sampleItems: [],
     sampleRoutes: [],
     sampleFlowEvents: [],
     users: [],
@@ -217,7 +229,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     if (get().isLoading || (get().isLoaded && !force)) return;
     set({ isLoading: true });
     try {
-      const [fields, templates, documentRequirements, dossierDocuments, dossierAttachments, generatedDocuments, officialDocuments, customers, proposals, dossiers, sampleLots, sampleRoutes, sampleFlowEvents, labRequests, returnedResults, approvalSteps, issuancePackages, activityLogs, users, departmentRoles, signerDelegations, qualityDocuments, notifications] = await Promise.all([
+      const [fields, templates, documentRequirements, dossierDocuments, dossierAttachments, generatedDocuments, officialDocuments, customers, proposals, dossiers, sampleLots, sampleItems, sampleRoutes, sampleFlowEvents, labRequests, returnedResults, approvalSteps, issuancePackages, activityLogs, users, departmentRoles, signerDelegations, qualityDocuments, notifications] = await Promise.all([
         fetchCollection<PcnCertificationField>('pcnCertificationFields'),
         fetchCollection<PcnTemplateDefinition>('pcnTemplateDefinitions'),
         fetchCollection<PcnDocumentRequirement>('pcnDocumentRequirements'),
@@ -229,6 +241,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
         fetchCollection<CertificationProposal>('certificationProposals'),
         fetchCollection<CertificationDossier>('certificationDossiers'),
         fetchCollection<PcnSampleLot>('pcnSampleLots'),
+        fetchCollection<PcnSampleItem>('pcnSampleItems'),
         fetchCollection<PcnSampleRoute>('pcnSampleRoutes'),
         fetchCollection<PcnSampleFlowEvent>('pcnSampleFlowEvents'),
         fetchCollection<OutboundLabRequest>('labRequests'),
@@ -242,30 +255,48 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
         fetchCollection<PcnQualityDocument>('pcnQualityDocuments'),
         fetchCollection<AppNotification>('notifications'),
       ]);
-      set({
-        fields: fields.length > 0 ? fields : DEFAULT_PCN_CERTIFICATION_FIELDS,
-        templates: mergePcnTemplateCatalog(templates),
-        documentRequirements: documentRequirements.length > 0 ? documentRequirements : DEFAULT_PCN_DOCUMENT_REQUIREMENTS,
+      const activeSnapshot = filterPcnFutureWorkSnapshot({ proposals, dossiers, customers });
+      const activeRelations = filterPcnFutureWorkRelations({
         dossierDocuments,
         dossierAttachments,
-        generatedDocuments: generatedDocuments.sort((left, right) => String(right.generatedAt || '').localeCompare(String(left.generatedAt || ''))),
-        officialDocuments: officialDocuments.sort((left, right) => String(right.generatedAt || '').localeCompare(String(left.generatedAt || ''))),
+        generatedDocuments,
+        officialDocuments,
+        labRequests,
+        returnedResults,
+        approvalSteps,
+        issuancePackages,
+        sampleLots,
+        sampleItems,
+        sampleRoutes,
+        sampleFlowEvents,
+        activityLogs,
+        notifications,
+      }, activeSnapshot.dossiers);
+      set({
+        fields: mergePcnCertificationFields(fields),
+        templates: mergePcnTemplateCatalog(templates),
+        documentRequirements: mergePcnDocumentRequirements(documentRequirements),
+        dossierDocuments: activeRelations.dossierDocuments,
+        dossierAttachments: activeRelations.dossierAttachments,
+        generatedDocuments: activeRelations.generatedDocuments.sort((left, right) => String(right.generatedAt || '').localeCompare(String(left.generatedAt || ''))),
+        officialDocuments: activeRelations.officialDocuments.sort((left, right) => String(right.generatedAt || '').localeCompare(String(left.generatedAt || ''))),
         customers: mergePcnCustomers([], customers),
-        proposals: proposals.sort(byUpdatedAt),
-        dossiers: dossiers.sort(byUpdatedAt),
-        sampleLots: sampleLots.sort(byUpdatedAt),
-        sampleRoutes: sampleRoutes.sort(byUpdatedAt),
-        sampleFlowEvents: sampleFlowEvents.sort((left, right) => String(right.occurredAt || '').localeCompare(String(left.occurredAt || ''))),
-        labRequests: labRequests.sort(byUpdatedAt),
-        returnedResults: returnedResults.sort(byUpdatedAt),
-        approvalSteps: approvalSteps.sort((left, right) => left.sequence - right.sequence),
-        issuancePackages: issuancePackages.sort(byUpdatedAt),
-        activityLogs: activityLogs.sort((left, right) => String(right.createdAt || '').localeCompare(String(left.createdAt || ''))),
+        proposals: activeSnapshot.proposals.sort(byUpdatedAt),
+        dossiers: activeSnapshot.dossiers.sort(byUpdatedAt),
+        sampleLots: activeRelations.sampleLots.sort(byUpdatedAt),
+        sampleItems: activeRelations.sampleItems.sort(byUpdatedAt),
+        sampleRoutes: activeRelations.sampleRoutes.sort(byUpdatedAt),
+        sampleFlowEvents: activeRelations.sampleFlowEvents.sort((left, right) => String(right.occurredAt || '').localeCompare(String(left.occurredAt || ''))),
+        labRequests: activeRelations.labRequests.sort(byUpdatedAt),
+        returnedResults: activeRelations.returnedResults.sort(byUpdatedAt),
+        approvalSteps: activeRelations.approvalSteps.sort((left, right) => left.sequence - right.sequence),
+        issuancePackages: activeRelations.issuancePackages.sort(byUpdatedAt),
+        activityLogs: activeRelations.activityLogs.sort((left, right) => String(right.createdAt || '').localeCompare(String(left.createdAt || ''))),
         users,
         departmentRoles,
         signerDelegations,
         qualityDocuments: qualityDocuments.sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || ''))),
-        notifications: mergeNotifications([], notifications, 50),
+        notifications: mergeNotifications([], activeRelations.notifications, 50),
         isLoaded: true,
       });
     } finally {
@@ -408,6 +439,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     const routeIds = new Set(result.routes.map((route) => route.id));
     set((state) => ({
       sampleLots: [result.lot, ...state.sampleLots.filter((item) => item.id !== result.lot.id)],
+      sampleItems: result.items ? [...result.items, ...state.sampleItems.filter((item) => !result.items.some((next) => next.id === item.id))] : state.sampleItems,
       sampleRoutes: [...result.routes, ...state.sampleRoutes.filter((item) => !routeIds.has(item.id))],
       sampleFlowEvents: result.event
         ? [result.event, ...state.sampleFlowEvents.filter((item) => item.id !== result.event?.id)]
@@ -561,7 +593,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     const requirement = get().documentRequirements.find((item) => item.id === requirementId);
     if (!requirement || !dossier.fieldCodes.includes(requirement.fieldCode)) throw new Error('Loại tài liệu không thuộc Lĩnh vực của hồ sơ');
     if (typeof File === 'undefined' || !(file instanceof File) || file.size <= 0) throw new Error('Tệp hồ sơ không hợp lệ');
-    const currentUser = useStore.getState().currentUser;
+    const currentUser = usePcnSessionStore.getState().currentUser;
     const result = await uploadPcnDossierDocument({
       dossierId,
       requirement,
@@ -603,32 +635,6 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     set((state) => ({
       dossiers: state.dossiers.map((item) => item.id === result.dossier.id ? result.dossier : item),
       ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs] } : {}),
-    }));
-  },
-
-  reviewHistoricalDossier: async (dossierId, input) => {
-    assertPcnStoreMutationAllowed();
-    const dossier = get().dossiers.find((item) => item.id === dossierId);
-    if (!dossier) throw new Error('Không tìm thấy hồ sơ cần rà soát');
-    if (!dossier.historicalImport) throw new Error('Hồ sơ này không phải dữ liệu nhập lịch sử');
-    const result = await reviewPcnHistoricalDossier(dossierId, input);
-    set((state) => ({
-      proposals: state.proposals.map((item) => item.id === result.proposal.id ? result.proposal : item),
-      dossiers: state.dossiers.map((item) => item.id === result.dossier.id ? result.dossier : item),
-      activityLogs: [...result.activityLogs, ...state.activityLogs],
-    }));
-  },
-
-  mapHistoricalAttachment: async (dossierId, attachmentId, requirementId) => {
-    assertPcnStoreMutationAllowed();
-    const dossier = get().dossiers.find((item) => item.id === dossierId);
-    if (!dossier) throw new Error('Không tìm thấy hồ sơ chứng nhận');
-    const result = await mapPcnHistoricalAttachment(dossierId, attachmentId, requirementId);
-    set((state) => ({
-      dossiers: state.dossiers.map((item) => item.id === result.dossier.id ? result.dossier : item),
-      dossierAttachments: state.dossierAttachments.map((item) => item.id === result.attachment.id ? result.attachment : item),
-      dossierDocuments: [...result.documents, ...state.dossierDocuments.filter((item) => !result.documents.some((next) => next.id === item.id))],
-      activityLogs: [...result.activityLogs, ...state.activityLogs],
     }));
   },
 
@@ -688,24 +694,6 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     return result.template;
   },
 
-  importPcnTemplate: async (input) => {
-    assertPcnStoreAdminMutationAllowed();
-    const result = await importPcnTemplateOnServer(input);
-    if (result.definition) {
-      set((state) => ({
-        templates: state.templates.some((template) => template.id === result.definition!.id)
-          ? state.templates.map((template) => template.id === result.definition!.id ? mergePcnTemplateRuntimeProjection(template, result.definition!) : template)
-          : [result.definition!, ...state.templates],
-        activityLogs: result.activityLog ? [result.activityLog, ...state.activityLogs] : state.activityLogs,
-      }));
-    }
-    return result;
-  },
-
-  preflightPcnTemplateSources: async (sourceRoot) => {
-    return preflightPcnTemplateSourcesOnServer({ sourceRoot });
-  },
-
   addLabRequest: async (request) => {
     assertPcnStoreMutationAllowed();
     const result = await createPcnLabRequestApi(request);
@@ -728,6 +716,18 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
       sampleRoutes: result.route ? state.sampleRoutes.map((item) => item.id === result.route?.id ? result.route! : item) : state.sampleRoutes,
       activityLogs: [...result.activityLogs, ...state.activityLogs.filter((item) => !result.activityLogs.some((next) => next.id === item.id))],
     }));
+  },
+
+  dispatchLabRequest: async (requestId) => {
+    assertPcnStoreMutationAllowed();
+    const result = await dispatchPcnLabRequest(requestId);
+    set((state) => mergePcnLabMutationState(state, result));
+  },
+
+  reconcileLabRequest: async (requestId) => {
+    assertPcnStoreMutationAllowed();
+    const result = await reconcilePcnLabRequest(requestId);
+    set((state) => mergePcnLabMutationState(state, result));
   },
 
   addReturnedResult: async (result) => {
@@ -753,7 +753,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     if (!result) throw new Error('Không tìm thấy KQTN cần đính kèm file');
     if (result.fileAssetId) throw new Error('KQTN này đã có file đính kèm');
     if (typeof File === 'undefined' || !(file instanceof File) || file.size <= 0) throw new Error('Tệp KQTN không hợp lệ');
-    const currentUser = useStore.getState().currentUser;
+    const currentUser = usePcnSessionStore.getState().currentUser;
     const asset = await uploadPcnFile({
       file,
       sourceCollection: 'returnedResults',
@@ -811,7 +811,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     const proposal = get().proposals.find((item) => item.id === dossier.proposalId);
     const steps = get().approvalSteps.filter((item) => item.dossierId === dossier.id);
     const results = get().returnedResults.filter((item) => item.dossierId === dossier.id);
-    const readiness = getPcnIssuanceReadiness(dossier, results, steps, proposal?.historicalImport);
+    const readiness = getPcnIssuanceReadiness(dossier, results, steps);
     if (!readiness.ready) throw new Error(readiness.reasons.join('; '));
     assertPcnSignerAuthorized({
       signerUsername: input.signerUsername,
@@ -880,7 +880,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     const issuance = get().issuancePackages.find((item) => item.id === issuanceId);
     if (!issuance) throw new Error('Không tìm thấy bộ phát hành');
     if (typeof File === 'undefined' || !(file instanceof File) || file.size <= 0) throw new Error('Tệp PCN không hợp lệ');
-    const currentUser = useStore.getState().currentUser;
+    const currentUser = usePcnSessionStore.getState().currentUser;
     const asset = await uploadPcnFile({
       file,
       sourceCollection: 'issuancePackages',

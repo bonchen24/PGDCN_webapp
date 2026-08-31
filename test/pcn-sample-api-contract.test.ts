@@ -11,6 +11,7 @@ const designSource = fs.readFileSync(new URL('../design.md', import.meta.url), '
 
 test('sample mutations use dedicated server transactions instead of generic collection writes', () => {
   assert.ok(PCN_DEDICATED_MUTATION_COLLECTIONS.has('pcnSampleLots'));
+  assert.ok(PCN_DEDICATED_MUTATION_COLLECTIONS.has('pcnSampleItems'));
   assert.ok(PCN_DEDICATED_MUTATION_COLLECTIONS.has('pcnSampleRoutes'));
   assert.ok(PCN_DEDICATED_MUTATION_COLLECTIONS.has('pcnSampleFlowEvents'));
   assert.equal(PCN_STAFF_MUTABLE_COLLECTIONS.has('pcnSampleLots'), false);
@@ -77,6 +78,26 @@ test('sample API client sends the draft and route transition to their dedicated 
     update: { note: 'Đã nhận đủ mẫu' },
     idempotencyKey: 'request-1',
   });
+});
+
+test('PCN lab integration exposes signed dispatch and webhook boundaries with idempotent inbox handling', () => {
+  assert.match(serverSource, /app\.post\('\/api\/pcn\/lab-requests\/:requestId\/dispatch'/);
+  assert.match(serverSource, /app\.post\('\/api\/pcn\/lab-requests\/:requestId\/reconcile'/);
+  assert.match(serverSource, /app\.post\('\/api\/pcn\/integrations\/lab-status-events'/);
+  assert.match(serverSource, /PCN_LAB_INTEGRATIONS_JSON/);
+  assert.match(serverSource, /createHmac\(['"]sha256['"]|createHmac\(['"]sha256/);
+  assert.match(serverSource, /timingSafeEqual/);
+  assert.match(serverSource, /pg_advisory_xact_lock/);
+  assert.match(serverSource, /externalSequence/);
+  assert.match(serverSource, /pcnSampleItemIds/);
+  assert.match(serverSource, /sampleItems/);
+  assert.match(serverSource, /pcnSampleFlowEvents/);
+  assert.match(serverSource, /canonicalizePcnLabIntegrationPayload/);
+  assert.match(serverSource, /AbortController/);
+  assert.match(serverSource, /getPcnLabIntegrationEventId/);
+  assert.match(serverSource, /getDocumentPayload\(event\)/);
+  assert.match(serverSource, /secretEnv/);
+  assert.doesNotMatch(serverSource, /JSON\.stringify\(\{[^}]*secretEnv/);
 });
 
 // --- End of pcn-sample-api-contract.test.ts ---

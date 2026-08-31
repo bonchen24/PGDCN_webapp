@@ -1,6 +1,6 @@
 // Author: Gemini
 // OS support: Web/Node
-// Description: Type definitions for laboratory testing schedule application with sync diagnostic reports, notification support, guest roles, and cloud settings
+// Description: Type definitions for the PCN certification workflow, dossier documents, sample flow and role-separated access control
 
 export enum MachineType {
   AIR_CONDITIONER = 'Điều hòa không khí',
@@ -216,12 +216,45 @@ export interface CustomerRef {
 }
 
 export type PcnCertificationFieldCode = string;
+export type PcnCertificationFieldScopeStatus = 'CONFIRMED' | 'NEEDS_PCN_CONFIRMATION';
+
+/** Active PCN field catalog. Keep this list separate from the DDT/legacy model. */
+export const PCN_CERTIFICATION_FIELD_CODES = ['QC4', 'QC9', 'QC20'] as const;
 
 export interface PcnCertificationField {
   code: PcnCertificationFieldCode;
   name: string;
   standardRefs: string[];
+  scopeStatus?: PcnCertificationFieldScopeStatus;
   active: boolean;
+}
+
+export type PcnQc20LotDefinition = 'PRODUCT_LOT' | 'SHIPMENT_LOT';
+
+export interface PcnQc20ChemicalCompositionRequirement {
+  element: string;
+  minPercent?: number;
+  maxPercent?: number;
+  source?: string;
+}
+
+/**
+ * Confirmed scope data for QCVN 20. These values are captured from the
+ * proposal instead of being inferred from a product name or a file name.
+ */
+export interface PcnQc20ScopeSnapshot {
+  productForm?: string;
+  grade?: string;
+  nominalDimensions?: string;
+  hsCode?: string;
+  lotDefinition?: PcnQc20LotDefinition;
+  manufacturerLotCode?: string;
+  importer?: string;
+  countryOfOrigin?: string;
+  appliedStandard?: string;
+  chromiumMinPercent?: number;
+  carbonMaxPercent?: number;
+  chemicalCompositionRequirements?: PcnQc20ChemicalCompositionRequirement[];
 }
 
 export type PcnProposalChannel = 'DIRECT' | 'EMAIL' | 'ONLINE_ZALO' | 'OTHER';
@@ -249,7 +282,7 @@ export interface CertificationProposal {
   createdAt?: string;
   updatedAt?: string;
   historicalImport?: PcnHistoricalImportMetadata;
-  haimyOrigin?: PcnHaimyOrigin;
+  qc20Scope?: PcnQc20ScopeSnapshot;
 }
 
 export type PcnDossierStatus =
@@ -274,6 +307,152 @@ export type PcnDossierStatus =
   | 'ON_HOLD';
 
 export type PcnCertificationMethod = 'METHOD_1' | 'METHOD_5' | 'METHOD_7';
+
+/** Structured PCN station records captured before a DOCX/PDF is generated. */
+export type PcnOperationalFormKind =
+  | 'ASSIGNMENT_FORM'
+  | 'EVALUATION_PLAN'
+  | 'FIELD_INSPECTION'
+  | 'SAMPLE_TAKING'
+  | 'SAMPLE_CODING'
+  | 'EVALUATION_REPORT'
+  | 'COMMERCIAL';
+
+export interface PcnOperationalFormMetadata {
+  savedAt?: string;
+  savedByUsername?: string;
+}
+
+export interface PcnAssignmentForm extends PcnOperationalFormMetadata {
+  assignmentNumber: string;
+  assignedAt: string;
+  assignedBy: string;
+  ownerUsername: string;
+  evaluatorUsername: string;
+  reviewerUsername: string;
+  scope: string;
+  notes: string;
+}
+
+export interface PcnEvaluationPlanForm extends PcnOperationalFormMetadata {
+  plannedStartAt: string;
+  plannedEndAt: string;
+  location: string;
+  teamMembers: string[];
+  scope: string;
+  criteria: string;
+  customerRepresentative: string;
+  notes: string;
+}
+
+export interface PcnFieldInspectionForm extends PcnOperationalFormMetadata {
+  inspectedAt: string;
+  location: string;
+  participants: string[];
+  findings: string;
+  conclusion: string;
+  nonconformities: string[];
+  notes: string;
+}
+
+export interface PcnSampleTakingForm extends PcnOperationalFormMetadata {
+  sampledAt: string;
+  location: string;
+  samplingMethod: string;
+  participants: string[];
+  sampleQuantity: number;
+  unit: string;
+  packaging: string;
+  sealCode: string;
+  notes: string;
+}
+
+export interface PcnSampleCodingForm extends PcnOperationalFormMetadata {
+  codedAt: string;
+  coder: string;
+  lotCode: string;
+  sampleCodes: string[];
+  sealCode: string;
+  notes: string;
+}
+
+export interface PcnEvaluationReportForm extends PcnOperationalFormMetadata {
+  reportNumber: string;
+  reportedAt: string;
+  findings: string;
+  conclusion: string;
+  nonconformities: string[];
+  recommendations: string;
+  notes: string;
+}
+
+export interface PcnCommercialForm extends PcnOperationalFormMetadata {
+  contractNumber: string;
+  signedAt: string;
+  customerSigner: string;
+  pcnSigner: string;
+  serviceScope: string;
+  serviceValue: string;
+  paymentTerms: string;
+  notes: string;
+}
+
+export interface PcnOperationalForms {
+  assignment?: PcnAssignmentForm;
+  evaluationPlan?: PcnEvaluationPlanForm;
+  fieldInspection?: PcnFieldInspectionForm;
+  sampleTaking?: PcnSampleTakingForm;
+  sampleCoding?: PcnSampleCodingForm;
+  evaluationReport?: PcnEvaluationReportForm;
+  commercial?: PcnCommercialForm;
+}
+
+/** Independent document workspace used for customer-facing or ad-hoc PCN drafting. */
+export type PcnDraftFormKind =
+  | 'PROPOSAL_FORM'
+  | 'DOSSIER_COVER'
+  | 'ASSIGNMENT_FORM'
+  | 'EVALUATION_PLAN'
+  | 'FIELD_INSPECTION'
+  | 'SAMPLE_TAKING'
+  | 'SAMPLE_CODING'
+  | 'SAMPLE_HANDOVER'
+  | 'LAB_REQUEST'
+  | 'EVALUATION_REPORT'
+  | 'CERTIFICATION_RESULT'
+  | 'COMMERCIAL'
+  | 'CLIENT_PACKAGE';
+
+export type PcnDraftWorkspaceStatus = 'DRAFT' | 'GENERATED' | 'ARCHIVED';
+
+export interface PcnDraftOutput {
+  id: string;
+  format: 'DOCX' | 'PDF';
+  fileAssetId: string;
+  fileName: string;
+  mimeType: string;
+  byteSize: number;
+  sha256: string;
+  generatedAt: string;
+}
+
+export interface PcnDraftWorkspace {
+  id: string;
+  title: string;
+  formKind: PcnDraftFormKind;
+  templateId: string;
+  sourceProposalId?: string;
+  sourceDossierId?: string;
+  fieldCodes: PcnCertificationFieldCode[];
+  values: Record<string, unknown>;
+  status: PcnDraftWorkspaceStatus;
+  outputAssetIds?: string[];
+  outputs?: PcnDraftOutput[];
+  createdByUsername: string;
+  updatedByUsername: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export type PcnRetentionState = 'ACTIVE' | 'PAPER_REVIEW_DUE' | 'DIGITAL_REVIEW_DUE' | 'LEGAL_HOLD';
 
@@ -306,6 +485,9 @@ export interface CertificationDossier {
   targetDate?: string;
   evaluationAt?: string;
   effectiveAt?: string;
+  operationalForms?: PcnOperationalForms;
+  /** Explicit per-document decisions used by the sequential workflow gate. */
+  documentWaivers?: Record<string, PcnDossierDocumentWaiver>;
   labRequestIds: string[];
   returnedResultIds: string[];
   sampleLotIds?: string[];
@@ -314,7 +496,13 @@ export interface CertificationDossier {
   createdAt?: string;
   updatedAt?: string;
   historicalImport?: PcnHistoricalImportMetadata;
-  haimyOrigin?: PcnHaimyOrigin;
+}
+
+export interface PcnDossierDocumentWaiver {
+  requirementId: string;
+  reason: string;
+  decidedAt: string;
+  decidedByUsername: string;
 }
 
 export type PcnHistoricalImportReviewStatus = 'PENDING_REVIEW' | 'REVIEWED';
@@ -409,8 +597,8 @@ export type PcnTemplatePrivateAssetVerificationIssue =
   | 'SHA256_MISMATCH';
 
 export interface PcnTemplateFingerprint {
-  /** Relative to the one-time PCN source family; never an absolute Desktop path. */
-  sourceRelativePath: string;
+  /** Optional authoring-only reference; runtime projections deliberately omit it. */
+  sourceRelativePath?: string;
   byteSize: number;
   sha256?: string;
 }
@@ -431,12 +619,13 @@ export interface PcnTemplateAnnotation {
 
 export interface PcnTemplateDefinition {
   id: string;
-  fieldCode: 'QC4' | 'QC9';
+  fieldCode: PcnCertificationFieldCode;
   documentKind: PcnOfficialDocumentKind;
   method?: PcnCertificationMethod;
   variant?: string;
   displayName: string;
-  sourceLabel: string;
+  /** Authoring-only label; never shown or returned by the runtime projection. */
+  sourceLabel?: string;
   format: PcnTemplateFormat;
   status: PcnTemplateStatus;
   placeholderKeys: string[];
@@ -464,7 +653,7 @@ export interface PcnQualityDocument {
   documentCode: string;
   title: string;
   category: PcnQualityDocumentCategory;
-  fieldCodes?: Array<'QC4' | 'QC9'>;
+  fieldCodes?: PcnCertificationFieldCode[];
   version: string;
   status: PcnQualityDocumentStatus;
   issuedAt?: string;
@@ -556,12 +745,13 @@ export interface PcnDossierDocument {
   updatedAt?: string;
 }
 
-export type PcnSampleLabCode = 'PERFORMANCE' | 'EMC' | 'ELECTRICAL_SAFETY';
+export type PcnSampleLabCode = 'PERFORMANCE' | 'EMC' | 'ELECTRICAL_SAFETY' | 'CHEMICAL_ANALYSIS';
 
 export const PCN_SAMPLE_LAB_OPTIONS: Array<{ code: PcnSampleLabCode; name: string }> = [
   { code: 'PERFORMANCE', name: 'Phòng thử nghiệm Hiệu suất' },
   { code: 'EMC', name: 'Phòng thử EMC' },
   { code: 'ELECTRICAL_SAFETY', name: 'Phòng thử An toàn điện' },
+  { code: 'CHEMICAL_ANALYSIS', name: 'Phân tích thành phần hóa học / Hóa lý' },
 ];
 
 export type PcnSampleRouteStatus =
@@ -573,6 +763,54 @@ export type PcnSampleRouteStatus =
   | 'CLOSED'
   | 'ISSUE'
   | 'CANCELLED';
+
+export type PcnSampleExecutionStatus =
+  | 'UNSCHEDULED'
+  | 'SCHEDULED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'BLOCKED'
+  | 'CANCELLED';
+
+export type PcnSampleExecutionOutcome = 'PENDING' | 'PASS' | 'FAIL';
+
+/** Remote execution facts owned by the target testing-room application. */
+export interface PcnSampleExecutionSnapshot {
+  status: PcnSampleExecutionStatus;
+  scheduledDate?: string;
+  startedAt?: string;
+  completedAt?: string;
+  outcome?: PcnSampleExecutionOutcome;
+  sourceSystemCode?: string;
+  externalStatusCode?: string;
+  externalReportNumber?: string;
+  lastExternalEventId?: string;
+  lastExternalSequence?: number;
+  lastSyncedAt?: string;
+}
+
+export type PcnLabRequestIntegrationSyncStatus =
+  | 'NOT_SENT'
+  | 'PENDING'
+  | 'ACKNOWLEDGED'
+  | 'REJECTED'
+  | 'ERROR';
+
+/** Server-to-server identity and delivery facts; never stores the shared secret. */
+export interface PcnLabRequestIntegrationLink {
+  targetSystemCode: string;
+  syncStatus: PcnLabRequestIntegrationSyncStatus;
+  idempotencyKey?: string;
+  externalRequestId?: string;
+  externalRequestCode?: string;
+  payloadFingerprint?: string;
+  lastAttemptAt?: string;
+  acknowledgedAt?: string;
+  lastSyncedAt?: string;
+  lastErrorCode?: string;
+  lastErrorMessage?: string;
+  lastExternalSequence?: number;
+}
 
 export type PcnSampleLotStatus =
   | 'PREPARED'
@@ -597,12 +835,16 @@ export interface PcnSampleLot {
   id: string;
   dossierId: string;
   lotCode: string;
+  /** Stable child item ids. Optional only for legacy single-sample lots. */
+  sampleItemIds?: string[];
   sampleName: string;
   model?: string;
   brand?: string;
   quantity: number;
   unit?: string;
   fieldCodes: PcnCertificationFieldCode[];
+  /** Snapshot used by QC20 to keep the material/lot identity with the sample. */
+  qc20Snapshot?: Pick<PcnQc20ScopeSnapshot, 'grade' | 'nominalDimensions' | 'manufacturerLotCode' | 'lotDefinition'>;
   routeIds: string[];
   status: PcnSampleLotStatus;
   currentLocation: string;
@@ -612,13 +854,47 @@ export interface PcnSampleLot {
   updatedAt?: string;
 }
 
+/** One physical sample/model inside exactly one sample lot. */
+export interface PcnSampleItem {
+  id: string;
+  sampleLotId: string;
+  sampleCode: string;
+  sampleType: string;
+  model: string;
+  brand?: string;
+  quantity: number;
+  unit?: string;
+  serialNumbers?: string[];
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Per-item facts when one route/PYC contains several sample models. */
+export interface PcnSampleRouteItemSnapshot {
+  status?: PcnSampleRouteStatus;
+  execution?: PcnSampleExecutionSnapshot;
+  sentAt?: string;
+  receivedAt?: string;
+  resultReturnedAt?: string;
+  returnedAt?: string;
+  note?: string;
+}
+
 export interface PcnSampleRoute {
   id: string;
   sampleLotId: string;
   labCode: PcnSampleLabCode;
   labName: string;
   status: PcnSampleRouteStatus;
+  /** 1-based order inside this lot; legacy routes may omit it. */
+  sequence?: number;
+  /** Empty/omitted means the route applies to every item for legacy data. */
+  sampleItemIds?: string[];
+  /** Item-level route/execution snapshots; route fields remain the legacy aggregate fallback. */
+  itemSnapshots?: Record<string, PcnSampleRouteItemSnapshot>;
   labRequestId?: string;
+  execution?: PcnSampleExecutionSnapshot;
   sentAt?: string;
   receivedAt?: string;
   resultReturnedAt?: string;
@@ -628,12 +904,33 @@ export interface PcnSampleRoute {
   updatedAt?: string;
 }
 
+/** Canonical handover facts captured before a sample handover document is generated. */
+export interface PcnSampleHandoverDetails {
+  senderName: string;
+  senderUnit?: string;
+  receiverName: string;
+  receiverUnit?: string;
+  handoverAt: string;
+  receivedAt?: string;
+  location: string;
+  vehicle?: string;
+  driver?: string;
+  quantity: number;
+  sampleCodes: string[];
+  note?: string;
+}
+
 export interface PcnSampleFlowEvent {
   id: string;
   sampleLotId: string;
   routeId?: string;
   labRequestId?: string;
   idempotencyFingerprint?: string;
+  sourceSystemCode?: string;
+  externalEventId?: string;
+  externalRequestId?: string;
+  externalSequence?: number;
+  sampleItemIds?: string[];
   type: PcnSampleFlowEventType;
   fromStatus?: PcnSampleRouteStatus;
   toStatus?: PcnSampleRouteStatus;
@@ -664,6 +961,7 @@ export interface OutboundLabRequest {
   /** Optional link to the tracked PCN lot/route that this outbound PYC serves. */
   sampleLotId?: string;
   sampleRouteId?: string;
+  integration?: PcnLabRequestIntegrationLink;
   status: PcnLabRequestStatus;
   requestedAt: string;
   targetDate?: string;
@@ -672,6 +970,7 @@ export interface OutboundLabRequest {
   handoverAt?: string;
   receivedAt?: string;
   handoverNote?: string;
+  handoverDetails?: PcnSampleHandoverDetails;
   sampleIssue?: PcnSampleIssue;
   returnedResultId?: string;
   createdAt?: string;
@@ -692,6 +991,7 @@ export interface ReturnedTestResult {
   notes?: string;
   isOfficial?: boolean;
   sampleIssue?: PcnSampleIssue;
+  ocrEvidence?: PcnOcrEvidence;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -800,6 +1100,7 @@ export type ActivityLogEntityType =
   | 'PCN_USER'
   | 'PCN_SIGNER_DELEGATION'
   | 'PCN_QUALITY_DOCUMENT'
+  | 'PCN_DRAFT'
   | 'PCN_SAMPLE_LOT'
   | 'USER'
   | 'CUSTOMER'
@@ -935,97 +1236,54 @@ export type PcnDepartmentRoleCode =
   | 'DOCUMENT_CLERK'
   | 'UNASSIGNED';
 
-export type PcnHaimyDiscoveryStatus = 'UNCONFIGURED' | 'IMPORT_ONLY' | 'CONTRACT_READY';
+export type PcnOcrProvider = 'PADDLEOCR' | 'GEMINI' | 'DISABLED';
 
-export interface PcnHaimyRetryContract {
-  supportsIdempotencyKey: boolean;
-  duplicateResponseSemantics?: string;
+export type PcnOcrEvidenceProvider = Exclude<PcnOcrProvider, 'DISABLED'>;
+
+export interface PcnOcrEvidence {
+  provider: PcnOcrEvidenceProvider;
+  sourceFileName: string;
+  sourcePage?: number;
+  confidence: number;
+  confirmedAt: string;
+  confirmedBy?: string;
 }
 
-export interface PcnHaimyDiscoveryInput {
-  apiEndpoint?: string | null;
-  exportFormats?: string[];
-  identifiers?: string[];
-  retryContract?: PcnHaimyRetryContract | null;
-  credentialConfigured?: boolean;
+export interface PcnOcrDraft {
+  fields: Record<string, string>;
+  confidence: number;
+  sourcePage?: number;
+  sourceFileName?: string;
+  provider?: PcnOcrEvidenceProvider;
+  confirmed?: boolean;
 }
 
-export interface PcnHaimyDiscoveryReport {
-  provider: 'HAIMY';
-  status: PcnHaimyDiscoveryStatus;
-  importEnabled: boolean;
-  canWriteUpstream: false;
-  confirmedCapabilities: Array<'api' | 'export' | 'identifiers' | 'retry' | 'credentials'>;
-  unknownCapabilities: Array<'api' | 'export' | 'identifiers' | 'retry' | 'credentials'>;
-  writeBlockReason: string;
-}
+export type PcnOcrContext = 'proposal' | 'result';
 
-export interface PcnHaimyExportRecord {
-  sourceSystem?: unknown;
-  externalRegistrationId?: unknown;
-  externalBatchId?: unknown;
-  externalCertificateId?: unknown;
-  registrationCode?: unknown;
-  customerName?: unknown;
-  productName?: unknown;
-  model?: unknown;
-  brand?: unknown;
-  fieldCode?: unknown;
-  quantity?: unknown;
-}
-
-export interface PcnHaimyStagingIssue {
-  code: string;
-  message: string;
-}
-
-export interface PcnHaimyOrigin {
-  provider: 'HAIMY';
-  stagingIdempotencyKey: string;
-  batchId: string;
-  externalRegistrationId?: string;
-  externalBatchId?: string;
-  externalCertificateId?: string;
-}
-
-export interface PcnHaimyPromotionMetadata {
-  proposalId: string;
-  dossierId: string;
-  promotedAt: string;
-  promotedBy?: string;
-  promotionFingerprint: string;
-}
-
-export type PcnHaimyStagingStatus = 'READY_FOR_REVIEW' | 'NEEDS_REVIEW' | 'DUPLICATE_NOOP' | 'CONFLICT' | 'PROMOTED';
-
-export interface PcnHaimyStagingRecord {
-  batchId: string;
-  sourceSystem: string;
-  idempotencyKey: string;
-  sourcePayloadFingerprint: string;
-  batchFingerprint?: string;
-  externalRegistrationId?: string;
-  externalBatchId?: string;
-  externalCertificateId?: string;
-  registrationCode?: string;
-  customerName?: string;
-  productName?: string;
-  model?: string;
-  brand?: string;
-  fieldCode?: string;
-  quantity?: number;
-  status: PcnHaimyStagingStatus;
-  issues: PcnHaimyStagingIssue[];
-  promotion?: PcnHaimyPromotionMetadata;
-  createdAt?: string;
+export interface PcnSettings {
+  id: 'pcn-settings';
+  fieldCodes: PcnCertificationFieldCode[];
+  labRoutes: Record<PcnCertificationFieldCode, PcnSampleLabCode[]>;
+  checklist: {
+    requireFilesBeforeAdvance: boolean;
+    showCompletenessToManagers: boolean;
+  };
+  coding: {
+    proposalPrefix: string;
+    dossierPrefix: string;
+    sampleLotPrefix: string;
+  };
+  ocr: {
+    enabled: boolean;
+    provider: PcnOcrProvider;
+    confidenceThreshold: number;
+  };
+  storage: {
+    bucket: string;
+    privateOnly: true;
+  };
   updatedAt?: string;
-}
-
-export interface PcnHaimyImportPlan {
-  batchId: string;
-  mode: 'STAGING_ONLY';
-  items: PcnHaimyStagingRecord[];
-  upstreamActions: [];
+  updatedBy?: string;
 }
 
 export const PCN_DEPARTMENT_ROLE_OPTIONS: Array<{ code: PcnDepartmentRoleCode; name: string }> = [

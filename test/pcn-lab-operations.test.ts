@@ -1,0 +1,132 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import test from 'node:test';
+
+import type { CertificationDossier, CertificationProposal, OutboundLabRequest, PcnSampleLot, PcnSampleRoute, ReturnedTestResult } from '../types.ts';
+import { buildPcnSampleFlowProjections, filterPcnSampleFlowProjections } from '../utils/pcnLabOperations.ts';
+
+const dossier: CertificationDossier = {
+  id: 'd-1', dossierCode: 'PCN-001', proposalId: 'p-1', customerSnapshot: { name: 'Công ty A', address: 'Hà Nội' },
+  fieldCodes: ['QC4'], method: 'METHOD_1', status: 'AWAITING_RESULTS', labRequestIds: ['pyc-1'], returnedResultIds: [],
+};
+const proposal = {
+  id: 'p-1', proposalCode: 'DN-001', channel: 'DIRECT', status: 'CONVERTED', dossierId: 'd-1',
+  customerSnapshot: { name: 'Công ty A' }, productName: 'Thiết bị A', model: 'M1', brand: 'B', productType: 'Điện', specifications: '220V', manufacturer: 'NSX', quantity: 1, fieldCodes: ['QC4'], receivedAt: '2026-08-01',
+} as unknown as CertificationProposal;
+const lot: PcnSampleLot = {
+  id: 'lot-1', dossierId: 'd-1', lotCode: 'LO-01', sampleName: 'Mẫu A', quantity: 2, unit: 'bộ', fieldCodes: ['QC4'], routeIds: ['r-1', 'r-2'], status: 'AT_LAB', currentLocation: 'Phòng thử EMC',
+};
+const routes: PcnSampleRoute[] = [
+  { id: 'r-2', sampleLotId: 'lot-1', labCode: 'EMC', labName: 'Phòng thử EMC', status: 'RECEIVED', sequence: 2, execution: { status: 'IN_PROGRESS', sourceSystemCode: 'EMC', scheduledDate: '2026-09-03', startedAt: '2026-09-03T08:00:00.000Z' } },
+  { id: 'r-1', sampleLotId: 'lot-1', labCode: 'PERFORMANCE', labName: 'Hiệu suất', status: 'RESULT_RETURNED', sequence: 1, labRequestId: 'pyc-1', execution: { status: 'COMPLETED', outcome: 'PASS', sourceSystemCode: 'PERFORMANCE', completedAt: '2026-09-02T08:00:00.000Z' } },
+];
+const request: OutboundLabRequest = {
+  id: 'pyc-1', pycNumber: 'PYC-001', dossierId: 'd-1', fieldCode: 'QC4', laboratoryName: 'Hiệu suất', sampleLotId: 'lot-1', sampleRouteId: 'r-1', status: 'RESULT_RETURNED', requestedAt: '2026-09-01',
+};
+const result: ReturnedTestResult = {
+  id: 'result-1', dossierId: 'd-1', labRequestId: 'pyc-1', round: 1, outcome: 'PASS', receivedAt: '2026-09-02', reportNumber: 'KQ-001',
+};
+const operationsSource = fs.readFileSync(new URL('../components/PcnLabOperationsView.tsx', import.meta.url), 'utf8');
+
+test('groups every room route under one sample and exposes PYC/execution/result per route', () => {
+  const projections = buildPcnSampleFlowProjections({
+    dossiers: [dossier], proposals: [proposal], sampleLots: [lot], sampleRoutes: routes,
+    labRequests: [request], returnedResults: [result],
+  });
+  assert.equal(projections.length, 1);
+  assert.deepEqual(projections[0].routes.map((route) => route.sequence), [1, 2]);
+  assert.equal(projections[0].routes[0].hasLabRequest, true);
+  assert.equal(projections[0].routes[0].resultReportNumber, 'KQ-001');
+  assert.equal(projections[0].routes[0].executionOutcome, 'PASS');
+  assert.equal(projections[0].routes[1].executionStatus, 'IN_PROGRESS');
+  assert.equal(projections[0].routes[1].executionScheduledDate, '2026-09-03');
+  assert.equal(projections[0].currentLocation, 'Phòng thử EMC');
+});
+
+test('does not attach a same-dossier PYC to the wrong sample route', () => {
+  const projections = buildPcnSampleFlowProjections({
+    dossiers: [dossier], proposals: [proposal], sampleLots: [lot], sampleRoutes: [routes[1]],
+    labRequests: [{ ...request, sampleRouteId: 'other-route' }], returnedResults: [],
+  });
+  assert.equal(projections[0].routes[0].hasLabRequest, false);
+  assert.equal(projections[0].unlinkedPyc[0].pycNumber, 'PYC-001');
+});
+
+test('keeps two sample lots as independent parallel projections', () => {
+  const secondLot = { ...lot, id: 'lot-2', lotCode: 'LO-02', routeIds: ['r-3'], currentLocation: 'Kho PCN' };
+  const secondRoute: PcnSampleRoute = { id: 'r-3', sampleLotId: 'lot-2', labCode: 'EMC', labName: 'Phòng thử EMC', status: 'PENDING', sequence: 1 };
+  const projections = buildPcnSampleFlowProjections({ dossiers: [dossier], proposals: [proposal], sampleLots: [lot, secondLot], sampleRoutes: routes.concat(secondRoute), labRequests: [request], returnedResults: [result] });
+  assert.equal(projections.length, 2);
+  assert.equal(projections.find((item) => item.lotId === 'lot-2')?.routes[0].readiness, 'READY');
+});
+
+test('searches sample identity, current location, route room and external PYC code', () => {
+  const projections = buildPcnSampleFlowProjections({ dossiers: [dossier], proposals: [proposal], sampleLots: [lot], sampleRoutes: routes, labRequests: [request], returnedResults: [result] });
+  assert.equal(filterPcnSampleFlowProjections(projections, 'LO-01').length, 1);
+  assert.equal(filterPcnSampleFlowProjections(projections, 'EMC').length, 1);
+  assert.equal(filterPcnSampleFlowProjections(projections, 'PYC-001').length, 1);
+});
+
+test('renders one primary projection per sample model and scopes routes to that item', () => {
+  const itemA = { id: 'item-a', sampleLotId: 'lot-1', sampleCode: 'M-01', sampleType: 'Bếp điện', model: 'ABC-1', quantity: 2, unit: 'cái' };
+  const itemB = { id: 'item-b', sampleLotId: 'lot-1', sampleCode: 'M-02', sampleType: 'Quạt điện', model: 'XYZ-2', quantity: 3, unit: 'cái' };
+  const projections = buildPcnSampleFlowProjections({
+    dossiers: [dossier], proposals: [proposal], sampleLots: [lot], sampleItems: [itemA, itemB],
+    sampleRoutes: [
+      { ...routes[1], sampleItemIds: ['item-a'] },
+      { ...routes[0], sampleItemIds: ['item-b'] },
+    ],
+    labRequests: [request], returnedResults: [result],
+  });
+
+  assert.equal(projections.length, 2);
+  assert.deepEqual(projections.map((projection) => projection.sampleItemId), ['item-a', 'item-b']);
+  assert.equal(projections[0].model, 'ABC-1');
+  assert.equal(projections[0].routes.length, 1);
+  assert.equal(projections[0].routes[0].routeId, 'r-1');
+  assert.equal(projections[1].routes[0].routeId, 'r-2');
+});
+
+test('keeps item-level parallel location snapshots independent inside one lot', () => {
+  const itemA = { id: 'item-a', sampleLotId: 'lot-1', sampleCode: 'M-01', sampleType: 'Bếp điện', model: 'ABC-1', quantity: 1 };
+  const itemB = { id: 'item-b', sampleLotId: 'lot-1', sampleCode: 'M-02', sampleType: 'Quạt điện', model: 'XYZ-2', quantity: 1 };
+  const projections = buildPcnSampleFlowProjections({
+    dossiers: [dossier], proposals: [proposal], sampleLots: [lot], sampleItems: [itemA, itemB],
+    sampleRoutes: [{
+      ...routes[0],
+      status: 'SENT',
+      sampleItemIds: ['item-a', 'item-b'],
+      itemSnapshots: {
+        'item-b': {
+          status: 'RECEIVED',
+          execution: { status: 'SCHEDULED', scheduledDate: '2026-09-04', sourceSystemCode: 'EMC' },
+        },
+      },
+    }, {
+      ...routes[1], status: 'PENDING', sequence: 2, sampleItemIds: ['item-a', 'item-b'],
+    }],
+    labRequests: [], returnedResults: [],
+  });
+
+  assert.equal(projections.length, 2);
+  assert.equal(projections.find((item) => item.sampleItemId === 'item-a')?.currentLocation, 'Đang luân chuyển tới Phòng thử EMC');
+  assert.equal(projections.find((item) => item.sampleItemId === 'item-b')?.currentLocation, 'Phòng thử EMC');
+  assert.equal(projections.find((item) => item.sampleItemId === 'item-b')?.routes.find((route) => route.routeId === 'r-2')?.executionScheduledDate, '2026-09-04');
+});
+
+test('management screen uses the sample-centered projection and renders remote execution facts', () => {
+  assert.match(operationsSource, /buildPcnSampleFlowProjections/);
+  assert.match(operationsSource, /filterPcnSampleFlowProjections/);
+  assert.match(operationsSource, /Sổ mẫu thử & luân chuyển/);
+  assert.match(operationsSource, /Chưa có PYC/);
+  assert.match(operationsSource, /getPcnSampleExecutionStatusLabel/);
+  assert.match(operationsSource, /getPcnSampleExecutionOutcomeLabel/);
+  assert.match(operationsSource, /overflow-x-auto/);
+  assert.match(operationsSource, /currentLocation/);
+  assert.match(operationsSource, /pycSyncStatus/);
+  assert.match(operationsSource, /sampleItemId/);
+  assert.match(operationsSource, /sampleType/);
+  assert.doesNotMatch(operationsSource, /fetch\(/);
+});
+
+// --- End of pcn-lab-operations.test.ts ---

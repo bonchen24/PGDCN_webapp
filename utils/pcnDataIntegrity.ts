@@ -5,6 +5,7 @@ import type {
   IssuancePackage,
   OutboundLabRequest,
   PcnSampleLot,
+  PcnSampleItem,
   PcnSampleRoute,
   PcnTemplateDefinition,
   ReturnedTestResult,
@@ -16,6 +17,7 @@ export type PcnDataIntegrityCollection =
   | 'certificationProposals'
   | 'certificationDossiers'
   | 'pcnSampleLots'
+  | 'pcnSampleItems'
   | 'pcnSampleRoutes'
   | 'labRequests'
   | 'returnedResults'
@@ -36,6 +38,10 @@ export type PcnDataIntegrityIssueCode =
   | 'DUPLICATE_PROPOSAL_LINK'
   | 'MISSING_LOT_CODE'
   | 'MISSING_SAMPLE_NAME'
+  | 'MISSING_SAMPLE_ITEM_CODE'
+  | 'MISSING_SAMPLE_TYPE'
+  | 'MISSING_SAMPLE_MODEL'
+  | 'MISSING_SAMPLE_ITEM_LINK'
   | 'INVALID_QUANTITY'
   | 'MISSING_CURRENT_LOCATION'
   | 'MISSING_SAMPLE_LOT_LINK'
@@ -64,6 +70,7 @@ export interface PcnDataIntegritySnapshot {
   proposals: CertificationProposal[];
   dossiers: CertificationDossier[];
   sampleLots: PcnSampleLot[];
+  sampleItems?: PcnSampleItem[];
   sampleRoutes: PcnSampleRoute[];
   labRequests: OutboundLabRequest[];
   returnedResults: ReturnedTestResult[];
@@ -82,6 +89,7 @@ export const PCN_DATA_INTEGRITY_COLLECTION_LABELS: Record<PcnDataIntegrityCollec
   certificationProposals: 'Đề nghị',
   certificationDossiers: 'Hồ sơ',
   pcnSampleLots: 'Lô mẫu',
+  pcnSampleItems: 'Mẫu thử/model',
   pcnSampleRoutes: 'Tuyến mẫu',
   labRequests: 'PYC',
   returnedResults: 'KQTN',
@@ -96,6 +104,7 @@ export function getPcnIntegrityDossierTab(collection: PcnDataIntegrityCollection
     case 'certificationProposals':
       return 'proposal';
     case 'pcnSampleLots':
+    case 'pcnSampleItems':
     case 'pcnSampleRoutes':
     case 'labRequests':
       return 'lab';
@@ -180,6 +189,7 @@ export function getPcnDataIntegrityReport(snapshot: PcnDataIntegritySnapshot): P
   reportDuplicateIds('certificationProposals', snapshot.proposals);
   reportDuplicateIds('certificationDossiers', snapshot.dossiers);
   reportDuplicateIds('pcnSampleLots', snapshot.sampleLots);
+  reportDuplicateIds('pcnSampleItems', snapshot.sampleItems || []);
   reportDuplicateIds('pcnSampleRoutes', snapshot.sampleRoutes);
   reportDuplicateIds('labRequests', snapshot.labRequests);
   reportDuplicateIds('returnedResults', snapshot.returnedResults);
@@ -242,10 +252,26 @@ export function getPcnDataIntegrityReport(snapshot: PcnDataIntegritySnapshot): P
     const id = text(record.id);
     if (!id) add('pcnSampleLots', lot, 'MISSING_ID', 'Thiếu ID lô mẫu.'); else lotIds.add(id);
     if (!text(record.lotCode)) add('pcnSampleLots', lot, 'MISSING_LOT_CODE', 'Thiếu mã lô mẫu.');
-    if (!text(record.sampleName)) add('pcnSampleLots', lot, 'MISSING_SAMPLE_NAME', 'Thiếu tên mẫu.');
-    if (typeof record.quantity !== 'number' || !Number.isFinite(record.quantity) || record.quantity <= 0) add('pcnSampleLots', lot, 'INVALID_QUANTITY', 'Số lượng mẫu không hợp lệ.');
+    const linkedItems = (snapshot.sampleItems || []).filter((item) => text(asRecord(item).sampleLotId) === id);
+    if (!text(record.sampleName) && linkedItems.length === 0) add('pcnSampleLots', lot, 'MISSING_SAMPLE_NAME', 'Lô mẫu chưa có mẫu/model chi tiết.');
+    if ((typeof record.quantity !== 'number' || !Number.isFinite(record.quantity) || record.quantity <= 0) && linkedItems.length === 0) add('pcnSampleLots', lot, 'INVALID_QUANTITY', 'Số lượng mẫu không hợp lệ.');
     if (!text(record.currentLocation)) add('pcnSampleLots', lot, 'MISSING_CURRENT_LOCATION', 'Thiếu nơi đang giữ mẫu.');
     if (!dossierIds.has(text(record.dossierId))) add('pcnSampleLots', lot, 'MISSING_DOSSIER_LINK', 'Không tìm thấy hồ sơ được lô mẫu tham chiếu.');
+    for (const sampleItemId of stringArray(record.sampleItemIds)) {
+      const item = (snapshot.sampleItems || []).find((candidate) => text(asRecord(candidate).id) === sampleItemId);
+      if (!item || text(asRecord(item).sampleLotId) !== id) add('pcnSampleLots', lot, 'MISSING_SAMPLE_ITEM_LINK', `Mẫu/model ${sampleItemId} không thuộc lô này.`);
+    }
+  }
+
+  for (const item of snapshot.sampleItems || []) {
+    const record = asRecord(item);
+    const id = text(record.id);
+    if (!id) add('pcnSampleItems', item, 'MISSING_ID', 'Thiếu ID mẫu/model.');
+    if (!text(record.sampleCode)) add('pcnSampleItems', item, 'MISSING_SAMPLE_ITEM_CODE', 'Thiếu mã mẫu/model.');
+    if (!text(record.sampleType)) add('pcnSampleItems', item, 'MISSING_SAMPLE_TYPE', 'Thiếu loại mẫu.');
+    if (!text(record.model)) add('pcnSampleItems', item, 'MISSING_SAMPLE_MODEL', 'Thiếu model.');
+    if (typeof record.quantity !== 'number' || !Number.isInteger(record.quantity) || record.quantity < 1) add('pcnSampleItems', item, 'INVALID_QUANTITY', 'Số lượng mẫu/model phải là số nguyên dương.');
+    if (!lotIds.has(text(record.sampleLotId))) add('pcnSampleItems', item, 'MISSING_SAMPLE_LOT_LINK', 'Mẫu/model chưa liên kết với lô mẫu tồn tại.');
   }
 
   for (const route of snapshot.sampleRoutes) {
@@ -254,6 +280,10 @@ export function getPcnDataIntegrityReport(snapshot: PcnDataIntegritySnapshot): P
     if (!id) add('pcnSampleRoutes', route, 'MISSING_ID', 'Thiếu ID tuyến mẫu.'); else routeIds.add(id);
     if (!text(record.labName)) add('pcnSampleRoutes', route, 'MISSING_LAB_NAME', 'Thiếu tên phòng thử nghiệm.');
     if (!lotIds.has(text(record.sampleLotId))) add('pcnSampleRoutes', route, 'MISSING_SAMPLE_LOT_LINK', 'Không tìm thấy lô mẫu được tuyến tham chiếu.');
+    for (const sampleItemId of stringArray(record.sampleItemIds)) {
+      const item = (snapshot.sampleItems || []).find((candidate) => text(asRecord(candidate).id) === sampleItemId);
+      if (!item || text(asRecord(item).sampleLotId) !== text(record.sampleLotId)) add('pcnSampleRoutes', route, 'MISSING_SAMPLE_ITEM_LINK', `Tuyến không thể tham chiếu mẫu/model ${sampleItemId} ngoài lô.`);
+    }
   }
 
   for (const request of snapshot.labRequests) {

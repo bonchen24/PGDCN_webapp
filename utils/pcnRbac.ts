@@ -40,11 +40,11 @@ export const PCN_DEDICATED_MUTATION_COLLECTIONS = new Set([
   'issuancePackages',
   'customers',
   'pcnSampleLots',
+  'pcnSampleItems',
   'pcnSampleRoutes',
   'pcnSampleFlowEvents',
   'labRequests',
   'returnedResults',
-  'pcnHaimyStaging',
 ]);
 
 export const PCN_STAFF_MUTABLE_COLLECTIONS = new Set([

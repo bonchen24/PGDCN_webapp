@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { CertificationDossier, CertificationProposal, IssuancePackage, OutboundLabRequest, PcnSampleLot, PcnSampleRoute, ReturnedTestResult } from '../types.ts';
+import type { CertificationDossier, CertificationProposal, IssuancePackage, OutboundLabRequest, PcnSampleItem, PcnSampleLot, PcnSampleRoute, ReturnedTestResult } from '../types.ts';
 import { getPcnDataIntegrityReport } from '../utils/pcnDataIntegrity.ts';
 
 const proposal: CertificationProposal = {
@@ -99,6 +99,31 @@ test('valid PCN snapshot has no integrity issues', () => {
   assert.equal(report.issueCount, 0);
   assert.equal(report.affectedRecordCount, 0);
   assert.deepEqual(report.issues, []);
+});
+
+test('sample/model records and route scopes are validated as first-class links', () => {
+  const item: PcnSampleItem = {
+    id: 'item-1',
+    sampleLotId: lot.id,
+    sampleCode: 'M-001',
+    sampleType: 'Mẫu A',
+    model: 'MODEL-A',
+    quantity: 2,
+  };
+  const snapshot = {
+    ...validSnapshot(),
+    sampleLots: [{ ...lot, sampleItemIds: [item.id] }],
+    sampleItems: [item],
+    sampleRoutes: [{ ...route, sampleItemIds: [item.id] }],
+  };
+  assert.equal(getPcnDataIntegrityReport(snapshot).issueCount, 0);
+
+  const broken = getPcnDataIntegrityReport({
+    ...snapshot,
+    sampleItems: [{ ...item, sampleLotId: 'lot-missing', model: '', quantity: 0 }],
+  });
+  assert.equal(broken.issues.some((issue) => issue.collection === 'pcnSampleItems' && issue.code === 'MISSING_SAMPLE_MODEL'), true);
+  assert.equal(broken.issues.some((issue) => issue.collection === 'pcnSampleItems' && issue.code === 'MISSING_SAMPLE_LOT_LINK'), true);
 });
 
 test('empty PCN customer records are reported without mutating the snapshot', () => {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle2, FileText, FolderOpen, Plus, Send, X } from 'lucide-react';
+import { CheckCircle2, FileText, FolderOpen, Plus, RefreshCw, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import type {
@@ -10,6 +10,7 @@ import type {
   OutboundLabRequest,
   PcnCertificationField,
   PcnGeneratedDocument,
+  PcnSampleItem,
   PcnSampleLot,
   PcnSampleRoute,
 } from '../types';
@@ -17,6 +18,7 @@ import { getPcnFileUrl } from '../utils/pcnFileApi';
 import { getPcnGeneratedDocumentsForKind } from '../utils/pcnGeneratedDocumentView';
 import { buildPcnLabRequest, getNextPcnLabRequestStatuses, getPcnLabFieldSelection } from '../utils/pcnLabRouting';
 import { getPcnDossierCustomerSnapshot } from '../utils/pcnDossierPolicy';
+import PcnLabRequestDetailModal from './PcnLabRequestDetailModal';
 
 function makeId(): string {
   return `lab-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`}`;
@@ -74,32 +76,41 @@ export function PcnLabRequestView({
   proposals,
   requests,
   sampleLots,
+  sampleItems = [],
   sampleRoutes,
   generatedDocuments,
   initialDossierId,
   canEdit,
   onSave,
   onStatusChange,
+  onDispatchLabRequest,
+  onReconcileLabRequest,
   onOpenDossier,
+  onOpenDocument,
 }: {
   fields: PcnCertificationField[];
   dossiers: CertificationDossier[];
   proposals: CertificationProposal[];
   requests: OutboundLabRequest[];
   sampleLots: PcnSampleLot[];
+  sampleItems?: PcnSampleItem[];
   sampleRoutes: PcnSampleRoute[];
   generatedDocuments: PcnGeneratedDocument[];
   initialDossierId?: string;
   canEdit: boolean;
   onSave: (request: OutboundLabRequest) => Promise<void>;
-  onStatusChange: (requestId: string, status: OutboundLabRequest['status'], updates?: Partial<Pick<OutboundLabRequest, 'handoverAt' | 'receivedAt' | 'handoverNote' | 'handoverDocumentId' | 'sampleIssue'>>) => Promise<void>;
+  onStatusChange: (requestId: string, status: OutboundLabRequest['status'], updates?: Partial<Pick<OutboundLabRequest, 'handoverAt' | 'receivedAt' | 'handoverNote' | 'handoverDocumentId' | 'handoverDetails' | 'sampleIssue'>>) => Promise<void>;
+  onDispatchLabRequest?: (requestId: string) => Promise<void>;
+  onReconcileLabRequest?: (requestId: string) => Promise<void>;
   onOpenDossier?: (dossierId: string) => void;
+  onOpenDocument?: (kind: 'LAB_REQUEST', requestId: string) => void;
 }) {
   const initialDossier = dossiers.find((dossier) => dossier.id === initialDossierId);
   const initialFieldCode = getPcnLabFieldSelection(initialDossier?.fieldCodes || fields.map((field) => field.code));
   const [openForm, setOpenForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busyRequestId, setBusyRequestId] = useState<string>();
+  const [selectedRequestId, setSelectedRequestId] = useState<string>();
   const [form, setForm] = useState({
     dossierId: initialDossierId || '',
     fieldCode: initialFieldCode,
@@ -120,6 +131,15 @@ export function PcnLabRequestView({
   const visibleRequests = initialDossierId
     ? requests.filter((request) => request.dossierId === initialDossierId)
     : requests;
+  const selectedRequest = visibleRequests.find((request) => request.id === selectedRequestId);
+  const selectedRequestDossier = selectedRequest ? dossiers.find((dossier) => dossier.id === selectedRequest.dossierId) : undefined;
+  const selectedRequestProposal = selectedRequestDossier ? proposals.find((proposal) => proposal.id === selectedRequestDossier.proposalId) : undefined;
+  const selectedRequestLot = selectedRequest?.sampleLotId ? sampleLots.find((lot) => lot.id === selectedRequest.sampleLotId) : undefined;
+  const selectedRequestRoute = selectedRequest?.sampleRouteId ? sampleRoutes.find((route) => route.id === selectedRequest.sampleRouteId) : undefined;
+  const selectedRequestDocuments = selectedRequest ? getPcnGeneratedDocumentsForKind(generatedDocuments, selectedRequest.dossierId, 'LAB_REQUEST', undefined, selectedRequest.id) : [];
+  const selectedLatestDocx = selectedRequestDocuments.find((document) => document.format === 'DOCX');
+  const selectedLatestPdf = selectedRequestDocuments.find((document) => document.format === 'PDF');
+  const selectedNextStatus = selectedRequest ? getNextPcnLabRequestStatuses(selectedRequest.status).find((status) => status !== 'CANCELLED') : undefined;
 
   const resetForm = () => {
     setForm({
@@ -140,8 +160,8 @@ export function PcnLabRequestView({
     event.preventDefault();
     if (saving) return;
     if (!canEdit) return;
-    if (!form.dossierId || !form.laboratoryName.trim()) {
-      toast.error('Vui lòng chọn hồ sơ và nhập phòng thử nghiệm nhận.');
+    if (!form.dossierId || !form.laboratoryName.trim() || !form.sampleLotId || !form.sampleRouteId) {
+      toast.error('PYC phải gắn đúng một lô mẫu và một tuyến phòng thử nghiệm.');
       return;
     }
     setSaving(true);
@@ -180,8 +200,22 @@ export function PcnLabRequestView({
     }
   };
 
+  const runIntegrationAction = async (request: OutboundLabRequest, action: 'dispatch' | 'reconcile') => {
+    const callback = action === 'dispatch' ? onDispatchLabRequest : onReconcileLabRequest;
+    if (!canEdit || !callback || busyRequestId === request.id) return;
+    setBusyRequestId(request.id);
+    try {
+      await callback(request.id);
+      toast.success(action === 'dispatch' ? 'Đã gửi PYC sang app phòng thử và cập nhật phản hồi.' : 'Đã đồng bộ lại trạng thái PYC từ app phòng thử.');
+    } catch (error: any) {
+      toast.error(error?.message || (action === 'dispatch' ? 'Không thể gửi PYC sang app phòng thử.' : 'Không thể đồng bộ PYC.'));
+    } finally {
+      setBusyRequestId(undefined);
+    }
+  };
+
   return (
-    <div className="h-full overflow-y-auto bg-slate-50/60 p-3 pb-20 md:p-5">
+    <div className="pcn-page-surface min-w-0 bg-slate-50/60 p-3 pb-20 md:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-black text-slate-900">PYC gửi PTN</h1>
@@ -196,12 +230,14 @@ export function PcnLabRequestView({
       </div>
 
       {openForm && (
-        <form onSubmit={submit} className="mt-4 space-y-3 rounded-xl border border-emerald-200 bg-white p-3 shadow-sm md:p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-black text-slate-800">Thông tin PYC gửi PTN</h2>
-            <button type="button" onClick={resetForm} disabled={saving} aria-label="Đóng biểu mẫu PYC" className="text-slate-400 disabled:opacity-40"><X size={16} /></button>
-          </div>
-          <div className="grid gap-2 md:grid-cols-3">
+        <div className="fixed inset-0 z-[82] flex items-end justify-center bg-slate-950/55 p-0 sm:items-center sm:p-4" role="presentation">
+          <form onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="pcn-lab-request-form-title" className="flex max-h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-emerald-200 bg-white shadow-2xl sm:rounded-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3">
+              <div><h2 id="pcn-lab-request-form-title" className="text-sm font-black text-slate-800">Thông tin PYC gửi PTN</h2><p className="mt-1 text-[10px] text-slate-500">PYC là chứng từ outbound, luôn gắn với hồ sơ và Lĩnh vực PCN.</p></div>
+              <button type="button" onClick={resetForm} disabled={saving} aria-label="Đóng biểu mẫu PYC" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 disabled:opacity-40"><X size={16} /></button>
+            </div>
+            <div className="min-h-0 flex-1 mobile-scroll-y space-y-3 overflow-y-auto p-3 md:p-4">
+              <div className="grid gap-2 md:grid-cols-3">
             <Field label="Hồ sơ chứng nhận *">
               <select value={form.dossierId} onChange={(event) => {
                 const dossier = dossiers.find((item) => item.id === event.target.value);
@@ -219,34 +255,36 @@ export function PcnLabRequestView({
             </Field>
             <Field label="Số PYC"><input value={form.pycNumber} onChange={(event) => setForm({ ...form, pycNumber: event.target.value })} placeholder="Tự sinh nếu bỏ trống" /></Field>
           </div>
-          <div className="grid gap-2 md:grid-cols-3">
+              <div className="grid gap-2 md:grid-cols-3">
             <Field label="Phòng thử nghiệm nhận *"><input value={form.laboratoryName} onChange={(event) => setForm({ ...form, laboratoryName: event.target.value })} placeholder="Ví dụ: PTN HSNL" /></Field>
             <Field label="Hạn trả KQTN"><input type="date" value={form.targetDate} onChange={(event) => setForm({ ...form, targetDate: event.target.value })} /></Field>
             <Field label="Chỉ tiêu/tiêu chuẩn"><input value={form.criteria} onChange={(event) => setForm({ ...form, criteria: event.target.value })} /></Field>
           </div>
-          <div className="grid gap-2 md:grid-cols-2">
-            <Field label="Lô mẫu PCN (tùy chọn)">
+              <div className="grid gap-2 md:grid-cols-2">
+            <Field label="Lô mẫu PCN *">
               <select value={form.sampleLotId} onChange={(event) => setForm({ ...form, sampleLotId: event.target.value, sampleRouteId: '' })}>
-                <option value="">PYC không gắn lô mẫu</option>
-                {dossierLots.map((lot) => <option key={lot.id} value={lot.id}>{lot.lotCode} — {lot.sampleName}</option>)}
+                <option value="">Chọn lô mẫu</option>
+                {dossierLots.map((lot) => <option key={lot.id} value={lot.id}>{lot.lotCode} — {lot.sampleName}{sampleItems.filter((item) => item.sampleLotId === lot.id).length > 0 ? ` · ${sampleItems.filter((item) => item.sampleLotId === lot.id).length} mẫu/model` : ''}</option>)}
               </select>
             </Field>
-            <Field label="Tuyến phòng thử (tùy chọn)">
+            <Field label="Tuyến phòng thử *">
               <select value={form.sampleRouteId} onChange={(event) => {
                 const route = lotRoutes.find((item) => item.id === event.target.value);
                 setForm({ ...form, sampleRouteId: event.target.value, laboratoryName: route?.labName || form.laboratoryName });
               }} disabled={!form.sampleLotId}>
-                <option value="">Chọn tuyến nếu PYC gắn lô</option>
+                <option value="">Chọn tuyến phòng thử</option>
                 {lotRoutes.map((route) => <option key={route.id} value={route.id}>{route.labName} — {route.status}</option>)}
               </select>
             </Field>
           </div>
-          <Field label="Ghi chú giao nhận"><textarea rows={2} value={form.handoverNote} onChange={(event) => setForm({ ...form, handoverNote: event.target.value })} placeholder="Thông tin mẫu, niêm phong hoặc yêu cầu giao nhận" /></Field>
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={resetForm} disabled={saving} className="rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-600 disabled:opacity-40">Hủy</button>
-            <button type="submit" disabled={!canEdit || saving} aria-busy={saving} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu PYC'}</button>
-          </div>
-        </form>
+              <Field label="Ghi chú giao nhận"><textarea rows={2} value={form.handoverNote} onChange={(event) => setForm({ ...form, handoverNote: event.target.value })} placeholder="Thông tin mẫu, niêm phong hoặc yêu cầu giao nhận" /></Field>
+            </div>
+            <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-white px-4 py-3">
+              <button type="button" onClick={resetForm} disabled={saving} className="rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-600 disabled:opacity-40">Hủy</button>
+              <button type="submit" disabled={!canEdit || saving} aria-busy={saving} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu PYC'}</button>
+            </div>
+          </form>
+        </div>
       )}
 
       <div className="mt-4 space-y-2">
@@ -256,9 +294,13 @@ export function PcnLabRequestView({
           const customerSnapshot = dossier ? getPcnDossierCustomerSnapshot(dossier, proposal) : undefined;
           const nextStatus = getNextPcnLabRequestStatuses(request.status).find((status) => status !== 'CANCELLED');
           const linkedRoute = request.sampleRouteId ? sampleRoutes.find((route) => route.id === request.sampleRouteId) : undefined;
+          const requestItems = request.sampleLotId ? sampleItems.filter((item) => item.sampleLotId === request.sampleLotId) : [];
           const requestDocuments = getPcnGeneratedDocumentsForKind(generatedDocuments, request.dossierId, 'LAB_REQUEST', undefined, request.id);
           const latestDocx = requestDocuments.find((document) => document.format === 'DOCX');
           const latestPdf = requestDocuments.find((document) => document.format === 'PDF');
+          const integrationStatus = request.integration?.syncStatus || 'NOT_SENT';
+          const canDispatch = Boolean(canEdit && onDispatchLabRequest && request.sampleLotId && request.sampleRouteId && request.status !== 'CANCELLED' && ['NOT_SENT', 'PENDING', 'ERROR', 'REJECTED'].includes(integrationStatus));
+          const canReconcile = Boolean(canEdit && onReconcileLabRequest && request.integration?.externalRequestId && ['ACKNOWLEDGED', 'PENDING', 'ERROR'].includes(integrationStatus));
           return (
             <div key={request.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
               <div className="flex flex-col justify-between gap-2 md:flex-row md:items-center">
@@ -272,13 +314,19 @@ export function PcnLabRequestView({
                   <p className="text-[10px] text-slate-500">{dossier?.dossierCode || request.dossierId} • {fieldName(fields, request.fieldCode)}{request.criteria ? ` • ${request.criteria}` : ''}</p>
                   <p className="mt-1 text-[10px] text-slate-400">Giao: {formatDate(request.handoverAt)} • PTN nhận: {formatDate(request.receivedAt)} • Hạn KQ: {formatDate(request.targetDate)}</p>
                   {linkedRoute && <p className="mt-1 text-[10px] font-bold text-emerald-700">Liên kết tuyến mẫu: {linkedRoute.labName} • {linkedRoute.status}</p>}
+                  {request.integration && <p className="mt-1 text-[10px] text-slate-500">Đồng bộ: <b className={integrationStatus === 'ACKNOWLEDGED' ? 'text-emerald-700' : integrationStatus === 'ERROR' ? 'text-rose-700' : 'text-amber-700'}>{integrationStatus}</b>{request.integration.externalRequestCode ? ` • PYC PTN: ${request.integration.externalRequestCode}` : ''}{request.integration.lastErrorMessage ? ` • ${request.integration.lastErrorMessage}` : ''}</p>}
+                  {linkedRoute?.execution && <p className="mt-1 text-[10px] text-indigo-700">Tiến độ thử: <b>{linkedRoute.execution.status}</b>{linkedRoute.execution.scheduledDate ? ` • Lịch ${formatDate(linkedRoute.execution.scheduledDate)}` : ''}{linkedRoute.execution.outcome ? ` • Kết quả ${linkedRoute.execution.outcome}` : ''}</p>}
+                  {requestItems.length > 0 && <div className="mt-1 flex flex-wrap gap-1 text-[9px] text-slate-600">{requestItems.map((item) => <span key={item.id} className="rounded-full bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700">{item.sampleCode} · {item.model} · SL {item.quantity}</span>)}</div>}
                   {request.sampleIssue && <p className="mt-1 text-[10px] font-bold text-rose-600">Mẫu có vấn đề: {request.sampleIssue.description}</p>}
                   <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[9px]">
                     {latestDocx || latestPdf ? <><span className="font-bold text-slate-500">Phiếu:</span>{latestDocx && <a href={getPcnFileUrl(latestDocx.fileAssetId)} target="_blank" rel="noreferrer" className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 font-bold text-indigo-700 underline underline-offset-2">Mở phiếu Word</a>}{latestPdf && <a href={getPcnFileUrl(latestPdf.fileAssetId)} target="_blank" rel="noreferrer" className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 font-bold text-indigo-700 underline underline-offset-2">Mở phiếu PDF</a>}</> : <span className="text-slate-400">Chưa sinh phiếu Word/PDF</span>}
+                    <button type="button" onClick={() => setSelectedRequestId(request.id)} className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 font-bold text-indigo-700 hover:bg-indigo-100">Chi tiết PYC</button>
                     {onOpenDossier && dossier && <button type="button" onClick={() => onOpenDossier(dossier.id)} className="rounded-md border border-slate-200 bg-white px-2 py-1 font-bold text-slate-600 hover:border-emerald-300 hover:text-emerald-700">Mở hồ sơ</button>}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-1.5">
+                  {canDispatch && <button onClick={() => void runIntegrationAction(request, 'dispatch')} disabled={busyRequestId === request.id} aria-busy={busyRequestId === request.id} className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1.5 text-[10px] font-bold text-indigo-700 disabled:cursor-wait disabled:opacity-50"><Send size={12} />{busyRequestId === request.id ? 'Đang gửi…' : 'Gửi PYC sang phòng thử'}</button>}
+                  {canReconcile && <button onClick={() => void runIntegrationAction(request, 'reconcile')} disabled={busyRequestId === request.id} aria-busy={busyRequestId === request.id} className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] font-bold text-amber-700 disabled:cursor-wait disabled:opacity-50"><RefreshCw size={12} />{busyRequestId === request.id ? 'Đang đồng bộ…' : 'Đồng bộ lại'}</button>}
                   {canEdit && nextStatus && <button onClick={() => void moveRequest(request, nextStatus)} disabled={!canEdit || busyRequestId === request.id} aria-busy={busyRequestId === request.id} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[10px] font-bold text-emerald-700 disabled:cursor-wait disabled:opacity-50">{busyRequestId === request.id ? 'Đang cập nhật...' : nextStatus === 'SENT' ? <><Send size={12} /> Gửi PTN</> : <><CheckCircle2 size={12} /> Xác nhận PTN nhận</>}</button>}
                   {canEdit && request.status === 'DRAFT' && <button onClick={() => void moveRequest(request, 'CANCELLED')} disabled={!canEdit || busyRequestId === request.id} aria-busy={busyRequestId === request.id} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-500 disabled:cursor-wait disabled:opacity-50"><FolderOpen size={12} /> Hủy PYC</button>}
                 </div>
@@ -287,6 +335,25 @@ export function PcnLabRequestView({
           );
         })}
       </div>
+      {selectedRequest && selectedRequestDossier && <PcnLabRequestDetailModal
+        request={selectedRequest}
+        dossier={selectedRequestDossier}
+        proposal={selectedRequestProposal}
+        field={fields.find((field) => field.code === selectedRequest.fieldCode)}
+        lot={selectedRequestLot}
+        route={selectedRequestRoute}
+        latestDocx={selectedLatestDocx}
+        latestPdf={selectedLatestPdf}
+        nextStatus={selectedNextStatus}
+        sampleItems={selectedRequest?.sampleLotId ? sampleItems.filter((item) => item.sampleLotId === selectedRequest.sampleLotId) : []}
+        canEdit={canEdit}
+        busy={busyRequestId === selectedRequest.id}
+        onMoveStatus={(status) => void moveRequest(selectedRequest, status)}
+        onDispatch={onDispatchLabRequest ? () => void runIntegrationAction(selectedRequest, 'dispatch') : undefined}
+        onReconcile={onReconcileLabRequest ? () => void runIntegrationAction(selectedRequest, 'reconcile') : undefined}
+        onOpenDocuments={onOpenDocument ? () => { setSelectedRequestId(undefined); onOpenDocument('LAB_REQUEST', selectedRequest.id); } : undefined}
+        onClose={() => setSelectedRequestId(undefined)}
+      />}
     </div>
   );
 }

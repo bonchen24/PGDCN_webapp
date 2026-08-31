@@ -7,12 +7,16 @@ import {
   buildPcnSampleFlowEvent,
   buildPcnSampleLot,
   derivePcnSampleLotStatus,
+  derivePcnSampleRouteReadiness,
   getNextPcnSampleRouteStatuses,
+  isPcnSampleRouteCompleteForNext,
+  sortPcnSampleRoutes,
   transitionPcnSampleRoute,
 } from '../utils/pcnSampleFlow.ts';
 
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
+const dossierDetailSource = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
 const sampleFlowSource = fs.readFileSync(new URL('../components/PcnSampleFlowView.tsx', import.meta.url), 'utf8');
 
 test('builds one PCN sample lot with independent routes to the three testing rooms', () => {
@@ -30,7 +34,75 @@ test('builds one PCN sample lot with independent routes to the three testing roo
   assert.equal(result.lot.lotCode, 'PCN-QC9-001-M01');
   assert.equal(result.lot.status, 'PREPARED');
   assert.deepEqual(result.routes.map((route) => route.labCode), ['PERFORMANCE', 'EMC', 'ELECTRICAL_SAFETY']);
+  assert.deepEqual(result.routes.map((route) => route.sequence), [1, 2, 3]);
   assert.equal(result.routes.every((route) => route.status === 'PENDING'), true);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].sampleLotId, 'sample-lot-1');
+  assert.equal(result.items[0].model, 'ABC-1');
+});
+
+test('builds one lot with multiple sample models and preserves each quantity', () => {
+  const result = buildPcnSampleLot({
+    id: 'sample-lot-many',
+    dossierId: 'dossier-1',
+    lotCode: 'PCN-QC9-MANY',
+    sampleName: 'Thiết bị điện',
+    quantity: 99,
+    fieldCodes: ['QC9'],
+    labCodes: ['PERFORMANCE', 'EMC'],
+    sampleItems: [
+      { id: 'item-a', sampleCode: 'M-01', sampleType: 'Bếp điện', model: 'ABC-1', quantity: 2, unit: 'cái' },
+      { id: 'item-b', sampleCode: 'M-02', sampleType: 'Quạt điện', model: 'XYZ-2', quantity: 3, unit: 'cái' },
+    ],
+  }, '2026-08-28T08:00:00.000Z');
+
+  assert.deepEqual(result.lot.sampleItemIds, ['item-a', 'item-b']);
+  assert.equal(result.lot.quantity, 5);
+  assert.deepEqual(result.items.map((item) => [item.sampleCode, item.model, item.quantity]), [['M-01', 'ABC-1', 2], ['M-02', 'XYZ-2', 3]]);
+  assert.deepEqual(result.routes[0].sampleItemIds, ['item-a', 'item-b']);
+});
+
+test('sample route readiness follows sequence and a failed execution blocks the next route', () => {
+  const routes: PcnSampleRoute[] = [
+    {
+      id: 'route-2', sampleLotId: 'lot-1', labCode: 'EMC', labName: 'EMC', status: 'PENDING', sequence: 2,
+    },
+    {
+      id: 'route-1', sampleLotId: 'lot-1', labCode: 'PERFORMANCE', labName: 'Hiệu suất', status: 'RESULT_RETURNED', sequence: 1,
+      execution: { status: 'COMPLETED', outcome: 'FAIL', sourceSystemCode: 'PERFORMANCE' },
+    },
+    {
+      id: 'route-3', sampleLotId: 'lot-1', labCode: 'ELECTRICAL_SAFETY', labName: 'An toàn điện', status: 'PENDING', sequence: 3,
+    },
+  ];
+
+  assert.deepEqual(sortPcnSampleRoutes(routes).map((route) => route.id), ['route-1', 'route-2', 'route-3']);
+  assert.deepEqual(derivePcnSampleRouteReadiness(routes), {
+    'route-1': 'COMPLETED',
+    'route-2': 'BLOCKED',
+    'route-3': 'BLOCKED',
+  });
+  assert.equal(isPcnSampleRouteCompleteForNext(routes[1]), false);
+});
+
+test('a passed execution makes exactly the next pending route ready', () => {
+  const routes: PcnSampleRoute[] = [
+    {
+      id: 'route-1', sampleLotId: 'lot-1', labCode: 'PERFORMANCE', labName: 'Hiệu suất', status: 'RESULT_RETURNED', sequence: 1,
+      execution: { status: 'COMPLETED', outcome: 'PASS', sourceSystemCode: 'PERFORMANCE' },
+    },
+    {
+      id: 'route-2', sampleLotId: 'lot-1', labCode: 'EMC', labName: 'EMC', status: 'PENDING', sequence: 2,
+    },
+    {
+      id: 'route-3', sampleLotId: 'lot-1', labCode: 'ELECTRICAL_SAFETY', labName: 'An toàn điện', status: 'PENDING', sequence: 3,
+    },
+  ];
+  assert.deepEqual(derivePcnSampleRouteReadiness(routes), {
+    'route-1': 'COMPLETED',
+    'route-2': 'READY',
+    'route-3': 'BLOCKED',
+  });
 });
 
 test('sample route flow does not allow skipping the receiving step', () => {
@@ -98,10 +170,13 @@ test('aggregate lot status reflects multiple room routes', () => {
   assert.equal(derivePcnSampleLotStatus([pending, atEmc]).currentLocation, 'Phòng thử EMC');
 });
 
-test('PCN sample flow has its own collections and workspace surface', () => {
+test('PCN sample flow has its own collections inside the dossier card', () => {
   assert.match(serverSource, /pcnSampleLots/);
   assert.match(serverSource, /pcnSampleFlowEvents/);
-  assert.match(workspaceSource, /PcnSample|Mẫu theo lô|Luân chuyển mẫu/);
+  assert.match(dossierDetailSource, /PcnSampleFlowView/);
+  assert.match(dossierDetailSource, /Mẫu|PYC/);
+  assert.match(workspaceSource, /PcnDossierDetailView/);
+  assert.doesNotMatch(workspaceSource, /PcnSampleFlowView/);
   assert.doesNotMatch(workspaceSource, /schedule_itd|schedule_emc/);
 });
 
