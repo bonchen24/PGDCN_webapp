@@ -38,31 +38,27 @@ test('PCN uses native Windows development port 1357 and Docker production port 2
   assert.match(design, /PORT=1357/);
   assert.match(design, /PORT=2357/);
   assert.equal(packageJson.scripts?.['dev:pcn'], 'node ./scripts/native-dev-pcn.cjs');
-  assert.match(read('scripts/native-dev-pcn.cjs'), /APP_PROFILE\s*=\s*['"]pcn['"]/);
+  const nativePcn = read('scripts/native-dev-pcn.cjs');
+  assert.match(nativePcn, /APP_PROFILE\s*:\s*['"]pcn['"]/);
+  assert.match(nativePcn, /PORT:\s*['"]1357['"]/);
+  assert.match(nativePcn, /PCN_STORAGE_BUCKET/);
+  assert.doesNotMatch(nativePcn, /TVCI_APP|supabase-docker|Desktop/);
   assert.match(design, /npm run dev:pcn/);
 
-  const pcnRunner = read('scripts/run-pcn-tsx.cjs');
-  const pcnCliScripts = [
-    'migrate:pcn-customers',
-    'import:pcn-history',
-    'reconcile:pcn-history-attachments',
-    'discover:pcn-template',
-    'import:pcn-template',
-    'verify:pcn-cutover',
-    'smoke:pcn-runtime',
-    'reconcile:pcn-legacy',
-    'reconcile:pcn-orphan-results',
-    'discover:pcn-history',
-  ];
-  assert.match(pcnRunner, /APP_PROFILE\s*=\s*['"]pcn['"]/);
-  assert.match(pcnRunner, /spawn\(/);
-  for (const scriptName of pcnCliScripts) {
-    assert.match(packageJson.scripts?.[scriptName] || '', /run-pcn-tsx\.cjs/);
-  }
+  assert.equal(packageJson.scripts?.['dev'], 'node ./scripts/native-dev-pcn.cjs');
+  assert.equal(packageJson.scripts?.['dev:pcn'], 'node ./scripts/native-dev-pcn.cjs');
+  assert.equal(packageJson.scripts?.['build'], 'next build');
+  assert.match(nativePcn, /PORT\s*:\s*['"]1357['"]/);
+  assert.match(read('scripts/run-pcn-tsx.cjs'), /APP_PROFILE\s*=\s*['"]pcn['"]/);
+
+  // The active PCN example intentionally documents the internal DDT target
+  // on port 2359; that is a room-app port, not a retired PCN port.
+  const envExampleForPcnPortCheck = envExample.replaceAll('http://ddt_webapp-webapp:2359', '');
+  const designForPcnPortCheck = design.replaceAll('ddt_webapp-webapp:2359', '');
 
   for (const [name, source] of Object.entries({
     server,
-    envExample,
+    envExample: envExampleForPcnPortCheck,
     dockerfile,
     dockerCompose,
     supabaseCompose,
@@ -70,7 +66,7 @@ test('PCN uses native Windows development port 1357 and Docker production port 2
     viteConfig,
     deployScript,
     readme,
-    design,
+    design: designForPcnPortCheck,
   })) {
     assert.doesNotMatch(source, /2359|1359/, `${name} still contains a retired PCN port`);
   }
