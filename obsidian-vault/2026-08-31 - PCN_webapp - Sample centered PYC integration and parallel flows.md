@@ -28,7 +28,7 @@ Description: PCN sample-centered PYC, parallel sample flows and lab-app integrat
 - App phòng thử triển khai `POST /api/integrations/v1/lab-requests` để nhận PYC.
 - App phòng thử triển khai `POST /api/integrations/v1/lab-requests/:externalRequestId/reconcile` để trả event hiện hành.
 - App phòng thử gửi webhook về `/api/pcn/integrations/lab-status-events`.
-- Event dùng `externalSequence` tăng dần trên toàn bộ PYC ngoài; event chỉ áp dụng cho một số mẫu phải gửi `pcnSampleItemIds`.
+- Event dùng `externalSequence` độc lập theo từng `pcnSampleItemId`; reconcile trả `statusEvents[]` để không dùng sequence của mẫu này chặn mẫu khác. `statusEvent` đơn chỉ giữ để tương thích.
 - Không gửi secret, password hoặc byte file qua payload; KQTN chính thức vẫn đi qua boundary tiếp nhận KQTN của PCN.
 - Hai app phòng thử dùng database riêng, chỉ kết nối PCN qua API/HMAC.
 
@@ -38,7 +38,7 @@ Description: PCN sample-centered PYC, parallel sample flows and lab-app integrat
 - `npm run lint`: pass.
 - `npm run build`: pass.
 - `git diff --check`: exit 0; cảnh báo còn lại là line-ending trên Windows.
-- Chưa kiểm thử live với endpoint/secret thật của DDT hoặc Hiệu suất; cần cấu hình `PCN_LAB_INTEGRATIONS_JSON` và `secretEnv` theo `.env.example` trước khi nghiệm thu liên thông.
+- Đã rebuild/recreate container production PCN `pcn_webapp-webapp-1` và DDT `ddt_webapp-webapp-1` trên network `supabase_default`; cả hai `/api/health` trả HTTP 200 sau deploy. Cần nghiệm thu một PYC thật có từ 2 mẫu để xác nhận webhook/reconcile xuyên container.
 
 ## Ghi chú an toàn
 

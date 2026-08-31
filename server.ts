@@ -1856,11 +1856,14 @@ async function startServer() {
         );
         if (!dossierResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ của webhook phòng thử.'), { statusCode: 404 });
         const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
-        const currentSequence = Math.max(
-          Number(route.execution?.lastExternalSequence || 0),
-          Number(request?.integration?.lastExternalSequence || 0),
-          ...eventSampleItemIds.map((itemId) => Number(route.itemSnapshots?.[itemId]?.execution?.lastExternalSequence || 0)),
-        );
+        const currentSequence = eventSampleItemIds.length > 0
+          ? Math.max(
+            ...eventSampleItemIds.map((itemId) => Number(route.itemSnapshots?.[itemId]?.execution?.lastExternalSequence || 0)),
+          )
+          : Math.max(
+            Number(route.execution?.lastExternalSequence || 0),
+            Number(request?.integration?.lastExternalSequence || 0),
+          );
         const now = new Date().toISOString();
         if (eventInput.externalSequence <= currentSequence) {
           const staleEvent = buildPcnSampleFlowEvent({
@@ -1950,7 +1953,10 @@ async function startServer() {
               syncStatus: 'ACKNOWLEDGED',
               externalRequestId: eventInput.externalRequestId,
               ...(eventInput.externalRequestCode ? { externalRequestCode: eventInput.externalRequestCode } : {}),
-              lastExternalSequence: eventInput.externalSequence,
+              lastExternalSequence: Math.max(
+                Number(request.integration?.lastExternalSequence || 0),
+                eventInput.externalSequence,
+              ),
               lastSyncedAt: now,
               lastErrorCode: undefined,
               lastErrorMessage: undefined,
@@ -2451,7 +2457,9 @@ async function startServer() {
         clearTimeout(timeout);
       }
 
-      const remoteEvent = remoteResponse?.statusEvent || remoteResponse?.event || remoteResponse?.latestEvent;
+      const remoteEvents = Array.isArray(remoteResponse?.statusEvents)
+        ? remoteResponse.statusEvents
+        : [remoteResponse?.statusEvent || remoteResponse?.event || remoteResponse?.latestEvent].filter(Boolean);
       const remoteSource = String(remoteResponse?.sourceSystem || config.systemCode).trim().toUpperCase();
       const remoteTarget = String(remoteResponse?.targetSystem || 'PCN').trim().toUpperCase();
       if (remoteResponse?.accepted !== true
@@ -2461,38 +2469,60 @@ async function startServer() {
         || String(remoteResponse.messageId || '') !== messageId
         || String(remoteResponse.externalRequestId || externalRequestId).trim() !== externalRequestId
         || !String(remoteResponse.externalRequestCode || request.integration.externalRequestCode || '').trim()
-        || !remoteEvent || typeof remoteEvent !== 'object') {
+        || remoteEvents.length === 0
+        || remoteEvents.some((event: unknown) => !event || typeof event !== 'object' || Array.isArray(event))) {
         throw Object.assign(new Error('REMOTE_RECONCILE_REJECTED'), { code: 'REMOTE_RECONCILE_REJECTED' });
       }
 
-      const eventBody = {
-        ...(remoteEvent as Record<string, unknown>),
-        sourceSystemCode: config.systemCode,
-        externalEventId: String((remoteEvent as any).externalEventId || `${externalRequestId}:reconcile:${String((remoteEvent as any).externalSequence || 'latest')}`).trim(),
-        externalRequestId,
-        externalRequestCode: String(remoteResponse.externalRequestCode || request.integration.externalRequestCode || '').trim() || undefined,
-        pcnRouteId: route.id,
-        pcnLabRequestId: request.id,
-        pcnSampleItemIds: Array.isArray((remoteEvent as any).pcnSampleItemIds)
-          ? (remoteEvent as any).pcnSampleItemIds.map((value: unknown) => String(value).trim()).filter(Boolean)
-          : undefined,
-      };
-      const eventMessageId = `pcn-reconcile-event-${sanitizePcnPathSegment(route.id)}-${sanitizePcnPathSegment(request.id)}-${String((eventBody as any).externalSequence || 'latest')}`;
-      const eventTimestamp = String(Math.floor(Date.now() / 1000));
-      const eventBodySha256 = buildPcnLabBodySha256(eventBody);
-      const localWebhookResponse = await fetch(`http://127.0.0.1:${PORT}/api/pcn/integrations/lab-status-events`, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-pcn-timestamp': eventTimestamp,
-          'x-pcn-message-id': eventMessageId,
-          'x-pcn-signature': `sha256=${buildPcnLabHmacSignature({ secret, method: 'POST', path: '/api/pcn/integrations/lab-status-events', timestamp: eventTimestamp, messageId: eventMessageId, bodySha256: eventBodySha256 })}`,
-        },
-        body: canonicalizePcnLabIntegrationPayload(eventBody),
+      const eventBodies = remoteEvents.map((remoteEvent: Record<string, unknown>, index: number) => {
+        const externalEventId = String(remoteEvent.externalEventId || `${externalRequestId}:reconcile:${index + 1}:${String(remoteEvent.externalSequence || 'latest')}`).trim();
+        const externalRequestIdFromEvent = String(remoteEvent.externalRequestId || externalRequestId).trim();
+        if (externalRequestIdFromEvent !== externalRequestId) {
+          throw Object.assign(new Error('REMOTE_RECONCILE_EVENT_REQUEST_MISMATCH'), { code: 'REMOTE_RECONCILE_EVENT_REQUEST_MISMATCH' });
+        }
+        const externalSequence = Number(remoteEvent.externalSequence);
+        if (!Number.isInteger(externalSequence) || externalSequence < 1) {
+          throw Object.assign(new Error('REMOTE_RECONCILE_EVENT_SEQUENCE_INVALID'), { code: 'REMOTE_RECONCILE_EVENT_SEQUENCE_INVALID' });
+        }
+        return {
+          ...remoteEvent,
+          sourceSystemCode: config!.systemCode,
+          externalEventId,
+          externalRequestId,
+          externalRequestCode: String(remoteResponse.externalRequestCode || request.integration.externalRequestCode || '').trim() || undefined,
+          pcnRouteId: route!.id,
+          pcnLabRequestId: request!.id,
+          pcnSampleItemIds: Array.isArray(remoteEvent.pcnSampleItemIds)
+            ? remoteEvent.pcnSampleItemIds.map((value: unknown) => String(value).trim()).filter(Boolean)
+            : undefined,
+        };
       });
-      const localPayload = await localWebhookResponse.json().catch(() => ({}));
-      if (!localWebhookResponse.ok) throw Object.assign(new Error(String(localPayload?.error || 'RECONCILE_WEBHOOK_APPLY_FAILED')), { code: String(localPayload?.code || 'RECONCILE_WEBHOOK_APPLY_FAILED'), statusCode: localWebhookResponse.status });
-      res.status(200).json({ ...localPayload, reconciled: true, externalRequestCode: String(remoteResponse.externalRequestCode || request.integration.externalRequestCode).trim() });
+      const localPayloads: any[] = [];
+      for (const eventBody of eventBodies) {
+        const eventMessageId = `pcn-reconcile-event-${sanitizePcnPathSegment(route.id)}-${sanitizePcnPathSegment(request.id)}-${sanitizePcnPathSegment(String(eventBody.externalEventId))}`.slice(0, 180);
+        const eventTimestamp = String(Math.floor(Date.now() / 1000));
+        const eventBodySha256 = buildPcnLabBodySha256(eventBody);
+        const localWebhookResponse = await fetch(`http://127.0.0.1:${PORT}/api/pcn/integrations/lab-status-events`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-pcn-timestamp': eventTimestamp,
+            'x-pcn-message-id': eventMessageId,
+            'x-pcn-signature': `sha256=${buildPcnLabHmacSignature({ secret, method: 'POST', path: '/api/pcn/integrations/lab-status-events', timestamp: eventTimestamp, messageId: eventMessageId, bodySha256: eventBodySha256 })}`,
+          },
+          body: canonicalizePcnLabIntegrationPayload(eventBody),
+        });
+        const localPayload = await localWebhookResponse.json().catch(() => ({}));
+        if (!localWebhookResponse.ok) throw Object.assign(new Error(String(localPayload?.error || 'RECONCILE_WEBHOOK_APPLY_FAILED')), { code: String(localPayload?.code || 'RECONCILE_WEBHOOK_APPLY_FAILED'), statusCode: localWebhookResponse.status });
+        localPayloads.push(localPayload);
+      }
+      const lastPayload = localPayloads.at(-1) || {};
+      res.status(200).json({
+        ...lastPayload,
+        reconciled: true,
+        reconciledEvents: localPayloads.length,
+        externalRequestCode: String(remoteResponse.externalRequestCode || request.integration.externalRequestCode).trim(),
+      });
     } catch (error: any) {
       const errorCode = String(error?.code || (error?.name === 'AbortError' ? 'REMOTE_TIMEOUT' : 'REMOTE_UNAVAILABLE'));
       try {

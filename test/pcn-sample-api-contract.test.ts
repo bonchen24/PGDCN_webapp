@@ -89,6 +89,9 @@ test('PCN lab integration exposes signed dispatch and webhook boundaries with id
   assert.match(serverSource, /timingSafeEqual/);
   assert.match(serverSource, /pg_advisory_xact_lock/);
   assert.match(serverSource, /externalSequence/);
+  assert.match(serverSource, /Array\.isArray\(remoteResponse\?\.statusEvents\)/);
+  assert.match(serverSource, /eventSampleItemIds\.length > 0/);
+  assert.match(serverSource, /reconciledEvents/);
   assert.match(serverSource, /pcnSampleItemIds/);
   assert.match(serverSource, /sampleItems/);
   assert.match(serverSource, /pcnSampleFlowEvents/);
