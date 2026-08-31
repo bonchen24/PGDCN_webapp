@@ -6,6 +6,14 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-01 — Triển khai LABFTEE_APP và topology 3 app
+
+- Runtime hiện hành: PCN `2357` (`pcn_webapp-webapp`), LABFTEE_APP `2358` (`labftee-app-prod`, `APP_CODE=PERFORMANCE`) và DDT `2359` (`ddt_webapp-webapp`, `APP_CODE=DDT`); DDT nhận hai route `EMC` và `ELECTRICAL_SAFETY`, LABFTEE nhận route `PERFORMANCE`.
+- PCN production đã inject ba adapter route qua `PCN_LAB_INTEGRATIONS_JSON`; PERFORMANCE và DDT dùng hai HMAC secret riêng, không đưa secret vào payload hoặc database.
+- LABFTEE đã có ingress nhận PYC, callback status theo từng mẫu và endpoint `POST /api/integrations/v1/lab-requests/:externalRequestId/reconcile` trả `statusEvents[]` item-scoped; reconcile chỉ đọc envelope, request và callback outbox.
+- Production image LABFTEE đã bổ sung `prisma.config.ts` để migration chạy được. Database cũ đã baseline 3 migration nền và deploy migration `20260831000000_add_pcn_integration` forward-only; không reset dữ liệu hiện hữu.
+- Verification runtime: cả 3 `/api/health` trả 200; probe HMAC từ PCN tới đủ `PERFORMANCE`, `EMC`, `ELECTRICAL_SAFETY` trả 404 đúng với mã giả; probe health ngược từ LABFTEE/DDT về PCN trả 200. Chưa gửi PYC thật; nghiệm thu E2E cần một PYC có từ 2 mẫu.
+
 ## Cập nhật 2026-08-31 — Mô hình mẫu thử trung tâm và tích hợp PYC phòng thử
 
 - `PcnSampleItem` là đối tượng nghiệp vụ chính bên trong `PcnSampleLot`; một PYC mới bắt buộc gắn đúng một lô và một tuyến phòng thử. Một lô có thể có nhiều mẫu/model, loại mẫu và số lượng riêng.
@@ -13,7 +21,7 @@ Description: Persistent project memory and verified deployment observations for 
 - `PcnLabOperationsView` hiển thị một card cho mỗi mẫu/model, gồm vị trí hiện tại, phòng thử theo thứ tự, PYC đã có/chưa có, lịch thử, tiến độ thực hiện, PASS/FAIL, KQTN và trạng thái đồng bộ.
 - PCN không dùng chung database với DDT/Hiệu suất. Server PCN gửi PYC bằng HMAC server-to-server, nhận ACK, nhận webhook trạng thái có idempotency/sequence guard và hỗ trợ reconcile khi thất lạc webhook.
 - Hợp đồng tích hợp nằm trong `docs/superpowers/specs/2026-08-31-pcn-sample-centered-flow-design.md`; prompt triển khai cho app phòng thử cần giữ các khóa `pcnLabRequestId`, `pcnRouteId`, `pcnLotId`, `pcnSampleItemId`, `externalRequestId` và `externalRequestCode`.
-- Verification lượt hoàn thiện: `npm test` **559/559 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` exit 0. Chưa chạy kết nối live với DDT/Hiệu suất vì chưa có endpoint/secret tích hợp thật trong môi trường này.
+- Verification lượt hoàn thiện: `npm test` **559/559 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` exit 0. Kết nối container và HMAC boundary đã được xác minh; chưa chạy PYC nghiệp vụ thật có từ 2 mẫu.
 
 ## Tổng kết hiện trạng PCN và audit mobile — 2026-08-31
 

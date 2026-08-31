@@ -1,10 +1,14 @@
 services:
   webapp:
+    container_name: pcn_webapp-webapp
     build: .
     environment:
       NODE_ENV: production
       APP_PROFILE: pcn
       PORT: 2357
+      PCN_LAB_INTEGRATIONS_JSON: ${PCN_LAB_INTEGRATIONS_JSON:-}
+      PCN_LAB_PERFORMANCE_SECRET: ${PCN_LAB_PERFORMANCE_SECRET:-}
+      PCN_LAB_DDT_SECRET: ${PCN_LAB_DDT_SECRET:-}
       POSTGRES_HOST: supabase-db
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -15,7 +19,8 @@ services:
       PCN_SESSION_SECRET: ${PCN_SESSION_SECRET:?Set a long random PCN session secret}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       SUPABASE_STORAGE_URL: ${SUPABASE_STORAGE_URL:-http://supabase-storage:5000}
-      SUPABASE_STORAGE_BUCKET: ${PCN_STORAGE_BUCKET:-ddt-files}
+      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-pcn-files}
+      PCN_STORAGE_BUCKET: ${PCN_STORAGE_BUCKET:-pcn-files}
       PCN_FILE_MAX_BYTES: ${PCN_FILE_MAX_BYTES:-26214400}
       PCN_DOCX_PDF_RENDERER: ${PCN_DOCX_PDF_RENDERER:-}
       PCN_DOCX_PDF_RENDERER_TIMEOUT_MS: ${PCN_DOCX_PDF_RENDERER_TIMEOUT_MS:-120000}

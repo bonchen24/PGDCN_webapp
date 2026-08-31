@@ -6,6 +6,13 @@ Description: PCN sample-centered PYC, parallel sample flows and lab-app integrat
 
 # PCN_webapp — Mẫu thử trung tâm, PYC và tích hợp phòng thử — 2026-08-31
 
+## Bổ sung triển khai 2026-09-01
+
+- Topology production đã nối đủ ba app: PCN `2357` (`pcn_webapp-webapp`), LABFTEE_APP `2358` (`labftee-app-prod`, `PERFORMANCE`) và DDT `2359` (`ddt_webapp-webapp`, `DDT`; phục vụ `EMC`/`ELECTRICAL_SAFETY`). Adapter PCN dùng URL nội bộ Docker và secret HMAC riêng theo đích.
+- LABFTEE đã triển khai reconcile item-scoped cùng ingress/callback; endpoint trả `statusEvents[]` và alias `statusEvent`, không gộp trạng thái các mẫu chạy song song.
+- Database LABFTEE đã baseline migration cũ và deploy migration PCN mới forward-only; production image copy `prisma.config.ts` để các lần migration sau hoạt động đúng.
+- Đã xác minh health 3 app đều HTTP 200, HMAC probe từ PCN tới cả ba route đích trả 404 đúng kỳ vọng với mã giả, và health probe ngược từ hai app phòng thử về PCN trả 200. Chưa tạo PYC/test data giả; bước nghiệm thu tiếp theo là PYC thật có ít nhất 2 mẫu.
+
 ## Quyết định nghiệp vụ
 
 - Một PYC tương ứng đúng một lô mẫu.
@@ -26,7 +33,7 @@ Description: PCN sample-centered PYC, parallel sample flows and lab-app integrat
 ## Hợp đồng bàn giao cho DDT/Hiệu suất
 
 - App phòng thử triển khai `POST /api/integrations/v1/lab-requests` để nhận PYC.
-- App phòng thử triển khai `POST /api/integrations/v1/lab-requests/:externalRequestId/reconcile` để trả event hiện hành.
+- App phòng thử triển khai `POST /api/integrations/v1/lab-requests/:externalRequestId/reconcile` để trả event hiện hành; LABFTEE và DDT đều đã có endpoint này.
 - App phòng thử gửi webhook về `/api/pcn/integrations/lab-status-events`.
 - Event dùng `externalSequence` độc lập theo từng `pcnSampleItemId`; reconcile trả `statusEvents[]` để không dùng sequence của mẫu này chặn mẫu khác. `statusEvent` đơn chỉ giữ để tương thích.
 - Không gửi secret, password hoặc byte file qua payload; KQTN chính thức vẫn đi qua boundary tiếp nhận KQTN của PCN.
@@ -38,7 +45,7 @@ Description: PCN sample-centered PYC, parallel sample flows and lab-app integrat
 - `npm run lint`: pass.
 - `npm run build`: pass.
 - `git diff --check`: exit 0; cảnh báo còn lại là line-ending trên Windows.
-- Đã rebuild/recreate container production PCN `pcn_webapp-webapp-1` và DDT `ddt_webapp-webapp-1` trên network `supabase_default`; cả hai `/api/health` trả HTTP 200 sau deploy. Cần nghiệm thu một PYC thật có từ 2 mẫu để xác nhận webhook/reconcile xuyên container.
+- Đã rebuild/recreate container production PCN `pcn_webapp-webapp`, LABFTEE `labftee-app-prod` và DDT `ddt_webapp-webapp` trên network `supabase_default`; cả ba `/api/health` trả HTTP 200 sau deploy. Cần nghiệm thu một PYC thật có từ 2 mẫu để xác nhận webhook/reconcile xuyên container.
 
 ## Ghi chú an toàn
 
