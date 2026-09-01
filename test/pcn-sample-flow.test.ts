@@ -62,7 +62,58 @@ test('builds one lot with multiple sample models and preserves each quantity', (
   assert.deepEqual(result.routes[0].sampleItemIds, ['item-a', 'item-b']);
 });
 
-test('sample route readiness follows sequence and a failed execution blocks the next route', () => {
+test('creates only the explicitly assigned testing routes for each sample model', () => {
+  const result = buildPcnSampleLot({
+    id: 'sample-lot-assigned',
+    dossierId: 'dossier-1',
+    lotCode: 'PCN-QC9-ASSIGNED',
+    sampleName: 'Thiết bị điện',
+    quantity: 2,
+    fieldCodes: ['QC9'],
+    labCodes: ['EMC', 'PERFORMANCE', 'ELECTRICAL_SAFETY'],
+    sampleItems: [
+      { id: 'item-emc', sampleCode: 'EMC-01', sampleType: 'Bếp điện', model: 'EMC-1', quantity: 1, testLabCodes: ['EMC'] },
+      { id: 'item-parallel', sampleCode: 'ITD-01', sampleType: 'Quạt điện', model: 'ITD-1', quantity: 1, testLabCodes: ['PERFORMANCE', 'ELECTRICAL_SAFETY'] },
+    ],
+  }, '2026-08-28T08:00:00.000Z');
+
+  assert.deepEqual(result.items.map((item) => item.testLabCodes), [['EMC'], ['PERFORMANCE', 'ELECTRICAL_SAFETY']]);
+  assert.deepEqual(result.routes.map((route) => route.labCode), ['EMC', 'PERFORMANCE', 'ELECTRICAL_SAFETY']);
+  assert.deepEqual(result.routes.map((route) => route.sampleItemIds), [['item-emc'], ['item-parallel'], ['item-parallel']]);
+});
+
+test('opens assigned testing routes in parallel only when the model has multiple samples', () => {
+  const readiness = derivePcnSampleRouteReadiness([
+    { id: 'route-emc', sampleLotId: 'lot-1', labCode: 'EMC', labName: 'Phòng thử EMC', status: 'PENDING', sequence: 1, sampleItemIds: ['item-1'] },
+    { id: 'route-performance', sampleLotId: 'lot-1', labCode: 'PERFORMANCE', labName: 'Hiệu suất', status: 'PENDING', sequence: 2, sampleItemIds: ['item-1'] },
+  ], { id: 'item-1', quantity: 2 });
+
+  assert.deepEqual(readiness, { 'route-emc': 'READY', 'route-performance': 'READY' });
+});
+
+test('keeps assigned testing routes sequential when the model has one sample', () => {
+  const readiness = derivePcnSampleRouteReadiness([
+    { id: 'route-emc', sampleLotId: 'lot-1', labCode: 'EMC', labName: 'Phòng thử EMC', status: 'PENDING', sequence: 1, sampleItemIds: ['item-1'] },
+    { id: 'route-performance', sampleLotId: 'lot-1', labCode: 'PERFORMANCE', labName: 'Hiệu suất', status: 'PENDING', sequence: 2, sampleItemIds: ['item-1'] },
+  ], { id: 'item-1', quantity: 1 });
+
+  assert.deepEqual(readiness, { 'route-emc': 'READY', 'route-performance': 'BLOCKED' });
+});
+
+test('rejects a sample model without an assigned internal testing route', () => {
+  assert.throws(() => buildPcnSampleLot({
+    id: 'sample-lot-unassigned',
+    dossierId: 'dossier-1',
+    lotCode: 'PCN-QC9-UNASSIGNED',
+    sampleName: 'Thiết bị điện',
+    quantity: 1,
+    fieldCodes: ['QC9'],
+    labCodes: [],
+    sampleItems: [{ id: 'item-unassigned', sampleCode: 'ECN-01', sampleType: 'Bếp điện', model: 'ECN-1', quantity: 1, testLabCodes: [] }],
+  }), /gán ít nhất một phép thử|phòng thử nghiệm/i);
+});
+
+test('sample route readiness follows sequence and a failed execution does not block the next route', () => {
   const routes: PcnSampleRoute[] = [
     {
       id: 'route-2', sampleLotId: 'lot-1', labCode: 'EMC', labName: 'EMC', status: 'PENDING', sequence: 2,
@@ -77,12 +128,12 @@ test('sample route readiness follows sequence and a failed execution blocks the 
   ];
 
   assert.deepEqual(sortPcnSampleRoutes(routes).map((route) => route.id), ['route-1', 'route-2', 'route-3']);
-  assert.deepEqual(derivePcnSampleRouteReadiness(routes), {
+  assert.deepEqual(derivePcnSampleRouteReadiness(routes, { id: 'item-1', quantity: 1 }), {
     'route-1': 'COMPLETED',
-    'route-2': 'BLOCKED',
+    'route-2': 'READY',
     'route-3': 'BLOCKED',
   });
-  assert.equal(isPcnSampleRouteCompleteForNext(routes[1]), false);
+  assert.equal(isPcnSampleRouteCompleteForNext(routes[1]), true);
 });
 
 test('a passed execution makes exactly the next pending route ready', () => {
@@ -98,7 +149,7 @@ test('a passed execution makes exactly the next pending route ready', () => {
       id: 'route-3', sampleLotId: 'lot-1', labCode: 'ELECTRICAL_SAFETY', labName: 'An toàn điện', status: 'PENDING', sequence: 3,
     },
   ];
-  assert.deepEqual(derivePcnSampleRouteReadiness(routes), {
+  assert.deepEqual(derivePcnSampleRouteReadiness(routes, { id: 'item-1', quantity: 1 }), {
     'route-1': 'COMPLETED',
     'route-2': 'READY',
     'route-3': 'BLOCKED',
@@ -217,6 +268,21 @@ test('sample flow events carry a traceable route transition', () => {
 test('sample route UI locks the transition button while the server request is pending', () => {
   assert.match(sampleFlowSource, /const \[busyRouteId, setBusyRouteId\]/);
   assert.match(sampleFlowSource, /if \(busyRouteId === route\.id\) return/);
-  assert.match(sampleFlowSource, /disabled=\{(?:busyRouteId === route\.id|isBusy)\}/);
+  assert.match(sampleFlowSource, /disabled=\{(?:busyRouteId === route\.id|isBusy)(?: \|\| blockedBySequence)?\}/);
   assert.match(sampleFlowSource, /finally \{\s*setBusyRouteId\(undefined\)/s);
+});
+
+test('sample route transitions enforce the quantity-based execution mode at UI and server boundaries', () => {
+  assert.match(sampleFlowSource, /getPcnSampleRouteStartDenial/);
+  assert.match(sampleFlowSource, /quantity > 1/);
+  assert.match(serverSource, /getPcnSampleRouteStartDenial/);
+});
+
+test('sample flow keeps each lot collapsed until the user opens its assigned routes', () => {
+  assert.match(sampleFlowSource, /expandedLotIds/);
+  assert.match(sampleFlowSource, /Mở tất cả/);
+  assert.match(sampleFlowSource, /Thu gọn tất cả/);
+  assert.match(sampleFlowSource, /aria-expanded=\{isExpanded\}/);
+  assert.match(sampleFlowSource, /aria-controls=\{`lot-flow-\$\{lot\.id\}`\}/);
+  assert.match(sampleFlowSource, /id=\{`lot-flow-\$\{lot\.id\}`\}/);
 });

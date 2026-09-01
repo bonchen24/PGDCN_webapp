@@ -6,6 +6,13 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-01 — UI collapsed/open cho PYC & luân chuyển mẫu
+
+- Trang **Phiếu yêu cầu & Luân chuyển mẫu nội bộ** và projection **Điều phối phòng thử** dùng layout accordion theo mẫu/model: mặc định collapsed, phần tóm tắt vẫn hiện mã mẫu, model, số lượng, chế độ điều phối, vị trí và trạng thái.
+- Người dùng mở từng mẫu để xem các phép thử đã gán, PYC, lịch thử, trạng thái thực hiện, PASS/FAIL, KQTN và hành động theo chặng; không tự hiển thị các phòng thử chưa được gán.
+- Có nút **Mở tất cả** và **Thu gọn tất cả** theo danh sách đang lọc. State mở/đóng chỉ thuộc UI, không ghi DB/API; route tuần tự/song song và phạm vi PYC nội bộ không thay đổi.
+- Đã thêm kiểm thử hợp đồng UI cho hai projection. Verification: `npm test` **573/573 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` exit 0.
+
 ## Cập nhật 2026-09-01 — Triển khai LABFTEE_APP và topology 3 app
 
 - Runtime hiện hành: PCN `2357` (`pcn_webapp-webapp`), LABFTEE_APP `2358` (`labftee-app-prod`, `APP_CODE=PERFORMANCE`) và DDT `2359` (`ddt_webapp-webapp`, `APP_CODE=DDT`); DDT nhận hai route `EMC` và `ELECTRICAL_SAFETY`, LABFTEE nhận route `PERFORMANCE`.
