@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const shell = fs.readFileSync(new URL('../components/PcnAppShell.tsx', import.meta.url), 'utf8');
 const workspacePath = new URL('../components/PcnWorkspace.tsx', import.meta.url);
@@ -24,7 +26,6 @@ test('Next shell renders the PCN workspace instead of the DDT schedule app', () 
   assert.match(shell, /PcnWorkspace/);
   assert.doesNotMatch(shell, /from ['"]\.\.\/App['"]/);
 });
-
 test('PCN workspace exposes field filters and the preserved customer list', () => {
   const source = fs.readFileSync(workspacePath, 'utf8');
 
@@ -227,3 +228,81 @@ test('dossier generation shortcut opens the document output modal without a new 
 });
 
 // --- End of pcn-ui-contract.test.ts ---
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const read = (relative: string) => fs.readFileSync(path.join(root, relative), 'utf8');
+
+test('PCN shell owns page scroll and reserves scrollbar gutter', () => {
+  const workspace = read('components/PcnWorkspace.tsx');
+  const css = read('index.css');
+
+  assert.match(workspace, /<main[^>]*mobile-scroll-y[^>]*overflow-x-hidden[^>]*overflow-y-auto/);
+  assert.match(css, /scrollbar-gutter:\s*stable/);
+});
+
+test('all PCN modal source files declare a viewport bound and scrollable body', () => {
+  const files = [
+    'components/PcnDossierDetailView.tsx',
+    'components/PcnDocumentOutputModal.tsx',
+    'components/PcnLabRequestView.tsx',
+    'components/PcnIssuanceView.tsx',
+    'components/PcnOperationalFormModal.tsx',
+    'components/PcnSampleHandoverModal.tsx',
+    'components/PcnTemplateSettingsModal.tsx',
+    'components/PcnPersonalSettingsPanel.tsx',
+    'components/PcnDossierFilePreview.tsx',
+    'components/PcnLabRequestDetailModal.tsx',
+    'components/PcnResultDetailModal.tsx',
+  ];
+
+  for (const file of files) {
+    const source = read(file);
+    assert.match(source, /max-h-\[/, file);
+    assert.match(source, /mobile-scroll-y|overflow-auto/, file);
+  }
+});
+
+test('read-only approval and signer delegation modal branches keep an independently scrollable body', () => {
+  const approval = read('components/PcnApprovalModal.tsx');
+  const approvalStart = approval.indexOf('if (current && !canAct)');
+  const approvalReadOnly = approval.slice(approvalStart, approval.indexOf('  return <div className="fixed', approvalStart));
+  assert.match(approvalReadOnly, /max-h-\[/);
+  assert.match(approvalReadOnly, /min-h-0/);
+  assert.match(approvalReadOnly, /mobile-scroll-y/);
+
+  const delegation = read('components/PcnSignerDelegationPanel.tsx');
+  const delegationStart = delegation.indexOf('{open &&');
+  const delegationModal = delegation.slice(delegationStart, delegation.indexOf('\n  </section>;', delegationStart));
+  assert.match(delegationModal, /max-h-\[/);
+  assert.match(delegationModal, /min-h-0/);
+  assert.match(delegationModal, /mobile-scroll-y/);
+});
+
+test('proposal customer field uses a dropdown component instead of datalist', () => {
+  const workspace = read('components/PcnWorkspace.tsx');
+
+  assert.doesNotMatch(workspace, /<datalist[^>]*pcn-customer-options/);
+  assert.match(workspace, /PcnCatalogCombobox/);
+});
+
+test('lab request laboratory field uses the configured catalog control', () => {
+  const source = read('components/PcnLabRequestView.tsx');
+
+  assert.match(source, /PCN_SAMPLE_LAB_OPTIONS/);
+  assert.match(source, /Phòng thử nghiệm nhận[^]*<select/);
+});
+
+test('catalog combobox exposes keyboard and assistive technology semantics', () => {
+  const source = read('components/PcnCatalogCombobox.tsx');
+
+  assert.match(source, /role="combobox"/);
+  assert.match(source, /aria-expanded/);
+  assert.match(source, /aria-controls/);
+  assert.match(source, /aria-autocomplete="list"/);
+  assert.match(source, /role="listbox"/);
+  assert.match(source, /role="option"/);
+  assert.match(source, /Escape/);
+  assert.match(source, /ArrowDown/);
+  assert.match(source, /Enter/);
+  assert.match(source, /max-h-64[^"']*overflow-y-auto[^"']*mobile-scroll-y/);
+});
