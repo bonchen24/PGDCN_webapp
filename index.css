@@ -74,6 +74,11 @@
 }
 
 @layer components {
+  :root {
+    --pcn-scrollbar-thumb: #94a3b8;
+    --pcn-scrollbar-track: transparent;
+  }
+
   /* Compact density applies to the authenticated app shell only. */
   .ddt-compact {
     font-size: 0.8125rem;
@@ -284,7 +289,7 @@
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    scrollbar-color: #94a3b8 transparent;
+    scrollbar-color: var(--pcn-scrollbar-thumb) var(--pcn-scrollbar-track);
   }
 
   .mobile-scroll-y {
@@ -294,7 +299,8 @@
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    scrollbar-color: #94a3b8 transparent;
+    scrollbar-color: var(--pcn-scrollbar-thumb) var(--pcn-scrollbar-track);
+    scrollbar-gutter: stable;
   }
 
   .mobile-scroll-x::-webkit-scrollbar,
@@ -305,20 +311,24 @@
 
   .mobile-scroll-x::-webkit-scrollbar-track,
   .mobile-scroll-y::-webkit-scrollbar-track {
-    background: transparent;
+    background: var(--pcn-scrollbar-track);
   }
 
   .mobile-scroll-x::-webkit-scrollbar-thumb,
   .mobile-scroll-y::-webkit-scrollbar-thumb {
     border-radius: 9999px;
-    background: #94a3b8;
+    background: var(--pcn-scrollbar-thumb);
   }
 
   /* PCN has a few legacy overflow surfaces that keep their Tailwind utility. */
   .pcn-compact .overflow-x-auto,
   .pcn-compact .overflow-y-auto {
     scrollbar-width: thin;
-    scrollbar-color: #94a3b8 transparent;
+    scrollbar-color: var(--pcn-scrollbar-thumb) var(--pcn-scrollbar-track);
+  }
+
+  .pcn-compact .overflow-y-auto {
+    scrollbar-gutter: stable;
   }
 
   .pcn-compact .overflow-x-auto::-webkit-scrollbar,
@@ -330,7 +340,7 @@
   .pcn-compact .overflow-x-auto::-webkit-scrollbar-thumb,
   .pcn-compact .overflow-y-auto::-webkit-scrollbar-thumb {
     border-radius: 9999px;
-    background: #94a3b8;
+    background: var(--pcn-scrollbar-thumb);
   }
 
   .mobile-touch-target {
