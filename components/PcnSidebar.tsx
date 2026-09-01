@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ElementType } from 'react';
 import {
+  Activity,
   Building2,
   Bot,
   ClipboardList,
@@ -33,6 +34,7 @@ export const PCN_SECTION_ICONS: Record<PcnSection, ElementType> = {
   assistant: Bot,
   customers: Building2,
   users: Users,
+  activityLogs: Activity,
   settings: Settings,
 };
 

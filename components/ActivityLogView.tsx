@@ -244,7 +244,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
         <div className="max-w-md rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center text-rose-800 shadow-sm">
           <AlertCircle className="mx-auto mb-3" size={28} />
           <h2 className="text-sm font-black uppercase tracking-wide">Không có quyền truy cập</h2>
-          <p className="mt-2 text-xs font-medium">Nhật ký hệ thống chỉ dành cho Admin và Quản lý.</p>
+          <p className="mt-2 text-xs font-medium">Bạn không có quyền xem nhật ký hệ thống trong phiên này.</p>
         </div>
       </section>
     );

@@ -7,6 +7,7 @@ export type PcnSection =
   | 'assistant'
   | 'customers'
   | 'users'
+  | 'activityLogs'
   | 'settings';
 
 export type PcnNavigationGroupKey = 'records' | 'admin';
@@ -29,14 +30,14 @@ export const PCN_WORKSPACE_NAVIGATION: readonly PcnSection[] = [
 ];
 
 /**
- * Admin-only maintenance screens stay together and are not daily operational
- * work surfaces. Personal preferences remain in the user menu.
+ * Activity logs are available to every authenticated PCN account while
+ * personnel management and settings remain Admin-only.
  */
 export const PCN_MORE_NAVIGATION_GROUPS: readonly PcnNavigationGroup[] = [
   {
     key: 'admin',
     label: 'Quản trị',
-    items: ['users', 'settings'],
+    items: ['users', 'activityLogs', 'settings'],
   },
 ];
 
@@ -60,14 +61,16 @@ export const PCN_MOBILE_NAVIGATION: readonly PcnSection[] = ['dashboard', 'propo
 export function getPcnMoreNavigationGroups(isPcnAdmin: boolean): PcnNavigationGroup[] {
   return PCN_MORE_NAVIGATION_GROUPS.map((group) => ({
     ...group,
-    items: isPcnAdmin ? [...group.items] : [],
+    items: group.items.filter((item) => isPcnAdmin || item === 'activityLogs'),
   })).filter((group) => group.items.length > 0);
 }
 
 export function getPcnNavigationGroups(isPcnAdmin: boolean): PcnNavigationGroup[] {
   return PCN_NAVIGATION_GROUPS.map((group) => ({
     ...group,
-    items: group.key === 'admin' && !isPcnAdmin ? [] : [...group.items],
+    items: group.key === 'admin'
+      ? group.items.filter((item) => isPcnAdmin || item === 'activityLogs')
+      : [...group.items],
   })).filter((group) => group.items.length > 0);
 }
 

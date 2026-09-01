@@ -33,6 +33,7 @@ import PcnOperationsRegisterView from './PcnOperationsRegisterView';
 import PcnLabOperationsView from './PcnLabOperationsView';
 import PcnAssistantView from './PcnAssistantView';
 import PcnDraftingWorkspaceView from './PcnDraftingWorkspaceView';
+import { ActivityLogView } from './ActivityLogView';
 import PcnSidebar, { PCN_SECTION_ICONS } from './PcnSidebar';
 import { usePcnStore } from '../store-pcn';
 import { usePcnSessionStore } from '../utils/pcnSessionState';
@@ -57,6 +58,7 @@ const sectionLabels: Record<PcnSection, string> = {
   assistant: 'Trợ lý tiến trình',
   customers: 'Danh sách khách hàng',
   users: 'Nhân sự PCN',
+  activityLogs: 'Nhật ký hệ thống',
   settings: 'Cài đặt PCN',
 };
 
@@ -760,6 +762,8 @@ export function PcnWorkspace() {
     <PcnAssistantView dossiers={pcn.dossiers} proposals={pcn.proposals} requirements={pcn.documentRequirements} documents={pcn.dossierDocuments} labRequests={pcn.labRequests} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} returnedResults={pcn.returnedResults} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'customers' ? (
     <PcnCustomersManagementView initialSearchQuery={customerSearchQuery} />
+  ) : activeSection === 'activityLogs' ? (
+    <ActivityLogView currentUser={currentUser} systemUsers={pcn.users} />
   ) : activeSection === 'settings' && isPcnAdmin ? (
     <PcnSettingsView currentUser={currentUser} templates={pcn.templates} onUploadTemplate={pcn.uploadPcnTemplate} />
   ) : activeSection === 'users' && isPcnAdmin ? (

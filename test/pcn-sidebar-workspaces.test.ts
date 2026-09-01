@@ -22,7 +22,7 @@ test('PCN exposes operational workspaces and keeps personnel management in Admin
     'customers',
   ]);
   assert.equal(PCN_MORE_NAVIGATION_GROUPS.length, 1);
-  assert.deepEqual(PCN_MORE_NAVIGATION_GROUPS[0].items, ['users', 'settings']);
+  assert.deepEqual(PCN_MORE_NAVIGATION_GROUPS[0].items, ['users', 'activityLogs', 'settings']);
   assert.match(sidebarSource, /PCN_WORKSPACE_NAVIGATION\.map/);
   assert.match(sidebarSource, /Quản trị/);
   assert.match(sidebarSource, /aria-label=\{sectionLabels\[section\]\}/);
@@ -36,8 +36,8 @@ test('PCN administration surfaces are visible only to Admin', () => {
   const adminItems = getPcnMoreNavigationGroups(true).flatMap((group) => group.items);
   const staffItems = getPcnMoreNavigationGroups(false).flatMap((group) => group.items);
 
-  assert.deepEqual(adminItems, ['users', 'settings']);
-  assert.deepEqual(staffItems, []);
+  assert.deepEqual(adminItems, ['users', 'activityLogs', 'settings']);
+  assert.deepEqual(staffItems, ['activityLogs']);
 });
 
 test('the direct dossier workspace is named for the work users perform', () => {

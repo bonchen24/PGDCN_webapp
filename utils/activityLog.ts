@@ -125,8 +125,11 @@ export const buildActivityLog = (input: ActivityLogInput): ActivityLog => {
   return log;
 };
 
-export const isActivityLogVisibleToUser = (user: Pick<UserAccount, 'role' | 'position'> | null | undefined): boolean => {
-  return Boolean(user) && user?.role !== 'office_clerk';
+export const isActivityLogVisibleToUser = (user: Pick<UserAccount, 'role' | 'position' | 'systemRole'> | null | undefined): boolean => {
+  if (!user) return false;
+  const systemRole = String(user.systemRole || '').trim().toLowerCase();
+  if (systemRole === 'admin' || systemRole === 'staff' || systemRole === 'viewer') return true;
+  return user.role !== 'office_clerk';
 };
 
 export const activityActionLabels: Record<ActivityLogAction, string> = {

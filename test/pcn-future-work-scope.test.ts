@@ -46,11 +46,12 @@ test('PCN navigation keeps dossier cards while exposing management projections a
   const dashboard = workspace.slice(workspace.indexOf('function PcnDashboard'), workspace.indexOf('function EmptyState'));
 
   assert.match(navigation, /PCN_WORKSPACE_NAVIGATION[\s\S]*'dashboard'[\s\S]*'proposals'[\s\S]*'operations'[\s\S]*'lab-operations'[\s\S]*'drafting'[\s\S]*'assistant'[\s\S]*'customers'/);
-  assert.match(navigation, /items:\s*\['users',\s*'settings'\]/);
+  assert.match(navigation, /items:\s*\['users',\s*'activityLogs',\s*'settings'\]/);
   assert.doesNotMatch(navigation, /'fields'/);
-  assert.doesNotMatch(navigation, /'agent'|'samples'|'labRequests'|'results'|'issuance'|'archive'|'templates'|'qualityDocuments'|'operationsRegister'|'dataIntegrity'|'cutover'|'haimy'|'backup'|'activityLogs'/);
+  assert.doesNotMatch(navigation, /'agent'|'samples'|'labRequests'|'results'|'issuance'|'archive'|'templates'|'qualityDocuments'|'operationsRegister'|'dataIntegrity'|'cutover'|'haimy'|'backup'/);
   assert.match(workspace, /PcnOperationsRegisterView|PcnLabOperationsView|PcnAssistantView|PcnDraftingWorkspaceView/);
-  assert.doesNotMatch(workspace, /PcnDataIntegrityView|PcnCutoverVerificationView|PcnAgentWorkspaceView|PcnTemplateManagementView|PcnQualityDocumentsView|PcnHaimyImportView|PcnBackupView|PcnArchiveView|ActivityLogView/);
+  assert.match(workspace, /ActivityLogView/);
+  assert.doesNotMatch(workspace, /PcnDataIntegrityView|PcnCutoverVerificationView|PcnAgentWorkspaceView|PcnTemplateManagementView|PcnQualityDocumentsView|PcnHaimyImportView|PcnBackupView|PcnArchiveView/);
   assert.doesNotMatch(workspace, /FieldDossierView|activeSection\s*===\s*['"]fields['"]|onOpenSection\([^)]*['"]fields['"]/);
   assert.doesNotMatch(dashboard, /Toàn vẹn dữ liệu|Mở module/);
   assert.match(dossierDetail, /PcnSampleFlowView/);
