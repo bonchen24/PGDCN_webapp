@@ -56,19 +56,19 @@ export function PcnApprovalModal({ steps, users, currentUser, dossierFieldCodes 
 
   if (current && !canAct) {
     return <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/50 p-0 sm:items-center sm:p-4">
-      <div className="w-full max-w-2xl overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
-        <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
+      <section className="flex min-h-0 max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
           <div>
             <h2 className="text-sm font-black text-slate-900">Chuỗi phê duyệt PCN</h2>
             <p className="mt-1 text-[10px] text-slate-500">Bạn chỉ được xem bằng chứng của hồ sơ.</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Đóng chuỗi phê duyệt" className="rounded-lg px-2 py-1 text-xs text-slate-600 hover:bg-slate-100">Đóng</button>
-        </div>
-        <div className="space-y-3 p-4">
+        </header>
+        <main className="min-h-0 flex-1 mobile-scroll-y overflow-y-auto p-4">
           {evidence && <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] text-slate-700"><div className="flex flex-wrap items-center justify-between gap-2"><span><b>{evidence.dossierCode}</b> · Mức hoàn thiện <b>{evidence.score}%</b> · Bắt buộc <b>{evidence.requiredDocumentPresent}/{evidence.requiredDocumentTotal}</b></span><button type="button" onClick={onOpenDossier} className="rounded-md border border-emerald-300 bg-white px-2 py-1 font-black text-emerald-800 hover:bg-emerald-50">Mở kiểm tra trực quan</button></div></div>}
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] leading-5 text-amber-900">Không thể xử lý bước “{current.role}”: {decisionDenial}</p>
-        </div>
-      </div>
+        </main>
+      </section>
     </div>;
   }
 
