@@ -544,6 +544,16 @@ const PCN_DB_COLLECTIONS = new Set([
   "activityLogs"
 ]);
 
+const PCN_NOTIFICATION_ENTITY_TYPES = [
+  'PCN_PROPOSAL',
+  'PCN_DOSSIER',
+  'PCN_SAMPLE_LOT',
+  'PCN_LAB_REQUEST',
+  'PCN_RESULT',
+  'PCN_APPROVAL',
+  'PCN_ISSUANCE',
+] as const;
+
 const PCN_FILE_SOURCE_COLLECTIONS = new Set([
   "pcnCertificationFields",
   "certificationProposals",
@@ -891,6 +901,38 @@ function requirePcnMutation(req: express.Request, res: express.Response): boolea
   if (role === 'admin' || role === 'staff') return true;
   res.status(403).json({ error: 'Tài khoản viewer PCN chỉ được đọc dữ liệu.' });
   return false;
+}
+
+type PcnNotificationAudienceUser = NonNullable<ReturnType<typeof getPcnSessionUser>>;
+
+function buildPcnNotificationVisibilityConditions(
+  actor: PcnNotificationAudienceUser,
+  params: any[],
+): string[] {
+  const entityTypesParam = `$${params.push([...PCN_NOTIFICATION_ENTITY_TYPES])}`;
+  const conditions = [
+    `collection_name = 'notifications'`,
+    `data->>'entityType' = ANY(${entityTypesParam}::text[])`,
+  ];
+  const role = String(actor.systemRole || actor.role || '').trim().toLowerCase();
+  if (role !== 'admin') {
+    const usernameParam = `$${params.push(String(actor.username || '').trim().toLowerCase())}`;
+    conditions.push(`(
+      COALESCE(data->>'targetRole', '') IN ('staff', 'all')
+      OR EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements_text(
+          CASE
+            WHEN jsonb_typeof(COALESCE(data->'targetUsernames', '[]'::jsonb)) = 'array'
+              THEN COALESCE(data->'targetUsernames', '[]'::jsonb)
+            ELSE '[]'::jsonb
+          END
+        ) AS target(username)
+        WHERE lower(trim(target.username)) = lower(trim(${usernameParam}))
+      )
+    )`);
+  }
+  return conditions;
 }
 
 function requirePcnMutationMiddleware(req: express.Request, res: express.Response, next: express.NextFunction): void {
@@ -9867,6 +9909,114 @@ async function startServer() {
     }
   });
 
+  app.get("/api/pcn/notifications", async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') {
+      res.status(404).json({ error: 'Notification PCN chỉ khả dụng trong profile PCN.' });
+      return;
+    }
+    const actor = getPcnSessionUser(req);
+    if (!actor) {
+      res.status(401).json({ error: 'Phiên PCN không hợp lệ hoặc đã hết hạn.' });
+      return;
+    }
+    const params: any[] = [];
+    const conditions = buildPcnNotificationVisibilityConditions(actor, params);
+    try {
+      const result = await pool.query(
+        `SELECT document_id, data
+         FROM app_documents
+         WHERE ${conditions.join(' AND ')}
+         ORDER BY data->>'createdAt' DESC, document_id DESC
+         LIMIT 50`,
+        params,
+      );
+      res.json({ items: result.rows.map(mapDocumentRow) });
+    } catch (error: any) {
+      console.error('PostgreSQL PCN notification read error:', error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post("/api/pcn/notifications/read-all", async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') {
+      res.status(404).json({ error: 'Notification PCN chỉ khả dụng trong profile PCN.' });
+      return;
+    }
+    if (!requirePcnMutation(req, res)) return;
+    const actor = getPcnSessionUser(req)!;
+    const params: any[] = [];
+    const conditions = buildPcnNotificationVisibilityConditions(actor, params);
+    try {
+      const result = await pool.query(
+        `UPDATE app_documents
+         SET data = jsonb_set(data, '{read}', 'true'::jsonb, true), updated_at = CURRENT_TIMESTAMP
+         WHERE ${conditions.join(' AND ')}
+           AND COALESCE(data->>'read', 'false') <> 'true'`,
+        params,
+      );
+      res.json({ updated: result.rowCount || 0 });
+    } catch (error: any) {
+      console.error('PostgreSQL PCN notification read-all error:', error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post("/api/pcn/notifications/clear", async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') {
+      res.status(404).json({ error: 'Notification PCN chỉ khả dụng trong profile PCN.' });
+      return;
+    }
+    if (!requirePcnMutation(req, res)) return;
+    const actor = getPcnSessionUser(req)!;
+    const params: any[] = [];
+    const conditions = buildPcnNotificationVisibilityConditions(actor, params);
+    try {
+      const result = await pool.query(
+        `DELETE FROM app_documents
+         WHERE ${conditions.join(' AND ')}`,
+        params,
+      );
+      res.json({ deleted: result.rowCount || 0 });
+    } catch (error: any) {
+      console.error('PostgreSQL PCN notification clear error:', error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post("/api/pcn/notifications/:notificationId/read", async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') {
+      res.status(404).json({ error: 'Notification PCN chỉ khả dụng trong profile PCN.' });
+      return;
+    }
+    if (!requirePcnMutation(req, res)) return;
+    const notificationId = decodeURIComponent(String(req.params.notificationId || '')).trim();
+    if (!notificationId) {
+      res.status(400).json({ error: 'Thiếu mã notification PCN.' });
+      return;
+    }
+    const actor = getPcnSessionUser(req)!;
+    const params: any[] = [];
+    const conditions = buildPcnNotificationVisibilityConditions(actor, params);
+    const idParam = `$${params.push(notificationId)}`;
+    try {
+      const result = await pool.query(
+        `UPDATE app_documents
+         SET data = jsonb_set(data, '{read}', 'true'::jsonb, true), updated_at = CURRENT_TIMESTAMP
+         WHERE ${conditions.join(' AND ')} AND document_id = ${idParam}
+         RETURNING document_id, data`,
+        params,
+      );
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: 'Không tìm thấy notification PCN hoặc notification không thuộc audience.' });
+        return;
+      }
+      res.json({ updated: 1, item: mapDocumentRow(result.rows[0]) });
+    } catch (error: any) {
+      console.error('PostgreSQL PCN notification read mutation error:', error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
   app.get("/api/activity-logs/summary", async (req, res) => {
     const params: any[] = ["activityLogs"];
     const conditions = ["collection_name = $1"];
@@ -10107,6 +10257,30 @@ async function startServer() {
   app.get("/api/db/:collection", async (req, res) => {
     const collectionName = getDbCollection(req, res);
     if (!collectionName) return;
+    if (DATABASE_PROFILE === 'pcn' && collectionName === 'notifications') {
+      const actor = getPcnSessionUser(req);
+      if (!actor) {
+        res.status(401).json({ error: 'Phiên PCN không hợp lệ hoặc đã hết hạn.' });
+        return;
+      }
+      const params: any[] = [];
+      const conditions = buildPcnNotificationVisibilityConditions(actor, params);
+      try {
+        const result = await pool.query(
+          `SELECT document_id, data
+           FROM app_documents
+           WHERE ${conditions.join(' AND ')}
+           ORDER BY data->>'createdAt' DESC, document_id DESC
+           LIMIT 50`,
+          params,
+        );
+        res.json({ items: result.rows.map(mapDocumentRow) });
+      } catch (error: any) {
+        console.error('PostgreSQL generic PCN notification read error:', error);
+        res.status(500).json({ error: error?.message || String(error) });
+      }
+      return;
+    }
     try {
       const result = await pool.query(
         `SELECT document_id, data
@@ -10168,6 +10342,10 @@ async function startServer() {
     const collectionName = getDbCollection(req, res);
     if (!collectionName) return;
     if (!requirePcnCollectionMutation(req, res, collectionName, 'write')) return;
+    if (DATABASE_PROFILE === 'pcn' && collectionName === 'notifications') {
+      res.status(405).json({ error: 'Notification PCN chỉ được thay đổi qua boundary notification chuyên biệt.' });
+      return;
+    }
     if (DATABASE_PROFILE === 'pcn' && collectionName === 'pcnTemplateDefinitions') {
       res.status(405).json({ error: 'Template PCN chỉ được cập nhật qua boundary quản trị template; không ghi qua API collection chung.' });
       return;
@@ -10263,6 +10441,10 @@ async function startServer() {
     const collectionName = getDbCollection(req, res);
     if (!collectionName) return;
     if (!requirePcnCollectionMutation(req, res, collectionName, 'delete')) return;
+    if (DATABASE_PROFILE === 'pcn' && collectionName === 'notifications') {
+      res.status(405).json({ error: 'Notification PCN chỉ được xóa qua boundary notification chuyên biệt.' });
+      return;
+    }
     if (DATABASE_PROFILE === 'pcn' && collectionName === 'pcnTemplateDefinitions') {
       res.status(405).json({ error: 'Template PCN không được xóa qua API collection chung; hãy dùng thao tác nghỉ hưu trong Cài đặt PCN.' });
       return;
@@ -10292,6 +10474,10 @@ async function startServer() {
     const collectionName = getDbCollection(req, res);
     if (!collectionName) return;
     if (!requirePcnCollectionMutation(req, res, collectionName, 'write')) return;
+    if (DATABASE_PROFILE === 'pcn' && collectionName === 'notifications') {
+      res.status(405).json({ error: 'Notification PCN chỉ được thay đổi qua boundary notification chuyên biệt.' });
+      return;
+    }
     if (DATABASE_PROFILE === 'pcn' && collectionName === 'pcnTemplateDefinitions') {
       res.status(405).json({ error: 'Template PCN chỉ được cập nhật qua boundary quản trị template; không ghi batch qua API collection chung.' });
       return;
@@ -10410,6 +10596,10 @@ async function startServer() {
     const collectionName = getDbCollection(req, res);
     if (!collectionName) return;
     if (!requirePcnCollectionMutation(req, res, collectionName, 'delete')) return;
+    if (DATABASE_PROFILE === 'pcn' && collectionName === 'notifications') {
+      res.status(405).json({ error: 'Notification PCN chỉ được xóa qua boundary notification chuyên biệt.' });
+      return;
+    }
     if (DATABASE_PROFILE === 'pcn' && collectionName === 'pcnTemplateDefinitions') {
       res.status(405).json({ error: 'Template PCN không được xóa batch qua API collection chung; hãy dùng thao tác nghỉ hưu trong Cài đặt PCN.' });
       return;

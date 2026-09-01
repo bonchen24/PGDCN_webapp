@@ -29,7 +29,7 @@ import type {
   PcnQualityDocument,
   AppNotification,
 } from './types';
-import { batchDelete, fetchCollection, saveDoc } from './utils/postgresApi';
+import { fetchCollection } from './utils/postgresApi';
 import { mergeNotifications } from './utils/notificationEvents';
 import { normalizeCustomerRecord } from './utils/customerRecord';
 import { DEFAULT_PCN_CERTIFICATION_FIELDS, isPcnDossierTransitionAllowed, mergePcnCertificationFields } from './utils/pcnWorkflow';
@@ -67,6 +67,12 @@ import type { ActivityLog } from './types';
 import { assertPcnClientAdmin, assertPcnClientMutationAllowed } from './utils/pcnRbac';
 import { filterPcnFutureWorkRelations, filterPcnFutureWorkSnapshot } from './utils/pcnActiveData';
 import { usePcnSessionStore } from './utils/pcnSessionState';
+import {
+  clearPcnNotifications as clearPcnNotificationsApi,
+  fetchPcnNotifications,
+  markAllPcnNotificationsRead as markAllPcnNotificationsReadApi,
+  markPcnNotificationRead as markPcnNotificationReadApi,
+} from './utils/pcnNotificationApi';
 
 interface PcnStoreState {
   fields: PcnCertificationField[];
@@ -254,7 +260,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
         fetchPcnDepartmentRoles(),
         fetchPcnSignerDelegations(),
         fetchCollection<PcnQualityDocument>('pcnQualityDocuments'),
-        fetchCollection<AppNotification>('notifications'),
+        fetchPcnNotifications(),
       ]);
       const activeSnapshot = filterPcnFutureWorkSnapshot({ proposals, dossiers, customers });
       const activeRelations = filterPcnFutureWorkRelations({
@@ -404,7 +410,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
   },
 
   refreshPcnNotifications: async () => {
-    const notifications = await fetchCollection<AppNotification>('notifications');
+    const notifications = await fetchPcnNotifications();
     set({ notifications: mergeNotifications([], notifications, 50) });
   },
 
@@ -412,8 +418,8 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     assertPcnStoreMutationAllowed();
     const current = get().notifications.find((notification) => notification.id === id);
     if (!current || current.read) return;
+    await markPcnNotificationReadApi(id);
     const next = { ...current, read: true };
-    await saveDoc('notifications', id, next);
     set((state) => ({ notifications: state.notifications.map((notification) => notification.id === id ? next : notification) }));
   },
 
@@ -421,16 +427,13 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     assertPcnStoreMutationAllowed();
     const unread = get().notifications.filter((notification) => !notification.read);
     if (unread.length === 0) return;
-    const next = unread.map((notification) => ({ ...notification, read: true }));
-    await Promise.all(next.map((notification) => saveDoc('notifications', notification.id, notification)));
-    const byId = new Map(next.map((notification) => [notification.id, notification]));
-    set((state) => ({ notifications: state.notifications.map((notification) => byId.get(notification.id) || notification) }));
+    await markAllPcnNotificationsReadApi();
+    set((state) => ({ notifications: state.notifications.map((notification) => ({ ...notification, read: true })) }));
   },
 
   clearPcnNotifications: async () => {
     assertPcnStoreMutationAllowed();
-    const ids = get().notifications.map((notification) => notification.id).filter(Boolean);
-    if (ids.length > 0) await batchDelete('notifications', ids);
+    await clearPcnNotificationsApi();
     set({ notifications: [] });
   },
 

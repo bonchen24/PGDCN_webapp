@@ -88,7 +88,7 @@ test('PCN shell and store expose a separate notification channel', () => {
   assert.match(workspaceSource, /PcnNotificationDropdown/);
   assert.match(workspaceSource, /pcn\.notifications/);
   assert.match(storeSource, /notifications: AppNotification\[\]/);
-  assert.match(storeSource, /fetchCollection<AppNotification>\('notifications'\)/);
+  assert.match(storeSource, /fetchPcnNotifications\(\)/);
 });
 
 test('PCN notification types deep-link to the matching dossier detail area', () => {
