@@ -37,7 +37,7 @@ test('App places activity log immediately before system settings and renders the
   const settingsIndex = source.indexOf("id: 'system_settings'");
   assert.ok(activityIndex >= 0);
   assert.ok(settingsIndex > activityIndex);
-  assert.match(source, /<ActivityLogView\s*\/>/);
+  assert.match(source, /<ActivityLogView currentUser=\{currentUser\} systemUsers=\{systemUsers\} \/>/);
 });
 
 test('authenticated app shell uses compact density and labels the activity log page', () => {
@@ -54,7 +54,8 @@ test('App exposes activity log in both sidebars without an admin-only role gate'
 });
 
 test('activity log view exposes multi-user KPI controls and GMT+7 charts', () => {
-  const source = readSource('../components/ActivityLogView.tsx');
+  const source = `${readSource('../components/ActivityLogView.tsx')}\n${readSource('../components/PcnUserKpiTable.tsx')}`;
+  const activityView = readSource('../components/ActivityLogView.tsx');
   for (const marker of [
     'Chọn người dùng',
     'Chọn tất cả',
@@ -71,6 +72,7 @@ test('activity log view exposes multi-user KPI controls and GMT+7 charts', () =>
     assert.ok(source.includes(marker), `Missing KPI UI marker: ${marker}`);
   }
   assert.match(source, /aria-label="Danh sách KPI nhân viên"/);
+  assert.match(activityView, /<PcnUserKpiTable[\s\S]*selectedActors=\{selectedActors\}[\s\S]*period=\{filters\.period\}/);
 });
 
 test('activity log view uses the month as the default shared activity period', () => {
@@ -83,7 +85,7 @@ test('activity log view uses the month as the default shared activity period', (
 });
 
 test('activity log view ignores stale log and KPI responses after filter changes', () => {
-  const source = readSource('../components/ActivityLogView.tsx');
+  const source = `${readSource('../components/ActivityLogView.tsx')}\n${readSource('../components/PcnUserKpiTable.tsx')}`;
   assert.match(source, /useRef/);
   assert.match(source, /logRequestSequence/);
   assert.match(source, /kpiRequestSequence/);
@@ -96,7 +98,7 @@ test('activity log view provides a vertical scroll surface for filters and KPI c
 });
 
 test('activity KPI uses a compact responsive stacked-bar ranking for many employees', () => {
-  const source = readSource('../components/ActivityLogView.tsx');
+  const source = readSource('../components/PcnUserKpiTable.tsx');
   assert.match(source, /aria-label="Danh sách KPI nhân viên"/);
   assert.match(source, /role="list"/);
   assert.match(source, /overflow-y-auto[^\n]*max-h/);

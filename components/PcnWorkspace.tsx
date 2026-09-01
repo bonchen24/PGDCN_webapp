@@ -34,6 +34,7 @@ import PcnLabOperationsView from './PcnLabOperationsView';
 import PcnAssistantView from './PcnAssistantView';
 import PcnDraftingWorkspaceView from './PcnDraftingWorkspaceView';
 import { ActivityLogView } from './ActivityLogView';
+import { PcnUserKpiTable } from './PcnUserKpiTable';
 import PcnSidebar, { PCN_SECTION_ICONS } from './PcnSidebar';
 import { usePcnStore } from '../store-pcn';
 import { usePcnSessionStore } from '../utils/pcnSessionState';
@@ -184,6 +185,7 @@ function PcnDashboard({
         <KpiCard label="Đã phát hành" value={metrics.issued} icon={Award} tone="bg-emerald-50 text-emerald-600" />
         <KpiCard label="Quá hạn" value={metrics.overdue} icon={Activity} tone="bg-red-50 text-red-600" />
       </div>
+      <PcnUserKpiTable currentUser={currentUser} onOpenActivityLogs={() => onOpenSection('activityLogs')} />
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 md:p-4">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div>

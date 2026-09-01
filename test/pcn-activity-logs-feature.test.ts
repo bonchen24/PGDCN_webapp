@@ -5,7 +5,7 @@ import test from 'node:test';
 import { isActivityLogVisibleToUser } from '../utils/activityLog.ts';
 import { getPcnMoreNavigationGroups } from '../utils/pcnNavigation.ts';
 
-const activitySource = fs.readFileSync(new URL('../components/ActivityLogView.tsx', import.meta.url), 'utf8');
+const activitySource = `${fs.readFileSync(new URL('../components/ActivityLogView.tsx', import.meta.url), 'utf8')}\n${fs.readFileSync(new URL('../components/PcnUserKpiTable.tsx', import.meta.url), 'utf8')}`;
 const sidebarSource = fs.readFileSync(new URL('../components/PcnSidebar.tsx', import.meta.url), 'utf8');
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');

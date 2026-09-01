@@ -1159,7 +1159,7 @@ type ActiveTab = 'dashboard' | 'requests' | 'schedule_itd' | 'schedule_emc' | 'h
 export default function App() {
   const { 
     requests, updateRequest, handoverDocs, runAutoSchedule, addHandoverDoc, deleteHandoverDoc, addRequest, addRequests, deleteRequestGroup, deleteRequest,
-    preloadCsvCatalogs, fetchData, setupRealtimeSync, isLoading, isSyncing, hasUnsyncedChanges, undo, redo, past, future, currentUser, logout, syncWithCloud, syncError,
+    preloadCsvCatalogs, fetchData, setupRealtimeSync, isLoading, isSyncing, hasUnsyncedChanges, undo, redo, past, future, currentUser, systemUsers, logout, syncWithCloud, syncError,
     userPreferences, forceReload, products, notifications = [],
     isSyncModalOpen, setSyncModalOpen, runDetailedSyncDiagnostic
   } = useStore();
@@ -2393,7 +2393,7 @@ export default function App() {
           <ProductsManagementView />
         )}
         {activeTab === 'activity_log' && (
-          <ActivityLogView />
+          <ActivityLogView currentUser={currentUser} systemUsers={systemUsers} />
         )}
         {activeTab === 'system_settings' && (
           <SystemSettingsView />

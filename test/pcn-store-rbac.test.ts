@@ -9,7 +9,7 @@ import {
 } from '../utils/pcnRbac';
 
 function read(relativePath: string): string {
-  return fs.readFileSync(new URL(`../${relativePath}`, import.meta.url), 'utf8');
+  return fs.readFileSync(new URL(`../${relativePath}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 }
 
 test('PCN client mutation guard rejects missing sessions and viewers', () => {
