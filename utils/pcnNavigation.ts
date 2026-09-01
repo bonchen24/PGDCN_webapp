@@ -1,26 +1,15 @@
 export type PcnSection =
   | 'dashboard'
-  | 'dataIntegrity'
-  | 'cutover'
-  | 'operationsRegister'
-  | 'historicalDiscovery'
-  | 'agent'
   | 'proposals'
-  | 'fields'
-  | 'samples'
+  | 'operations'
+  | 'lab-operations'
+  | 'drafting'
+  | 'assistant'
   | 'customers'
-  | 'labRequests'
-  | 'results'
-  | 'issuance'
-  | 'templates'
-  | 'qualityDocuments'
-  | 'haimy'
-  | 'backup'
-  | 'archive'
-  | 'activityLogs'
-  | 'users';
+  | 'users'
+  | 'settings';
 
-export type PcnNavigationGroupKey = 'records' | 'execution' | 'catalogs' | 'oversight';
+export type PcnNavigationGroupKey = 'records' | 'admin';
 
 export type PcnNavigationGroup = {
   key: PcnNavigationGroupKey;
@@ -28,77 +17,57 @@ export type PcnNavigationGroup = {
   items: PcnSection[];
 };
 
-/**
- * Workspaces operators visit most often. These stay visible as one flat list
- * in the sidebar so a user never has to open a nested group to start work.
- */
+/** Active PCN work surfaces. They are projections/workspaces, not extra lifecycle steps. */
 export const PCN_WORKSPACE_NAVIGATION: readonly PcnSection[] = [
   'dashboard',
   'proposals',
-  'fields',
-  'samples',
-  'labRequests',
-  'results',
-  'issuance',
-  'archive',
-  'agent',
+  'operations',
+  'lab-operations',
+  'drafting',
+  'assistant',
+  'customers',
 ];
 
 /**
- * Low-frequency catalog and oversight screens. The sidebar renders these in
- * one compact "Thêm" panel without nested expandable branches.
+ * Admin-only maintenance screens stay together and are not daily operational
+ * work surfaces. Personal preferences remain in the user menu.
  */
 export const PCN_MORE_NAVIGATION_GROUPS: readonly PcnNavigationGroup[] = [
   {
-    key: 'catalogs',
-    label: 'Danh mục',
-    items: ['customers', 'templates', 'qualityDocuments'],
-  },
-  {
-    key: 'oversight',
-    label: 'Theo dõi & quản trị',
-    items: ['operationsRegister', 'historicalDiscovery', 'dataIntegrity', 'cutover', 'haimy', 'backup', 'activityLogs', 'users'],
+    key: 'admin',
+    label: 'Quản trị',
+    items: ['users', 'settings'],
   },
 ];
 
 export const PCN_NAVIGATION_GROUPS: readonly PcnNavigationGroup[] = [
   {
     key: 'records',
-    label: 'Hồ sơ',
-    items: ['proposals', 'fields', 'archive'],
+    label: 'Lối vào chính',
+    items: [...PCN_WORKSPACE_NAVIGATION],
   },
   {
-    key: 'execution',
-    label: 'Thực hiện',
-    items: ['samples', 'labRequests', 'results', 'issuance'],
-  },
-  {
-    key: 'catalogs',
-    label: 'Danh mục',
+    key: 'admin',
+    label: 'Quản trị',
     items: [...PCN_MORE_NAVIGATION_GROUPS[0].items],
-  },
-  {
-    key: 'oversight',
-    label: 'Theo dõi & quản trị',
-    items: [...PCN_MORE_NAVIGATION_GROUPS[1].items],
   },
 ];
 
-export const PCN_PRIMARY_NAVIGATION: readonly PcnSection[] = ['dashboard', 'agent'];
+export const PCN_PRIMARY_NAVIGATION: readonly PcnSection[] = [...PCN_WORKSPACE_NAVIGATION];
 
-export const PCN_MOBILE_NAVIGATION: readonly PcnSection[] = ['dashboard', 'proposals', 'agent', 'issuance'];
+export const PCN_MOBILE_NAVIGATION: readonly PcnSection[] = ['dashboard', 'proposals', 'operations', 'drafting', 'customers'];
 
 export function getPcnMoreNavigationGroups(isPcnAdmin: boolean): PcnNavigationGroup[] {
   return PCN_MORE_NAVIGATION_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((section) => isPcnAdmin || !['cutover', 'backup'].includes(section)),
+    items: isPcnAdmin ? [...group.items] : [],
   })).filter((group) => group.items.length > 0);
 }
 
 export function getPcnNavigationGroups(isPcnAdmin: boolean): PcnNavigationGroup[] {
   return PCN_NAVIGATION_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((section) => isPcnAdmin || !['cutover', 'backup'].includes(section)),
+    items: group.key === 'admin' && !isPcnAdmin ? [] : [...group.items],
   })).filter((group) => group.items.length > 0);
 }
 

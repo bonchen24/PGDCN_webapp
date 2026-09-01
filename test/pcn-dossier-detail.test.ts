@@ -17,7 +17,7 @@ test('exposes only valid next states for a PCN dossier', () => {
 test('dossier detail keeps the PCN operational tabs and avoids schedule concepts', () => {
   assert.equal(fs.existsSync(detailPath), true);
   const source = fs.readFileSync(detailPath, 'utf8');
-  for (const label of ['Tổng quan', 'Đề nghị & đầu vào', 'PYC/Giao nhận', 'KQTN trả về', 'Phê duyệt & Phát hành', 'Tệp đính kèm', 'Lịch sử']) {
+  for (const label of ['Tổng quan', 'Tài liệu hồ sơ', 'Mẫu & PYC', 'KQTN', 'Phê duyệt & phát hành', 'Tệp liên kết trong bộ hồ sơ', 'Lịch sử xử lý']) {
     assert.match(source, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
   assert.doesNotMatch(source, /Lịch ITD|Lịch EMC|auto.?schedule/i);
@@ -64,7 +64,7 @@ test('dossier detail exposes the graphic workflow and controlled reviewer/deadli
   assert.match(source, /missingRequiredByStage/);
   assert.match(source, /Tài liệu bắt buộc còn thiếu/);
   assert.match(source, /onOpenStation|onSelectNode/);
-  assert.match(source, /stationTab/);
+  assert.match(source, /getPcnDossierStationTab/);
   assert.match(source, /Tài liệu còn thiếu/);
   assert.match(source, /buildPcnDossierStationChecklist/);
   assert.match(source, /stationChecklist/);
@@ -97,7 +97,7 @@ test('dossier detail routes issued and delivered lifecycle actions to the issuan
   assert.match(source, /getPcnDossierManualNextStatuses/);
   assert.match(source, /requiresIssuanceLifecycleAction/);
   assert.match(source, /issuanceLifecycleActionLabel/);
-  assert.match(source, /Mở module phát hành để/);
+  assert.match(source, /Mở vùng phát hành để/);
   assert.match(source, /'lập bộ trình duyệt'/);
   assert.match(source, /'phê duyệt hồ sơ'/);
   assert.match(source, /'cấp số phát hành'/);
@@ -111,14 +111,15 @@ test('dossier detail uses one compact region selector instead of a visible tab s
   assert.match(source, /aria-label="Khu vực hồ sơ"/);
   assert.match(source, /value=\{activeTab\}/);
   assert.match(source, /onChange=\{setActiveTab\}/);
-  assert.match(source, /tabs\.filter/);
+  assert.match(source, /selectableTabs\.filter/);
 });
 
-test('dossier document operations stay in one collapsed detail region after visual inspection', () => {
+test('dossier document operations stay in one open detail region after visual inspection', () => {
   const source = fs.readFileSync(detailPath, 'utf8');
   assert.match(source, /data-testid="pcn-document-history"/);
   assert.match(source, /Chi tiết phiên và tải tài liệu/);
-  assert.match(source, /Tài liệu chi tiết thu gọn/);
+  assert.match(source, /<details open data-testid="pcn-document-history"/);
+  assert.match(source, /Văn bản và nút tải hiển thị ngay/);
 });
 
 test('dossier detail keeps source-code review visible without mutating the operator value', () => {
@@ -131,12 +132,14 @@ test('dossier detail keeps source-code review visible without mutating the opera
   assert.match(source, /Giữ nguyên mã gốc/);
 });
 
-test('station checklist lets operators upload a new version inline while managers stay read-only', () => {
+test('station checklist stays read-only while the document region owns version uploads', () => {
   const source = fs.readFileSync(detailPath, 'utf8');
-  assert.match(source, /function DossierStationChecklist\(\{ stationChecklist, canEdit, onUploadDocument, uploadingRequirementId, users \}/);
+  const stationChecklistSource = source.slice(source.indexOf('function DossierStationChecklist'), source.indexOf('function DossierWorkflowSummary'));
+  assert.match(source, /function DossierStationChecklist\(\{ stationChecklist, users \}/);
   assert.match(source, /Tải phiên mới/);
-  assert.match(source, /onUploadDocument\(item\.requirement\.id, file\)/);
-  assert.match(source, /<DossierStationChecklist[\s\S]*canEdit=\{canEditMilestones\}[\s\S]*onUploadDocument=\{\(requirementId, file\) =>/);
+  assert.match(source, /data-testid="pcn-document-history"/);
+  assert.doesNotMatch(stationChecklistSource, /type="file"/);
+  assert.doesNotMatch(stationChecklistSource, /onUploadDocument\(item\.requirement\.id, file\)/);
   assert.match(source, /uploadRequirement\(requirement, file\)/);
 });
 
@@ -158,14 +161,14 @@ test('approval station exposes a direct shortcut to the real approval module', (
   const source = fs.readFileSync(detailPath, 'utf8');
 
   assert.match(source, /onOpenApprovalModule/);
-  assert.match(source, /Mở module phê duyệt/);
+  assert.match(source, /Mở vùng phê duyệt \/ phát hành/);
   assert.match(source, /station\.key === 'APPROVAL' \|\| station\.key === 'ISSUANCE' \|\| station\.key === 'DELIVERY_ARCHIVE'/);
-  assert.match(workspaceSource, /onOpenApprovalModule=\{\(\) => \{[\s\S]*setActiveSection\('issuance'\)[\s\S]*setFocusedDossierId\(selectedDossier\.id\)/);
+  assert.match(source, /onOpenApprovalModule=\{\(\) => setActiveTab\('issuance'\)\}/);
 });
 
-test('historical review makes a missing proposal linkage actionable', () => {
+test('dossier detail does not expose historical-review actions in the active PCN product', () => {
   const source = fs.readFileSync(detailPath, 'utf8');
-  assert.match(source, /Thiếu Đề nghị liên kết/);
-  assert.match(source, /hasHistoricalReview && !proposal/);
-  assert.match(source, /cảnh báo toàn vẹn dữ liệu/);
+  assert.doesNotMatch(source, /Thiếu Đề nghị liên kết/);
+  assert.doesNotMatch(source, /hasHistoricalReview/);
+  assert.doesNotMatch(source, /historicalReview|historicalImport/);
 });

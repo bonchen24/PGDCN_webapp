@@ -4,11 +4,14 @@ import test from 'node:test';
 
 const shell = fs.readFileSync(new URL('../components/PcnAppShell.tsx', import.meta.url), 'utf8');
 const workspacePath = new URL('../components/PcnWorkspace.tsx', import.meta.url);
+const pcnLogin = fs.readFileSync(new URL('../components/PcnLoginScreen.tsx', import.meta.url), 'utf8');
+const pcnCustomers = fs.readFileSync(new URL('../components/PcnCustomersManagementView.tsx', import.meta.url), 'utf8');
+const pcnStore = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
+const pcnSettings = fs.readFileSync(new URL('../components/PcnSettingsView.tsx', import.meta.url), 'utf8');
 const sidebarPath = new URL('../components/PcnSidebar.tsx', import.meta.url);
 const sidebar = fs.readFileSync(sidebarPath, 'utf8');
 const navigationSource = fs.readFileSync(new URL('../utils/pcnNavigation.ts', import.meta.url), 'utf8');
 const workflow = fs.readFileSync(new URL('../utils/pcnWorkflow.ts', import.meta.url), 'utf8');
-const resultView = fs.readFileSync(new URL('../components/PcnResultReturnView.tsx', import.meta.url), 'utf8');
 const modalSources = [
   fs.readFileSync(new URL('../components/PcnApprovalModal.tsx', import.meta.url), 'utf8'),
   fs.readFileSync(new URL('../components/PcnLabRequestView.tsx', import.meta.url), 'utf8'),
@@ -22,7 +25,7 @@ test('Next shell renders the PCN workspace instead of the DDT schedule app', () 
   assert.doesNotMatch(shell, /from ['"]\.\.\/App['"]/);
 });
 
-test('PCN workspace exposes field-first navigation and the preserved customer list', () => {
+test('PCN workspace exposes field filters and the preserved customer list', () => {
   const source = fs.readFileSync(workspacePath, 'utf8');
 
   assert.match(source, /Tổng quan/);
@@ -32,21 +35,32 @@ test('PCN workspace exposes field-first navigation and the preserved customer li
   assert.match(source, /validatePcnProposalIntake/);
   assert.match(source, /formatPcnIntakeValidationIssues/);
   assert.match(source, /ProposalRegisterRow/);
-  assert.match(source, /FieldRegisterRow/);
   assert.match(workflow, /Quy chuẩn 4/);
   assert.match(workflow, /Quy chuẩn 9/);
+  assert.match(workflow, /Quy chuẩn 20/);
   assert.match(source, /field\.name/);
-  assert.match(source, /PYC gửi PTN/);
-  assert.match(source, /generatedDocuments=\{pcn\.generatedDocuments\}/);
-  assert.match(source, /onOpenDossier=\{\(dossierId\) => \{ setSelectedDossierTab\('lab'\); setSelectedDossierId\(dossierId\); \}\}/);
-  assert.match(source, /Phê duyệt & Phát hành/);
-  assert.match(source, /PcnResultReturnView/);
-  assert.match(resultView, /KQTN trả về/);
-  assert.match(resultView, /PYC gửi PTN/);
-  assert.match(source, /CustomersManagementView/);
-  assert.match(source, /source="pcn"/);
+  assert.match(source, /PcnDossierDetailView/);
+  assert.match(source, /PcnPipelineBoard/);
+  assert.match(source, /PcnWorkQueueView/);
+  assert.match(source, /PcnCustomersManagementView/);
+  assert.doesNotMatch(source, /SystemManagementViews/);
   assert.doesNotMatch(source, /Lịch ITD/);
   assert.doesNotMatch(source, /Lịch EMC/);
+});
+
+test('active PCN route keeps session, customer and store boundaries separate from DDT legacy runtime', () => {
+  const workspace = fs.readFileSync(workspacePath, 'utf8');
+  const activeSources = [workspace, pcnLogin, pcnCustomers, pcnStore];
+  for (const source of activeSources) {
+    assert.doesNotMatch(source, /from ['"][^'"]*\/store['"]/);
+    assert.doesNotMatch(source, /from ['"][^'"]*SystemManagementViews['"]/);
+    assert.doesNotMatch(source, /from ['"][^'"]*\/LoginScreen['"]/);
+    assert.doesNotMatch(source, /from ['"][^'"]*\/firebase['"]/);
+  }
+  assert.match(workspace, /PcnLoginScreen/);
+  assert.match(workspace, /usePcnSessionStore/);
+  assert.match(pcnLogin, /establishPcnSession/);
+  assert.match(pcnCustomers, /usePcnStore/);
 });
 
 test('PCN shell keeps IEMM identity visible in both the sidebar and the header', () => {
@@ -131,26 +145,19 @@ test('PCN visual inspection resolves uploader usernames to display names', () =>
   assert.match(source, /<DossierVisualChecklist[^>]*users=\{users\}/);
 });
 
-test('PCN template management exposes surveyed annotation coverage before manual mapping', () => {
-  const source = fs.readFileSync(new URL('../components/PcnTemplateManagementView.tsx', import.meta.url), 'utf8');
-
-  assert.match(source, /getPcnTemplateAnnotationSuggestionCoverage/);
-  assert.match(source, /annotationCoverage/);
-  assert.match(source, /Gợi ý nhãn nguồn đã xác minh/);
-  assert.match(source, /Chưa có nhãn nguồn khảo sát/);
-  assert.match(source, /missingSuggestionKeys/);
+test('PCN settings keeps template configuration in the single admin surface', () => {
+  assert.match(pcnSettings, /Cài đặt PCN/);
+  assert.match(pcnSettings, /Khung checklist theo QC4\/QC9\/QC20/);
+  assert.match(pcnSettings, /getPcnDossierTemplateProfiles/);
+  assert.match(pcnSettings, /stationGroups/);
+  assert.doesNotMatch(pcnSettings, /PcnTemplateManagementView/);
 });
 
-test('PCN template management exposes private asset verification state on each card', () => {
-  const source = fs.readFileSync(new URL('../components/PcnTemplateManagementView.tsx', import.meta.url), 'utf8');
+test('PCN official generated documents keep their private asset verification boundary', () => {
+  const source = fs.readFileSync(new URL('../components/PcnDocumentGenerationPanel.tsx', import.meta.url), 'utf8');
 
-  assert.match(source, /privateAssetVerificationIssue/);
-  assert.match(source, /Asset private đã xác minh/);
-  assert.match(source, /Định dạng asset không đúng/);
-  assert.match(source, /Mã kiểm tra asset/);
-  assert.match(source, /assetFilter/);
-  assert.match(source, /Asset đã xác minh/);
-  assert.match(source, /Asset cần rà soát/);
+  assert.match(source, /private|riêng|Storage/i);
+  assert.match(source, /preflight/);
 });
 
 test('PYC workbench exposes the generated-document lineage and dossier shortcut', () => {
@@ -194,19 +201,29 @@ test('PCN mobile navigation controls have accessible names', () => {
 test('PCN section dossier shortcuts preserve the operator station context', () => {
   const source = fs.readFileSync(workspacePath, 'utf8');
 
-  assert.match(source, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\('proposal'\); setSelectedDossierId\(dossier\.id\); \}\}/);
-  assert.match(source, /onOpenDossier=\{\(dossier\) => openDossierAtCurrentStation\(dossier\)\}/);
   assert.match(source, /function openDossierAtCurrentStation|const openDossierAtCurrentStation/);
-  assert.match(source, /setSelectedDossierTab\(initialTab \|\| getPcnDossierStationTab\(station\.key/);
-  assert.match(source, /onOpenDossier=\{\(dossierId\) => \{ setSelectedDossierTab\('lab'\); setSelectedDossierId\(dossierId\); \}\}/);
-  assert.match(source, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\('issuance'\); setSelectedDossierId\(dossier\.id\); \}\}/);
-  assert.match(source, /openDossierAtCurrentStation\(response\.dossier\)/);
+  assert.match(source, /setSelectedDossierTab\(initialTab \|\| 'documents'\)/);
+  assert.match(source, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\('documents'\); setSelectedDossierId\(dossier\.id\); \}\}/);
+  assert.match(source, /<PcnDashboard[\s\S]*onOpenDossier=\{openDossierAtCurrentStation\}/);
+  assert.match(source, /<PcnPipelineBoard[\s\S]*onOpenDossier=\{onOpenDossier\}/);
+  assert.match(source, /<PcnWorkQueueView[\s\S]*onOpenDossier=\{onOpenDossier\}/);
 });
 
 test('dashboard and section shortcuts share one station-aware dossier opener', () => {
   const source = fs.readFileSync(workspacePath, 'utf8');
   assert.match(source, /const openDossierAtCurrentStation = \(dossier: CertificationDossier, initialTab\?/);
   assert.match(source, /<PcnDashboard[\s\S]*onOpenDossier=\{openDossierAtCurrentStation\}/);
+});
+
+test('dossier generation shortcut opens the document output modal without a new tab', () => {
+  const source = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
+
+  assert.match(source, /const \[documentOutput, setDocumentOutput\]/);
+  assert.match(source, /setDocumentOutput\(\{ kind:/);
+  assert.match(source, /const openGenerationRegion = \(\) =>/);
+  assert.match(source, /onOpenGeneration=\{openGenerationRegion\}/);
+  assert.match(source, /PcnDocumentOutputModal/);
+  assert.doesNotMatch(source, /window\.open\([^)]*generation/);
 });
 
 // --- End of pcn-ui-contract.test.ts ---

@@ -116,11 +116,6 @@ function jsonStatusCheck(result: RequestResult, expectedStatus: number, predicat
   };
 }
 
-function getSnapshot(payload: unknown): JsonRecord | undefined {
-  if (!isRecord(payload) || !isRecord(payload.snapshot)) return undefined;
-  return payload.snapshot;
-}
-
 async function main(): Promise<void> {
   if (!password) throw new Error('Thiếu PCN_SMOKE_PASSWORD; không truyền mật khẩu qua tham số dòng lệnh.');
 
@@ -154,36 +149,6 @@ async function main(): Promise<void> {
   );
 
   if (login) {
-    await runCheck(
-      'AI Agent workspace boundary',
-      () => request('/api/pcn/agent/workspace'),
-      (result) => jsonStatusCheck(
-        result,
-        200,
-        (payload) => isRecord(payload)
-          && isRecord(payload.workspace)
-          && isRecord(payload.workspace.user)
-          && Array.isArray(payload.workspace.activity)
-          && isRecord(payload.workspace.metrics)
-          && Array.isArray(payload.workspace.myWork),
-        'HTTP 200; workspace is session-bound and data-backed',
-      ),
-    );
-    await runCheck(
-      'AI conversation restore boundary',
-      () => request('/api/pcn/agent/conversations/latest'),
-      (result) => jsonStatusCheck(
-        result,
-        200,
-        (payload) => isRecord(payload)
-          && (payload.conversationId === null || typeof payload.conversationId === 'string')
-          && Array.isArray(payload.messages)
-          && payload.messages.every((message) => isRecord(message)
-            && (message.role === 'user' || message.role === 'assistant')
-            && !Object.prototype.hasOwnProperty.call(message, 'toolResults')),
-        'HTTP 200; latest conversation is user-isolated and raw tool results are omitted',
-      ),
-    );
     const dbHealth = await runCheck(
       'PCN database health',
       () => request('/api/db/health'),
@@ -236,7 +201,7 @@ async function main(): Promise<void> {
         detail: `HTTP ${result.status}; apply requires fresh fingerprint and confirmation`,
       }),
     );
-    const fields = await runCheck('QC4/QC9 field catalog', () => request('/api/db/pcnCertificationFields'), (result) => statusCheck(result, 200));
+    const fields = await runCheck('QC4/QC9/QC20 field catalog', () => request('/api/db/pcnCertificationFields'), (result) => statusCheck(result, 200));
     const users = await runCheck('PCN user catalog', () => request('/api/pcn/users'), (result) => statusCheck(result, 200));
     const departmentRoles = await runCheck('PCN department-role catalog', () => request('/api/pcn/department-roles'), (result) => statusCheck(result, 200));
     const documentRequirements = await runCheck(
@@ -281,21 +246,31 @@ async function main(): Promise<void> {
       checks.push({ name: 'PCN document read-only preflight', ok: false, detail: 'NO_DOSSIER_RECORD' });
     }
 
-    const cutover = await runCheck(
-      'cutover read-only boundary',
-      () => request('/api/pcn/cutover-status'),
+    const settings = await runCheck(
+      'PCN settings read boundary',
+      () => request('/api/pcn/settings'),
       (result) => jsonStatusCheck(
         result,
         200,
-        (payload) => {
-          const snapshot = getSnapshot(payload);
-          return Boolean(snapshot)
-            && snapshot.profile === 'pcn'
-            && snapshot.database === 'pcn_certification'
-            && Array.isArray(snapshot.ddtCollectionNames);
-        },
-        'HTTP 200; PCN snapshot and DDT boundary present',
+        (payload) => isRecord(payload)
+          && isRecord(payload.settings)
+          && payload.settings.id === 'pcn-settings'
+          && Array.isArray(payload.settings.fieldCodes)
+          && payload.settings.fieldCodes.includes('QC20'),
+        'HTTP 200; settings include QC20',
       ),
+    );
+    await runCheck(
+      'PCN OCR boundary',
+      () => request('/api/pcn/ocr', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ context: 'proposal', fileName: 'invalid.txt', mimeType: 'text/plain', base64Data: 'aGVsbG8=' }),
+      }),
+      (result) => ({
+        ok: result.status === 400,
+        detail: `HTTP ${result.status}; OCR validates supported dossier files before processing`,
+      }),
     );
 
     const backupList = await runCheck(
@@ -329,9 +304,6 @@ async function main(): Promise<void> {
     const userItems = users && isRecord(users.payload) ? getItems(users.payload).length : 0;
     const roleItems = departmentRoles && isRecord(departmentRoles.payload) ? getItems(departmentRoles.payload).length : 0;
     const requirementItems = documentRequirements && isRecord(documentRequirements.payload) ? getItems(documentRequirements.payload).length : 0;
-    const cutoverSnapshot = cutover ? getSnapshot(cutover.payload) : undefined;
-    const cutoverErrors = cutover && isRecord(cutover.payload) && Array.isArray(cutover.payload.errors) ? cutover.payload.errors.length : null;
-    const cutoverOk = cutover && isRecord(cutover.payload) ? cutover.payload.ok === true : null;
     const verificationPayload = backupVerification && isRecord(backupVerification.payload) ? backupVerification.payload : undefined;
 
     const summary = {
@@ -349,11 +321,7 @@ async function main(): Promise<void> {
         documentRequirements: requirementItems,
         dossiers: dossierItems.length,
       },
-      cutover: {
-        ok: cutoverOk,
-        errorCount: cutoverErrors,
-        ddtCollectionCount: Array.isArray(cutoverSnapshot?.ddtCollectionNames) ? cutoverSnapshot.ddtCollectionNames.length : null,
-      },
+      settings: settings && isRecord(settings.payload) ? settings.payload.settings : null,
       backup: latestBackup ? {
         filename: String(latestBackup.filename),
         status: verificationPayload?.status ?? null,
@@ -378,7 +346,7 @@ async function main(): Promise<void> {
     ok: false,
     checks,
     catalogCounts: null,
-    cutover: null,
+    settings: null,
     backup: null,
   };
   console.log(JSON.stringify(summary, null, 2));

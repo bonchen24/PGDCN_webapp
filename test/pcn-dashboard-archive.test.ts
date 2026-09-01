@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 import type { CertificationDossier, CertificationProposal, IssuancePackage, OutboundLabRequest, ReturnedTestResult } from '../types.ts';
-import { filterPcnArchive, getPcnDashboardMetrics } from '../utils/pcnReporting.ts';
+import { getPcnDashboardMetrics } from '../utils/pcnReporting.ts';
 
 const proposals: CertificationProposal[] = [{
   id: 'proposal-1', proposalCode: 'DN-001', channel: 'DIRECT', status: 'CONVERTED',
@@ -27,20 +27,6 @@ test('dashboard metrics count PCN work by lifecycle instead of testing schedules
   assert.equal(metrics.waitingLab, 1);
   assert.equal(metrics.archived, 1);
   assert.equal((metrics as unknown as Record<string, unknown>).schedules, undefined);
-});
-
-test('archive searches dossier, customer, field, issuance number and year', () => {
-  assert.equal(filterPcnArchive({ dossiers, proposals, issuancePackages, query: 'GCN-PCN-2025' }).length, 1);
-  assert.equal(filterPcnArchive({ dossiers, proposals, issuancePackages, fieldCode: 'QC9', year: '2025' }).length, 1);
-  assert.equal(filterPcnArchive({ dossiers, proposals, issuancePackages, query: 'PTN A' }).length, 0);
-});
-
-test('PCN archive UI is a document search surface without schedule concepts', () => {
-  const source = fs.readFileSync(new URL('../components/PcnArchiveView.tsx', import.meta.url), 'utf8');
-  assert.match(source, /Kho hồ sơ/);
-  assert.match(source, /Số phát hành/);
-  assert.match(source, /Lĩnh vực/);
-  assert.doesNotMatch(source, /Lịch ITD|Lịch EMC|auto.?schedule/i);
 });
 
 test('PCN dashboard exposes the derived work queue and operational scopes', () => {

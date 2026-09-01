@@ -21,9 +21,7 @@ test('approval modal exposes the dossier completeness evidence and visual-check 
   assert.match(approvalModal, /Mã gốc/);
   assert.match(approvalModal, /Mã chuẩn hóa/);
   assert.match(approvalModal, /Cần đối chiếu mã nguồn/);
-  assert.match(approvalModal, /PcnHistoricalScopeBadge/);
-  assert.match(approvalModal, /historicalScope/);
-  assert.match(approvalModal, /getPcnHistoricalScopeNotice/);
+  assert.doesNotMatch(approvalModal, /PcnHistoricalScopeBadge|historicalScope|getPcnHistoricalScopeNotice/);
   assert.match(approvalModal, /Mở kiểm tra trực quan/);
   assert.match(approvalModal, /onOpenDossier/);
   assert.match(approvalModal, /getPcnApprovalDecisionDenial/);

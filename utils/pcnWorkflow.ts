@@ -5,6 +5,7 @@ import type {
   PcnResultOutcome,
   PcnCertificationField,
 } from '../types.ts';
+import { PCN_CERTIFICATION_FIELD_CODES } from '../types.ts';
 
 export const DEFAULT_PCN_CERTIFICATION_FIELDS: PcnCertificationField[] = [
   {
@@ -19,7 +20,35 @@ export const DEFAULT_PCN_CERTIFICATION_FIELDS: PcnCertificationField[] = [
     standardRefs: ['QCVN 9', 'TCVN 7492-1:2018'],
     active: true,
   },
+  {
+    code: 'QC20',
+    name: 'Quy chuẩn 20',
+    standardRefs: ['QCVN 20:2019/BKHCN', 'Sửa đổi 1:2021 QCVN 20:2019/BKHCN'],
+    scopeStatus: 'NEEDS_PCN_CONFIRMATION',
+    active: true,
+  },
 ];
+
+export { PCN_CERTIFICATION_FIELD_CODES };
+
+/**
+ * Keep the active PCN catalog forward-compatible with a database initialized
+ * before a new certification field was added. Database values remain the
+ * source for approved metadata, while the product baseline fills omissions.
+ */
+export function mergePcnCertificationFields(configuredFields: PcnCertificationField[]): PcnCertificationField[] {
+  const configuredByCode = new Map(configuredFields.map((field) => [String(field.code).trim().toUpperCase(), field]));
+  return PCN_CERTIFICATION_FIELD_CODES
+    .map((code) => {
+      const baseline = DEFAULT_PCN_CERTIFICATION_FIELDS.find((field) => field.code === code)!;
+      const configured = configuredByCode.get(code);
+      const merged = configured ? { ...baseline, ...configured, code } : baseline;
+      return code === 'QC20' && merged.scopeStatus !== 'CONFIRMED'
+        ? { ...merged, scopeStatus: 'NEEDS_PCN_CONFIRMATION' as const }
+        : merged;
+    })
+    .filter((field) => field.active !== false);
+}
 
 const DOSSIER_STATUS_LABELS: Record<PcnDossierStatus, string> = {
   DRAFT: 'Bản nháp',

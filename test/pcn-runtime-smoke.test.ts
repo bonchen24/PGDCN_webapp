@@ -22,7 +22,8 @@ test('PCN runtime smoke command is registered and read-only for business data', 
   assert.match(scriptSource, /dryRun: true/);
   assert.match(scriptSource, /payload\.documents\.length === 0/);
   assert.match(scriptSource, /payload\.activityLogs\.length === 0/);
-  assert.match(scriptSource, /\/api\/pcn\/cutover-status/);
+  assert.match(scriptSource, /\/api\/pcn\/settings/);
+  assert.match(scriptSource, /\/api\/pcn\/ocr/);
   assert.match(scriptSource, /\/api\/backups/);
   assert.match(scriptSource, /\/verify/);
   assert.doesNotMatch(scriptSource, /\/api\/backups\/run/);

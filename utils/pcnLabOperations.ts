@@ -121,6 +121,17 @@ function clean(value: unknown): string {
   return String(value ?? '').trim();
 }
 
+/** Only a PYC tied to a tracked PCN lot and route belongs to this page. */
+export function isPcnInternalSampleRequest(
+  request: Pick<OutboundLabRequest, 'id' | 'sampleLotId' | 'sampleRouteId'>,
+  routes: Pick<PcnSampleRoute, 'id' | 'sampleLotId' | 'labRequestId'>[] = [],
+): boolean {
+  if (Boolean(clean(request.sampleLotId) && clean(request.sampleRouteId))) return true;
+  // Legacy internal rows may have only the reverse route -> PYC pointer. Do
+  // not use this fallback for an unreferenced PYC, which is outside this page.
+  return routes.some((route) => route.labRequestId === request.id && Boolean(clean(route.sampleLotId)));
+}
+
 function getSampleItemsForLot(sampleItems: PcnSampleItem[], lot: PcnSampleLot): PcnSampleItem[] {
   const linked = sampleItems.filter((item) => item.sampleLotId === lot.id && (!lot.sampleItemIds || lot.sampleItemIds.includes(item.id)));
   if (linked.length > 0) return linked;
@@ -136,8 +147,17 @@ function getSampleItemsForLot(sampleItems: PcnSampleItem[], lot: PcnSampleLot): 
   }];
 }
 
-function routeAppliesToItem(route: PcnSampleRoute, sampleItemId: string): boolean {
-  return !route.sampleItemIds || route.sampleItemIds.length === 0 || route.sampleItemIds.includes(sampleItemId);
+function routeAppliesToItem(route: PcnSampleRoute, sampleItemId: string, sampleItem?: PcnSampleItem): boolean {
+  const hasExplicitRouteScope = Boolean(route.sampleItemIds?.length);
+  if (hasExplicitRouteScope) {
+    return Boolean(route.sampleItemIds?.includes(sampleItemId))
+      && (!sampleItem?.testLabCodes?.length || sampleItem.testLabCodes.includes(route.labCode));
+  }
+  if (sampleItem?.testLabCodes?.length) return false;
+  // A route without item scope is retained only for the synthetic item created
+  // for a legacy lot that has no child sample records. It must not fan out to
+  // every real sample/model in a newly itemized lot.
+  return !hasExplicitRouteScope && sampleItemId.endsWith('-legacy-item');
 }
 
 function routeSnapshotForItem(route: PcnSampleRoute, sampleItemId: string): PcnSampleRoute {
@@ -185,7 +205,7 @@ export function buildPcnLabOperationsRows(input: PcnLabOperationsInput): PcnLabO
     const dossierLots = input.sampleLots.filter((lot) => lot.dossierId === dossier.id || dossier.sampleLotIds?.includes(lot.id));
     const dossierLotIds = new Set(dossierLots.map((lot) => lot.id));
     const dossierRoutes = input.sampleRoutes.filter((route) => dossierLotIds.has(route.sampleLotId));
-    const dossierRequests = input.labRequests.filter((request) => request.dossierId === dossier.id || dossier.labRequestIds.includes(request.id));
+    const dossierRequests = input.labRequests.filter((request) => (request.dossierId === dossier.id || dossier.labRequestIds.includes(request.id)) && isPcnInternalSampleRequest(request, input.sampleRoutes));
     const base = {
       dossierId: dossier.id,
       dossierCode: dossier.dossierCode,
@@ -287,7 +307,7 @@ export function buildPcnSampleFlowProjections(input: PcnLabOperationsInput): Pcn
   for (const dossier of input.dossiers) {
     const proposal = proposals.get(dossier.proposalId);
     const dossierLots = input.sampleLots.filter((lot) => lot.dossierId === dossier.id || dossier.sampleLotIds?.includes(lot.id));
-    const dossierRequests = input.labRequests.filter((request) => request.dossierId === dossier.id || dossier.labRequestIds?.includes(request.id));
+    const dossierRequests = input.labRequests.filter((request) => (request.dossierId === dossier.id || dossier.labRequestIds?.includes(request.id)) && isPcnInternalSampleRequest(request, input.sampleRoutes));
     const base = {
       dossierId: dossier.id,
       dossierCode: dossier.dossierCode,
@@ -299,8 +319,8 @@ export function buildPcnSampleFlowProjections(input: PcnLabOperationsInput): Pcn
     for (const lot of dossierLots) {
       const lotRoutes = sortPcnSampleRoutes(input.sampleRoutes.filter((route) => route.sampleLotId === lot.id));
       for (const [itemIndex, item] of getSampleItemsForLot(sampleItems, lot).entries()) {
-        const itemRoutes = lotRoutes.filter((route) => routeAppliesToItem(route, item.id)).map((route) => routeSnapshotForItem(route, item.id));
-        const readiness = derivePcnSampleRouteReadiness(itemRoutes);
+        const itemRoutes = lotRoutes.filter((route) => routeAppliesToItem(route, item.id, item)).map((route) => routeSnapshotForItem(route, item.id));
+        const readiness = derivePcnSampleRouteReadiness(itemRoutes, item);
         const routes: PcnSampleFlowRouteProjection[] = itemRoutes.map((route, index) => {
           const request = exactRequestForRoute(route, lot, dossier, requestsById, dossierRequests);
           if (request) usedRequestIds.add(request.id);

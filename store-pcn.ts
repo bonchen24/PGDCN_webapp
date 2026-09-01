@@ -36,7 +36,7 @@ import { DEFAULT_PCN_CERTIFICATION_FIELDS, isPcnDossierTransitionAllowed, mergeP
 import { mergePcnTemplateCatalog, mergePcnTemplateRuntimeProjection } from './utils/pcnTemplateCatalog';
 import { generatePcnOfficialDocuments, preflightPcnOfficialDocuments } from './utils/pcnOfficialDocumentApi';
 import type { PcnOfficialPreflightResponse } from './utils/pcnOfficialDocumentApi';
-import { reviewPcnTemplate as reviewPcnTemplateApi } from './utils/pcnTemplateApi';
+import { reviewPcnTemplate as reviewPcnTemplateApi, uploadPcnTemplate as uploadPcnTemplateApi } from './utils/pcnTemplateApi';
 import { annotatePcnTemplate as annotatePcnTemplateApi } from './utils/pcnTemplateAnnotationApi';
 import { getPcnDocumentId, mergePcnCustomers } from './utils/pcnStorePolicy';
 import { getPcnIssuanceReadiness } from './utils/pcnIssuance';
@@ -112,6 +112,7 @@ interface PcnStoreState {
   generateOfficialDocuments: (issuanceId: string, formats?: PcnGeneratedDocumentFormat[], expectedContextHash?: string) => Promise<PcnOfficialGeneratedDocument[]>;
   reviewPcnTemplate: (templateId: string, action: PcnTemplateReviewAction, reason?: string) => Promise<PcnTemplateDefinition>;
   annotatePcnTemplate: (templateId: string, mappings: PcnTemplateAnnotationMapping[]) => Promise<PcnTemplateDefinition>;
+  uploadPcnTemplate: (templateId: string, file: File) => Promise<PcnTemplateDefinition>;
   addLabRequest: (request: OutboundLabRequest) => Promise<void>;
   updateLabRequest: (requestId: string, status: OutboundLabRequest['status'], updates?: Partial<Pick<OutboundLabRequest, 'handoverAt' | 'receivedAt' | 'handoverNote' | 'handoverDocumentId' | 'handoverDetails' | 'sampleIssue' | 'returnedResultId'>>, idempotencyKey?: string) => Promise<void>;
   dispatchLabRequest: (requestId: string) => Promise<void>;
@@ -690,6 +691,15 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     set((state) => ({
       templates: state.templates.map((template) => template.id === result.template.id ? mergePcnTemplateRuntimeProjection(template, result.template) : template),
       activityLogs: result.activityLog ? [result.activityLog, ...state.activityLogs] : state.activityLogs,
+    }));
+    return result.template;
+  },
+
+  uploadPcnTemplate: async (templateId, file) => {
+    assertPcnStoreAdminMutationAllowed();
+    const result = await uploadPcnTemplateApi(templateId, file);
+    set((state) => ({
+      templates: state.templates.map((template) => template.id === result.template.id ? mergePcnTemplateRuntimeProjection(template, result.template) : template),
     }));
     return result.template;
   },

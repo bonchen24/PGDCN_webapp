@@ -52,7 +52,7 @@ const sectionLabels: Record<PcnSection, string> = {
   dashboard: 'Tổng quan',
   proposals: 'Đề nghị',
   operations: 'Sổ điều hành',
-  'lab-operations': 'PYC & luân chuyển mẫu',
+  'lab-operations': 'PYC & luân chuyển mẫu nội bộ',
   drafting: 'Soạn thảo tài liệu',
   assistant: 'Trợ lý tiến trình',
   customers: 'Danh sách khách hàng',
@@ -761,7 +761,7 @@ export function PcnWorkspace() {
   ) : activeSection === 'customers' ? (
     <PcnCustomersManagementView initialSearchQuery={customerSearchQuery} />
   ) : activeSection === 'settings' && isPcnAdmin ? (
-    <PcnSettingsView currentUser={currentUser} templates={pcn.templates} onReviewTemplate={pcn.reviewPcnTemplate} onAnnotateTemplate={pcn.annotatePcnTemplate} />
+    <PcnSettingsView currentUser={currentUser} templates={pcn.templates} onUploadTemplate={pcn.uploadPcnTemplate} />
   ) : activeSection === 'users' && isPcnAdmin ? (
     <PcnUserManagementView users={pcn.users} roles={pcn.departmentRoles} fields={pcn.fields} currentUser={currentUser} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
   ) : null;

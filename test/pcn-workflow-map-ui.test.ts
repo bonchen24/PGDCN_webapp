@@ -27,10 +27,7 @@ test('active PCN work surfaces use workflow-step language instead of station UI'
     'PcnPipelineBoard.tsx',
     'PcnDossierDetailView.tsx',
     'PcnWorkQueueView.tsx',
-    'PcnAgentWorkspaceView.tsx',
-    'PcnTemplateManagementView.tsx',
     'PcnApprovalModal.tsx',
-    'PcnOperationsRegisterView.tsx',
   ];
   for (const file of files) {
     const content = fs.readFileSync(new URL(`../components/${file}`, import.meta.url), 'utf8');

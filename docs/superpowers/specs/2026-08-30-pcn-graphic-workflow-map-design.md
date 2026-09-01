@@ -46,14 +46,14 @@ Graphic tổng quan không có thao tác kéo thả để chuyển trạng thái
 
 Trong `PcnDossierDetailView`, khối `DossierStationSummary` được thay bằng `PcnWorkflowMap` dạng hồ sơ:
 
-- header giữ mã hồ sơ, khách hàng, sản phẩm, trạng thái và nhận diện hồ sơ lịch sử;
+- header giữ mã hồ sơ, khách hàng, sản phẩm và trạng thái của hồ sơ phát sinh mới;
 - graphic nhấn node hiện tại, nối node đã hoàn tất, node tương lai và nhánh ngoại lệ bằng token màu thống nhất;
 - node có thể bấm để chọn vùng dữ liệu hiện hành qua `getPcnDossierStationTab`, không tạo route hoặc tab mới;
 - dưới graphic là một summary compact gồm chủ hồ sơ, deadline, độ hoàn thiện, cảnh báo mã PCN và thiếu dữ liệu;
 - bước hiện tại có điểm mở checklist/tài liệu hoặc module chuyên môn phù hợp; upload vẫn gọi boundary hiện hành theo đúng `requirementId`;
 - activity timeline hiện có tiếp tục lọc theo dossier và hiển thị ngôn ngữ nghiệp vụ; không hiển thị chain-of-thought hoặc log kỹ thuật.
 
-Các vùng `Khu vực hồ sơ`, tài liệu chi tiết, sinh biểu mẫu, KQTN, phê duyệt và đóng gói vẫn giữ callback/quyền hiện tại. Graphic chỉ là lớp điều hướng và quan sát.
+Các vùng của card chỉ gồm `Tổng quan`, `Tài liệu hồ sơ`, `Mẫu & PYC`, `KQTN` và `Phê duyệt & phát hành`. Sinh biểu mẫu, tệp liên kết và lịch sử nằm trong các khối thu gọn của card; callback/quyền hiện tại vẫn được giữ. Graphic chỉ là lớp điều hướng và quan sát.
 
 ## Quyền và an toàn
 

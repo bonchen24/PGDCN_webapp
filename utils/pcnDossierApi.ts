@@ -14,7 +14,8 @@ type PcnNullableDossierField =
   | 'exceptionReason';
 
 export type PcnDossierUpdateInput =
-  Partial<Pick<CertificationDossier, 'status' | 'method'>>
+  Partial<Pick<CertificationDossier, 'status' | 'method' | 'operationalForms'>>
+  & { documentWaivers?: Record<string, { reason: string } | null> }
   & Partial<Record<PcnNullableDossierField, string | null>>;
 
 export interface PcnDossierMutationResponse {

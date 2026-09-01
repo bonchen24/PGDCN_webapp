@@ -54,7 +54,8 @@ test('official generation requires a server-validated hash and asset provenance'
   const officialRoute = serverSource.slice(serverSource.indexOf("app.post('/api/pcn/issuance/:issuanceId/official-documents/generate'"));
   assert.match(officialRoute, /!dryRun && !expectedContextHash/);
   assert.match(officialRoute, /MISSING_PRIVATE_ASSET/);
-  assert.match(serverSource, /pcn-template-asset:/);
+  assert.match(serverSource, /source_collection === 'pcnTemplateDefinitions'/);
+  assert.match(serverSource, /source_json_path === 'fileAssetId'/);
   assert.match(designSource, /privateAssetVerified.*projection read-only/i);
 });
 

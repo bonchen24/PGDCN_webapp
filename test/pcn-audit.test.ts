@@ -42,7 +42,7 @@ test('PCN audit actor preserves the signed-in user snapshot', () => {
     role: 'tester',
     position: 'Chuyên gia thẩm xét',
   });
-  assert.match(storeSource, /useStore\.getState\(\)\.currentUser/);
+  assert.match(storeSource, /usePcnSessionStore\.getState\(\)\.currentUser/);
   assert.doesNotMatch(storeSource, /actor: \{ name: 'Người dùng PCN' \}/);
 });
 

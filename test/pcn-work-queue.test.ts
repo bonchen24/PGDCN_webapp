@@ -11,7 +11,6 @@ const labRequestView = fs.readFileSync(new URL('../components/PcnLabRequestView.
 const resultReturnView = fs.readFileSync(new URL('../components/PcnResultReturnView.tsx', import.meta.url), 'utf8');
 const issuanceView = fs.readFileSync(new URL('../components/PcnIssuanceView.tsx', import.meta.url), 'utf8');
 const sampleFlowView = fs.readFileSync(new URL('../components/PcnSampleFlowView.tsx', import.meta.url), 'utf8');
-const archiveView = fs.readFileSync(new URL('../components/PcnArchiveView.tsx', import.meta.url), 'utf8');
 
 const proposals: CertificationProposal[] = [
   {
@@ -154,7 +153,7 @@ test('work queue filters only by operational audience and never infers a missing
   assert.equal(filterPcnWorkQueueRows(rows, { scope: 'ALL' }).some((row) => row.dossierId === 'dossier-4'), false);
 });
 
-test('historical hold work opens the historical discovery module', () => {
+test('historical hold records never enter the active work queue', () => {
   const historicalDossier: CertificationDossier = {
     id: 'dossier-history', dossierCode: 'HS-HISTORY', proposalId: 'proposal-1', fieldCodes: ['QC4'], method: 'METHOD_1',
     status: 'ON_HOLD', labRequestIds: [], returnedResultIds: [], updatedAt: '2026-08-28T01:00:00.000Z',
@@ -164,9 +163,7 @@ test('historical hold work opens the historical discovery module', () => {
     },
   };
 
-  const row = buildPcnWorkQueueRows({ dossiers: [historicalDossier], proposals, now: '2026-08-28T00:00:00.000Z' })[0];
-  assert.equal(row.stepLabel, 'Rà soát hồ sơ lịch sử');
-  assert.equal(row.targetSection, 'historicalDiscovery');
+  assert.deepEqual(buildPcnWorkQueueRows({ dossiers: [historicalDossier], proposals, now: '2026-08-28T00:00:00.000Z' }), []);
 });
 
 test('non-historical hold work opens the dossier operations module', () => {
@@ -266,13 +263,12 @@ test('work queue UI states when the group has no individual assignee', () => {
   assert.match(workQueueView, /Xem tất cả/);
 });
 
-test('work queue keeps primary filters and module actions touch-friendly', () => {
+test('work queue keeps primary filters and dossier actions touch-friendly', () => {
   assert.equal((workQueueView.match(/min-h-11/g) || []).length >= 2, true);
-  assert.match(workQueueView, /onOpenModule: \(section: PcnWorkQueueSection, dossierId: string\) => void/);
-  assert.match(workQueueView, /onOpenModule\(row\.targetSection, row\.dossierId\)/);
-  assert.match(workQueueView, /Mở module cho hồ sơ/);
-  assert.match(workspaceView, /focusedDossierId/);
-  assert.match(workspaceView, /onOpenModule=\{openWorkQueueModule\}/);
+  assert.match(workQueueView, /onOpenDossier: \(dossier: CertificationDossier/);
+  assert.match(workQueueView, /onOpenDossier\(dossier\)/);
+  assert.match(workQueueView, /Mở hồ sơ/);
+  assert.match(workspaceView, /onOpenDossier=\{onOpenDossier\}/);
 });
 
 test('work queue lets an eligible staff member claim an unassigned dossier without exposing a transfer action', () => {
@@ -293,9 +289,8 @@ test('work queue remains a compact priority projection instead of a second dossi
   assert.doesNotMatch(workQueueView, /Hồ sơ cập nhật gần đây/);
 });
 
-test('work queue qualifies historical source scope without treating it as completeness', () => {
-  assert.match(workQueueView, /PcnHistoricalScopeBadge/);
-  assert.match(workQueueView, /historicalImport/);
+test('work queue stays focused on active dossier completeness', () => {
+  assert.doesNotMatch(workQueueView, /PcnHistoricalScopeBadge|historicalImport/);
 });
 
 test('work queue module targets retain the dossier context in destination views', () => {
@@ -308,8 +303,6 @@ test('work queue module targets retain the dossier context in destination views'
   assert.match(issuanceView, /dossier\.id === initialDossierId/);
   assert.match(sampleFlowView, /initialDossierId\?: string/);
   assert.match(sampleFlowView, /lot\.dossierId === initialDossierId/);
-  assert.match(archiveView, /initialDossierId\?: string/);
-  assert.match(archiveView, /dossier\.id === initialDossierId/);
 });
 
 // --- End of pcn-work-queue.test.ts ---

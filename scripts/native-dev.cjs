@@ -37,7 +37,8 @@ function addNodePreload(nodeOptions) {
   return `${nodeOptions} --require=${preloadPath}`.trim();
 }
 
-const dockerEnvFile = process.env.SUPABASE_DOCKER_ENV_FILE || path.resolve(
+const isPcnProfile = String(process.env.APP_PROFILE || '').trim().toLowerCase() === 'pcn';
+const legacyDockerEnvFile = path.resolve(
   __dirname,
   '..',
   '..',
@@ -45,6 +46,10 @@ const dockerEnvFile = process.env.SUPABASE_DOCKER_ENV_FILE || path.resolve(
   'supabase-docker',
   '.env',
 );
+// PCN development reads the current project's .env. The legacy DDT helper
+// may still use its explicit compatibility path, but it must never become a
+// hidden dependency of the PCN entrypoint.
+const dockerEnvFile = process.env.SUPABASE_DOCKER_ENV_FILE || (isPcnProfile ? path.resolve(projectRoot, '.env') : legacyDockerEnvFile);
 const dockerEnv = readEnvFile(dockerEnvFile);
 const childEnv = { ...process.env };
 
@@ -60,7 +65,10 @@ if (!childEnv.SUPABASE_STORAGE_URL) {
   childEnv.SUPABASE_STORAGE_URL = dockerEnv.SUPABASE_STORAGE_URL || 'http://127.0.0.1:8000/storage/v1';
 }
 if (!childEnv.SUPABASE_STORAGE_BUCKET) {
-  childEnv.SUPABASE_STORAGE_BUCKET = dockerEnv.SUPABASE_STORAGE_BUCKET || 'ddt-files';
+  childEnv.SUPABASE_STORAGE_BUCKET = dockerEnv.SUPABASE_STORAGE_BUCKET || (isPcnProfile ? 'pcn-files' : 'ddt-files');
+}
+if (!childEnv.PCN_STORAGE_BUCKET) {
+  childEnv.PCN_STORAGE_BUCKET = dockerEnv.PCN_STORAGE_BUCKET || 'pcn-files';
 }
 if (!childEnv.OCR_SERVICE_URL) {
   childEnv.OCR_SERVICE_URL = 'http://127.0.0.1:8100';

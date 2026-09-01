@@ -6,7 +6,7 @@ export const PCN_WORK_QUEUE_DUE_SOON_DAYS = 3;
 
 export type PcnWorkQueuePriority = 'OVERDUE' | 'DUE_SOON' | 'NORMAL';
 export type PcnWorkQueueScope = 'ALL' | 'MINE' | 'OVERDUE';
-export type PcnWorkQueueSection = 'proposals' | 'fields' | 'historicalDiscovery' | 'samples' | 'labRequests' | 'results' | 'issuance' | 'archive';
+export type PcnWorkQueueSection = 'proposals' | 'fields' | 'samples' | 'labRequests' | 'results' | 'issuance' | 'archive';
 
 export interface PcnWorkQueueRow {
   dossierId: string;
@@ -30,6 +30,7 @@ export interface PcnWorkQueueRow {
   targetSection: PcnWorkQueueSection;
   updatedAt?: string;
   completenessScore: number;
+  stationScore?: number | null;
   requiredDocumentTotal: number;
   requiredDocumentPresent: number;
   missingRequiredCount: number;
@@ -71,19 +72,13 @@ const WORK_QUEUE_STEPS: Partial<Record<PcnDossierStatus, WorkQueueStep>> = {
   APPROVED: { label: 'Chuẩn bị phát hành', owner: 'Văn thư phát hành', section: 'issuance' },
   ISSUED: { label: 'Giao khách hàng', owner: 'Văn thư phát hành', section: 'issuance' },
   DELIVERED: { label: 'Lưu trữ hồ sơ', owner: 'Văn thư lưu trữ', section: 'archive' },
-  ON_HOLD: { label: 'Rà soát hồ sơ lịch sử', owner: 'Rà soát dữ liệu', section: 'historicalDiscovery' },
+  ON_HOLD: { label: 'Xử lý ngoại lệ hồ sơ', owner: 'Lãnh đạo phòng', section: 'fields' },
   REJECTED: { label: 'Xử lý hồ sơ bị từ chối', owner: 'Lãnh đạo phòng', section: 'proposals' },
 };
 
-function getWorkQueueStep(dossier: CertificationDossier, proposal: CertificationProposal | undefined): WorkQueueStep | undefined {
+function getWorkQueueStep(dossier: CertificationDossier): WorkQueueStep | undefined {
   const step = WORK_QUEUE_STEPS[dossier.status];
-  if (!step) return undefined;
-  if (dossier.status !== 'ON_HOLD') return step;
-
-  const hasHistoricalReview = Boolean(dossier.historicalImport || proposal?.historicalImport);
-  return hasHistoricalReview
-    ? step
-    : { label: 'Xử lý ngoại lệ hồ sơ', owner: 'Lãnh đạo phòng', section: 'fields' };
+  return step;
 }
 
 function normalizeUsername(value: unknown): string {
@@ -149,8 +144,9 @@ export function buildPcnWorkQueueRows({ dossiers, proposals = [], currentUsernam
   const normalizedCurrentUsername = normalizeUsername(currentUsername);
 
   return dossiers.flatMap((dossier) => {
+    if (dossier.historicalImport) return [];
     const proposal = proposalsById.get(dossier.proposalId);
-    const step = getWorkQueueStep(dossier, proposal);
+    const step = getWorkQueueStep(dossier);
     if (!step) return [];
     const targetDate = getCalendarDate(dossier.targetDate);
     const targetTimestamp = targetDate === undefined ? undefined : calendarDateTimestamp(targetDate);
@@ -177,8 +173,9 @@ export function buildPcnWorkQueueRows({ dossiers, proposals = [], currentUsernam
       ...(targetDate ? { targetDate } : {}),
       priority: getPriority(targetDate, nowTimestamp),
       targetSection: step.section,
-      ...(dossier.updatedAt || dossier.createdAt ? { updatedAt: dossier.updatedAt || dossier.createdAt } : {}),
+  ...(dossier.updatedAt || dossier.createdAt ? { updatedAt: dossier.updatedAt || dossier.createdAt } : {}),
       completenessScore: completeness.score,
+      stationScore: completeness.stationScore,
       requiredDocumentTotal: completeness.requiredDocumentTotal,
       requiredDocumentPresent: completeness.requiredDocumentPresent,
       missingRequiredCount: completeness.requiredDocumentTotal - completeness.requiredDocumentPresent,

@@ -106,7 +106,8 @@ test('PCN exposes a separate personnel management surface and never treats users
   assert.match(serverSource, /departmentRoleCode/);
   assert.match(workspaceSource, /Nhân sự PCN|Người dùng PCN/);
   const customerBranch = workspaceSource.match(/activeSection === ['"]customers['"]\s*\?([\s\S]*?)(?:: activeSection|:activeSection)/)?.[1] || '';
-  assert.match(customerBranch, /CustomersManagementView/);
+  assert.match(customerBranch, /PcnCustomersManagementView/);
+  assert.doesNotMatch(customerBranch, /SystemManagementViews/);
   assert.doesNotMatch(customerBranch, /systemUsers/);
 });
 

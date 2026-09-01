@@ -176,7 +176,83 @@ export const PCN_TEMPLATE_CATALOG: PcnTemplateDefinition[] = [
       sha256: '57c00e0ba5ee682cf863a8bc1b76b2ad2b2c481d09fce2b2c5b84df28f4917c8',
     },
   },
+  {
+    id: 'pcn-qc20-proposal-pending',
+    fieldCode: 'QC20',
+    documentKind: 'PROPOSAL',
+    displayName: 'Đề nghị QC20 — cấu hình chờ xác nhận',
+    sourceLabel: 'QC20 / chưa có bộ mẫu chính thức — cần Admin PCN xác nhận',
+    format: 'DOCX',
+    status: 'NEEDS_ANNOTATION',
+    placeholderKeys: [],
+    requiredPlaceholderKeys: ['loai_sp', 'ten_cong_ty', 'dia_chi_ct'],
+    sourceFingerprint: { sourceRelativePath: 'QC20/CHUA_CO_NGUON/PROPOSAL.docx', byteSize: 0 },
+  },
+  {
+    id: 'pcn-qc20-certificate-pending',
+    fieldCode: 'QC20',
+    documentKind: 'CERTIFICATE',
+    displayName: 'GCN QC20 — cấu hình chờ xác nhận',
+    sourceLabel: 'QC20 / chưa có bộ mẫu chính thức — cần Admin PCN xác nhận',
+    format: 'DOCX',
+    status: 'NEEDS_ANNOTATION',
+    placeholderKeys: [],
+    requiredPlaceholderKeys: ['loai_sp', 'ten_cong_ty', 'dia_chi_ct', 'so_dang_ky', 'ngay_cap_CN'],
+    sourceFingerprint: { sourceRelativePath: 'QC20/CHUA_CO_NGUON/CERTIFICATE.docx', byteSize: 0 },
+  },
+  {
+    id: 'pcn-qc20-decision-pending',
+    fieldCode: 'QC20',
+    documentKind: 'DECISION',
+    displayName: 'Quyết định QC20 — cấu hình chờ xác nhận',
+    sourceLabel: 'QC20 / chưa có bộ mẫu chính thức — cần Admin PCN xác nhận',
+    format: 'DOCX',
+    status: 'NEEDS_ANNOTATION',
+    placeholderKeys: [],
+    requiredPlaceholderKeys: ['so_dang_ky', 'loai_sp', 'ten_cong_ty', 'dia_chi_ct', 'ngay_cap_CN', 'ngay_qd'],
+    sourceFingerprint: { sourceRelativePath: 'QC20/CHUA_CO_NGUON/DECISION.docx', byteSize: 0 },
+  },
+  {
+    id: 'pcn-qc20-sample-handover-pending',
+    fieldCode: 'QC20',
+    documentKind: 'SAMPLE_HANDOVER',
+    displayName: 'Biên bản giao mẫu QC20 — cấu hình chờ xác nhận',
+    sourceLabel: 'QC20 / chưa có bộ mẫu chính thức — cần Admin PCN xác nhận',
+    format: 'DOCX',
+    status: 'NEEDS_ANNOTATION',
+    placeholderKeys: [],
+    requiredPlaceholderKeys: ['so_dang_ky', 'ten_cong_ty', 'ngay_lay_mau', 'loai_sp', 'model', 'nhan_hieu'],
+    sourceFingerprint: { sourceRelativePath: 'QC20/CHUA_CO_NGUON/SAMPLE_HANDOVER.docx', byteSize: 0 },
+  },
 ];
+
+/**
+ * Remove one-time authoring provenance before a template enters the PCN
+ * runtime. The checked-in baseline still keeps its research metadata for the
+ * locked authoring/import command, but stores, API responses and UI cards
+ * must only receive operational asset metadata.
+ */
+export function toPcnTemplateRuntimeProjection(template: PcnTemplateDefinition): PcnTemplateDefinition {
+  const {
+    sourceLabel: _sourceLabel,
+    sourceFingerprint,
+    sourceOriginalFingerprint,
+    ...runtime
+  } = template;
+  return {
+    ...runtime,
+    sourceFingerprint: {
+      byteSize: sourceFingerprint.byteSize,
+      ...(sourceFingerprint.sha256 ? { sha256: sourceFingerprint.sha256 } : {}),
+    },
+    ...(sourceOriginalFingerprint ? {
+      sourceOriginalFingerprint: {
+        byteSize: sourceOriginalFingerprint.byteSize,
+        ...(sourceOriginalFingerprint.sha256 ? { sha256: sourceOriginalFingerprint.sha256 } : {}),
+      },
+    } : {}),
+  };
+}
 
 export type PcnTemplateReadinessReason =
   | 'STATUS_NOT_APPROVED'
@@ -212,19 +288,21 @@ function normalizePlaceholderKey(value: string): string {
 
 export function getPcnTemplatesForFields(
   fieldCodes: string[],
-  catalog: PcnTemplateDefinition[] = PCN_TEMPLATE_CATALOG,
+  catalog: PcnTemplateDefinition[] = mergePcnTemplateCatalog([]),
 ): PcnTemplateDefinition[] {
   const selected = new Set(fieldCodes.map(normalizeFieldCode).filter(Boolean));
-  return catalog.filter((template) => selected.has(normalizeFieldCode(template.fieldCode)));
+  return catalog
+    .filter((template) => selected.has(normalizeFieldCode(template.fieldCode)))
+    .map(toPcnTemplateRuntimeProjection);
 }
 
 export function mergePcnTemplateCatalog(
   runtimeTemplates: PcnTemplateDefinition[],
   baseline: PcnTemplateDefinition[] = PCN_TEMPLATE_CATALOG,
 ): PcnTemplateDefinition[] {
-  const merged = new Map(baseline.map((template) => [template.id, template]));
+  const merged = new Map(baseline.map((template) => [template.id, toPcnTemplateRuntimeProjection(template)]));
   for (const template of runtimeTemplates) {
-    if (template?.id && ['QC4', 'QC9'].includes(normalizeFieldCode(template.fieldCode))) merged.set(template.id, template);
+    if (template?.id && ['QC4', 'QC9', 'QC20'].includes(normalizeFieldCode(template.fieldCode))) merged.set(template.id, toPcnTemplateRuntimeProjection(template));
   }
   return [...merged.values()];
 }

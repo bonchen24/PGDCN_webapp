@@ -21,7 +21,7 @@ export const PCN_DOSSIER_PACKAGE_SOURCE_COLLECTIONS = [
 ] as const;
 
 export type PcnDossierPackageSourceCollection = typeof PCN_DOSSIER_PACKAGE_SOURCE_COLLECTIONS[number];
-export type PcnDossierPackageCategory = 'CHECKLIST' | 'HISTORICAL' | 'GENERATED' | 'OFFICIAL' | 'RESULT' | 'ISSUANCE';
+export type PcnDossierPackageCategory = 'CHECKLIST' | 'ATTACHMENTS' | 'GENERATED' | 'OFFICIAL' | 'RESULT' | 'ISSUANCE';
 
 export interface PcnDossierPackagePointer {
   assetId: string;
@@ -60,7 +60,7 @@ export interface PcnDossierPackageManifestEntry {
 
 const CATEGORY_DIRECTORIES: Record<PcnDossierPackageCategory, string> = {
   CHECKLIST: '01-checklist',
-  HISTORICAL: '02-historical',
+  ATTACHMENTS: '02-attachments',
   GENERATED: '03-generated',
   OFFICIAL: '04-official',
   RESULT: '05-results',
@@ -69,7 +69,7 @@ const CATEGORY_DIRECTORIES: Record<PcnDossierPackageCategory, string> = {
 
 const CATEGORY_LABELS: Record<PcnDossierPackageCategory, string> = {
   CHECKLIST: 'Checklist tài liệu',
-  HISTORICAL: 'Tệp hồ sơ lịch sử',
+  ATTACHMENTS: 'Tệp liên kết hồ sơ',
   GENERATED: 'Biểu mẫu sinh nội bộ',
   OFFICIAL: 'Tài liệu phát hành chính thức',
   RESULT: 'KQTN trả về',
@@ -78,7 +78,7 @@ const CATEGORY_LABELS: Record<PcnDossierPackageCategory, string> = {
 
 const CATEGORY_ORDER: readonly PcnDossierPackageCategory[] = [
   'CHECKLIST',
-  'HISTORICAL',
+  'ATTACHMENTS',
   'GENERATED',
   'OFFICIAL',
   'RESULT',
@@ -132,7 +132,7 @@ export function buildPcnDossierPackageSummary(input: {
   for (const document of input.documents || []) {
     for (const version of document.versions || []) addSummaryAsset(assets, version.assetId, 'CHECKLIST', version.byteSize);
   }
-  for (const attachment of input.attachments || []) addSummaryAsset(assets, attachment.assetId, 'HISTORICAL', attachment.byteSize);
+  for (const attachment of input.attachments || []) addSummaryAsset(assets, attachment.assetId, 'ATTACHMENTS', attachment.byteSize);
   for (const document of input.generatedDocuments || []) addSummaryAsset(assets, document.fileAssetId, 'GENERATED', document.byteSize);
   for (const document of input.officialDocuments || []) addSummaryAsset(assets, document.fileAssetId, 'OFFICIAL', document.byteSize);
   for (const result of input.returnedResults || []) addSummaryAsset(assets, result.fileAssetId, 'RESULT');

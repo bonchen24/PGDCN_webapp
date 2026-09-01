@@ -1,0 +1,150 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Check, Eye, EyeOff, KeyRound, Loader2, RefreshCw, Save, Sparkles, UserRound, X } from 'lucide-react';
+
+import type { PcnDepartmentRoleCode, UserAccount } from '../types';
+import { PCN_DEPARTMENT_ROLE_OPTIONS } from '../types';
+import {
+  fetchPcnPersonalSettings,
+  updatePcnPersonalSettings,
+  type PcnPersonalSettings,
+} from '../utils/pcnPersonalSettingsApi';
+
+const SYSTEM_ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin PCN',
+  staff: 'Nhân viên PCN',
+  viewer: 'Chỉ xem',
+};
+
+type GeminiModel = { id: string; displayName?: string };
+
+function departmentRoleLabel(code?: PcnDepartmentRoleCode): string {
+  return PCN_DEPARTMENT_ROLE_OPTIONS.find((role) => role.code === code)?.name || 'Chưa phân công';
+}
+
+export default function PcnPersonalSettingsPanel({ currentUser, onClose }: { currentUser: UserAccount; onClose: () => void }) {
+  const [compactCards, setCompactCards] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem('pcn_compact_cards') !== 'false';
+  });
+  const [personalSettings, setPersonalSettings] = useState<PcnPersonalSettings>({ geminiApiKeyConfigured: false });
+  const [apiKey, setApiKey] = useState('');
+  const [geminiModel, setGeminiModel] = useState('');
+  const [geminiModels, setGeminiModels] = useState<GeminiModel[]>([]);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [clearGeminiApiKey, setClearGeminiApiKey] = useState(false);
+  const [loadingAiSettings, setLoadingAiSettings] = useState(true);
+  const [savingAiSettings, setSavingAiSettings] = useState(false);
+  const [testingGemini, setTestingGemini] = useState(false);
+  const [aiNotice, setAiNotice] = useState('');
+  const [aiError, setAiError] = useState('');
+
+  useEffect(() => {
+    window.localStorage.setItem('pcn_compact_cards', String(compactCards));
+  }, [compactCards]);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingAiSettings(true);
+    setAiError('');
+    void fetchPcnPersonalSettings()
+      .then((settings) => {
+        if (!active) return;
+        setPersonalSettings(settings);
+        setGeminiModel(settings.geminiModel || '');
+      })
+      .catch((error: any) => {
+        if (active) setAiError(error?.message || 'Không thể tải thiết lập AI cá nhân.');
+      })
+      .finally(() => {
+        if (active) setLoadingAiSettings(false);
+      });
+    return () => { active = false; };
+  }, [currentUser.username]);
+
+  const saveAiSettings = async () => {
+    if (savingAiSettings) return;
+    setSavingAiSettings(true);
+    setAiError('');
+    setAiNotice('');
+    try {
+      const nextSettings = await updatePcnPersonalSettings({
+        ...(apiKey.trim() ? { geminiApiKey: apiKey.trim() } : {}),
+        ...(clearGeminiApiKey ? { clearGeminiApiKey: true } : {}),
+        geminiModel: geminiModel.trim(),
+      });
+      setPersonalSettings(nextSettings);
+      setApiKey('');
+      setClearGeminiApiKey(false);
+      setShowApiKey(false);
+      setAiNotice('Đã lưu thiết lập Gemini cá nhân.');
+    } catch (error: any) {
+      setAiError(error?.message || 'Không thể lưu thiết lập AI cá nhân.');
+    } finally {
+      setSavingAiSettings(false);
+    }
+  };
+
+  const testGeminiConnection = async () => {
+    if (testingGemini) return;
+    if (!personalSettings.geminiApiKeyConfigured || apiKey.trim()) {
+      setAiError(apiKey.trim() ? 'Hãy lưu API Key mới trước khi kiểm tra kết nối Google.' : 'Chưa có Gemini API Key cá nhân để kiểm tra.');
+      return;
+    }
+    setTestingGemini(true);
+    setAiError('');
+    setAiNotice('');
+    try {
+      const response = await fetch('/api/gemini/models', { credentials: 'same-origin' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || 'Không thể kết nối tới Google Gemini.');
+      const models = Array.isArray(payload?.models)
+        ? payload.models
+          .map((model: any) => ({ id: String(model?.id || '').trim(), displayName: String(model?.displayName || '').trim() }))
+          .filter((model: GeminiModel) => model.id)
+        : [];
+      setGeminiModels(models);
+      if (!geminiModel.trim() && models[0]?.id) setGeminiModel(models[0].id);
+      setAiNotice(`Kết nối Google thành công${models.length ? ` · ${models.length} model khả dụng` : ''}.`);
+    } catch (error: any) {
+      setAiError(error?.message || 'Không thể kết nối tới Google Gemini.');
+    } finally {
+      setTestingGemini(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-end bg-slate-950/30 p-0 backdrop-blur-[1px] sm:p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section className="mobile-scroll-y max-h-[calc(100dvh-0.5rem)] w-full max-w-md overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl" role="dialog" aria-modal="true" aria-labelledby="pcn-personal-settings-title">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><UserRound size={17} /></span><div><h2 id="pcn-personal-settings-title" className="text-sm font-black text-slate-900">Thiết lập cá nhân</h2><p className="mt-0.5 text-[10px] text-slate-500">Thông tin phiên làm việc, AI hỗ trợ và tùy chọn hiển thị.</p></div></div>
+          <button type="button" onClick={onClose} aria-label="Đóng thiết lập cá nhân" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={17} /></button>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-xs font-black uppercase text-emerald-700">{currentUser.name.split(' ').pop()?.slice(0, 2) || 'PC'}</span><div className="min-w-0"><div className="truncate text-sm font-black text-slate-900">{currentUser.name || 'Người dùng PCN'}</div><div className="mt-0.5 truncate font-mono text-[10px] text-slate-500">@{currentUser.username}</div><div className="mt-1 text-[10px] text-slate-500">{currentUser.position || 'Nhân sự PCN'}</div></div></div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2"><div className="rounded-lg bg-white p-2"><div className="text-[9px] font-black uppercase tracking-wider text-slate-400">Role hệ thống</div><div className="mt-1 text-[11px] font-black text-slate-700">{SYSTEM_ROLE_LABELS[currentUser.systemRole || currentUser.role] || currentUser.role}</div></div><div className="rounded-lg bg-white p-2"><div className="text-[9px] font-black uppercase tracking-wider text-slate-400">Chức vụ phòng ban</div><div className="mt-1 text-[11px] font-black text-slate-700">{departmentRoleLabel(currentUser.departmentRoleCode)}</div></div></div>
+          <div className="mt-2 rounded-lg bg-white p-2"><div className="text-[9px] font-black uppercase tracking-wider text-slate-400">Lĩnh vực được phân công</div><div className="mt-1 flex flex-wrap gap-1">{currentUser.fieldCodes?.length ? currentUser.fieldCodes.map((fieldCode) => <span key={fieldCode} className="rounded border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-black text-emerald-700">{fieldCode}</span>) : <span className="text-[10px] font-bold text-slate-500">Theo quyền PCN và phân công hồ sơ</span>}</div></div>
+        </div>
+
+        <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3">
+          <div className="flex items-start justify-between gap-2"><div className="flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><Sparkles size={15} /></span><div><div className="text-[10px] font-black uppercase tracking-wider text-violet-800">Gemini cho OCR và trợ lý AI</div><p className="mt-0.5 text-[9px] leading-4 text-violet-700">Key cá nhân được mã hóa ở máy chủ PCN; không lưu trong trình duyệt.</p></div></div>{personalSettings.geminiApiKeyConfigured && <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[9px] font-black text-emerald-700">Đã cấu hình</span>}</div>
+          {loadingAiSettings ? <div className="mt-3 flex items-center gap-2 rounded-lg bg-white/80 p-2.5 text-[10px] text-slate-500"><Loader2 size={14} className="animate-spin" /> Đang tải thiết lập AI...</div> : <>
+            <label className="mt-3 block text-[10px] font-black text-slate-700" htmlFor="pcn-gemini-api-key">Gemini API Key cá nhân</label>
+            <div className="mt-1 flex gap-1.5"><div className="relative min-w-0 flex-1"><input id="pcn-gemini-api-key" type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={(event) => { setApiKey(event.target.value); setClearGeminiApiKey(false); setAiError(''); }} placeholder={personalSettings.geminiApiKeyConfigured ? `Đã lưu ${personalSettings.geminiApiKeyHint || 'key'} · nhập key mới để thay` : 'AIzaSy...'} autoComplete="new-password" className="w-full rounded-lg border border-violet-200 bg-white px-2.5 py-2 pr-9 text-[10px] outline-none focus:border-violet-400" />{apiKey && <button type="button" onClick={() => setShowApiKey((value) => !value)} aria-label={showApiKey ? 'Ẩn API Key' : 'Hiện API Key'} className="absolute right-1 top-1 rounded-md p-1.5 text-slate-400 hover:bg-slate-100">{showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}</button>}</div>{personalSettings.geminiApiKeyConfigured && <button type="button" onClick={() => { setApiKey(''); setClearGeminiApiKey((value) => !value); setAiError(''); }} className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-2 text-[9px] font-black ${clearGeminiApiKey ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}><KeyRound size={12} /> {clearGeminiApiKey ? 'Sẽ xóa' : 'Xóa key'}</button>}</div>
+            {clearGeminiApiKey && <p className="mt-1 text-[9px] font-bold text-rose-700">Bấm “Lưu thiết lập” để xóa key cá nhân khỏi máy chủ.</p>}
+            <label className="mt-3 block text-[10px] font-black text-slate-700" htmlFor="pcn-gemini-model">Model Gemini</label>
+            <div className="mt-1 flex gap-1.5"><select id="pcn-gemini-model" value={geminiModel} onChange={(event) => setGeminiModel(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-violet-200 bg-white px-2.5 py-2 text-[10px] outline-none focus:border-violet-400"><option value="">Dùng model mặc định của hệ thống</option>{geminiModel && !geminiModels.some((model) => model.id === geminiModel) && <option value={geminiModel}>{geminiModel}</option>}{geminiModels.map((model) => <option key={model.id} value={model.id}>{model.displayName && model.displayName !== model.id ? `${model.displayName} · ` : ''}{model.id}</option>)}</select><button type="button" onClick={() => void testGeminiConnection()} disabled={testingGemini || loadingAiSettings || Boolean(apiKey.trim())} title={apiKey.trim() ? 'Hãy lưu key mới trước' : 'Kiểm tra key đã lưu'} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-violet-200 bg-white px-2 py-2 text-[9px] font-black text-violet-700 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50">{testingGemini ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Kiểm tra Google</button></div>
+            {aiNotice && <p role="status" className="mt-2 text-[9px] font-bold text-emerald-700">{aiNotice}</p>}
+            {aiError && <p role="alert" className="mt-2 text-[9px] font-bold text-rose-700">{aiError}</p>}
+            <div className="mt-3 flex justify-end"><button type="button" onClick={() => void saveAiSettings()} disabled={savingAiSettings} className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-[10px] font-black text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50">{savingAiSettings ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} {savingAiSettings ? 'Đang lưu...' : 'Lưu thiết lập AI'}</button></div>
+          </>}
+        </div>
+
+        <div className="mt-3 rounded-xl border border-slate-200 p-3"><div className="text-[10px] font-black uppercase tracking-wider text-slate-500">Tùy chọn hiển thị</div><label className="mt-2 flex cursor-pointer items-center gap-2 text-[11px] font-bold text-slate-700"><input type="checkbox" checked={compactCards} onChange={(event) => setCompactCards(event.target.checked)} className="accent-emerald-600" /><span>Ưu tiên card hồ sơ gọn</span>{compactCards && <Check size={14} className="text-emerald-600" />}</label><p className="mt-1 pl-5 text-[9px] text-slate-400">Tùy chọn này được lưu trên thiết bị; key Gemini không lưu tại đây.</p></div>
+        <div className="mt-4 flex justify-end"><button type="button" onClick={onClose} className="rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white hover:bg-emerald-700">Đóng</button></div>
+      </section>
+    </div>
+  );
+}

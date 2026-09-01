@@ -93,24 +93,13 @@ test('official generation readiness blocks missing data and unapproved templates
   assert.equal(getPcnOfficialGenerationReadiness(approved, data).ready, true);
 });
 
-test('official generation readiness blocks unfinished historical review', () => {
+test('official generation readiness ignores legacy review metadata for new PCN work', () => {
   const source = PCN_TEMPLATE_CATALOG.find((template) => template.id === 'pcn-qc4-certificate-tool')!;
   const approved = { ...source, status: 'APPROVED' as const, fileAssetId: 'asset-template', storageScope: 'PCN_PRIVATE' as const };
   const data = buildPcnOfficialTemplateData({ context, issuance, documentKind: 'CERTIFICATE' });
 
-  const pending = getPcnOfficialGenerationReadiness(approved, data, {
-    reviewStatus: 'PENDING_REVIEW',
-    unresolvedFields: [],
-  });
-  const unresolved = getPcnOfficialGenerationReadiness(approved, data, {
-    reviewStatus: 'REVIEWED',
-    unresolvedFields: ['customerName'],
-  });
-
-  assert.equal(pending.ready, false);
-  assert.ok(pending.reasons.includes('HISTORICAL_REVIEW_INCOMPLETE'));
-  assert.equal(unresolved.ready, false);
-  assert.ok(unresolved.reasons.includes('HISTORICAL_REVIEW_INCOMPLETE'));
+  assert.equal(getPcnOfficialGenerationReadiness(approved, data).ready, true);
+  assert.doesNotMatch(JSON.stringify(getPcnOfficialGenerationReadiness(approved, data)), /HISTORICAL|REVIEW_INCOMPLETE/i);
 });
 
 test('DOCX renderer replaces QC4 delimiters and preserves the template package', () => {

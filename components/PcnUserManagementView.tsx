@@ -219,7 +219,7 @@ export function PcnUserManagementView({
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-50/60 p-3 md:p-5 mobile-safe-bottom">
+    <div className="pcn-page-surface min-w-0 bg-slate-50/60 p-3 md:p-5 mobile-safe-bottom">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Quản trị nội bộ PCN</p>

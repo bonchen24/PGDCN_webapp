@@ -10,7 +10,10 @@ import { getPcnDocumentPreflightIssues, getPcnDocumentSourceUpdatedAt } from '..
 import { getPcnGeneratedDocumentLineageSummary, getPcnGeneratedDocumentsForKind } from '../utils/pcnGeneratedDocumentView';
 import { getPcnGeneratedDocumentRequirementCode } from '../utils/pcnDossierDocuments';
 import { getPcnOfficialDocumentKindLabel, getPcnTemplateReadiness, getPcnTemplatesForFields } from '../utils/pcnTemplateCatalog';
+import { getPcnOperationalTemplateForKind } from '../utils/pcnOperationalTemplateCatalog';
+import { isPcnInternalSampleRequest } from '../utils/pcnLabOperations';
 import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
+import { canProcessPcnGeneratedDocument } from '../utils/pcnWorkflowStages';
 import { PcnFilePreviewButton } from './PcnDossierFilePreview';
 
 type PcnDocumentPreflightContext = {
@@ -26,10 +29,8 @@ type PcnDocumentPreflightContext = {
   reviewerUsername?: string;
   targetDate?: string;
   evaluationAt?: string;
-  reviewStatus: string;
   checklist: Array<{ name: string; required: boolean; status: PcnDossierDocument['status'] }>;
   attachments: unknown[];
-  unresolvedFields: string[];
   sampleHandover?: unknown;
   labRequest?: unknown;
 };
@@ -73,6 +74,10 @@ function requiresSampleRoute(kind: PcnGeneratedDocumentKind): boolean {
   return PCN_SAMPLE_ROUTE_GENERATED_KINDS.includes(kind);
 }
 
+function requiresLabRequest(kind: PcnGeneratedDocumentKind): boolean {
+  return kind === 'LAB_REQUEST';
+}
+
 function templateStatusLabel(status: string): string {
   if (status === 'APPROVED') return 'Đã duyệt';
   if (status === 'NEEDS_ANNOTATION') return 'Cần chú thích';
@@ -113,6 +118,8 @@ export function PcnDocumentGenerationPanel({
   users,
   canGenerate,
   initialKind,
+  initialSampleRouteId,
+  initialLabRequestId,
   onPreflight,
   onGenerate,
   onConfirmGenerated,
@@ -128,6 +135,8 @@ export function PcnDocumentGenerationPanel({
   users: PcnUserAccount[];
   canGenerate: boolean;
   initialKind?: PcnGeneratedDocumentKind;
+  initialSampleRouteId?: string;
+  initialLabRequestId?: string;
   onPreflight: (kind: PcnGeneratedDocumentKind, sampleRouteId?: string, labRequestId?: string) => Promise<PcnDocumentPreflightContext>;
   onGenerate: (kind: PcnGeneratedDocumentKind, formats: PcnGeneratedDocumentFormat[], sampleRouteId?: string, expectedContextHash?: string, labRequestId?: string) => Promise<PcnGeneratedDocument[]>;
   onConfirmGenerated: (generated: PcnGeneratedDocument, requirement: PcnDocumentRequirement) => Promise<void>;
@@ -136,23 +145,24 @@ export function PcnDocumentGenerationPanel({
   const [isPreflighting, setIsPreflighting] = useState(false);
   const [preflight, setPreflight] = useState<PcnDocumentPreflightContext | null>(null);
   const [selectedKind, setSelectedKind] = useState<PcnGeneratedDocumentKind>(initialKind || 'DOSSIER_COVER');
-  const [selectedRouteId, setSelectedRouteId] = useState('');
-  const [selectedLabRequestId, setSelectedLabRequestId] = useState('');
+  const [selectedRouteId, setSelectedRouteId] = useState(initialSampleRouteId || '');
+  const [selectedLabRequestId, setSelectedLabRequestId] = useState(initialLabRequestId || '');
   const [confirmingGeneratedId, setConfirmingGeneratedId] = useState<string | null>(null);
   const [confirmationRequirementIds, setConfirmationRequirementIds] = useState<Record<string, string>>({});
   const dossierLots = useMemo(() => sampleLots.filter((lot) => lot.dossierId === dossier.id), [dossier.id, sampleLots]);
   const lotById = useMemo(() => new Map(dossierLots.map((lot) => [lot.id, lot])), [dossierLots]);
   const dossierRoutes = useMemo(() => sampleRoutes.filter((route) => lotById.has(route.sampleLotId)).sort((left, right) => left.id.localeCompare(right.id)), [lotById, sampleRoutes]);
-  const dossierLabRequests = useMemo(() => labRequests.filter((request) => request.dossierId === dossier.id).sort((left, right) => left.id.localeCompare(right.id)), [dossier.id, labRequests]);
+  const dossierLabRequests = useMemo(() => labRequests.filter((request) => request.dossierId === dossier.id && isPcnInternalSampleRequest(request, dossierRoutes)).sort((left, right) => left.id.localeCompare(right.id)), [dossier.id, dossierRoutes, labRequests]);
   const activeRouteId = dossierRoutes.some((route) => route.id === selectedRouteId) ? selectedRouteId : (dossierRoutes[0]?.id || '');
   const activeLabRequestId = dossierLabRequests.some((request) => request.id === selectedLabRequestId) ? selectedLabRequestId : (dossierLabRequests[0]?.id || '');
   const selectedRoute = dossierRoutes.find((route) => route.id === activeRouteId);
   const selectedLot = selectedRoute ? lotById.get(selectedRoute.sampleLotId) : undefined;
-  const selectedPyc = selectedRoute ? labRequests.find((request) => request.id === selectedRoute.labRequestId || request.sampleRouteId === selectedRoute.id) : undefined;
+  const selectedPyc = selectedRoute ? dossierLabRequests.find((request) => request.id === selectedRoute.labRequestId || request.sampleRouteId === selectedRoute.id) : undefined;
   const selectedLabRequest = dossierLabRequests.find((request) => request.id === activeLabRequestId);
   const selectedLabRequestLot = selectedLabRequest?.sampleLotId ? lotById.get(selectedLabRequest.sampleLotId) : undefined;
   const selectedLabRequestRoute = selectedLabRequest?.sampleRouteId ? dossierRoutes.find((route) => route.id === selectedLabRequest.sampleRouteId) : dossierRoutes.find((route) => route.labRequestId === selectedLabRequest?.id);
-  const dossierDocuments = useMemo(() => getPcnGeneratedDocumentsForKind(generatedDocuments, dossier.id, selectedKind, requiresSampleRoute(selectedKind) ? activeRouteId : undefined, selectedKind === 'LAB_REQUEST' ? activeLabRequestId : undefined), [activeLabRequestId, activeRouteId, dossier.id, generatedDocuments, selectedKind]);
+  const operationalTemplate = getPcnOperationalTemplateForKind(selectedKind, dossier.fieldCodes);
+  const dossierDocuments = useMemo(() => getPcnGeneratedDocumentsForKind(generatedDocuments, dossier.id, selectedKind, requiresSampleRoute(selectedKind) ? activeRouteId : undefined, requiresLabRequest(selectedKind) ? activeLabRequestId : undefined), [activeLabRequestId, activeRouteId, dossier.id, generatedDocuments, selectedKind]);
   const officialTemplates = useMemo(() => getPcnTemplatesForFields(dossier.fieldCodes, templates)
     .filter((template) => template.documentKind === 'CERTIFICATE' || template.documentKind === 'DECISION'), [dossier.fieldCodes, templates]);
   const officialReadyCount = officialTemplates.filter((template) => getPcnTemplateReadiness(template, { availablePlaceholderKeys: template.placeholderKeys, requireVerifiedPrivateAsset: true }).ready).length;
@@ -161,7 +171,7 @@ export function PcnDocumentGenerationPanel({
     dossier.updatedAt,
     proposalUpdatedAt,
     ...(requiresSampleRoute(selectedKind) ? [selectedLot?.updatedAt, selectedRoute?.updatedAt, selectedPyc?.updatedAt] : []),
-    ...(selectedKind === 'LAB_REQUEST' ? [selectedLabRequest?.updatedAt, selectedLabRequestLot?.updatedAt, selectedLabRequestRoute?.updatedAt] : []),
+    ...(requiresLabRequest(selectedKind) ? [selectedLabRequest?.updatedAt, selectedLabRequestLot?.updatedAt, selectedLabRequestRoute?.updatedAt] : []),
   );
   const lineageSummary = useMemo(() => getPcnGeneratedDocumentLineageSummary(
     generatedDocuments,
@@ -169,18 +179,18 @@ export function PcnDocumentGenerationPanel({
     selectedKind,
     requiresSampleRoute(selectedKind) ? activeRouteId : undefined,
     sourceUpdatedAt,
-    selectedKind === 'LAB_REQUEST' ? activeLabRequestId : undefined,
+    requiresLabRequest(selectedKind) ? activeLabRequestId : undefined,
   ), [activeLabRequestId, activeRouteId, dossier.id, generatedDocuments, selectedKind, sourceUpdatedAt]);
   const preflightIssues = useMemo(() => preflight ? getPcnDocumentPreflightIssues({
     kind: selectedKind,
     hasSampleRoute: !requiresSampleRoute(selectedKind) || Boolean(preflight.sampleHandover),
-    hasLabRequest: selectedKind !== 'LAB_REQUEST' || Boolean(preflight.labRequest),
+    hasLabRequest: !requiresLabRequest(selectedKind) || Boolean(preflight.labRequest),
     checklist: preflight.checklist,
-    unresolvedFields: preflight.unresolvedFields,
   }) : [], [preflight, selectedKind]);
   const preflightOwnerLabel = preflight?.ownerUsername ? getPcnUserDisplayName(preflight.ownerUsername, users) : 'Chưa phân công';
   const preflightEvaluatorLabel = preflight?.evaluatorUsername ? getPcnUserDisplayName(preflight.evaluatorUsername, users) : 'Chưa phân công';
   const preflightReviewerLabel = preflight?.reviewerUsername ? getPcnUserDisplayName(preflight.reviewerUsername, users) : 'Chưa phân công';
+  const canProcessSelectedKind = canProcessPcnGeneratedDocument(dossier, selectedKind);
 
   useEffect(() => {
     setPreflight(null);
@@ -188,8 +198,10 @@ export function PcnDocumentGenerationPanel({
 
   useEffect(() => {
     setSelectedKind(initialKind || 'DOSSIER_COVER');
+    setSelectedRouteId(initialSampleRouteId || '');
+    setSelectedLabRequestId(initialLabRequestId || '');
     setPreflight(null);
-  }, [dossier.id, initialKind]);
+  }, [dossier.id, initialKind, initialLabRequestId, initialSampleRouteId]);
 
   const runPreflight = async () => {
     if (isPreflighting) return;
@@ -197,13 +209,13 @@ export function PcnDocumentGenerationPanel({
       toast.error(`Hãy chọn tuyến mẫu trước khi kiểm tra dữ liệu ${selectedKind === 'SAMPLE_RETURN' ? 'biên bản trả mẫu' : selectedKind === 'SAMPLE_TAKING' ? 'biên bản lấy mẫu' : selectedKind === 'SAMPLE_CODING' ? 'biên bản mã hóa mẫu' : 'biên bản giao nhận'}.`);
       return;
     }
-    if (selectedKind === 'LAB_REQUEST' && !activeLabRequestId) {
+    if (requiresLabRequest(selectedKind) && !activeLabRequestId) {
       toast.error('Hãy chọn PYC trước khi kiểm tra dữ liệu phiếu yêu cầu thử nghiệm.');
       return;
     }
     setIsPreflighting(true);
     try {
-      const context = await onPreflight(selectedKind, requiresSampleRoute(selectedKind) ? activeRouteId : undefined, selectedKind === 'LAB_REQUEST' ? activeLabRequestId : undefined);
+      const context = await onPreflight(selectedKind, requiresSampleRoute(selectedKind) ? activeRouteId : undefined, requiresLabRequest(selectedKind) ? activeLabRequestId : undefined);
       setPreflight(context);
       toast.success('Đã kiểm tra context dữ liệu; chưa tạo hoặc tải file.');
     } catch (error: any) {
@@ -216,11 +228,15 @@ export function PcnDocumentGenerationPanel({
   const generate = async () => {
     if (isGenerating || isPreflighting) return;
     if (!canGenerate) return;
+    if (!canProcessSelectedKind) {
+      toast.error('Biểu mẫu thuộc bước chưa đến; hãy hoàn tất bước hiện tại trước.');
+      return;
+    }
     if (requiresSampleRoute(selectedKind) && !activeRouteId) {
       toast.error(`Hãy chọn tuyến mẫu trước khi sinh ${selectedKind === 'SAMPLE_RETURN' ? 'biên bản trả mẫu' : selectedKind === 'SAMPLE_TAKING' ? 'biên bản lấy mẫu' : selectedKind === 'SAMPLE_CODING' ? 'biên bản mã hóa mẫu' : 'biên bản giao nhận'}.`);
       return;
     }
-    if (selectedKind === 'LAB_REQUEST' && !activeLabRequestId) {
+    if (requiresLabRequest(selectedKind) && !activeLabRequestId) {
       toast.error('Hãy chọn PYC trước khi sinh phiếu yêu cầu thử nghiệm.');
       return;
     }
@@ -234,7 +250,7 @@ export function PcnDocumentGenerationPanel({
     }
     setIsGenerating(true);
     try {
-      const documents = await onGenerate(selectedKind, ['DOCX', 'PDF'], requiresSampleRoute(selectedKind) ? activeRouteId : undefined, preflight.contextHash, selectedKind === 'LAB_REQUEST' ? activeLabRequestId : undefined);
+      const documents = await onGenerate(selectedKind, ['DOCX', 'PDF'], requiresSampleRoute(selectedKind) ? activeRouteId : undefined, preflight.contextHash, requiresLabRequest(selectedKind) ? activeLabRequestId : undefined);
       toast.success(`Đã sinh ${documents.length} tài liệu từ cùng một context dữ liệu.`);
     } catch (error: any) {
       if (String(error?.message || '').includes('Dữ liệu hồ sơ đã thay đổi')) setPreflight(null);
@@ -245,7 +261,7 @@ export function PcnDocumentGenerationPanel({
   };
 
   const confirmGenerated = async (generated: PcnGeneratedDocument, requirement?: PcnDocumentRequirement) => {
-    if (!canGenerate || confirmingGeneratedId || !requirement) return;
+    if (!canGenerate || !canProcessPcnGeneratedDocument(dossier, generated.kind) || confirmingGeneratedId || !requirement) return;
     setConfirmingGeneratedId(generated.id);
     try {
       await onConfirmGenerated(generated, requirement);
@@ -265,19 +281,20 @@ export function PcnDocumentGenerationPanel({
         {contextHash && <p className="mt-1 break-all font-mono text-[9px] text-slate-500">Context: {contextHash}</p>}
       </div>
       <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
-        <button type="button" onClick={() => void runPreflight()} disabled={isPreflighting || (requiresSampleRoute(selectedKind) && !activeRouteId) || (selectedKind === 'LAB_REQUEST' && !activeLabRequestId)} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-indigo-300 bg-white px-3 py-2 text-[10px] font-black text-indigo-700 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60">
+        <button type="button" onClick={() => void runPreflight()} disabled={isPreflighting || (requiresSampleRoute(selectedKind) && !activeRouteId) || (requiresLabRequest(selectedKind) && !activeLabRequestId)} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-indigo-300 bg-white px-3 py-2 text-[10px] font-black text-indigo-700 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60">
           {isPreflighting ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
           {isPreflighting ? 'Đang kiểm tra…' : 'Kiểm tra dữ liệu'}
         </button>
-        <button type="button" onClick={() => void generate()} disabled={isGenerating || isPreflighting || !canGenerate || !preflight || preflightIssues.some((issue) => issue.severity === 'BLOCKING') || (requiresSampleRoute(selectedKind) && !activeRouteId) || (selectedKind === 'LAB_REQUEST' && !activeLabRequestId)} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-[10px] font-black text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60">
+        <button type="button" onClick={() => void generate()} disabled={isGenerating || isPreflighting || !canGenerate || !canProcessSelectedKind || !preflight || preflightIssues.some((issue) => issue.severity === 'BLOCKING') || (requiresSampleRoute(selectedKind) && !activeRouteId) || (requiresLabRequest(selectedKind) && !activeLabRequestId)} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-[10px] font-black text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60">
           {isGenerating ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-          {isGenerating ? 'Đang sinh…' : 'Sinh Word + PDF'}
+        {isGenerating ? 'Đang sinh…' : 'Sinh DOCX + PDF'}
         </button>
       </div>
     </div>
+    {!canProcessSelectedKind && <p className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-2 text-[10px] font-bold text-slate-600">Biểu mẫu này thuộc bước sau. Có thể xem cấu hình, nhưng chỉ được sinh/xác nhận khi hồ sơ tới bước tương ứng.</p>}
     {preflight && <div className={`rounded-lg border p-2.5 text-[10px] ${preflightIssues.some((issue) => issue.severity === 'BLOCKING') ? 'border-rose-200 bg-rose-50 text-rose-800' : preflightIssues.length > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
       <div className="flex flex-wrap items-center justify-between gap-2"><b>Preflight context đã kiểm tra</b><span className="font-mono text-[9px]">{preflight.contextHash.slice(0, 16)}…</span></div>
-      {preflightIssues.length === 0 ? <p className="mt-1">Không có cảnh báo từ checklist hoặc nguồn lịch sử. Có thể sinh Word/PDF.</p> : <ul className="mt-1 space-y-0.5">{preflightIssues.map((issue) => <li key={issue.code}><b>{issue.severity === 'BLOCKING' ? 'Chặn' : 'Cảnh báo'}:</b> {issue.message}</li>)}</ul>}
+      {preflightIssues.length === 0 ? <p className="mt-1">Không có cảnh báo từ checklist hoặc dữ liệu hồ sơ. Có thể sinh Word/PDF.</p> : <ul className="mt-1 space-y-0.5">{preflightIssues.map((issue) => <li key={issue.code}><b>{issue.severity === 'BLOCKING' ? 'Chặn' : 'Cảnh báo'}:</b> {issue.message}</li>)}</ul>}
       <div className="mt-2 rounded-md border border-slate-200 bg-white/80 p-2">
         <div className="text-[9px] font-black uppercase tracking-wide text-slate-500">Snapshot nguồn (chỉ đọc)</div>
         <div className="mt-1.5 grid gap-1.5 text-[9px] sm:grid-cols-2 lg:grid-cols-4">
@@ -291,7 +308,6 @@ export function PcnDocumentGenerationPanel({
           <div><span className="text-slate-400">Checklist / tệp đính kèm</span><p className="font-bold text-slate-700">{preflight.checklist.length} mục / {preflight.attachments.length} tệp</p></div>
           <div><span className="text-slate-400">Người đánh giá / rà soát</span><p className="truncate font-bold text-slate-700" title={`${preflightEvaluatorLabel} / ${preflightReviewerLabel}`}>{preflightEvaluatorLabel} / {preflightReviewerLabel}</p></div>
           <div><span className="text-slate-400">Hạn xử lý / ngày đánh giá</span><p className="truncate font-bold text-slate-700">{preflight.targetDate ? formatDateTime(preflight.targetDate) : 'Chưa đặt'} / {preflight.evaluationAt ? formatDateTime(preflight.evaluationAt) : 'Chưa cập nhật'}</p></div>
-          <div><span className="text-slate-400">Rà soát nguồn</span><p className="truncate font-bold text-slate-700">{preflight.reviewStatus || 'Không áp dụng'}</p></div>
         </div>
       </div>
       <p className="mt-1 text-[9px] opacity-80">Preflight chỉ đọc, chưa tạo tài liệu và chưa ghi audit. Nếu <b>Context đã thay đổi</b>, hệ thống sẽ yêu cầu kiểm tra lại trước khi sinh.</p>
@@ -301,7 +317,7 @@ export function PcnDocumentGenerationPanel({
         <div className="text-[10px] font-black text-amber-900">Biểu mẫu phát hành chính thức</div>
         <span className="rounded-full border border-amber-200 bg-white px-2 py-0.5 text-[9px] font-bold text-amber-800">{officialReadyCount}/{officialTemplates.length} sẵn sàng</span>
       </div>
-      <p className="mt-1 text-[9px] leading-4 text-amber-800">GCN/QĐ/chứng thư chỉ được sinh từ DOCX đã duyệt và có asset private PCN. Mẫu DDT, .doc hoặc mẫu chưa chú thích không được dùng thay thế.</p>
+      <p className="mt-1 text-[9px] leading-4 text-amber-800">GCN/QĐ/chứng thư chỉ được sinh từ DOCX đã duyệt và có asset private PCN. Mẫu ngoài catalog PCN, .doc hoặc mẫu chưa chú thích không được dùng thay thế.</p>
       {officialTemplates.length > 0 ? <div className="mt-2 flex flex-wrap gap-1.5">{officialTemplates.map((template) => { const readiness = getPcnTemplateReadiness(template, { availablePlaceholderKeys: template.placeholderKeys, requireVerifiedPrivateAsset: true }); return <span key={template.id} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-slate-700">{getPcnOfficialDocumentKindLabel(template.documentKind)} · {templateStatusLabel(template.status)}{!readiness.ready && <span className="font-normal text-amber-700"> · {readiness.reasons.map(templateReadinessReasonLabel).join(', ')}</span>}</span>; })}</div> : <p className="mt-1 text-[9px] text-amber-800">Chưa có catalog cho lĩnh vực của hồ sơ.</p>}
     </div>
     <div className="rounded-lg border border-indigo-200 bg-white p-2.5">
@@ -310,6 +326,7 @@ export function PcnDocumentGenerationPanel({
         {(['DOSSIER_COVER', 'PROPOSAL_SUMMARY', 'PROPOSAL_FORM', 'ASSIGNMENT_FORM', 'EVALUATION_PLAN', 'FIELD_INSPECTION', 'SAMPLE_TAKING', 'SAMPLE_CODING', 'EVALUATION_REPORT', 'SAMPLE_HANDOVER', 'SAMPLE_RETURN', 'LAB_REQUEST'] as PcnGeneratedDocumentKind[]).map((kind) => <option key={kind} value={kind}>{kindLabel(kind)}</option>)}
       </select>
       <p className="mt-1 text-[9px] leading-4 text-slate-500">Chọn một biểu mẫu, kiểm tra dữ liệu rồi sinh đồng thời Word và PDF.</p>
+      {operationalTemplate && <p className="mt-1 rounded-md border border-emerald-100 bg-emerald-50/60 px-2 py-1.5 text-[9px] text-emerald-800">Nguồn form PCN: <b>{operationalTemplate.fileName}</b> · {operationalTemplate.status === 'OFFICIAL_CANDIDATE' ? 'ứng viên mẫu chính thức, vẫn phải duyệt riêng' : 'mẫu vận hành nháp'}</p>}
     </div>
     {requiresSampleRoute(selectedKind) && <div className="rounded-lg border border-indigo-200 bg-white p-2.5">
       <label className="block text-[9px] font-black uppercase tracking-wide text-slate-500" htmlFor="pcn-sample-route">Chọn tuyến mẫu</label>
@@ -320,7 +337,7 @@ export function PcnDocumentGenerationPanel({
       {selectedRoute && <p className="mt-1.5 text-[9px] leading-4 text-slate-500">Lô <b>{selectedLot?.lotCode}</b> • {selectedLot?.sampleName} • {selectedRoute.labName} • PYC: {selectedPyc?.pycNumber || 'chưa tạo'} • Trạng thái tuyến: {selectedRoute.status}</p>}
       {!activeRouteId && <p className="mt-1.5 text-[9px] font-bold text-amber-700">Cần tạo lô và tuyến mẫu trước khi sinh biên bản.</p>}
     </div>}
-    {selectedKind === 'LAB_REQUEST' && <div className="rounded-lg border border-indigo-200 bg-white p-2.5">
+    {requiresLabRequest(selectedKind) && <div className="rounded-lg border border-indigo-200 bg-white p-2.5">
       <label className="block text-[9px] font-black uppercase tracking-wide text-slate-500" htmlFor="pcn-lab-request">Chọn PYC gửi PTN</label>
       <select id="pcn-lab-request" aria-label="Chọn PYC gửi PTN" value={activeLabRequestId} onChange={(event) => setSelectedLabRequestId(event.target.value)} className="mt-1.5 w-full rounded-md border border-slate-200 bg-white px-2 py-2 text-[10px] text-slate-700 outline-none focus:border-indigo-400">
         <option value="">Chưa có PYC thuộc hồ sơ</option>

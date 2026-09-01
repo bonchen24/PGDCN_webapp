@@ -153,7 +153,7 @@ export function PcnWorkflowMap({ projection, mode, selectedNodeKey, onSelectNode
         {projection.hasReturned && <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[9px] font-black text-orange-700"><RotateCcw size={11} /> Có luồng trả về/khắc phục</span>}
       </div>
 
-      <div className="mt-3 overflow-x-auto pb-1" role="list" aria-label="Các bước quy trình chính">
+      <div className="mt-3 mobile-scroll-x overflow-x-auto pb-1" role="list" aria-label="Các bước quy trình chính">
         <div className="flex min-w-max items-stretch gap-1.5">
           {mainNodes.map((node, index) => (
             <React.Fragment key={node.key}>

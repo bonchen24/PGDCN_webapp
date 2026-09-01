@@ -1,81 +1,13 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Download, ExternalLink, FileSpreadsheet, Search } from 'lucide-react';
+import { Download, ExternalLink, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
-import type {
-  CertificationDossier,
-  CertificationProposal,
-  IssuancePackage,
-  OutboundLabRequest,
-  PcnCertificationField,
-  PcnDocumentRequirement,
-  PcnDossierDocument,
-  PcnSampleLot,
-  PcnSampleRoute,
-  PcnUserAccount,
-  ReturnedTestResult,
-} from '../types';
-import {
-  buildPcnOperationsRegisterRows,
-  filterPcnOperationsRegisterRows,
-  toPcnOperationsRegisterCsv,
-  type PcnOperationsRegisterFilter,
-} from '../utils/pcnOperationsRegister';
-import { getPcnDossierStationTab, type PcnDossierDetailTab } from '../utils/pcnDossierNavigation';
-import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
+import type { CertificationDossier, CertificationProposal, PcnCertificationField, PcnDocumentRequirement, PcnDossierDocument, PcnUserAccount, PcnSampleLot, PcnSampleRoute, OutboundLabRequest, ReturnedTestResult, IssuancePackage } from '../types';
+import { buildPcnOperationsRegisterRows, filterPcnOperationsRegisterRows, toPcnOperationsRegisterCsv } from '../utils/pcnOperationsRegister';
+import { getPcnWorkflowStage } from '../utils/pcnWorkflowStages';
 
-const statusOptions: Array<{ code: CertificationDossier['status']; label: string }> = [
-  { code: 'DRAFT', label: 'Bản nháp' },
-  { code: 'INTAKE_REVIEW', label: 'Kiểm tra Đề nghị' },
-  { code: 'AWAITING_DOCUMENTS', label: 'Chờ bổ sung hồ sơ' },
-  { code: 'ASSIGNED', label: 'Đã phân công' },
-  { code: 'PLAN_PENDING_APPROVAL', label: 'Chờ duyệt kế hoạch' },
-  { code: 'FIELD_EVALUATION', label: 'Đang đánh giá' },
-  { code: 'AWAITING_SAMPLING', label: 'Chờ lấy mẫu' },
-  { code: 'SENT_TO_LAB', label: 'Đã gửi PTN' },
-  { code: 'AWAITING_RESULTS', label: 'Chờ KQTN' },
-  { code: 'CORRECTIVE_ACTION', label: 'Đang khắc phục' },
-  { code: 'TECHNICAL_REVIEW', label: 'Soát xét kỹ thuật' },
-  { code: 'WAITING_APPROVAL', label: 'Chờ phê duyệt' },
-  { code: 'APPROVED', label: 'Đã phê duyệt' },
-  { code: 'ISSUED', label: 'Đã phát hành' },
-  { code: 'DELIVERED', label: 'Đã giao khách hàng' },
-  { code: 'ARCHIVED', label: 'Đã lưu trữ' },
-  { code: 'REJECTED', label: 'Từ chối / trả lại' },
-  { code: 'CANCELLED', label: 'Đã hủy' },
-  { code: 'ON_HOLD', label: 'Tạm dừng' },
-];
-
-const statusLabel = new Map(statusOptions.map((item) => [item.code, item.label]));
-
-function formatDate(value?: string): string {
-  if (!value) return 'Chưa cập nhật';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Chưa cập nhật' : date.toLocaleDateString('vi-VN');
-}
-
-function outcomeLabel(value?: ReturnedTestResult['outcome']): string {
-  if (value === 'PASS') return 'Đạt';
-  if (value === 'FAIL') return 'Không đạt';
-  if (value === 'PENDING') return 'Đang chờ';
-  return 'Chưa cập nhật';
-}
-
-function statusClass(status: CertificationDossier['status']): string {
-  if (['ISSUED', 'DELIVERED', 'ARCHIVED', 'APPROVED'].includes(status)) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  if (['REJECTED', 'CANCELLED'].includes(status)) return 'border-rose-200 bg-rose-50 text-rose-700';
-  if (['AWAITING_RESULTS', 'CORRECTIVE_ACTION', 'WAITING_APPROVAL'].includes(status)) return 'border-amber-200 bg-amber-50 text-amber-700';
-  return 'border-slate-200 bg-slate-50 text-slate-600';
-}
-
-function missingDocumentSummary(row: ReturnType<typeof buildPcnOperationsRegisterRows>[number]): string {
-  return row.missingRequiredByStage
-    .map((group) => `${group.label}: ${group.labels.join(', ')}`)
-    .join(' · ');
-}
-
-interface PcnOperationsRegisterViewProps {
+type Props = {
   fields: PcnCertificationField[];
   proposals: CertificationProposal[];
   dossiers: CertificationDossier[];
@@ -87,116 +19,51 @@ interface PcnOperationsRegisterViewProps {
   documentRequirements: PcnDocumentRequirement[];
   dossierDocuments: PcnDossierDocument[];
   users: PcnUserAccount[];
-  onOpenDossier: (dossier: CertificationDossier, initialTab?: PcnDossierDetailTab) => void;
+  onOpenDossier: (dossier: CertificationDossier, initialTab?: 'documents' | 'lab' | 'results' | 'issuance') => void;
+};
+
+function date(value?: string): string {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString('vi-VN');
 }
 
-export function PcnOperationsRegisterView({
-  fields,
-  proposals,
-  dossiers,
-  sampleLots,
-  sampleRoutes,
-  labRequests,
-  returnedResults,
-  issuancePackages,
-  documentRequirements,
-  dossierDocuments,
-  users,
-  onOpenDossier,
-}: PcnOperationsRegisterViewProps) {
-  const allRows = useMemo(() => buildPcnOperationsRegisterRows({ fields, proposals, dossiers, sampleLots, sampleRoutes, labRequests, returnedResults, issuancePackages, documentRequirements, dossierDocuments }), [fields, proposals, dossiers, sampleLots, sampleRoutes, labRequests, returnedResults, issuancePackages, documentRequirements, dossierDocuments]);
-  const availableYears = useMemo(() => [...new Set(allRows.map((row) => row.receivedAt?.slice(0, 4)).filter(Boolean) as string[])].sort().reverse(), [allRows]);
+export default function PcnOperationsRegisterView(props: Props) {
   const [query, setQuery] = useState('');
-  const [year, setYear] = useState('');
+  const [completeness, setCompleteness] = useState<'ALL' | 'INCOMPLETE' | 'COMPLETE'>('ALL');
+  const [assignment, setAssignment] = useState<'ALL' | 'ASSIGNED' | 'UNASSIGNED'>('ALL');
   const [fieldCode, setFieldCode] = useState('');
-  const [status, setStatus] = useState<CertificationDossier['status'] | ''>('');
-  const [completeness, setCompleteness] = useState<NonNullable<PcnOperationsRegisterFilter['completeness']>>('ALL');
-  const [assignment, setAssignment] = useState<NonNullable<PcnOperationsRegisterFilter['assignment']>>('ALL');
-  const rows = useMemo(() => filterPcnOperationsRegisterRows(allRows, { query, year, fieldCode, status: status || undefined, completeness, assignment }), [allRows, query, year, fieldCode, status, completeness, assignment]);
-  const fieldNames = useMemo(() => new Map(fields.map((field) => [field.code, field.name])), [fields]);
-  const issuedCount = rows.filter((row) => ['ISSUED', 'DELIVERED', 'ARCHIVED'].includes(row.dossierStatus)).length;
-  const resultCount = rows.filter((row) => row.lastResultReceivedAt).length;
-  const waitingCount = rows.filter((row) => ['AWAITING_RESULTS', 'CORRECTIVE_ACTION', 'WAITING_APPROVAL'].includes(row.dossierStatus)).length;
-  const incompleteCount = rows.filter((row) => row.missingRequiredCount > 0).length;
+  const rows = useMemo(() => buildPcnOperationsRegisterRows(props), [props]);
+  const visibleRows = useMemo(() => filterPcnOperationsRegisterRows(rows, { query, fieldCode, completeness, assignment }), [rows, query, fieldCode, completeness, assignment]);
 
-  const downloadCsv = () => {
-    const blob = new Blob([toPcnOperationsRegisterCsv(rows)], { type: 'text/csv;charset=utf-8' });
+  const exportCsv = () => {
+    const blob = new Blob([toPcnOperationsRegisterCsv(visibleRows)], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `so-dieu-hanh-pcn-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `so-dieu-hanh-pcn-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
     URL.revokeObjectURL(url);
   };
 
-  const openRegisterDossier = (row: ReturnType<typeof buildPcnOperationsRegisterRows>[number]) => {
-    const dossier = dossiers.find((candidate) => candidate.id === row.dossierId);
-    if (!dossier) return;
-    const proposal = proposals.find((candidate) => candidate.id === dossier.proposalId);
-    const hasHistoricalReview = Boolean(dossier.historicalImport || proposal?.historicalImport);
-    onOpenDossier(dossier, getPcnDossierStationTab(row.stationKey, hasHistoricalReview));
-  };
-
-  return <div className="h-full overflow-y-auto bg-slate-50/60 p-3 md:p-5 mobile-safe-bottom">
-    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <div className="flex items-center gap-2"><FileSpreadsheet size={19} className="text-emerald-600" /><h1 className="text-xl font-black text-slate-900">Sổ điều hành</h1></div>
-        <p className="mt-1 text-[11px] text-slate-500">Bảng tổng hợp dẫn xuất từ hồ sơ PCN, giúp theo dõi mã đăng ký, mẫu, KQTN và phát hành.</p>
+  return (
+    <div className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Quản lý PCN</p><h1 className="mt-1 text-xl font-black text-slate-900">Sổ điều hành</h1><p className="mt-1 text-[11px] text-slate-500">Một dòng là một bộ hồ sơ. Số liệu lấy từ card hồ sơ chuẩn và chỉ đọc.</p></div>
+        <button type="button" onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-600 shadow-sm hover:border-emerald-300 hover:text-emerald-700"><Download size={14} /> Xuất CSV</button>
       </div>
-      <button type="button" onClick={downloadCsv} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white shadow-sm hover:bg-emerald-500"><Download size={14} /> Xuất CSV ({rows.length})</button>
-    </div>
-
-    <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-5">
-      <Metric label="Hồ sơ theo bộ lọc" value={rows.length} />
-      <Metric label="Đã có KQTN" value={resultCount} tone="text-blue-700" />
-      <Metric label="Đang chờ xử lý" value={waitingCount} tone="text-amber-700" />
-      <Metric label="Đã phát hành / lưu" value={issuedCount} tone="text-emerald-700" />
-      <Metric label="Còn thiếu tài liệu bắt buộc" value={incompleteCount} tone="text-rose-700" />
-    </div>
-
-    <div className="mb-3 grid gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-[minmax(220px,1.5fr)_120px_180px_200px_220px_180px]">
-      <label className="relative block"><Search size={14} className="pointer-events-none absolute left-2.5 top-2.5 text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã đăng ký, khách hàng, sản phẩm, model, KQTN..." className="w-full rounded-lg border border-slate-200 py-2 pl-8 pr-2 text-[11px] outline-none focus:border-emerald-400" /></label>
-      <select value={year} onChange={(event) => setYear(event.target.value)} className="rounded-lg border border-slate-200 px-2 py-2 text-[11px] text-slate-700 outline-none focus:border-emerald-400"><option value="">Tất cả năm</option>{availableYears.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-      <select value={fieldCode} onChange={(event) => setFieldCode(event.target.value)} className="rounded-lg border border-slate-200 px-2 py-2 text-[11px] text-slate-700 outline-none focus:border-emerald-400"><option value="">Tất cả lĩnh vực</option>{fields.filter((field) => field.active).map((field) => <option key={field.code} value={field.code}>{field.name}</option>)}</select>
-      <select value={status} onChange={(event) => setStatus(event.target.value as CertificationDossier['status'] | '')} className="rounded-lg border border-slate-200 px-2 py-2 text-[11px] text-slate-700 outline-none focus:border-emerald-400"><option value="">Tất cả trạng thái</option>{statusOptions.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}</select>
-      <select aria-label="Tình trạng hoàn thiện hồ sơ" value={completeness} onChange={(event) => setCompleteness(event.target.value as NonNullable<PcnOperationsRegisterFilter['completeness']>) } className="rounded-lg border border-slate-200 px-2 py-2 text-[11px] text-slate-700 outline-none focus:border-emerald-400"><option value="ALL">Tất cả mức hoàn thiện</option><option value="INCOMPLETE">Còn thiếu tài liệu bắt buộc</option><option value="COMPLETE">Đã đủ tài liệu bắt buộc</option></select>
-      <select aria-label="Tình trạng phân công chủ hồ sơ" value={assignment} onChange={(event) => setAssignment(event.target.value as NonNullable<PcnOperationsRegisterFilter['assignment']>) } className="rounded-lg border border-slate-200 px-2 py-2 text-[11px] text-slate-700 outline-none focus:border-emerald-400"><option value="ALL">Tất cả chủ hồ sơ</option><option value="UNASSIGNED">Chưa phân công</option><option value="ASSIGNED">Đã phân công</option></select>
-    </div>
-
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="min-w-[2180px] w-full border-collapse text-left text-[10px]">
-          <thead className="bg-slate-900 text-[9px] font-black uppercase tracking-wider text-slate-300"><tr><th className="sticky left-0 z-10 bg-slate-900 px-3 py-3">Mã đăng ký / hồ sơ</th><th className="px-3 py-3">Bước hiện tại / Mức hoàn thiện</th><th className="px-3 py-3">Khách hàng</th><th className="px-3 py-3">Sản phẩm / model</th><th className="px-3 py-3">Số lượng mẫu</th><th className="px-3 py-3">Tiêu chuẩn</th><th className="px-3 py-3">Trưởng đoàn / Ngày đánh giá / Ngày hiệu lực</th><th className="px-3 py-3">Lĩnh vực</th><th className="px-3 py-3">Nhận hồ sơ</th><th className="px-3 py-3">Nhận mẫu</th><th className="px-3 py-3">Nơi nhận/đang giữ mẫu</th><th className="px-3 py-3">Chỉ tiêu thử</th><th className="px-3 py-3">KQTN gần nhất</th><th className="px-3 py-3">Tuyến PTN</th><th className="px-3 py-3">Trạng thái hồ sơ</th><th className="px-3 py-3">Phát hành / trả mẫu</th></tr></thead>
-          <tbody className="divide-y divide-slate-100">{rows.map((row) => <tr key={row.dossierId} className="align-top hover:bg-emerald-50/40">
-            <td className="sticky left-0 z-[1] bg-white px-3 py-3"><button type="button" onClick={() => openRegisterDossier(row)} className="group text-left"><span className="block font-black text-emerald-700 group-hover:underline">{row.registrationCode}</span><span className="mt-0.5 flex items-center gap-1 text-[9px] text-slate-500">{row.dossierCode}<ExternalLink size={10} /></span></button></td>
-            <td className="min-w-[220px] px-3 py-3"><div className="flex items-start justify-between gap-2"><div className="font-black text-slate-800">{row.stationTitle}</div><span className={`whitespace-nowrap font-black ${row.completenessScore < 70 ? 'text-amber-700' : 'text-emerald-700'}`}>{row.completenessScore}%</span></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200" aria-label={`Mức hoàn thiện ${row.completenessScore}%`}><div className={`h-full rounded-full ${row.completenessScore < 50 ? 'bg-rose-500' : row.completenessScore < 80 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${row.completenessScore}%` }} /></div><div className="mt-1 flex items-center gap-1 text-[9px] text-slate-500"><span>Chủ hồ sơ: {getPcnUserDisplayName(row.ownerUsername, users)}</span></div><div className={`mt-1 flex items-center gap-1 text-[9px] font-bold ${row.missingRequiredCount > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{row.missingRequiredCount > 0 ? <AlertTriangle size={11} /> : <CheckCircle2 size={11} />}<span>Đủ {row.requiredDocumentPresent}/{row.requiredDocumentTotal} bắt buộc · còn thiếu {row.missingRequiredCount}</span></div>{row.stationMissingLabels.length > 0 && <div className="mt-1 max-w-[210px] truncate text-[9px] text-amber-700" title={row.stationMissingLabels.join(', ')}>Bước cần xử lý: {row.stationMissingLabels.join(', ')}</div>}{row.missingRequiredByStage.length > 0 && <div className="mt-1 max-w-[210px] truncate text-[9px] text-rose-700" title={missingDocumentSummary(row)}>Tài liệu bắt buộc còn thiếu: {missingDocumentSummary(row)}</div>}</td>
-            <td className="max-w-[180px] px-3 py-3"><div className="font-bold text-slate-800">{row.customerName}</div><div className="mt-0.5 text-slate-400">{row.customerAddress || 'Địa chỉ chưa cập nhật'}</div></td>
-            <td className="max-w-[240px] px-3 py-3"><div className="font-bold text-slate-800">{row.productName}</div><div className="mt-0.5 text-slate-500">{[row.brand, row.model].filter(Boolean).join(' • ') || 'Model chưa cập nhật'}</div></td>
-            <td className="whitespace-nowrap px-3 py-3 text-slate-600">{row.sampleQuantity ?? 'Chưa cập nhật'}</td>
-            <td className="max-w-[190px] px-3 py-3 text-slate-600">{row.standardRefs.length > 0 ? row.standardRefs.map((item) => <div key={item}>{item}</div>) : 'Chưa cập nhật'}</td>
-            <td className="whitespace-nowrap px-3 py-3"><div className="font-bold text-slate-700">{row.evaluatorUsername ? getPcnUserDisplayName(row.evaluatorUsername, users) : 'Chưa phân công'}</div><div className="mt-0.5 text-slate-500">Ngày đánh giá: {formatDate(row.evaluationAt)}</div><div className="mt-0.5 text-slate-400">Ngày hiệu lực: {formatDate(row.effectiveAt)}</div></td>
-            <td className="px-3 py-3"><div className="flex max-w-[130px] flex-wrap gap-1">{row.fieldCodes.map((code) => <span key={code} className="rounded bg-indigo-50 px-1.5 py-0.5 font-black text-indigo-700">{fieldNames.get(code) || code}</span>)}</div></td>
-            <td className="whitespace-nowrap px-3 py-3 text-slate-600">{formatDate(row.receivedAt)}</td>
-            <td className="whitespace-nowrap px-3 py-3 text-slate-600">{formatDate(row.sampleReceivedAt)}</td>
-            <td className="max-w-[190px] px-3 py-3 text-slate-600">{row.sampleLocations.length > 0 ? row.sampleLocations.map((item) => <div key={item}>{item}</div>) : 'Chưa cập nhật'}</td>
-            <td className="max-w-[220px] px-3 py-3 text-slate-600">{row.testCriteria.length > 0 ? row.testCriteria.map((item) => <div key={item}>{item}</div>) : 'Chưa cập nhật'}</td>
-            <td className="px-3 py-3"><div className="font-bold text-slate-700">{outcomeLabel(row.lastResultOutcome)}</div><div className="mt-0.5 text-slate-500">{row.reportNumbers.join(', ') || 'Chưa có số báo cáo'}</div><div className="mt-0.5 text-slate-400">{formatDate(row.lastResultReceivedAt)}</div></td>
-            <td className="max-w-[190px] px-3 py-3 text-slate-600">{row.labStatuses.length > 0 ? row.labStatuses.map((item) => <div key={item}>{item}</div>) : 'Chưa cập nhật'}</td>
-            <td className="px-3 py-3"><span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-1 text-[9px] font-black ${statusClass(row.dossierStatus)}`}>{statusLabel.get(row.dossierStatus) || row.dossierStatus}</span></td>
-            <td className="px-3 py-3"><div className="font-bold text-slate-700">{row.issuanceNumber || 'Chưa cấp số'}</div><div className="mt-0.5 text-slate-500">{formatDate(row.issuedAt)}</div><div className="mt-0.5 text-slate-400">Trả mẫu: {formatDate(row.sampleReturnedAt)}</div></td>
-          </tr>)}</tbody>
-        </table>
+      <div className="grid gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-[minmax(0,1fr)_180px_160px_160px_auto]">
+        <label className="relative block"><Search size={14} className="absolute left-2.5 top-2 text-slate-400" /><input aria-label="Tìm Sổ điều hành" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Mã Đề nghị, hồ sơ, khách hàng, sản phẩm..." className="w-full rounded-md border border-slate-200 py-1.5 pl-8 pr-2 text-[11px] outline-none focus:border-emerald-400" /></label>
+        <select aria-label="Lọc mức hoàn thiện" value={completeness} onChange={(event) => setCompleteness(event.target.value as typeof completeness)} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px]"><option value="ALL">Tất cả hoàn thiện</option><option value="INCOMPLETE">Còn thiếu tài liệu</option><option value="COMPLETE">Đủ tài liệu bắt buộc</option></select>
+        <select aria-label="Lọc phân công" value={assignment} onChange={(event) => setAssignment(event.target.value as typeof assignment)} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px]"><option value="ALL">Tất cả chủ hồ sơ</option><option value="ASSIGNED">Đã phân công</option><option value="UNASSIGNED">Chưa phân công</option></select>
+        <select aria-label="Lọc lĩnh vực Sổ điều hành" value={fieldCode} onChange={(event) => setFieldCode(event.target.value)} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px]"><option value="">Tất cả Lĩnh vực</option>{props.fields.map((field) => <option key={field.code} value={field.code}>{field.code} · {field.name}</option>)}</select>
+        <span className="self-center text-right text-[10px] font-bold text-slate-500">{visibleRows.length}/{rows.length} hồ sơ</span>
       </div>
-      {rows.length === 0 && <div className="p-10 text-center"><FileSpreadsheet size={28} className="mx-auto text-slate-300" /><div className="mt-2 text-xs font-black text-slate-700">Không có hồ sơ phù hợp</div><div className="mt-1 text-[10px] text-slate-500">Thử bỏ bớt điều kiện lọc hoặc mở Đề nghị để tạo hồ sơ mới.</div></div>}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[1120px] text-left"><thead className="bg-slate-50 text-[9px] font-black uppercase tracking-wide text-slate-500"><tr><th className="px-3 py-2">Đề nghị / hồ sơ</th><th className="px-3 py-2">Khách hàng / sản phẩm</th><th className="px-3 py-2">Bước hiện tại</th><th className="px-3 py-2">Hoàn thiện</th><th className="px-3 py-2">Mẫu / PTN</th><th className="px-3 py-2">Hạn / chủ hồ sơ</th><th className="px-3 py-2" /></tr></thead><tbody className="divide-y divide-slate-100">{visibleRows.map((row) => { const stage = getPcnWorkflowStage(row.dossierStatus); const dossier = props.dossiers.find((item) => item.id === row.dossierId); return <tr key={row.dossierId} className="hover:bg-emerald-50/30"><td className="px-3 py-2.5"><div className="font-mono text-[11px] font-black text-slate-800">{row.registrationCode}</div><div className="mt-0.5 font-mono text-[10px] text-slate-500">{row.dossierCode}</div></td><td className="max-w-[220px] px-3 py-2.5"><div className="truncate text-[11px] font-bold text-slate-700">{row.customerName}</div><div className="truncate text-[10px] text-slate-500">{row.productName}{row.model ? ` · ${row.model}` : ''}</div></td><td className="px-3 py-2.5"><span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[9px] font-black text-emerald-700">Bước {stage.number} · {stage.title}</span><div className="mt-1 text-[10px] text-slate-500">{row.dossierStatus}</div></td><td className="px-3 py-2.5"><div className="text-[11px] font-black text-slate-700">{row.completenessScore}%</div><div className="text-[9px] text-slate-500">{row.requiredDocumentPresent}/{row.requiredDocumentTotal} · thiếu {row.missingRequiredCount}</div></td><td className="px-3 py-2.5"><div className="text-[10px] font-bold text-slate-700">{row.sampleQuantity ?? '—'} {row.sampleQuantity ? 'mẫu' : ''}</div><div className="max-w-[180px] truncate text-[9px] text-slate-500">{row.labStatuses.join(' · ') || 'Chưa có tuyến'}</div></td><td className="px-3 py-2.5"><div className="text-[10px] font-bold text-slate-700">{row.ownerUsername || 'Chưa phân công'}</div><div className="text-[9px] text-slate-500">Nhận {date(row.receivedAt)}</div></td><td className="px-3 py-2.5 text-right"><button type="button" onClick={() => dossier && props.onOpenDossier(dossier, 'documents')} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1.5 text-[9px] font-black text-emerald-700 hover:border-emerald-300"><ExternalLink size={12} /> Mở hồ sơ</button></td></tr>; })}</tbody></table></div>
+        <div className="divide-y divide-slate-100 md:hidden">{visibleRows.map((row) => { const stage = getPcnWorkflowStage(row.dossierStatus); const dossier = props.dossiers.find((item) => item.id === row.dossierId); return <button type="button" key={row.dossierId} onClick={() => dossier && props.onOpenDossier(dossier, 'documents')} className="block w-full p-3 text-left hover:bg-emerald-50/30"><div className="flex items-start justify-between gap-2"><div><div className="font-mono text-[11px] font-black text-slate-800">{row.registrationCode}</div><div className="text-[10px] text-slate-500">{row.customerName} · {row.productName}</div></div><span className="rounded-full bg-emerald-50 px-1.5 py-1 text-[9px] font-black text-emerald-700">Bước {stage.number}</span></div><div className="mt-2 flex justify-between text-[10px] text-slate-500"><span>{stage.title}</span><span className="font-black text-slate-700">{row.completenessScore}% · thiếu {row.missingRequiredCount}</span></div></button>; })}</div>
+        {visibleRows.length === 0 && <div className="p-8 text-center text-[11px] text-slate-500">Không có hồ sơ phù hợp bộ lọc.</div>}
+      </div>
     </div>
-    <p className="mt-2 text-[10px] text-slate-400">Sổ chỉ hiển thị dữ liệu đã ghi nhận trong PCN; ô chưa có dữ liệu không được suy diễn từ tên file hoặc ghi chú.</p>
-  </div>;
+  );
 }
-
-function Metric({ label, value, tone = 'text-slate-900' }: { label: string; value: number; tone?: string }) {
-  return <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><div className="text-[9px] font-black uppercase tracking-wider text-slate-400">{label}</div><div className={`mt-1 text-xl font-black ${tone}`}>{value}</div></div>;
-}
-
-// --- End of PcnOperationsRegisterView.tsx ---

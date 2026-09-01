@@ -6,6 +6,7 @@ import {
   buildPcnTemplateAssetId,
   buildPcnTemplateImportPlan,
   mergePcnTemplateDefinition,
+  replacePcnTemplateFileDefinition,
 } from '../utils/pcnTemplateImport.ts';
 import type { PcnTemplateDefinition } from '../types.ts';
 import type { PcnTemplateDiscoveryWarning } from '../utils/pcnTemplateDiscovery.ts';
@@ -113,6 +114,34 @@ test('template definition merge is idempotent and never silently downgrades appr
   const mergedApprovedRerun = mergePcnTemplateDefinition(approved, rerunWithApproval);
   assert.equal(mergedApprovedRerun.status, 'APPROVED');
   assert.equal(mergedApprovedRerun.approvedAt, approved.approvedAt);
+});
+
+test('template definition merge replaces the current file when a new upload has a different fingerprint', () => {
+  const current = buildPcnTemplateImportPlan(template, inspection, { approve: true, approvedAt: '2026-08-31T00:00:00.000Z' }).definition;
+  const uploaded = {
+    ...current,
+    sourceFingerprint: { sourceRelativePath: 'QC4/GCN-moi.docx', byteSize: 22, sha256: 'b'.repeat(64) },
+    fileAssetId: 'pcn-template-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    importedByUsername: 'admin-moi',
+    importedAt: '2026-09-01T00:00:00.000Z',
+  } satisfies PcnTemplateDefinition;
+
+  const merged = replacePcnTemplateFileDefinition(current, {
+    assetId: uploaded.fileAssetId!,
+    byteSize: uploaded.sourceFingerprint.byteSize,
+    sha256: uploaded.sourceFingerprint.sha256!,
+    placeholderKeys: ['loai_sp', 'ten_cong_ty', 'dia_chi_ct'],
+    importedByUsername: uploaded.importedByUsername!,
+    importedAt: uploaded.importedAt!,
+  });
+
+  assert.equal(merged.id, current.id);
+  assert.equal(merged.fileAssetId, uploaded.fileAssetId);
+  assert.equal(merged.sourceFingerprint.sha256, 'b'.repeat(64));
+  assert.equal(merged.sourceFingerprint.byteSize, 22);
+  assert.deepEqual(merged.placeholderKeys, ['loai_sp', 'ten_cong_ty', 'dia_chi_ct']);
+  assert.equal(merged.importedByUsername, 'admin-moi');
+  assert.equal(merged.status, 'APPROVED');
 });
 
 test('template import CLI is dry-run first, explicit apply/approve, and has no Desktop watcher', () => {

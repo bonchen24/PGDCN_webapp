@@ -3,6 +3,7 @@
 // Description: Deterministic mapping from an approved PCN roster to user-account input
 
 import type { PcnSystemRole } from '../types.ts';
+import { PCN_CERTIFICATION_FIELD_CODES } from '../types.ts';
 import { normalizePcnDepartmentRole } from './pcnAuth.ts';
 import type { PcnUserInput } from './pcnUserApi.ts';
 
@@ -36,8 +37,9 @@ function mapSystemRole(accountType: string): PcnSystemRole {
 }
 
 function extractFieldCodes(fieldAssignment: string): string[] {
-  const matches = clean(fieldAssignment).toUpperCase().match(/\bQC[49]\b/g) || [];
-  return [...new Set(matches)];
+  const matches = clean(fieldAssignment).toUpperCase().match(/\bQC(?:4|9|20)\b/g) || [];
+  const allowed = new Set<string>(PCN_CERTIFICATION_FIELD_CODES);
+  return [...new Set(matches.filter((code) => allowed.has(code)))];
 }
 
 export function mapPcnRosterRow(row: PcnRosterRow): PcnUserInput {

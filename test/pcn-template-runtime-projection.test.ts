@@ -22,6 +22,12 @@ test('PCN template verification projections are stripped before generic persiste
   assert.match(serverSource, /delete data\.privateAssetVerificationIssue/);
 });
 
+test('PCN template runtime responses do not expose authoring provenance', () => {
+  assert.match(serverSource, /toPcnTemplateRuntimeProjection\(item as PcnTemplateDefinition\)/);
+  assert.match(serverSource, /res\.json\(\{ \.\.\.result, template: toPcnTemplateRuntimeProjection\(result\.template\) \}\)/);
+  assert.doesNotMatch(serverSource, /sourceRelativePath.*res\.json/);
+});
+
 test('PCN template verification accepts the MIME type declared by the catalog format', () => {
   const catalogRoute = serverSource.slice(serverSource.indexOf("if (DATABASE_PROFILE === 'pcn' && collectionName === 'pcnTemplateDefinitions')"));
 

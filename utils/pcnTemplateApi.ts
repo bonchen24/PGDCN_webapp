@@ -1,46 +1,16 @@
 // Author: Codex
 // OS support: Web
-// Description: Same-origin API client for PCN template metadata review
+// Description: Same-origin API client for PCN template file management
 
 import type { ActivityLog, PcnTemplateDefinition, PcnTemplateReviewAction } from '../types.ts';
-import type { PcnTemplateInspection } from './pcnTemplateDiscovery.ts';
-import type { PcnTemplateSourceCoverageReport } from './pcnTemplateSourceCoverage.ts';
 
 export interface PcnTemplateReviewResponse {
   template: PcnTemplateDefinition;
   activityLog?: ActivityLog;
 }
 
-export type PcnTemplateImportMode = 'DRY_RUN' | 'APPLY';
-
-export interface PcnTemplateImportInput {
-  templateId: string;
-  sourceRoot: string;
-  mode: PcnTemplateImportMode;
-  approve?: boolean;
-  allowAnnotation?: boolean;
-}
-
-export interface PcnTemplateImportResponse {
-  mode: PcnTemplateImportMode;
-  templateId: string;
-  sourceRelativePath: string;
-  inspection: PcnTemplateInspection;
-  assetId: string;
-  objectPath: string;
-  mimeType: string;
-  status: PcnTemplateDefinition['status'];
-  requiresAnnotation: boolean;
-  canApprove: boolean;
-  readOnly: boolean;
-  changed?: boolean;
-  definition?: PcnTemplateDefinition;
-  activityLog?: ActivityLog;
-  message: string;
-}
-
-export interface PcnTemplateSourceCoverageInput {
-  sourceRoot: string;
+export interface PcnTemplateFileUploadResponse {
+  template: PcnTemplateDefinition;
 }
 
 async function parseResponse(response: Response): Promise<unknown> {
@@ -67,28 +37,18 @@ export async function reviewPcnTemplate(
   return parseResponse(response) as Promise<PcnTemplateReviewResponse>;
 }
 
-export async function importPcnTemplateOnServer(
-  input: PcnTemplateImportInput,
-): Promise<PcnTemplateImportResponse> {
-  const response = await fetch('/api/pcn/templates/import', {
+export async function uploadPcnTemplate(
+  templateId: string,
+  file: File,
+): Promise<PcnTemplateFileUploadResponse> {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await fetch(`/api/pcn/templates/${encodeURIComponent(templateId)}/file`, {
     method: 'POST',
     credentials: 'same-origin',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(input),
+    body: form,
   });
-  return parseResponse(response) as Promise<PcnTemplateImportResponse>;
-}
-
-export async function preflightPcnTemplateSourcesOnServer(
-  input: PcnTemplateSourceCoverageInput,
-): Promise<PcnTemplateSourceCoverageReport> {
-  const response = await fetch('/api/pcn/templates/preflight-all', {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(input),
-  });
-  return parseResponse(response) as Promise<PcnTemplateSourceCoverageReport>;
+  return parseResponse(response) as Promise<PcnTemplateFileUploadResponse>;
 }
 
 // --- End of pcnTemplateApi.ts ---

@@ -48,7 +48,6 @@ test('PCN server collection allowlist names only PCN business collections', () =
   assert.match(pcnBlock, /pcnSampleLots/);
   assert.match(pcnBlock, /pcnSampleRoutes/);
   assert.match(pcnBlock, /pcnSampleFlowEvents/);
-  assert.match(pcnBlock, /pcnHaimyStaging/);
   assert.match(pcnBlock, /approvalSteps/);
   assert.match(pcnBlock, /issuancePackages/);
   assert.doesNotMatch(pcnBlock, /"requests"/);

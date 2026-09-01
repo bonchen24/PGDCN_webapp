@@ -1,26 +1,30 @@
 #!/usr/bin/env bash
 # Author: Gemini
 # OS support: Docker Desktop / Bash
-# Description: Build and restart the DDT webapp locally with Docker Desktop.
+# Description: Build and restart the PCN webapp locally with Docker Desktop.
 
 set -euo pipefail
 
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.supabase.yml}"
-COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-E:/CODING/TVCI_APP/supabase-docker/.env}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.pcn.yml}"
+COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-}"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "Docker CLI không khả dụng. Hãy mở Docker Desktop trước khi deploy."
   exit 1
 fi
 
-if [ ! -f "$COMPOSE_ENV_FILE" ]; then
-  echo "Không tìm thấy Supabase env file: $COMPOSE_ENV_FILE"
-  echo "Có thể truyền đường dẫn khác qua COMPOSE_ENV_FILE."
-  exit 1
+COMPOSE_ENV_ARGS=()
+if [ -n "$COMPOSE_ENV_FILE" ]; then
+  if [ ! -f "$COMPOSE_ENV_FILE" ]; then
+    echo "Không tìm thấy Supabase env file: $COMPOSE_ENV_FILE"
+    echo "Có thể truyền đường dẫn khác qua COMPOSE_ENV_FILE."
+    exit 1
+  fi
+  COMPOSE_ENV_ARGS+=(--env-file "$COMPOSE_ENV_FILE")
 fi
 
-echo "Building and restarting DDT with Docker Desktop..."
-docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" up --build -d
+echo "Building and restarting PCN with Docker Desktop..."
+docker compose "${COMPOSE_ENV_ARGS[@]}" -f "$COMPOSE_FILE" up --build -d
 
 if command -v curl >/dev/null 2>&1; then
   echo "Checking application health..."

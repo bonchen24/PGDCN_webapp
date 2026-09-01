@@ -127,7 +127,7 @@ function IssueModal({
 }) {
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/50 p-0 sm:items-center sm:p-4">
-      <form onSubmit={onSubmit} aria-busy={isSubmitting} className="w-full max-w-md rounded-t-2xl bg-white p-4 shadow-2xl sm:rounded-2xl">
+      <form onSubmit={onSubmit} aria-busy={isSubmitting} className="mobile-scroll-y max-h-[94dvh] w-full max-w-md rounded-t-2xl bg-white p-4 shadow-2xl sm:rounded-2xl">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-black text-slate-900">Cấp số phát hành</h2>
           <button type="button" onClick={onClose} disabled={isSubmitting} className="text-slate-400 disabled:cursor-not-allowed disabled:opacity-50">×</button>
@@ -169,7 +169,7 @@ function DeliveryModal({
 }) {
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/50 p-0 sm:items-center sm:p-4">
-      <form onSubmit={onSubmit} aria-busy={isSubmitting} className="w-full max-w-md rounded-t-2xl bg-white p-4 shadow-2xl sm:rounded-2xl">
+      <form onSubmit={onSubmit} aria-busy={isSubmitting} className="mobile-scroll-y max-h-[94dvh] w-full max-w-md rounded-t-2xl bg-white p-4 shadow-2xl sm:rounded-2xl">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-black text-slate-900">Giao khách hàng</h2>
           <button type="button" onClick={onClose} disabled={isSubmitting} className="text-slate-400 disabled:cursor-not-allowed disabled:opacity-50">×</button>
@@ -238,9 +238,6 @@ export function PcnIssuanceView({
   const selectedApprovalEvidence: PcnApprovalEvidence | undefined = selectedApprovalDossier ? (() => {
     const proposal = proposals.find((item) => item.id === selectedApprovalDossier.proposalId);
     const completeness = buildPcnDossierCompleteness({ dossier: selectedApprovalDossier, proposal, requirements: documentRequirements, documents: dossierDocuments });
-    const historicalReviewIncomplete = [selectedApprovalDossier.historicalImport, proposal?.historicalImport]
-      .filter(Boolean)
-      .some((historicalImport) => historicalImport.reviewStatus !== 'REVIEWED' || historicalImport.unresolvedFields.length > 0);
     return {
       dossierId: selectedApprovalDossier.id,
       dossierCode: selectedApprovalDossier.dossierCode,
@@ -257,8 +254,6 @@ export function PcnIssuanceView({
       missingCoreLabels: completeness.missingCoreLabels,
       missingRequiredByStage: completeness.missingRequiredByStage,
       codeReview: completeness.codeReview,
-      historicalScope: selectedApprovalDossier.historicalImport || proposal?.historicalImport,
-      historicalReviewIncomplete,
     };
   })() : undefined;
   const openSelectedDossierChecklist = () => {
@@ -380,7 +375,7 @@ export function PcnIssuanceView({
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-50/60 p-3 pb-20 md:p-5">
+    <div className="pcn-page-surface min-w-0 bg-slate-50/60 p-3 pb-20 md:p-5">
       <div>
         <h1 className="text-xl font-black text-slate-900">Phê duyệt & Phát hành</h1>
         <p className="mt-1 text-[11px] text-slate-500">Theo dõi soát xét, phê duyệt và bộ GCN/QĐ/chứng thư của hồ sơ.</p>
@@ -397,9 +392,6 @@ export function PcnIssuanceView({
           const customerSnapshot = getPcnDossierCustomerSnapshot(dossier, proposal);
           const steps = approvalSteps.filter((step) => step.dossierId === dossier.id);
           const issueReady = issuance?.status === 'APPROVED' && dossier.status === 'APPROVED';
-          const historicalReviewIncomplete = [dossier.historicalImport, proposal?.historicalImport]
-            .filter(Boolean)
-            .some((historicalImport) => historicalImport.reviewStatus !== 'REVIEWED' || historicalImport.unresolvedFields.length > 0);
           const signerOptions = getPcnAuthorizedSignerOptions({
             fieldCodes: dossier.fieldCodes,
             issuedAt: new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z',
@@ -440,10 +432,9 @@ export function PcnIssuanceView({
                 <div className="flex flex-wrap items-center justify-end gap-1.5">
                   {canMutate && !issuance && <button onClick={() => void prepareIssuance(dossier)} disabled={preparingDossierId === dossier.id} aria-busy={preparingDossierId === dossier.id} className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"><FileCheck2 size={12} /> {preparingDossierId === dossier.id ? 'Đang tạo…' : 'Tạo bộ GCN/QĐ'}</button>}
                   {canMutate && issuance && ['PENDING_APPROVAL', 'RETURNED'].includes(issuance.status) && <button onClick={() => setSelectedApproval(dossier.id)} className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[10px] font-bold text-indigo-700"><ShieldCheck size={12} /> Mở phê duyệt</button>}
-                  {issueReady && !historicalReviewIncomplete && !issuanceTemplatesReady && <span title="Cần template GCN/QĐ đã phê duyệt và có asset private hợp lệ" className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-black text-amber-800"><ShieldCheck size={12} /> Chưa thể cấp số: {issuanceTemplateReasons.join(', ')}</span>}
-                  {canMutate && issueReady && !historicalReviewIncomplete && issuanceTemplatesReady && signerOptions.length > 0 && <button onClick={() => setIssueForm({ id: issuance.id, issuanceNumber: issuance.issuanceNumber || '', signerUsername: signerOptions.some((option) => option.username === issuance.signerUsername) ? (issuance.signerUsername || '') : signerOptions[0].username, issuedAt: new Date().toISOString().slice(0, 10) })} className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-[10px] font-black text-white"><Hash size={12} /> Cấp số phát hành</button>}
-                  {issueReady && !historicalReviewIncomplete && signerOptions.length === 0 && <span title="Cần gán Lĩnh vực và chức vụ người ký hoặc tạo ủy quyền còn hạn" className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-black text-amber-800"><ShieldCheck size={12} /> Chưa thể cấp số: chưa có người ký hợp lệ</span>}
-                  {issueReady && historicalReviewIncomplete && <span title="Cần hoàn tất rà soát hồ sơ lịch sử trước khi cấp số" className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-black text-amber-800"><ShieldCheck size={12} /> Chưa thể cấp số: rà soát hồ sơ lịch sử</span>}
+                  {issueReady && !issuanceTemplatesReady && <span title="Cần template GCN/QĐ đã phê duyệt và có asset private hợp lệ" className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-black text-amber-800"><ShieldCheck size={12} /> Chưa thể cấp số: {issuanceTemplateReasons.join(', ')}</span>}
+                  {canMutate && issueReady && issuanceTemplatesReady && signerOptions.length > 0 && <button onClick={() => setIssueForm({ id: issuance.id, issuanceNumber: issuance.issuanceNumber || '', signerUsername: signerOptions.some((option) => option.username === issuance.signerUsername) ? (issuance.signerUsername || '') : signerOptions[0].username, issuedAt: new Date().toISOString().slice(0, 10) })} className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-[10px] font-black text-white"><Hash size={12} /> Cấp số phát hành</button>}
+                  {issueReady && signerOptions.length === 0 && <span title="Cần gán Lĩnh vực và chức vụ người ký hoặc tạo ủy quyền còn hạn" className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-black text-amber-800"><ShieldCheck size={12} /> Chưa thể cấp số: chưa có người ký hợp lệ</span>}
                   {canMutate && issuance?.status === 'ISSUED' && <button onClick={() => setDeliveryForm({ id: issuance.id, recipient: issuance.deliveryRecipient || customerSnapshot?.name || '', note: issuance.deliveryNote || '', deliveredAt: new Date().toISOString().slice(0, 10) })} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[10px] font-black text-emerald-700">Giao khách hàng</button>}
                   {canMutate && issuance?.status === 'DELIVERED' && <button onClick={() => void archiveIssuance(issuance.id)} disabled={archivingIssuanceId === issuance.id} aria-busy={archivingIssuanceId === issuance.id} className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-[10px] font-black text-slate-700 disabled:cursor-wait disabled:opacity-60">{archivingIssuanceId === issuance.id ? 'Đang lưu…' : 'Lưu trữ'}</button>}
                   {issuance && ['ISSUED', 'DELIVERED', 'ARCHIVED'].includes(issuance.status) && <>

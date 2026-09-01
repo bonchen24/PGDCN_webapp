@@ -11,6 +11,7 @@ import type {
   ReturnedTestResult,
 } from '../types.ts';
 import { buildPcnDossierCompleteness, type PcnDossierMissingDocumentGroup, type PcnPipelineStationKey } from './pcnDossierPipeline.ts';
+import { isPcnInternalSampleRequest } from './pcnLabOperations.ts';
 
 export interface PcnOperationsRegisterInput {
   proposals: CertificationProposal[];
@@ -102,7 +103,7 @@ export function buildPcnOperationsRegisterRows(input: PcnOperationsRegisterInput
     const sampleLots = includesDossier(input.sampleLots, dossier, dossier.sampleLotIds);
     const sampleLotIds = new Set(sampleLots.map((lot) => lot.id));
     const sampleRoutes = input.sampleRoutes.filter((route) => sampleLotIds.has(route.sampleLotId));
-    const labRequests = includesDossier(input.labRequests, dossier, dossier.labRequestIds);
+    const labRequests = includesDossier(input.labRequests, dossier, dossier.labRequestIds).filter((request) => isPcnInternalSampleRequest(request, input.sampleRoutes));
     const labRequestIds = new Set(labRequests.map((request) => request.id));
     const results = input.returnedResults.filter((result) => result.dossierId === dossier.id || labRequestIds.has(result.labRequestId));
     const issuance = input.issuancePackages

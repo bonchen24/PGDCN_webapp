@@ -152,33 +152,11 @@ test('issuance readiness blocks while any returned result is still pending', () 
   assert.match(readiness.reasons.join('; '), /chờ bổ sung/i);
 });
 
-test('issuance readiness blocks unfinished historical review', () => {
+test('issuance readiness is scoped to the new certification workflow', () => {
   const steps = buildPcnApprovalSteps(dossier.id, '2026-08-27T08:00:00.000Z').map((step) => ({ ...step, status: 'APPROVED' as const }));
-  const importedDossier: CertificationDossier = {
-    ...dossier,
-    historicalImport: {
-      batchId: 'pcn-history-pilot-v1',
-      sourceFamily: 'QC4',
-      sourceFolderName: 'QC4 0665 Hồ sơ lịch sử',
-      sourceRelativePath: 'KQ chứng nhận QC4-26/QC4 0665 Hồ sơ lịch sử',
-      reviewStatus: 'PENDING_REVIEW',
-      unresolvedFields: [],
-      importedAt: '2026-08-28T00:00:00.000Z',
-    },
-  };
-
-  const pending = getPcnIssuanceReadiness(importedDossier, [passedResult], steps);
-  assert.equal(pending.ready, false);
-  assert.match(pending.reasons.join('; '), /rà soát.*lịch sử/i);
-
-  const unresolved = getPcnIssuanceReadiness({
-    ...importedDossier,
-    historicalImport: { ...importedDossier.historicalImport!, reviewStatus: 'REVIEWED', unresolvedFields: ['productName'] },
-  }, [passedResult], steps);
-  assert.equal(unresolved.ready, false);
-
-  const proposalOnly = getPcnIssuanceReadiness(dossier, [passedResult], steps, importedDossier.historicalImport);
-  assert.equal(proposalOnly.ready, false);
+  const readiness = getPcnIssuanceReadiness(dossier, [passedResult], steps);
+  assert.equal(readiness.ready, true);
+  assert.doesNotMatch(readiness.reasons.join('; '), /lịch sử|historical/i);
 });
 
 test('issuance document readiness requires approved templates and linked issuance data before cấp số', () => {
@@ -276,7 +254,7 @@ test('issuance UI exposes approval and issuance actions without testing schedule
   assert.match(issuanceView, /Cấp số phát hành/);
   assert.match(issuanceView, /Giao khách hàng/);
   assert.match(issuanceView, /Lưu trữ/);
-  assert.match(issuanceView, /historicalReviewIncomplete/);
+  assert.doesNotMatch(issuanceView, /historicalReviewIncomplete/);
   assert.match(issuanceView, /issuanceTemplatesReady/);
   assert.match(issuanceView, /Chưa thể cấp số: \{issuanceTemplateReasons/);
   assert.match(issuanceView, /Chưa thể cấp số/);

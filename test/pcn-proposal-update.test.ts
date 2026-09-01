@@ -36,7 +36,7 @@ test('proposal editing is validated, status-gated, and synchronizes its dossier'
   assert.match(serverSource, /app\.post\('\/api\/pcn\/proposals\/:proposalId'/);
   assert.match(serverSource, /validatePcnProposalIntake/);
   assert.match(serverSource, /INTAKE_REVIEW.*AWAITING_DOCUMENTS/);
-  assert.match(serverSource, /PENDING_REVIEW/);
+  assert.doesNotMatch(serverSource, /PENDING_REVIEW/);
   assert.match(serverSource, /customerSnapshot/);
   assert.match(serverSource, /PCN_PROPOSAL/);
   assert.match(serverSource, /PCN_DOSSIER/);
@@ -57,12 +57,10 @@ test('proposal and field lists keep dossier mutations in the canonical detail vi
   assert.doesNotMatch(fieldDossierSource, /onDownloadPackage|onCancelDossier/);
 });
 
-test('proposal and field modules link to the canonical dossier instead of duplicating dossier cards', () => {
+test('proposal cards link to the canonical dossier without duplicating dossier cards', () => {
   assert.match(workspaceSource, /function ProposalRegisterRow/);
-  assert.match(workspaceSource, /function FieldRegisterRow/);
   assert.match(proposalViewSource, /ProposalRegisterRow/);
   assert.doesNotMatch(proposalViewSource, /<DossierCard/);
-  assert.match(fieldDossierSource, /FieldRegisterRow/);
   assert.doesNotMatch(fieldDossierSource, /<DossierCard/);
   assert.match(workspaceSource, /Mở hồ sơ chuẩn/);
 });

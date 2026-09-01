@@ -4,11 +4,11 @@ import React, { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, CircleUserRound, FileWarning, GitBranch, UserRound } from 'lucide-react';
 
 import type { CertificationDossier, CertificationProposal, PcnCertificationField, PcnDossierDocument, PcnDocumentRequirement, PcnUserAccount, UserAccount } from '../types';
-import { PcnHistoricalScopeBadge } from './PcnHistoricalScopeBadge';
 import { PcnWorkflowMap } from './PcnWorkflowMap';
 import { getPcnDossierCustomerSnapshot } from '../utils/pcnDossierPolicy';
 import { buildPcnWorkQueueRows } from '../utils/pcnWorkQueue';
 import { buildPcnDossierCompleteness, filterPcnDossiersByField, getPcnPipelineStation } from '../utils/pcnDossierPipeline';
+import { getPcnWorkflowStage } from '../utils/pcnWorkflowStages';
 import { getPcnDossierStationTab, type PcnDossierDetailTab } from '../utils/pcnDossierNavigation';
 import { getPcnDossierAssignmentDenial, getPcnOwnerAssignmentAuthorityDenial } from '../utils/pcnDossierAssignment';
 import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
@@ -49,12 +49,10 @@ function DossierPipelineCard({ dossier, proposal, requirements, documents, users
   onOpenDossier: (dossier: CertificationDossier, initialTab?: PcnDossierDetailTab) => void;
 }) {
   const completeness = buildPcnDossierCompleteness({ dossier, proposal, requirements, documents });
-  const station = getPcnPipelineStation(dossier.status);
+  const station = getPcnWorkflowStage(dossier.status) || getPcnPipelineStation(dossier.status);
   const snapshot = getPcnDossierCustomerSnapshot(dossier, proposal);
   const stepMissingLabels = completeness.stationMissingLabels;
   const exceptionReason = dossier.exceptionReason?.trim();
-  const historicalImport = dossier.historicalImport || proposal?.historicalImport;
-  const hasHistoricalReview = Boolean(historicalImport);
   const codeReview = completeness.codeReview;
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
@@ -64,7 +62,6 @@ function DossierPipelineCard({ dossier, proposal, requirements, documents, users
           <p className="mt-1 truncate text-[11px] font-black text-slate-700" title={snapshot?.name || undefined}>{snapshot?.name || 'Chưa gắn khách hàng'}</p>
           <p className="truncate text-[10px] text-slate-500">{proposal?.productName || 'Chưa có sản phẩm'}{proposal?.model ? ` · ${proposal.model}` : ''}</p>
           <p className={`mt-1 truncate text-[9px] font-bold ${codeReview.needsReview ? 'text-amber-700' : 'text-slate-400'}`} title={codeReview.source || 'Chưa có mã nguồn PCN'}>Mã nguồn PCN: {codeReview.source || 'Chưa có'}{codeReview.needsReview ? ' · Cần đối chiếu mã nguồn' : ` · ${codeReview.normalized}`}</p>
-          <div className="mt-1"><PcnHistoricalScopeBadge historicalImport={historicalImport} /></div>
         </div>
         <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-black ${overdue ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`} title={getPcnDossierStatusLabel(dossier.status)}>{overdue ? 'Quá hạn' : station.title}</span>
       </div>
@@ -75,17 +72,17 @@ function DossierPipelineCard({ dossier, proposal, requirements, documents, users
           <span className={`font-black ${completeness.score < 70 ? 'text-amber-700' : 'text-emerald-700'}`}>{completeness.score}%</span>
         </div>
         <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200" aria-label={`Mức hoàn thiện ${completeness.score}%`}><div className={`h-full rounded-full ${completeness.score < 50 ? 'bg-rose-500' : completeness.score < 80 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${completeness.score}%` }} /></div>
-        <p className="mt-1.5 text-[9px] text-slate-500">{station.key === 'EXCEPTIONS' ? 'Tài liệu tại bước: Không áp dụng' : `Tài liệu tại bước: ${completeness.stationDocumentPresent}/${completeness.stationDocumentTotal} bắt buộc`} · Hạn {formatDate(dossier.targetDate)}</p>
+        <p className="mt-1.5 text-[9px] text-slate-500">{station.key === 'EXCEPTIONS' ? 'Tài liệu tại bước: Không áp dụng' : `Tài liệu tại bước: ${completeness.stationDocumentPresent}/${completeness.stationDocumentTotal} bắt buộc`} · Điểm bước: {completeness.stationScore === null ? 'Không áp dụng' : `${completeness.stationScore}%`} · Hạn {formatDate(dossier.targetDate)}</p>
       </div>
 
       {stepMissingLabels.length > 0 && <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-100 bg-amber-50/70 p-2 text-[9px] leading-4 text-amber-800"><FileWarning size={12} className="mt-0.5 shrink-0" /><span><b>Tài liệu còn thiếu tại bước:</b> {stepMissingLabels.slice(0, 2).join(', ')}{stepMissingLabels.length > 2 ? ` và ${stepMissingLabels.length - 2} mục khác` : ''}</span></div>}
       {completeness.missingCoreLabels.length > 0 && <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-100 bg-amber-50/60 p-2 text-[9px] leading-4 text-amber-800"><FileWarning size={12} className="mt-0.5 shrink-0" /><span><b>Thông tin lõi còn thiếu:</b> {completeness.missingCoreLabels.join(', ')}</span></div>}
       {completeness.missingRequiredByStage.length > 0 && <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-rose-100 bg-rose-50/60 p-2 text-[9px] leading-4 text-rose-800"><FileWarning size={12} className="mt-0.5 shrink-0" /><span className="min-w-0"><b>Tài liệu bắt buộc còn thiếu:</b> <span className="break-words">{missingDocumentSummary(completeness)}</span></span></div>}
       {stepMissingLabels.length === 0 && completeness.missingRequiredByStage.length === 0 && <p className="mt-2 inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700"><CheckCircle2 size={12} /> {station.key === 'EXCEPTIONS' ? 'Ngoại lệ không dùng checklist riêng' : 'Bước này đã đủ tài liệu bắt buộc'}</p>}
-      {station.key === 'EXCEPTIONS' && <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50/70 p-2 text-[9px] leading-4 text-amber-900"><AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-700" /><span className="min-w-0"><b>Lý do ngoại lệ:</b> {exceptionReason || 'Chưa ghi nhận lý do trong dữ liệu lịch sử'}</span></div>}
+      {station.key === 'EXCEPTIONS' && <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50/70 p-2 text-[9px] leading-4 text-amber-900"><AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-700" /><span className="min-w-0"><b>Lý do ngoại lệ:</b> {exceptionReason || 'Chưa ghi nhận lý do ngoại lệ'}</span></div>}
       <div className={`mt-3 grid gap-1.5 ${!dossier.ownerUsername && !claimDenial && onClaimDossier ? 'sm:grid-cols-[0.8fr_1.2fr]' : ''}`}>
         {!dossier.ownerUsername && !claimDenial && onClaimDossier && <button type="button" disabled={claiming} onClick={() => void onClaimDossier(dossier)} className="min-h-11 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-[10px] font-black text-indigo-700 hover:bg-indigo-100 disabled:cursor-wait disabled:opacity-60">{claiming ? 'Đang nhận…' : 'Nhận hồ sơ'}</button>}
-        <button type="button" onClick={() => onOpenDossier(dossier, getPcnDossierStationTab(station.key, hasHistoricalReview))} title={station.actionLabel} className="min-h-11 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[10px] font-black text-emerald-700 hover:bg-emerald-100">Mở hồ sơ: {station.actionLabel}</button>
+        <button type="button" onClick={() => onOpenDossier(dossier, getPcnDossierStationTab(station.key))} title={station.actionLabel} className="min-h-11 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[10px] font-black text-emerald-700 hover:bg-emerald-100">Mở hồ sơ: {station.actionLabel}</button>
       </div>
     </article>
   );
@@ -116,8 +113,8 @@ export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, do
     if (scope === 'OVERDUE') return overdueIds.has(dossier.id);
     return true;
   }), [currentUser?.username, fieldScopedDossiers, overdueIds, scope]);
-  const workflowProjection = useMemo(() => buildPcnWorkflowOverview({ dossiers: visibleDossiers, proposals, requirements, documents }), [documents, proposals, requirements, visibleDossiers]);
-  const selectedDossiers = useMemo(() => selectedNodeKey ? filterPcnWorkflowDossiers(visibleDossiers, selectedNodeKey) : visibleDossiers, [selectedNodeKey, visibleDossiers]);
+  const workflowProjection = useMemo(() => buildPcnWorkflowOverview({ dossiers: visibleDossiers, proposals, requirements, documents, compact: true }), [documents, proposals, requirements, visibleDossiers]);
+  const selectedDossiers = useMemo(() => selectedNodeKey ? filterPcnWorkflowDossiers(visibleDossiers, selectedNodeKey, { compact: true }) : visibleDossiers, [selectedNodeKey, visibleDossiers]);
   const mineCount = fieldScopedDossiers.filter((dossier) => normalizeUsername(dossier.ownerUsername) === normalizeUsername(currentUser?.username)).length;
   const overdueCount = fieldScopedDossiers.filter((dossier) => overdueIds.has(dossier.id)).length;
   const getClaimDenial = (dossier: CertificationDossier): string | null => {
@@ -147,7 +144,7 @@ export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, do
   };
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4">
+    <section className="pcn-page-surface min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-2">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700"><GitBranch size={17} /></span>

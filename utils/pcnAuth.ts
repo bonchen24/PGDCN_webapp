@@ -7,6 +7,7 @@ import type {
   PcnUserAccount,
   UserAccount,
 } from '../types.ts';
+import { PCN_CERTIFICATION_FIELD_CODES } from '../types.ts';
 import { getCanonicalUserKey, getUserFullName, normalizeUserKey } from './userIdentity.ts';
 
 export interface PcnUserRow {
@@ -65,7 +66,7 @@ export function getPcnFieldCodes(data: Record<string, unknown> | undefined): Pcn
   const values = Array.isArray(data?.fieldCodes) ? data.fieldCodes : [];
   return Array.from(new Set(values
     .map((value) => String(value || '').trim().toUpperCase())
-    .filter((value): value is PcnCertificationFieldCode => value === 'QC4' || value === 'QC9')));
+    .filter((value): value is PcnCertificationFieldCode => PCN_CERTIFICATION_FIELD_CODES.includes(value as typeof PCN_CERTIFICATION_FIELD_CODES[number]))));
 }
 
 export function withPcnUserRoleAliases(

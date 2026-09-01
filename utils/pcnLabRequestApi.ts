@@ -8,6 +8,7 @@ import type {
   OutboundLabRequest,
   PcnSampleLot,
   PcnSampleRoute,
+  PcnSampleFlowEvent,
   PcnLabRequestStatus,
 } from '../types.ts';
 
@@ -17,6 +18,8 @@ export interface PcnLabRequestMutationResponse {
   lot?: PcnSampleLot;
   route?: PcnSampleRoute;
   activityLogs: ActivityLog[];
+  event?: PcnSampleFlowEvent;
+  stale?: boolean;
   idempotent?: boolean;
 }
 
@@ -47,7 +50,7 @@ function createIdempotencyKey(): string {
 export async function updatePcnLabRequest(
   requestId: string,
   status: PcnLabRequestStatus,
-  updates: Partial<Pick<OutboundLabRequest, 'handoverAt' | 'receivedAt' | 'handoverNote' | 'handoverDocumentId' | 'sampleIssue' | 'returnedResultId'>> = {},
+  updates: Partial<Pick<OutboundLabRequest, 'handoverAt' | 'receivedAt' | 'handoverNote' | 'handoverDocumentId' | 'handoverDetails' | 'sampleIssue' | 'returnedResultId'>> = {},
   idempotencyKey = createIdempotencyKey(),
 ): Promise<PcnLabRequestMutationResponse> {
   const response = await fetch(`/api/pcn/lab-requests/${encodeURIComponent(requestId)}/status`, {
@@ -55,6 +58,26 @@ export async function updatePcnLabRequest(
     credentials: 'same-origin',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ status, updates, idempotencyKey }),
+  });
+  return parseResponse(response) as Promise<PcnLabRequestMutationResponse>;
+}
+
+export async function dispatchPcnLabRequest(requestId: string): Promise<PcnLabRequestMutationResponse> {
+  const response = await fetch(`/api/pcn/lab-requests/${encodeURIComponent(requestId)}/dispatch`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: '{}',
+  });
+  return parseResponse(response) as Promise<PcnLabRequestMutationResponse>;
+}
+
+export async function reconcilePcnLabRequest(requestId: string): Promise<PcnLabRequestMutationResponse> {
+  const response = await fetch(`/api/pcn/lab-requests/${encodeURIComponent(requestId)}/reconcile`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: '{}',
   });
   return parseResponse(response) as Promise<PcnLabRequestMutationResponse>;
 }

@@ -56,8 +56,8 @@ test('Zustand PCN store guards every mutation while leaving reads and preflight 
     'markPcnNotificationAsRead', 'markAllPcnNotificationsAsRead', 'clearPcnNotifications',
     'addSampleLot', 'updateSampleRoute', 'addCustomer', 'updateCustomer', 'deleteCustomer',
     'addProposal', 'addDossier', 'updateProposal', 'uploadDossierDocument', 'updateDossier',
-    'reviewHistoricalDossier', 'mapHistoricalAttachment', 'generateDossierDocuments', 'generateOfficialDocuments',
-    'reviewPcnTemplate', 'annotatePcnTemplate', 'importPcnTemplate', 'addLabRequest', 'updateLabRequest',
+    'generateDossierDocuments', 'confirmGeneratedDocument', 'generateOfficialDocuments',
+    'reviewPcnTemplate', 'annotatePcnTemplate', 'addLabRequest', 'updateLabRequest',
     'addReturnedResult', 'attachResultFile', 'createIssuanceBundle', 'actOnApprovalStep', 'issuePackage',
     'deliverPackage', 'archivePackage', 'setDossierLegalHold', 'attachIssuanceFile',
   ];

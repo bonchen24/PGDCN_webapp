@@ -32,6 +32,12 @@ import {
   isGeminiUpstreamUnavailable,
   resolveGeminiApiKey,
 } from "./utils/geminiCredentials.js";
+import {
+  decryptPcnGeminiApiKey,
+  encryptPcnGeminiApiKey,
+  maskPcnGeminiApiKey,
+  normalizePcnGeminiApiKey,
+} from "./utils/pcnGeminiCredentials.ts";
 import { chooseRadimationImageSource, isCompleteVectorComposite, stripFullCanvasWhiteBackground } from "./utils/radimationLayers.js";
 import { buildReportDocxImageSlots, combineReportDocxLabelImages, getReportDocxLabelImages } from "./lib/reportDocxImageMapping.js";
 import { buildReportDocxMetadata } from "./lib/reportDocxMetadata.js";
@@ -103,7 +109,8 @@ import { buildPcnOfficialContextHash, buildPcnOfficialGenerationContextHash, bui
 import { buildPcnOfficialDocumentId, buildPcnOfficialFileAssetId, buildPcnOfficialFileName, getPcnOfficialSourceUpdatedAt, selectPcnOfficialTemplate } from "./utils/pcnOfficialDocumentPolicy.ts";
 import { getPcnTemplateReadiness, getPcnTemplateRequiredPlaceholderKeys, mergePcnTemplateCatalog, toPcnTemplateRuntimeProjection } from "./utils/pcnTemplateCatalog.ts";
 import { annotatePcnDocxTemplate } from "./utils/pcnTemplateAnnotation.ts";
-import { buildPcnTemplateAssetId } from "./utils/pcnTemplateImport.ts";
+import { buildPcnTemplateAssetId, replacePcnTemplateFileDefinition } from "./utils/pcnTemplateImport.ts";
+import { inspectPcnTemplateSource } from "./utils/pcnTemplateDiscovery.ts";
 import { reviewPcnTemplateDefinition } from "./utils/pcnTemplateReview.ts";
 import { getPcnPdfRendererReadiness, renderPcnDocxToPdf } from "./utils/pcnPdfRenderer.ts";
 import { renderPcnOperationalTemplateDocx } from "./utils/pcnOperationalTemplateGeneration.ts";
@@ -113,7 +120,7 @@ import { PCN_CERTIFICATION_FIELD_CODES, getPcnDossierExceptionReasonDenial, getP
 import { getPcnSignerAuthorization } from "./utils/pcnSignerAuthorization.ts";
 import { applyPcnApprovalDecision, buildPcnApprovalSteps, getPcnApprovalDecisionDenial, isPcnApprovalComplete, reopenPcnApprovalFromStep } from "./utils/pcnApproval.ts";
 import { archivePcnIssuancePackage, buildPcnIssuancePackage, deliverPcnIssuancePackage, getPcnIssuanceGenericMutationDenial, getPcnIssuanceOfficialDocumentReadiness, getPcnIssuanceReadiness, issuePcnIssuancePackage } from "./utils/pcnIssuance.ts";
-import { buildPcnSampleFlowEvent, buildPcnSampleLot, derivePcnSampleLotStatus, transitionPcnSampleRoute, type PcnSampleLotDraft, type PcnSampleRouteUpdate } from './utils/pcnSampleFlow.ts';
+import { buildPcnSampleFlowEvent, buildPcnSampleLot, derivePcnSampleLotStatus, getPcnSampleRouteStartDenial, transitionPcnSampleRoute, type PcnSampleLotDraft, type PcnSampleRouteUpdate } from './utils/pcnSampleFlow.ts';
 import { PCN_LAB_INTEGRATION_CONTRACT_VERSION, buildPcnLabDispatchPayload, buildPcnLabHmacSigningInput, buildPcnLabIntegrationFingerprint, canonicalizePcnLabIntegrationPayload, getPcnLabIntegrationEventId, mapPcnLabStatusEvent, type PcnLabDispatchPayload, type PcnLabStatusEventInput } from './utils/pcnLabIntegration.ts';
 import { buildPcnLabRequest, transitionPcnLabRequest, type PcnLabRequestDraft } from './utils/pcnLabRouting.ts';
 import { buildPcnSampleHandoverDetails } from './utils/pcnHandoverPolicy.ts';
@@ -479,9 +486,9 @@ function isSafePcnSourceJsonPath(value: string): boolean {
   return Boolean(value) && value.length <= 200 && !value.includes('/') && !value.includes('\\') && !value.includes('..');
 }
 
-function buildPcnFileContentDisposition(originalName: string): string {
+function buildPcnFileContentDisposition(originalName: string, disposition: 'inline' | 'attachment' = 'inline'): string {
   const fallback = sanitizePcnPathSegment(originalName || 'pcn-file');
-  return `inline; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fallback)}`;
+  return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fallback)}`;
 }
 
 function getKqtnPdfMetadata(data: any): any | null {
@@ -757,6 +764,65 @@ function getPcnSessionUser(req: express.Request) {
   if (DATABASE_PROFILE !== 'pcn') return null;
   const token = getCookieValue(req, PCN_SESSION_COOKIE);
   return token ? verifyPcnSessionToken(token, PCN_SESSION_SECRET) : null;
+}
+
+function getPcnPreferenceLookupKeys(username: string): string[] {
+  const raw = String(username || '').trim().toLowerCase();
+  const normalized = raw.replace(/^@/, '').split('@')[0].trim();
+  return Array.from(new Set([raw, normalized].filter(Boolean)));
+}
+
+async function getPcnPreferenceRecord(username: string, db: any = pool): Promise<{ documentId: string; data: Record<string, any> } | null> {
+  const lookupKeys = getPcnPreferenceLookupKeys(username);
+  if (lookupKeys.length === 0) return null;
+  const result = await db.query(
+    `SELECT document_id, data FROM app_documents
+     WHERE collection_name = 'userPreferences'
+       AND lower(document_id) = ANY($1::text[])
+     LIMIT 1`,
+    [lookupKeys],
+  );
+  const row = result.rows[0];
+  return row ? { documentId: String(row.document_id), data: row.data || {} } : null;
+}
+
+function getPcnGeminiApiKeyFromPreferences(data: Record<string, any> | undefined): string | undefined {
+  const encrypted = String(data?.geminiApiKeyEncrypted || '').trim();
+  const decrypted = encrypted ? decryptPcnGeminiApiKey(encrypted, PCN_SESSION_SECRET) : undefined;
+  if (decrypted) return decrypted;
+  try {
+    const legacyKey = normalizePcnGeminiApiKey(data?.geminiApiKey);
+    return legacyKey || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function buildPcnPersonalSettingsResponse(data: Record<string, any> | undefined) {
+  const apiKey = getPcnGeminiApiKeyFromPreferences(data);
+  const geminiModel = String(data?.geminiModel || '').trim();
+  return {
+    geminiApiKeyConfigured: Boolean(apiKey),
+    ...(apiKey ? { geminiApiKeyHint: maskPcnGeminiApiKey(apiKey) } : {}),
+    ...(geminiModel ? { geminiModel } : {}),
+  };
+}
+
+async function getPcnStoredGeminiApiKey(req: express.Request): Promise<string | undefined> {
+  if (DATABASE_PROFILE !== 'pcn') return undefined;
+  const actor = getPcnSessionUser(req);
+  if (!actor) return undefined;
+  const preference = await getPcnPreferenceRecord(actor.username);
+  return getPcnGeminiApiKeyFromPreferences(preference?.data);
+}
+
+async function getPcnStoredGeminiModel(req: express.Request): Promise<string | undefined> {
+  if (DATABASE_PROFILE !== 'pcn') return undefined;
+  const actor = getPcnSessionUser(req);
+  if (!actor) return undefined;
+  const preference = await getPcnPreferenceRecord(actor.username);
+  const model = String(preference?.data?.geminiModel || '').trim();
+  return model || undefined;
 }
 
 function setPcnSessionCookie(res: express.Response, token: string, maxAgeSeconds = PCN_SESSION_TTL_SECONDS): void {
@@ -2136,6 +2202,15 @@ async function startServer() {
         if (!['DRAFT', 'SENT'].includes(request.status) || !['PENDING', 'SENT'].includes(route.status)) {
           throw Object.assign(new Error('Chỉ PYC/tuyến đang nháp hoặc chờ gửi mới được dispatch.'), { statusCode: 409 });
         }
+        const siblingRoutesResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'pcnSampleRoutes' AND data->>'sampleLotId' = $1
+           ORDER BY document_id FOR UPDATE`,
+          [lot.id],
+        );
+        const siblingRoutes = siblingRoutesResult.rows.map(mapDocumentRow) as PcnSampleRoute[];
+        const routeStartDenial = getPcnSampleRouteStartDenial(route, siblingRoutes, sampleItems);
+        if (routeStartDenial) throw Object.assign(new Error(routeStartDenial), { statusCode: 409 });
         const dossierResult = await client.query(
           `SELECT document_id, data FROM app_documents
            WHERE collection_name = 'certificationDossiers' AND document_id = $1
@@ -2694,6 +2769,111 @@ async function startServer() {
     } catch (error: any) {
       console.error('PCN settings read error:', error);
       res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.get('/api/pcn/personal-settings', async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') {
+      res.status(404).json({ error: 'Thiết lập cá nhân PCN chỉ khả dụng trong profile PCN.' });
+      return;
+    }
+    if (!requirePcnSession(req, res)) return;
+    try {
+      const actor = getPcnSessionUser(req)!;
+      const preference = await getPcnPreferenceRecord(actor.username);
+      res.json({ settings: buildPcnPersonalSettingsResponse(preference?.data) });
+    } catch (error: any) {
+      console.error('PCN personal settings read error:', error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.put('/api/pcn/personal-settings', async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') {
+      res.status(404).json({ error: 'Thiết lập cá nhân PCN chỉ khả dụng trong profile PCN.' });
+      return;
+    }
+    if (!requirePcnSession(req, res)) return;
+    const incoming = req.body?.settings;
+    if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
+      res.status(400).json({ error: 'Dữ liệu thiết lập AI cá nhân không hợp lệ.' });
+      return;
+    }
+    const actor = getPcnSessionUser(req)!;
+    const now = new Date().toISOString();
+    try {
+      const result = await withPgTransaction(async (client) => {
+        const lookupKeys = getPcnPreferenceLookupKeys(actor.username);
+        const existingResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'userPreferences'
+             AND lower(document_id) = ANY($1::text[])
+           LIMIT 1 FOR UPDATE`,
+          [lookupKeys],
+        );
+        const existingRow = existingResult.rows[0];
+        const previousData = (existingRow?.data || {}) as Record<string, any>;
+        const previousSettings = buildPcnPersonalSettingsResponse(previousData);
+        const nextData: Record<string, any> = { ...previousData };
+        const hasApiKeyInput = Object.prototype.hasOwnProperty.call(incoming, 'geminiApiKey');
+        const requestedApiKey = hasApiKeyInput ? normalizePcnGeminiApiKey(incoming.geminiApiKey) : '';
+        const shouldClearApiKey = incoming.clearGeminiApiKey === true;
+
+        if (requestedApiKey) {
+          nextData.geminiApiKeyEncrypted = encryptPcnGeminiApiKey(requestedApiKey, PCN_SESSION_SECRET);
+          delete nextData.geminiApiKey;
+        } else if (shouldClearApiKey) {
+          delete nextData.geminiApiKeyEncrypted;
+          delete nextData.geminiApiKey;
+        } else if (nextData.geminiApiKey && !nextData.geminiApiKeyEncrypted) {
+          const legacyApiKey = getPcnGeminiApiKeyFromPreferences(nextData);
+          if (legacyApiKey) nextData.geminiApiKeyEncrypted = encryptPcnGeminiApiKey(legacyApiKey, PCN_SESSION_SECRET);
+          delete nextData.geminiApiKey;
+        }
+
+        const requestedModel = String(incoming.geminiModel ?? '').trim();
+        if (requestedModel.length > 160) throw Object.assign(new Error('Gemini model không hợp lệ.'), { statusCode: 400 });
+        if (requestedModel) nextData.geminiModel = requestedModel;
+        else delete nextData.geminiModel;
+
+        const documentId = String(existingRow?.document_id || lookupKeys[lookupKeys.length - 1] || actor.username).trim();
+        await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('userPreferences', $1, $2::jsonb, CURRENT_TIMESTAMP)
+           ON CONFLICT (collection_name, document_id)
+           DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP`,
+          [documentId, JSON.stringify(getDocumentPayload(nextData))],
+        );
+
+        const nextSettings = buildPcnPersonalSettingsResponse(nextData);
+        const activityLog = buildActivityLog({
+          id: stablePcnMutationId('activity-pcn-personal-settings-update', `${actor.username}:${JSON.stringify(nextSettings)}`),
+          action: 'UPDATED',
+          entityType: 'SYSTEM',
+          entityId: `pcn-personal-settings:${actor.username}`,
+          entityLabel: 'Thiết lập AI cá nhân',
+          actorUsername: actor.username,
+          actorName: actor.name,
+          actorRole: actor.systemRole || actor.role,
+          summary: 'Cập nhật thiết lập Gemini cá nhân',
+          changes: diffActivityFields(previousSettings, nextSettings, ['geminiConfigured', 'geminiModel']),
+          source: 'UI',
+          createdAt: now,
+        });
+        const validationError = validateActivityLogPayload(activityLog);
+        if (validationError) throw Object.assign(new Error(validationError), { statusCode: 400 });
+        await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('activityLogs', $1, $2::jsonb, CURRENT_TIMESTAMP)
+           ON CONFLICT (collection_name, document_id) DO NOTHING`,
+          [activityLog.id, JSON.stringify(getDocumentPayload(activityLog))],
+        );
+        return { settings: nextSettings };
+      });
+      res.json(result);
+    } catch (error: any) {
+      console.error('PCN personal settings update error:', error);
+      res.status(Number(error?.statusCode) || 500).json({ error: error?.message || String(error) });
     }
   });
 
@@ -5585,6 +5765,9 @@ async function startServer() {
           );
           if (!routeResult.rows[0]) throw Object.assign(new Error('Không tìm thấy tuyến mẫu để gắn vào PYC.'), { statusCode: 404 });
           linkedRoute = mapDocumentRow(routeResult.rows[0]) as PcnSampleRoute;
+          if (!linkedRoute.sampleItemIds?.length) {
+            throw Object.assign(new Error('PYC nội bộ chỉ được gắn vào tuyến đã xác định rõ mẫu thử.'), { statusCode: 409 });
+          }
           if (linkedRoute.labName.trim().toLocaleLowerCase('vi-VN') !== request.laboratoryName.trim().toLocaleLowerCase('vi-VN')) {
             throw Object.assign(new Error('Phòng thử nghiệm của PYC phải khớp với tuyến mẫu được chọn.'), { statusCode: 400 });
           }
@@ -6314,6 +6497,24 @@ async function startServer() {
           ...(labRequestId ? { labRequestId } : {}),
           ...(String(updateInput.note || '').trim() ? { note: String(updateInput.note).trim() } : {}),
         };
+        const siblingRoutesResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'pcnSampleRoutes' AND data->>'sampleLotId' = $1
+           ORDER BY document_id FOR UPDATE`,
+          [lot.id],
+        );
+        const siblingRoutes = siblingRoutesResult.rows.map(mapDocumentRow) as PcnSampleRoute[];
+        if (route.status === 'PENDING' && status === 'SENT' && route.sampleItemIds?.length) {
+          const sampleItemsResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'pcnSampleItems' AND data->>'sampleLotId' = $1
+             ORDER BY document_id`,
+            [lot.id],
+          );
+          const sampleItems = sampleItemsResult.rows.map(mapDocumentRow) as PcnSampleItem[];
+          const routeStartDenial = getPcnSampleRouteStartDenial(route, siblingRoutes, sampleItems);
+          if (routeStartDenial) throw Object.assign(new Error(routeStartDenial), { statusCode: 409 });
+        }
         const now = new Date().toISOString();
         let nextRoute: PcnSampleRoute;
         try {
@@ -6321,16 +6522,8 @@ async function startServer() {
         } catch (error) {
           throw Object.assign(error instanceof Error ? error : new Error(String(error)), { statusCode: 409 });
         }
-        const siblingRoutesResult = await client.query(
-          `SELECT document_id, data FROM app_documents
-           WHERE collection_name = 'pcnSampleRoutes' AND data->>'sampleLotId' = $1
-           ORDER BY document_id FOR UPDATE`,
-          [lot.id],
-        );
-        const siblingRoutes = siblingRoutesResult.rows
-          .map(mapDocumentRow)
-          .map((item: PcnSampleRoute) => item.id === nextRoute.id ? nextRoute : item) as PcnSampleRoute[];
-        const derived = derivePcnSampleLotStatus(siblingRoutes);
+        const nextSiblingRoutes = siblingRoutes.map((item) => item.id === nextRoute.id ? nextRoute : item);
+        const derived = derivePcnSampleLotStatus(nextSiblingRoutes);
         const nextLot: PcnSampleLot = { ...lot, ...derived, updatedAt: now };
         const linkedPycResult = await client.query(
           `SELECT document_id, data FROM app_documents
@@ -6736,11 +6929,11 @@ async function startServer() {
         sampleRoutes,
         returnedResults,
       }));
-      const ai = getGeminiClient(req, { timeout: 30000 });
+      const ai = await getGeminiClient(req, { timeout: 30000 });
       const response = await generateContentWithRetryAndFallback(ai, {
         contents: [{ role: 'user', parts: [{ text: `Bạn là trợ lý AI vận hành của Phòng Chứng nhận PCN thuộc TVCI. Chỉ sử dụng snapshot PCN dưới đây. Không dùng thuật ngữ lịch thử, không nói thay Phòng Giám định, không bịa dữ liệu và không tự đề nghị mutation. Trả lời tiếng Việt ngắn gọn, nêu rõ mã hồ sơ/PYC nếu có, bước 1-5 liên quan và hành động người dùng cần mở trong card. Nếu snapshot không đủ, nói rõ cần kiểm tra trực tiếp trong hồ sơ.\n\nSnapshot PCN:\n${context}\n\nCâu hỏi người dùng:\n${message}` }] }],
         config: { temperature: 0.2 },
-      }, req.headers['x-gemini-model'] as string | undefined, { attemptsPerModel: 1 });
+      }, req.headers['x-gemini-model'] as string | undefined || await getPcnStoredGeminiModel(req), { attemptsPerModel: 1 });
       res.json({ response: String(response.text || '').trim() || 'Trợ lý chưa có câu trả lời.' });
     } catch (error: any) {
       console.error('PCN assistant error:', error);
@@ -8644,8 +8837,13 @@ async function startServer() {
   });
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-  const getGeminiClient = (req: express.Request, options: { timeout?: number } = {}) => {
-    const resolvedApiKey = resolveGeminiApiKey(apiKey, req.headers['x-gemini-api-key']);
+  const getGeminiClient = async (req: express.Request, options: { timeout?: number } = {}) => {
+    const requestApiKey = req.headers['x-gemini-api-key'];
+    const personalApiKey = await getPcnStoredGeminiApiKey(req);
+    const resolvedApiKey = resolveGeminiApiKey(
+      apiKey,
+      typeof requestApiKey === 'string' && requestApiKey.trim() ? requestApiKey : personalApiKey,
+    );
     if (!resolvedApiKey) {
       throw new Error(GEMINI_API_KEY_MISSING_MESSAGE);
     }
@@ -8697,14 +8895,14 @@ async function startServer() {
       const extension = fileName.toLowerCase().split('.').pop() || '';
       const isDocx = extension === 'docx' || mimeType.includes('wordprocessingml.document');
       if (settings.ocr.provider === 'GEMINI') {
-        const ai = getGeminiClient(req, { timeout: KQTN_OCR_TIMEOUT_MS });
+        const ai = await getGeminiClient(req, { timeout: KQTN_OCR_TIMEOUT_MS });
         const prompt = context === 'proposal'
           ? 'Đọc tài liệu Đề nghị chứng nhận PCN. Chỉ chép lại chữ nhìn thấy, không suy đoán. Trả JSON có trường text chứa toàn bộ nội dung đọc được theo dòng.'
           : 'Đọc báo cáo KQTN của PCN. Chỉ chép lại chữ nhìn thấy, không suy đoán. Trả JSON có trường text chứa toàn bộ nội dung đọc được theo dòng.';
         const response = await generateContentWithRetryAndFallback(ai, {
           contents: { parts: [{ inlineData: { mimeType: mimeType === 'application/octet-stream' ? 'application/pdf' : mimeType, data: base64Data } }, { text: prompt }] },
           config: { responseMimeType: 'application/json', responseSchema: { type: Type.OBJECT, properties: { text: { type: Type.STRING } } } },
-        }, req.headers['x-gemini-model'] as string | undefined);
+        }, req.headers['x-gemini-model'] as string | undefined || await getPcnStoredGeminiModel(req));
         const raw = String(response.text || '').replace(/```json|```/g, '').trim();
         extractedText = String(JSON.parse(raw)?.text || '');
         confidence = 0.78;
@@ -9284,6 +9482,148 @@ async function startServer() {
     }
   });
 
+  app.post('/api/pcn/templates/:templateId/file', handlePcnFileUpload, async (req, res) => {
+    if (!requirePcnAdmin(req, res)) return;
+    const templateId = decodeURIComponent(String(req.params.templateId || '')).trim();
+    if (!templateId || templateId.length > 200 || /[\\/]/.test(templateId)) {
+      res.status(400).json({ error: 'Mã template PCN không hợp lệ.' });
+      return;
+    }
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: 'Cần chọn file DOCX mới cho template PCN.' });
+      return;
+    }
+    const fileName = String(file.originalname || '').trim();
+    const mimeType = String(file.mimetype || 'application/octet-stream').toLowerCase();
+    if (!fileName.toLowerCase().endsWith('.docx')
+      || !['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/octet-stream'].includes(mimeType)) {
+      res.status(415).json({ error: 'Template PCN phải là file DOCX hợp lệ.' });
+      return;
+    }
+
+    const uploadedObjects: Array<{ bucketName: string; objectPath: string }> = [];
+    try {
+      const actor = getPcnSessionUser(req)!;
+      const storage = getPcnStorageClient();
+      const bucketName = getPcnStorageBucket();
+      await storage.ensurePrivateBucket(bucketName, PCN_FILE_MAX_BYTES);
+      const sha256 = createHash('sha256').update(file.buffer).digest('hex');
+      const result = await withPgTransaction(async (client) => {
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`pcn-template-upload:${templateId}`]);
+        const existingResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'pcnTemplateDefinitions' AND document_id = $1
+           LIMIT 1 FOR UPDATE`,
+          [templateId],
+        );
+        if (existingResult.rows.length === 0) throw Object.assign(new Error('Không tìm thấy template PCN cần thay file.'), { statusCode: 404 });
+        const current = { ...(existingResult.rows[0].data || {}), id: existingResult.rows[0].document_id } as PcnTemplateDefinition;
+        if (current.format !== 'DOCX') throw Object.assign(new Error('Chỉ template DOCX mới được thay file từ trang quản lý.'), { statusCode: 409 });
+
+        const inspection = inspectPcnTemplateSource({
+          fileName: 'template.docx',
+          sourceRelativePath: 'template.docx',
+          bytes: file.buffer,
+        });
+        if (inspection.warnings.includes('DOCX_NOT_READABLE')) {
+          throw Object.assign(new Error('File DOCX không đọc được hoặc bị hỏng.'), { statusCode: 400 });
+        }
+
+        const currentAssetId = String(current.fileAssetId || '').trim();
+        const assetId = PCN_FILE_ASSET_ID_PATTERN.test(currentAssetId)
+          ? currentAssetId
+          : `pcn-template-${templateId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || sha256.slice(0, 32)}`;
+        const safeFileName = sanitizePcnPathSegment(fileName);
+        const objectPath = `pcnTemplates/${sanitizePcnPathSegment(current.fieldCode)}/${sanitizePcnPathSegment(current.id)}/${sha256}/${safeFileName}`;
+        const previousAssetResult = currentAssetId
+          ? await client.query('SELECT object_path FROM file_assets WHERE id = $1 LIMIT 1', [currentAssetId])
+          : { rows: [] };
+        const previousObjectPath = previousAssetResult.rows[0]?.object_path ? String(previousAssetResult.rows[0].object_path) : undefined;
+
+        await storage.uploadObject({ bucketName, objectPath, body: file.buffer, mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        if (previousObjectPath !== objectPath) uploadedObjects.push({ bucketName, objectPath });
+
+        const now = new Date().toISOString();
+        const next = replacePcnTemplateFileDefinition(current, {
+          assetId,
+          byteSize: file.buffer.length,
+          sha256,
+          placeholderKeys: inspection.placeholderKeys,
+          importedByUsername: actor.username,
+          importedAt: now,
+        });
+        await client.query(
+          `INSERT INTO file_assets (id, bucket_name, object_path, source_collection, source_document_id, source_json_path, mime_type, byte_size, sha256)
+           VALUES ($1, $2, $3, 'pcnTemplateDefinitions', $4, 'fileAssetId', $5, $6, $7)
+           ON CONFLICT (id) DO UPDATE SET bucket_name = EXCLUDED.bucket_name, object_path = EXCLUDED.object_path,
+             source_collection = EXCLUDED.source_collection, source_document_id = EXCLUDED.source_document_id,
+             source_json_path = EXCLUDED.source_json_path, mime_type = EXCLUDED.mime_type,
+             byte_size = EXCLUDED.byte_size, sha256 = EXCLUDED.sha256, updated_at = CURRENT_TIMESTAMP`,
+          [assetId, bucketName, objectPath, templateId, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', file.buffer.length, sha256],
+        );
+        await client.query(
+          `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+           WHERE collection_name = 'pcnTemplateDefinitions' AND document_id = $1`,
+          [templateId, JSON.stringify(getDocumentPayload(next))],
+        );
+
+        const activityLog = buildActivityLog({
+          id: stablePcnMutationId('activity-pcn-template-upload', `${templateId}:${sha256}`),
+          action: 'UPDATED',
+          entityType: 'PCN_TEMPLATE',
+          entityId: templateId,
+          entityLabel: current.displayName,
+          actorUsername: actor.username,
+          actorName: actor.name,
+          actorRole: actor.systemRole || actor.role,
+          summary: `Thay file template DOCX ${current.displayName}`,
+          source: 'UI',
+          changes: diffActivityFields(current, next, ['fileAssetId', 'sourceFingerprint', 'placeholderKeys', 'importedByUsername', 'importedAt', 'annotation', 'sourceOriginalFingerprint']),
+          createdAt: now,
+        });
+        const validationError = validateActivityLogPayload(activityLog);
+        if (validationError) throw new Error(validationError);
+        await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('activityLogs', $1, $2::jsonb, CURRENT_TIMESTAMP)
+           ON CONFLICT (collection_name, document_id) DO NOTHING`,
+          [activityLog.id, JSON.stringify(getDocumentPayload(activityLog))],
+        );
+
+        return {
+          template: { ...toPcnTemplateRuntimeProjection(next), privateAssetVerified: true },
+          asset: {
+            id: assetId,
+            bucketName,
+            objectPath,
+            sourceCollection: 'pcnTemplateDefinitions',
+            sourceDocumentId: templateId,
+            sourceJsonPath: 'fileAssetId',
+            mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            byteSize: file.buffer.length,
+            sha256,
+            originalName: fileName.slice(0, 255),
+            createdAt: now,
+          },
+          activityLog,
+          previousObjectPath,
+        };
+      });
+      if (result.previousObjectPath && result.previousObjectPath !== result.asset.objectPath) {
+        await storage.deleteObject({ bucketName, objectPath: result.previousObjectPath }).catch(() => undefined);
+      }
+      res.status(200).json({ template: result.template, asset: result.asset, activityLog: result.activityLog });
+    } catch (error: any) {
+      for (const uploaded of uploadedObjects.reverse()) {
+        await getPcnStorageClient().deleteObject(uploaded).catch(() => undefined);
+      }
+      console.error('PCN template file replacement error:', error);
+      const message = String(error?.message || error);
+      res.status(Number(error?.statusCode) || (message.includes('storage is not configured') ? 503 : 500)).json({ error: message });
+    }
+  });
+
   app.post('/api/pcn/issuance/:issuanceId/file', requirePcnMutationMiddleware, async (req, res) => {
     if (DATABASE_PROFILE !== 'pcn') {
       res.status(404).json({ error: 'Gắn file phát hành PCN chỉ khả dụng trong profile PCN.' });
@@ -9499,7 +9839,7 @@ async function startServer() {
       const fileName = String(asset.object_path).split('/').pop() || 'pcn-file';
       res.setHeader('Content-Type', asset.mime_type || downloaded.contentType || 'application/octet-stream');
       res.setHeader('Content-Length', downloaded.body.byteLength);
-      res.setHeader('Content-Disposition', buildPcnFileContentDisposition(fileName));
+      res.setHeader('Content-Disposition', buildPcnFileContentDisposition(fileName, String(req.query.download || '') === '1' ? 'attachment' : 'inline'));
       res.send(downloaded.body);
     } catch (error: any) {
       console.error('PCN file download error:', error);
@@ -10396,7 +10736,7 @@ async function startServer() {
 
   app.get("/api/gemini/models", async (req, res) => {
     try {
-      const activeAi = getGeminiClient(req);
+      const activeAi = await getGeminiClient(req);
       const response = await activeAi.models.list();
       const rawModels: any[] = [];
       
@@ -10563,7 +10903,7 @@ async function startServer() {
         }
       }
 
-      const activeAi = getGeminiClient(req);
+      const activeAi = await getGeminiClient(req);
       const preferredModel = req.headers["x-gemini-model"] as string | undefined;
       const response = await generateContentWithRetryAndFallback(activeAi, {
         contents: { parts: parts },
@@ -10672,7 +11012,7 @@ async function startServer() {
           Trả về kết quả dưới định dạng JSON khớp chính xác các trường trên.
       `;
 
-      const activeAi = getGeminiClient(req);
+      const activeAi = await getGeminiClient(req);
       const preferredModel = req.headers["x-gemini-model"] as string | undefined;
       const response = await generateContentWithRetryAndFallback(activeAi, {
         contents: {
@@ -10721,7 +11061,7 @@ async function startServer() {
         res.status(400).json({ error: "Missing PDF data." });
         return;
       }
-      const activeAi = getGeminiClient(req);
+      const activeAi = await getGeminiClient(req);
       const preferredModel = req.headers["x-gemini-model"] as string | undefined;
       const prompt = `
 Bạn đang xem trang bìa (trang 1) của một báo cáo/phiếu kết quả thử nghiệm thuộc phòng Điện - Điện tử, có thể là bản scan chất lượng thấp, có dấu mộc, chữ viết tay hoặc bảng biểu chồng lên nhau.
@@ -10781,7 +11121,7 @@ Trả về đúng định dạng JSON khớp schema đã cung cấp.
       const safeOffset = Number.isFinite(parsedOffset) ? Math.max(0, Math.floor(parsedOffset)) : 0;
       const payloadBytes = Math.floor((String(base64Data).length * 3) / 4);
       console.log(`KQTN ${analysisMode} request: pageOffset=${safeOffset}, payloadBytes=${payloadBytes}`);
-      const activeAi = getGeminiClient(req, {
+      const activeAi = await getGeminiClient(req, {
         timeout: KQTN_BULK_STRUCTURE_TIMEOUT_MS,
       });
       const preferredModel = req.headers["x-gemini-model"] as string | undefined;
@@ -10939,7 +11279,7 @@ ${appContext || "Chưa có thông tin hoặc hệ thống đang trống."}
         parts: [{ text: msg.content }]
       }));
 
-      const activeAi = getGeminiClient(req);
+      const activeAi = await getGeminiClient(req);
       const preferredModel = req.headers["x-gemini-model"] as string | undefined;
 
       const response = await createChatWithRetryAndFallback(activeAi, {
@@ -12101,7 +12441,7 @@ ${appContext || "Chưa có thông tin hoặc hệ thống đang trống."}
 
   app.post("/api/gemini/generate", async (req, res) => {
     try {
-      const activeAi = getGeminiClient(req);
+      const activeAi = await getGeminiClient(req);
       const preferredModel = req.headers["x-gemini-model"] as string | undefined;
       const { action, viName, base64, base64s } = req.body;
 

@@ -864,6 +864,8 @@ export interface PcnSampleItem {
   brand?: string;
   quantity: number;
   unit?: string;
+  /** Explicit internal tests assigned to this sample/model. */
+  testLabCodes?: PcnSampleLabCode[];
   serialNumbers?: string[];
   notes?: string;
   createdAt?: string;
@@ -889,7 +891,7 @@ export interface PcnSampleRoute {
   status: PcnSampleRouteStatus;
   /** 1-based order inside this lot; legacy routes may omit it. */
   sequence?: number;
-  /** Empty/omitted means the route applies to every item for legacy data. */
+  /** New routes must list the sample items they serve; omitted is legacy-only. */
   sampleItemIds?: string[];
   /** Item-level route/execution snapshots; route fields remain the legacy aggregate fallback. */
   itemSnapshots?: Record<string, PcnSampleRouteItemSnapshot>;

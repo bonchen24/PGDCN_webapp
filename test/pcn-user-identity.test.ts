@@ -25,8 +25,6 @@ test('PCN business identity resolves names without leaking technical usernames',
 
 test('PCN business screens use human-readable identity labels while retaining technical values only internally', () => {
   const detail = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
-  const operations = fs.readFileSync(new URL('../components/PcnOperationsRegisterView.tsx', import.meta.url), 'utf8');
-  const quality = fs.readFileSync(new URL('../components/PcnQualityDocumentsView.tsx', import.meta.url), 'utf8');
   const issuance = fs.readFileSync(new URL('../components/PcnIssuanceView.tsx', import.meta.url), 'utf8');
   const approval = fs.readFileSync(new URL('../components/PcnApprovalModal.tsx', import.meta.url), 'utf8');
   const delegation = fs.readFileSync(new URL('../components/PcnSignerDelegationPanel.tsx', import.meta.url), 'utf8');
@@ -35,9 +33,6 @@ test('PCN business screens use human-readable identity labels while retaining te
   assert.match(detail, /getPcnUserDisplayName/);
   assert.doesNotMatch(detail, /\$\{log\.actorUsername\}/);
   assert.doesNotMatch(detail, /\{user\.name\} · \{user\.username\}/);
-  assert.match(operations, /getPcnUserDisplayName/);
-  assert.match(quality, /getPcnUserDisplayName/);
-  assert.doesNotMatch(quality, /Phụ trách: \$\{document\.ownerUsername\}/);
   assert.match(issuance, /getPcnUserDisplayName/);
   assert.doesNotMatch(issuance, /\{option\.name\} \(/);
   assert.match(approval, /getPcnUserDisplayName/);

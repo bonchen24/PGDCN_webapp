@@ -6,7 +6,7 @@ import type { IssuancePackage, PcnOfficialDocumentKind, PcnTemplateDefinition } 
 import { getPcnTemplateReadiness, getPcnTemplateRequiredPlaceholderKeys, type PcnTemplateReadinessReason } from './pcnTemplateCatalog.ts';
 import type { PcnDossierDocumentContext } from './pcnDocumentGeneration.ts';
 
-export type PcnOfficialGenerationReason = PcnTemplateReadinessReason | 'MISSING_REQUIRED_DATA' | 'HISTORICAL_REVIEW_INCOMPLETE';
+export type PcnOfficialGenerationReason = PcnTemplateReadinessReason | 'MISSING_REQUIRED_DATA';
 
 export interface PcnOfficialGenerationReadiness {
   ready: boolean;
@@ -89,17 +89,11 @@ export function buildPcnOfficialTemplateData(input: {
 export function getPcnOfficialGenerationReadiness(
   template: PcnTemplateDefinition,
   data: Record<string, string>,
-  documentContext?: Pick<PcnDossierDocumentContext, 'reviewStatus' | 'unresolvedFields'>,
 ): PcnOfficialGenerationReadiness {
   const templateReadiness = getPcnTemplateReadiness(template, { availablePlaceholderKeys: template.placeholderKeys });
   const reasons: PcnOfficialGenerationReason[] = [...templateReadiness.reasons];
   const missingData = getPcnTemplateRequiredPlaceholderKeys(template).some((key) => !clean(data[key]));
   if (missingData) reasons.push('MISSING_REQUIRED_DATA');
-  const reviewStatus = clean(documentContext?.reviewStatus);
-  const unresolvedFields = documentContext?.unresolvedFields || [];
-  if ((reviewStatus && reviewStatus !== 'REVIEWED') || unresolvedFields.length > 0) {
-    reasons.push('HISTORICAL_REVIEW_INCOMPLETE');
-  }
   return { ready: reasons.length === 0, reasons: [...new Set(reasons)] };
 }
 

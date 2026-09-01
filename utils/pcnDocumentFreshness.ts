@@ -26,7 +26,7 @@ export type PcnDocumentPreflightIssueSeverity = 'WARNING' | 'BLOCKING';
 
 export interface PcnDocumentPreflightIssue {
   severity: PcnDocumentPreflightIssueSeverity;
-  code: 'MISSING_REQUIRED_CHECKLIST' | 'UNRESOLVED_SOURCE_FIELDS' | 'SAMPLE_ROUTE_REQUIRED' | 'LAB_REQUEST_REQUIRED' | 'CONTEXT_CHANGED';
+  code: 'MISSING_REQUIRED_CHECKLIST' | 'SAMPLE_ROUTE_REQUIRED' | 'LAB_REQUEST_REQUIRED' | 'CONTEXT_CHANGED';
   message: string;
 }
 
@@ -52,7 +52,6 @@ export function getPcnDocumentPreflightIssues(input: {
   hasSampleRoute: boolean;
   hasLabRequest?: boolean;
   checklist: PcnDocumentPreflightChecklistItem[];
-  unresolvedFields: string[];
 }): PcnDocumentPreflightIssue[] {
   const issues: PcnDocumentPreflightIssue[] = [];
   if ((input.kind === 'SAMPLE_TAKING' || input.kind === 'SAMPLE_HANDOVER' || input.kind === 'SAMPLE_RETURN' || input.kind === 'SAMPLE_CODING') && !input.hasSampleRoute) {
@@ -84,14 +83,6 @@ export function getPcnDocumentPreflightIssues(input: {
       severity: 'WARNING',
       code: 'MISSING_REQUIRED_CHECKLIST',
       message: `Thiếu tài liệu bắt buộc: ${missingRequired.join(', ')}.`,
-    });
-  }
-  const unresolvedFields = [...new Set(input.unresolvedFields.map(clean).filter(Boolean))];
-  if (unresolvedFields.length > 0) {
-    issues.push({
-      severity: 'WARNING',
-      code: 'UNRESOLVED_SOURCE_FIELDS',
-      message: `Còn trường nguồn cần rà soát: ${unresolvedFields.join(', ')}.`,
     });
   }
   return issues;

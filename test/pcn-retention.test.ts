@@ -50,14 +50,11 @@ test('PCN legal hold is explicit, reasoned, and suppresses retention warnings', 
 
 test('PCN archive retention is represented in the contract, UI, store, and server boundary', () => {
   const typesSource = fs.readFileSync(new URL('../types.ts', import.meta.url), 'utf8');
-  const archiveSource = fs.readFileSync(new URL('../components/PcnArchiveView.tsx', import.meta.url), 'utf8');
   const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
   const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 
   assert.match(typesSource, /PcnRetentionMetadata/);
   assert.match(typesSource, /retention\?: PcnRetentionMetadata/);
-  assert.match(archiveSource, /legalHold/);
-  assert.match(archiveSource, /bản mềm/i);
   assert.match(storeSource, /setDossierLegalHold/);
   assert.match(serverSource, /\/api\/pcn\/dossiers\/:dossierId\/retention/);
   assert.match(serverSource, /source: 'USER_REVIEW'/);

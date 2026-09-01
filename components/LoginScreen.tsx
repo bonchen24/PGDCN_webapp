@@ -9,6 +9,22 @@ import { removeAccents } from '../utils/formatter';
 import { saveDocToPostgres } from '../utils/firebase';
 import { establishKqtnSession } from '../utils/kqtnPdfClient';
 import { establishPcnSession } from '../utils/pcnAuthApi';
+import {
+  loadPasswordCredential,
+  storePasswordCredential,
+  type PasswordCredentialConstructor,
+  type PasswordCredentialManager,
+} from '../utils/passwordCredential';
+
+function getBrowserPasswordCredentialManager(): PasswordCredentialManager | null {
+  if (typeof navigator === 'undefined' || !navigator.credentials) return null;
+  return navigator.credentials as unknown as PasswordCredentialManager;
+}
+
+function getBrowserPasswordCredentialConstructor(): PasswordCredentialConstructor | null {
+  if (typeof window === 'undefined') return null;
+  return (window as Window & { PasswordCredential?: PasswordCredentialConstructor }).PasswordCredential || null;
+}
 
 export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'legacy' }) => {
   const { login, logout, isLoading, systemUsers, updateUser, updateUserPreferences, syncTwoWay, fetchData } = useStore();
@@ -35,14 +51,29 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
   }, [mode, systemUsers, syncTwoWay]);
 
   React.useEffect(() => {
-    const savedUsername = localStorage.getItem('rememberedUsername');
-    const savedPassword = localStorage.getItem('rememberedPassword');
-    if (mode !== 'pcn' && savedUsername && savedPassword) {
-      setUsername(savedUsername);
-      setPassword(savedPassword);
-      setRememberMe(true);
-    }
-  }, []);
+    let cancelled = false;
+    const restoreCredential = async () => {
+      if (mode !== 'pcn') {
+        const savedUsername = localStorage.getItem('rememberedUsername');
+        const savedPassword = localStorage.getItem('rememberedPassword');
+        if (!cancelled && savedUsername && savedPassword) {
+          setUsername(savedUsername);
+          setPassword(savedPassword);
+          setRememberMe(true);
+        }
+        return;
+      }
+
+      const savedCredential = await loadPasswordCredential(getBrowserPasswordCredentialManager());
+      if (!cancelled && savedCredential) {
+        setUsername(savedCredential.username);
+        setPassword(savedCredential.password);
+        setRememberMe(true);
+      }
+    };
+    void restoreCredential();
+    return () => { cancelled = true; };
+  }, [mode]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +112,16 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
       if (mode !== 'pcn' && fetchData) {
         fetchData(false);
       }
-      if (rememberMe && mode !== 'pcn') {
+      if (mode === 'pcn') {
+        if (rememberMe) {
+          await storePasswordCredential(
+            getBrowserPasswordCredentialManager(),
+            getBrowserPasswordCredentialConstructor(),
+            username,
+            password,
+          );
+        }
+      } else if (rememberMe) {
         localStorage.setItem('rememberedUsername', username);
         localStorage.setItem('rememberedPassword', password);
       } else {
@@ -241,7 +281,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                   <label htmlFor="password" className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
                     Mật khẩu
                   </label>
-                  {mode !== 'pcn' && <div className="flex items-center">
+                  <div className="flex items-center" title="Lưu trong trình quản lý mật khẩu của trình duyệt">
                     <input
                       id="remember-me"
                       name="remember-me"
@@ -253,7 +293,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     <label htmlFor="remember-me" className="ml-1.5 block text-[11px] font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors">
                       Lưu mật khẩu
                     </label>
-                  </div>}
+                  </div>
                 </div>
                 <div className="relative rounded-2xl shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">

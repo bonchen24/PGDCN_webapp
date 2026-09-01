@@ -11,6 +11,7 @@ COPY . .
 RUN npm run build
 
 ENV NODE_ENV=production
+ENV APP_PROFILE=pcn
 ENV PORT=2357
 
 EXPOSE 2357

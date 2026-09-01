@@ -18,15 +18,18 @@ import type { PcnGeneratedDocument } from '../types.ts';
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const documentApiSource = fs.readFileSync(new URL('../utils/pcnDossierDocumentApi.ts', import.meta.url), 'utf8');
 
-test('PCN document baseline contains separate QC4 and QC9 field checklists', () => {
+test('PCN document baseline contains separate QC4, QC9, and QC20 field checklists', () => {
   const qc4 = getPcnDocumentRequirements(['QC4']);
   const qc9 = getPcnDocumentRequirements(['QC9']);
-  const combined = getPcnDocumentRequirements(['QC4', 'QC9']);
+  const qc20 = getPcnDocumentRequirements(['QC20']);
+  const combined = getPcnDocumentRequirements(['QC4', 'QC9', 'QC20']);
 
   assert.ok(qc4.some((item) => item.code === 'SAMPLE_HANDOVER'));
   assert.ok(qc9.some((item) => item.code === 'SAMPLE_RETURN'));
   assert.ok(qc9.some((item) => item.code === 'EXTENSION_LETTER' && item.required === false));
-  assert.equal(combined.length, qc4.length + qc9.length);
+  assert.ok(qc20.some((item) => item.code === 'SAMPLE_CODING'));
+  assert.ok(qc20.some((item) => item.code === 'CERTIFICATION_RESULT'));
+  assert.equal(combined.length, qc4.length + qc9.length + qc20.length);
   assert.equal(DEFAULT_PCN_DOCUMENT_REQUIREMENTS.length, combined.length);
 });
 

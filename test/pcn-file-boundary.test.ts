@@ -4,11 +4,14 @@ import test from 'node:test';
 
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const issuanceSource = fs.readFileSync(new URL('../components/PcnIssuanceView.tsx', import.meta.url), 'utf8');
+const composeSource = fs.readFileSync(new URL('../docker-compose.pcn.yml', import.meta.url), 'utf8');
 
 test('PCN documents use a private Storage pointer boundary instead of JSONB bytes', () => {
   assert.match(serverSource, /app\.post\("\/api\/pcn\/files"/);
   assert.match(serverSource, /app\.get\("\/api\/pcn\/files\/:assetId"/);
   assert.match(serverSource, /PCN_STORAGE_BUCKET/);
+  assert.match(serverSource, /'pcn-files'/);
+  assert.match(composeSource, /PCN_STORAGE_BUCKET:\s*\$\{PCN_STORAGE_BUCKET:-pcn-files\}/);
   assert.match(serverSource, /source_collection/);
   assert.match(serverSource, /source_document_id/);
   assert.match(serverSource, /source_json_path/);

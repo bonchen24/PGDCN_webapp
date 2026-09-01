@@ -46,9 +46,9 @@ test('builds stage and exact-station visual checklists from current versioned do
     ['INTAKE', 'Tiếp nhận & đầu vào', 1, 2],
     ['TECHNICAL_REVIEW', 'KQTN & soát xét', 0, 1],
   ]);
-  assert.deepEqual(inspection.stations.map((station) => [station.key, station.label, station.present, station.total]), [
-    ['INTAKE', 'Tiếp nhận Đề nghị', 1, 2],
-    ['TECHNICAL_REVIEW', 'Soát xét kỹ thuật', 0, 1],
+  assert.deepEqual(inspection.stations.map((station) => [station.key, station.label, station.present, station.total, station.stationScore]), [
+    ['INTAKE', 'Tiếp nhận Đề nghị', 1, 2, 50],
+    ['TECHNICAL_REVIEW', 'Soát xét kỹ thuật', 0, 1, null],
   ]);
   assert.equal(inspection.stages[0].items[0].currentVersion?.fileName, 'de-nghi.pdf');
   assert.equal(inspection.stages[0].items[1].status, 'MISSING');
@@ -82,6 +82,7 @@ test('visual checklist is exposed in dossier detail without replacing the upload
   assert.match(detailView, /Còn thiếu/);
   assert.match(detailView, /Mở file/);
   assert.match(detailView, /PcnFilePreviewButton/);
+  assert.match(detailView, /step\.stationScore/);
   assert.match(detailView, /inspection\.stations/);
   assert.match(detailView, /activeWorkflowNodeKey/);
   assert.match(detailView, /open=\{step\.key === activeWorkflowNodeKey\}/);

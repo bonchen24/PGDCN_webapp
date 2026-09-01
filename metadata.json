@@ -1,6 +1,6 @@
 {
-  "name": "DDT lab web app upgrade ",
-  "description": "Hệ thống quản lý thử nghiệm Phòng Điện - Điện tử",
+  "name": "Phòng Chứng nhận TVCI",
+  "description": "Hệ thống vận hành Đề nghị, bộ hồ sơ và phát hành chứng nhận của Phòng Chứng nhận TVCI",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

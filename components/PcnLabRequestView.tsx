@@ -17,6 +17,7 @@ import type {
 import { getPcnFileUrl } from '../utils/pcnFileApi';
 import { getPcnGeneratedDocumentsForKind } from '../utils/pcnGeneratedDocumentView';
 import { buildPcnLabRequest, getNextPcnLabRequestStatuses, getPcnLabFieldSelection } from '../utils/pcnLabRouting';
+import { isPcnInternalSampleRequest } from '../utils/pcnLabOperations';
 import { getPcnDossierCustomerSnapshot } from '../utils/pcnDossierPolicy';
 import PcnLabRequestDetailModal from './PcnLabRequestDetailModal';
 
@@ -129,8 +130,8 @@ export function PcnLabRequestView({
   const dossierLots = sampleLots.filter((lot) => lot.dossierId === form.dossierId);
   const lotRoutes = sampleRoutes.filter((route) => route.sampleLotId === form.sampleLotId);
   const visibleRequests = initialDossierId
-    ? requests.filter((request) => request.dossierId === initialDossierId)
-    : requests;
+    ? requests.filter((request) => request.dossierId === initialDossierId && isPcnInternalSampleRequest(request, sampleRoutes))
+    : requests.filter((request) => isPcnInternalSampleRequest(request, sampleRoutes));
   const selectedRequest = visibleRequests.find((request) => request.id === selectedRequestId);
   const selectedRequestDossier = selectedRequest ? dossiers.find((dossier) => dossier.id === selectedRequest.dossierId) : undefined;
   const selectedRequestProposal = selectedRequestDossier ? proposals.find((proposal) => proposal.id === selectedRequestDossier.proposalId) : undefined;

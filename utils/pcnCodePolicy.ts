@@ -50,7 +50,7 @@ export function normalizePcnCode(value: unknown): string {
 
 function isFieldRegistrationCode(value: string): boolean {
   return /^\d{4}(?:-\d{2})?$/.test(value)
-    || /^(?:DN|HS)-QC[49]-\d{4}-\d{4}(?:-\d{2})?$/.test(value);
+    || /^(?:DN|HS)-QC(?:4|9|20)-\d{4}-\d{4}(?:-\d{2})?$/.test(value);
 }
 
 function isIemmReference(value: string): boolean {
@@ -63,7 +63,7 @@ function isPycReference(value: string): boolean {
 
 function isCertificationReference(value: string): boolean {
   return /^(?:GCN|Q[ĐD])\b/.test(value)
-    || /\bQC[49]\.\d+(?:\.\d+)?\b/.test(value);
+    || /\bQC(?:4|9|20)\.\d+(?:\.\d+)?\b/.test(value);
 }
 
 export function classifyPcnCode(fieldCode: unknown, value: unknown): PcnCodeClassification {
@@ -74,7 +74,7 @@ export function classifyPcnCode(fieldCode: unknown, value: unknown): PcnCodeClas
   if (isFieldRegistrationCode(normalized)) return { source, normalized, family: 'FIELD_REGISTRATION', recognized: true };
   if (isIemmReference(normalized)) return { source, normalized, family: 'IEMM_REFERENCE', recognized: true };
   if (isPycReference(normalized)) return { source, normalized, family: 'PYC_REFERENCE', recognized: true };
-  if (isCertificationReference(normalized) && ['QC4', 'QC9'].includes(field)) {
+  if (isCertificationReference(normalized) && ['QC4', 'QC9', 'QC20'].includes(field)) {
     return { source, normalized, family: 'CERTIFICATION_REFERENCE', recognized: true };
   }
   return { source, normalized, family: 'UNKNOWN', recognized: false };

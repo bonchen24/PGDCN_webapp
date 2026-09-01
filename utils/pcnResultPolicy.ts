@@ -1,5 +1,6 @@
-import type { PcnResultOutcome, PcnSampleIssue, ReturnedTestResult } from '../types';
+import type { PcnOcrEvidence, PcnResultOutcome, PcnSampleIssue, ReturnedTestResult } from '../types';
 import { getPcnTimestampDenial } from './pcnDossierDate.ts';
+import { normalizePcnOcrEvidence } from './pcnOcrPolicy.ts';
 import { getOfficialPcnResultRound } from './pcnWorkflow.ts';
 
 export interface PcnReturnedResultDraft {
@@ -13,6 +14,7 @@ export interface PcnReturnedResultDraft {
   fileAssetId?: string;
   notes?: string;
   sampleIssue?: PcnSampleIssue;
+  ocrEvidence?: PcnOcrEvidence;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -38,6 +40,10 @@ export function buildPcnReturnedResult(input: PcnReturnedResultDraft, now = new 
   const receivedAtDenial = getPcnTimestampDenial('Thời điểm nhận KQTN', receivedAt);
   if (receivedAtDenial) throw new Error(receivedAtDenial);
 
+  const ocrEvidence = input.ocrEvidence
+    ? normalizePcnOcrEvidence(input.ocrEvidence, { confirmedBy: input.ocrEvidence.confirmedBy })
+    : undefined;
+
   return {
     id,
     dossierId,
@@ -49,6 +55,7 @@ export function buildPcnReturnedResult(input: PcnReturnedResultDraft, now = new 
     fileAssetId: optionalText(input.fileAssetId),
     notes: optionalText(input.notes),
     ...(input.sampleIssue ? { sampleIssue: input.sampleIssue } : {}),
+    ...(ocrEvidence ? { ocrEvidence } : {}),
     createdAt: input.createdAt || now,
     updatedAt: input.updatedAt || now,
   };

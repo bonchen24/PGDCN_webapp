@@ -28,6 +28,35 @@ test('PCN template catalog is separate from the legacy DDT template catalog', ()
   assert.ok(PCN_TEMPLATE_CATALOG.every((template) => !template.sourceFingerprint.sourceRelativePath.includes('dist')));
 });
 
+test('PCN template import defaults to the private PCN Storage bucket', () => {
+  const importSource = fs.readFileSync(new URL('../scripts/importPcnTemplate.ts', import.meta.url), 'utf8');
+  const bucketFunction = importSource.slice(importSource.indexOf('function getStorageBucket'), importSource.indexOf('function stableJson'));
+
+  assert.match(bucketFunction, /PCN_STORAGE_BUCKET/);
+  assert.match(bucketFunction, /'pcn-files'/);
+  assert.doesNotMatch(bucketFunction, /SUPABASE_STORAGE_BUCKET/);
+  assert.doesNotMatch(bucketFunction, /'ddt-files'/);
+});
+
+test('PCN template import is exposed as a locked maintenance command', () => {
+  const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { scripts?: Record<string, string> };
+
+  assert.equal(packageJson.scripts?.['import:pcn-template'], 'node ./scripts/run-pcn-tsx.cjs scripts/importPcnTemplate.ts');
+});
+
+test('PCN template approval revalidates the complete private asset provenance', () => {
+  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const reviewRoute = serverSource.slice(
+    serverSource.indexOf("app.post('/api/pcn/templates/:templateId/review'"),
+    serverSource.indexOf("app.post('/api/pcn/templates/:templateId/annotate'"),
+  );
+
+  assert.match(reviewRoute, /String\(asset\.bucket_name\) !== getPcnStorageBucket\(\)/);
+  assert.match(reviewRoute, /asset\.mime_type/);
+  assert.match(reviewRoute, /Number\(asset\.byte_size\)/);
+  assert.match(reviewRoute, /sourceFingerprint\.sha256/);
+});
+
 test('PCN baseline template paths stay relative to the surveyed source-family roots', () => {
   const expectedPaths = new Map([
     ['pcn-qc4-certificate-tool', 'Hồ sơ chứng nhận QCVN4 2026/Tool QC4/Nhap data/GCN.docx'],
@@ -39,11 +68,16 @@ test('PCN baseline template paths stay relative to the surveyed source-family ro
     ['pcn-qc9-proposal-method-1-tdc', 'Hồ sơ chứng nhận QCVN9 2026/mẫu pyc bên TĐC/BM-02-32 Mẫu yêu cầu CNSP PT1.docx'],
     ['pcn-qc9-proposal-method-1', 'Hồ sơ chứng nhận QCVN9 2026/File kết quả mẫu/BM-QT-06-05a De nghi chung nhan san pham theo phuong thuc 1.doc'],
     ['pcn-qc9-evaluation-report-method-1-7', 'Hồ sơ chứng nhận QCVN9 2026/File kết quả mẫu/BM-QT-09-09a-BC đánh giá CNSP theo pt1 và 7.doc'],
+    ['pcn-qc20-proposal-pending', 'QC20/CHUA_CO_NGUON/PROPOSAL.docx'],
+    ['pcn-qc20-certificate-pending', 'QC20/CHUA_CO_NGUON/CERTIFICATE.docx'],
+    ['pcn-qc20-decision-pending', 'QC20/CHUA_CO_NGUON/DECISION.docx'],
+    ['pcn-qc20-sample-handover-pending', 'QC20/CHUA_CO_NGUON/SAMPLE_HANDOVER.docx'],
   ]);
 
   for (const template of PCN_TEMPLATE_CATALOG) {
     assert.equal(template.sourceFingerprint.sourceRelativePath, expectedPaths.get(template.id), template.id);
-    assert.match(template.sourceFingerprint.sourceRelativePath, /^Hồ sơ chứng nhận QCVN[49] 2026\//);
+    if (template.fieldCode === 'QC20') assert.match(template.sourceFingerprint.sourceRelativePath, /^QC20\/CHUA_CO_NGUON\//);
+    else assert.match(template.sourceFingerprint.sourceRelativePath, /^Hồ sơ chứng nhận QCVN[49] 2026\//);
   }
 });
 

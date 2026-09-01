@@ -11,42 +11,39 @@ import {
 const sidebarSource = fs.readFileSync(new URL('../components/PcnSidebar.tsx', import.meta.url), 'utf8');
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
 
-test('PCN exposes the core workspaces directly and keeps secondary modules under one More menu', () => {
+test('PCN exposes operational workspaces and keeps personnel management in Admin', () => {
   assert.deepEqual(PCN_WORKSPACE_NAVIGATION, [
     'dashboard',
     'proposals',
-    'fields',
-    'samples',
-    'labRequests',
-    'results',
-    'issuance',
-    'archive',
-    'agent',
+    'operations',
+    'lab-operations',
+    'drafting',
+    'assistant',
+    'customers',
   ]);
-  assert.equal(PCN_MORE_NAVIGATION_GROUPS.length, 2);
+  assert.equal(PCN_MORE_NAVIGATION_GROUPS.length, 1);
+  assert.deepEqual(PCN_MORE_NAVIGATION_GROUPS[0].items, ['users', 'settings']);
   assert.match(sidebarSource, /PCN_WORKSPACE_NAVIGATION\.map/);
-  assert.match(sidebarSource, /Thêm/);
+  assert.match(sidebarSource, /Quản trị/);
   assert.match(sidebarSource, /aria-label=\{sectionLabels\[section\]\}/);
+  assert.match(sidebarSource, /moreSections\.map\(renderSectionButton\)/);
+  assert.doesNotMatch(sidebarSource, /group\.label/);
   assert.doesNotMatch(sidebarSource, /renderGroup/);
   assert.doesNotMatch(sidebarSource, /expandedGroup/);
 });
 
-test('PCN More menu hides only admin-only sections for non-admin users', () => {
+test('PCN administration surfaces are visible only to Admin', () => {
   const adminItems = getPcnMoreNavigationGroups(true).flatMap((group) => group.items);
   const staffItems = getPcnMoreNavigationGroups(false).flatMap((group) => group.items);
 
-  assert.ok(adminItems.includes('backup'));
-  assert.ok(adminItems.includes('cutover'));
-  assert.equal(staffItems.includes('backup'), false);
-  assert.equal(staffItems.includes('cutover'), false);
-  assert.ok(staffItems.includes('customers'));
-  assert.ok(staffItems.includes('activityLogs'));
+  assert.deepEqual(adminItems, ['users', 'settings']);
+  assert.deepEqual(staffItems, []);
 });
 
 test('the direct dossier workspace is named for the work users perform', () => {
-  assert.match(workspaceSource, /fields:\s*'Hồ sơ'/);
-  assert.match(workspaceSource, /<h1[^>]*>Hồ sơ chứng nhận<\/h1>/);
-  assert.doesNotMatch(workspaceSource, /fields:\s*'Lĩnh vực'/);
+  assert.match(workspaceSource, /proposals:\s*'Đề nghị'/);
+  assert.match(workspaceSource, /<h1[^>]*>Quản lý Đề nghị<\/h1>/);
+  assert.doesNotMatch(workspaceSource, /fields:\s*'/);
 });
 
 // --- End of pcn-sidebar-workspaces.test.ts ---

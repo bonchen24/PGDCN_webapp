@@ -1,8 +1,10 @@
 import type {
+  PcnCertificationFieldCode,
   PcnQualityDocument,
   PcnQualityDocumentCategory,
   PcnQualityDocumentStatus,
 } from '../types.ts';
+import { PCN_CERTIFICATION_FIELD_CODES } from '../types.ts';
 
 export type PcnQualityDocumentWarning = 'EXPIRED_ADVISORY' | 'EXPIRING_SOON_ADVISORY' | 'RETIRED_ADVISORY';
 
@@ -55,7 +57,7 @@ export function buildPcnQualityDocument(input: PcnQualityDocumentInput, now = ne
   const status = input.status || 'DRAFT';
   if (!STATUSES.has(status)) throw new Error('Trạng thái tài liệu chất lượng không hợp lệ.');
   const fieldCodes = [...new Set((input.fieldCodes || []).map((code) => clean(code).toUpperCase()).filter(Boolean))];
-  if (fieldCodes.some((code) => !['QC4', 'QC9'].includes(code))) throw new Error('Lĩnh vực tài liệu chất lượng chỉ nhận QC4 hoặc QC9.');
+  if (fieldCodes.some((code) => !PCN_CERTIFICATION_FIELD_CODES.includes(code as typeof PCN_CERTIFICATION_FIELD_CODES[number]))) throw new Error('Lĩnh vực tài liệu chất lượng chỉ nhận QC4, QC9 hoặc QC20.');
   const issuedAt = normalizeDate(input.issuedAt, 'Ngày ban hành');
   const effectiveFrom = normalizeDate(input.effectiveFrom, 'Ngày hiệu lực');
   const validUntil = normalizeDate(input.validUntil, 'Ngày hết hạn');
@@ -66,7 +68,7 @@ export function buildPcnQualityDocument(input: PcnQualityDocumentInput, now = ne
     documentCode,
     title,
     category,
-    ...(fieldCodes.length > 0 ? { fieldCodes: fieldCodes as Array<'QC4' | 'QC9'> } : {}),
+    ...(fieldCodes.length > 0 ? { fieldCodes: fieldCodes as PcnCertificationFieldCode[] } : {}),
     version,
     status,
     ...(issuedAt ? { issuedAt } : {}),

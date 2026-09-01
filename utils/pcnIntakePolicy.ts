@@ -66,6 +66,8 @@ export function validatePcnProposalIntake(input: unknown): PcnIntakeValidationRe
     }
   }
 
+  validateQc20Scope(proposal, issues);
+
   return { valid: issues.length === 0, issues };
 }
 
@@ -78,6 +80,29 @@ export function indexPcnIntakeValidationIssues(issues: PcnIntakeValidationIssue[
     if (!messages[issue.field]) messages[issue.field] = issue.message;
     return messages;
   }, {});
+}
+
+function validateQc20Scope(proposal: Record<string, unknown>, issues: PcnIntakeValidationIssue[]): void {
+  const fieldCodes = Array.isArray(proposal.fieldCodes)
+    ? proposal.fieldCodes.map((value) => text(value).toUpperCase()).filter(Boolean)
+    : [];
+  if (!fieldCodes.includes('QC20')) return;
+
+  const scope = isRecord(proposal.qc20Scope) ? proposal.qc20Scope : {};
+  const requiredFields: Array<[string, string]> = [
+    ['productForm', 'Dạng sản phẩm QC20 là bắt buộc.'],
+    ['grade', 'Mác thép QC20 là bắt buộc.'],
+    ['nominalDimensions', 'Kích thước danh nghĩa QC20 là bắt buộc.'],
+    ['hsCode', 'Mã HS QC20 là bắt buộc.'],
+    ['appliedStandard', 'Tiêu chuẩn áp dụng QC20 là bắt buộc.'],
+    ['lotDefinition', 'Phải xác định QC20 theo lô sản phẩm hoặc lô hàng hóa.'],
+  ];
+  for (const [field, message] of requiredFields) {
+    addRequiredIssue(issues, scope[field], `qc20Scope.${field}`, message);
+  }
+  if (text(scope.lotDefinition) && !['PRODUCT_LOT', 'SHIPMENT_LOT'].includes(text(scope.lotDefinition).toUpperCase())) {
+    issues.push({ field: 'qc20Scope.lotDefinition', message: 'Cách xác định lô QC20 không hợp lệ.' });
+  }
 }
 
 // --- End of pcnIntakePolicy.ts ---

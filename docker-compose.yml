@@ -3,15 +3,19 @@ services:
     build: .
     environment:
       NODE_ENV: production
+      APP_PROFILE: pcn
       PORT: 2357
       POSTGRES_HOST: supabase-db
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Load the Supabase env file with --env-file}
-      POSTGRES_DB: ddt_lab
+      PCN_POSTGRES_DB: ${PCN_POSTGRES_DB:-pcn_certification}
+      PCN_DATABASE_URL: ${PCN_DATABASE_URL:-}
+      PCN_SESSION_SECRET: ${PCN_SESSION_SECRET:?Set a long random PCN session secret}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       SUPABASE_STORAGE_URL: ${SUPABASE_STORAGE_URL:-http://supabase-storage:5000}
-      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-ddt-files}
+      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-pcn-files}
+      PCN_STORAGE_BUCKET: ${PCN_STORAGE_BUCKET:-pcn-files}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-${SERVICE_ROLE_KEY:-}}
       OCR_SERVICE_URL: ${OCR_SERVICE_URL:-http://tvci_ocr_service:8100}
       KQTN_PDF_MAX_BYTES: ${KQTN_PDF_MAX_BYTES:-26214400}

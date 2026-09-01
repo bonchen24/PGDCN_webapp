@@ -8,6 +8,7 @@ import type {
   PcnDocumentRequirement,
   PcnDossierDocument,
   PcnDossierDocumentVersion,
+  PcnDossierDocumentWaiver,
   PcnDossierStatus,
   PcnDocumentRequirementStage,
   PcnDossierStationKey,
@@ -15,6 +16,7 @@ import type {
 import { getPcnDossierAssignmentDenial, type PcnDossierAssignmentInput } from './pcnDossierAssignment.ts';
 import { reviewPcnCodes, type PcnCodeReview } from './pcnCodePolicy.ts';
 import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, getPcnDocumentRequirements } from './pcnDossierDocuments.ts';
+import { getPcnWorkflowStageByKey } from './pcnWorkflowStages.ts';
 
 export type PcnPipelineStationKey = PcnDossierStationKey;
 
@@ -56,6 +58,10 @@ const ALL_STATIONS = [...PCN_PIPELINE_STATIONS, EXCEPTION_STATION];
 
 export function getPcnPipelineStation(status: PcnDossierStatus): PcnPipelineStation {
   return ALL_STATIONS.find((station) => station.statuses.includes(status)) || EXCEPTION_STATION;
+}
+
+export function getPcnPipelineStationByKey(key: PcnPipelineStationKey): PcnPipelineStation {
+  return ALL_STATIONS.find((station) => station.key === key) || EXCEPTION_STATION;
 }
 
 /** Local, read-only field scope used by the Kanban and other PCN work surfaces. */
@@ -177,9 +183,10 @@ function hasCurrentDocument(document: PcnDossierDocument | undefined): boolean {
 
 export interface PcnDossierStationChecklistItem {
   requirement: PcnDocumentRequirement;
-  status: 'PRESENT' | 'MISSING';
+  status: 'PRESENT' | 'MISSING' | 'WAIVED';
   versionCount: number;
   currentVersion?: PcnDossierDocumentVersion;
+  waiver?: PcnDossierDocumentWaiver;
 }
 
 export interface PcnDossierStationChecklist {
@@ -189,6 +196,7 @@ export interface PcnDossierStationChecklist {
   total: number;
   missing: number;
   requiredPresent: number;
+  requiredResolved: number;
   requiredTotal: number;
   requiredMissing: number;
 }
@@ -224,12 +232,33 @@ const DOCUMENT_STAGE_LABELS: Record<PcnDocumentRequirementStage, string> = {
 export function buildPcnDossierStationChecklist(input: {
   dossierId: string;
   status: PcnDossierStatus;
+  stationKey?: PcnPipelineStationKey;
   fieldCodes: CertificationDossier['fieldCodes'];
   requirements: PcnDocumentRequirement[];
   documents: PcnDossierDocument[];
+  documentWaivers?: Record<string, PcnDossierDocumentWaiver>;
+  /** Collapse the detailed internal routing into one of the five user-facing steps. */
+  workflowStageKey?: PcnPipelineStationKey;
 }): PcnDossierStationChecklist {
-  const station = getPcnPipelineStation(input.status);
-  const stationRequirements = getPcnPipelineStationRequirements(input.status, input.fieldCodes, input.requirements);
+  const workflowStage = input.workflowStageKey ? getPcnWorkflowStageByKey(input.workflowStageKey) : undefined;
+  const station = workflowStage
+    ? {
+      key: workflowStage.key,
+      number: workflowStage.number,
+      title: workflowStage.title,
+      description: workflowStage.description,
+      actionLabel: workflowStage.actionLabel,
+      statuses: workflowStage.statuses,
+      requirementStages: workflowStage.requirementStages,
+    }
+    : input.stationKey ? getPcnPipelineStationByKey(input.stationKey) : getPcnPipelineStation(input.status);
+  const stationRequirements = workflowStage
+    ? getPcnDocumentRequirements(input.fieldCodes, input.requirements).filter((item) => item.stationKeys?.length
+      ? item.stationKeys.some((key) => workflowStage.detailedStationKeys.includes(key))
+      : item.stages.some((stage) => workflowStage.requirementStages.includes(stage)))
+    : input.stationKey
+      ? getPcnPipelineStationCatalog(station, input.fieldCodes, input.requirements)
+      : getPcnPipelineStationRequirements(input.status, input.fieldCodes, input.requirements);
   const documentByRequirement = new Map(
     input.documents
       .filter((document) => document.dossierId === input.dossierId)
@@ -240,27 +269,39 @@ export function buildPcnDossierStationChecklist(input: {
     const currentVersion = document && document.status === 'PRESENT' && document.currentVersionId
       ? document.versions.find((version) => version.assetId === document.currentVersionId)
       : undefined;
+    const waiver = input.documentWaivers?.[requirement.id];
+    const status = currentVersion ? 'PRESENT' as const : waiver?.reason?.trim() ? 'WAIVED' as const : 'MISSING' as const;
     return {
       requirement,
-      status: currentVersion ? 'PRESENT' as const : 'MISSING' as const,
+      status,
       versionCount: document?.versions.length || 0,
       ...(currentVersion ? { currentVersion } : {}),
+      ...(status === 'WAIVED' ? { waiver } : {}),
     };
   });
   const requiredItems = items.filter((item) => item.requirement.required);
   const present = items.filter((item) => item.status === 'PRESENT').length;
   const requiredPresent = requiredItems.filter((item) => item.status === 'PRESENT').length;
+  const requiredResolved = requiredItems.filter((item) => item.status !== 'MISSING').length;
 
   return {
     station,
     items,
     present,
     total: items.length,
-    missing: items.length - present,
+    missing: items.filter((item) => item.status === 'MISSING').length,
     requiredPresent,
+    requiredResolved,
     requiredTotal: requiredItems.length,
-    requiredMissing: requiredItems.length - requiredPresent,
+    requiredMissing: requiredItems.filter((item) => item.status === 'MISSING').length,
   };
+}
+
+export function getPcnDossierStationScore(
+  checklist: Pick<PcnDossierStationChecklist, 'requiredPresent' | 'requiredTotal'> & { requiredResolved?: number },
+): number | null {
+  if (checklist.requiredTotal <= 0) return null;
+  return Math.round(((checklist.requiredResolved ?? checklist.requiredPresent) / checklist.requiredTotal) * 100);
 }
 
 function hasCustomer(dossier: CertificationDossier, proposal?: CertificationProposal): boolean {
@@ -273,6 +314,7 @@ function uniqueLabels(labels: string[]): string[] {
 
 export interface PcnDossierCompleteness {
   score: number;
+  stationScore: number | null;
   station: PcnPipelineStation;
   requiredDocumentTotal: number;
   requiredDocumentPresent: number;
@@ -300,11 +342,13 @@ export function buildPcnDossierCompleteness(input: {
   proposal?: CertificationProposal;
   requirements?: PcnDocumentRequirement[];
   documents?: PcnDossierDocument[];
+  documentWaivers?: Record<string, PcnDossierDocumentWaiver>;
 }): PcnDossierCompleteness {
   const requirements = getPcnDocumentRequirements(input.dossier.fieldCodes, input.requirements);
+  const documentWaivers = input.documentWaivers || input.dossier.documentWaivers;
   const required = requirements.filter((item) => item.required);
   const documentByRequirement = new Map((input.documents || []).filter((item) => item.dossierId === input.dossier.id).map((item) => [item.requirementId, item]));
-  const missingRequirementIds = required.filter((item) => !hasCurrentDocument(documentByRequirement.get(item.id))).map((item) => item.id);
+  const missingRequirementIds = required.filter((item) => !hasCurrentDocument(documentByRequirement.get(item.id)) && !documentWaivers?.[item.id]?.reason?.trim()).map((item) => item.id);
   const missingRequirements = required.filter((item) => missingRequirementIds.includes(item.id));
   const stationChecklist = buildPcnDossierStationChecklist({
     dossierId: input.dossier.id,
@@ -312,6 +356,7 @@ export function buildPcnDossierCompleteness(input: {
     fieldCodes: input.dossier.fieldCodes,
     requirements,
     documents: input.documents || [],
+    documentWaivers,
   });
 
   const hasOwner = Boolean(input.dossier.ownerUsername?.trim());
@@ -340,6 +385,7 @@ export function buildPcnDossierCompleteness(input: {
 
   return {
     score,
+    stationScore: getPcnDossierStationScore(stationChecklist),
     station: getPcnPipelineStation(input.dossier.status),
     requiredDocumentTotal: required.length,
     requiredDocumentPresent,

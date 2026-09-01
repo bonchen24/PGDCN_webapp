@@ -40,7 +40,7 @@ export interface PcnTemplateSourceCoverageCounts {
 }
 
 export interface PcnTemplateSourceCoverageSummary extends PcnTemplateSourceCoverageCounts {
-  byField: Record<'QC4' | 'QC9', PcnTemplateSourceCoverageCounts>;
+  byField: Record<string, PcnTemplateSourceCoverageCounts>;
 }
 
 export interface PcnTemplateSourceCoverageReport {
@@ -203,7 +203,7 @@ export function buildPcnTemplateSourceCoverage(
     if (row.status === 'FINGERPRINT_MISMATCH') result.fingerprintMismatch += 1;
     if (row.status === 'NEEDS_ANNOTATION') result.needsAnnotation += 1;
     if (row.status === 'READY_TO_APPLY') result.readyToApply += 1;
-    const fieldSummary = result.byField[row.fieldCode];
+    const fieldSummary = result.byField[row.fieldCode] || (result.byField[row.fieldCode] = emptyCounts());
     fieldSummary.total += 1;
     if (row.status === 'FOUND') fieldSummary.found += 1;
     if (row.status === 'MISSING') fieldSummary.missing += 1;
@@ -211,7 +211,7 @@ export function buildPcnTemplateSourceCoverage(
     if (row.status === 'NEEDS_ANNOTATION') fieldSummary.needsAnnotation += 1;
     if (row.status === 'READY_TO_APPLY') fieldSummary.readyToApply += 1;
     return result;
-  }, { ...emptyCounts(), byField: { QC4: emptyCounts(), QC9: emptyCounts() } });
+  }, { ...emptyCounts(), byField: { QC4: emptyCounts(), QC9: emptyCounts(), QC20: emptyCounts() } });
   return { rows, summary, readOnly: true };
 }
 

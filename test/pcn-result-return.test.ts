@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 import { buildPcnReturnedResult, markOfficialPcnResults } from '../utils/pcnResultPolicy.ts';
+import { normalizePcnOcrEvidence } from '../utils/pcnOcrPolicy.ts';
 
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
@@ -73,6 +74,33 @@ test('preserves a sample issue as a corrective-action input', () => {
   assert.equal(result.sampleIssue?.description, 'Mẫu không khớp Đề nghị');
 });
 
+test('persists OCR evidence on a returned test result and lets the server stamp the confirmer', () => {
+  const evidence = normalizePcnOcrEvidence({
+    provider: 'PADDLEOCR',
+    sourceFileName: 'bao-cao-kqtn.pdf',
+    sourcePage: 2,
+    confidence: 0.82,
+  }, { confirmedAt: '2026-08-31T06:00:00.000Z', confirmedBy: 'tran-hoang-phuong' });
+  const result = buildPcnReturnedResult({
+    id: 'result-ocr',
+    dossierId: 'dossier-1',
+    labRequestId: 'lab-1',
+    round: 1,
+    outcome: 'PASS',
+    receivedAt: '2026-08-31T06:00:00.000Z',
+    ocrEvidence: evidence,
+  });
+
+  assert.deepEqual(result.ocrEvidence, evidence);
+  assert.equal(result.ocrEvidence?.sourceFileName, 'bao-cao-kqtn.pdf');
+  assert.equal(result.ocrEvidence?.confirmedBy, 'tran-hoang-phuong');
+});
+
+test('rejects OCR evidence without a supported provider or source scan name', () => {
+  assert.throws(() => normalizePcnOcrEvidence({ provider: 'DISABLED', sourceFileName: 'scan.pdf', confidence: 0.8 }), /OCR|nhà cung cấp|tên file/i);
+  assert.throws(() => normalizePcnOcrEvidence({ provider: 'PADDLEOCR', sourceFileName: '', confidence: 0.8 }), /OCR|file/i);
+});
+
 test('returned results expose the private PCN file attachment boundary', () => {
   assert.match(storeSource, /attachResultFile/);
   assert.match(storeSource, /sourceCollection: 'returnedResults'/);
@@ -81,6 +109,18 @@ test('returned results expose the private PCN file attachment boundary', () => {
   assert.match(resultViewSource, /type="file"/);
   assert.match(resultViewSource, /getPcnFileUrl/);
   assert.doesNotMatch(resultViewSource, /arrayBuffer\(\)|readAsDataURL/);
+});
+
+test('KQTN receipt requires the PTN scan and confirmed OCR draft before commit', () => {
+  const ocrSource = fs.readFileSync(new URL('../components/PcnOcrPanel.tsx', import.meta.url), 'utf8');
+  assert.match(ocrSource, /onFileSelected/);
+  assert.match(ocrSource, /Xác nhận điền bản nháp/);
+  assert.match(resultViewSource, /ocrConfirmed/);
+  assert.match(resultViewSource, /Bản scan KQTN/);
+  assert.match(resultViewSource, /KQTN đã lưu nhưng chưa gắn được file[\s\S]*return;/);
+  assert.match(resultViewSource, /ocrEvidence/);
+  assert.match(serverSource, /normalizePcnOcrEvidence/);
+  assert.match(serverSource, /confirmedBy: actor\.username/);
 });
 
 test('returned-result UI surfaces malformed runtime records without offering file mutation', () => {

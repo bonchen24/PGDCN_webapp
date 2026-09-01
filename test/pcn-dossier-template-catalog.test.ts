@@ -2,23 +2,43 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import { getPcnDossierTemplateProfiles } from '../utils/pcnDossierTemplateCatalog.ts';
+import { getPcnDossierTemplateAuthoringProfiles, getPcnDossierTemplateProfiles } from '../utils/pcnDossierTemplateCatalog.ts';
 
-test('catalogs blank QC4 and QC9 dossier packs from the controlled checklist', () => {
-  const profiles = getPcnDossierTemplateProfiles();
+test('catalogs blank QC4, QC9, and QC20 dossier packs from the controlled checklist', () => {
+  const profiles = getPcnDossierTemplateAuthoringProfiles();
 
-  assert.deepEqual(profiles.map((profile) => profile.fieldCode), ['QC4', 'QC9']);
+  assert.deepEqual(profiles.map((profile) => profile.fieldCode), ['QC4', 'QC9', 'QC20']);
   for (const profile of profiles) {
     assert.equal(profile.isBlank, true);
-    assert.match(profile.sourceBasis, /06.?07\/2026/);
+    if (profile.fieldCode === 'QC20') {
+      assert.match(profile.sourceBasis, /cấu hình|chưa có/i);
+    } else {
+      assert.match(profile.sourceBasis, /06.?07\/2026/);
+    }
     const expectedCodes = profile.fieldCode === 'QC4'
       ? ['PROPOSAL', 'COMMERCIAL', 'ASSIGNMENT_FORM', 'EVALUATION_PLAN', 'FIELD_INSPECTION', 'LAB_REQUEST', 'SAMPLE_CODING', 'SAMPLE_HANDOVER', 'TEST_REPORT', 'CERTIFICATION_RESULT', 'CERTIFICATE', 'DECISION', 'CLIENT_PACKAGE', 'ARCHIVE_SCAN']
-      : ['PROPOSAL', 'COMMERCIAL', 'ASSIGNMENT_FORM', 'EVALUATION_PLAN', 'FIELD_INSPECTION', 'LAB_REQUEST', 'SAMPLE_CODING', 'SAMPLE_HANDOVER', 'SAMPLE_RETURN', 'TEST_REPORT', 'EXTENSION_LETTER', 'CORRECTIVE_ACTION_LETTER', 'FAILURE_LETTER', 'CERTIFICATE', 'DECISION', 'CLIENT_PACKAGE', 'ARCHIVE_SCAN'];
+      : profile.fieldCode === 'QC9'
+        ? ['PROPOSAL', 'COMMERCIAL', 'ASSIGNMENT_FORM', 'EVALUATION_PLAN', 'FIELD_INSPECTION', 'LAB_REQUEST', 'SAMPLE_CODING', 'SAMPLE_HANDOVER', 'SAMPLE_RETURN', 'TEST_REPORT', 'EXTENSION_LETTER', 'CORRECTIVE_ACTION_LETTER', 'FAILURE_LETTER', 'CERTIFICATE', 'DECISION', 'CLIENT_PACKAGE', 'ARCHIVE_SCAN']
+        : ['PROPOSAL', 'COMMERCIAL', 'SCOPE_EVIDENCE', 'LOT_IDENTITY', 'ASSIGNMENT_FORM', 'EVALUATION_PLAN', 'FIELD_INSPECTION', 'LAB_REQUEST', 'SAMPLE_CODING', 'SAMPLE_HANDOVER', 'SAMPLE_RETURN', 'TEST_REPORT', 'CERTIFICATION_RESULT', 'CORRECTIVE_ACTION_LETTER', 'CERTIFICATE', 'DECISION', 'CLIENT_PACKAGE', 'ARCHIVE_SCAN'];
     assert.deepEqual(
       profile.stageGroups.flatMap((group) => group.requirements.map((requirement) => requirement.code)),
       expectedCodes,
     );
-    const expectedStationCodes = profile.fieldCode === 'QC4'
+    const expectedStationCodes = profile.fieldCode === 'QC20'
+      ? [
+        ['INTAKE', ['PROPOSAL', 'COMMERCIAL', 'SCOPE_EVIDENCE', 'LOT_IDENTITY']],
+        ['DOCUMENTS', ['PROPOSAL', 'COMMERCIAL', 'SCOPE_EVIDENCE', 'LOT_IDENTITY']],
+        ['ASSIGNMENT', ['ASSIGNMENT_FORM']],
+        ['EVALUATION', ['EVALUATION_PLAN', 'FIELD_INSPECTION']],
+        ['SAMPLING_LAB', ['LAB_REQUEST', 'SAMPLE_CODING', 'SAMPLE_HANDOVER', 'SAMPLE_RETURN']],
+        ['RESULTS', ['TEST_REPORT']],
+        ['CORRECTION', ['CORRECTIVE_ACTION_LETTER']],
+        ['TECHNICAL_REVIEW', ['TEST_REPORT', 'CERTIFICATION_RESULT']],
+        ['APPROVAL', ['CERTIFICATE', 'DECISION']],
+        ['ISSUANCE', ['CERTIFICATE', 'DECISION']],
+        ['DELIVERY_ARCHIVE', ['CLIENT_PACKAGE', 'ARCHIVE_SCAN']],
+      ]
+      : profile.fieldCode === 'QC4'
       ? [
         ['INTAKE', ['PROPOSAL', 'COMMERCIAL']],
         ['DOCUMENTS', ['PROPOSAL', 'COMMERCIAL']],
@@ -31,7 +51,8 @@ test('catalogs blank QC4 and QC9 dossier packs from the controlled checklist', (
         ['ISSUANCE', ['CERTIFICATE', 'DECISION']],
         ['DELIVERY_ARCHIVE', ['CLIENT_PACKAGE', 'ARCHIVE_SCAN']],
       ]
-      : [
+      : profile.fieldCode === 'QC9'
+        ? [
         ['INTAKE', ['PROPOSAL', 'COMMERCIAL']],
         ['DOCUMENTS', ['PROPOSAL', 'COMMERCIAL']],
         ['ASSIGNMENT', ['ASSIGNMENT_FORM']],
@@ -43,17 +64,34 @@ test('catalogs blank QC4 and QC9 dossier packs from the controlled checklist', (
         ['APPROVAL', ['CERTIFICATE', 'DECISION']],
         ['ISSUANCE', ['CERTIFICATE', 'DECISION']],
         ['DELIVERY_ARCHIVE', ['CLIENT_PACKAGE', 'ARCHIVE_SCAN']],
+      ]
+        : [
+        ['INTAKE', ['PROPOSAL', 'COMMERCIAL']],
+        ['DOCUMENTS', ['PROPOSAL', 'COMMERCIAL']],
+        ['ASSIGNMENT', ['ASSIGNMENT_FORM']],
+        ['EVALUATION', ['EVALUATION_PLAN', 'FIELD_INSPECTION']],
+        ['SAMPLING_LAB', ['LAB_REQUEST', 'SAMPLE_CODING', 'SAMPLE_HANDOVER', 'SAMPLE_RETURN']],
+        ['RESULTS', ['TEST_REPORT']],
+        ['CORRECTION', ['CORRECTIVE_ACTION_LETTER']],
+        ['TECHNICAL_REVIEW', ['TEST_REPORT', 'CERTIFICATION_RESULT']],
+        ['APPROVAL', ['CERTIFICATE', 'DECISION']],
+        ['ISSUANCE', ['CERTIFICATE', 'DECISION']],
+        ['DELIVERY_ARCHIVE', ['CLIENT_PACKAGE', 'ARCHIVE_SCAN']],
       ];
     assert.deepEqual(
       profile.stationGroups.map((group) => [group.key, group.requirements.map((requirement) => requirement.code)]),
       expectedStationCodes,
     );
-    assert.deepEqual(profile.generatedKinds, profile.fieldCode === 'QC9'
+    assert.deepEqual(profile.generatedKinds, profile.fieldCode === 'QC9' || profile.fieldCode === 'QC20'
       ? ['DOSSIER_COVER', 'PROPOSAL_SUMMARY', 'PROPOSAL_FORM', 'ASSIGNMENT_FORM', 'EVALUATION_PLAN', 'FIELD_INSPECTION', 'SAMPLE_TAKING', 'SAMPLE_CODING', 'EVALUATION_REPORT', 'SAMPLE_HANDOVER', 'SAMPLE_RETURN', 'LAB_REQUEST']
       : ['DOSSIER_COVER', 'PROPOSAL_SUMMARY', 'PROPOSAL_FORM', 'ASSIGNMENT_FORM', 'EVALUATION_PLAN', 'FIELD_INSPECTION', 'SAMPLE_TAKING', 'SAMPLE_CODING', 'EVALUATION_REPORT', 'SAMPLE_HANDOVER', 'LAB_REQUEST']);
     assert.deepEqual(profile.officialOutputs, ['CERTIFICATE', 'DECISION']);
     assert.ok(profile.sourceFormReferences.length >= 5);
-    assert.match(profile.sourceFormReferences.join(' '), /BM-QT-09-0[2345]/);
+    if (profile.fieldCode === 'QC20') {
+      assert.match(profile.sourceFormReferences.join(' '), /chưa|cấu hình|cần/i);
+    } else {
+      assert.match(profile.sourceFormReferences.join(' '), /BM-QT-09-0[2345]/);
+    }
   }
 });
 
@@ -67,8 +105,8 @@ test('catalog filters runtime checklist requirements to the selected field', () 
   assert.deepEqual(profiles.find((profile) => profile.fieldCode === 'QC9')?.stageGroups[0].requirements.map((item) => item.id), ['QC9-PROPOSAL']);
 });
 
-test('maps every blank-pack requirement to the observed PCN source form or source folder', () => {
-  const profiles = getPcnDossierTemplateProfiles();
+test('authoring metadata maps every blank-pack requirement to the observed PCN source form or source folder', () => {
+  const profiles = getPcnDossierTemplateAuthoringProfiles();
 
   for (const profile of profiles) {
     const requirementCodes = new Set(profile.stageGroups.flatMap((group) => group.requirements.map((requirement) => requirement.code)));
@@ -92,27 +130,24 @@ test('maps every blank-pack requirement to the observed PCN source form or sourc
   assert.match(qc9.sourceMappings.find((mapping) => mapping.requirementCode === 'SAMPLE_RETURN')?.note || '', /chưa thấy|sinh nội bộ/i);
 });
 
-test('exposes the blank packs in the PCN template module without importing dossier data', () => {
-  const managementView = fs.readFileSync(new URL('../components/PcnTemplateManagementView.tsx', import.meta.url), 'utf8');
+test('exposes the blank packs inside PCN settings without importing dossier data', () => {
+  const settingsView = fs.readFileSync(new URL('../components/PcnSettingsView.tsx', import.meta.url), 'utf8');
 
-  assert.match(managementView, /Bộ hồ sơ mẫu trống/);
-  assert.match(managementView, /getPcnDossierTemplateProfiles/);
-  assert.match(managementView, /Mẫu trống/);
-  assert.match(managementView, /Kiểm tra toàn bộ nguồn/);
-  assert.match(managementView, /Đầu ra chính thức/);
-  assert.match(managementView, /Tên biểu mẫu nguồn đã đối chiếu/);
-  assert.match(managementView, /sourceFormReferences/);
-  assert.match(managementView, /sourceMappings/);
-  assert.match(managementView, /PCN nguồn/);
-  assert.match(managementView, /stationGroups/);
-  assert.match(managementView, /Dùng lại/);
-  assert.match(managementView, /không tạo hoặc tải lên tài liệu mới/);
-  assert.match(managementView, /usePcnStore\(\(state\) => state\.documentRequirements\)/);
-  assert.doesNotMatch(managementView, /customerName|taxId|phone|sourceRoot.*customers/);
+  assert.match(settingsView, /Khung checklist theo QC4\/QC9\/QC20/);
+  assert.match(settingsView, /QC4\/QC9\/QC20/);
+  assert.match(settingsView, /getPcnDossierTemplateProfiles/);
+  assert.match(settingsView, /Mẫu trống/);
+  assert.match(settingsView, /Đầu ra chính thức/);
+  assert.match(settingsView, /stationGroups/);
+  assert.doesNotMatch(settingsView, /sourceFormReferences|sourceMappings|Tên biểu mẫu nguồn đã đối chiếu|PCN nguồn/);
+  assert.doesNotMatch(settingsView, /Dùng lại trong card hồ sơ/);
+  assert.match(settingsView, /không đọc, theo dõi hoặc hiển thị đường dẫn thư mục nghiên cứu/);
+  assert.doesNotMatch(settingsView, /customerName|taxId|phone|sourceRoot.*customers/);
 });
 
-test('workspace passes the active PCN checklist into the template module', () => {
+test('workspace passes the active PCN checklist into the dossier pipeline and card', () => {
   const workspace = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
 
-  assert.match(workspace, /<PcnTemplateManagementView[\s\S]{0,500}documentRequirements=\{pcn\.documentRequirements\}/);
+  assert.match(workspace, /<PcnPipelineBoard[\s\S]{0,500}requirements=\{boardRequirements\}/);
+  assert.match(workspace, /<PcnDossierDetailView[\s\S]{0,1200}documentRequirements=\{pcn\.documentRequirements\}/);
 });

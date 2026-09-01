@@ -37,10 +37,9 @@ export function buildPcnIssuancePackage(input: PcnIssuanceDraft): IssuancePackag
 }
 
 export function getPcnIssuanceReadiness(
-  dossier: Pick<CertificationDossier, 'status' | 'historicalImport'>,
+  dossier: Pick<CertificationDossier, 'status'>,
   results: ReturnedTestResult[],
   approvalSteps: PcnApprovalStep[],
-  linkedHistoricalImport?: CertificationDossier['historicalImport'],
 ): PcnIssuanceReadiness {
   const reasons: string[] = [];
   if (dossier.status !== 'APPROVED') reasons.push('Hồ sơ chưa được phê duyệt đầy đủ');
@@ -49,10 +48,6 @@ export function getPcnIssuanceReadiness(
   const officialResults = candidateResults.filter((result) => result.outcome !== 'PENDING');
   if (!officialResults.some((result) => result.outcome === 'PASS')) reasons.push('Chưa có KQTN chính thức đạt');
   if (candidateResults.some((result) => result.outcome === 'PENDING')) reasons.push('Còn KQTN đang chờ bổ sung');
-  const historicalImports = [dossier.historicalImport, linkedHistoricalImport].filter(Boolean);
-  if (historicalImports.some((historicalImport) => historicalImport.reviewStatus !== 'REVIEWED' || historicalImport.unresolvedFields.length > 0)) {
-    reasons.push('Rà soát hồ sơ lịch sử chưa hoàn tất');
-  }
   return { ready: reasons.length === 0, reasons };
 }
 
@@ -77,10 +72,7 @@ export function getPcnIssuanceOfficialDocumentReadiness(input: {
       reasons.push(`${documentKind}: MISSING_PRIVATE_ASSET`);
     }
     const data = buildPcnOfficialTemplateData({ context: input.context, issuance: input.issuance, documentKind });
-    const readiness = getPcnOfficialGenerationReadiness(template, data, {
-      reviewStatus: input.context.reviewStatus,
-      unresolvedFields: input.context.unresolvedFields,
-    });
+    const readiness = getPcnOfficialGenerationReadiness(template, data);
     reasons.push(...readiness.reasons.map((reason) => `${documentKind}: ${reason}`));
   }
   return { ready: reasons.length === 0, reasons: [...new Set(reasons)] };

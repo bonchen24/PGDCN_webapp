@@ -111,4 +111,39 @@ export function mergePcnTemplateDefinition(
   };
 }
 
+export function replacePcnTemplateFileDefinition(
+  current: PcnTemplateDefinition,
+  input: {
+    assetId: string;
+    byteSize: number;
+    sha256: string;
+    placeholderKeys: string[];
+    importedByUsername: string;
+    importedAt: string;
+    sourceRelativePath?: string;
+  },
+): PcnTemplateDefinition {
+  const {
+    privateAssetVerified: _privateAssetVerified,
+    privateAssetVerificationIssue: _privateAssetVerificationIssue,
+    sourceOriginalFingerprint: _sourceOriginalFingerprint,
+    annotation: _annotation,
+    ...base
+  } = current;
+  return {
+    ...base,
+    fileAssetId: input.assetId,
+    storageScope: 'PCN_PRIVATE',
+    placeholderKeys: [...input.placeholderKeys],
+    sourceFingerprint: {
+      ...current.sourceFingerprint,
+      ...(input.sourceRelativePath ? { sourceRelativePath: input.sourceRelativePath } : {}),
+      byteSize: input.byteSize,
+      sha256: input.sha256.toLowerCase(),
+    },
+    importedByUsername: input.importedByUsername,
+    importedAt: input.importedAt,
+  };
+}
+
 // --- End of pcnTemplateImport.ts ---

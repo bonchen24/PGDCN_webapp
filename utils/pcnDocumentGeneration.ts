@@ -15,8 +15,10 @@ import type {
   PcnDocumentRequirement,
   PcnDossierAttachment,
   PcnDossierDocument,
+  PcnSampleHandoverDetails,
   PcnSampleLot,
   PcnSampleRoute,
+  PcnOperationalForms,
 } from '../types.ts';
 export { getPcnDocumentSourceUpdatedAt } from './pcnDocumentFreshness.ts';
 
@@ -68,9 +70,8 @@ export interface PcnDossierDocumentContext {
   reviewerUsername?: string;
   targetDate?: string;
   evaluationAt?: string;
+  operationalForms?: PcnOperationalForms;
   fieldNames: string[];
-  reviewStatus: string;
-  unresolvedFields: string[];
   checklist: PcnDocumentChecklistContext[];
   attachments: PcnDocumentAttachmentContext[];
   sampleLots?: PcnSampleLotDocumentContext[];
@@ -135,6 +136,17 @@ export interface PcnSampleHandoverDocumentContext {
   note: string;
   handoverNote: string;
   issueDescription: string;
+  senderName?: string;
+  senderUnit?: string;
+  receiverName?: string;
+  receiverUnit?: string;
+  handoverAt?: string;
+  receivedAt?: string;
+  location?: string;
+  vehicle?: string;
+  driver?: string;
+  handoverQuantity?: number;
+  sampleCodes?: string[];
 }
 
 export interface PcnLabRequestDocumentContext {
@@ -188,6 +200,12 @@ function documentDate(value?: string): string {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Chưa cập nhật';
 }
 
+function documentDateTime(value?: string): string {
+  const date = new Date(clean(value));
+  if (Number.isNaN(date.getTime())) return 'Chưa cập nhật';
+  return date.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+}
+
 export function buildPcnDossierDocumentContext(input: {
   dossier: CertificationDossier;
   proposal: CertificationProposal;
@@ -203,7 +221,6 @@ export function buildPcnDossierDocumentContext(input: {
 }): PcnDossierDocumentContext {
   const { dossier, proposal } = input;
   const customer = dossier.customerSnapshot || proposal.customerSnapshot;
-  const historicalImport = dossier.historicalImport || proposal.historicalImport;
   const documentsByRequirement = new Map(input.documents.filter((item) => item.dossierId === dossier.id).map((item) => [item.requirementId, item]));
   const checklist = input.documentRequirements
     .filter((requirement) => dossier.fieldCodes.includes(requirement.fieldCode))
@@ -271,6 +288,7 @@ export function buildPcnDossierDocumentContext(input: {
     const lot = dossierLots.find((item) => item.id === route.sampleLotId);
     if (!lot) throw new Error('Không tìm thấy lô mẫu thuộc tuyến đã chọn.');
     const labRequest = labRequests.find((request) => request.id === route.labRequestId || request.sampleRouteId === route.id);
+    const handoverDetails: PcnSampleHandoverDetails | undefined = labRequest?.handoverDetails;
     sampleHandover = {
       lotId: lot.id,
       lotCode: clean(lot.lotCode),
@@ -298,6 +316,17 @@ export function buildPcnDossierDocumentContext(input: {
       note: clean(route.note),
       handoverNote: clean(labRequest?.handoverNote),
       issueDescription: clean(labRequest?.sampleIssue?.description),
+      ...(clean(handoverDetails?.senderName) ? { senderName: clean(handoverDetails?.senderName) } : {}),
+      ...(clean(handoverDetails?.senderUnit) ? { senderUnit: clean(handoverDetails?.senderUnit) } : {}),
+      ...(clean(handoverDetails?.receiverName) ? { receiverName: clean(handoverDetails?.receiverName) } : {}),
+      ...(clean(handoverDetails?.receiverUnit) ? { receiverUnit: clean(handoverDetails?.receiverUnit) } : {}),
+      ...(clean(handoverDetails?.handoverAt) ? { handoverAt: clean(handoverDetails?.handoverAt) } : {}),
+      ...(clean(handoverDetails?.receivedAt) ? { receivedAt: clean(handoverDetails?.receivedAt) } : {}),
+      ...(clean(handoverDetails?.location) ? { location: clean(handoverDetails?.location) } : {}),
+      ...(clean(handoverDetails?.vehicle) ? { vehicle: clean(handoverDetails?.vehicle) } : {}),
+      ...(clean(handoverDetails?.driver) ? { driver: clean(handoverDetails?.driver) } : {}),
+      ...(handoverDetails && Number.isFinite(Number(handoverDetails.quantity)) ? { handoverQuantity: Number(handoverDetails.quantity) } : {}),
+      ...(handoverDetails?.sampleCodes?.length ? { sampleCodes: handoverDetails.sampleCodes.map(clean).filter(Boolean) } : {}),
     };
   }
   let selectedLabRequest: PcnLabRequestDocumentContext | undefined;
@@ -370,9 +399,8 @@ export function buildPcnDossierDocumentContext(input: {
     ...(clean(dossier.reviewerUsername) ? { reviewerUsername: clean(dossier.reviewerUsername) } : {}),
     ...(clean(dossier.targetDate) ? { targetDate: clean(dossier.targetDate) } : {}),
     ...(clean(dossier.evaluationAt) ? { evaluationAt: clean(dossier.evaluationAt) } : {}),
+    ...(dossier.operationalForms ? { operationalForms: dossier.operationalForms } : {}),
     fieldNames: dossier.fieldCodes.map((code) => input.fields.find((field) => field.code === code)?.name || code),
-    reviewStatus: historicalImport?.reviewStatus || '',
-    unresolvedFields: [...(historicalImport?.unresolvedFields || [])].sort(),
     checklist,
     attachments,
     sampleLots,
@@ -415,8 +443,6 @@ export function buildPcnDossierCoverDocx(context: PcnDossierDocumentContext): Bu
     [{ value: 'Phương thức', bold: true }, { value: context.method.replace('METHOD_', 'Phương thức ') }],
     [{ value: 'Chủ hồ sơ', bold: true }, { value: context.ownerUsername || 'Chưa phân công' }],
     [{ value: 'Trạng thái', bold: true }, { value: context.status }],
-    [{ value: 'Rà soát nhập lịch sử', bold: true }, { value: context.reviewStatus || 'Không áp dụng' }],
-    [{ value: 'Trường cần xử lý', bold: true }, { value: context.unresolvedFields.join(', ') || 'Không còn' }],
   ];
   const checklistRows = [
     [{ value: 'Tài liệu', bold: true }, { value: 'Trạng thái', bold: true }, { value: 'Phiên bản', bold: true }],
@@ -470,17 +496,16 @@ export function buildPcnProposalSummaryDocx(context: PcnDossierDocumentContext):
     [{ value: 'Phương thức', bold: true }, { value: context.method.replace('METHOD_', 'Phương thức ') }],
     [{ value: 'Lĩnh vực', bold: true }, { value: context.fieldNames.join(', ') || 'Chưa cập nhật' }],
     [{ value: 'Trạng thái hồ sơ', bold: true }, { value: context.status }],
-    [{ value: 'Rà soát nhập lịch sử', bold: true }, { value: context.reviewStatus || 'Không áp dụng' }],
   ];
-  const unresolved = context.unresolvedFields.length > 0 ? context.unresolvedFields.join(', ') : 'Không còn trường cần xử lý';
+  const missingChecklist = context.checklist.filter((item) => item.required && item.status !== 'PRESENT').map((item) => item.name).join(', ') || 'Không còn tài liệu bắt buộc thiếu';
   const body = [
     paragraph('TRUNG TÂM TVCI', true, 'center'),
     paragraph('PHIẾU TÓM TẮT ĐỀ NGHỊ', true, 'center'),
     paragraph('Bản nháp nội bộ để kiểm tra dữ liệu liền mạch', false, 'center'),
     paragraph(`Mã context: ${context.contextHash}`, false, 'right'),
     table(metadataRows),
-    paragraph('TRƯỜNG CẦN RÀ SOÁT', true),
-    paragraph(unresolved),
+    paragraph('TÀI LIỆU BẮT BUỘC CÒN THIẾU', true),
+    paragraph(missingChecklist),
     paragraph('Ghi chú: Phiếu này chỉ là bản nháp quản lý nội bộ, không thay thế Đề nghị đã được ký hoặc GCN/QĐ chính thức.'),
     '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1000" w:right="1000" w:bottom="1000" w:left="1000"/></w:sectPr>',
   ].join('');
@@ -511,7 +536,7 @@ function buildPdfPageSvg(context: PcnDossierDocumentContext, pageRows: Array<{ k
     const y = 360 + index * 35;
     return `${svgText(truncate(`${row.kind} • ${row.name}`, 88), 42, y, 14, 700, '#475569')}${svgText(truncate(row.detail, 96), 42, y + 17, 12, 400, '#64748b')}`;
   }).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="794" height="1123" viewBox="0 0 794 1123"><rect width="794" height="1123" fill="#ffffff"/><rect x="28" y="28" width="738" height="1067" rx="14" fill="#f8fafc" stroke="#cbd5e1"/><rect x="42" y="42" width="710" height="112" rx="10" fill="#0f172a"/><text x="68" y="78" font-family="Arial, Liberation Sans, sans-serif" font-size="18px" font-weight="700" fill="#6ee7b7">TRUNG TÂM TVCI</text>${svgText('HỒ SƠ CHỨNG NHẬN', 68, 111, 28, 700, '#ffffff')}${svgText(`${context.dossierCode} • ${context.proposalCode}`, 68, 137, 14, 400, '#cbd5e1')}${svgText('BÌA VÀ MỤC LỤC TỆP HỒ SƠ', 42, 195, 23, 700, '#0f172a')}${svgText(`Khách hàng: ${truncate(context.customerName || 'Chưa cập nhật', 60)}`, 42, 230, 15, 400)}${svgText(`Sản phẩm: ${truncate(context.productName || 'Chưa cập nhật', 60)}`, 42, 255, 15, 400)}${svgText(`Trạng thái: ${context.status} • Rà soát: ${context.reviewStatus || 'Không áp dụng'}`, 42, 280, 15, 400, '#475569')}${svgText('DANH SÁCH MỤC LỤC', 42, 325, 13, 700, '#64748b')}${rows}${svgText(`Context ${context.contextHash.slice(0, 16)} • Trang ${pageNumber}/${pageCount}`, 42, 1068, 12, 400, '#94a3b8')}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="794" height="1123" viewBox="0 0 794 1123"><rect width="794" height="1123" fill="#ffffff"/><rect x="28" y="28" width="738" height="1067" rx="14" fill="#f8fafc" stroke="#cbd5e1"/><rect x="42" y="42" width="710" height="112" rx="10" fill="#0f172a"/><text x="68" y="78" font-family="Arial, Liberation Sans, sans-serif" font-size="18px" font-weight="700" fill="#6ee7b7">TRUNG TÂM TVCI</text>${svgText('HỒ SƠ CHỨNG NHẬN', 68, 111, 28, 700, '#ffffff')}${svgText(`${context.dossierCode} • ${context.proposalCode}`, 68, 137, 14, 400, '#cbd5e1')}${svgText('BÌA VÀ MỤC LỤC TỆP HỒ SƠ', 42, 195, 23, 700, '#0f172a')}${svgText(`Khách hàng: ${truncate(context.customerName || 'Chưa cập nhật', 60)}`, 42, 230, 15, 400)}${svgText(`Sản phẩm: ${truncate(context.productName || 'Chưa cập nhật', 60)}`, 42, 255, 15, 400)}${svgText(`Trạng thái: ${context.status}`, 42, 280, 15, 400, '#475569')}${svgText('DANH SÁCH MỤC LỤC', 42, 325, 13, 700, '#64748b')}${rows}${svgText(`Context ${context.contextHash.slice(0, 16)} • Trang ${pageNumber}/${pageCount}`, 42, 1068, 12, 400, '#94a3b8')}</svg>`;
 }
 
 export async function buildPcnDossierCoverPdf(context: PcnDossierDocumentContext): Promise<Buffer> {
@@ -548,16 +573,15 @@ export async function buildPcnProposalSummaryPdf(context: PcnDossierDocumentCont
     ['Phương thức', context.method.replace('METHOD_', 'Phương thức ')],
     ['Lĩnh vực', context.fieldNames.join(', ') || 'Chưa cập nhật'],
     ['Trạng thái', context.status],
-    ['Rà soát lịch sử', context.reviewStatus || 'Không áp dụng'],
   ];
-  const unresolved = context.unresolvedFields.length > 0 ? context.unresolvedFields.join(', ') : 'Không còn trường cần xử lý';
+  const missingChecklist = context.checklist.filter((item) => item.required && item.status !== 'PRESENT').map((item) => item.name).join(', ') || 'Không còn tài liệu bắt buộc thiếu';
   const rowSvg = rows.map(([label, value], index) => {
     const y = 300 + index * 32;
     return `${svgText(label, 42, y, 14, 700, '#475569')}${svgText(truncate(value, 78), 230, y, 14)}<line x1="42" y1="${y + 12}" x2="752" y2="${y + 12}" stroke="#e2e8f0"/>`;
   }).join('');
   const warningY = 300 + rows.length * 32 + 32;
   const disclaimerY = warningY + 132;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="794" height="1123" viewBox="0 0 794 1123"><rect width="794" height="1123" fill="#ffffff"/><rect x="28" y="28" width="738" height="1067" rx="14" fill="#f8fafc" stroke="#cbd5e1"/><rect x="42" y="42" width="710" height="112" rx="10" fill="#0f172a"/><text x="68" y="78" font-family="Arial, Liberation Sans, sans-serif" font-size="18px" font-weight="700" fill="#6ee7b7">TRUNG TÂM TVCI</text>${svgText('PHIẾU TÓM TẮT ĐỀ NGHỊ', 68, 111, 28, 700, '#ffffff')}${svgText(`${context.proposalCode} • ${context.dossierCode}`, 68, 137, 14, 400, '#cbd5e1')}${svgText('BẢN NHÁP NỘI BỘ', 42, 195, 23, 700, '#0f172a')}${svgText('Kiểm tra thông tin liền mạch giữa Đề nghị và Hồ sơ', 42, 230, 15, 400, '#475569')}${rowSvg}<rect x="42" y="${warningY}" width="710" height="84" rx="8" fill="#fff7ed" stroke="#fed7aa"/>${svgText('TRƯỜNG CẦN RÀ SOÁT', 62, warningY + 30, 13, 700, '#9a3412')}${svgText(truncate(unresolved, 82), 62, warningY + 58, 14, 400, '#7c2d12')}${svgText('Không thay thế Đề nghị đã ký hoặc GCN/QĐ chính thức.', 42, disclaimerY, 13, 400, '#64748b')}${svgText(`Context ${context.contextHash.slice(0, 16)}`, 42, 1068, 12, 400, '#94a3b8')}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="794" height="1123" viewBox="0 0 794 1123"><rect width="794" height="1123" fill="#ffffff"/><rect x="28" y="28" width="738" height="1067" rx="14" fill="#f8fafc" stroke="#cbd5e1"/><rect x="42" y="42" width="710" height="112" rx="10" fill="#0f172a"/><text x="68" y="78" font-family="Arial, Liberation Sans, sans-serif" font-size="18px" font-weight="700" fill="#6ee7b7">TRUNG TÂM TVCI</text>${svgText('PHIẾU TÓM TẮT ĐỀ NGHỊ', 68, 111, 28, 700, '#ffffff')}${svgText(`${context.proposalCode} • ${context.dossierCode}`, 68, 137, 14, 400, '#cbd5e1')}${svgText('BẢN NHÁP NỘI BỘ', 42, 195, 23, 700, '#0f172a')}${svgText('Kiểm tra thông tin liền mạch giữa Đề nghị và Hồ sơ', 42, 230, 15, 400, '#475569')}${rowSvg}<rect x="42" y="${warningY}" width="710" height="84" rx="8" fill="#fff7ed" stroke="#fed7aa"/>${svgText('TÀI LIỆU BẮT BUỘC CÒN THIẾU', 62, warningY + 30, 13, 700, '#9a3412')}${svgText(truncate(missingChecklist, 82), 62, warningY + 58, 14, 400, '#7c2d12')}${svgText('Không thay thế Đề nghị đã ký hoặc GCN/QĐ chính thức.', 42, disclaimerY, 13, 400, '#64748b')}${svgText(`Context ${context.contextHash.slice(0, 16)}`, 42, 1068, 12, 400, '#94a3b8')}</svg>`;
   const png = renderPcnSvg(svg);
   const pdf = await createPcnPdf('PHIẾU TÓM TẮT ĐỀ NGHỊ');
   const image = await pdf.embedPng(png);
@@ -574,7 +598,7 @@ function pcnProposalChannelLabel(channel: CertificationProposal['channel']): str
 }
 
 function pcnProposalFormRows(context: PcnDossierDocumentContext): Array<[string, string]> {
-  return [
+  const rows: PcnOperationalFormRow[] = [
     ['Mã Đề nghị', context.proposalCode],
     ['Mã hồ sơ', context.dossierCode],
     ['Ngày tiếp nhận / Kênh', `${documentDate(context.proposalReceivedAt)} / ${pcnProposalChannelLabel(context.proposalChannel || 'OTHER')}`],
@@ -593,6 +617,7 @@ function pcnProposalFormRows(context: PcnDossierDocumentContext): Array<[string,
     ['Thông số kỹ thuật', context.specifications || 'Chưa cập nhật'],
     ['Số lượng / Địa chỉ kho', `${context.quantity || 0} / ${context.warehouseAddress || 'Chưa cập nhật'}`],
   ];
+  return rows;
 }
 
 export function buildPcnProposalFormDocx(context: PcnDossierDocumentContext): Buffer {
@@ -709,6 +734,7 @@ export async function buildPcnProposalFormPdf(context: PcnDossierDocumentContext
 type PcnEvaluationReportPdfRow = { label: string; value: string; section?: boolean };
 
 function pcnEvaluationReportRows(context: PcnDossierDocumentContext): PcnEvaluationReportPdfRow[] {
+  const report = context.operationalForms?.evaluationReport;
   const missingRequired = context.checklist
     .filter((item) => item.required && item.status !== 'PRESENT')
     .map((item) => item.name)
@@ -723,8 +749,15 @@ function pcnEvaluationReportRows(context: PcnDossierDocumentContext): PcnEvaluat
     { label: 'Người rà soát', value: context.reviewerUsername || 'Chưa phân công' },
     { label: 'Hạn xử lý / Ngày đánh giá', value: `${documentDate(context.targetDate)} / ${documentDate(context.evaluationAt)}` },
     { label: 'Trạng thái hồ sơ', value: context.status },
-    { label: 'Rà soát nguồn', value: context.reviewStatus || 'Không áp dụng' },
-    { label: 'Trường nguồn cần rà soát', value: context.unresolvedFields.join(', ') || 'Không còn' },
+    ...(report ? [
+      { label: 'Số báo cáo đánh giá', value: report.reportNumber || 'Chưa cập nhật' },
+      { label: 'Ngày lập báo cáo', value: documentDate(report.reportedAt) },
+      { label: 'Kết quả/nhận xét đánh giá', value: report.findings || 'Chưa cập nhật' },
+      { label: 'Kết luận đánh giá', value: report.conclusion || 'Chưa cập nhật' },
+      { label: 'Điểm không phù hợp', value: report.nonconformities.join('; ') || 'Không có' },
+      { label: 'Kiến nghị', value: report.recommendations || 'Không có' },
+      { label: 'Ghi chú báo cáo', value: report.notes || 'Không có' },
+    ] : []),
     { label: 'CHECKLIST HỒ SƠ', value: '', section: true },
     ...(context.checklist.length > 0
       ? context.checklist.map((item) => ({
@@ -803,7 +836,10 @@ export async function buildPcnEvaluationReportPdf(context: PcnDossierDocumentCon
 type PcnOperationalFormRow = [string, string];
 
 function pcnOperationalFormRows(context: PcnDossierDocumentContext): PcnOperationalFormRow[] {
-  return [
+  const assignment = context.operationalForms?.assignment;
+  const plan = context.operationalForms?.evaluationPlan;
+  const inspection = context.operationalForms?.fieldInspection;
+  const rows: PcnOperationalFormRow[] = [
     ['Mã hồ sơ / Đề nghị', `${context.dossierCode} / ${context.proposalCode}`],
     ['Lĩnh vực / Phương thức', `${context.fieldNames.join(', ') || 'Chưa cập nhật'} / ${context.method.replace('METHOD_', 'Phương thức ')}`],
     ['Khách hàng', context.customerName || 'Chưa cập nhật'],
@@ -813,7 +849,33 @@ function pcnOperationalFormRows(context: PcnDossierDocumentContext): PcnOperatio
     ['Người đánh giá', context.evaluatorUsername || 'Chưa phân công'],
     ['Người rà soát', context.reviewerUsername || 'Chưa phân công'],
     ['Hạn xử lý / Ngày đánh giá', `${documentDate(context.targetDate)} / ${documentDate(context.evaluationAt)}`],
+    ...(assignment ? ([
+      ['Số phiếu phân công', assignment.assignmentNumber || 'Chưa cập nhật'],
+      ['Ngày phân công', documentDate(assignment.assignedAt)],
+      ['Người phân công', assignment.assignedBy || 'Chưa cập nhật'],
+      ['Phạm vi phân công', assignment.scope || 'Chưa cập nhật'],
+      ['Ghi chú phân công', assignment.notes || 'Không có'],
+    ] as PcnOperationalFormRow[]) : []),
+    ...(plan ? ([
+      ['Kế hoạch đánh giá', `${documentDate(plan.plannedStartAt)} – ${documentDate(plan.plannedEndAt)}`],
+      ['Địa điểm đánh giá', plan.location || 'Chưa cập nhật'],
+      ['Thành viên đoàn đánh giá', plan.teamMembers.join('; ') || 'Chưa cập nhật'],
+      ['Phạm vi kế hoạch', plan.scope || 'Chưa cập nhật'],
+      ['Tiêu chí đánh giá', plan.criteria || 'Chưa cập nhật'],
+      ['Đại diện khách hàng', plan.customerRepresentative || 'Chưa cập nhật'],
+      ['Ghi chú kế hoạch', plan.notes || 'Không có'],
+    ] as PcnOperationalFormRow[]) : []),
+    ...(inspection ? ([
+      ['Ngày kiểm tra hiện trường', documentDate(inspection.inspectedAt)],
+      ['Địa điểm kiểm tra', inspection.location || 'Chưa cập nhật'],
+      ['Thành phần tham gia', inspection.participants.join('; ') || 'Chưa cập nhật'],
+      ['Kết quả/nhận xét hiện trường', inspection.findings || 'Chưa cập nhật'],
+      ['Kết luận hiện trường', inspection.conclusion || 'Chưa cập nhật'],
+      ['Điểm không phù hợp hiện trường', inspection.nonconformities.join('; ') || 'Không có'],
+      ['Ghi chú hiện trường', inspection.notes || 'Không có'],
+    ] as PcnOperationalFormRow[]) : []),
   ];
+  return rows;
 }
 
 function pcnOperationalChecklistSummary(context: PcnDossierDocumentContext): string {
@@ -876,11 +938,11 @@ export async function buildPcnAssignmentFormPdf(context: PcnDossierDocumentConte
 }
 
 export function buildPcnEvaluationPlanDocx(context: PcnDossierDocumentContext): Buffer {
-  return buildPcnOperationalFormDocx(context, 'KẾ HOẠCH ĐÁNH GIÁ CNSP', [...pcnOperationalFormRows(context), ['Tình trạng checklist', pcnOperationalChecklistSummary(context)], ['Trường nguồn cần rà soát', context.unresolvedFields.join(', ') || 'Không còn']], 'XÁC NHẬN KẾ HOẠCH', 'Người lập kế hoạch: ____________________        Người rà soát: ____________________');
+  return buildPcnOperationalFormDocx(context, 'KẾ HOẠCH ĐÁNH GIÁ CNSP', [...pcnOperationalFormRows(context), ['Tình trạng checklist', pcnOperationalChecklistSummary(context)], ['Tài liệu bắt buộc còn thiếu', context.checklist.filter((item) => item.required && item.status !== 'PRESENT').map((item) => item.name).join(', ') || 'Không còn']], 'XÁC NHẬN KẾ HOẠCH', 'Người lập kế hoạch: ____________________        Người rà soát: ____________________');
 }
 
 export async function buildPcnEvaluationPlanPdf(context: PcnDossierDocumentContext): Promise<Buffer> {
-  return buildPcnOperationalFormPdf(context, 'KẾ HOẠCH ĐÁNH GIÁ CNSP', [...pcnOperationalFormRows(context), ['Tình trạng checklist', pcnOperationalChecklistSummary(context)], ['Trường nguồn cần rà soát', context.unresolvedFields.join(', ') || 'Không còn']], 'NGƯỜI LẬP KẾ HOẠCH', 'NGƯỜI RÀ SOÁT');
+  return buildPcnOperationalFormPdf(context, 'KẾ HOẠCH ĐÁNH GIÁ CNSP', [...pcnOperationalFormRows(context), ['Tình trạng checklist', pcnOperationalChecklistSummary(context)], ['Tài liệu bắt buộc còn thiếu', context.checklist.filter((item) => item.required && item.status !== 'PRESENT').map((item) => item.name).join(', ') || 'Không còn']], 'NGƯỜI LẬP KẾ HOẠCH', 'NGƯỜI RÀ SOÁT');
 }
 
 export function buildPcnFieldInspectionDocx(context: PcnDossierDocumentContext): Buffer {
@@ -894,20 +956,29 @@ export async function buildPcnFieldInspectionPdf(context: PcnDossierDocumentCont
 function pcnSampleTakingRows(context: PcnDossierDocumentContext): PcnOperationalFormRow[] {
   const sample = context.sampleHandover;
   if (!sample) throw new Error('Biên bản lấy mẫu phải có một tuyến mẫu được chọn.');
-  return [
+  const form = context.operationalForms?.sampleTaking;
+  const rows: PcnOperationalFormRow[] = [
     ['Mã hồ sơ / Đề nghị', `${context.dossierCode} / ${context.proposalCode}`],
     ['Lĩnh vực / Quy chuẩn', context.fieldNames.join(', ') || 'Chưa cập nhật'],
     ['Mã lô mẫu', sample.lotCode || 'Chưa cập nhật'],
     ['Tên mẫu / Model / Nhãn hiệu', [sample.sampleName, sample.model, sample.brand].filter(Boolean).join(' / ') || 'Chưa cập nhật'],
     ['Số lượng / Đơn vị', `${sample.quantity} ${sample.unit}`.trim()],
-    ['Địa điểm / nơi lấy mẫu', sample.currentLocation || context.warehouseAddress || 'Chưa cập nhật'],
-    ['Ngày lấy / tiếp nhận mẫu', documentDate(sample.lotReceivedAt)],
+    ['Địa điểm / nơi lấy mẫu', form?.location || sample.currentLocation || context.warehouseAddress || 'Chưa cập nhật'],
+    ['Ngày lấy / tiếp nhận mẫu', documentDate(form?.sampledAt || sample.lotReceivedAt)],
+    ...(form ? ([
+      ['Phương pháp lấy mẫu', form.samplingMethod || 'Chưa cập nhật'],
+      ['Thành phần tham gia', form.participants.join('; ') || 'Chưa cập nhật'],
+      ['Số lượng lấy mẫu', `${form.sampleQuantity} ${form.unit}`.trim()],
+      ['Tình trạng bao gói', form.packaging || 'Chưa cập nhật'],
+      ['Mã tem niêm phong', form.sealCode || 'Chưa cập nhật'],
+    ] as PcnOperationalFormRow[]) : []),
     ['Phòng thử nghiệm dự kiến', sample.labName || 'Chưa cập nhật'],
     ['Mã tuyến / PYC liên kết', `${sample.routeId} / ${sample.pycNumber || 'Chưa tạo PYC'}`],
     ['Tiêu chuẩn / chỉ tiêu', sample.criteria || context.specifications || 'Chưa cập nhật'],
     ['Trạng thái tuyến / lô', `${sample.routeStatus} / ${sample.lotStatus}`],
-    ['Ghi chú lấy mẫu', sample.note || 'Không có'],
+    ['Ghi chú lấy mẫu', form?.notes || sample.note || 'Không có'],
   ];
+  return rows;
 }
 
 export function buildPcnSampleTakingDocx(context: PcnDossierDocumentContext): Buffer {
@@ -921,19 +992,28 @@ export async function buildPcnSampleTakingPdf(context: PcnDossierDocumentContext
 function pcnSampleCodingRows(context: PcnDossierDocumentContext): PcnOperationalFormRow[] {
   const sample = context.sampleHandover;
   if (!sample) throw new Error('Biên bản mã hóa mẫu phải có một tuyến mẫu được chọn.');
-  return [
+  const form = context.operationalForms?.sampleCoding;
+  const rows: PcnOperationalFormRow[] = [
     ['Mã hồ sơ / Đề nghị', `${context.dossierCode} / ${context.proposalCode}`],
     ['Lĩnh vực / Quy chuẩn', context.fieldNames.join(', ') || 'Chưa cập nhật'],
-    ['Mã lô mẫu', sample.lotCode || 'Chưa cập nhật'],
+    ['Mã lô mẫu', form?.lotCode || sample.lotCode || 'Chưa cập nhật'],
     ['Tên mẫu / Model / Nhãn hiệu', [sample.sampleName, sample.model, sample.brand].filter(Boolean).join(' / ') || 'Chưa cập nhật'],
     ['Số lượng / Đơn vị', `${sample.quantity} ${sample.unit}`.trim()],
+    ...(form ? ([
+      ['Ngày mã hóa mẫu', documentDate(form.codedAt)],
+      ['Người mã hóa mẫu', form.coder || 'Chưa cập nhật'],
+      ['Mã mẫu vật lý', form.sampleCodes.join(', ') || 'Chưa cập nhật'],
+      ['Mã tem niêm phong', form.sealCode || 'Chưa cập nhật'],
+    ] as PcnOperationalFormRow[]) : []),
     ['Mã tuyến mẫu', sample.routeId],
     ['Phòng thử nghiệm', sample.labName || 'Chưa cập nhật'],
     ['PYC liên kết', sample.pycNumber || 'Chưa tạo PYC'],
     ['Tiêu chuẩn / chỉ tiêu', sample.criteria || context.specifications || 'Chưa cập nhật'],
     ['Trạng thái tuyến / lô', `${sample.routeStatus} / ${sample.lotStatus}`],
     ['Ngày tiếp nhận mẫu', documentDate(sample.lotReceivedAt)],
+    ...(form ? ([['Ghi chú mã hóa mẫu', form.notes || 'Không có']] as PcnOperationalFormRow[]) : []),
   ];
+  return rows;
 }
 
 export function buildPcnSampleCodingDocx(context: PcnDossierDocumentContext): Buffer {
@@ -1032,8 +1112,14 @@ export function buildPcnSampleHandoverDocx(context: PcnDossierDocumentContext): 
     [{ value: 'PYC liên kết', bold: true }, { value: handover.pycNumber || 'Chưa tạo PYC' }],
     [{ value: 'Trạng thái tuyến / PYC', bold: true }, { value: [handover.routeStatus, handover.pycStatus].filter(Boolean).join(' / ') || 'Chưa cập nhật' }],
     [{ value: 'Ngày tiếp nhận mẫu', bold: true }, { value: documentDate(handover.lotReceivedAt) }],
-    [{ value: 'Ngày giao / PTN nhận', bold: true }, { value: `${documentDate(handover.sentAt)} / ${documentDate(handover.routeReceivedAt)}` }],
-    [{ value: 'Nơi giữ hiện tại', bold: true }, { value: handover.currentLocation || 'Chưa cập nhật' }],
+    [{ value: 'Số lượng giao nhận', bold: true }, { value: `${handover.handoverQuantity ?? handover.quantity} ${handover.unit}`.trim() }],
+    [{ value: 'Mã mẫu / mã hóa theo lô', bold: true }, { value: handover.sampleCodes?.join(', ') || handover.lotCode }],
+    [{ value: 'Bên giao / đơn vị', bold: true }, { value: [handover.senderName, handover.senderUnit].filter(Boolean).join(' / ') || 'Chưa cập nhật' }],
+    [{ value: 'Bên nhận / đơn vị', bold: true }, { value: [handover.receiverName, handover.receiverUnit || handover.labName].filter(Boolean).join(' / ') || 'Chưa cập nhật' }],
+    [{ value: 'Thời điểm bàn giao', bold: true }, { value: documentDateTime(handover.handoverAt || handover.sentAt) }],
+    [{ value: 'Thời điểm PTN nhận', bold: true }, { value: documentDateTime(handover.receivedAt || handover.routeReceivedAt) }],
+    [{ value: 'Địa điểm bàn giao', bold: true }, { value: handover.location || handover.currentLocation || 'Chưa cập nhật' }],
+    [{ value: 'Phương tiện / lái xe', bold: true }, { value: [handover.vehicle, handover.driver].filter(Boolean).join(' / ') || 'Chưa cập nhật' }],
     [{ value: 'Tiêu chuẩn / chỉ tiêu', bold: true }, { value: handover.criteria || context.specifications || 'Chưa cập nhật' }],
     [{ value: 'Ghi chú giao nhận', bold: true }, { value: handover.handoverNote || handover.note || 'Không có' }],
     ...(handover.issueDescription ? [[{ value: 'Vấn đề mẫu', bold: true }, { value: handover.issueDescription }]] : []),
@@ -1045,7 +1131,7 @@ export function buildPcnSampleHandoverDocx(context: PcnDossierDocumentContext): 
     paragraph(`Mã context: ${context.contextHash}`, false, 'right'),
     table(rows),
     paragraph('XÁC NHẬN GIAO NHẬN', true),
-    paragraph('Bên giao: ____________________        Bên nhận: ____________________'),
+    paragraph(`Bên giao: ${handover.senderName || '____________________'}        Bên nhận: ${handover.receiverName || '____________________'}`),
     paragraph('Ngày ký: ____/____/________        Ngày ký: ____/____/________'),
     paragraph('Tài liệu này là bản nháp quản lý; không thay thế biên bản đã ký hoặc chứng từ pháp lý.', false),
     '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1000" w:right="1000" w:bottom="1000" w:left="1000"/></w:sectPr>',
@@ -1068,17 +1154,24 @@ export async function buildPcnSampleHandoverPdf(context: PcnDossierDocumentConte
     ['PYC liên kết', handover.pycNumber || 'Chưa tạo PYC'],
     ['Trạng thái tuyến / PYC', [handover.routeStatus, handover.pycStatus].filter(Boolean).join(' / ') || 'Chưa cập nhật'],
     ['Ngày tiếp nhận mẫu', documentDate(handover.lotReceivedAt)],
-    ['Ngày giao / PTN nhận', `${documentDate(handover.sentAt)} / ${documentDate(handover.routeReceivedAt)}`],
-    ['Nơi giữ hiện tại', handover.currentLocation || 'Chưa cập nhật'],
+    ['Số lượng giao nhận', `${handover.handoverQuantity ?? handover.quantity} ${handover.unit}`.trim()],
+    ['Mã mẫu / mã hóa theo lô', handover.sampleCodes?.join(', ') || handover.lotCode],
+    ['Bên giao / đơn vị', [handover.senderName, handover.senderUnit].filter(Boolean).join(' / ') || 'Chưa cập nhật'],
+    ['Bên nhận / đơn vị', [handover.receiverName, handover.receiverUnit || handover.labName].filter(Boolean).join(' / ') || 'Chưa cập nhật'],
+    ['Thời điểm bàn giao', documentDateTime(handover.handoverAt || handover.sentAt)],
+    ['Thời điểm PTN nhận', documentDateTime(handover.receivedAt || handover.routeReceivedAt)],
+    ['Địa điểm bàn giao', handover.location || handover.currentLocation || 'Chưa cập nhật'],
+    ['Phương tiện / lái xe', [handover.vehicle, handover.driver].filter(Boolean).join(' / ') || 'Chưa cập nhật'],
     ['Tiêu chuẩn / chỉ tiêu', handover.criteria || context.specifications || 'Chưa cập nhật'],
     ['Ghi chú giao nhận', handover.handoverNote || handover.note || 'Không có'],
     ...(handover.issueDescription ? [['Vấn đề mẫu', handover.issueDescription]] : []),
   ];
   const rowSvg = rows.map(([label, value], index) => {
-    const y = 282 + index * 36;
+    const y = 268 + index * 29;
     return `${svgText(label, 54, y, 13, 700, '#475569')}${svgText(truncate(value, 72), 260, y, 13)}<line x1="54" y1="${y + 11}" x2="740" y2="${y + 11}" stroke="#e2e8f0"/>`;
   }).join('');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="794" height="1123" viewBox="0 0 794 1123"><rect width="794" height="1123" fill="#ffffff"/><rect x="28" y="28" width="738" height="1067" rx="14" fill="#f8fafc" stroke="#cbd5e1"/><rect x="42" y="42" width="710" height="112" rx="10" fill="#0f172a"/><text x="68" y="78" font-family="Arial, Liberation Sans, sans-serif" font-size="18px" font-weight="700" fill="#6ee7b7">TRUNG TÂM TVCI</text>${svgText('BIÊN BẢN GIAO/NHẬN MẪU', 68, 111, 25, 700, '#ffffff')}${svgText(`${handover.lotCode} • ${handover.labName}`, 68, 137, 13, 400, '#cbd5e1')}${svgText('BẢN NHÁP NỘI BỘ', 54, 204, 22, 700, '#0f172a')}${svgText('Thông tin lấy từ lô mẫu, tuyến thử và PYC liên kết', 54, 232, 14, 400, '#475569')}${rowSvg}${svgText('BÊN GIAO: ____________________', 54, 900, 13, 700, '#475569')}${svgText('BÊN NHẬN: ____________________', 430, 900, 13, 700, '#475569')}${svgText('Không thay thế biên bản đã ký hoặc chứng từ pháp lý.', 54, 960, 12, 400, '#64748b')}${svgText(`Context ${context.contextHash.slice(0, 16)}`, 54, 1068, 12, 400, '#94a3b8')}</svg>`;
+  const signatureY = Math.min(945, 300 + rows.length * 29);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="794" height="1123" viewBox="0 0 794 1123"><rect width="794" height="1123" fill="#ffffff"/><rect x="28" y="28" width="738" height="1067" rx="14" fill="#f8fafc" stroke="#cbd5e1"/><rect x="42" y="42" width="710" height="112" rx="10" fill="#0f172a"/><text x="68" y="78" font-family="Arial, Liberation Sans, sans-serif" font-size="18px" font-weight="700" fill="#6ee7b7">TRUNG TÂM TVCI</text>${svgText('BIÊN BẢN GIAO/NHẬN MẪU', 68, 111, 25, 700, '#ffffff')}${svgText(`${handover.lotCode} • ${handover.labName}`, 68, 137, 13, 400, '#cbd5e1')}${svgText('BẢN NHÁP NỘI BỘ', 54, 204, 22, 700, '#0f172a')}${svgText('Thông tin lấy từ lô mẫu, tuyến thử và PYC liên kết', 54, 232, 14, 400, '#475569')}${rowSvg}${svgText(`BÊN GIAO: ${handover.senderName || '____________________'}`, 54, signatureY, 13, 700, '#475569')}${svgText(`BÊN NHẬN: ${handover.receiverName || '____________________'}`, 430, signatureY, 13, 700, '#475569')}${svgText('Không thay thế biên bản đã ký hoặc chứng từ pháp lý.', 54, signatureY + 55, 12, 400, '#64748b')}${svgText(`Context ${context.contextHash.slice(0, 16)}`, 54, 1068, 12, 400, '#94a3b8')}</svg>`;
   const png = renderPcnSvg(svg);
   const pdf = await createPcnPdf('BIÊN BẢN GIAO/NHẬN MẪU');
   const image = await pdf.embedPng(png);

@@ -3,15 +3,10 @@ import type { NotificationEntityType, PcnDossierStatus, PcnGeneratedDocumentKind
 
 export type PcnDossierDetailTab =
   | 'overview'
-  | 'historicalReview'
   | 'documents'
-  | 'generation'
-  | 'proposal'
   | 'lab'
   | 'results'
-  | 'issuance'
-  | 'attachments'
-  | 'history';
+  | 'issuance';
 
 /**
  * Maps a PCN notification to the dossier detail area that can act on it.
@@ -21,7 +16,7 @@ export type PcnDossierDetailTab =
 export function getPcnNotificationDossierTab(entityType?: NotificationEntityType): PcnDossierDetailTab | undefined {
   switch (entityType) {
     case 'PCN_PROPOSAL':
-      return 'proposal';
+      return 'overview';
     case 'PCN_SAMPLE_LOT':
     case 'PCN_LAB_REQUEST':
       return 'lab';
@@ -40,10 +35,12 @@ export function getPcnNotificationDossierTab(entityType?: NotificationEntityType
  * Maps the action of a pipeline station to the detail area that can complete it.
  * The mapping is derived UI navigation only; it does not persist another dossier state.
  */
-export function getPcnDossierStationTab(stationKey: PcnPipelineStationKey, hasHistoricalReview = false): PcnDossierDetailTab {
+export function getPcnDossierStationTab(stationKey: PcnPipelineStationKey): PcnDossierDetailTab {
   switch (stationKey) {
     case 'INTAKE':
-      return 'proposal';
+    case 'ASSIGNMENT':
+    case 'EVALUATION':
+      return 'overview';
     case 'DOCUMENTS':
       return 'documents';
     case 'SAMPLING_LAB':
@@ -58,9 +55,7 @@ export function getPcnDossierStationTab(stationKey: PcnPipelineStationKey, hasHi
     case 'DELIVERY_ARCHIVE':
       return 'issuance';
     case 'EXCEPTIONS':
-      return hasHistoricalReview ? 'historicalReview' : 'documents';
-    case 'ASSIGNMENT':
-    case 'EVALUATION':
+      return 'documents';
     default:
       return 'overview';
   }

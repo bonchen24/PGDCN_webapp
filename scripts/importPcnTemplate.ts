@@ -7,7 +7,7 @@ import { pool } from '../utils/db.ts';
 import { resolveDatabaseConfig } from '../utils/pcnDatabase.ts';
 import { inspectPcnTemplateSource } from '../utils/pcnTemplateDiscovery.ts';
 import { buildPcnTemplateImportPlan, mergePcnTemplateDefinition } from '../utils/pcnTemplateImport.ts';
-import { PCN_TEMPLATE_CATALOG } from '../utils/pcnTemplateCatalog.ts';
+import { PCN_TEMPLATE_CATALOG, toPcnTemplateRuntimeProjection } from '../utils/pcnTemplateCatalog.ts';
 import { createSupabaseStorageClient } from '../utils/supabaseStorage.ts';
 import type { PcnTemplateDefinition } from '../types.ts';
 
@@ -43,7 +43,7 @@ function getStorage() {
 }
 
 function getStorageBucket(): string {
-  return String(process.env.PCN_STORAGE_BUCKET || process.env.SUPABASE_STORAGE_BUCKET || 'ddt-files').trim() || 'ddt-files';
+  return String(process.env.PCN_STORAGE_BUCKET || 'pcn-files').trim() || 'pcn-files';
 }
 
 function stableJson(value: unknown): string {
@@ -95,7 +95,11 @@ async function applyTemplateImport(plan: ReturnType<typeof buildPcnTemplateImpor
       uploaded = true;
     }
 
-    const merged = mergePcnTemplateDefinition(existing, plan.definition);
+    // The source path is useful only while this maintenance command is
+    // authoring the pack. Never persist that provenance into the PCN app.
+    const runtimeDefinition = toPcnTemplateRuntimeProjection(plan.definition);
+    const runtimeExisting = existing ? toPcnTemplateRuntimeProjection(existing) : undefined;
+    const merged = mergePcnTemplateDefinition(runtimeExisting, runtimeDefinition);
     const changed = !existing || stableJson(existing) !== stableJson(merged);
     await client.query('BEGIN');
     if (!asset) {

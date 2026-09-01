@@ -35,7 +35,7 @@ test('PCN issuance lifecycle mutations use dedicated atomic boundaries', () => {
   assert.match(serverSource, /getPcnIssuanceOfficialDocumentReadiness/);
   assert.match(serverSource, /source_collection === 'pcnTemplateDefinitions'/);
   assert.match(storeSource, /preflightOfficialDocuments/);
-  assert.match(designSource, /Cùng một chốt phải được áp dụng khi cấp số phát hành/);
+  assert.match(designSource, /Cổng readiness phát hành chỉ kiểm tra snapshot hồ sơ PCN hiện tại/);
 
   for (const method of ['createIssuanceBundle', 'actOnApprovalStep', 'issuePackage', 'deliverPackage', 'archivePackage', 'attachIssuanceFile']) {
     const start = storeSource.indexOf(`${method}: async`);

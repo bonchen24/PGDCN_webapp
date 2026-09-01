@@ -37,7 +37,7 @@ test('dossier package manifest deduplicates assets and creates safe provenance p
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       byteSize: 12,
       sha256: 'a'.repeat(64),
-      category: 'HISTORICAL',
+      category: 'ATTACHMENTS',
     },
     {
       assetId: 'pcn-file-b',
@@ -116,7 +116,7 @@ test('dossier package summary deduplicates the same asset and keeps unknown byte
   assert.equal(summary.knownByteSize, 60);
   assert.equal(summary.unknownByteCount, 2);
   assert.deepEqual(summary.groups.map((group) => [group.category, group.assetCount]), [
-    ['CHECKLIST', 2], ['HISTORICAL', 1], ['GENERATED', 1], ['OFFICIAL', 0], ['RESULT', 0], ['ISSUANCE', 1],
+    ['CHECKLIST', 2], ['ATTACHMENTS', 1], ['GENERATED', 1], ['OFFICIAL', 0], ['RESULT', 0], ['ISSUANCE', 1],
   ]);
   assert.equal(summary.groups.find((group) => group.category === 'ISSUANCE')?.unknownByteCount, 1);
 });

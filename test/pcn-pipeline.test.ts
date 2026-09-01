@@ -118,6 +118,20 @@ test('station checklist exposes required and conditional documents using only va
   assert.equal(result.missing, 2);
 });
 
+test('station checklist follows the selected graphic workflow node, not only the dossier status', () => {
+  const result = buildPcnDossierStationChecklist({
+    dossierId: dossier.id,
+    status: 'AWAITING_DOCUMENTS',
+    fieldCodes: dossier.fieldCodes,
+    requirements: DEFAULT_PCN_DOCUMENT_REQUIREMENTS,
+    documents: [],
+    stationKey: 'SAMPLING_LAB',
+  });
+
+  assert.equal(result.station.key, 'SAMPLING_LAB');
+  assert.deepEqual(result.items.map((item) => item.requirement.code), ['LAB_REQUEST', 'SAMPLE_CODING', 'SAMPLE_HANDOVER']);
+});
+
 test('completeness reports required documents, core fields, owner and missing labels', () => {
   const result = buildPcnDossierCompleteness({ dossier, proposal, requirements, documents });
   assert.equal(result.requiredDocumentTotal, 3);
@@ -127,12 +141,25 @@ test('completeness reports required documents, core fields, owner and missing la
   assert.equal(result.coreFieldTotal, 6);
   assert.equal(result.coreFieldPresent, 6);
   assert.equal(result.score, 60);
+  assert.equal(result.stationScore, 50);
   assert.equal(result.missingLabels.includes('Báo giá'), true);
   assert.deepEqual(result.missingRequiredByStage, [
     { stage: 'INTAKE', label: 'Tiếp nhận & đầu vào', labels: ['Báo giá'] },
     { stage: 'LAB_ROUTING', label: 'Lấy mẫu & gửi PTN', labels: ['PYC'] },
   ]);
   assert.equal(result.station.key, 'DOCUMENTS');
+});
+
+test('station score is unavailable for an exception station without checklist requirements', () => {
+  const result = buildPcnDossierCompleteness({
+    dossier: { ...dossier, status: 'ON_HOLD' },
+    proposal,
+    requirements,
+    documents,
+  });
+
+  assert.equal(result.station.key, 'EXCEPTIONS');
+  assert.equal(result.stationScore, null);
 });
 
 test('completeness does not repeat the same missing label across checklist stages', () => {
@@ -186,8 +213,7 @@ test('PCN workspace exposes a graphic workflow surface on the dashboard', () => 
   assert.match(pipelineBoard, /getPcnDossierStatusLabel/);
   assert.match(pipelineBoard, /getPcnDossierStatusLabel/);
   assert.match(pipelineBoard, /Tài liệu tại bước/);
-  assert.match(pipelineBoard, /PcnHistoricalScopeBadge/);
-  assert.match(pipelineBoard, /historicalImport/);
+  assert.doesNotMatch(pipelineBoard, /PcnHistoricalScopeBadge|historicalImport/);
   assert.doesNotMatch(pipelineBoard, /function StationColumn/);
   assert.doesNotMatch(pipelineBoard, /Mỗi cột là một trạm/);
 });
@@ -202,10 +228,21 @@ test('workflow cards expose the current step action and checklist progress', () 
   assert.match(pipelineBoard, /Tài liệu tại bước|Bước hiện tại/);
   assert.match(pipelineBoard, /completeness\.stationDocumentPresent/);
   assert.match(pipelineBoard, /completeness\.stationDocumentTotal/);
+  assert.match(pipelineBoard, /completeness\.stationScore/);
+  assert.match(pipelineBoard, /Điểm bước/);
   assert.match(pipelineBoard, /station\.key === 'EXCEPTIONS'|EXCEPTIONS/);
   assert.match(pipelineBoard, /dossier\.exceptionReason/);
-  assert.match(pipelineBoard, /Chưa ghi nhận lý do trong dữ liệu lịch sử/);
-  assert.match(pipelineBoard, /getPcnDossierStationTab\(station\.key, hasHistoricalReview\)/);
+  assert.match(pipelineBoard, /Chưa ghi nhận lý do ngoại lệ/);
+  assert.match(pipelineBoard, /getPcnDossierStationTab\(station\.key\)/);
+});
+
+test('dossier detail exposes the selected station score beside its upload checklist', () => {
+  assert.match(dossierDetail, /stationScore/);
+  assert.match(dossierDetail, /Điểm bước/);
+  assert.match(dossierDetail, /data-testid="pcn-workflow-step-checklist"/);
+  assert.match(dossierDetail, /Chi tiết phiên và tải tài liệu/);
+  assert.match(dossierDetail, /Tải phiên mới/);
+  assert.doesNotMatch(dossierDetail, /onUploadDocument\(item\.requirement\.id, file\)/);
 });
 
 test('workflow cards expose the existing self-claim action for unassigned dossiers', () => {
@@ -255,19 +292,27 @@ test('workflow filters and node actions keep touch-friendly hit areas', () => {
 });
 
 test('workflow node actions open the matching dossier work area', () => {
-  assert.equal(getPcnDossierStationTab('INTAKE'), 'proposal');
+  assert.equal(getPcnDossierStationTab('INTAKE'), 'overview');
   assert.equal(getPcnDossierStationTab('DOCUMENTS'), 'documents');
   assert.equal(getPcnDossierStationTab('SAMPLING_LAB'), 'lab');
   assert.equal(getPcnDossierStationTab('RESULTS'), 'results');
   assert.equal(getPcnDossierStationTab('TECHNICAL_REVIEW'), 'documents');
   assert.equal(getPcnDossierStationTab('APPROVAL'), 'issuance');
-  assert.equal(getPcnDossierStationTab('EXCEPTIONS', true), 'historicalReview');
+  assert.equal(getPcnDossierStationTab('EXCEPTIONS'), 'documents');
   assert.match(pipelineBoard, /getPcnDossierStationTab/);
   assert.match(pipelineBoard, /PcnWorkflowMap/);
   assert.match(dossierDetail, /initialTab/);
   assert.match(dossierDetail, /getPcnDossierStationTab/);
   assert.match(workspace, /selectedDossierTab/);
   assert.match(workspace, /initialTab=\{selectedDossierTab\}/);
+});
+
+test('dossier detail binds upload controls to the selected workflow node', () => {
+  assert.match(dossierDetail, /selectedStationChecklist/);
+  assert.match(dossierDetail, /stationKey: selectedWorkflowNodeKey/);
+  assert.match(dossierDetail, /const station = getPcnPipelineStationByKey\(selectedWorkflowNodeKey\)/);
+  assert.match(dossierDetail, /activeWorkflowNodeKey=\{station\.key\}/);
+  assert.match(dossierDetail, /Tải phiên mới/);
 });
 
 test('station generation action selects the first useful internal form', () => {

@@ -62,6 +62,7 @@ export interface PcnSampleItemDraft {
   brand?: string;
   quantity: number;
   unit?: string;
+  testLabCodes?: PcnSampleLabCode[];
   serialNumbers?: string[];
   notes?: string;
 }
@@ -91,6 +92,11 @@ function uniqueLabCodes(codes: PcnSampleLabCode[]): PcnSampleLabCode[] {
 }
 
 export type PcnSampleRouteReadiness = 'COMPLETED' | 'CURRENT' | 'READY' | 'BLOCKED' | 'CANCELLED';
+export type PcnSampleExecutionMode = 'SEQUENTIAL' | 'PARALLEL';
+
+export function getPcnSampleExecutionMode(sampleItem?: Pick<PcnSampleItem, 'quantity'>): PcnSampleExecutionMode {
+  return Number(sampleItem?.quantity) > 1 ? 'PARALLEL' : 'SEQUENTIAL';
+}
 
 function getPcnSampleRouteCatalogOrder(route: PcnSampleRoute): number {
   const index = PCN_SAMPLE_LAB_OPTIONS.findIndex((item) => item.code === route.labCode);
@@ -110,23 +116,47 @@ export function sortPcnSampleRoutes(routes: PcnSampleRoute[]): PcnSampleRoute[] 
 }
 
 export function isPcnSampleRouteCompleteForNext(route: PcnSampleRoute): boolean {
-  return ['RESULT_RETURNED', 'RETURNED_TO_PCN', 'CLOSED'].includes(route.status)
-    && route.execution?.outcome !== 'FAIL';
+  return ['RESULT_RETURNED', 'RETURNED_TO_PCN', 'CLOSED'].includes(route.status);
 }
 
-/** Derive which sequential node is complete, active, ready, blocked or cancelled. */
-export function derivePcnSampleRouteReadiness(routes: PcnSampleRoute[]): Record<string, PcnSampleRouteReadiness> {
+export function getPcnSampleRouteStartDenial(
+  route: PcnSampleRoute,
+  siblingRoutes: PcnSampleRoute[],
+  sampleItems: PcnSampleItem[],
+): string | undefined {
+  if (route.status !== 'PENDING' || !route.sampleItemIds?.length) return undefined;
+  const assignedItems = sampleItems.filter((item) => route.sampleItemIds?.includes(item.id));
+  if (assignedItems.length === 0) return 'Tuyến mẫu không xác định được mẫu/model được gán.';
+  const blockedItem = assignedItems.find((item) => {
+    const itemRoutes = siblingRoutes.filter((candidate) => candidate.sampleItemIds?.includes(item.id));
+    return derivePcnSampleRouteReadiness(itemRoutes, item)[route.id] !== 'READY';
+  });
+  return blockedItem
+    ? `Mẫu/model quantity bằng 1 phải chạy tuần tự; chặng trước của ${blockedItem.sampleCode} chưa kết thúc.`
+    : undefined;
+}
+
+/** Derive which route is complete, active, ready, blocked or cancelled for one sample/model. */
+export function derivePcnSampleRouteReadiness(
+  routes: PcnSampleRoute[],
+  sampleItem?: Pick<PcnSampleItem, 'id' | 'quantity'>,
+): Record<string, PcnSampleRouteReadiness> {
   const readiness: Record<string, PcnSampleRouteReadiness> = {};
+  const executionMode = getPcnSampleExecutionMode(sampleItem);
   let previous: PcnSampleRoute | undefined;
   for (const route of sortPcnSampleRoutes(routes)) {
     let value: PcnSampleRouteReadiness;
     if (route.status === 'CANCELLED') value = 'CANCELLED';
     else if (['RESULT_RETURNED', 'RETURNED_TO_PCN', 'CLOSED'].includes(route.status)) value = 'COMPLETED';
     else if (route.status === 'ISSUE' || route.execution?.status === 'BLOCKED') value = 'BLOCKED';
-    else if (route.status === 'PENDING') value = !previous || isPcnSampleRouteCompleteForNext(previous) ? 'READY' : 'BLOCKED';
+    else if (route.status === 'PENDING') {
+      value = executionMode === 'PARALLEL'
+        ? 'READY'
+        : (!previous || isPcnSampleRouteCompleteForNext(previous) ? 'READY' : 'BLOCKED');
+    }
     else value = 'CURRENT';
     readiness[route.id] = value;
-    previous = route;
+    if (route.status !== 'CANCELLED') previous = route;
   }
   return readiness;
 }
@@ -148,7 +178,6 @@ export function buildPcnSampleLot(
   if (!dossierId) throw new Error('Lô mẫu phải thuộc một hồ sơ PCN');
   if (!lotCode) throw new Error('Mẫu PCN phải có mã hóa theo lô');
   if (fieldCodes.length === 0) throw new Error('Lô mẫu phải có ít nhất một Lĩnh vực thuộc hồ sơ PCN');
-  if (labCodes.length === 0) throw new Error('Phải chọn ít nhất một phòng thử nghiệm nhận mẫu');
   const itemDrafts = draft.sampleItems && draft.sampleItems.length > 0
     ? draft.sampleItems
     : [{ sampleCode: lotCode, sampleType: legacySampleName, model: String(draft.model || '').trim() || legacySampleName, brand: draft.brand, quantity: draft.quantity, unit: draft.unit }];
@@ -164,6 +193,8 @@ export function buildPcnSampleLot(
     if (!Number.isInteger(quantity) || quantity < 1) throw new Error('Số lượng mỗi mẫu phải là số nguyên dương');
     const id = String(itemDraft.id || `${draft.id}-item-${index + 1}`).trim();
     if (!id) throw new Error(`Mẫu/model thứ ${index + 1} phải có mã định danh`);
+    const testLabCodes = uniqueLabCodes(itemDraft.testLabCodes === undefined ? labCodes : itemDraft.testLabCodes);
+    if (testLabCodes.length === 0) throw new Error(`Mẫu/model thứ ${index + 1} phải được gán ít nhất một phép thử nội bộ`);
     return {
       id,
       sampleLotId: draft.id,
@@ -172,6 +203,7 @@ export function buildPcnSampleLot(
       model,
       ...(String(itemDraft.brand || '').trim() ? { brand: String(itemDraft.brand).trim() } : {}),
       quantity,
+      testLabCodes,
       ...(String(itemDraft.unit || '').trim() ? { unit: String(itemDraft.unit).trim() } : {}),
       ...(itemDraft.serialNumbers?.length ? { serialNumbers: itemDraft.serialNumbers.map((value) => String(value).trim()).filter(Boolean) } : {}),
       ...(String(itemDraft.notes || '').trim() ? { notes: String(itemDraft.notes).trim() } : {}),
@@ -182,8 +214,9 @@ export function buildPcnSampleLot(
   if (new Set(items.map((item) => item.id)).size !== items.length) throw new Error('Mã mẫu/model trong cùng một lô không được trùng');
   if (new Set(items.map((item) => item.sampleCode)).size !== items.length) throw new Error('Mã mẫu trong cùng một lô không được trùng');
   const quantity = items.reduce((total, item) => total + item.quantity, 0);
+  const assignedLabCodes = uniqueLabCodes(items.flatMap((item) => item.testLabCodes || []));
   const allowedLabCodes = new Set(getPcnSampleLabCodesForFields(fieldCodes));
-  const unsupportedLabCodes = labCodes.filter((code) => !allowedLabCodes.has(code));
+  const unsupportedLabCodes = assignedLabCodes.filter((code) => !allowedLabCodes.has(code));
   if (unsupportedLabCodes.length > 0) {
     throw new Error(`Tuyến phòng thử không phù hợp với Lĩnh vực: ${unsupportedLabCodes.join(', ')}`);
   }
@@ -197,7 +230,7 @@ export function buildPcnSampleLot(
   }
   const receivedAtDenial = getPcnTimestampDenial('Thời điểm tiếp nhận lô mẫu', receivedAt);
   if (receivedAtDenial) throw new Error(receivedAtDenial);
-  const routeIds = labCodes.map((code) => `${draft.id}-${code.toLowerCase()}`);
+  const routeIds = assignedLabCodes.map((code) => `${draft.id}-${code.toLowerCase()}`);
   const lot: PcnSampleLot = {
     id: draft.id,
     dossierId,
@@ -224,14 +257,14 @@ export function buildPcnSampleLot(
       lotDefinition: String(draft.qc20Snapshot.lotDefinition || '').trim().toUpperCase() as PcnQc20LotDefinition,
     };
   }
-  const routes: PcnSampleRoute[] = labCodes.map((labCode, index) => ({
+  const routes: PcnSampleRoute[] = assignedLabCodes.map((labCode, index) => ({
     id: routeIds[index],
     sampleLotId: draft.id,
     labCode,
     labName: sampleLabName(labCode),
     status: 'PENDING',
     sequence: index + 1,
-    sampleItemIds: items.map((item) => item.id),
+    sampleItemIds: items.filter((item) => item.testLabCodes?.includes(labCode)).map((item) => item.id),
     createdAt: now,
     updatedAt: now,
   }));

@@ -50,8 +50,9 @@ export async function uploadPcnFile(input: UploadPcnFileInput): Promise<PcnFileA
   return payload.asset as PcnFileAsset;
 }
 
-export function getPcnFileUrl(assetId: string): string {
-  return `/api/pcn/files/${encodeURIComponent(assetId)}`;
+export function getPcnFileUrl(assetId: string, options: { download?: boolean } = {}): string {
+  const query = options.download ? '?download=1' : '';
+  return `/api/pcn/files/${encodeURIComponent(assetId)}${query}`;
 }
 
 // --- End of pcnFileApi.ts ---

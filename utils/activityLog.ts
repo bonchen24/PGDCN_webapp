@@ -155,6 +155,7 @@ export const activityEntityLabels: Record<ActivityLogEntityType, string> = {
   PCN_USER: 'Nhân sự PCN',
   PCN_SIGNER_DELEGATION: 'Ủy quyền người ký PCN',
   PCN_QUALITY_DOCUMENT: 'Tài liệu chất lượng PCN',
+  PCN_DRAFT: 'Bản soạn thảo PCN',
   PCN_SAMPLE_LOT: 'Lô mẫu PCN',
   REQUEST: 'Phiếu yêu cầu',
   HANDOVER_DOC: 'Biên bản giao nhận',

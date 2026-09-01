@@ -43,6 +43,7 @@ const store = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8
 const generationApi = fs.readFileSync(new URL('../utils/pcnDocumentGenerationApi.ts', import.meta.url), 'utf8');
 const dossierDocumentApi = fs.readFileSync(new URL('../utils/pcnDossierDocumentApi.ts', import.meta.url), 'utf8');
 const detail = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
+const outputModal = fs.readFileSync(new URL('../components/PcnDocumentOutputModal.tsx', import.meta.url), 'utf8');
 const panel = fs.readFileSync(new URL('../components/PcnDocumentGenerationPanel.tsx', import.meta.url), 'utf8');
 const types = fs.readFileSync(new URL('../types.ts', import.meta.url), 'utf8');
 const freshness = fs.readFileSync(new URL('../utils/pcnDocumentFreshness.ts', import.meta.url), 'utf8');
@@ -166,6 +167,52 @@ test('PCN PYC document context binds the selected outbound request without copyi
   assert.equal(pdfDocument.getTitle(), `${PCN_DOCUMENT_IDENTITY} • PHIẾU YÊU CẦU THỬ NGHIỆM PCN`);
 });
 
+test('PCN handover documents bind the canonical handover facts to DOCX/PDF context', async () => {
+  const sampleLot = {
+    id: 'lot-handover-0665', dossierId: dossier.id, lotCode: 'LOT-QC4-0665', sampleName: 'Bình đun nước siêu tốc',
+    model: 'KETTLE-01', brand: 'PCN Brand', quantity: 2, unit: 'cái', fieldCodes: ['QC4'],
+    routeIds: ['route-handover-0665'], status: 'PREPARED' as const, currentLocation: 'Kho PCN',
+    receivedAt: '2026-08-29T06:00:00.000Z', updatedAt: '2026-08-29T06:30:00.000Z',
+  };
+  const sampleRoute = {
+    id: 'route-handover-0665', sampleLotId: sampleLot.id, labCode: 'EMC' as const,
+    labName: 'Phòng thử EMC', status: 'SENT' as const, labRequestId: labRequest.id,
+    sentAt: '2026-08-30T08:00:00.000Z', receivedAt: '2026-08-30T09:00:00.000Z', resultReturnedAt: '', returnedAt: '', note: '',
+    updatedAt: '2026-08-30T09:00:00.000Z',
+  };
+  const handoverRequest = {
+    ...labRequest,
+    sampleLotId: sampleLot.id,
+    sampleRouteId: sampleRoute.id,
+    handoverDetails: {
+      senderName: 'Trần Hoàng Phương', senderUnit: 'PCN', receiverName: 'Vũ Thị Thắm', receiverUnit: 'Phòng thử EMC',
+      handoverAt: '2026-08-30T08:00:00.000Z', receivedAt: '2026-08-30T09:00:00.000Z', location: 'Kho PCN',
+      vehicle: '29A-123.45', driver: 'Nguyễn Văn A', quantity: 2, sampleCodes: ['PCN-QC4-0665-M01', 'PCN-QC4-0665-M02'], note: 'Niêm phong nguyên vẹn',
+    },
+  };
+  const handoverContext = buildPcnDossierDocumentContext({
+    dossier, proposal, fields, documents, documentRequirements, attachments,
+    sampleLots: [sampleLot], sampleRoutes: [sampleRoute], labRequests: [handoverRequest], sampleRouteId: sampleRoute.id,
+  });
+  const handover = handoverContext.sampleHandover as unknown as Record<string, unknown>;
+  assert.equal(handover.senderName, 'Trần Hoàng Phương');
+  assert.equal(handover.receiverName, 'Vũ Thị Thắm');
+  assert.equal(handover.location, 'Kho PCN');
+  assert.equal(handover.vehicle, '29A-123.45');
+  assert.deepEqual(handover.sampleCodes, ['PCN-QC4-0665-M01', 'PCN-QC4-0665-M02']);
+
+  const docx = buildPcnSampleHandoverDocx(handoverContext);
+  const documentXml = new PizZip(docx).file('word/document.xml')?.asText() || '';
+  assert.match(documentXml, /Trần Hoàng Phương/);
+  assert.match(documentXml, /Vũ Thị Thắm/);
+  assert.match(documentXml, /29A-123.45/);
+  assert.match(documentXml, /PCN-QC4-0665-M01, PCN-QC4-0665-M02/);
+
+  const pdf = await buildPcnSampleHandoverPdf(handoverContext);
+  assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
+  assert.ok((await PDFDocument.load(pdf)).getPageCount() >= 1);
+});
+
 test('PCN PYC document context rejects a request outside the dossier', () => {
   assert.throws(() => buildPcnDossierDocumentContext({
     dossier,
@@ -200,27 +247,25 @@ test('document preflight reports warnings separately from blocking route errors'
       { name: 'Đề nghị / đơn đăng ký', required: true, status: 'PRESENT' },
       { name: 'Giấy chứng nhận', required: true, status: 'MISSING' },
     ],
-    unresolvedFields: ['model'],
   });
 
   assert.deepEqual(issues, [
     { severity: 'WARNING', code: 'MISSING_REQUIRED_CHECKLIST', message: 'Thiếu tài liệu bắt buộc: Giấy chứng nhận.' },
-    { severity: 'WARNING', code: 'UNRESOLVED_SOURCE_FIELDS', message: 'Còn trường nguồn cần rà soát: model.' },
   ]);
 
-  assert.deepEqual(getPcnDocumentPreflightIssues({ kind: 'SAMPLE_HANDOVER', hasSampleRoute: false, checklist: [], unresolvedFields: [] }), [
+  assert.deepEqual(getPcnDocumentPreflightIssues({ kind: 'SAMPLE_HANDOVER', hasSampleRoute: false, checklist: [] }), [
     { severity: 'BLOCKING', code: 'SAMPLE_ROUTE_REQUIRED', message: 'Biên bản giao/nhận mẫu cần chọn một tuyến mẫu hợp lệ.' },
   ]);
-  assert.deepEqual(getPcnDocumentPreflightIssues({ kind: 'SAMPLE_TAKING', hasSampleRoute: false, checklist: [], unresolvedFields: [] }), [
+  assert.deepEqual(getPcnDocumentPreflightIssues({ kind: 'SAMPLE_TAKING', hasSampleRoute: false, checklist: [] }), [
     { severity: 'BLOCKING', code: 'SAMPLE_ROUTE_REQUIRED', message: 'Biên bản lấy mẫu cần chọn một tuyến mẫu hợp lệ.' },
   ]);
-  assert.deepEqual(getPcnDocumentPreflightIssues({ kind: 'SAMPLE_RETURN', hasSampleRoute: false, checklist: [], unresolvedFields: [] }), [
+  assert.deepEqual(getPcnDocumentPreflightIssues({ kind: 'SAMPLE_RETURN', hasSampleRoute: false, checklist: [] }), [
     { severity: 'BLOCKING', code: 'SAMPLE_ROUTE_REQUIRED', message: 'Biên bản trả mẫu cần chọn một tuyến mẫu hợp lệ.' },
   ]);
-  assert.deepEqual(getPcnDocumentPreflightIssues({ kind: 'SAMPLE_CODING', hasSampleRoute: false, checklist: [], unresolvedFields: [] }), [
+  assert.deepEqual(getPcnDocumentPreflightIssues({ kind: 'SAMPLE_CODING', hasSampleRoute: false, checklist: [] }), [
     { severity: 'BLOCKING', code: 'SAMPLE_ROUTE_REQUIRED', message: 'Biên bản mã hóa mẫu cần chọn một tuyến mẫu hợp lệ.' },
   ]);
-  assert.deepEqual(getPcnDocumentPreflightIssues({ kind: 'LAB_REQUEST', hasSampleRoute: true, hasLabRequest: false, checklist: [], unresolvedFields: [] }), [
+  assert.deepEqual(getPcnDocumentPreflightIssues({ kind: 'LAB_REQUEST', hasSampleRoute: true, hasLabRequest: false, checklist: [] }), [
     { severity: 'BLOCKING', code: 'LAB_REQUEST_REQUIRED', message: 'PYC gửi PTN cần chọn một PYC thuộc hồ sơ.' },
   ]);
 });
@@ -459,10 +504,10 @@ test('PCN generated documents stay in private Storage and expose a dedicated UI 
   assert.match(server, /'pcnGeneratedDocuments', \$4, 'fileAssetId'/);
   assert.match(store, /generatedDocuments/);
   assert.match(store, /generateDossierDocuments:/);
-  assert.match(detail, /Sinh Word\/PDF/);
-  assert.match(detail, /initialKind=\{generationKind\}/);
+  assert.match(detail, /PcnDocumentOutputModal/);
+  assert.match(detail, /kind=\{documentOutput\.kind\}/);
   assert.match(detail, /getPcnDossierStationGenerationKind/);
-  assert.match(detail, /onGenerateDocuments/);
+  assert.match(detail, /onGenerate=\{onGenerateDocuments\}/);
   assert.match(panel, /buildPcnDossierDocumentContext|contextHash/);
   assert.match(panel, /Mở file/);
   assert.match(panel, /PcnFilePreviewButton/);
@@ -480,11 +525,11 @@ test('PCN generated documents stay in private Storage and expose a dedicated UI 
   assert.match(panel, /filter\(\(template\) => template\.documentKind === 'CERTIFICATE' \|\| template\.documentKind === 'DECISION'\)/);
   assert.match(panel, /getPcnUserDisplayName/);
   assert.match(panel, /users: PcnUserAccount\[\]/);
-  assert.match(detail, /PcnDocumentGenerationPanel[\s\S]{0,1200}users=\{users\}/);
+  assert.match(outputModal, /PcnDocumentGenerationPanel[\s\S]{0,1200}users=\{users\}/);
   assert.doesNotMatch(panel, /pcnDocumentGeneration/);
   assert.match(panel, /pcnDocumentFreshness/);
   assert.match(freshness, /export function getPcnDocumentSourceUpdatedAt/);
-  assert.match(detail, /proposalUpdatedAt=\{proposal\?\.updatedAt\}/);
+  assert.match(outputModal, /proposalUpdatedAt=\{proposalUpdatedAt\}/);
   assert.doesNotMatch(panel, /base64|arrayBuffer\(\)|readAsDataURL/i);
 });
 

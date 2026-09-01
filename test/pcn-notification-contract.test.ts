@@ -92,7 +92,7 @@ test('PCN shell and store expose a separate notification channel', () => {
 });
 
 test('PCN notification types deep-link to the matching dossier detail area', () => {
-  assert.equal(getPcnNotificationDossierTab('PCN_PROPOSAL'), 'proposal');
+  assert.equal(getPcnNotificationDossierTab('PCN_PROPOSAL'), 'overview');
   assert.equal(getPcnNotificationDossierTab('PCN_SAMPLE_LOT'), 'lab');
   assert.equal(getPcnNotificationDossierTab('PCN_LAB_REQUEST'), 'lab');
   assert.equal(getPcnNotificationDossierTab('PCN_RESULT'), 'results');

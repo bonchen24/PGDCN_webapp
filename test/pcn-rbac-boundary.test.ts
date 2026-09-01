@@ -40,7 +40,7 @@ test('server rechecks PCN mutation role on generic and business endpoints', () =
   assert.match(serverSource, /requirePcnCollectionMutation\(req, res, collectionName, 'delete'\)/);
   assert.match(serverSource, /if \(!requirePcnMutation\(req, res\)\) return;/);
   assert.match(serverSource, /app\.post\('\/api\/pcn\/intake'/);
-  assert.match(serverSource, /app\.post\('\/api\/pcn\/historical-review'/);
+  assert.doesNotMatch(serverSource, /app\.post\('\/api\/pcn\/historical-review'/);
   assert.match(serverSource, /app\.post\('\/api\/pcn\/documents\/generate'/);
   assert.match(serverSource, /app\.post\("\/api\/pcn\/files"/);
 });

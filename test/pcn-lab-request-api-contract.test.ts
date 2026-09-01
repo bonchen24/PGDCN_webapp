@@ -17,6 +17,7 @@ test('PYC mutations use dedicated transaction endpoints and remain outside gener
   assert.match(serverSource, /app\.post\(['"]\/api\/pcn\/lab-requests['"]/) ;
   assert.match(serverSource, /app\.post\(['"]\/api\/pcn\/lab-requests\/:requestId\/status['"]/) ;
   assert.match(serverSource, /sampleRouteId/);
+  assert.match(serverSource, /linkedRoute\.sampleItemIds\?\.length/);
   assert.match(serverSource, /withPgTransaction/);
   assert.match(serverSource, /getPcnTimestampDenial/);
   assert.match(serverSource, /Thời điểm PTN nhận PYC không được sớm hơn/);
@@ -26,6 +27,7 @@ test('PYC mutations use dedicated transaction endpoints and remain outside gener
   assert.match(designSource, /POST \/api\/pcn\/lab-requests/);
   assert.match(designSource, /sampleLotId.*sampleRouteId/);
   assert.match(viewSource, /availableFields/);
+  assert.match(viewSource, /isPcnInternalSampleRequest/);
   assert.match(viewSource, /disabled=\{!form\.dossierId\}/);
 });
 
