@@ -255,7 +255,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
         fetchCollection<ReturnedTestResult>('returnedResults'),
         fetchCollection<PcnApprovalStep>('approvalSteps'),
         fetchCollection<IssuancePackage>('issuancePackages'),
-        fetchCollection<ActivityLog>('activityLogs'),
+        Promise.resolve<ActivityLog[]>([]),
         fetchPcnUsers(),
         fetchPcnDepartmentRoles(),
         fetchPcnSignerDelegations(),

@@ -70,3 +70,14 @@ test('generic PCN notification collection cannot bypass the dedicated boundary',
   assert.match(serverSource.slice(genericDeleteBatchStart), /collectionName === 'notifications'/);
   assert.match(serverSource.slice(genericDeleteBatchStart), /status\(405\)/);
 });
+
+test('PCN notification audience gives targeted usernames precedence over a broad role', () => {
+  const helperStart = serverSource.indexOf('function buildPcnNotificationVisibilityConditions');
+  const helperEnd = serverSource.indexOf('function requirePcnMutationMiddleware', helperStart);
+  const audienceHelper = serverSource.slice(helperStart, helperEnd);
+
+  assert.match(audienceHelper, /jsonb_array_length/);
+  assert.match(audienceHelper, /jsonb_array_elements_text/);
+  assert.match(audienceHelper, /targetUsernames/);
+  assert.match(audienceHelper, /targetRole/);
+});

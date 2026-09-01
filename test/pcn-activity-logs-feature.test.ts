@@ -8,6 +8,7 @@ import { getPcnMoreNavigationGroups } from '../utils/pcnNavigation.ts';
 const activitySource = fs.readFileSync(new URL('../components/ActivityLogView.tsx', import.meta.url), 'utf8');
 const sidebarSource = fs.readFileSync(new URL('../components/PcnSidebar.tsx', import.meta.url), 'utf8');
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
+const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 
 test('PCN ActivityLogs is available to staff and stays before settings', () => {
   assert.deepEqual(getPcnMoreNavigationGroups(true).flatMap((group) => group.items), ['users', 'activityLogs', 'settings']);
@@ -26,3 +27,8 @@ test('ActivityLogs remains read-only and PCN users can view it', () => {
   assert.equal(isActivityLogVisibleToUser({ role: 'viewer', systemRole: 'viewer' } as any), true);
 });
 
+test('PCN bootstrap does not bulk-load activity history into the Zustand store', () => {
+  assert.doesNotMatch(storeSource, /fetchCollection<ActivityLog>\('activityLogs'\)/);
+  assert.match(storeSource, /Promise\.resolve<ActivityLog\[\]>\(\[\]\)/);
+  assert.match(activitySource, /activityLogClient\.fetchPage/);
+});

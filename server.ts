@@ -120,7 +120,7 @@ import { PCN_CERTIFICATION_FIELD_CODES, getPcnDossierExceptionReasonDenial, getP
 import { getPcnSignerAuthorization } from "./utils/pcnSignerAuthorization.ts";
 import { applyPcnApprovalDecision, buildPcnApprovalSteps, getPcnApprovalDecisionDenial, isPcnApprovalComplete, reopenPcnApprovalFromStep } from "./utils/pcnApproval.ts";
 import { archivePcnIssuancePackage, buildPcnIssuancePackage, deliverPcnIssuancePackage, getPcnIssuanceGenericMutationDenial, getPcnIssuanceOfficialDocumentReadiness, getPcnIssuanceReadiness, issuePcnIssuancePackage } from "./utils/pcnIssuance.ts";
-import { buildPcnSampleFlowEvent, buildPcnSampleLot, derivePcnSampleLotStatus, getPcnSampleRouteStartDenial, transitionPcnSampleRoute, type PcnSampleLotDraft, type PcnSampleRouteUpdate } from './utils/pcnSampleFlow.ts';
+import { buildPcnSampleFlowEvent, buildPcnSampleLot, derivePcnSampleLotStatus, getPcnSampleRouteStartDenial, projectPcnSampleRouteFromItemSnapshots, transitionPcnSampleRoute, type PcnSampleLotDraft, type PcnSampleRouteUpdate } from './utils/pcnSampleFlow.ts';
 import { PCN_LAB_INTEGRATION_CONTRACT_VERSION, buildPcnLabDispatchPayload, buildPcnLabHmacSigningInput, buildPcnLabIntegrationFingerprint, canonicalizePcnLabIntegrationPayload, getPcnLabIntegrationEventId, mapPcnLabStatusEvent, type PcnLabDispatchPayload, type PcnLabStatusEventInput } from './utils/pcnLabIntegration.ts';
 import { buildPcnLabRequest, transitionPcnLabRequest, type PcnLabRequestDraft } from './utils/pcnLabRouting.ts';
 import { buildPcnSampleHandoverDetails } from './utils/pcnHandoverPolicy.ts';
@@ -917,18 +917,23 @@ function buildPcnNotificationVisibilityConditions(
   const role = String(actor.systemRole || actor.role || '').trim().toLowerCase();
   if (role !== 'admin') {
     const usernameParam = `$${params.push(String(actor.username || '').trim().toLowerCase())}`;
+    const targetUsernames = `CASE
+      WHEN jsonb_typeof(COALESCE(data->'targetUsernames', '[]'::jsonb)) = 'array'
+        THEN COALESCE(data->'targetUsernames', '[]'::jsonb)
+      ELSE '[]'::jsonb
+    END`;
     conditions.push(`(
-      COALESCE(data->>'targetRole', '') IN ('staff', 'all')
-      OR EXISTS (
-        SELECT 1
-        FROM jsonb_array_elements_text(
-          CASE
-            WHEN jsonb_typeof(COALESCE(data->'targetUsernames', '[]'::jsonb)) = 'array'
-              THEN COALESCE(data->'targetUsernames', '[]'::jsonb)
-            ELSE '[]'::jsonb
-          END
-        ) AS target(username)
-        WHERE lower(trim(target.username)) = lower(trim(${usernameParam}))
+      (
+        jsonb_array_length(${targetUsernames}) > 0
+        AND EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements_text(${targetUsernames}) AS target(username)
+          WHERE lower(trim(target.username)) = lower(trim(${usernameParam}))
+        )
+      )
+      OR (
+        jsonb_array_length(${targetUsernames}) = 0
+        AND COALESCE(data->>'targetRole', '') IN ('staff', 'all')
       )
     )`);
   }
@@ -1924,6 +1929,7 @@ async function startServer() {
            ORDER BY document_id`,
           [lot.id],
         );
+        const sampleItems = sampleItemsResult.rows.map(mapDocumentRow) as PcnSampleItem[];
         const lotSampleItemIds = new Set(sampleItemsResult.rows.map((row) => String(row.document_id || '').trim()).filter(Boolean));
         const eventSampleItemIds = Array.from(new Set(eventInput.pcnSampleItemIds || []));
         if (eventSampleItemIds.some((itemId) => !lotSampleItemIds.has(itemId))) {
@@ -2028,7 +2034,7 @@ async function startServer() {
             };
             itemSnapshots[sampleItemId] = nextItemSnapshot;
           }
-          nextRoute = { ...route, itemSnapshots, updatedAt: now };
+          nextRoute = projectPcnSampleRouteFromItemSnapshots({ ...route, itemSnapshots, updatedAt: now }, sampleItems);
         } else {
           if (mapped.routeStatus) nextRoute = applyPcnRemoteRouteStatus(nextRoute, mapped.routeStatus, now);
           const nextExecution = buildPcnRemoteExecutionSnapshot(route.execution, mapped.execution);
@@ -2048,10 +2054,10 @@ async function startServer() {
         const siblingRoutes = siblingRoutesResult.rows
           .map(mapDocumentRow)
           .map((item: PcnSampleRoute) => item.id === nextRoute.id ? nextRoute : item) as PcnSampleRoute[];
-        const nextLot: PcnSampleLot = { ...lot, ...derivePcnSampleLotStatus(siblingRoutes), updatedAt: now };
+        const nextLot: PcnSampleLot = { ...lot, ...derivePcnSampleLotStatus(siblingRoutes, sampleItems), updatedAt: now };
         let nextRequest = request;
         if (request) {
-          const targetPycStatus = mapped.routeStatus && eventSampleItemIds.length === 0 ? getPcnLabRequestStatusForSampleRoute(mapped.routeStatus) : null;
+          const targetPycStatus = mapped.routeStatus ? getPcnLabRequestStatusForSampleRoute(mapped.routeStatus) : null;
           if (targetPycStatus && request.status !== targetPycStatus) nextRequest = applyPcnRemoteLabRequestStatus(request, targetPycStatus, now);
           nextRequest = {
             ...nextRequest,

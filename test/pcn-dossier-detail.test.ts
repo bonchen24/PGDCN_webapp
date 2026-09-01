@@ -41,7 +41,7 @@ test('PCN store persists dossier status changes without replacing the dossier re
   assert.match(storeSource, /dossiers\.map/);
   assert.match(workspaceSource, /PcnDossierDetailView/);
   assert.match(storeSource, /activityLogs: ActivityLog\[\]/);
-  assert.match(storeSource, /fetchCollection<ActivityLog>\('activityLogs'\)/);
+  assert.doesNotMatch(storeSource, /fetchCollection<ActivityLog>\('activityLogs'\)/);
   assert.match(workspaceSource, /activityLogs=\{pcn\.activityLogs\}/);
   assert.match(workspaceSource, /onUpdateDossier=/);
 });

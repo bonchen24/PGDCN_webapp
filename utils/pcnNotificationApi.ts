@@ -52,4 +52,3 @@ export const fetchPcnNotifications = (): Promise<AppNotification[]> => pcnNotifi
 export const markPcnNotificationRead = (notificationId: string): Promise<void> => pcnNotificationClient.markRead(notificationId);
 export const markAllPcnNotificationsRead = (): Promise<void> => pcnNotificationClient.markAllRead();
 export const clearPcnNotifications = (): Promise<void> => pcnNotificationClient.clear();
-
