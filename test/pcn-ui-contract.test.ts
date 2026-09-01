@@ -265,7 +265,8 @@ test('all PCN modal source files declare a viewport bound and scrollable body', 
 test('read-only approval and signer delegation modal branches keep an independently scrollable body', () => {
   const approval = read('components/PcnApprovalModal.tsx');
   const approvalStart = approval.indexOf('if (current && !canAct)');
-  const approvalReadOnly = approval.slice(approvalStart, approval.indexOf('  return <div className="fixed', approvalStart));
+  const approvalReadOnlyEnd = approval.indexOf('return <div className="fixed', approval.indexOf('return <div className="fixed', approvalStart) + 1);
+  const approvalReadOnly = approval.slice(approvalStart, approvalReadOnlyEnd);
   assert.match(approvalReadOnly, /max-h-\[/);
   assert.match(approvalReadOnly, /min-h-0/);
   assert.match(approvalReadOnly, /mobile-scroll-y/);
