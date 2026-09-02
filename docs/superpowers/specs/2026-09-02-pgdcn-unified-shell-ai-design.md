@@ -15,6 +15,7 @@ The change is a navigation and assistance integration. It does not merge `PgdIns
 - Keep one visible navigation system while rendering domain-specific menus only inside the selected domain and only when the session has that domain scope.
 - Add a read-only department dashboard that compares workload projections for PCN and PGD and links to the correct domain surface.
 - Add one `Trợ lý AI` surface with a domain selector and separate review criteria for PCN and PGD.
+- Add one department-level `Nhật ký hoạt động` surface that reads and filters append-only audit events from both PCN and PGD.
 - Extend PCN AI review from hard-coded QC4/QC9 to the active field catalog, including the current QC20 confirmation-gated profile.
 - Add PGD AI review over the request, assignment, field inspection, sample, laboratory, result, report, certificate and approval snapshots.
 - Preserve evidence provenance, private-file access rules, audit boundaries and mobile compact UI contracts.
@@ -56,7 +57,7 @@ The selected domain is UI state only. Server boundaries still authorize every bo
 The shared sidebar contains:
 
 1. Department identity: `IEMM • TVCI` and `PHÒNG GIÁM ĐỊNH - CHỨNG NHẬN`.
-2. Shared entries: `Tổng quan phòng` and `Trợ lý AI`.
+2. Shared entries: `Tổng quan phòng`, `Trợ lý AI` and `Nhật ký hoạt động`.
 3. A `CHỨNG NHẬN (PCN)` group with the existing PCN work surfaces: Tổng quan, Đề nghị, Sổ điều hành, PYC & luân chuyển mẫu, Soạn thảo tài liệu, Danh sách khách hàng, and its Admin-only entries.
 4. A `GIÁM ĐỊNH (PGD)` group with the existing PGD work surfaces: Tổng quan PGD, Tiếp nhận PYC, Hồ sơ đang xử lý, Hiện trường & Lấy mẫu, PTN & Kết quả, Báo cáo/Chứng thư, Khách hàng dùng chung, and its Admin-only entries.
 5. User identity and logout.
@@ -84,6 +85,8 @@ Below the KPI row, two domain cards sit side-by-side on desktop and stack on mob
 - **Giám định PGD**: intake/capability, field/sample, waiting lab results, technical/leadership review and a CTA to the PGD dashboard or AI review.
 
 The dashboard also has one compact `Việc cần chú ý` list containing read-only attention rows tagged `PCN` or `PGD`. Each row opens the canonical dossier/request card in its own domain. The list never combines records into a shared card and never uses a workflow node as a cross-domain filter.
+
+The dashboard exposes a secondary action to open the department-wide activity log. This action opens the shared audit projection without changing the selected domain.
 
 The existing domain dashboards remain available after entering each domain. PCN keeps the six-column KPI contract from `design.md`; the new department dashboard does not change PCN or PGD business metrics or callbacks.
 
@@ -151,6 +154,20 @@ Candidate endpoints must return only eligible records in the requested domain. P
 
 AI failures, OCR service unavailability and unavailable private assets must produce an explicit `NOT_EVALUABLE`/error event with the affected source. They must not block manual domain operations. Export remains a snapshot of the authorized run and must enforce actor, domain and record ownership before generating PDF/DOCX.
 
+### 4.1. Department-wide activity log
+
+The shared `Nhật ký hoạt động` page reads two append-only audit sources: PCN `activityLogs` and PGD `pgdActivityLogs`. The server normalizes each row to a projection with `domain: 'PCN' | 'PGD'`, actor snapshot, timestamp, action, entity label, summary, changes and an optional domain-scoped navigation target. Legacy rows without an explicit domain are inferred from their source collection/entity type at read time.
+
+The page supports:
+
+- domain filter `Tất cả`, `PCN` or `PGD`;
+- actor multi-select, action/entity filters, text search and the existing GMT+7 period selector;
+- cursor pagination over the merged stream, with deterministic ordering by `(createdAt DESC, domain DESC, id DESC)`;
+- combined CSV export with a visible `Miền` column;
+- combined actor KPI ranking, with optional PCN/PGD breakdown while retaining the existing responsive stacked-bar presentation.
+
+Every read uses the authenticated PGDCN session. A dual-scope user may inspect both domains; a single-scope user still sees the department audit projection but cannot open a source dossier/file in an unauthorized domain. The API must return a redacted/no-navigation projection for those rows rather than leaking source data. No browser route may append, edit or delete an activity event; domain mutations write their own append-only record through the existing server boundary.
+
 ### 5. Responsive and accessibility requirements
 
 - The shared shell follows the existing `ddt-compact` and `mobile-scroll-y` contracts.
@@ -173,11 +190,12 @@ AI failures, OCR service unavailability and unavailable private assets must prod
 
 The implementation is accepted when:
 
-- `/pgdcn/` renders one shell with `Tổng quan phòng`, `Trợ lý AI`, PCN and PGD groups for a dual-scope account.
+- `/pgdcn/` renders one shell with `Tổng quan phòng`, `Trợ lý AI`, `Nhật ký hoạt động`, PCN and PGD groups for a dual-scope account.
 - Single-scope accounts cannot see or load the other domain; direct compatibility routes do not bypass this.
 - The department dashboard renders six responsive KPI cards, two domain cards, scope-correct attention rows and correct navigation callbacks without duplicating business records.
 - PCN assistant candidate/review flows include QC4, QC9 and QC20 from the catalog; QC20 confirmation-gated data creates an explicit warning/not-evaluable outcome.
 - PGD assistant candidate/review flows validate the five PGD station criteria and evidence provenance, including assignment, field evidence, sample/lab links, report/template snapshot and approval sequence.
 - AI findings are read-only, evidence-linked, exportable and never mutate status, approval or source records.
+- The activity page merges PCN and PGD audit sources, labels every row by domain, supports domain filtering/CSV/KPI, keeps cursor ordering stable and never exposes unauthorized source navigation.
 - Unit/contract tests cover navigation scope, dashboard projection, PCN field catalog behavior, PGD review rules, domain isolation, provenance rejection, stream errors and responsive/accessibility markers.
 - `npm test`, `npm run lint`, `npm run build` and `git diff --check` pass after implementation, with pre-existing unrelated warnings reported separately.
