@@ -6,6 +6,44 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-02 — Trợ lý AI hỗ trợ kiểm duyệt hồ sơ PCN
+
+- Trợ lý nằm độc lập trên sidebar với nhãn **Trợ lý phê duyệt**, nhưng chỉ là công cụ hỗ trợ phán đoán/kiểm duyệt; không có nút/API phê duyệt, không đổi trạng thái hồ sơ, không khóa hồ sơ, không gọi approval/issuance và không ghi activity/audit.
+- Người dùng chọn lĩnh vực QC4/QC9, chọn đúng một hồ sơ đang ở `TECHNICAL_REVIEW` hoặc `WAITING_APPROVAL`, rồi xác nhận để bắt đầu phiên review. Kết quả được stream tuần tự theo 11 tiêu chí: entry gate, completeness, identity, commercial, field evaluation, PYC/sample, lab results, technical assessment, certificate decision, document quality và system logic.
+- Rule engine kiểm tra cả thiếu tài liệu, metadata, tiêu chuẩn mâu thuẫn, chuỗi PYC/mẫu, backlink KQTN, kết quả FAIL mới nhất, lỗi typography/chính tả cơ bản và độ tin cậy OCR. Mỗi finding giữ evidence trỏ về asset, file, trang, bbox/tab để người dùng mở lại hồ sơ canonical và tự kiểm tra.
+- PaddleOCR là OCR chính qua `OCR_SERVICE_URL`, xử lý PDF theo từng trang và ảnh theo từng asset; không áp giới hạn tổng dung lượng 25MB, file lớn được đọc theo trang/chunk. Nếu PaddleOCR không khả dụng, trả rỗng hoặc confidence thấp thì dừng phiên; Gemini chỉ được dùng bổ sung cho semantic review và không làm OCR fallback.
+- Kết quả chỉ lưu tạm trong memory 15 phút; export DOCX/PDF là artifact hỗ trợ, không ghi thành `file_asset`. Không đưa Desktop/research source path, raw OCR, raw prompt, secret, credential hoặc dữ liệu hồ sơ thật vào Memory/Obsidian.
+- Verification code: `npm test` **630/630 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass trước khi đóng gói production.
+- Commit local: `57d07c6` (`feat(pcn): add approval review assistant`). Các thay đổi ngoài phạm vi trợ lý vẫn để nguyên chưa commit.
+- Docker Desktop production đã build/recreate bằng `docker compose --env-file .env -f docker-compose.pcn.yml up --build -d`; image `pcn_webapp-webapp:latest` digest `sha256:42bda0d9fcd350dfac750f925e06132d29bfcceab6f1fdbbaf45310d05cc7da6`.
+- Container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`; `/api/health` trả HTTP 200 `{"status":"ok"}` và `/` trả HTTP 200. Log xác nhận PostgreSQL connected/schema initialized.
+- Log startup có cảnh báo automatic backup không chạy do Supabase Storage chưa được cấu hình trong env triển khai; đây là cảnh báo vận hành riêng, không làm app health fail. Cần bổ sung Storage URL/bucket/service-role key ở env ngoài repository nếu muốn backup tự động hoạt động.
+
+## Cập nhật 2026-09-02 — Hoàn thiện hồ sơ theo từng bước và triển khai Docker production
+
+- Đã chuyển workflow PCN từ cách hiểu “bước là card lọc theo trạng thái” thành vùng thao tác trong chi tiết từng hồ sơ. Hồ sơ đi qua đúng 5 bước: (1) Tiếp nhận & đầu vào, (2) Lấy mẫu & gửi PTN, (3) KQTN & đánh giá, (4) Hoàn thiện & soát xét trước duyệt, (5) Phê duyệt — Lãnh đạo thực hiện. Sau bước 5 là lifecycle riêng: cấp số, phát hành, giao khách hàng, lưu trữ; không tạo bước 6.
+- Mỗi bước hỗ trợ checklist bắt buộc/tùy chọn, nhập/chỉnh sửa dữ liệu, tải phiên tài liệu mới, xem phiên hiện tại/lịch sử/tiến độ và nút “Hoàn tất bước và chuyển bước”. Bước sau bị khóa cho đến khi gate của bước trước đạt; bước trước được sửa trước khi duyệt theo quyền owner.
+- Owner hồ sơ chịu trách nhiệm hoàn thiện bước 1–4; các tác vụ chuyên môn tiếp tục qua kiểm tra vai trò. Approval chain hiệu lực chỉ còn một quyết định Lãnh đạo. Waiver bắt buộc có lý do, người quyết định và thời điểm do server đóng dấu; waiver không xóa requirement hoặc lịch sử file.
+- Bản dự thảo GCN/QĐ bắt buộc có trước khi trình bước 5. Từ chối duyệt đưa hồ sơ về bước 4 và giữ lý do/audit. Thay đổi tài liệu hoặc dữ liệu bước trước sẽ mở lại các bước sau để rà soát và đưa approval/bộ phát hành về trạng thái cần trình lại.
+- Sau duyệt/phát hành, bước trước bị khóa. Boundary thu hồi riêng (`POST /api/pcn/issuance/:issuanceId/withdraw`) yêu cầu actor được phân quyền, lý do, người thực hiện và thời điểm; thu hồi giữ nguyên bản chính/số phát hành và mở lại bước 4.
+- Tương thích dữ liệu cũ được giữ: `TECHNICAL_REVIEW` ánh xạ bước 4; `WAITING_APPROVAL`, `APPROVED`, `ISSUED`, `DELIVERED`, `ARCHIVED` ánh xạ bước 5. Approval chain cũ chỉ đọc làm lịch sử; hồ sơ cũ chờ duyệt dùng quyết định Lãnh đạo hiệu lực mới.
+- Khi mở hồ sơ từ dashboard, hàng đợi hoặc sổ nghiệp vụ, Workspace truyền ngữ cảnh vùng thao tác nếu có; nếu không có thì chi tiết hồ sơ tự mở đúng vùng của compact step hiện tại và tự đồng bộ lại khi trạng thái đổi bước. Nút chuẩn bị bộ GCN/QĐ chỉ xuất hiện tại bước 4; không còn ép mọi hồ sơ mở vào vùng Tài liệu.
+- Workspace hồ sơ hiện mở toàn màn hình để tập trung vào đúng một hồ sơ. Ngay dưới sơ đồ bước có nút **Bổ sung tài liệu**; nút mở checklist, tự cuộn tới yêu cầu có thể bổ sung đầu tiên. Từng yêu cầu hiển thị hành động rõ theo trạng thái: **Bổ sung file**, **Thay phiên bản** hoặc **Chưa đến bước hiện tại**; phiên cũ vẫn nằm trong lịch sử.
+- Các vùng chuẩn đã cập nhật gồm `design.md`, stage map/gate, approval, waiver, dossier API/server, issuance/withdrawal, UI chi tiết hồ sơ và UI phê duyệt. Không thay đổi `.env`, không ghi secret, credential hoặc dữ liệu hồ sơ thật vào Memory/Obsidian.
+- Verification: `npm run test:pcn` **618/618 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass.
+- Docker Desktop production: chạy `docker compose --env-file .env -f docker-compose.pcn.yml up --build -d`; image `pcn_webapp-webapp:latest` digest `sha256:d40bec2edbaf8d6b30be8cc12f32da21adbe1ae12aa312121f45749b3760a513`.
+- Kết quả triển khai đã xác minh: container `pcn_webapp-webapp` ở trạng thái `Up`, publish `0.0.0.0:2357->2357/tcp`; `GET http://localhost:2357/api/health` trả HTTP 200 `{"status":"ok"}`; trang `/` trả HTTP 200; log xác nhận kết nối và khởi tạo PostgreSQL thành công.
+
+## Cập nhật 2026-09-01 — Hoàn thiện UI/UX PCN: scrollbar, modal và dropdown
+
+- Phạm vi đợt này chỉ là UI/UX PCN; `design.md` §5.3 đã được cập nhật làm chuẩn cho scroll độc lập, scrollbar token/gutter, modal responsive và quy tắc dropdown catalog. Không thay đổi schema, API, payload hay logic nghiệp vụ.
+- Shell PCN giữ một scroll dọc cấp trang tại `PcnWorkspace` `main`; các bảng/workflow rộng mới có scroll ngang riêng. Scrollbar dùng token chung và `scrollbar-gutter: stable` để hạn chế layout nhảy.
+- Các modal PCN được rà soát theo contract `min-h-0`/`max-h` theo viewport, header/footer `shrink-0`, body `mobile-scroll-y`. Đã sửa rõ nhánh read-only của `PcnApprovalModal` và form `PcnSignerDelegationPanel`; vùng nội dung vẫn cuộn độc lập trên viewport thấp/mobile.
+- Thay datalist khách hàng bằng `components/PcnCatalogCombobox.tsx`: tìm theo mã/tên/thông tin liên quan, hỗ trợ ARIA, Escape/Arrow/Enter, xóa lựa chọn và popup có scrollbar. Giá trị legacy ngoài catalog không bị mất mà được gắn trạng thái cần rà soát.
+- Trường phòng thử nghiệm trong `PcnLabRequestView` dùng native `<select>` theo `PCN_SAMPLE_LAB_OPTIONS`, có placeholder và giữ giá trị cũ chưa được cấu hình. Các trường catalog hữu hạn tiếp tục dùng native select; không còn `datalist` trong UI PCN.
+- Contract test UI mới: `test/pcn-ui-contract.test.ts` **26/26 pass**. Regression PCN **599/599 pass**, `npm run lint`, `npm run build` và `git diff --check` đều pass. Browser smoke test tại `127.0.0.1:1357` xác nhận màn hình đăng nhập không tạo overflow toàn trang; chưa kiểm tra sâu sau đăng nhập vì không có credential trong phiên.
+- Các commit chính: `97a3431` (UI contract tests), `a605f25` (scrollbar contract), `7ba92a6` (catalog combobox), `fe3e5cd` (modal scroll). Workspace vẫn giữ nguyên các thay đổi sẵn có của người dùng; không push/merge và không reset/dọn file ngoài phạm vi.
+
 ## Cập nhật 2026-09-01 — UI collapsed/open cho PYC & luân chuyển mẫu
 
 - Trang **Phiếu yêu cầu & Luân chuyển mẫu nội bộ** và projection **Điều phối phòng thử** dùng layout accordion theo mẫu/model: mặc định collapsed, phần tóm tắt vẫn hiện mã mẫu, model, số lượng, chế độ điều phối, vị trí và trạng thái.
@@ -80,7 +118,7 @@ Description: Persistent project memory and verified deployment observations for 
 ## Cập nhật 2026-08-30 — PCN webapp: bộ hồ sơ và graphic workflow
 
 - Profile đang triển khai là `pcn`, dùng `docker-compose.pcn.yml`, database logic `pcn_certification` trên network `supabase_default`; Docker production của PCN dùng cổng `2357`.
-- Dashboard PCN dùng một bề mặt công việc tại một thời điểm, mặc định là **Bản đồ quy trình** dạng graphic và card hồ sơ; hàng đợi chỉ là góc nhìn phụ, không nhân đôi dossier.
+- Dashboard PCN dùng một bề mặt công việc tại một thời điểm, mặc định là **Hồ sơ cần hoàn thiện** dạng card; hàng đợi chỉ là góc nhìn phụ, không nhân đôi dossier. Graphic 5 bước chỉ nằm trong chi tiết của đúng hồ sơ đang mở và không dùng để lọc danh sách card dashboard.
 - Một hồ sơ có `ownerUsername` duy nhất xuyên suốt từ Đề nghị, tài liệu/biên bản, đánh giá, PYC/KQTN, đóng gói đến trình lãnh đạo. Card hồ sơ chưa có chủ có điểm vào **Nhận hồ sơ**; self-claim dùng cùng policy server với hàng đợi.
 - Chi tiết dossier đã có checklist trực quan read-only, upload theo từng yêu cầu với phiên bản, danh sách thành phần bộ hồ sơ, liên kết PYC/KQTN/phát hành và khu vực sinh biểu mẫu Word/PDF/biên bản.
 - Quyền nhận/chuyển chủ hồ sơ không được suy ra từ UI: nhân viên chỉ tự nhận hồ sơ trống của chính mình; Admin/Lãnh đạo mới được điều phối; viewer bị chặn; mutation vẫn qua server boundary và audit.
@@ -313,6 +351,13 @@ Description: Persistent project memory and verified deployment observations for 
 - Không dùng lại port `5432` trên host cho project vì có dịch vụ khác; port public của database project là `15432`.
 - Docker Desktop phải đang chạy và Docker Engine phải cho phép CLI truy cập trước khi dùng `docker compose`.
 
+## Cập nhật 2026-09-02 — Tìm kiếm catalog PCN không dấu
+
+- Các catalog dài trong PCN dùng chung `components/PcnCatalogCombobox.tsx`: tìm kiếm theo nhiều token, không phân biệt hoa thường và không phân biệt dấu tiếng Việt; nhãn hiển thị vẫn giữ nguyên tiếng Việt có dấu.
+- Chuẩn hóa tìm kiếm tập trung tại `utils/pcnSearch.ts`, bao gồm quy đổi `Đ/đ` và Unicode NFD; mỗi token phải khớp ít nhất một trường searchable của option.
+- Đã áp dụng cho khách hàng, hồ sơ, nguồn soạn thảo, lô/tuyến mẫu, PYC, người dùng/phân công, người ký và model Gemini. Enum ngắn vẫn dùng native select; không dùng `datalist` cho PCN.
+- Regression: UI contract **28/28 pass**, search behavior **3/3 pass**, PCN suite **617/617 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass.
+
 ## Cập nhật 2026-08-26 — Chuyển mã hóa ITDC cũ sang cột ITD
 
 - Đã cập nhật `design.md`: `itdEncodeNumber` là cột đích; dữ liệu từ `atdEncodeNumber` được copy nguyên chuỗi, giữ nguyên tiền tố `ITDC`, không đổi thành `ITD`; không ghi đè khi ITD đã có giá trị khác; hỗ trợ dry-run/idempotent và chỉ xóa nguồn sau khi đối soát.
@@ -355,6 +400,7 @@ Description: Persistent project memory and verified deployment observations for 
 - `utils/notificationEvents.ts`: audience filtering, event builders, identity resolution và merge helpers.
 - `utils/notificationNavigation.ts`: mapping notification metadata tới màn hình nghiệp vụ.
 - `utils/notificationBackup.ts`: backup payload và legacy notification normalization.
+- `utils/pcnSearch.ts`: chuẩn hóa và lọc catalog PCN theo truy vấn tiếng Việt không dấu.
 - `utils/activityLog.ts`: ActivityLog builder, diff/redaction, action/entity labels và access policy.
 - `utils/activityLogApi.ts`: REST client append, batch restore, cursor pagination và explicit backup export.
 - `components/ActivityLogView.tsx`: trang lọc/phân trang/chi tiết/CSV cho Nhật ký hệ thống.

@@ -1,24 +1,148 @@
 'use client';
 
-import { AlertCircle, Bot, CheckCircle2, Clock3, Search, Send } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { AlertCircle, CheckCircle2, ExternalLink, FileDown, Loader2, Play, Search, ShieldCheck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { CertificationDossier, CertificationProposal, OutboundLabRequest, PcnDocumentRequirement, PcnDossierDocument, PcnSampleLot, PcnSampleRoute, ReturnedTestResult } from '../types';
-import { buildPcnAssistantRecommendations, filterPcnAssistantRecommendations, type PcnAssistantSeverity } from '../utils/pcnAssistant';
+import type { PcnApprovalCriterionResult, PcnApprovalReviewCandidate } from '../utils/pcnApprovalReview';
+import { getPcnFileUrl } from '../utils/pcnFileApi';
 
-type Props = { dossiers: CertificationDossier[]; proposals: CertificationProposal[]; requirements: PcnDocumentRequirement[]; documents: PcnDossierDocument[]; labRequests: OutboundLabRequest[]; sampleLots: PcnSampleLot[]; sampleRoutes: PcnSampleRoute[]; returnedResults: ReturnedTestResult[]; onOpenDossier: (dossier: CertificationDossier, initialTab?: 'documents' | 'lab' | 'results' | 'issuance') => void };
+type Props = {
+  dossiers: CertificationDossier[];
+  proposals: CertificationProposal[];
+  requirements: PcnDocumentRequirement[];
+  documents: PcnDossierDocument[];
+  labRequests: OutboundLabRequest[];
+  sampleLots: PcnSampleLot[];
+  sampleRoutes: PcnSampleRoute[];
+  returnedResults: ReturnedTestResult[];
+  onOpenDossier: (dossier: CertificationDossier, initialTab?: 'documents' | 'lab' | 'results' | 'issuance') => void;
+};
 
-const severityClass: Record<PcnAssistantSeverity, string> = { URGENT: 'border-rose-200 bg-rose-50 text-rose-800', ATTENTION: 'border-amber-200 bg-amber-50 text-amber-800', INFO: 'border-emerald-200 bg-emerald-50 text-emerald-800' };
+type ReviewEvent = {
+  type?: string;
+  message?: string;
+  error?: string;
+  code?: string;
+  runId?: string;
+  index?: number;
+  criterion?: PcnApprovalCriterionResult;
+  summary?: { pass: number; warning: number; error: number; notEvaluable: number; conclusion: string };
+};
 
-export default function PcnAssistantView(props: Props) {
-  const [query, setQuery] = useState('');
-  const [question, setQuestion] = useState('');
-  const [answer, setAnswer] = useState('');
-  const [asking, setAsking] = useState(false);
-  const recommendations = useMemo(() => filterPcnAssistantRecommendations(buildPcnAssistantRecommendations(props), query), [props, query]);
-  const urgent = recommendations.filter((item) => item.severity === 'URGENT').length;
-  const ask = async () => { const text = question.trim(); if (!text || asking) return; setAsking(true); setAnswer(''); try { const response = await fetch('/api/pcn/assistant', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: text }) }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload?.error || 'Trợ lý AI chưa sẵn sàng.'); setAnswer(payload.response || 'Trợ lý chưa có câu trả lời.'); } catch (error: any) { setAnswer(`Không thể gọi trợ lý AI: ${error.message}`); } finally { setAsking(false); } };
-  return <div className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5"><div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm"><Bot size={21} /></span><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Trợ lý AI tiến trình PCN</p><h1 className="mt-1 text-xl font-black text-slate-900">Việc cần chú ý tiếp theo</h1><p className="mt-1 text-[11px] text-slate-500">Khuyến nghị và câu trả lời được giới hạn trong snapshot PCN hiện tại.</p></div></div><div className="rounded-xl border border-emerald-200 bg-white p-3 shadow-sm"><div className="flex items-center gap-2 text-[10px] font-black text-emerald-800"><Bot size={14} /> Hỏi trợ lý về tiến trình</div><div className="mt-2 flex gap-2"><input aria-label="Câu hỏi cho trợ lý AI" value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void ask(); }} placeholder="Ví dụ: Hồ sơ nào đang chờ KQTN?" className="min-w-0 flex-1 rounded-md border border-slate-200 px-2.5 py-2 text-[11px] outline-none focus:border-emerald-400" /><button type="button" onClick={() => void ask()} disabled={asking || !question.trim()} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-600 px-3 py-2 text-[10px] font-black text-white disabled:opacity-50"><Send size={13} /> {asking ? 'Đang hỏi...' : 'Hỏi'}</button></div>{answer && <div className="mt-2 whitespace-pre-wrap rounded-md bg-emerald-50/60 p-2.5 text-[10px] leading-4 text-slate-700" role="status">{answer}</div>}</div><div className="grid grid-cols-3 gap-2"><Metric label="Khuyến nghị" value={recommendations.length} icon={Bot} /><Metric label="Ưu tiên xử lý" value={urgent} icon={AlertCircle} /><Metric label="Hồ sơ đang theo dõi" value={new Set(recommendations.map((item) => item.dossierId)).size} icon={Clock3} /></div><div className="relative"><Search size={14} className="absolute left-2.5 top-2 text-slate-400" /><input aria-label="Lọc khuyến nghị tiến trình" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Lọc: quá hạn, KQTN, PYC, tài liệu, mã hồ sơ..." className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-2 text-[11px] outline-none focus:border-emerald-400" /></div><div className="space-y-2">{recommendations.map((item) => { const dossier = props.dossiers.find((candidate) => candidate.id === item.dossierId); return <article key={item.id} className={`rounded-xl border p-3 shadow-sm ${severityClass[item.severity]}`}><div className="flex items-start gap-2"><div className="mt-0.5">{item.severity === 'URGENT' ? <AlertCircle size={16} /> : item.severity === 'ATTENTION' ? <Clock3 size={16} /> : <CheckCircle2 size={16} />}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1.5"><h2 className="text-xs font-black">{item.title}</h2><span className="rounded bg-white/70 px-1.5 py-0.5 text-[9px] font-mono font-bold">{item.dossierCode}</span></div><p className="mt-1 text-[10px] leading-4">{item.description}</p></div><button type="button" onClick={() => dossier && props.onOpenDossier(dossier, item.initialTab)} className="shrink-0 rounded-md bg-white/80 px-2 py-1.5 text-[9px] font-black hover:bg-white">{item.actionLabel}</button></div></article>; })}</div>{recommendations.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-[11px] text-slate-500">Chưa có khuyến nghị theo bộ lọc hiện tại.</div>}<p className="text-[10px] text-slate-400">Trợ lý chỉ đọc snapshot; không tự chuyển bước, tạo PYC hay sửa hồ sơ.</p></div>;
+const fields = ['QC4', 'QC9'] as const;
+const criterionOrder = ['ENTRY_GATE', 'COMPLETENESS', 'IDENTITY', 'COMMERCIAL', 'FIELD_EVALUATION', 'SAMPLE_PYC', 'LAB_RESULTS', 'TECHNICAL_ASSESSMENT', 'CERTIFICATE_DECISION', 'DOCUMENT_QUALITY', 'SYSTEM_LOGIC'];
+
+const statusLabel: Record<PcnApprovalCriterionResult['status'], string> = { PASS: 'Đạt', WARNING: 'Cảnh báo', ERROR: 'Lỗi', NOT_EVALUABLE: 'Chưa đủ căn cứ' };
+const statusClass: Record<PcnApprovalCriterionResult['status'], string> = { PASS: 'border-emerald-200 bg-emerald-50 text-emerald-800', WARNING: 'border-amber-200 bg-amber-50 text-amber-800', ERROR: 'border-rose-200 bg-rose-50 text-rose-800', NOT_EVALUABLE: 'border-slate-300 bg-slate-100 text-slate-700' };
+
+function reviewTab(tab: string): 'documents' | 'lab' | 'results' | 'issuance' {
+  if (tab === 'results') return 'results';
+  if (tab === 'sampling') return 'lab';
+  if (tab === 'approval') return 'issuance';
+  return 'documents';
 }
 
-function Metric({ label, value, icon: Icon }: { label: string; value: number; icon: typeof Bot }) { return <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm"><Icon size={15} className="text-emerald-600" /><div className="mt-1 text-lg font-black text-slate-800">{value}</div><div className="truncate text-[9px] font-bold text-slate-500">{label}</div></div>; }
+export default function PcnAssistantView(props: Props) {
+  const [fieldCode, setFieldCode] = useState<(typeof fields)[number]>('QC4');
+  const [candidates, setCandidates] = useState<PcnApprovalReviewCandidate[]>([]);
+  const [selectedDossierId, setSelectedDossierId] = useState('');
+  const [candidateQuery, setCandidateQuery] = useState('');
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [runId, setRunId] = useState('');
+  const [runMessage, setRunMessage] = useState('');
+  const [runError, setRunError] = useState('');
+  const [criteria, setCriteria] = useState<PcnApprovalCriterionResult[]>([]);
+  const [summary, setSummary] = useState<ReviewEvent['summary']>();
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingCandidates(true);
+    setRunError('');
+    setSelectedDossierId('');
+    setCandidates([]);
+    setCriteria([]);
+    setSummary(undefined);
+    setRunId('');
+    setRunMessage('');
+    fetch(`/api/pcn/approval-assistant/candidates?fieldCode=${encodeURIComponent(fieldCode)}`, { credentials: 'same-origin', cache: 'no-store' })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.error || 'Không thể tải danh sách hồ sơ cần kiểm duyệt.');
+        return Array.isArray(payload?.items) ? payload.items as PcnApprovalReviewCandidate[] : [];
+      })
+      .then((items) => { if (!cancelled) setCandidates(items); })
+      .catch((error: any) => { if (!cancelled) setRunError(error?.message || 'Không thể tải danh sách hồ sơ cần kiểm duyệt.'); })
+      .finally(() => { if (!cancelled) setLoadingCandidates(false); });
+    return () => { cancelled = true; };
+  }, [fieldCode]);
+
+  const filteredCandidates = useMemo(() => {
+    const query = candidateQuery.trim().toLocaleLowerCase('vi-VN');
+    if (!query) return candidates;
+    return candidates.filter((candidate) => [candidate.dossierCode, candidate.customerName, candidate.productName, candidate.ownerUsername, candidate.status].filter(Boolean).join(' ').toLocaleLowerCase('vi-VN').includes(query));
+  }, [candidateQuery, candidates]);
+  const selectedCandidate = candidates.find((candidate) => candidate.dossierId === selectedDossierId);
+
+  const consumeReviewEvent = (event: ReviewEvent) => {
+    if (event.type === 'run_started') { setRunId(event.runId || ''); setRunMessage(event.message || 'Đã mở phiên hỗ trợ.'); }
+    if (event.type === 'criterion_started') setRunMessage(`Đang đánh giá tiêu chí ${Number(event.index || 0) + 1}/11...`);
+    if (event.type === 'criterion_result' && event.criterion) setCriteria((current) => [...current.filter((item) => item.id !== event.criterion?.id), event.criterion!].sort((left, right) => criterionOrder.indexOf(left.id) - criterionOrder.indexOf(right.id)));
+    if (event.type === 'run_completed') { setRunId(event.runId || runId); setSummary(event.summary); setRunMessage(event.message || 'Đã hoàn tất phiên hỗ trợ.'); }
+    if (event.type === 'run_error') setRunError(event.message || event.error || 'Phiên hỗ trợ đã dừng.');
+  };
+
+  const startReview = async () => {
+    if (!selectedDossierId || starting) return;
+    setStarting(true); setCriteria([]); setSummary(undefined); setRunId(''); setRunError(''); setRunMessage('Đang chuẩn bị đọc các tệp private...');
+    try {
+      const response = await fetch('/api/pcn/approval-assistant/review', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fieldCode, dossierId: selectedDossierId }) });
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload?.error || 'Không thể bắt đầu phiên hỗ trợ.'); }
+      if (!response.body) throw new Error('Máy chủ không trả về luồng kết quả.');
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const chunk = await reader.read();
+        buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) if (line.trim()) { try { consumeReviewEvent(JSON.parse(line) as ReviewEvent); } catch { /* ignore malformed heartbeat */ } }
+        if (chunk.done) break;
+      }
+      if (buffer.trim()) { try { consumeReviewEvent(JSON.parse(buffer) as ReviewEvent); } catch { /* ignore trailing heartbeat */ } }
+    } catch (error: any) { setRunError(error?.message || 'Không thể chạy trợ lý kiểm duyệt.'); } finally { setStarting(false); }
+  };
+
+  const openEvidence = (assetId: string, tab: string, page?: number) => {
+    const dossier = props.dossiers.find((item) => item.id === selectedDossierId);
+    if (dossier) props.onOpenDossier(dossier, reviewTab(tab));
+    if (assetId) window.open(`${getPcnFileUrl(assetId)}${page ? `#page=${page}` : ''}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const exportReport = async (format: 'PDF' | 'DOCX') => {
+    if (!runId || !selectedCandidate) return;
+    try {
+      const response = await fetch('/api/pcn/approval-assistant/export', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ runId, format }) });
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); setRunError(payload?.error || 'Không thể xuất báo cáo.'); return; }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a'); link.href = url; link.download = `bao-cao-ho-tro-${selectedCandidate.dossierCode}.${format.toLowerCase()}`; link.click(); URL.revokeObjectURL(url);
+    } catch (error: any) { setRunError(error?.message || 'Không thể xuất báo cáo.'); }
+  };
+
+  return (
+    <div className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5">
+      <header className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm"><ShieldCheck size={21} /></span><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">Trợ lý phê duyệt</p><h1 className="mt-1 text-xl font-black text-slate-900">Hỗ trợ kiểm duyệt hồ sơ</h1><p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">Chọn Lĩnh vực, chọn đúng một bộ hồ sơ, rồi bấm Xác nhận để AI đọc lần lượt từng tiêu chí. Đây chỉ là phiên hỗ trợ phán đoán; không phê duyệt, không đổi trạng thái và không khóa tiến trình hồ sơ.</p></div></header>
+      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><div className="flex flex-wrap items-center gap-2"><span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Lĩnh vực hồ sơ</span>{fields.map((field) => <button key={field} type="button" onClick={() => setFieldCode(field)} className={`rounded-md px-3 py-1.5 text-[10px] font-black ${fieldCode === field ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-slate-50 text-slate-600'}`}>{field}</button>)}<span className="ml-auto rounded-full bg-indigo-50 px-2 py-1 text-[9px] font-bold text-indigo-700">Chỉ đọc • QC4/QC9 v1</span></div><div className="relative mt-3"><Search size={14} className="absolute left-2.5 top-2 text-slate-400" /><input aria-label="Tìm hồ sơ kiểm duyệt" value={candidateQuery} onChange={(event) => setCandidateQuery(event.target.value)} placeholder="Tìm mã hồ sơ, khách hàng, sản phẩm..." className="w-full rounded-lg border border-slate-200 py-2 pl-8 pr-2 text-[11px] outline-none focus:border-indigo-400" /></div><div className="mt-3 space-y-2">{loadingCandidates && <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-3 text-[10px] text-slate-500"><Loader2 size={14} className="animate-spin" /> Đang tải danh sách hồ sơ...</div>}{!loadingCandidates && filteredCandidates.map((candidate) => <label key={candidate.dossierId} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition ${selectedDossierId === candidate.dossierId ? 'border-indigo-400 bg-indigo-50/60' : 'border-slate-200 bg-white hover:border-indigo-200'}`}><input type="radio" name="approval-assistant-dossier" checked={selectedDossierId === candidate.dossierId} onChange={() => setSelectedDossierId(candidate.dossierId)} className="mt-1 h-4 w-4 accent-indigo-600" /><span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><span className="text-xs font-black text-slate-800">{candidate.dossierCode}</span><span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-bold text-indigo-700">{candidate.status === 'WAITING_APPROVAL' ? 'Chờ phê duyệt' : 'Soát xét kỹ thuật'}</span><span className="text-[9px] text-slate-500">Đủ hồ sơ {candidate.completenessScore}%</span></span><span className="mt-1 block text-[10px] text-slate-600">{candidate.customerName || 'Chưa có khách hàng'}{candidate.productName ? ` • ${candidate.productName}` : ''}</span>{candidate.missingDocuments.length > 0 && <span className="mt-1 block text-[9px] text-rose-700">Còn thiếu: {candidate.missingDocuments.join(', ')}</span>}</span></label>)}{!loadingCandidates && filteredCandidates.length === 0 && <div className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-[10px] text-slate-500">Không có bộ hồ sơ QC đang thuộc phạm vi trợ lý.</div>}</div><div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" onClick={() => void startReview()} disabled={!selectedDossierId || starting} className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-2 text-[10px] font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"><Play size={13} /> {starting ? 'Đang đánh giá...' : 'Xác nhận hồ sơ'}</button>{selectedCandidate && <span className="text-[10px] text-slate-500">Đã chọn: <strong>{selectedCandidate.dossierCode}</strong>. Nút này chỉ bắt đầu phiên hỗ trợ.</span>}</div></section>
+      {(runMessage || runError || criteria.length > 0) && <section className="space-y-3">{runMessage && <div className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[10px] text-indigo-800" role="status">{starting && <Loader2 size={13} className="animate-spin" />}{runMessage}</div>}{runError && <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[10px] leading-4 text-rose-800" role="alert"><AlertCircle size={14} className="mt-0.5 shrink-0" /><span>{runError}</span></div>}{summary && <div className="grid grid-cols-2 gap-2 md:grid-cols-5"><Metric label="Đạt" value={summary.pass} tone="text-emerald-700 bg-emerald-50" /><Metric label="Cảnh báo" value={summary.warning} tone="text-amber-700 bg-amber-50" /><Metric label="Lỗi" value={summary.error} tone="text-rose-700 bg-rose-50" /><Metric label="Chưa đủ căn cứ" value={summary.notEvaluable} tone="text-slate-700 bg-slate-100" /><div className="rounded-lg border border-indigo-200 bg-indigo-50 p-2"><div className="text-[9px] font-bold text-indigo-600">Kết luận hỗ trợ</div><div className="mt-1 text-[10px] font-black text-indigo-900">{summary.conclusion}</div></div></div>}<div className="space-y-2">{criteria.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} onOpenEvidence={openEvidence} />)}</div>{summary && runId && <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-3"><FileDown size={14} className="text-indigo-600" /><span className="mr-2 text-[10px] font-bold text-slate-600">Xuất bản chụp phiên hỗ trợ</span><button type="button" onClick={() => void exportReport('PDF')} className="rounded-md border border-slate-200 px-2.5 py-1.5 text-[10px] font-black text-slate-700 hover:bg-slate-50">PDF</button><button type="button" onClick={() => void exportReport('DOCX')} className="rounded-md border border-slate-200 px-2.5 py-1.5 text-[10px] font-black text-slate-700 hover:bg-slate-50">DOCX</button><span className="text-[9px] text-slate-400">Báo cáo tạm thời, không ghi vào hồ sơ.</span></div>}</section>}
+    </div>
+  );
+}
+
+function CriterionCard({ criterion, onOpenEvidence }: { criterion: PcnApprovalCriterionResult; onOpenEvidence: (assetId: string, tab: string, page?: number) => void }) {
+  return <article className={`rounded-xl border p-3 shadow-sm ${statusClass[criterion.status]}`}><div className="flex items-start gap-2"><div className="mt-0.5">{criterion.status === 'PASS' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-xs font-black">{criterion.title}</h2><span className="rounded-full bg-white/70 px-2 py-0.5 text-[9px] font-black">{statusLabel[criterion.status]}</span><span className="text-[9px] font-bold opacity-70">{criterion.source === 'AI' ? 'AI ngữ nghĩa' : criterion.source === 'RULE_AND_AI' ? 'Luật + AI' : 'Luật kiểm tra'}</span></div><p className="mt-1 text-[10px] leading-4">{criterion.summary}</p>{criterion.findings.length > 0 && <div className="mt-2 space-y-2">{criterion.findings.map((finding) => <div key={finding.id} className="rounded-lg border border-white/70 bg-white/60 p-2"><p className="text-[10px] font-black">{finding.message}</p>{finding.detail && <p className="mt-1 text-[9px] leading-4 opacity-80">{finding.detail}</p>}{finding.suggestedAction && <p className="mt-1 text-[9px] leading-4"><strong>Đối chiếu:</strong> {finding.suggestedAction}</p>}{finding.evidence.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{finding.evidence.map((evidence) => <button key={`${finding.id}-${evidence.assetId}-${evidence.page || 0}`} type="button" onClick={() => onOpenEvidence(evidence.assetId, evidence.tab, evidence.page)} className="inline-flex items-center gap-1 rounded-md border border-white bg-white/80 px-2 py-1 text-[9px] font-black hover:bg-white"><ExternalLink size={11} /> Mở bằng chứng {evidence.fileName}{evidence.page ? ` • trang ${evidence.page}` : ''}</button>)}</div>}</div>)}</div>}</div></div></article>;
+}
+
+function Metric({ label, value, tone }: { label: string; value: number; tone: string }) { return <div className={`rounded-lg border border-white p-2 ${tone}`}><div className="text-[9px] font-bold opacity-70">{label}</div><div className="mt-1 text-lg font-black">{value}</div></div>; }

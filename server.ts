@@ -52,6 +52,7 @@ import type {
   CustomerRef,
   IssuancePackage,
   OutboundLabRequest,
+  PcnCertificationFieldCode,
   PcnApprovalStep,
   PcnCertificationField,
   PcnDocumentRequirement,
@@ -118,14 +119,14 @@ import { getPcnOperationalTemplateForKind } from './utils/pcnOperationalTemplate
 import { getPcnCollectionMutationDenial } from "./utils/pcnRbac.ts";
 import { PCN_CERTIFICATION_FIELD_CODES, getPcnDossierExceptionReasonDenial, getPcnDossierMethodChangeDenial, getPcnDossierStatusMutationDenial, isPcnDossierTransitionAllowed } from "./utils/pcnWorkflow.ts";
 import { getPcnSignerAuthorization } from "./utils/pcnSignerAuthorization.ts";
-import { applyPcnApprovalDecision, buildPcnApprovalSteps, getPcnApprovalDecisionDenial, isPcnApprovalComplete, reopenPcnApprovalFromStep } from "./utils/pcnApproval.ts";
-import { archivePcnIssuancePackage, buildPcnIssuancePackage, deliverPcnIssuancePackage, getPcnIssuanceGenericMutationDenial, getPcnIssuanceOfficialDocumentReadiness, getPcnIssuanceReadiness, issuePcnIssuancePackage } from "./utils/pcnIssuance.ts";
+import { applyPcnApprovalDecision, buildPcnApprovalSteps, getPcnApprovalDecisionDenial, getPcnEffectiveApprovalSteps, isPcnApprovalComplete } from "./utils/pcnApproval.ts";
+import { archivePcnIssuancePackage, buildPcnIssuancePackage, deliverPcnIssuancePackage, getPcnIssuanceGenericMutationDenial, getPcnIssuanceOfficialDocumentReadiness, getPcnIssuanceReadiness, issuePcnIssuancePackage, withdrawPcnIssuancePackage } from "./utils/pcnIssuance.ts";
 import { buildPcnSampleFlowEvent, buildPcnSampleLot, derivePcnSampleLotStatus, getPcnSampleRouteStartDenial, projectPcnSampleRouteFromItemSnapshots, transitionPcnSampleRoute, type PcnSampleLotDraft, type PcnSampleRouteUpdate } from './utils/pcnSampleFlow.ts';
 import { PCN_LAB_INTEGRATION_CONTRACT_VERSION, buildPcnLabDispatchPayload, buildPcnLabHmacSigningInput, buildPcnLabIntegrationFingerprint, canonicalizePcnLabIntegrationPayload, getPcnLabIntegrationEventId, mapPcnLabStatusEvent, type PcnLabDispatchPayload, type PcnLabStatusEventInput } from './utils/pcnLabIntegration.ts';
 import { buildPcnLabRequest, transitionPcnLabRequest, type PcnLabRequestDraft } from './utils/pcnLabRouting.ts';
 import { buildPcnSampleHandoverDetails } from './utils/pcnHandoverPolicy.ts';
 import { buildPcnReturnedResult, markOfficialPcnResults } from './utils/pcnResultPolicy.ts';
-import { buildPcnDossierChecklist, buildPcnDossierDocumentId, buildPcnGeneratedDossierAttachment, buildPcnUploadedDossierAttachment, getPcnDocumentRequirements, getPcnGeneratedDocumentRequirementCode } from './utils/pcnDossierDocuments.ts';
+import { buildPcnDossierChecklist, buildPcnDossierDocumentId, buildPcnGeneratedDossierAttachment, buildPcnUploadedDossierAttachment, getPcnDocumentRequirements, getPcnGeneratedDocumentRequirementCode, mergePcnDocumentRequirements } from './utils/pcnDossierDocuments.ts';
 import { getPcnDossierAssignmentDenial, getPcnOwnerAssignmentAuthorityDenial } from './utils/pcnDossierAssignment.ts';
 import { getPcnDossierDateDenial, getPcnTimestampDenial, normalizePcnIssuanceTimestamp, normalizePcnUtcTimestamp } from './utils/pcnDossierDate.ts';
 import type { PcnDossierUpdateInput } from './utils/pcnDossierApi.ts';
@@ -136,9 +137,27 @@ import { isPcnOcrFileSupported, normalizePcnOcrDraft, normalizePcnOcrEvidence } 
 import { getPcnOperationalFormKind, normalizePcnOperationalFormsPatch } from './utils/pcnOperationalForms.ts';
 import { mergePcnDocumentWaivers, normalizePcnDocumentWaiverPatch } from './utils/pcnDocumentWaivers.ts';
 import { buildPcnAssistantSnapshot } from './utils/pcnAssistant.ts';
+import {
+  buildPcnApprovalReview,
+  getPcnApprovalReviewCandidates,
+  PCN_APPROVAL_REVIEW_CRITERIA,
+  type PcnApprovalCriterionResult,
+  type PcnApprovalReviewEvidence,
+  type PcnApprovalReviewFinding,
+  type PcnApprovalReviewInput,
+  type PcnApprovalReviewTextEvidence,
+} from './utils/pcnApprovalReview.ts';
+import {
+  buildPcnPaddleOcrRequest,
+  normalizePcnPaddleOcrPage,
+  PcnPaddleOcrUnavailableError,
+} from './utils/pcnApprovalReviewOcr.ts';
+import { buildPcnApprovalReviewDocx, buildPcnApprovalReviewPdf } from './utils/pcnApprovalReviewReport.ts';
 import { buildPcnDraftManualSource, validatePcnDraftAction } from './utils/pcnDrafting.ts';
 import { validatePcnDraftSourceSelection } from './utils/pcnDraftSourcePolicy.ts';
-import { canProcessPcnDossierRequirement, getPcnDossierStageGateDenial } from './utils/pcnDossierStageGate.ts';
+import { canProcessPcnDossierRequirement, getPcnDossierStageGateDenial, getPcnRequirementReopenStatus, getPcnRequirementWorkflowStageIndex } from './utils/pcnDossierStageGate.ts';
+import { getPcnWorkflowStage, getPcnWorkflowStageIndex } from './utils/pcnWorkflowStages.ts';
+import { isPcnDossierPostApprovalLocked } from './utils/pcnDossierStepAccess.ts';
 import { canCreatePcnLabRequest, canProcessPcnGeneratedDocument, canProcessPcnOperationalForm, canProcessPcnSampleFlow } from './utils/pcnWorkflowStages.ts';
 import { normalizeCustomerRecord } from './utils/customerRecord.ts';
 import { resolveDatabaseConfig } from './utils/pcnDatabase.ts';
@@ -442,6 +461,19 @@ interface KqtnFooterJobRecord {
 
 const kqtnFooterJobs = new Map<string, KqtnFooterJobRecord>();
 
+const PCN_APPROVAL_REVIEW_TTL_MS = 15 * 60 * 1000;
+interface PcnApprovalReviewRunRecord {
+  runId: string;
+  username: string;
+  dossierId: string;
+  dossierCode: string;
+  fieldCode: string;
+  report: ReturnType<typeof buildPcnApprovalReview>;
+  expiresAt: number;
+}
+
+const pcnApprovalReviewRuns = new Map<string, PcnApprovalReviewRunRecord>();
+
 function getKqtnStorageClient() {
   const baseUrl = String(process.env.SUPABASE_STORAGE_URL || '').trim();
   const serviceRoleKey = String(
@@ -617,6 +649,51 @@ function stableJson(value: unknown): string {
 
 function mapDocumentRow(row: { document_id: string; data: Record<string, any> }) {
   return { ...(row.data || {}), id: row.document_id };
+}
+
+/** Shared server gate for both first submission and re-submission into step 5. */
+async function assertPcnTechnicalReviewSubmissionReady(client: any, dossier: CertificationDossier): Promise<void> {
+  const requirementResult = await client.query(
+    `SELECT document_id, data FROM app_documents
+     WHERE collection_name = 'pcnDocumentRequirements'`,
+  );
+  const configuredRequirements = requirementResult.rows.map((row: any) => mapDocumentRow(row) as PcnDocumentRequirement);
+  const documentResult = await client.query(
+    `SELECT document_id, data FROM app_documents
+     WHERE collection_name = 'dossierDocuments' AND data->>'dossierId' = $1`,
+    [dossier.id],
+  );
+  const returnedResultResult = await client.query(
+    `SELECT document_id, data FROM app_documents
+     WHERE collection_name = 'returnedResults' AND data->>'dossierId' = $1`,
+    [dossier.id],
+  );
+  const hasConfirmedReturnedScan = returnedResultResult.rows.some((row: any) => {
+    const result = mapDocumentRow(row) as ReturnedTestResult;
+    return Boolean(result.fileAssetId && result.outcome !== 'PENDING' && result.isOfficial !== false);
+  });
+  const resolvedRequirementIds = hasConfirmedReturnedScan
+    ? getPcnDocumentRequirements(dossier.fieldCodes, configuredRequirements.length > 0 ? configuredRequirements : undefined)
+      .filter((requirement) => requirement.code === 'TEST_REPORT')
+      .map((requirement) => requirement.id)
+    : [];
+  const stageGateDenial = getPcnDossierStageGateDenial({
+    dossier,
+    nextStatus: 'WAITING_APPROVAL',
+    requirements: configuredRequirements.length > 0 ? configuredRequirements : undefined,
+    documents: documentResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierDocument),
+    documentWaivers: dossier.documentWaivers,
+    resolvedRequirementIds,
+  });
+  if (stageGateDenial) throw Object.assign(new Error(stageGateDenial), { statusCode: 409 });
+  const finalRequirements = getPcnDocumentRequirements(dossier.fieldCodes, configuredRequirements.length > 0 ? configuredRequirements : undefined)
+    .filter((requirement) => requirement.required && ['CERTIFICATE', 'DECISION'].includes(requirement.code));
+  const currentDocuments = documentResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierDocument);
+  const missingDraft = finalRequirements.find((requirement) => {
+    const document = currentDocuments.find((item) => item.requirementId === requirement.id);
+    return !(document?.status === 'PRESENT' && document.currentVersionId && document.versions.some((version) => version.assetId === document.currentVersionId));
+  });
+  if (missingDraft) throw Object.assign(new Error(`Phải có bản dự thảo ${missingDraft.code === 'CERTIFICATE' ? 'GCN' : 'QĐ'} trước khi trình bước 5.`), { statusCode: 409 });
 }
 
 const ACTIVITY_LOG_ACTIONS = new Set([
@@ -2118,7 +2195,9 @@ async function startServer() {
             [nextRequest.id, JSON.stringify(getDocumentPayload(nextRequest))],
           );
         }
-        const nextDossier: CertificationDossier = { ...dossier, updatedAt: now };
+        const nextDossier: CertificationDossier = {
+          ...dossier, updatedAt: now,
+        };
         await client.query(
           `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
            WHERE collection_name = 'certificationDossiers' AND document_id = $1`,
@@ -2174,6 +2253,11 @@ async function startServer() {
       return;
     }
     if (!requirePcnMutation(req, res)) return;
+    const sessionActor = getPcnSessionUser(req);
+    if (!sessionActor) {
+      res.status(401).json({ error: 'Phiên PCN không còn hợp lệ.' });
+      return;
+    }
     const requestId = String(req.params.requestId || '').trim();
     if (!isSafePcnSampleKey(requestId)) {
       res.status(400).json({ error: 'Mã PYC không hợp lệ.' });
@@ -2288,6 +2372,13 @@ async function startServer() {
           messageId,
           idempotencyKey,
           sentAt,
+          initiatedBy: {
+            username: sessionActor.username,
+            name: sessionActor.name,
+            role: sessionActor.role,
+            position: sessionActor.position,
+            sourceSystem: 'PCN',
+          },
         });
         const bodySha256 = buildPcnLabBodySha256(payload);
         const now = new Date().toISOString();
@@ -3883,9 +3974,109 @@ async function startServer() {
         );
         if (dossierResult.rows.length === 0) throw Object.assign(new Error('Không tìm thấy hồ sơ để lập bộ phát hành.'), { statusCode: 404 });
         const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
+        if (dossier.status === 'TECHNICAL_REVIEW'
+          && dossier.ownerUsername
+          && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
+          throw Object.assign(new Error('Chỉ chủ hồ sơ được hoàn thiện bước 4 và trình bước 5.'), { statusCode: 403 });
+        }
         if (existingIssuanceResult.rows.length > 0) {
           const issuance = mapDocumentRow(existingIssuanceResult.rows[0]) as IssuancePackage;
           if (issuance.dossierId !== dossier.id) throw Object.assign(new Error('Bộ phát hành không thuộc hồ sơ đang yêu cầu.'), { statusCode: 409 });
+          if (issuance.status === 'RETURNED' && dossier.status === 'TECHNICAL_REVIEW') {
+            await assertPcnTechnicalReviewSubmissionReady(client, dossier);
+            const resubmitActivityId = stablePcnMutationId('activity-pcn-issuance-resubmit', `${issuanceId}:${idempotencyKey}`);
+            const resubmitFingerprint = createHash('sha256').update(JSON.stringify({ dossierId, issuanceId })).digest('hex');
+            const existingResubmitActivityResult = await client.query(
+              `SELECT document_id, data FROM app_documents
+               WHERE collection_name = 'activityLogs' AND document_id = $1
+               LIMIT 1 FOR UPDATE`,
+              [resubmitActivityId],
+            );
+            if (existingResubmitActivityResult.rows[0]) {
+              const existingActivity = mapDocumentRow(existingResubmitActivityResult.rows[0]) as Record<string, any>;
+              if (existingActivity.idempotencyFingerprint && existingActivity.idempotencyFingerprint !== resubmitFingerprint) {
+                throw Object.assign(new Error('idempotencyKey đã được dùng cho lần trình lại khác.'), { statusCode: 409 });
+              }
+              const approvalResult = await client.query(
+                `SELECT document_id, data FROM app_documents
+                 WHERE collection_name = 'approvalSteps' AND data->>'dossierId' = $1
+                 ORDER BY COALESCE((data->>'sequence')::int, 999), document_id`,
+                [dossier.id],
+              );
+              return {
+                issuance,
+                dossier,
+                approvalSteps: approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[],
+                activityLog: existingActivity,
+                idempotent: true,
+              };
+            }
+            const approvalResult = await client.query(
+              `SELECT document_id, data FROM app_documents
+               WHERE collection_name = 'approvalSteps' AND data->>'dossierId' = $1
+               ORDER BY COALESCE((data->>'sequence')::int, 999), document_id
+               FOR UPDATE`,
+              [dossier.id],
+            );
+            let allSteps = approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[];
+            if (getPcnEffectiveApprovalSteps(allSteps).length === 0) {
+              const leadershipStep = buildPcnApprovalSteps(dossier.id, new Date().toISOString())[0];
+              await client.query(
+                `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+                 VALUES ('approvalSteps', $1, $2::jsonb, CURRENT_TIMESTAMP)
+                 ON CONFLICT (collection_name, document_id) DO NOTHING`,
+                [leadershipStep.id, JSON.stringify(getDocumentPayload(leadershipStep))],
+              );
+              allSteps = [...allSteps, leadershipStep];
+            }
+            const effectiveIds = new Set(getPcnEffectiveApprovalSteps(allSteps).map((step) => step.id));
+            const nextSteps = allSteps.map((step) => effectiveIds.has(step.id)
+              ? { ...step, status: 'PENDING' as const, actedAt: undefined }
+              : step);
+            const now = new Date().toISOString();
+            const nextIssuance: IssuancePackage = { ...issuance, status: 'PENDING_APPROVAL', updatedAt: now };
+            const nextDossier: CertificationDossier = { ...dossier, status: 'WAITING_APPROVAL', updatedAt: now };
+            for (const step of nextSteps) {
+              await client.query(
+                `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+                 WHERE collection_name = 'approvalSteps' AND document_id = $1`,
+                [step.id, JSON.stringify(getDocumentPayload(step))],
+              );
+            }
+            await client.query(
+              `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+               WHERE collection_name = 'issuancePackages' AND document_id = $1`,
+              [nextIssuance.id, JSON.stringify(getDocumentPayload(nextIssuance))],
+            );
+            await client.query(
+              `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+               WHERE collection_name = 'certificationDossiers' AND document_id = $1`,
+              [nextDossier.id, JSON.stringify(getDocumentPayload(nextDossier))],
+            );
+            const activity = {
+              ...buildActivityLog({
+                id: resubmitActivityId,
+                action: 'STATUS_CHANGED',
+                entityType: 'PCN_ISSUANCE',
+                entityId: nextIssuance.id,
+                entityLabel: nextDossier.dossierCode,
+                actorUsername: actor.username,
+                actorName: actor.name,
+                actorRole: actor.systemRole || actor.role,
+                summary: 'Trình lại hồ sơ vào bước 5 sau khi hoàn thiện bước 4',
+                source: 'UI',
+                createdAt: now,
+              }),
+              idempotencyKey,
+              idempotencyFingerprint: resubmitFingerprint,
+            };
+            await client.query(
+              `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+               VALUES ('activityLogs', $1, $2::jsonb, CURRENT_TIMESTAMP)`,
+              [activity.id, JSON.stringify(getDocumentPayload(activity))],
+            );
+            return { issuance: nextIssuance, dossier: nextDossier, approvalSteps: nextSteps, activityLog: activity, idempotent: false };
+          }
           const existingActivityResult = await client.query(
             `SELECT document_id, data FROM app_documents
              WHERE collection_name = 'activityLogs' AND document_id = $1
@@ -3907,10 +4098,21 @@ async function startServer() {
              FOR UPDATE`,
             [dossier.id],
           );
+          let approvalSteps = approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[];
+          if (getPcnEffectiveApprovalSteps(approvalSteps).length === 0) {
+            const leadershipStep = buildPcnApprovalSteps(dossier.id, new Date().toISOString())[0];
+            await client.query(
+              `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+               VALUES ('approvalSteps', $1, $2::jsonb, CURRENT_TIMESTAMP)
+               ON CONFLICT (collection_name, document_id) DO NOTHING`,
+              [leadershipStep.id, JSON.stringify(getDocumentPayload(leadershipStep))],
+            );
+            approvalSteps = [...approvalSteps, leadershipStep];
+          }
           return {
             issuance,
             dossier,
-            approvalSteps: approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[],
+            approvalSteps,
             activityLog: existingActivity,
             idempotent: true,
           };
@@ -3952,6 +4154,14 @@ async function startServer() {
             resolvedRequirementIds,
           });
           if (stageGateDenial) throw Object.assign(new Error(stageGateDenial), { statusCode: 409 });
+          const finalRequirements = getPcnDocumentRequirements(dossier.fieldCodes, configuredRequirements.length > 0 ? configuredRequirements : undefined)
+            .filter((requirement) => requirement.required && ['CERTIFICATE', 'DECISION'].includes(requirement.code));
+          const currentDocuments = documentResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierDocument);
+          const missingDraft = finalRequirements.find((requirement) => {
+            const document = currentDocuments.find((item) => item.requirementId === requirement.id);
+            return !(document?.status === 'PRESENT' && document.currentVersionId && document.versions.some((version) => version.assetId === document.currentVersionId));
+          });
+          if (missingDraft) throw Object.assign(new Error(`Phải có bản dự thảo ${missingDraft.code === 'CERTIFICATE' ? 'GCN' : 'QĐ'} trước khi trình bước 5.`), { statusCode: 409 });
         }
         const now = new Date().toISOString();
         const issuance = buildPcnIssuancePackage({ id: issuanceId, dossier, now });
@@ -4058,7 +4268,8 @@ async function startServer() {
            FOR UPDATE`,
           [dossier.id],
         );
-        const steps = approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[];
+        const allSteps = approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[];
+        const steps = getPcnEffectiveApprovalSteps(allSteps);
         const currentStep = steps.find((step) => step.id === stepId);
         if (!currentStep) throw Object.assign(new Error('Không tìm thấy bước phê duyệt.'), { statusCode: 404 });
         const approvalUserResult = await client.query(
@@ -4074,6 +4285,29 @@ async function startServer() {
           Array.isArray(dossier.fieldCodes) ? dossier.fieldCodes : [],
         );
         if (approvalDenial) throw Object.assign(new Error(approvalDenial), { statusCode: 403 });
+        if (issuance.status !== 'PENDING_APPROVAL' || dossier.status !== 'WAITING_APPROVAL') {
+          throw Object.assign(new Error('Bộ phát hành chưa được trình lại đầy đủ vào bước 5.'), { statusCode: 409 });
+        }
+        if (decision === 'APPROVE') {
+          const requirementResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'pcnDocumentRequirements'`,
+          );
+          const configuredRequirements = requirementResult.rows.map((row: any) => mapDocumentRow(row) as PcnDocumentRequirement);
+          const documentResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'dossierDocuments' AND data->>'dossierId' = $1`,
+            [dossier.id],
+          );
+          const currentDocuments = documentResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierDocument);
+          const finalRequirements = getPcnDocumentRequirements(dossier.fieldCodes, configuredRequirements.length > 0 ? configuredRequirements : undefined)
+            .filter((requirement) => requirement.required && ['CERTIFICATE', 'DECISION'].includes(requirement.code));
+          const missingDraft = finalRequirements.find((requirement) => {
+            const document = currentDocuments.find((item) => item.requirementId === requirement.id);
+            return !(document?.status === 'PRESENT' && document.currentVersionId && document.versions.some((version) => version.assetId === document.currentVersionId));
+          });
+          if (missingDraft) throw Object.assign(new Error(`Phải có bản dự thảo ${missingDraft.code === 'CERTIFICATE' ? 'GCN' : 'QĐ'} trước khi phê duyệt bước 5.`), { statusCode: 409 });
+        }
         const fingerprint = createHash('sha256').update(JSON.stringify({ issuanceId, stepId, decision, comment: comment || '' })).digest('hex');
         const activityId = stablePcnMutationId('activity-pcn-approval', `${issuanceId}:${stepId}:${idempotencyKey}`);
         const existingActivityResult = await client.query(
@@ -4087,15 +4321,18 @@ async function startServer() {
           if (existingActivity.idempotencyFingerprint && existingActivity.idempotencyFingerprint !== fingerprint) {
             throw Object.assign(new Error('idempotencyKey đã được dùng cho quyết định phê duyệt khác.'), { statusCode: 409 });
           }
-          return { issuance, dossier, approvalSteps: steps, activityLog: existingActivity, idempotent: true };
+          return { issuance, dossier, approvalSteps: allSteps, activityLog: existingActivity, idempotent: true };
         }
         let decidedSteps: PcnApprovalStep[];
         try {
-          decidedSteps = applyPcnApprovalDecision(steps, stepId, decision, comment);
+          decidedSteps = applyPcnApprovalDecision(allSteps, stepId, decision, comment);
         } catch (error) {
           throw Object.assign(error instanceof Error ? error : new Error(String(error)), { statusCode: 409 });
         }
-        const nextSteps = decision === 'RETURN' ? reopenPcnApprovalFromStep(decidedSteps, currentStep.sequence) : decidedSteps;
+        const effectiveStepIds = new Set(steps.map((step) => step.id));
+        const nextSteps = decision === 'RETURN'
+          ? decidedSteps.map((step) => effectiveStepIds.has(step.id) ? { ...step, status: 'PENDING' as const, actedAt: undefined } : step)
+          : decidedSteps;
         const complete = isPcnApprovalComplete(nextSteps);
         const nextIssuance: IssuancePackage = {
           ...issuance,
@@ -4301,6 +4538,133 @@ async function startServer() {
       });
       res.json(result);
     } catch (error: any) {
+      const message = String(error?.message || error);
+      res.status(Number(error?.statusCode) || (message.includes('Không tìm thấy') ? 404 : 400)).json({ error: message });
+    }
+  });
+
+  app.post('/api/pcn/issuance/:issuanceId/withdraw', async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') {
+      res.status(404).json({ error: 'Thu hồi bộ phát hành PCN chỉ khả dụng trong profile PCN.' });
+      return;
+    }
+    if (!requirePcnMutation(req, res)) return;
+    const issuanceId = String(req.params.issuanceId || '').trim();
+    const reason = String(req.body?.reason || '').trim();
+    const idempotencyKey = String(req.body?.idempotencyKey || '').trim();
+    if (!isSafePcnSampleKey(issuanceId) || !isSafePcnSampleKey(idempotencyKey) || !reason || reason.length > 1000) {
+      res.status(400).json({ error: 'Thu hồi phải có lý do tối đa 1000 ký tự và idempotencyKey hợp lệ.' });
+      return;
+    }
+    const actor = getPcnSessionUser(req)!;
+    try {
+      const result = await withPgTransaction(async (client) => {
+        const issuanceResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'issuancePackages' AND document_id = $1
+           LIMIT 1 FOR UPDATE`,
+          [issuanceId],
+        );
+        if (issuanceResult.rows.length === 0) throw Object.assign(new Error('Không tìm thấy bộ phát hành.'), { statusCode: 404 });
+        const issuance = mapDocumentRow(issuanceResult.rows[0]) as IssuancePackage;
+        const dossierResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'certificationDossiers' AND document_id = $1
+           LIMIT 1 FOR UPDATE`,
+          [issuance.dossierId],
+        );
+        if (dossierResult.rows.length === 0) throw Object.assign(new Error('Không tìm thấy hồ sơ của bộ phát hành.'), { statusCode: 404 });
+        const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
+        const actorUsername = actor.username.trim().toLowerCase();
+        const signerUsername = String(issuance.signerUsername || '').trim().toLowerCase();
+        const isLeadership = actor.departmentRoleCode === 'LEADERSHIP';
+        if (!isLeadership && (!signerUsername || signerUsername !== actorUsername)) {
+          throw Object.assign(new Error('Chỉ Lãnh đạo hoặc người ký được phân quyền mới được thu hồi hồ sơ.'), { statusCode: 403 });
+        }
+        if (!isPcnDossierPostApprovalLocked(dossier.status) || !['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(issuance.status)) {
+          throw Object.assign(new Error('Chỉ được thu hồi hồ sơ đã phê duyệt hoặc phát hành.'), { statusCode: 409 });
+        }
+        const fingerprint = createHash('sha256').update(JSON.stringify({ issuanceId, reason })).digest('hex');
+        const activityId = stablePcnMutationId('activity-pcn-issuance-withdraw', `${issuanceId}:${idempotencyKey}`);
+        const existingActivityResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'activityLogs' AND document_id = $1
+           LIMIT 1 FOR UPDATE`,
+          [activityId],
+        );
+        if (existingActivityResult.rows.length > 0) {
+          const existingActivity = mapDocumentRow(existingActivityResult.rows[0]) as Record<string, any>;
+          if (existingActivity.idempotencyFingerprint && existingActivity.idempotencyFingerprint !== fingerprint) {
+            throw Object.assign(new Error('idempotencyKey đã được dùng cho lần thu hồi khác.'), { statusCode: 409 });
+          }
+          const approvalResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'approvalSteps' AND data->>'dossierId' = $1
+             ORDER BY COALESCE((data->>'sequence')::int, 999), document_id`,
+            [dossier.id],
+          );
+          return { issuance, dossier, approvalSteps: approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[], activityLog: existingActivity, idempotent: true };
+        }
+        const approvalResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'approvalSteps' AND data->>'dossierId' = $1
+           ORDER BY COALESCE((data->>'sequence')::int, 999), document_id
+           FOR UPDATE`,
+          [dossier.id],
+        );
+        const allSteps = approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[];
+        const effectiveStepIds = new Set(getPcnEffectiveApprovalSteps(allSteps).map((step) => step.id));
+        const nextSteps = allSteps.map((step) => effectiveStepIds.has(step.id)
+          ? { ...step, status: 'PENDING' as const, actedAt: undefined }
+          : step);
+        const withdrawnAt = new Date().toISOString();
+        const nextIssuance = withdrawPcnIssuancePackage(issuance, { reason, withdrawnByUsername: actor.username, withdrawnAt });
+        const nextDossier: CertificationDossier = { ...dossier, status: 'TECHNICAL_REVIEW', updatedAt: withdrawnAt };
+        for (const step of nextSteps) {
+          await client.query(
+            `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+             WHERE collection_name = 'approvalSteps' AND document_id = $1`,
+            [step.id, JSON.stringify(getDocumentPayload(step))],
+          );
+        }
+        await client.query(
+          `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+           WHERE collection_name = 'issuancePackages' AND document_id = $1`,
+          [nextIssuance.id, JSON.stringify(getDocumentPayload(nextIssuance))],
+        );
+        await client.query(
+          `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+           WHERE collection_name = 'certificationDossiers' AND document_id = $1`,
+          [nextDossier.id, JSON.stringify(getDocumentPayload(nextDossier))],
+        );
+        const activity = {
+          ...buildActivityLog({
+            id: activityId,
+            action: 'STATUS_CHANGED',
+            entityType: 'PCN_ISSUANCE',
+            entityId: nextIssuance.id,
+            entityLabel: nextIssuance.issuanceNumber || nextIssuance.dossierId,
+            actorUsername: actor.username,
+            actorName: actor.name,
+            actorRole: actor.systemRole || actor.role,
+            summary: 'Thu hồi bộ phát hành và mở lại bước 4 để rà soát',
+            source: 'UI',
+            changes: diffActivityFields(issuance, nextIssuance),
+            createdAt: withdrawnAt,
+          }),
+          idempotencyKey,
+          idempotencyFingerprint: fingerprint,
+        };
+        await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('activityLogs', $1, $2::jsonb, CURRENT_TIMESTAMP)`,
+          [activity.id, JSON.stringify(getDocumentPayload(activity))],
+        );
+        return { issuance: nextIssuance, dossier: nextDossier, approvalSteps: nextSteps, activityLog: activity, idempotent: false };
+      });
+      res.json(result);
+    } catch (error: any) {
+      console.error('PCN issuance withdrawal error:', error);
       const message = String(error?.message || error);
       res.status(Number(error?.statusCode) || (message.includes('Không tìm thấy') ? 404 : 400)).json({ error: message });
     }
@@ -5113,6 +5477,10 @@ async function startServer() {
 
     const idempotencyFingerprint = createHash('sha256').update(JSON.stringify({ dossierId, updates })).digest('hex');
     const actor = getPcnSessionUser(req)!;
+    const hasOwnerControlledUpdate = ['status', 'method', 'targetDate', 'evaluationAt', 'effectiveAt', 'operationalForms']
+      .some((field) => Object.prototype.hasOwnProperty.call(rawUpdates, field));
+    const hasWaiverPatch = Object.prototype.hasOwnProperty.call(rawUpdates, 'documentWaivers')
+      && Object.keys(updates.documentWaivers || {}).length > 0;
     try {
       const result = await withPgTransaction(async (client) => {
         const dossierResult = await client.query(
@@ -5123,6 +5491,17 @@ async function startServer() {
         );
         if (dossierResult.rows.length === 0) throw Object.assign(new Error('Không tìm thấy hồ sơ cần cập nhật.'), { statusCode: 404 });
         const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
+        if (isPcnDossierPostApprovalLocked(dossier.status) && (hasOwnerControlledUpdate || hasWaiverPatch)) {
+          throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi chỉnh sửa.'), { statusCode: 409 });
+        }
+        if (hasOwnerControlledUpdate
+          && dossier.ownerUsername
+          && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
+          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu các bước 1–4.'), { statusCode: 403 });
+        }
+        if (hasWaiverPatch && actor.departmentRoleCode !== 'LEADERSHIP') {
+          throw Object.assign(new Error('Chỉ Lãnh đạo được duyệt waiver tài liệu.'), { statusCode: 403 });
+        }
         const activityId = stablePcnMutationId('activity-pcn-dossier-update', `${dossierId}:${idempotencyKey}`);
         const existingActivityResult = await client.query(
           `SELECT document_id, data FROM app_documents
@@ -5203,7 +5582,7 @@ async function startServer() {
           }
         }
 
-        const hasDocumentWaiverUpdate = Boolean(updates.documentWaivers && Object.keys(updates.documentWaivers).length > 0);
+        const hasDocumentWaiverUpdate = hasWaiverPatch;
         let nextDocumentWaivers = dossier.documentWaivers || {};
         let workflowRequirements: PcnDocumentRequirement[] | undefined;
         let workflowDocuments: PcnDossierDocument[] = [];
@@ -5287,6 +5666,45 @@ async function startServer() {
             throw Object.assign(new Error('Khi rời lane ngoại lệ, phải giữ nguyên lý do đã ghi nhận.'), { statusCode: 400 });
           }
         }
+        const needsDownstreamReview = dossier.status === 'WAITING_APPROVAL' && (hasOwnerControlledUpdate || hasDocumentWaiverUpdate);
+        let reopenedApprovalSteps: PcnApprovalStep[] | undefined;
+        let reopenedIssuance: IssuancePackage | undefined;
+        if (needsDownstreamReview) {
+          const approvalResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'approvalSteps' AND data->>'dossierId' = $1
+             ORDER BY COALESCE((data->>'sequence')::int, 999), document_id
+             FOR UPDATE`,
+            [dossier.id],
+          );
+          const allApprovalSteps = approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[];
+          const effectiveStepIds = new Set(getPcnEffectiveApprovalSteps(allApprovalSteps).map((step) => step.id));
+          reopenedApprovalSteps = allApprovalSteps.map((step) => effectiveStepIds.has(step.id)
+            ? { ...step, status: 'PENDING' as const, actedAt: undefined }
+            : step);
+          for (const step of reopenedApprovalSteps) {
+            await client.query(
+              `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+               WHERE collection_name = 'approvalSteps' AND document_id = $1`,
+              [step.id, JSON.stringify(getDocumentPayload(step))],
+            );
+          }
+          const issuanceResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'issuancePackages' AND data->>'dossierId' = $1
+             LIMIT 1 FOR UPDATE`,
+            [dossier.id],
+          );
+          if (issuanceResult.rows[0]) {
+            const issuance = mapDocumentRow(issuanceResult.rows[0]) as IssuancePackage;
+            reopenedIssuance = { ...issuance, status: 'RETURNED', updatedAt: new Date().toISOString() };
+            await client.query(
+              `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+               WHERE collection_name = 'issuancePackages' AND document_id = $1`,
+              [reopenedIssuance.id, JSON.stringify(getDocumentPayload(reopenedIssuance))],
+            );
+          }
+        }
         const changeFields = ['status', 'method', 'ownerUsername', 'exceptionReason', 'evaluatorUsername', 'reviewerUsername', 'targetDate', 'evaluationAt', 'effectiveAt', 'operationalForms', 'documentWaivers'];
         const now = new Date().toISOString();
         const { documentWaivers: _documentWaiversPatch, ...dossierUpdates } = updates;
@@ -5300,6 +5718,7 @@ async function startServer() {
             },
           } : {}),
           ...(hasDocumentWaiverUpdate ? { documentWaivers: nextDocumentWaivers } : {}),
+          ...(needsDownstreamReview ? { status: 'TECHNICAL_REVIEW' as const } : {}),
           updatedAt: now,
         };
         const changes = diffActivityFields(dossier, nextDossier, changeFields);
@@ -5326,7 +5745,9 @@ async function startServer() {
             actorUsername: actor.username,
             actorName: actor.name,
             actorRole: actor.systemRole || actor.role,
-            summary: 'Cập nhật metadata/mốc vận hành hồ sơ chứng nhận',
+            summary: needsDownstreamReview
+              ? 'Cập nhật dữ liệu trước duyệt và mở lại bước 4 để rà soát'
+              : 'Cập nhật metadata/mốc vận hành hồ sơ chứng nhận',
             source: 'UI',
             changes,
             createdAt: now,
@@ -5341,7 +5762,13 @@ async function startServer() {
            VALUES ('activityLogs', $1, $2::jsonb, CURRENT_TIMESTAMP)`,
           [activity.id, JSON.stringify(getDocumentPayload(activity))],
         );
-        return { dossier: nextDossier, activityLog: activity, idempotent: false };
+        return {
+          dossier: nextDossier,
+          ...(reopenedApprovalSteps ? { approvalSteps: reopenedApprovalSteps } : {}),
+          ...(reopenedIssuance ? { issuance: reopenedIssuance } : {}),
+          activityLog: activity,
+          idempotent: false,
+        };
       });
       res.status(200).json(result);
     } catch (error: any) {
@@ -5450,6 +5877,12 @@ async function startServer() {
         );
         if (!dossierResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ nhận KQTN.'), { statusCode: 404 });
         const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
+        if (isPcnDossierPostApprovalLocked(dossier.status)) {
+          throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi ghi nhận KQTN.'), { statusCode: 409 });
+        }
+        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
+          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu KQTN.'), { statusCode: 403 });
+        }
         if (!(dossier.labRequestIds || []).includes(labRequestId)) throw Object.assign(new Error('Hồ sơ chưa có backlink tới PYC nhận KQTN.'), { statusCode: 409 });
 
         const requestResult = await client.query(
@@ -5829,6 +6262,12 @@ async function startServer() {
         );
         if (!dossierResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PCN để tạo PYC.'), { statusCode: 404 });
         const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
+        if (isPcnDossierPostApprovalLocked(dossier.status)) {
+          throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi tạo PYC.'), { statusCode: 409 });
+        }
+        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
+          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu bước 2.'), { statusCode: 403 });
+        }
         const dossierFieldCodes = normalizePcnSampleList(dossier.fieldCodes);
         if (!dossierFieldCodes.includes(fieldCode)) throw Object.assign(new Error('Lĩnh vực PYC phải thuộc hồ sơ PCN.'), { statusCode: 400 });
         if (!canCreatePcnLabRequest(dossier)) {
@@ -6054,6 +6493,12 @@ async function startServer() {
         );
         if (!dossierResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ của PYC.'), { statusCode: 404 });
         const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
+        if (isPcnDossierPostApprovalLocked(dossier.status)) {
+          throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi cập nhật PYC.'), { statusCode: 409 });
+        }
+        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
+          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu bước 2.'), { statusCode: 403 });
+        }
         const requestResult = await client.query(
           `SELECT document_id, data FROM app_documents
            WHERE collection_name = 'labRequests' AND document_id = $1
@@ -6298,6 +6743,12 @@ async function startServer() {
         );
         if (dossierResult.rows.length === 0) throw Object.assign(new Error('Không tìm thấy hồ sơ PCN để tạo lô mẫu.'), { statusCode: 404 });
         const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
+        if (isPcnDossierPostApprovalLocked(dossier.status)) {
+          throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi tạo lô mẫu.'), { statusCode: 409 });
+        }
+        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
+          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu bước 2.'), { statusCode: 403 });
+        }
         const dossierFieldCodes = normalizePcnSampleList(dossier.fieldCodes);
         if (dossierFieldCodes.length === 0) throw Object.assign(new Error('Hồ sơ PCN chưa có Lĩnh vực để kiểm tra lô mẫu.'), { statusCode: 409 });
         const requestedFieldCodes = normalizePcnSampleList(draft.fieldCodes);
@@ -6529,6 +6980,12 @@ async function startServer() {
         );
         if (dossierResult.rows.length === 0) throw Object.assign(new Error('Không tìm thấy hồ sơ của lô mẫu.'), { statusCode: 404 });
         const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
+        if (isPcnDossierPostApprovalLocked(dossier.status)) {
+          throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi cập nhật tuyến mẫu.'), { statusCode: 409 });
+        }
+        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
+          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu bước 2.'), { statusCode: 403 });
+        }
         if (!canProcessPcnSampleFlow(dossier)) {
           throw Object.assign(new Error('Hồ sơ chưa đến bước lấy mẫu & gửi PTN để xử lý luồng mẫu.'), { statusCode: 409 });
         }
@@ -8355,6 +8812,7 @@ async function startServer() {
       res.status(400).json({ error: 'Tên file tài liệu PCN không hợp lệ.' });
       return;
     }
+    const actor = getPcnSessionUser(req)!;
     try {
       const document = await withPgTransaction(async (client) => {
         const dossierExists = await client.query(
@@ -8365,6 +8823,12 @@ async function startServer() {
         );
         if (dossierExists.rows.length === 0) throw new Error('Không tìm thấy hồ sơ PCN.');
         const dossier = mapDocumentRow(dossierExists.rows[0]) as CertificationDossier;
+        if (isPcnDossierPostApprovalLocked(dossier.status)) {
+          throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi tải phiên tài liệu mới.'), { statusCode: 409 });
+        }
+        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
+          throw Object.assign(new Error('Chỉ chủ hồ sơ được tải hoặc cập nhật phiên tài liệu.'), { statusCode: 403 });
+        }
         const dossierFieldCodes = Array.isArray(dossier.fieldCodes)
           ? dossier.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean)
           : [];
@@ -8475,7 +8939,54 @@ async function startServer() {
             [attachment.id, JSON.stringify(getDocumentPayload(attachment))],
           );
         }
-        const nextDossier: CertificationDossier = { ...dossier, updatedAt: now };
+        const currentStageIndex = getPcnWorkflowStageIndex(getPcnWorkflowStage(dossier.status)?.key || 'INTAKE');
+        const requirementStageIndex = getPcnRequirementWorkflowStageIndex(requirementDefinition!);
+        const needsDownstreamReview = dossier.status === 'WAITING_APPROVAL'
+          && requirementStageIndex >= 0
+          && requirementStageIndex < currentStageIndex;
+        const reopenStatus = getPcnRequirementReopenStatus(requirementDefinition!) || 'TECHNICAL_REVIEW';
+        let nextApprovalSteps: PcnApprovalStep[] | undefined;
+        if (needsDownstreamReview) {
+          const approvalResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'approvalSteps' AND data->>'dossierId' = $1
+             ORDER BY COALESCE((data->>'sequence')::int, 999), document_id
+             FOR UPDATE`,
+            [dossier.id],
+          );
+          const allSteps = approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[];
+          const effectiveStepIds = new Set(getPcnEffectiveApprovalSteps(allSteps).map((step) => step.id));
+          nextApprovalSteps = allSteps.map((step) => effectiveStepIds.has(step.id)
+            ? { ...step, status: 'PENDING' as const, actedAt: undefined }
+            : step);
+          for (const step of nextApprovalSteps) {
+            await client.query(
+              `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+               WHERE collection_name = 'approvalSteps' AND document_id = $1`,
+              [step.id, JSON.stringify(getDocumentPayload(step))],
+            );
+          }
+          const issuanceResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'issuancePackages' AND data->>'dossierId' = $1
+             LIMIT 1 FOR UPDATE`,
+            [dossier.id],
+          );
+          if (issuanceResult.rows.length > 0) {
+            const issuance = mapDocumentRow(issuanceResult.rows[0]) as IssuancePackage;
+            const nextIssuance: IssuancePackage = { ...issuance, status: 'RETURNED', updatedAt: now };
+            await client.query(
+              `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+               WHERE collection_name = 'issuancePackages' AND document_id = $1`,
+              [nextIssuance.id, JSON.stringify(getDocumentPayload(nextIssuance))],
+            );
+          }
+        }
+        const nextDossier: CertificationDossier = {
+          ...dossier,
+          ...(needsDownstreamReview ? { status: reopenStatus } : {}),
+          updatedAt: now,
+        };
         await client.query(
           `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
            WHERE collection_name = 'certificationDossiers' AND document_id = $1`,
@@ -8490,9 +9001,11 @@ async function startServer() {
           actorUsername: user?.username,
           actorName: user?.name || 'Người dùng PCN',
           actorRole: user?.systemRole || user?.role,
-          summary: hasVersion
-            ? `Bổ sung provenance cho phiên tài liệu ${fileName.slice(0, 120)} trong hồ sơ`
-            : `Tải phiên tài liệu ${fileName.slice(0, 120)} vào hồ sơ`,
+          summary: needsDownstreamReview
+            ? `Tải phiên tài liệu ${fileName.slice(0, 120)} và mở lại ${getPcnWorkflowStage(reopenStatus)?.title || 'bước bị ảnh hưởng'} để rà soát`
+            : hasVersion
+              ? `Bổ sung provenance cho phiên tài liệu ${fileName.slice(0, 120)} trong hồ sơ`
+              : `Tải phiên tài liệu ${fileName.slice(0, 120)} vào hồ sơ`,
           source: 'UI',
           groupId: dossier.id,
           changes: diffActivityFields(dossier, nextDossier, ['updatedAt']),
@@ -8510,6 +9023,7 @@ async function startServer() {
           document: persistedDocument,
           attachment,
           dossier: nextDossier,
+          ...(nextApprovalSteps ? { approvalSteps: nextApprovalSteps } : {}),
           activityLog: log,
           idempotent: false as const,
         };
@@ -8527,6 +9041,7 @@ async function startServer() {
 
   app.post('/api/pcn/dossiers/:dossierId/documents/confirm-generated', async (req, res) => {
     if (!requirePcnMutation(req, res)) return;
+    const actor = getPcnSessionUser(req)!;
     const dossierId = String(req.params.dossierId || '').trim();
     const generatedDocumentId = String(req.body?.generatedDocumentId || '').trim();
     const requirementId = String(req.body?.requirementId || '').trim();
@@ -8549,6 +9064,12 @@ async function startServer() {
         );
         if (dossierResult.rows.length === 0) throw new Error('Không tìm thấy hồ sơ PCN.');
         const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
+        if (isPcnDossierPostApprovalLocked(dossier.status)) {
+          throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi xác nhận tài liệu.'), { statusCode: 409 });
+        }
+        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
+          throw Object.assign(new Error('Chỉ chủ hồ sơ được xác nhận tài liệu vào checklist.'), { statusCode: 403 });
+        }
         const dossierFieldCodes = Array.isArray(dossier.fieldCodes)
           ? dossier.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean)
           : [];
@@ -8751,7 +9272,54 @@ async function startServer() {
           );
         }
 
-        const nextDossier: CertificationDossier = { ...dossier, updatedAt: now };
+        const currentStageIndex = getPcnWorkflowStageIndex(getPcnWorkflowStage(dossier.status)?.key || 'INTAKE');
+        const requirementStageIndex = getPcnRequirementWorkflowStageIndex(requirement!);
+        const needsDownstreamReview = dossier.status === 'WAITING_APPROVAL'
+          && requirementStageIndex >= 0
+          && requirementStageIndex < currentStageIndex;
+        const reopenStatus = getPcnRequirementReopenStatus(requirement!) || 'TECHNICAL_REVIEW';
+        let nextApprovalSteps: PcnApprovalStep[] | undefined;
+        if (needsDownstreamReview) {
+          const approvalResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'approvalSteps' AND data->>'dossierId' = $1
+             ORDER BY COALESCE((data->>'sequence')::int, 999), document_id
+             FOR UPDATE`,
+            [dossier.id],
+          );
+          const allSteps = approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[];
+          const effectiveStepIds = new Set(getPcnEffectiveApprovalSteps(allSteps).map((step) => step.id));
+          nextApprovalSteps = allSteps.map((step) => effectiveStepIds.has(step.id)
+            ? { ...step, status: 'PENDING' as const, actedAt: undefined }
+            : step);
+          for (const step of nextApprovalSteps) {
+            await client.query(
+              `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+               WHERE collection_name = 'approvalSteps' AND document_id = $1`,
+              [step.id, JSON.stringify(getDocumentPayload(step))],
+            );
+          }
+          const issuanceResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'issuancePackages' AND data->>'dossierId' = $1
+             LIMIT 1 FOR UPDATE`,
+            [dossier.id],
+          );
+          if (issuanceResult.rows[0]) {
+            const issuance = mapDocumentRow(issuanceResult.rows[0]) as IssuancePackage;
+            const nextIssuance: IssuancePackage = { ...issuance, status: 'RETURNED', updatedAt: now };
+            await client.query(
+              `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+               WHERE collection_name = 'issuancePackages' AND document_id = $1`,
+              [nextIssuance.id, JSON.stringify(getDocumentPayload(nextIssuance))],
+            );
+          }
+        }
+        const nextDossier: CertificationDossier = {
+          ...dossier,
+          ...(needsDownstreamReview ? { status: reopenStatus } : {}),
+          updatedAt: now,
+        };
         await client.query(
           `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
            WHERE collection_name = 'certificationDossiers' AND document_id = $1`,
@@ -8766,7 +9334,9 @@ async function startServer() {
           actorUsername: user?.username,
           actorName: user?.name || 'Người dùng PCN',
           actorRole: user?.systemRole || user?.role,
-          summary: `Xác nhận bản sinh ${generated.fileName.slice(0, 120)} vào checklist ${requirement.name}`,
+          summary: needsDownstreamReview
+            ? `Xác nhận bản sinh ${generated.fileName.slice(0, 120)} và mở lại ${getPcnWorkflowStage(reopenStatus)?.title || 'bước bị ảnh hưởng'} để rà soát`
+            : `Xác nhận bản sinh ${generated.fileName.slice(0, 120)} vào checklist ${requirement.name}`,
           source: 'USER_REVIEW',
           groupId: dossier.id,
           changes: diffActivityFields(dossier, nextDossier, ['updatedAt']),
@@ -8795,6 +9365,7 @@ async function startServer() {
           },
           dossier: nextDossier,
           attachment: generatedAttachment,
+          ...(nextApprovalSteps ? { approvalSteps: nextApprovalSteps } : {}),
           activityLog: log,
           idempotent: false as const,
         };
@@ -8905,6 +9476,322 @@ async function startServer() {
       }
     });
   };
+
+  const approvalAssistantFields = new Set(['QC4', 'QC9']);
+  const approvalAssistantDossierStatus = new Set(['TECHNICAL_REVIEW', 'WAITING_APPROVAL']);
+
+  const readApprovalAssistantRows = async (collectionName: string, condition = '', params: unknown[] = []) => {
+    const result = await pool.query(
+      `SELECT document_id, data FROM app_documents WHERE collection_name = $1 ${condition} ORDER BY updated_at DESC, document_id ASC`,
+      [collectionName, ...params],
+    );
+    return result.rows.map(mapDocumentRow);
+  };
+
+  const assertApprovalAssistantField = (value: unknown): PcnCertificationFieldCode => {
+    const fieldCode = String(value || '').trim().toUpperCase();
+    if (!approvalAssistantFields.has(fieldCode)) throw Object.assign(new Error('Trợ lý kiểm duyệt v1 chỉ hỗ trợ Lĩnh vực QC4 hoặc QC9.'), { statusCode: 400 });
+    return fieldCode;
+  };
+
+  const normalizeApprovalAssistantRequirements = (rows: unknown[]): PcnDocumentRequirement[] => mergePcnDocumentRequirements(rows as PcnDocumentRequirement[]);
+
+  const canUseApprovalAssistant = (req: express.Request, fieldCode: PcnCertificationFieldCode): boolean => {
+    const actor = getPcnSessionUser(req);
+    if (!actor) return false;
+    const role = actor.systemRole || actor.role;
+    return role === 'admin' || (Array.isArray(actor.fieldCodes) && actor.fieldCodes.map((code) => String(code).toUpperCase()).includes(fieldCode));
+  };
+
+  const loadApprovalAssistantInput = async (dossierId: string, fieldCode: PcnCertificationFieldCode): Promise<PcnApprovalReviewInput> => {
+    const dossierResult = await pool.query(
+      `SELECT document_id, data FROM app_documents
+       WHERE collection_name = 'certificationDossiers' AND document_id = $1 LIMIT 1`,
+      [dossierId],
+    );
+    const dossier = dossierResult.rows[0] ? mapDocumentRow(dossierResult.rows[0]) as CertificationDossier : undefined;
+    if (!dossier) throw Object.assign(new Error('Không tìm thấy hồ sơ PCN.'), { statusCode: 404 });
+
+    const lotIds = Array.isArray(dossier.sampleLotIds) ? dossier.sampleLotIds.map(String).filter(Boolean) : [];
+    const [proposalResult, requirementsResult, documentsResult, requestsResult, lotsResult, itemsResult, routesResult, resultsResult] = await Promise.all([
+      pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'certificationProposals' AND document_id = $1 LIMIT 1`, [dossier.proposalId]),
+      pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnDocumentRequirements' AND COALESCE((data->>'active')::boolean, false) = true ORDER BY COALESCE((data->>'sortOrder')::int, 0), document_id`),
+      pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'dossierDocuments' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossier.id]),
+      pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'labRequests' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossier.id]),
+      pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleLots' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossier.id]),
+      pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleItems' AND data->>'sampleLotId' = ANY($1::text[]) ORDER BY document_id`, [lotIds]),
+      pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleRoutes' AND data->>'sampleLotId' = ANY($1::text[]) ORDER BY document_id`, [lotIds]),
+      pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'returnedResults' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossier.id]),
+    ]);
+
+    return {
+      fieldCode,
+      dossier,
+      ...(proposalResult.rows[0] ? { proposal: mapDocumentRow(proposalResult.rows[0]) as CertificationProposal } : {}),
+      requirements: normalizeApprovalAssistantRequirements(requirementsResult.rows.map(mapDocumentRow)),
+      documents: documentsResult.rows.map(mapDocumentRow) as PcnDossierDocument[],
+      labRequests: requestsResult.rows.map(mapDocumentRow) as OutboundLabRequest[],
+      sampleLots: lotsResult.rows.map(mapDocumentRow) as PcnSampleLot[],
+      sampleItems: itemsResult.rows.map(mapDocumentRow) as PcnSampleItem[],
+      sampleRoutes: routesResult.rows.map(mapDocumentRow) as PcnSampleRoute[],
+      returnedResults: resultsResult.rows.map(mapDocumentRow) as ReturnedTestResult[],
+    };
+  };
+
+  type ApprovalAssistantAssetReference = {
+    assetId: string;
+    fileName: string;
+    sourceCollection: 'dossierDocuments' | 'returnedResults';
+    sourceDocumentId: string;
+    sourceJsonPath: string;
+    tab: PcnApprovalReviewEvidence['tab'];
+  };
+
+  const getCurrentApprovalAssistantAssets = (input: PcnApprovalReviewInput): ApprovalAssistantAssetReference[] => {
+    const references: ApprovalAssistantAssetReference[] = [];
+    for (const document of input.documents) {
+      if (document.status !== 'PRESENT') continue;
+      const versions = Array.isArray(document.versions) ? document.versions : [];
+      const current = versions.find((version) => version.assetId === document.currentVersionId) || versions.at(-1);
+      if (current?.assetId) references.push({
+        assetId: current.assetId,
+        fileName: current.fileName || `${current.assetId}.bin`,
+        sourceCollection: 'dossierDocuments',
+        sourceDocumentId: document.id,
+        sourceJsonPath: document.requirementId,
+        tab: 'documents',
+      });
+    }
+    for (const result of input.returnedResults) {
+      if (result.fileAssetId) references.push({
+        assetId: result.fileAssetId,
+        fileName: result.reportNumber ? `${result.reportNumber}.pdf` : `${result.fileAssetId}.pdf`,
+        sourceCollection: 'returnedResults',
+        sourceDocumentId: result.id,
+        sourceJsonPath: 'fileAssetId',
+        tab: 'results',
+      });
+    }
+    return [...new Map(references.map((reference) => [reference.assetId, reference])).values()];
+  };
+
+  const fetchApprovalAssistantPaddlePage = async (reference: ApprovalAssistantAssetReference, bytes: Buffer, mimeType: string, page: number): Promise<PcnApprovalReviewTextEvidence> => {
+    const request = buildPcnPaddleOcrRequest(getKqtnOcrServiceUrl(), { fileName: reference.fileName, mimeType, page, dpi: 150 });
+    const formData = new FormData();
+    formData.append('file', new Blob([new Uint8Array(bytes)], { type: mimeType }), reference.fileName);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), KQTN_OCR_TIMEOUT_MS);
+    try {
+      const response = await fetch(request.url, { method: request.method, body: formData, signal: controller.signal });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `PaddleOCR không sẵn sàng cho ${reference.fileName}, trang ${page} (HTTP ${response.status}).`);
+      const normalized = normalizePcnPaddleOcrPage(payload, { assetId: reference.assetId, fileName: reference.fileName, page });
+      return { ...normalized, tab: reference.tab };
+    } catch (error: any) {
+      if (error instanceof PcnPaddleOcrUnavailableError) throw error;
+      throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Dừng phiên trợ lý AI: không thể đọc ${reference.fileName}, trang ${page} bằng PaddleOCR.`);
+    } finally {
+      clearTimeout(timeout);
+    }
+  };
+
+  const extractApprovalAssistantTexts = async (input: PcnApprovalReviewInput): Promise<PcnApprovalReviewTextEvidence[]> => {
+    const references = getCurrentApprovalAssistantAssets(input);
+    if (references.length === 0) return [];
+    const assetResult = await pool.query(
+      `SELECT id, bucket_name, object_path, source_collection, source_document_id, source_json_path, mime_type
+       FROM file_assets WHERE id = ANY($1::text[])`,
+      [references.map((reference) => reference.assetId)],
+    );
+    const assetById = new Map(assetResult.rows.map((asset: any) => [String(asset.id), asset]));
+    const storage = getPcnStorageClient();
+    const evidence: PcnApprovalReviewTextEvidence[] = [];
+    for (const reference of references) {
+      const asset = assetById.get(reference.assetId);
+      if (!asset) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Không tìm thấy private asset ${reference.assetId} để đọc hồ sơ.`);
+      if (String(asset.bucket_name) !== getPcnStorageBucket()
+        || String(asset.source_collection) !== reference.sourceCollection
+        || String(asset.source_document_id) !== reference.sourceDocumentId
+        || String(asset.source_json_path) !== reference.sourceJsonPath) {
+        throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Private asset ${reference.assetId} không trỏ đúng về hồ sơ đang kiểm duyệt.`);
+      }
+      const downloaded = await storage.downloadObject({ bucketName: String(asset.bucket_name), objectPath: String(asset.object_path) });
+      const mimeType = String(asset.mime_type || downloaded.contentType || 'application/octet-stream').toLowerCase();
+      const extension = reference.fileName.toLowerCase().split('.').pop() || '';
+      const isDocx = extension === 'docx' || mimeType.includes('wordprocessingml.document');
+      const isPdf = extension === 'pdf' || mimeType.includes('pdf');
+      const isImage = mimeType.startsWith('image/') || /^(png|jpe?g|webp|tiff?)$/.test(extension);
+      if (isDocx) {
+        const docxResult = await mammoth.extractRawText({ buffer: downloaded.body });
+        const text = String(docxResult.value || '').trim();
+        if (!text) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `Tài liệu ${reference.fileName} không có nội dung để kiểm tra.`);
+        evidence.push({ assetId: reference.assetId, fileName: reference.fileName, text, confidence: 0.95, tab: reference.tab });
+        continue;
+      }
+      if (isPdf) {
+        let pdf: PDFDocument;
+        try { pdf = await PDFDocument.load(downloaded.body, { ignoreEncryption: true }); } catch {
+          throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Không mở được PDF ${reference.fileName} để chạy PaddleOCR.`);
+        }
+        const pageCount = pdf.getPageCount();
+        if (pageCount < 1) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `PDF ${reference.fileName} không có trang để đọc.`);
+        for (let page = 1; page <= pageCount; page += 1) evidence.push(await fetchApprovalAssistantPaddlePage(reference, downloaded.body, 'application/pdf', page));
+        continue;
+      }
+      if (isImage) {
+        evidence.push(await fetchApprovalAssistantPaddlePage(reference, downloaded.body, mimeType, 1));
+        continue;
+      }
+      throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Định dạng ${reference.fileName} chưa được hỗ trợ trong phiên kiểm duyệt.`);
+    }
+    return evidence;
+  };
+
+  const semanticReviewCriterion = async (req: express.Request, criterion: PcnApprovalCriterionResult, texts: PcnApprovalReviewTextEvidence[]): Promise<PcnApprovalCriterionResult> => {
+    if (texts.length === 0 || ['ENTRY_GATE', 'COMPLETENESS', 'SAMPLE_PYC', 'LAB_RESULTS'].includes(criterion.id)) return criterion;
+    try {
+      const ai = await getGeminiClient(req, { timeout: 30000 });
+      const context = texts.map((entry) => `[${entry.assetId}|${entry.fileName}${entry.page ? `|trang ${entry.page}` : ''}]\n${entry.text.slice(0, 6000)}`).join('\n\n').slice(0, 24000);
+      const response = await generateContentWithRetryAndFallback(ai, {
+        contents: [{ role: 'user', parts: [{ text: `Bạn là lớp phân tích ngữ nghĩa hỗ trợ kiểm duyệt hồ sơ PCN. Chỉ kiểm tra tiêu chí "${criterion.title}" từ các trích đoạn có mã bằng chứng bên dưới. Không quyết định phê duyệt, không đề xuất chuyển trạng thái, không bịa thông tin. Chỉ trả JSON: {"hasIssue": boolean, "severity": "ATTENTION" hoặc "CRITICAL", "message": string, "assetIds": string[]}. Nếu không đủ căn cứ, hasIssue=false. assetIds chỉ được chọn từ mã đã cung cấp.\n\n${context}` }] }],
+        config: { responseMimeType: 'application/json', temperature: 0.1 },
+      }, req.headers['x-gemini-model'] as string | undefined || await getPcnStoredGeminiModel(req), { attemptsPerModel: 1 });
+      const parsed = JSON.parse(String(response.text || '{}').replace(/```json|```/g, '').trim()) as Record<string, unknown>;
+      if (parsed.hasIssue !== true || typeof parsed.message !== 'string') return criterion;
+      const assetIds = Array.isArray(parsed.assetIds) ? parsed.assetIds.map(String) : [];
+      const selected = texts.filter((entry) => assetIds.includes(entry.assetId));
+      if (selected.length === 0) return criterion;
+      const severity = parsed.severity === 'CRITICAL' ? 'CRITICAL' : 'ATTENTION';
+      const finding: PcnApprovalReviewFinding = {
+        id: `${criterion.id}:AI_SEMANTIC_REVIEW`,
+        code: 'AI_SEMANTIC_REVIEW',
+        message: String(parsed.message).slice(0, 1000),
+        severity,
+        confidence: 0.7,
+        suggestedAction: 'Mở bằng chứng được nêu và đối chiếu với hồ sơ gốc.',
+        evidence: selected.slice(0, 6).map((entry) => ({ assetId: entry.assetId, fileName: entry.fileName, ...(entry.page ? { page: entry.page } : {}), excerpt: entry.text.slice(0, 300), tab: 'documents' })),
+      };
+      criterion.findings = [...criterion.findings, finding];
+      criterion.source = criterion.findings.length > 1 ? 'RULE_AND_AI' : 'AI';
+      if (severity === 'CRITICAL' || criterion.status === 'PASS') {
+        criterion.status = severity === 'CRITICAL' ? 'ERROR' : 'WARNING';
+        criterion.severity = severity;
+        criterion.summary = 'Lớp ngữ nghĩa AI phát hiện điểm cần người dùng đối chiếu với bằng chứng.';
+      }
+      return criterion;
+    } catch {
+      return criterion;
+    }
+  };
+
+  const pruneApprovalAssistantRuns = () => {
+    const now = Date.now();
+    for (const [runId, run] of pcnApprovalReviewRuns) if (run.expiresAt <= now) pcnApprovalReviewRuns.delete(runId);
+  };
+
+  app.get('/api/pcn/approval-assistant/candidates', async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') { res.status(404).json({ error: 'Trợ lý kiểm duyệt PCN chỉ khả dụng trong profile PCN.' }); return; }
+    if (!requirePcnSession(req, res)) return;
+    try {
+      const fieldCode = assertApprovalAssistantField(req.query.fieldCode);
+      if (!canUseApprovalAssistant(req, fieldCode)) { res.status(403).json({ error: 'Tài khoản chưa được cấp quyền xem Lĩnh vực này.' }); return; }
+      const [dossiers, proposals, requirements, documents] = await Promise.all([
+        readApprovalAssistantRows('certificationDossiers'),
+        readApprovalAssistantRows('certificationProposals'),
+        readApprovalAssistantRows('pcnDocumentRequirements', `AND COALESCE((data->>'active')::boolean, false) = true`),
+        readApprovalAssistantRows('dossierDocuments'),
+      ]);
+        res.json({ items: getPcnApprovalReviewCandidates({ fieldCode, dossiers: dossiers as CertificationDossier[], proposals: proposals as CertificationProposal[], requirements: normalizeApprovalAssistantRequirements(requirements), documents: documents as PcnDossierDocument[] }) });
+    } catch (error: any) {
+      const status = Number(error?.statusCode) || 500;
+      res.status(status).json({ error: String(error?.message || error) });
+    }
+  });
+
+  app.post('/api/pcn/approval-assistant/review', async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') { res.status(404).json({ error: 'Trợ lý kiểm duyệt PCN chỉ khả dụng trong profile PCN.' }); return; }
+    if (!requirePcnSession(req, res)) return;
+    let fieldCode: PcnCertificationFieldCode;
+    try { fieldCode = assertApprovalAssistantField(req.body?.fieldCode); } catch (error: any) { res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message || error) }); return; }
+    const dossierId = String(req.body?.dossierId || '').trim();
+    if (!dossierId || dossierId.length > 240 || /[\\/]/.test(dossierId)) { res.status(400).json({ error: 'Mã hồ sơ PCN không hợp lệ.' }); return; }
+    if (!canUseApprovalAssistant(req, fieldCode)) { res.status(403).json({ error: 'Tài khoản chưa được cấp quyền xem Lĩnh vực này.' }); return; }
+    try {
+      const input = await loadApprovalAssistantInput(dossierId, fieldCode);
+      if (input.dossier.historicalImport || !input.dossier.fieldCodes.includes(fieldCode) || !approvalAssistantDossierStatus.has(input.dossier.status)) { res.status(409).json({ error: 'Hồ sơ không thuộc danh sách đang cần trợ lý kiểm duyệt.' }); return; }
+      const actor = getPcnSessionUser(req)!;
+      const runId = randomUUID();
+      const startedAt = new Date().toISOString();
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders?.();
+      const writeEvent = (event: Record<string, unknown>) => { if (!res.writableEnded) res.write(`${JSON.stringify(event)}\n`); };
+      writeEvent({ type: 'run_started', runId, dossierId, fieldCode, startedAt, message: 'Đã mở phiên đọc hồ sơ. Kết quả sẽ hiện lần lượt theo tiêu chí.' });
+      const documentTexts = await extractApprovalAssistantTexts(input);
+      const baseReport = buildPcnApprovalReview({ ...input, documentTexts });
+      const criteria: PcnApprovalCriterionResult[] = [];
+      for (let index = 0; index < PCN_APPROVAL_REVIEW_CRITERIA.length; index += 1) {
+        const criterion = baseReport.criteria[index];
+        writeEvent({ type: 'criterion_started', index, total: baseReport.criteria.length, criterion: { id: criterion.id, title: criterion.title } });
+        const reviewed = await semanticReviewCriterion(req, criterion, documentTexts);
+        criteria.push(reviewed);
+        writeEvent({ type: 'criterion_result', index, total: baseReport.criteria.length, criterion: reviewed });
+        writeEvent({ type: 'criterion_completed', index, total: baseReport.criteria.length, criterionId: reviewed.id });
+      }
+      const summary = {
+        pass: criteria.filter((criterion) => criterion.status === 'PASS').length,
+        warning: criteria.filter((criterion) => criterion.status === 'WARNING').length,
+        error: criteria.filter((criterion) => criterion.status === 'ERROR').length,
+        notEvaluable: criteria.filter((criterion) => criterion.status === 'NOT_EVALUABLE').length,
+        highestSeverity: criteria.some((criterion) => criterion.severity === 'CRITICAL') ? 'CRITICAL' : criteria.some((criterion) => criterion.severity === 'ATTENTION') ? 'ATTENTION' : 'INFO',
+        conclusion: criteria.some((criterion) => criterion.status === 'NOT_EVALUABLE') ? 'CHƯA ĐỦ CĂN CỨ' : criteria.some((criterion) => criterion.status === 'ERROR' || criterion.status === 'WARNING') ? 'CẦN KIỂM TRA/BỔ SUNG' : 'KHÔNG PHÁT HIỆN BẤT THƯỜNG RÕ',
+      } as ReturnType<typeof buildPcnApprovalReview>['summary'];
+      const report = { criteria, summary };
+      pcnApprovalReviewRuns.set(runId, { runId, username: actor.username, dossierId, dossierCode: input.dossier.dossierCode, fieldCode, report, expiresAt: Date.now() + PCN_APPROVAL_REVIEW_TTL_MS });
+      pruneApprovalAssistantRuns();
+      writeEvent({ type: 'run_completed', runId, finishedAt: new Date().toISOString(), summary, exportToken: runId, message: 'Đã hoàn tất phiên hỗ trợ. Kết quả không làm thay đổi hồ sơ.' });
+      res.end();
+    } catch (error: any) {
+      const message = error instanceof PcnPaddleOcrUnavailableError ? `Dừng phiên AI: ${error.message}` : String(error?.message || error);
+      const status = error instanceof PcnPaddleOcrUnavailableError ? 503 : Number(error?.statusCode) || 500;
+      if (res.headersSent) { if (!res.writableEnded) { res.write(`${JSON.stringify({ type: 'run_error', code: error?.code || 'PCN_APPROVAL_ASSISTANT_FAILED', message })}\n`); res.end(); } } else res.status(status).json({ code: error?.code || 'PCN_APPROVAL_ASSISTANT_FAILED', error: message });
+    }
+  });
+
+  app.post('/api/pcn/approval-assistant/export', async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') { res.status(404).json({ error: 'Trợ lý kiểm duyệt PCN chỉ khả dụng trong profile PCN.' }); return; }
+    if (!requirePcnSession(req, res)) return;
+    try {
+      pruneApprovalAssistantRuns();
+      const runId = String(req.body?.runId || req.body?.exportToken || '').trim();
+      const format = String(req.body?.format || '').trim().toUpperCase();
+      const run = pcnApprovalReviewRuns.get(runId);
+      if (!run || run.expiresAt <= Date.now()) { res.status(404).json({ error: 'Phiên hỗ trợ đã hết hạn, hãy chạy lại hồ sơ.' }); return; }
+      const actor = getPcnSessionUser(req)!;
+      if (run.username.toLowerCase() !== actor.username.toLowerCase()) { res.status(403).json({ error: 'Bạn không có quyền tải báo cáo của phiên này.' }); return; }
+      const dossierCode = run.dossierCode;
+      const report = { dossierCode, fieldCode: run.fieldCode, generatedAt: new Date().toISOString(), ...run.report };
+      if (format === 'DOCX') {
+        const body = buildPcnApprovalReviewDocx(report);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', buildPcnFileContentDisposition(`bao-cao-ho-tro-${dossierCode}.docx`, 'attachment'));
+        res.send(body);
+        return;
+      }
+      if (format === 'PDF') {
+        const body = await buildPcnApprovalReviewPdf(report);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', buildPcnFileContentDisposition(`bao-cao-ho-tro-${dossierCode}.pdf`, 'attachment'));
+        res.send(body);
+        return;
+      }
+      res.status(400).json({ error: 'Định dạng báo cáo chỉ hỗ trợ PDF hoặc DOCX.' });
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 500).json({ error: String(error?.message || error) });
+    }
+  });
 
   app.post('/api/pcn/ocr', async (req, res) => {
     if (DATABASE_PROFILE !== 'pcn') {
@@ -9800,6 +10687,20 @@ async function startServer() {
         );
         if (!resultQuery.rows[0]) throw Object.assign(new Error('Không tìm thấy KQTN cần đính kèm file.'), { statusCode: 404 });
         const currentResult = mapDocumentRow(resultQuery.rows[0]) as ReturnedTestResult;
+        const dossierQuery = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'certificationDossiers' AND document_id = $1
+           LIMIT 1 FOR UPDATE`,
+          [currentResult.dossierId],
+        );
+        if (!dossierQuery.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ của KQTN.'), { statusCode: 404 });
+        const dossier = mapDocumentRow(dossierQuery.rows[0]) as CertificationDossier;
+        if (isPcnDossierPostApprovalLocked(dossier.status)) {
+          throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi gắn file KQTN.'), { statusCode: 409 });
+        }
+        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
+          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa file KQTN.'), { statusCode: 403 });
+        }
         if (currentResult.fileAssetId) {
           if (currentResult.fileAssetId === assetId) return { result: currentResult, idempotent: true as const };
           throw Object.assign(new Error('KQTN này đã có file đính kèm khác.'), { statusCode: 409 });
