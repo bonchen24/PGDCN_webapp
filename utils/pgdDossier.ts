@@ -93,17 +93,18 @@ export function getPgdDossierRequirements(productGroup: PgdProductGroup): PgdDos
 
   if (productGroup === 'MACHINERY_LINE') {
     return [
+      ...base,
       requirement('REQUEST_PYC', 'REQUEST', 'Phiếu yêu cầu giám định'),
       requirement('MACHINERY_TECHNICAL_DOSSIER', 'TECHNICAL', 'Hồ sơ kỹ thuật máy móc / dây chuyền'),
       requirement('FIELD_INSPECTION_MINUTES', 'FIELD', 'Biên bản giám định hiện trường'),
-      requirement('SAMPLE_HANDOVER_LAB', 'LAB_SUBCONTRACTOR', 'Phiếu giao nhận mẫu PTN'),
-      requirement('LAB_RESULT', 'RESULT_ISSUANCE', 'Kết quả PTN'),
-      requirement('INSPECTION_CERTIFICATE', 'RESULT_ISSUANCE', 'Chứng thư giám định'),
-      requirement('ARCHIVE_INDEX', 'ARCHIVE', 'Hồ sơ lưu trữ'),
     ];
   }
 
-  return base.filter((item) => item.group !== 'LAB_SUBCONTRACTOR' || item.code !== 'SAMPLE_HANDOVER_LAB');
+  return [
+    ...base,
+    requirement('TECHNICAL_OVERVIEW', 'TECHNICAL', 'Hồ sơ kỹ thuật / mô tả hàng hóa'),
+    requirement('FIELD_INSPECTION_MINUTES', 'FIELD', 'Biên bản giám định hiện trường'),
+  ];
 }
 
 export function buildPgdDossierDocument(input: Partial<PgdDossierDocument>, now = new Date().toISOString()): PgdDossierDocument {
