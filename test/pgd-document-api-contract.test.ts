@@ -6,7 +6,7 @@ import path from 'node:path';
 const root = path.resolve(process.cwd());
 const read = (relativePath: string) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 
-test('PGD document client exposes dedicated DOCX template settings and generation endpoints', () => {
+test('PGD document client exposes DOCX template management and generation endpoints', () => {
   const source = read('utils/pgdApi.ts');
   assert.match(source, /\/api\/pgd\/document-templates/);
   assert.match(source, /\/api\/pgd\/documents\/generate/);
@@ -17,9 +17,9 @@ test('PGD document client exposes dedicated DOCX template settings and generatio
   assert.doesNotMatch(source, /CertificationDossier|PCN_CERTIFICATION_FIELD_CODES/);
 });
 
-test('PGD UI has a dedicated DOCX settings surface and document generation module', () => {
+test('PGD UI exposes DOCX template management and document generation modules', () => {
   const documentPanel = read('components/PgdDocumentGenerationPanel.tsx');
-  assert.match(documentPanel, /Cài đặt template DOCX PGD/);
+  assert.match(documentPanel, /Quản trị template DOCX PGD/);
   assert.match(documentPanel, /placeholder/);
   assert.match(documentPanel, /Sinh DOCX|Sinh PDF/);
   assert.match(documentPanel, /DECISION: 'Quyết định PGD'/);

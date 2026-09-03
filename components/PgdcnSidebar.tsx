@@ -124,7 +124,7 @@ export default function PgdcnSidebar({
 
       {scopes.includes('PGD') && <div className="pt-2">
         <button type="button" onClick={() => { if (collapsed && !mobileOpen) onToggle(); setPgdOpen(value => !value); }} className={`mobile-touch-target flex min-h-9 w-full items-center rounded-lg text-left text-blue-300 hover:bg-slate-800/80 ${expanded ? 'gap-2 px-2.5' : 'justify-center px-1'}`} aria-expanded={expanded ? pgdOpen : undefined} title="GIÁM ĐỊNH (PGD)"><ClipboardCheck size={16} /><span className={expanded ? 'flex-1 text-[10px] font-black tracking-wide' : 'sr-only'}>GIÁM ĐỊNH (PGD)</span>{expanded && <ChevronRight size={14} className={pgdOpen ? 'rotate-90' : ''} />}</button>
-        {expanded && pgdOpen && <div className="mt-0.5 space-y-0.5 border-l border-blue-500/30 pl-1">{PGD_ITEMS.map(item => renderDomainButton(item.label, item.icon, { domain: 'PGD', section: item.section }, 'pgd'))}{(currentUser.pgdRole === 'PGD_ADMIN' || currentUser.pgdRole === 'PGD_MANAGER' || currentUser.systemRole === 'admin') && renderDomainButton('Cài đặt PGD', Settings, { domain: 'PGD', section: 'settings' }, 'pgd')}</div>}
+        {expanded && pgdOpen && <div className="mt-0.5 space-y-0.5 border-l border-blue-500/30 pl-1">{PGD_ITEMS.map(item => renderDomainButton(item.label, item.icon, { domain: 'PGD', section: item.section }, 'pgd'))}</div>}
       </div>}
     </nav>
 

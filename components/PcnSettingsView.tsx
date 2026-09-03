@@ -94,7 +94,7 @@ export default function PcnSettingsView({ currentUser, templates, onUploadTempla
   useEffect(() => {
     if (!isAdmin) return;
     let active = true;
-    void fetchPcnSettings().then((next) => { if (active) setSettings(next); }).catch((error: any) => toast.error(error?.message || 'Không thể tải Cài đặt PCN.')).finally(() => { if (active) setLoading(false); });
+    void fetchPcnSettings().then((next) => { if (active) setSettings(next); }).catch((error: any) => toast.error(error?.message || 'Không thể tải cấu hình PCN.')).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [isAdmin]);
 
@@ -107,18 +107,18 @@ export default function PcnSettingsView({ currentUser, templates, onUploadTempla
   const toggleLab = (fieldCode: PcnCertificationFieldCode, labCode: PcnSampleLabCode, enabled: boolean) => setSettings((current) => ({ ...current, labRoutes: { ...current.labRoutes, [fieldCode]: enabled ? Array.from(new Set([...current.labRoutes[fieldCode], labCode])) : current.labRoutes[fieldCode].filter((item) => item !== labCode) } }));
   const save = async () => {
     setSaving(true);
-    try { const next = await updatePcnSettings(settings); setSettings(next); toast.success('Đã lưu Cài đặt PCN.'); } catch (error: any) { toast.error(error?.message || 'Không thể lưu Cài đặt PCN.'); } finally { setSaving(false); }
+    try { const next = await updatePcnSettings(settings); setSettings(next); toast.success('Đã lưu cấu hình PCN.'); } catch (error: any) { toast.error(error?.message || 'Không thể lưu cấu hình PCN.'); } finally { setSaving(false); }
   };
 
-  if (!isAdmin) return <div className="pcn-page-surface min-w-0 p-5 text-sm font-bold text-rose-700">Chỉ Admin PCN được xem Cài đặt PCN.</div>;
+  if (!isAdmin) return <div className="pcn-page-surface min-w-0 p-5 text-sm font-bold text-rose-700">Chỉ Admin PCN được xem cấu hình PCN.</div>;
   if (loading) return <div className="pcn-page-surface min-w-0 flex items-center justify-center gap-2 text-xs font-bold text-slate-500"><Loader2 size={16} className="animate-spin" /> Đang tải cấu hình PCN…</div>;
 
   return <div className="pcn-page-surface min-w-0 mobile-safe-bottom space-y-4 bg-slate-50/60 p-3 md:p-5">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Quản trị • Phòng Chứng nhận</p><h1 className="mt-1 text-xl font-black tracking-tight text-slate-900">Cài đặt PCN</h1><p className="mt-1 max-w-2xl text-[11px] leading-4 text-slate-500">Thiết lập phạm vi, tuyến phòng thử, checklist, mã hóa và OCR cho các bộ hồ sơ mới.</p></div><button type="button" onClick={() => void save()} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white shadow-sm hover:bg-emerald-700 disabled:bg-slate-300">{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Lưu cài đặt</button></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Quản trị • Phòng Chứng nhận</p><h1 className="mt-1 text-xl font-black tracking-tight text-slate-900">Cấu hình PCN</h1><p className="mt-1 max-w-2xl text-[11px] leading-4 text-slate-500">Thiết lập phạm vi, tuyến phòng thử, checklist, mã hóa và OCR cho các bộ hồ sơ mới.</p></div><button type="button" onClick={() => void save()} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white shadow-sm hover:bg-emerald-700 disabled:bg-slate-300">{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Lưu cài đặt</button></div>
 
     {templateAdminPanel}
     {operationalTemplatePanel}
-    <Panel icon={Settings2} title="Phạm vi chứng nhận" description="Các nhánh QC đang được phục vụ trong PCN. Giám định thép không gỉ được quản lý tại Cài đặt PGD."><div className="grid gap-2 md:grid-cols-2">{FIELD_OPTIONS.map((field) => <label key={field.code} className={`flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-[11px] font-black ${fieldCodes.has(field.code) ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 text-slate-500'}`}><input type="checkbox" checked={fieldCodes.has(field.code)} onChange={(event) => setFieldEnabled(field.code, event.target.checked)} className="accent-emerald-600" /><span>{field.code} · {field.label}</span></label>)}</div></Panel>
+    <Panel icon={Settings2} title="Phạm vi chứng nhận" description="Các nhánh QC đang được phục vụ trong PCN. Giám định thép không gỉ được quản lý tại miền PGD."><div className="grid gap-2 md:grid-cols-2">{FIELD_OPTIONS.map((field) => <label key={field.code} className={`flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-[11px] font-black ${fieldCodes.has(field.code) ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 text-slate-500'}`}><input type="checkbox" checked={fieldCodes.has(field.code)} onChange={(event) => setFieldEnabled(field.code, event.target.checked)} className="accent-emerald-600" /><span>{field.code} · {field.label}</span></label>)}</div></Panel>
 
     <Panel icon={FlaskConical} title="Tuyến phòng thử của từng nhánh" description="Mẫu được tách route theo phòng thử; không tạo lịch thử. Phân tích hóa học của thép không gỉ thuộc PGD."><div className="space-y-3">{FIELD_OPTIONS.map((field) => <div key={field.code} className="rounded-lg border border-slate-100 bg-slate-50/70 p-3"><div className="mb-2 text-[10px] font-black uppercase tracking-wider text-slate-600">{field.code}</div><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{PCN_SAMPLE_LAB_OPTIONS.map((lab) => <Toggle key={lab.code} label={lab.name} checked={settings.labRoutes[field.code].includes(lab.code)} onChange={(enabled) => toggleLab(field.code, lab.code, enabled)} />)}</div></div>)}</div></Panel>
 

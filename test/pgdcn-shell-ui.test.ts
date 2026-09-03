@@ -16,6 +16,13 @@ test('shared sidebar renders both domain groups from department scopes', () => {
   for (const marker of ['Tổng quan phòng', 'Trợ lý AI', 'Nhật ký hoạt động', 'CHỨNG NHẬN (PCN)', 'GIÁM ĐỊNH (PGD)', 'departmentScopes', 'aria-current', 'mobile-touch-target']) {
     assert.ok(source.includes(marker), `Missing shared sidebar marker: ${marker}`);
   }
+  assert.doesNotMatch(source, /Cài đặt PCN|Cài đặt PGD/);
+});
+
+test('domain settings navigation resolves to the shared system settings surface', () => {
+  const source = read('../components/PgdcnAppShell.tsx');
+  assert.match(source, /section === 'settings'/);
+  assert.match(source, /domain: 'department', section: 'system-settings'/);
 });
 
 test('department dashboard exposes six KPIs, domain cards and a shared activity entrypoint', () => {

@@ -13,7 +13,8 @@ test('shared sidebar owns customer and system-settings branches without domain d
   assert.match(source, /'system-settings'/);
   assert.match(source, /Khách hàng/);
   assert.match(source, /Cài đặt hệ thống/);
-  assert.match(source, /departmentRoleCode|pgdRole/);
+  assert.doesNotMatch(source, /Cài đặt PCN|Cài đặt PGD/);
+  assert.match(source, /canViewSystemSettings/);
   const pcnItems = source.slice(source.indexOf('const PCN_ITEMS'), source.indexOf('const PGD_ITEMS'));
   const pgdItems = source.slice(source.indexOf('const PGD_ITEMS'), source.indexOf('const isTargetActive'));
   assert.doesNotMatch(pcnItems, /section: 'dashboard'|section: 'customers'|section: 'users'|section: 'settings'/);
@@ -26,6 +27,7 @@ test('shared shell routes customers and system settings before domain workspaces
   assert.match(source, /PgdcnSystemSettingsView/);
   assert.match(source, /section === 'customers'/);
   assert.match(source, /section === 'system-settings'/);
+  assert.match(source, /section === 'settings'/);
 });
 
 test('system settings puts personnel assignment and password operations in one shared surface', () => {
@@ -33,6 +35,8 @@ test('system settings puts personnel assignment and password operations in one s
   for (const marker of ['Nhân sự &amp; tài khoản', 'departmentScopes', 'position', 'Reset mật khẩu', 'Admin', 'Quản lý']) {
     assert.ok(source.includes(marker), `Missing system settings marker: ${marker}`);
   }
+  assert.match(source, /PcnSettingsView/);
+  assert.match(source, /PgdTemplateSettingsWorkspace/);
   assert.doesNotMatch(source, /Danh mục phòng ban|Danh mục chức vụ/);
 });
 

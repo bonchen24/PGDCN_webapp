@@ -32,7 +32,7 @@ export const PGD_SECTION_LABELS: Record<PgdSection, string> = {
   customers: 'Khách hàng dùng chung',
   users: 'Nhân sự PGD',
   templates: 'Tạo tài liệu PGD',
-  settings: 'Cài đặt PGD',
+  settings: 'Template DOCX',
 };
 
 export const PGD_SECTION_ICONS: Record<PgdSection, ElementType> = {
@@ -110,7 +110,7 @@ export default function PgdSidebar({
           <button type="button" onClick={() => { if (collapsed && !mobileOpen) onToggle(); setShowAdmin((open) => !open); }} aria-expanded={expanded ? showAdmin : undefined} className={`flex min-h-11 w-full items-center rounded-xl text-left text-slate-400 hover:bg-slate-800/80 hover:text-slate-100 ${expanded ? 'gap-3 px-3.5' : 'justify-center px-1'}`} title="Quản trị PGD">
             <Settings2 size={16} />{expanded && <><span className="flex-1 text-[11px] font-black">Quản trị PGD</span><span className={showAdmin ? 'rotate-90 text-blue-300' : ''}>›</span></>}
           </button>
-          {expanded && showAdmin && <div className="mt-1 space-y-1 rounded-xl border border-slate-800 bg-slate-900/70 p-1.5">{renderButton('users')}{renderButton('settings')}</div>}
+          {expanded && showAdmin && <div className="mt-1 space-y-1 rounded-xl border border-slate-800 bg-slate-900/70 p-1.5">{renderButton('users')}</div>}
         </div>}
       </nav>
 

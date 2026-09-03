@@ -63,7 +63,7 @@ const sectionLabels: Record<PcnSection, string> = {
   customers: 'Danh sách khách hàng',
   users: 'Nhân sự PCN',
   activityLogs: 'Nhật ký hệ thống',
-  settings: 'Cài đặt PCN',
+  settings: 'Cấu hình PCN',
 };
 
 const statusLabels: Record<PcnDossierStatus, string> = {

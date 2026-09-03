@@ -35,12 +35,14 @@ const getSharedTargetForPcnSection = (section: PcnSection): PgdcnNavigationTarge
   if (section === 'dashboard') return { domain: 'department', section: 'department-dashboard' };
   if (section === 'customers') return { domain: 'department', section: 'customers' };
   if (section === 'users') return { domain: 'department', section: 'system-settings' };
+  if (section === 'settings') return { domain: 'department', section: 'system-settings' };
   return undefined;
 };
 
 const getSharedTargetForPgdSection = (section: PgdSection): PgdcnNavigationTarget | undefined => {
   if (section === 'dashboard') return { domain: 'department', section: 'department-dashboard' };
   if (section === 'customers' || section === 'users') return { domain: 'department', section: section === 'customers' ? 'customers' : 'system-settings' };
+  if (section === 'settings') return { domain: 'department', section: 'system-settings' };
   return undefined;
 };
 
@@ -213,7 +215,7 @@ export default function PgdcnAppShell({ initialDomain = 'department' }: PgdcnApp
   ) : activeTarget.domain === 'department' && activeTarget.section === 'customers' ? (
     <PgdcnCustomersView scopes={scopes} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'system-settings' ? (
-    <PgdcnSystemSettingsView currentUser={currentUser} users={systemUsers} roles={pcn.departmentRoles} fields={pcn.fields} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
+    <PgdcnSystemSettingsView currentUser={currentUser} users={systemUsers} roles={pcn.departmentRoles} fields={pcn.fields} pcnTemplates={pcn.templates} onUploadPcnTemplate={pcn.uploadPcnTemplate} onReviewPcnTemplate={pcn.reviewPcnTemplate} pgdTemplates={pgd.documentTemplates} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'activityLogs' ? (
     <ActivityLogView currentUser={currentUser} systemUsers={systemUsers} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'assistant' ? (
