@@ -17,6 +17,7 @@ export const PGD_COLLECTIONS = {
   certificates: 'pgdInspectionCertificates',
   approvals: 'pgdApprovalSteps',
   documents: 'pgdDocuments',
+  dossierDocuments: 'pgdDossierDocuments',
   activityLogs: 'pgdActivityLogs',
 } as const;
 
@@ -283,9 +284,20 @@ export interface PgdSample {
   quantity: number;
   unit?: string;
   disposition: PgdSampleDisposition;
+  sealNumber?: string;
+  sampleSize?: string;
+  lotQuantity?: number;
+  lotUnit?: string;
+  sampledAt?: string;
+  samplingLocation?: string;
+  sampledByUsername?: string;
+  retentionStatus?: 'ACTIVE' | 'DESTROYED';
   laboratoryName?: string;
   handedOverAt?: string;
   retainedUntil?: string;
+  destroyedAt?: string;
+  destroyedByUsername?: string;
+  destructionNote?: string;
   note?: string;
 }
 
@@ -582,16 +594,57 @@ export function getPgdApprovalDenial(
 }
 
 export function splitPgdSample(
-  input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string },
+  input: {
+    requestId: string;
+    sampleCodePrefix: string;
+    description: string;
+    quantity: number;
+    unit?: string;
+    sampledByUsername?: string;
+    samplingLocation?: string;
+    sampleSize?: string;
+    lotQuantity?: number;
+    lotUnit?: string;
+  },
   now = new Date().toISOString(),
 ): { lab: PgdSample; retained: PgdSample } {
   if (!Number.isFinite(input.quantity) || input.quantity < 2) throw new Error('Mẫu PGD phải có đủ số lượng để tách phần PTN và mẫu lưu.');
   const labQuantity = Math.ceil(input.quantity / 2);
-  const nonce = globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  const base = `${input.sampleCodePrefix}-${nonce}`;
+  const sampledAt = new Date(now).toISOString();
+  const nonce = sampledAt.replace(/[-:.TZ]/g, '') + '-' + (globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`);
+  const base = `${String(input.sampleCodePrefix || '').trim()}-${nonce}`;
+  const common = {
+    domain: PGD_DOMAIN,
+    requestId: input.requestId,
+    description: input.description,
+    unit: input.unit,
+    sampleSize: input.sampleSize || input.description,
+    lotQuantity: input.lotQuantity ?? input.quantity,
+    lotUnit: input.lotUnit || input.unit,
+    sampledAt,
+    samplingLocation: input.samplingLocation,
+    sampledByUsername: input.sampledByUsername,
+  };
   return {
-    lab: { id: `${base}-lab`, domain: PGD_DOMAIN, requestId: input.requestId, sampleCode: `${base}-L`, description: input.description, quantity: labQuantity, unit: input.unit, disposition: 'LAB', note: `Tách mẫu lúc ${now}` },
-    retained: { id: `${base}-retained`, domain: PGD_DOMAIN, requestId: input.requestId, sampleCode: `${base}-R`, description: input.description, quantity: input.quantity - labQuantity, unit: input.unit, disposition: 'RETAINED', note: `Tách mẫu lưu lúc ${now}` },
+    lab: {
+      id: `${base}-lab`,
+      ...common,
+      sampleCode: `${base}-L`,
+      quantity: labQuantity,
+      disposition: 'LAB',
+      sealNumber: `${base}-L-SEAL`,
+      note: `Tách mẫu lúc ${sampledAt}`,
+    },
+    retained: {
+      id: `${base}-retained`,
+      ...common,
+      sampleCode: `${base}-R`,
+      quantity: input.quantity - labQuantity,
+      disposition: 'RETAINED',
+      sealNumber: `${base}-R-SEAL`,
+      retentionStatus: 'ACTIVE',
+      note: `Tách mẫu lưu lúc ${sampledAt}`,
+    },
   };
 }
 
