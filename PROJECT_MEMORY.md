@@ -6,6 +6,14 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-04 — Đồng bộ projection phiên bản hiện hành và cảnh báo đóng gói PGD
+
+- Bổ sung `getCurrentPgdDossierDocuments()` để projection trên card PGD chỉ chọn một tài liệu mới nhất cho từng `requirementCode` theo version, thời điểm tải lên và id ổn định. Lịch sử phiên bản vẫn được giữ nguyên trong API/bootstrap; phiên bản đã `supersede` không còn bị đếm hoặc báo đã gắn checklist thay cho phiên bản mới.
+- Package PGD nay giữ manifest cảnh báo khi provenance/file asset thiếu hoặc không khớp: lỗi 409 kèm `manifest`, asset lỗi được đánh dấu trong `missingAssetIds`; không tạo ZIP hoàn chỉnh từ file thiếu/sai checksum.
+- Đã cập nhật SSoT `design.md` mục 0A.9 để quy định rõ projection hiện hành và commit `d57283c` chỉ gồm các thay đổi PGD/spec/test liên quan. Không sửa, xóa, copy, import hoặc đọc runtime từ Desktop/UNC; không thêm thanh toán/báo giá.
+- Kiểm chứng: focused PGD **29/29**, active `npm test` **665/665**, `npm run lint`, `npm run build`, `git diff --check` đều pass.
+- Docker Desktop production đã rebuild/recreate bằng `docker compose --env-file .env -f docker-compose.pcn.yml up --build -d`. Image `pcn_webapp-webapp:latest` digest `sha256:de70a8011641212254acff16c2bbce4de56fc51b504d9c5ecc7544efa67bf91e`; container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`. Smoke `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200.
+
 ## Cập nhật 2026-09-03 — Governance QC20 và review template PCN
 
 - Đã hoàn thiện boundary quản trị QC20 trong PCN: `PcnSettings.qc20ScopeConfiguration` tách khỏi snapshot `CertificationProposal.qc20Scope`; mặc định vẫn `NEEDS_PCN_CONFIRMATION`, không tự suy diễn danh mục pháp lý/kỹ thuật từ hồ sơ nguồn.
