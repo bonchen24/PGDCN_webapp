@@ -5,6 +5,13 @@ import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 
 import type {
+  PgdCaseEvent,
+  PgdDossierIndex,
+  PgdFieldActivityLog,
+  PgdInspectionPlan,
+  PgdLabResultReview,
+} from './pgdArtifacts.ts';
+import type {
   PgdFieldInspection,
   PgdInspectionAssignment,
   PgdInspectionCertificate,
@@ -29,13 +36,18 @@ import { inspectPgdTemplateSource, resolvePgdTemplateSourcePath } from './pgdTem
 
 export interface PgdDocumentContext {
   domain: 'pgd';
-  request: Pick<PgdInspectionRequest, 'id' | 'requestCode' | 'productGroup' | 'productName' | 'lotCode' | 'inspectionScope' | 'inspectionLocation' | 'standards' | 'updatedAt'>;
+  request: Pick<PgdInspectionRequest, 'id' | 'requestCode' | 'productGroup' | 'productName' | 'lotCode' | 'inspectionScope' | 'inspectionLocation' | 'standards' | 'updatedAt' | 'transportName' | 'registryMetadata'>;
   sourceSnapshots: {
     assignmentId?: string;
+    inspectionPlanId?: string;
+    caseEventIds: string[];
+    fieldActivityLogIds: string[];
     fieldInspectionId?: string;
     sampleIds: string[];
     labRequestIds: string[];
     labResultIds: string[];
+    labResultReviewId?: string;
+    dossierIndexId?: string;
     reportId?: string;
     certificateId?: string;
   };
@@ -49,10 +61,15 @@ export interface PgdDocumentContextInput {
   template: PgdDocumentTemplate;
   request: PgdInspectionRequest;
   assignment?: PgdInspectionAssignment;
+  inspectionPlan?: PgdInspectionPlan;
+  caseEvents?: PgdCaseEvent[];
+  fieldActivityLogs?: PgdFieldActivityLog[];
   fieldInspection?: PgdFieldInspection;
   samples?: PgdSample[];
   labRequests?: PgdLabRequest[];
   labResults?: PgdLabResult[];
+  labResultReview?: PgdLabResultReview;
+  dossierIndex?: PgdDossierIndex;
   report?: PgdInspectionReport;
   certificate?: PgdInspectionCertificate;
   cellValues: Record<string, unknown> | PgdCellValue[];
@@ -122,10 +139,34 @@ function requestBoundValues(input: PgdDocumentContextInput): Record<string, unkn
     bound.scheduledAt = request.inspectionScheduledAt || '';
     bound.team = input.assignment.inspectorUsernames.map((name) => ({ name, role: name === input.assignment?.leadInspectorUsername ? 'LEAD' : 'INSPECTOR' }));
   }
+  if (input.inspectionPlan) {
+    bound.inspectionDate = input.inspectionPlan.inspectionDate;
+    bound.agenda = input.inspectionPlan.schedule.map((row) => ({ time: `${row.startTime}${row.endTime ? `–${row.endTime}` : ''}`, activity: row.activity, owner: row.note || '' }));
+    bound.team = input.inspectionPlan.team.map((member) => ({ name: member.name || member.username, role: member.role, phone: member.phone || '' }));
+    bound.productLines = input.inspectionPlan.productLines.map((product) => ({ productName: product.productName, grade: product.grade || '', dimensions: product.dimensions || '', standard: product.standard, origin: product.origin || '', manufacturer: product.manufacturer || '', quantity: product.quantity ?? '', unit: product.unit || '' }));
+  }
+  if (input.caseEvents && input.caseEvents.length > 0) {
+    const events = [...input.caseEvents].sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
+    const vietnamTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(value));
+    bound.eventDate = events[0].occurredAt.slice(0, 10);
+    bound.eventRows = events.map((event) => ({ time: vietnamTime(event.occurredAt), activity: event.activity, actor: event.actorUsername, note: event.note || '' }));
+  }
+  if (input.fieldActivityLogs && input.fieldActivityLogs.length > 0) {
+    const latest = [...input.fieldActivityLogs].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+    bound.session = latest.session;
+    bound.activityDate = latest.date || '';
+    bound.auditor = latest.auditorUsername || '';
+    bound.activityRows = latest.entries.map((entry) => ({ time: entry.time, activity: entry.activity, comments: entry.comments || '' }));
+  }
   const field = input.fieldInspection;
   const samples = input.samples || [];
   const labRequests = input.labRequests || [];
   const labResults = input.labResults || [];
+  const registryDocumentNumber = (kind: string): string => input.request.registryMetadata?.documents?.find((document) => document.kind === kind)?.number || '';
+  bound.transportName = input.request.transportName || '';
+  bound.packingListNumber = registryDocumentNumber('PACKING_LIST');
+  bound.invoiceNumber = registryDocumentNumber('INVOICE');
+  bound.contractNumber = registryDocumentNumber('CONTRACT');
   if (field) {
     bound.performedAt = field.performedAt;
     bound.location = field.location;
@@ -134,6 +175,8 @@ function requestBoundValues(input: PgdDocumentContextInput): Record<string, unkn
     bound.labeling = field.labeling;
     bound.measurements = Object.entries(field.measurements || {}).map(([item, measurement]) => ({ item, value: measurement }));
     bound.nonconformities = (field.nonconformities || []).map((description, index) => ({ code: String(index + 1), description }));
+    bound.inspectionResult = field.inspectionResult || field.note || '';
+    bound.customerConfirmation = field.customerRepresentative || '';
     bound.fieldFindings = [
       { item: 'Nhận dạng lô hàng', value: field.lotObservation },
       { item: 'Bao gói / bảo quản', value: field.packaging },
@@ -151,12 +194,27 @@ function requestBoundValues(input: PgdDocumentContextInput): Record<string, unkn
     }));
   }
   if (labRequests.length > 0) {
-    const latest = labRequests[labRequests.length - 1];
+    const latest = [...labRequests].sort((left, right) => (right.handover?.sentAt || '').localeCompare(left.handover?.sentAt || '') || right.id.localeCompare(left.id))[0];
     bound.laboratoryName = latest.laboratoryName;
+    bound.laboratoryCode = latest.laboratoryCode || '';
+    bound.senderUnit = latest.senderUnit || 'Phòng Giám định - Chứng nhận';
     bound.sentAt = latest.handover?.sentAt;
     bound.sender = latest.handover?.senderUsername;
     bound.receiver = latest.handover?.receiverName;
     bound.testItems = latest.testItems.map((item, index) => ({ item, method: latest.testMethods?.[index] || '' }));
+    const samplesById = new Map(samples.map((sample) => [sample.id, sample]));
+    bound.handoverRows = labRequests.map((labRequest) => {
+      const sample = samplesById.get(labRequest.sampleId);
+      return {
+        sampleCode: sample?.sampleCode || labRequest.sampleId,
+        description: sample?.description || '',
+        quantity: labRequest.handover?.quantity || sample?.quantity || '',
+        unit: sample?.unit || '',
+        testItems: labRequest.testItems.join('; '),
+        methods: (labRequest.testMethods || []).join('; '),
+      };
+    });
+    bound.handoverNote = latest.handover?.note || '';
   }
   if (labResults.length > 0) {
     const resultRows = labResults.flatMap((result) => result.values.map((value) => ({
@@ -166,6 +224,22 @@ function requestBoundValues(input: PgdDocumentContextInput): Record<string, unkn
       method: result.reportNumber || '',
     })));
     bound.labResults = resultRows;
+  }
+  if (input.labResultReview) {
+    bound.labResultRows = labResults.map((result) => ({ reportNumber: result.reportNumber || '', reportDate: result.receivedAt.slice(0, 10), laboratory: labRequests.find((labRequest) => labRequest.id === result.labRequestId)?.laboratoryName || '' }));
+    bound.completeness = input.labResultReview.completeness;
+    bound.conformity = input.labResultReview.conformity;
+    bound.missingItems = (input.labResultReview.missingItems || []).map((item) => ({ item, note: '' }));
+    bound.nonconformities = (input.labResultReview.nonconformities || []).map((item) => ({ item, description: item }));
+    bound.recommendation = input.labResultReview.recommendation || '';
+    bound.conclusion = input.labResultReview.conclusion;
+    bound.reviewer = input.labResultReview.reviewerUsername || '';
+  }
+  if (input.dossierIndex) {
+    bound.dossierEntries = input.dossierIndex.entries.map((entry) => ({ requirementCode: entry.requirementCode, title: entry.title, status: entry.status, pageCount: entry.pageCount || '' }));
+    bound.reviewer = input.dossierIndex.reviewerUsername || bound.reviewer || '';
+    bound.archivist = input.dossierIndex.archivistUsername || '';
+    bound.archiveReference = input.dossierIndex.archiveReference || '';
   }
   if (input.report) {
     bound.reportNumber = input.report.reportNumber;
@@ -224,10 +298,15 @@ export function buildPgdDocumentContext(input: PgdDocumentContextInput): PgdDocu
     },
     sourceSnapshots: {
       ...(input.assignment?.id ? { assignmentId: input.assignment.id } : {}),
+      ...(input.inspectionPlan?.id ? { inspectionPlanId: input.inspectionPlan.id } : {}),
+      caseEventIds: (input.caseEvents || []).map((event) => event.id),
+      fieldActivityLogIds: (input.fieldActivityLogs || []).map((log) => log.id),
       ...(input.fieldInspection?.id ? { fieldInspectionId: input.fieldInspection.id } : {}),
       sampleIds: (input.samples || []).map((sample) => sample.id),
       labRequestIds: (input.labRequests || []).map((request) => request.id),
       labResultIds: (input.labResults || []).map((result) => result.id),
+      ...(input.labResultReview?.id ? { labResultReviewId: input.labResultReview.id } : {}),
+      ...(input.dossierIndex?.id ? { dossierIndexId: input.dossierIndex.id } : {}),
       ...(input.report?.id ? { reportId: input.report.id } : {}),
       ...(input.certificate?.id ? { certificateId: input.certificate.id } : {}),
     },

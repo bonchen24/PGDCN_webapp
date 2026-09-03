@@ -542,6 +542,15 @@ Description: Persistent project memory and verified deployment observations for 
 - Smoke test sau deploy: `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200; production Next build hoàn tất và container khởi động thành công.
 - Full maintenance suite vẫn có **1140/1145 pass**; 5 lỗi còn lại thuộc contract historical attachment/source-discovery bị loại khỏi active runner theo nguyên tắc không import hồ sơ lịch sử, không ảnh hưởng active PCN/PGD.
 
+## Cập nhật 2026-09-03 — PGD source-form pack BM-GĐ-07.21/BM-QT-09-04
+
+- Rà soát read-only folder PGD xác nhận hai biểu mẫu vận hành cần tách rõ: `BM-GĐ-07.21` (Biên bản vụ giám định) và `BM-QT-09-04` (Biên bản giao mẫu PTN). Không sửa, xóa, copy hoặc import file nguồn; runtime vẫn không đọc Desktop/UNC.
+- PGD đã bổ sung template/cell `INSPECTION_MINUTES` (`PGD-BM-14`) và `SAMPLE_HANDOVER` (`PGD-BM-15`), có thông tin lô, chứng từ tham chiếu, kết quả hiện trường, đại diện khách hàng, mã PTN, bên giao/nhận và nhiều dòng mẫu/chỉ tiêu/phương pháp.
+- PYC PGD lưu thêm `transportName`; `PgdLabRequest` lưu `laboratoryCode` và snapshot `senderUnit`. Hai template mới được định tuyến vào trạm `FIELD_SAMPLING`, snapshot template/cell/context hash giữ nguyên khi sinh tài liệu.
+- Gói DOCX `templates/pgd` và `manifest.json` đã tái sinh phiên bản `1.2`; header dùng đúng tên **Phòng Giám định - Chứng nhận**.
+- Kiểm chứng mới nhất: `npm test` **665/665**, `npm run lint`, `npm run build` và `git diff --check` pass; BM-14/BM-15 render sạch một trang.
+- Commit và Docker Desktop production chưa hoàn tất trong phiên này: sandbox chặn ghi `.git/index.lock` và cả hai lần xin quyền nâng cao cho Git/Docker bị backend approval trả `404`. Không được coi là đã commit/deploy cho đến khi chạy lại trên môi trường có quyền.
+
 ## Files quan trọng
 
 - `server.ts`: Express API, PostgreSQL routes, HMR integration và Gemini endpoints.

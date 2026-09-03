@@ -19,6 +19,11 @@ export const PGD_COLLECTIONS = {
   documents: 'pgdDocuments',
   dossierDocuments: 'pgdDossierDocuments',
   activityLogs: 'pgdActivityLogs',
+  inspectionPlans: 'pgdInspectionPlans',
+  caseEvents: 'pgdCaseEvents',
+  fieldActivityLogs: 'pgdFieldActivityLogs',
+  labResultReviews: 'pgdLabResultReviews',
+  dossierIndexes: 'pgdDossierIndexes',
 } as const;
 
 export type PgdInspectionStatus =
@@ -329,6 +334,7 @@ export interface PgdInspectionRequestInput {
   weight?: number;
   weightUnit?: string;
   lotCode?: string;
+  transportName?: string;
   inspectionScope: string;
   inspectionLocation: string;
   inspectionScheduledAt?: string;
@@ -351,6 +357,11 @@ export interface PgdInspectionRequest extends Omit<PgdInspectionRequestInput, 's
   sampleIds: string[];
   labRequestIds: string[];
   resultTemplateSnapshotId?: string;
+  inspectionPlanId?: string;
+  caseEventIds?: string[];
+  fieldActivityLogIds?: string[];
+  labResultReviewId?: string;
+  dossierIndexId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -383,6 +394,8 @@ export interface PgdFieldInspection {
   labeling?: string;
   measurements?: Record<string, string | number>;
   nonconformities?: string[];
+  inspectionResult?: string;
+  customerRepresentative?: string;
   evidenceAssetIds?: string[];
   sampleIds: string[];
   completed: boolean;
@@ -422,6 +435,8 @@ export interface PgdLabRequest {
   sampleId: string;
   status: PgdLabRequestStatus;
   laboratoryName: string;
+  laboratoryCode?: string;
+  senderUnit?: string;
   testItems: string[];
   testMethods?: string[];
   handover?: {
@@ -887,6 +902,8 @@ export function buildPgdLabRequest(
 ): PgdLabRequest {
   const actor = String(actorUsername || '').trim();
   const laboratoryName = String(input.laboratoryName || '').trim();
+  const laboratoryCode = String(input.laboratoryCode || '').trim() || undefined;
+  const senderUnit = String(input.senderUnit || '').trim() || undefined;
   const testItems = Array.from(new Map(
     (input.testItems || [])
       .map((item) => String(item || '').trim())
@@ -908,6 +925,8 @@ export function buildPgdLabRequest(
     domain: PGD_DOMAIN,
     status: finalStatus,
     laboratoryName,
+    ...(laboratoryCode ? { laboratoryCode } : {}),
+    ...(senderUnit ? { senderUnit } : {}),
     testItems,
     ...(resultId ? { resultId } : {}),
     handover: {

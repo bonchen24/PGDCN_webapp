@@ -1,6 +1,6 @@
 {
   "domain": "pgd",
-  "version": "1.0",
+  "version": "1.2",
   "description": "Bộ biểu mẫu DOCX PGD với placeholder [[key]] làm nguồn cho form nhập liệu và sinh tài liệu.",
   "templates": [
     {
@@ -41,7 +41,8 @@
         "steelLotSize",
         "steelManualSamplingPlanNote",
         "steelSameGradeMultiProduct",
-        "technicalDossierNote"
+        "technicalDossierNote",
+        "transportName"
       ],
       "requiredPlaceholderKeys": [
         "customerAddress",
@@ -107,6 +108,7 @@
         "note",
         "origin",
         "productForm",
+        "productLines",
         "productName",
         "productStandard",
         "requestCode",
@@ -121,6 +123,7 @@
         "customerAddress",
         "customerName",
         "inspectionDate",
+        "productLines",
         "productName",
         "requestCode",
         "standards",
@@ -224,12 +227,14 @@
       "fileName": "PGD-BM-06.docx",
       "placeholderKeys": [
         "customerName",
+        "laboratoryCode",
         "laboratoryName",
         "productName",
         "receiver",
         "requestCode",
         "sampleRows",
         "sender",
+        "senderUnit",
         "sentAt",
         "testItems"
       ],
@@ -378,6 +383,172 @@
         "productName",
         "requestCode",
         "standards"
+      ]
+    },
+    {
+      "id": "pgd-template-dossier-cover",
+      "kind": "DOSSIER_COVER",
+      "code": "PGD-BM-10",
+      "fileName": "PGD-BM-10.docx",
+      "placeholderKeys": [
+        "archiveReference",
+        "archivist",
+        "customerAddress",
+        "customerName",
+        "dossierEntries",
+        "inspectionScope",
+        "location",
+        "performedAt",
+        "productName",
+        "requestCode",
+        "reviewer"
+      ],
+      "requiredPlaceholderKeys": [
+        "customerAddress",
+        "customerName",
+        "dossierEntries",
+        "inspectionScope",
+        "productName",
+        "requestCode"
+      ]
+    },
+    {
+      "id": "pgd-template-case-timeline",
+      "kind": "CASE_TIMELINE",
+      "code": "PGD-BM-11",
+      "fileName": "PGD-BM-11.docx",
+      "placeholderKeys": [
+        "customerConfirmation",
+        "customerName",
+        "eventDate",
+        "eventRows",
+        "lotCode",
+        "productName",
+        "requestCode"
+      ],
+      "requiredPlaceholderKeys": [
+        "customerName",
+        "eventDate",
+        "eventRows",
+        "productName",
+        "requestCode"
+      ]
+    },
+    {
+      "id": "pgd-template-field-activity-log",
+      "kind": "FIELD_ACTIVITY_LOG",
+      "code": "PGD-BM-12",
+      "fileName": "PGD-BM-12.docx",
+      "placeholderKeys": [
+        "activityDate",
+        "activityRows",
+        "auditor",
+        "customerName",
+        "requestCode",
+        "session"
+      ],
+      "requiredPlaceholderKeys": [
+        "activityDate",
+        "activityRows",
+        "auditor",
+        "customerName",
+        "requestCode",
+        "session"
+      ]
+    },
+    {
+      "id": "pgd-template-lab-result-review",
+      "kind": "LAB_RESULT_REVIEW",
+      "code": "PGD-BM-13",
+      "fileName": "PGD-BM-13.docx",
+      "placeholderKeys": [
+        "completeness",
+        "conclusion",
+        "conformity",
+        "customerName",
+        "labResultRows",
+        "missingItems",
+        "nonconformities",
+        "productName",
+        "recommendation",
+        "requestCode",
+        "reviewer"
+      ],
+      "requiredPlaceholderKeys": [
+        "completeness",
+        "conclusion",
+        "conformity",
+        "customerName",
+        "labResultRows",
+        "productName",
+        "requestCode"
+      ]
+    },
+    {
+      "id": "pgd-template-inspection-minutes",
+      "kind": "INSPECTION_MINUTES",
+      "code": "PGD-BM-14",
+      "fileName": "PGD-BM-14.docx",
+      "placeholderKeys": [
+        "conclusion",
+        "contractNumber",
+        "customerAddress",
+        "customerConfirmation",
+        "customerName",
+        "inspectionResult",
+        "inspectionScope",
+        "invoiceNumber",
+        "location",
+        "lotCode",
+        "packingListNumber",
+        "performedAt",
+        "preInspectionCondition",
+        "productName",
+        "quantity",
+        "requestCode",
+        "sampleRows",
+        "transportName"
+      ],
+      "requiredPlaceholderKeys": [
+        "conclusion",
+        "customerAddress",
+        "customerName",
+        "inspectionResult",
+        "inspectionScope",
+        "location",
+        "performedAt",
+        "preInspectionCondition",
+        "productName",
+        "requestCode"
+      ]
+    },
+    {
+      "id": "pgd-template-sample-handover",
+      "kind": "SAMPLE_HANDOVER",
+      "code": "PGD-BM-15",
+      "fileName": "PGD-BM-15.docx",
+      "placeholderKeys": [
+        "customerName",
+        "handoverNote",
+        "handoverRows",
+        "laboratoryCode",
+        "laboratoryName",
+        "productName",
+        "receiver",
+        "requestCode",
+        "sender",
+        "senderUnit",
+        "sentAt"
+      ],
+      "requiredPlaceholderKeys": [
+        "customerName",
+        "handoverRows",
+        "laboratoryName",
+        "productName",
+        "requestCode",
+        "sender",
+        "senderUnit",
+        "sentAt"
       ]
     }
   ]

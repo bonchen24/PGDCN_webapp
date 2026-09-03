@@ -15,6 +15,7 @@ import {
 } from '../utils/pgdDocumentTemplates';
 import { getPgdDocumentDownloadUrl, getPgdTemplateSourceUrl } from '../utils/pgdApi';
 import { usePgdStore } from '../store-pgd';
+import type { PgdCaseEvent, PgdDossierIndex, PgdFieldActivityLog, PgdInspectionPlan, PgdLabResultReview } from '../utils/pgdArtifacts';
 import PgdTableFieldEditor from './PgdTableFieldEditor';
 
 type PgdDocumentGenerationPanelProps = {
@@ -35,9 +36,32 @@ const TEMPLATE_KIND_LABELS: Record<PgdDocumentTemplateKind, string> = {
   INSPECTION_REPORT: 'Báo cáo giám định',
   DECISION: 'Quyết định PGD',
   INSPECTION_CERTIFICATE: 'Chứng thư giám định',
+  DOSSIER_COVER: 'Bìa và mục lục hồ sơ',
+  CASE_TIMELINE: 'Diễn biến vụ giám định',
+  FIELD_ACTIVITY_LOG: 'Phiếu ghi chép hiện trường',
+  LAB_RESULT_REVIEW: 'Bản đánh giá kết quả thử nghiệm',
+  INSPECTION_MINUTES: 'Biên bản vụ giám định',
+  SAMPLE_HANDOVER: 'Biên bản giao mẫu PTN',
 };
 
-function initialValue(cell: PgdTemplateCell, request: PgdInspectionRequest): unknown {
+type PgdDocumentPrefill = {
+  inspectionPlan?: PgdInspectionPlan;
+  caseEvents: PgdCaseEvent[];
+  fieldActivityLogs: PgdFieldActivityLog[];
+  fieldInspection?: ReturnType<typeof usePgdStore.getState>['fieldInspections'][number];
+  samples: ReturnType<typeof usePgdStore.getState>['samples'];
+  labResults: ReturnType<typeof usePgdStore.getState>['labResults'];
+  labRequests: ReturnType<typeof usePgdStore.getState>['labRequests'];
+  labResultReview?: PgdLabResultReview;
+  dossierIndex?: PgdDossierIndex;
+};
+
+function initialValue(cell: PgdTemplateCell, request: PgdInspectionRequest, prefill: PgdDocumentPrefill): unknown {
+  const latestFieldLog = [...prefill.fieldActivityLogs].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+  const timelineEvents = [...prefill.caseEvents].sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
+  const labResultRows = prefill.labResults.map((result) => ({ reportNumber: result.reportNumber || '', reportDate: result.receivedAt.slice(0, 10), laboratory: prefill.labRequests.find((labRequest) => labRequest.id === result.labRequestId)?.laboratoryName || '' }));
+  const latestLabRequest = [...prefill.labRequests].sort((left, right) => (right.handover?.sentAt || '').localeCompare(left.handover?.sentAt || '') || right.id.localeCompare(left.id))[0];
+  const registryDocumentNumber = (kind: string): string => request.registryMetadata?.documents?.find((document) => document.kind === kind)?.number || '';
   const byKey: Record<string, unknown> = {
     requestCode: request.requestCode,
     customerName: request.customerSnapshot.name,
@@ -50,7 +74,7 @@ function initialValue(cell: PgdTemplateCell, request: PgdInspectionRequest): unk
     intakeChannel: request.intakeChannel,
     standards: request.standards.map((standard) => ({ standard })),
     certificateScope: request.inspectionScope,
-    inspectionDate: request.inspectionScheduledAt || '',
+    inspectionDate: prefill.inspectionPlan?.inspectionDate || request.inspectionScheduledAt || '',
     inspectionDateTime: request.inspectionScheduledAt || '',
     inspectionLocationText: request.inspectionLocation,
     samplingLocation: request.inspectionLocation,
@@ -72,6 +96,45 @@ function initialValue(cell: PgdTemplateCell, request: PgdInspectionRequest): unk
     steelLotSize: request.productDetails?.steelLotSize,
     steelSameGradeMultiProduct: request.productDetails?.steelSameGradeMultiProduct,
     steelManualSamplingPlanNote: request.productDetails?.steelManualSamplingPlanNote || '',
+    agenda: prefill.inspectionPlan?.schedule.map((row) => ({ time: `${row.startTime}${row.endTime ? `–${row.endTime}` : ''}`, activity: row.activity, owner: row.note || '' })) || [],
+    productLines: prefill.inspectionPlan?.productLines.map((product) => ({ productName: product.productName, grade: product.grade || '', dimensions: product.dimensions || '', standard: product.standard, origin: product.origin || '', manufacturer: product.manufacturer || '', quantity: product.quantity ?? '', unit: product.unit || '' })) || [],
+    team: prefill.inspectionPlan?.team.map((member) => ({ name: member.name || member.username, role: member.role, phone: member.phone || '' })) || [],
+    eventDate: timelineEvents[0]?.occurredAt.slice(0, 10) || request.inspectionScheduledAt?.slice(0, 10) || '',
+    eventRows: timelineEvents.map((event) => ({ time: event.occurredAt.slice(11, 16), activity: event.activity, actor: event.actorUsername, note: event.note || '' })),
+    session: latestFieldLog?.session || 'MORNING',
+    activityDate: latestFieldLog?.date || request.inspectionScheduledAt?.slice(0, 10) || '',
+    auditor: latestFieldLog?.auditorUsername || '',
+    activityRows: latestFieldLog?.entries.map((entry) => ({ time: entry.time, activity: entry.activity, comments: entry.comments || '' })) || [],
+    transportName: request.transportName || '',
+    packingListNumber: registryDocumentNumber('PACKING_LIST'),
+    invoiceNumber: registryDocumentNumber('INVOICE'),
+    contractNumber: registryDocumentNumber('CONTRACT'),
+    preInspectionCondition: prefill.fieldInspection?.lotObservation || prefill.fieldInspection?.packaging || '',
+    inspectionResult: prefill.fieldInspection?.inspectionResult || prefill.fieldInspection?.note || '',
+    customerConfirmation: prefill.fieldInspection?.customerRepresentative || '',
+    sampleRows: prefill.samples.map((sample) => ({ sampleCode: sample.sampleCode, description: sample.description, quantity: sample.quantity, unit: sample.unit || '', disposition: sample.disposition })),
+    laboratoryName: latestLabRequest?.laboratoryName || '',
+    laboratoryCode: latestLabRequest?.laboratoryCode || '',
+    senderUnit: latestLabRequest?.senderUnit || 'Phòng Giám định - Chứng nhận',
+    sentAt: latestLabRequest?.handover?.sentAt || '',
+    sender: latestLabRequest?.handover?.senderUsername || '',
+    receiver: latestLabRequest?.handover?.receiverName || '',
+    handoverRows: prefill.labRequests.map((labRequest) => {
+      const sample = prefill.samples.find((item) => item.id === labRequest.sampleId);
+      return { sampleCode: sample?.sampleCode || labRequest.sampleId, description: sample?.description || '', quantity: labRequest.handover?.quantity || sample?.quantity || '', unit: sample?.unit || '', testItems: labRequest.testItems.join('; '), methods: (labRequest.testMethods || []).join('; ') };
+    }),
+    handoverNote: latestLabRequest?.handover?.note || '',
+    dossierEntries: prefill.dossierIndex?.entries.map((entry) => ({ requirementCode: entry.requirementCode, title: entry.title, status: entry.status, pageCount: entry.pageCount || '' })) || [],
+    reviewer: prefill.labResultReview?.reviewerUsername || prefill.dossierIndex?.reviewerUsername || '',
+    archivist: prefill.dossierIndex?.archivistUsername || '',
+    archiveReference: prefill.dossierIndex?.archiveReference || '',
+    labResultRows,
+    completeness: prefill.labResultReview?.completeness || (labResultRows.length > 0 ? 'COMPLETE' : ''),
+    conformity: prefill.labResultReview?.conformity || '',
+    missingItems: prefill.labResultReview?.missingItems?.map((item) => ({ item, note: '' })) || [],
+    nonconformities: prefill.labResultReview?.nonconformities?.map((item) => ({ item, description: item })) || [],
+    recommendation: prefill.labResultReview?.recommendation || '',
+    conclusion: prefill.labResultReview?.conclusion || '',
   };
   return Object.prototype.hasOwnProperty.call(byKey, cell.key) ? byKey[cell.key] : cell.type === 'TABLE' ? [] : '';
 }
@@ -88,6 +151,15 @@ function decodeBase64(value: string): Uint8Array {
 
 export default function PgdDocumentGenerationPanel({ request, templates, documents, canMutate, onOpenSettings }: PgdDocumentGenerationPanelProps) {
   const generateDocument = usePgdStore((state) => state.generateDocument);
+  const inspectionPlan = usePgdStore((state) => state.inspectionPlans.find((item) => item.requestId === request.id));
+  const caseEvents = usePgdStore((state) => state.caseEvents.filter((item) => item.requestId === request.id));
+  const fieldActivityLogs = usePgdStore((state) => state.fieldActivityLogs.filter((item) => item.requestId === request.id));
+  const fieldInspection = usePgdStore((state) => state.fieldInspections.find((item) => item.requestId === request.id));
+  const samples = usePgdStore((state) => state.samples.filter((item) => item.requestId === request.id));
+  const labResults = usePgdStore((state) => state.labResults.filter((item) => item.requestId === request.id));
+  const labRequests = usePgdStore((state) => state.labRequests.filter((item) => item.requestId === request.id));
+  const labResultReview = usePgdStore((state) => state.labResultReviews.find((item) => item.requestId === request.id));
+  const dossierIndex = usePgdStore((state) => state.dossierIndexes.find((item) => item.requestId === request.id));
   const [templateId, setTemplateId] = useState('');
   const [format, setFormat] = useState<PgdDocumentTemplateFormat>('DOCX');
   const [cellValues, setCellValues] = useState<Record<string, unknown>>({});
@@ -106,16 +178,17 @@ export default function PgdDocumentGenerationPanel({ request, templates, documen
     return template.cells.filter((cell) => placeholderKeys.has(cell.key) && cell.active !== false);
   }, [template]);
   const requestDocuments = documents.filter((document) => document.requestId === request.id);
+  const prefill: PgdDocumentPrefill = { inspectionPlan, caseEvents, fieldActivityLogs, fieldInspection, samples, labResults, labRequests, labResultReview, dossierIndex };
 
   useEffect(() => {
     if (!template) return;
     setTemplateId((current) => current || template.id);
     setCellValues((current) => {
       const next: Record<string, unknown> = {};
-      for (const cell of formCells) next[cell.key] = current[cell.key] ?? initialValue(cell, request);
+      for (const cell of formCells) next[cell.key] = current[cell.key] ?? initialValue(cell, request, prefill);
       return next;
     });
-  }, [formCells, template?.id, request.id]);
+  }, [formCells, template?.id, request.id, inspectionPlan?.updatedAt, caseEvents.length, fieldActivityLogs.length, labResults.length, labResultReview?.updatedAt, dossierIndex?.updatedAt]);
 
   const updateCell = (cell: PgdTemplateCell, value: unknown) => {
     setCellValues((current) => ({ ...current, [cell.key]: value }));

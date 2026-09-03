@@ -16,6 +16,7 @@ import type {
   PgdGeneratedDocument,
 } from './pgdDomain.ts';
 import type { CustomerRef, PcnUserAccount } from '../types.ts';
+import type { PgdCaseEvent, PgdDossierIndex, PgdFieldActivityLog, PgdInspectionPlan, PgdLabResultReview } from './pgdArtifacts.ts';
 import type {
   PgdCellValue,
   PgdDocumentTemplate,
@@ -41,6 +42,11 @@ export interface PgdBootstrapSnapshot {
   documentTemplates: PgdDocumentTemplate[];
   dossierDocuments: PgdDossierDocument[];
   documents: PgdGeneratedDocument[];
+  inspectionPlans: PgdInspectionPlan[];
+  caseEvents: PgdCaseEvent[];
+  fieldActivityLogs: PgdFieldActivityLog[];
+  labResultReviews: PgdLabResultReview[];
+  dossierIndexes: PgdDossierIndex[];
 }
 
 export interface PgdDocumentGenerationResponse {
@@ -106,6 +112,11 @@ export async function fetchPgdBootstrap(): Promise<PgdBootstrapSnapshot> {
     documentTemplates: Array.isArray(payload?.documentTemplates) ? payload.documentTemplates : [],
     dossierDocuments: Array.isArray(payload?.dossierDocuments) ? payload.dossierDocuments : [],
     documents: Array.isArray(payload?.documents) ? payload.documents : [],
+    inspectionPlans: Array.isArray(payload?.inspectionPlans) ? payload.inspectionPlans as PgdInspectionPlan[] : [],
+    caseEvents: Array.isArray(payload?.caseEvents) ? payload.caseEvents as PgdCaseEvent[] : [],
+    fieldActivityLogs: Array.isArray(payload?.fieldActivityLogs) ? payload.fieldActivityLogs as PgdFieldActivityLog[] : [],
+    labResultReviews: Array.isArray(payload?.labResultReviews) ? payload.labResultReviews as PgdLabResultReview[] : [],
+    dossierIndexes: Array.isArray(payload?.dossierIndexes) ? payload.dossierIndexes as PgdDossierIndex[] : [],
   };
 }
 
@@ -181,6 +192,31 @@ export async function savePgdAssignment(assignment: PgdInspectionAssignment): Pr
 export async function savePgdFieldInspection(inspection: PgdFieldInspection): Promise<PgdFieldInspection> {
   const payload = await request('/api/pgd/field-inspections', json(inspection));
   return payload.inspection as PgdFieldInspection;
+}
+
+export async function savePgdInspectionPlan(plan: PgdInspectionPlan): Promise<PgdInspectionPlan> {
+  const payload = await request('/api/pgd/inspection-plans', json(plan));
+  return payload.plan as PgdInspectionPlan;
+}
+
+export async function savePgdCaseEvent(event: PgdCaseEvent): Promise<PgdCaseEvent> {
+  const payload = await request('/api/pgd/case-events', json(event));
+  return payload.event as PgdCaseEvent;
+}
+
+export async function savePgdFieldActivityLog(log: PgdFieldActivityLog): Promise<PgdFieldActivityLog> {
+  const payload = await request('/api/pgd/field-activity-logs', json(log));
+  return payload.log as PgdFieldActivityLog;
+}
+
+export async function savePgdLabResultReview(review: PgdLabResultReview): Promise<PgdLabResultReview> {
+  const payload = await request('/api/pgd/lab-result-reviews', json(review));
+  return payload.review as PgdLabResultReview;
+}
+
+export async function savePgdDossierIndex(index: PgdDossierIndex): Promise<PgdDossierIndex> {
+  const payload = await request('/api/pgd/dossier-indexes', json(index));
+  return payload.index as PgdDossierIndex;
 }
 
 export async function splitPgdSample(input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string }): Promise<PgdSample[]> {

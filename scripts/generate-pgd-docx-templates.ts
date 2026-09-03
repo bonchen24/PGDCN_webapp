@@ -43,7 +43,7 @@ function documentXml(template: ReturnType<typeof getPgdDocumentTemplates>[number
   const title = template.name.toLocaleUpperCase('vi-VN');
   const body = [
     paragraph('CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', true, 'center'),
-    paragraph('TRUNG TÂM TVCI · PHÒNG GIÁM ĐỊNH', true, 'center'),
+    paragraph('TRUNG TÂM TVCI · PHÒNG GIÁM ĐỊNH - CHỨNG NHẬN', true, 'center'),
     paragraph(title, true, 'center'),
     paragraph(`Mã biểu mẫu: ${template.code} · Phiên bản: ${template.version}`, false, 'center'),
     paragraph(template.sourceFormLabel),
@@ -73,7 +73,7 @@ fs.mkdirSync(outputRoot, { recursive: true });
 for (const template of templates) fs.writeFileSync(path.join(outputRoot, template.fileName), createDocx(template));
 fs.writeFileSync(path.join(outputRoot, 'manifest.json'), `${JSON.stringify({
   domain: 'pgd',
-  version: '1.0',
+  version: '1.2',
   description: 'Bộ biểu mẫu DOCX PGD với placeholder [[key]] làm nguồn cho form nhập liệu và sinh tài liệu.',
   templates: templates.map((template) => ({
     id: template.id,

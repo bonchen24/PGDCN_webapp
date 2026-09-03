@@ -17,6 +17,7 @@ import type {
   PgdCatalogItem,
   PgdGeneratedDocument,
 } from './utils/pgdDomain.ts';
+import type { PgdCaseEvent, PgdDossierIndex, PgdFieldActivityLog, PgdInspectionPlan, PgdLabResultReview } from './utils/pgdArtifacts.ts';
 import type { PgdDocumentTemplate } from './utils/pgdDocumentTemplates.ts';
 import type { PgdDossierDocument, PgdDossierRequirement } from './utils/pgdDossier.ts';
 import type { CustomerRef, PcnUserAccount } from './types.ts';
@@ -30,6 +31,11 @@ import {
   savePgdCertificate,
   savePgdDossierDocument as savePgdDossierDocumentApi,
   savePgdFieldInspection,
+  savePgdInspectionPlan,
+  savePgdCaseEvent,
+  savePgdFieldActivityLog,
+  savePgdLabResultReview,
+  savePgdDossierIndex,
   savePgdLabRequest,
   savePgdLabResult,
   savePgdReport,
@@ -56,6 +62,11 @@ interface PgdStoreState {
   documentTemplates: PgdDocumentTemplate[];
   dossierDocuments: PgdDossierDocument[];
   documents: PgdGeneratedDocument[];
+  inspectionPlans: PgdInspectionPlan[];
+  caseEvents: PgdCaseEvent[];
+  fieldActivityLogs: PgdFieldActivityLog[];
+  labResultReviews: PgdLabResultReview[];
+  dossierIndexes: PgdDossierIndex[];
   isLoading: boolean;
   isLoaded: boolean;
   error?: string;
@@ -65,6 +76,11 @@ interface PgdStoreState {
   transitionRequest: (requestId: string, status: PgdInspectionStatus, context?: PgdTransitionContext) => Promise<PgdInspectionRequest>;
   saveAssignment: (assignment: PgdInspectionAssignment) => Promise<PgdInspectionAssignment>;
   saveFieldInspection: (inspection: PgdFieldInspection) => Promise<PgdFieldInspection>;
+  saveInspectionPlan: (plan: PgdInspectionPlan) => Promise<PgdInspectionPlan>;
+  saveCaseEvent: (event: PgdCaseEvent) => Promise<PgdCaseEvent>;
+  saveFieldActivityLog: (log: PgdFieldActivityLog) => Promise<PgdFieldActivityLog>;
+  saveLabResultReview: (review: PgdLabResultReview) => Promise<PgdLabResultReview>;
+  saveDossierIndex: (index: PgdDossierIndex) => Promise<PgdDossierIndex>;
   fetchDossierDocuments: (requestId: string) => Promise<{ dossierDocuments: PgdDossierDocument[]; requirements: PgdDossierRequirement[] }>;
   saveDossierDocument: (requestId: string, input: Parameters<typeof savePgdDossierDocumentApi>[1]) => Promise<PgdDossierDocument>;
   splitSample: (input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string }) => Promise<PgdSample[]>;
@@ -83,6 +99,7 @@ const emptyState = {
   catalog: [], templates: [], requests: [], assignments: [], fieldInspections: [], samples: [],
   labRequests: [], labResults: [], reports: [], certificates: [], approvals: [], isLoading: false, isLoaded: false,
   documentTemplates: [], dossierDocuments: [], documents: [],
+  inspectionPlans: [], caseEvents: [], fieldActivityLogs: [], labResultReviews: [], dossierIndexes: [],
 };
 
 function replaceOne<T extends { id: string }>(items: T[], next: T): T[] {
@@ -132,6 +149,31 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
       fieldInspections: replaceOne(state.fieldInspections, next),
       requests: state.requests.map((request) => request.id === next.requestId ? { ...request, fieldInspectionId: next.id } : request),
     }));
+    return next;
+  },
+  saveInspectionPlan: async (plan) => {
+    const next = await savePgdInspectionPlan(plan);
+    set((state) => ({ inspectionPlans: replaceOne(state.inspectionPlans, next), requests: state.requests.map((request) => request.id === next.requestId ? { ...request, inspectionPlanId: next.id } : request) }));
+    return next;
+  },
+  saveCaseEvent: async (event) => {
+    const next = await savePgdCaseEvent(event);
+    set((state) => ({ caseEvents: replaceOne(state.caseEvents, next), requests: state.requests.map((request) => request.id === next.requestId ? { ...request, caseEventIds: [...new Set([...(request.caseEventIds || []), next.id])] } : request) }));
+    return next;
+  },
+  saveFieldActivityLog: async (log) => {
+    const next = await savePgdFieldActivityLog(log);
+    set((state) => ({ fieldActivityLogs: replaceOne(state.fieldActivityLogs, next), requests: state.requests.map((request) => request.id === next.requestId ? { ...request, fieldActivityLogIds: [...new Set([...(request.fieldActivityLogIds || []), next.id])] } : request) }));
+    return next;
+  },
+  saveLabResultReview: async (review) => {
+    const next = await savePgdLabResultReview(review);
+    set((state) => ({ labResultReviews: replaceOne(state.labResultReviews, next), requests: state.requests.map((request) => request.id === next.requestId ? { ...request, labResultReviewId: next.id } : request) }));
+    return next;
+  },
+  saveDossierIndex: async (index) => {
+    const next = await savePgdDossierIndex(index);
+    set((state) => ({ dossierIndexes: replaceOne(state.dossierIndexes, next), requests: state.requests.map((request) => request.id === next.requestId ? { ...request, dossierIndexId: next.id } : request) }));
     return next;
   },
   fetchDossierDocuments: async (requestId) => {

@@ -37,6 +37,14 @@ test('PGD step access keeps future stations locked and signed dossiers read-only
   assert.equal(getPgdOperationalStepAccess({ status: 'SIGNED', targetStationKey: 'REPORT_APPROVAL_RETURN' }).editable, false);
 });
 
+test('PGD laboratory result review is editable at the laboratory station', () => {
+  assert.deepEqual(
+    getPgdOperationalStepAccess({ status: 'RESULTS_REVIEW', targetStationKey: 'LAB_RESULTS' }),
+    { editable: true, locked: false, requiresWithdrawal: false },
+  );
+  assert.equal(getPgdOperationalStepAccess({ status: 'RESULTS_REVIEW', targetStationKey: 'REPORT_APPROVAL_RETURN' }).editable, false);
+});
+
 test('PGD step gate reports missing evidence instead of accepting a browser completion flag', () => {
   const missingAssignment = buildPgdStepGate({ stationKey: 'PREPARATION', status: 'CAPABILITY_REVIEW', evidence: {} });
   assert.equal(missingAssignment.complete, false);

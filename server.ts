@@ -137,6 +137,18 @@ import {
   type PgdTransitionContext,
 } from "./utils/pgdDomain.ts";
 import {
+  buildPgdDossierIndex,
+  createPgdCaseEvent,
+  createPgdFieldActivityLog,
+  createPgdInspectionPlan,
+  createPgdLabResultReview,
+  type PgdCaseEvent,
+  type PgdDossierIndex,
+  type PgdFieldActivityLog,
+  type PgdInspectionPlan,
+  type PgdLabResultReview,
+} from "./utils/pgdArtifacts.ts";
+import {
   getPgdDocumentTemplate,
   getPgdDocumentTemplates,
   isPgdDocumentTemplateRecordAllowed,
@@ -1728,10 +1740,47 @@ function assertPgdRequestStationMutationAllowed(request: PgdInspectionRequest, t
   if (!access.editable) throw Object.assign(new Error(access.reason || 'Thao tác PGD đang bị khóa theo trạm hồ sơ.'), { statusCode: 409 });
 }
 
+async function getPgdArtifactRequest(client: any, requestId: string, stationKey: PgdOperationalStationKey): Promise<PgdInspectionRequest> {
+  const result = await client.query(
+    `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1 FOR UPDATE`,
+    [PGD_COLLECTIONS.requests, requestId],
+  );
+  if (!result.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD của biểu mẫu.'), { statusCode: 404 });
+  const request = mapDocumentRow(result.rows[0]) as PgdInspectionRequest;
+  assertPgdRequestEvidenceMutationAllowed(request);
+  assertPgdRequestStationMutationAllowed(request, stationKey);
+  return request;
+}
+
+async function persistPgdArtifact(client: any, collection: string, artifact: { id: string; domain: 'pgd'; requestId: string }): Promise<void> {
+  const existing = await client.query(
+    `SELECT data FROM app_documents WHERE collection_name = $1 AND document_id = $2 LIMIT 1 FOR UPDATE`,
+    [collection, artifact.id],
+  );
+  const existingData = existing.rows[0]?.data as Record<string, any> | undefined;
+  if (existingData && (existingData.domain !== 'pgd' || existingData.requestId !== artifact.requestId)) {
+    throw Object.assign(new Error('Không thể ghi đè artifact PGD thuộc miền khác hoặc hồ sơ PGD khác.'), { statusCode: 409 });
+  }
+  await client.query(
+    `INSERT INTO app_documents (collection_name, document_id, data, updated_at) VALUES ($1, $2, $3::jsonb, CURRENT_TIMESTAMP)
+     ON CONFLICT (collection_name, document_id) DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP`,
+    [collection, artifact.id, JSON.stringify(getDocumentPayload(artifact))],
+  );
+}
+
 function getPgdGeneratedDocumentStationKey(kind: PgdDocumentTemplateKind): PgdOperationalStationKey {
   if (kind === 'INTAKE_REQUEST') return 'INTAKE_CAPABILITY';
   if (kind === 'ASSIGNMENT' || kind === 'INSPECTION_PLAN') return 'PREPARATION';
-  if (kind === 'FIELD_INSPECTION' || kind === 'SAMPLE_TAKING' || kind === 'LAB_REQUEST') return 'FIELD_SAMPLING';
+  if (
+    kind === 'FIELD_INSPECTION'
+    || kind === 'SAMPLE_TAKING'
+    || kind === 'LAB_REQUEST'
+    || kind === 'CASE_TIMELINE'
+    || kind === 'FIELD_ACTIVITY_LOG'
+    || kind === 'INSPECTION_MINUTES'
+    || kind === 'SAMPLE_HANDOVER'
+  ) return 'FIELD_SAMPLING';
+  if (kind === 'LAB_RESULT_REVIEW') return 'LAB_RESULTS';
   return 'REPORT_APPROVAL_RETURN';
 }
 
@@ -2639,6 +2688,11 @@ async function startServer() {
         PGD_COLLECTIONS.approvals,
         PGD_COLLECTIONS.dossierDocuments,
         PGD_COLLECTIONS.documents,
+        PGD_COLLECTIONS.inspectionPlans,
+        PGD_COLLECTIONS.caseEvents,
+        PGD_COLLECTIONS.fieldActivityLogs,
+        PGD_COLLECTIONS.labResultReviews,
+        PGD_COLLECTIONS.dossierIndexes,
       ];
       const results = await Promise.all(collections.map((collection) => pool.query(
         `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd' ORDER BY document_id`,
@@ -2674,6 +2728,11 @@ async function startServer() {
         approvals: items[11],
         dossierDocuments: items[12],
         documents: items[13],
+        inspectionPlans: items[14],
+        caseEvents: items[15],
+        fieldActivityLogs: items[16],
+        labResultReviews: items[17],
+        dossierIndexes: items[18],
       });
     } catch (error: any) {
       res.status(500).json({ error: error?.message || String(error) });
@@ -3102,6 +3161,11 @@ async function startServer() {
           client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC`, [PGD_COLLECTIONS.labResults, requestId]),
           client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC`, [PGD_COLLECTIONS.reports, requestId]),
           client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC`, [PGD_COLLECTIONS.certificates, requestId]),
+          client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC`, [PGD_COLLECTIONS.inspectionPlans, requestId]),
+          client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY data->>'occurredAt', document_id`, [PGD_COLLECTIONS.caseEvents, requestId]),
+          client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC`, [PGD_COLLECTIONS.fieldActivityLogs, requestId]),
+          client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC`, [PGD_COLLECTIONS.labResultReviews, requestId]),
+          client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC`, [PGD_COLLECTIONS.dossierIndexes, requestId]),
         ]);
         let template: PgdDocumentTemplate | undefined;
         const requestedTemplateId = String(req.body?.templateId || '').trim();
@@ -3119,10 +3183,15 @@ async function startServer() {
           template,
           request,
           assignment: sourceRows[0].rows[0] ? mapDocumentRow(sourceRows[0].rows[0]) as PgdInspectionAssignment : undefined,
+          inspectionPlan: sourceRows[7].rows[0] ? mapDocumentRow(sourceRows[7].rows[0]) as PgdInspectionPlan : undefined,
+          caseEvents: sourceRows[8].rows.map((row: any) => mapDocumentRow(row) as PgdCaseEvent),
+          fieldActivityLogs: sourceRows[9].rows.map((row: any) => mapDocumentRow(row) as PgdFieldActivityLog),
           fieldInspection: sourceRows[1].rows[0] ? mapDocumentRow(sourceRows[1].rows[0]) as PgdFieldInspection : undefined,
           samples: sourceRows[2].rows.map((row: any) => mapDocumentRow(row)),
           labRequests: sourceRows[3].rows.map((row: any) => mapDocumentRow(row)),
           labResults: sourceRows[4].rows.map((row: any) => mapDocumentRow(row)),
+          labResultReview: sourceRows[10].rows[0] ? mapDocumentRow(sourceRows[10].rows[0]) as PgdLabResultReview : undefined,
+          dossierIndex: sourceRows[11].rows[0] ? mapDocumentRow(sourceRows[11].rows[0]) as PgdDossierIndex : undefined,
           report: sourceRows[5].rows[0] ? mapDocumentRow(sourceRows[5].rows[0]) as PgdInspectionReport : undefined,
           certificate: sourceRows[6].rows[0] ? mapDocumentRow(sourceRows[6].rows[0]) as PgdInspectionCertificate : undefined,
           cellValues: req.body?.cellValues || {},
@@ -3400,6 +3469,129 @@ async function startServer() {
         });
       });
       res.json({ inspection });
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pgd/inspection-plans', async (req, res) => {
+    if (!requirePgdCollectionMutation(req, res, PGD_COLLECTIONS.inspectionPlans, 'write')) return;
+    const actor = getPgdSessionUser(req)!;
+    const input = req.body as PgdInspectionPlan;
+    if (!input?.id || (input.domain && input.domain !== 'pgd') || !input.requestId) {
+      res.status(400).json({ error: 'Kế hoạch PGD thiếu id, miền hoặc mã hồ sơ.' });
+      return;
+    }
+    try {
+      const plan = await withPgTransaction(async (client) => {
+        const request = await getPgdArtifactRequest(client, input.requestId, 'PREPARATION');
+        const next = createPgdInspectionPlan({ ...input, domain: undefined } as PgdInspectionPlan, new Date().toISOString());
+        await persistPgdArtifact(client, PGD_COLLECTIONS.inspectionPlans, next);
+        await client.query(`UPDATE app_documents SET data = data || jsonb_build_object('inspectionPlanId', $2), updated_at = CURRENT_TIMESTAMP WHERE collection_name = $1 AND document_id = $3`, [PGD_COLLECTIONS.requests, next.id, request.id]);
+        await writePgdActivity(client, actor, { action: 'UPDATED', entityId: next.id, entityLabel: request.requestCode, requestCode: request.requestCode, summary: `Cập nhật kế hoạch giám định PGD cho ${request.requestCode}`, idSuffix: `plan-${request.id}` });
+        return next;
+      });
+      res.json({ plan });
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pgd/case-events', async (req, res) => {
+    if (!requirePgdCollectionMutation(req, res, PGD_COLLECTIONS.caseEvents, 'write')) return;
+    const actor = getPgdSessionUser(req)!;
+    const input = req.body as PgdCaseEvent;
+    if (!input?.id || (input.domain && input.domain !== 'pgd') || !input.requestId) {
+      res.status(400).json({ error: 'Diễn biến PGD thiếu id, miền hoặc mã hồ sơ.' });
+      return;
+    }
+    try {
+      const event = await withPgTransaction(async (client) => {
+        const request = await getPgdArtifactRequest(client, input.requestId, 'FIELD_SAMPLING');
+        const next = createPgdCaseEvent({ ...input, domain: undefined } as PgdCaseEvent, new Date().toISOString());
+        await persistPgdArtifact(client, PGD_COLLECTIONS.caseEvents, next);
+        await client.query(`UPDATE app_documents SET data = jsonb_set(data, '{caseEventIds}', COALESCE(data->'caseEventIds', '[]'::jsonb) || to_jsonb($2::text), true), updated_at = CURRENT_TIMESTAMP WHERE collection_name = $1 AND document_id = $3`, [PGD_COLLECTIONS.requests, next.id, request.id]);
+        await writePgdActivity(client, actor, { action: 'UPDATED', entityId: next.id, entityLabel: request.requestCode, requestCode: request.requestCode, summary: `Ghi nhận diễn biến vụ giám định ${request.requestCode}`, idSuffix: `event-${request.id}` });
+        return next;
+      });
+      res.json({ event });
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pgd/field-activity-logs', async (req, res) => {
+    if (!requirePgdCollectionMutation(req, res, PGD_COLLECTIONS.fieldActivityLogs, 'write')) return;
+    const actor = getPgdSessionUser(req)!;
+    const input = req.body as PgdFieldActivityLog;
+    if (!input?.id || (input.domain && input.domain !== 'pgd') || !input.requestId) {
+      res.status(400).json({ error: 'Phiếu ghi chép PGD thiếu id, miền hoặc mã hồ sơ.' });
+      return;
+    }
+    try {
+      const log = await withPgTransaction(async (client) => {
+        const request = await getPgdArtifactRequest(client, input.requestId, 'FIELD_SAMPLING');
+        const next = createPgdFieldActivityLog({ ...input, domain: undefined } as PgdFieldActivityLog, new Date().toISOString());
+        await persistPgdArtifact(client, PGD_COLLECTIONS.fieldActivityLogs, next);
+        await client.query(`UPDATE app_documents SET data = jsonb_set(data, '{fieldActivityLogIds}', COALESCE(data->'fieldActivityLogIds', '[]'::jsonb) || to_jsonb($2::text), true), updated_at = CURRENT_TIMESTAMP WHERE collection_name = $1 AND document_id = $3`, [PGD_COLLECTIONS.requests, next.id, request.id]);
+        await writePgdActivity(client, actor, { action: 'UPDATED', entityId: next.id, entityLabel: request.requestCode, requestCode: request.requestCode, summary: `Ghi nhận phiếu ghi chép hiện trường ${request.requestCode}`, idSuffix: `field-log-${request.id}` });
+        return next;
+      });
+      res.json({ log });
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pgd/lab-result-reviews', async (req, res) => {
+    if (!requirePgdCollectionMutation(req, res, PGD_COLLECTIONS.labResultReviews, 'write')) return;
+    const actor = getPgdSessionUser(req)!;
+    const input = req.body as PgdLabResultReview;
+    if (!input?.id || (input.domain && input.domain !== 'pgd') || !input.requestId) {
+      res.status(400).json({ error: 'Bản đánh giá KQTN PGD thiếu id, miền hoặc mã hồ sơ.' });
+      return;
+    }
+    try {
+      const review = await withPgTransaction(async (client) => {
+        const request = await getPgdArtifactRequest(client, input.requestId, 'LAB_RESULTS');
+        const resultIds = Array.from(new Set((input.labResultIds || []).map((id) => String(id).trim()).filter(Boolean)));
+        const resultRows = resultIds.length === 0 ? [] : await client.query(`SELECT document_id FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd' AND data->>'requestId' = $3 AND document_id = ANY($2::text[])`, [PGD_COLLECTIONS.labResults, resultIds, request.id]);
+        if (resultRows.rows.length !== resultIds.length) throw Object.assign(new Error('Bản đánh giá KQTN có kết quả PTN không tồn tại trong miền PGD.'), { statusCode: 409 });
+        const next = createPgdLabResultReview({ ...input, labResultIds: resultIds, domain: undefined } as PgdLabResultReview, new Date().toISOString());
+        await persistPgdArtifact(client, PGD_COLLECTIONS.labResultReviews, next);
+        await client.query(`UPDATE app_documents SET data = data || jsonb_build_object('labResultReviewId', $2), updated_at = CURRENT_TIMESTAMP WHERE collection_name = $1 AND document_id = $3`, [PGD_COLLECTIONS.requests, next.id, request.id]);
+        await writePgdActivity(client, actor, { action: 'UPDATED', entityId: next.id, entityLabel: request.requestCode, requestCode: request.requestCode, summary: `Đánh giá kết quả thử nghiệm PGD cho ${request.requestCode}`, idSuffix: `lab-review-${request.id}` });
+        return next;
+      });
+      res.json({ review });
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pgd/dossier-indexes', async (req, res) => {
+    if (!requirePgdCollectionMutation(req, res, PGD_COLLECTIONS.dossierIndexes, 'write')) return;
+    const actor = getPgdSessionUser(req)!;
+    const input = req.body as PgdDossierIndex;
+    if ((input.domain && input.domain !== 'pgd') || !input?.requestId) {
+      res.status(400).json({ error: 'Mục lục hồ sơ PGD thiếu miền hoặc mã hồ sơ.' });
+      return;
+    }
+    try {
+      const index = await withPgTransaction(async (client) => {
+        const request = await getPgdArtifactRequest(client, input.requestId, 'REPORT_APPROVAL_RETURN');
+        const next = buildPgdDossierIndex({ ...input, domain: undefined } as PgdDossierIndex, new Date().toISOString());
+        const documentIds = next.entries.map((entry) => entry.documentId).filter((id): id is string => Boolean(id));
+        if (documentIds.length > 0) {
+          const documents = await client.query(`SELECT document_id FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd' AND data->>'requestId' = $2 AND document_id = ANY($3::text[])`, [PGD_COLLECTIONS.dossierDocuments, request.id, documentIds]);
+          if (documents.rows.length !== documentIds.length) throw Object.assign(new Error('Mục lục hồ sơ chỉ được tham chiếu tài liệu PGD hiện hành của hồ sơ.'), { statusCode: 409 });
+        }
+        await persistPgdArtifact(client, PGD_COLLECTIONS.dossierIndexes, next);
+        await client.query(`UPDATE app_documents SET data = data || jsonb_build_object('dossierIndexId', $2), updated_at = CURRENT_TIMESTAMP WHERE collection_name = $1 AND document_id = $3`, [PGD_COLLECTIONS.requests, next.id, request.id]);
+        await writePgdActivity(client, actor, { action: 'UPDATED', entityId: next.id, entityLabel: request.requestCode, requestCode: request.requestCode, summary: `Cập nhật bìa và mục lục hồ sơ PGD ${request.requestCode}`, idSuffix: `dossier-index-${request.id}` });
+        return next;
+      });
+      res.json({ index });
     } catch (error: any) {
       res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
     }

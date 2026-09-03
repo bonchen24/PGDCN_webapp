@@ -13,7 +13,7 @@ import {
 } from '../utils/pgdDocumentTemplates.ts';
 
 test('PGD catalog contains the operational document set derived from department forms', () => {
-  assert.equal(DEFAULT_PGD_DOCUMENT_TEMPLATES.length, 9);
+  assert.equal(DEFAULT_PGD_DOCUMENT_TEMPLATES.length, 15);
   assert.deepEqual(DEFAULT_PGD_DOCUMENT_TEMPLATES.map((template) => template.kind), [
     'INTAKE_REQUEST',
     'ASSIGNMENT',
@@ -24,6 +24,12 @@ test('PGD catalog contains the operational document set derived from department 
     'INSPECTION_REPORT',
     'DECISION',
     'INSPECTION_CERTIFICATE',
+    'DOSSIER_COVER',
+    'CASE_TIMELINE',
+    'FIELD_ACTIVITY_LOG',
+    'LAB_RESULT_REVIEW',
+    'INSPECTION_MINUTES',
+    'SAMPLE_HANDOVER',
   ]);
   for (const template of DEFAULT_PGD_DOCUMENT_TEMPLATES) {
     assert.equal(template.domain, 'pgd');
@@ -59,6 +65,15 @@ test('QT-GĐ-14 exposes its lot sampling inputs in intake and sample-taking cell
     assert.equal(template.placeholderKeys.includes('steelSameGradeMultiProduct'), true);
     assert.equal(template.placeholderKeys.includes('steelManualSamplingPlanNote'), true);
   }
+});
+
+test('PGD inspection plans keep multiple registered product lines as a table cell', () => {
+  const plan = getPgdDocumentTemplate('INSPECTION_PLAN', 'STEEL_METAL')!;
+  const cell = plan.cells.find((item) => item.key === 'productLines');
+  assert.equal(cell?.type, 'TABLE');
+  assert.deepEqual(cell?.tableColumns, ['productName', 'grade', 'dimensions', 'standard', 'origin', 'manufacturer', 'quantity', 'unit']);
+  assert.equal(cell?.tableColumnLabels?.grade, 'Mác thép');
+  assert.equal(cell?.validation?.minRows, 1);
 });
 
 test('TT58 keeps the source-derived conformity assessment method as a dedicated cell', () => {

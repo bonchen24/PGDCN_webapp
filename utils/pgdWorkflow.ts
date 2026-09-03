@@ -259,6 +259,8 @@ export function buildPgdFieldInspection(
     inspectorUsernames,
     measurements: input.measurements ? { ...input.measurements } : undefined,
     nonconformities,
+    inspectionResult: String(input.inspectionResult || '').trim() || undefined,
+    customerRepresentative: String(input.customerRepresentative || '').trim() || undefined,
     sampleIds: Array.from(new Set(input.sampleIds.map((sampleId) => String(sampleId).trim()).filter(Boolean))),
     completed: input.completed !== false,
   };

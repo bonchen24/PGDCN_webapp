@@ -304,6 +304,9 @@ Mã PCN, checklist, tài liệu, mẫu theo lô, PYC, KQTN, phê duyệt và ph�
 - Trạng thái `APPROVED` của phân công PGD chỉ được ghi bởi Admin hoặc `PGD_ADMIN`/`PGD_MANAGER`; nhân sự khác chỉ được lưu phân công nháp/chờ phê duyệt. Server không tin cờ `approved` do browser gửi.
 - Với yêu cầu PTN PGD, server là nguồn đóng dấu cuối cho thời điểm bàn giao, người gửi và thời điểm tiếp nhận kết quả; trạng thái `RESULT_RECEIVED` chỉ được suy ra khi đã có `PgdLabResult` liên kết hợp lệ, không nhận cờ hoàn tất do browser gửi. Việc chỉnh phân công phải cập nhật đúng bản ghi hiện hành của hồ sơ, không tạo thêm phiên phân công trùng chỉ vì người dùng bấm lưu lại.
 - Các collection PGD được allowlist riêng cho yêu cầu, phân công, hiện trường, mẫu, yêu cầu PTN, kết quả, template snapshot, phê duyệt và chứng thư. Không cho truy vấn chéo collection PCN chỉ bằng cách đổi tham số domain.
+- Đợt rà soát biểu mẫu PGD cập nhật bổ sung các thực thể nghiệp vụ riêng: `PgdInspectionPlan` (kế hoạch, đoàn, sản phẩm đăng ký và lịch hiện trường), `PgdCaseEvent` (diễn biến vụ giám định theo mốc thời gian), `PgdFieldActivityLog` (ghi chép đánh giá theo buổi), `PgdLabResultReview` (bản đánh giá kết quả thử nghiệm) và `PgdDossierIndex` (bìa/mục lục hồ sơ). Các thực thể này có collection PGD riêng, liên kết `requestId`, không tái sử dụng collection PCN hoặc nhật ký audit hệ thống.
+- `PgdInspectionPlan` có thể kèm các `PgdSamplingLine` dự kiến (mã mẫu, mô tả, số lượng, đơn vị, đích `LAB`/`RETAINED`, niêm phong và ghi chú); dòng dự kiến không thay thế mẫu thực tế trong `pgdSamples`, chỉ làm căn cứ đối chiếu khi lập biên bản lấy mẫu và tách mẫu.
+- `PgdLabRequest` giữ thêm snapshot đơn vị giao mẫu và mã PTN khi có; template giao mẫu có thể trình bày nhiều dòng mẫu/chỉ tiêu bằng cách chiếu các yêu cầu PTN hiện hành của cùng hồ sơ, không nhập lại dữ liệu lịch sử. Thông tin người giao/người nhận/thời điểm giao vẫn là dữ liệu bàn giao nghiệp vụ và không bao gồm trường báo giá, thanh toán.
 
 ### 0A.3. Luồng hồ sơ PGD
 
@@ -319,6 +322,9 @@ Trạng thái chính: `DRAFT` → `CAPABILITY_REVIEW` → `READY_TO_EXECUTE` →
 - Yêu cầu PTN và kết quả PTN được liên kết một-một hoặc một-nhiều theo hạng mục; kết quả thiếu, sai mẫu hoặc không khớp phương pháp phải tạo cảnh báo và không cho hoàn tất bước xem xét.
 - Kết quả dùng template linh hoạt theo loại giám định. Khi phát hành, hệ thống lưu snapshot template, tiêu chuẩn, dữ liệu đầu vào, kết quả, kết luận và chuỗi phê duyệt; sửa template sau đó không làm thay đổi chứng thư đã phát hành.
 - Hai cấp phê duyệt là trưởng/phụ trách kỹ thuật PGD và lãnh đạo Trung tâm/Viện. Báo giá và thanh toán nằm ngoài phạm vi PGD của release này.
+- Với hồ sơ thép, kế hoạch và biên bản hiện trường phải lưu được: tổng khối lượng/số kiện, dạng sản phẩm, mác thép, kích thước, xuất xứ/nhà sản xuất, tình trạng bao gói/bảo quản, kiểm tra nhãn, bậc kiểm tra và AQL khi áp dụng, số điểm không phù hợp/khuyến nghị, kết luận và đại diện khách hàng. Một hồ sơ có thể phân thành nhiều dòng sản phẩm/mác để lấy mẫu và đánh giá riêng.
+- `PgdCaseEvent` lưu giờ bắt đầu/kết thúc, nội dung công việc, người thực hiện, ghi chú và xác nhận khách hàng khi có; `PgdFieldActivityLog` lưu phiên sáng/chiều, mốc giờ, nội dung và nhận xét. Đây là bằng chứng nghiệp vụ của hồ sơ, không thay thế activity audit append-only.
+- `PgdLabResultReview` phải ghi nhận số/ngày phiếu kết quả PTN, mức đầy đủ, sự phù hợp, chỉ tiêu còn thiếu, điểm không phù hợp và kiến nghị. Thiếu kết quả hoặc chưa hoàn tất bản đánh giá thì không cho chuyển sang duyệt kỹ thuật.
 
 Để vận hành giống bề mặt hồ sơ PCN, UI PGD dùng 5 trạm thao tác read/write trên cùng card hồ sơ (không tạo bản sao projection): **(1) Tiếp nhận & năng lực** (`DRAFT`, `CAPABILITY_REVIEW`), **(2) Chuẩn bị & phân công** (`READY_TO_EXECUTE`, `PREPARING`), **(3) Hiện trường & lấy mẫu** (`FIELD_INSPECTION`), **(4) PTN & xem xét kết quả** (`WAITING_LAB_RESULTS`, `RESULTS_REVIEW`) và **(5) Báo cáo, phê duyệt & trả kết quả** (`TECHNICAL_REVIEW` trở đi). Trạm sau bị khóa cho đến khi trạm hiện tại đủ bằng chứng; trạm trước vẫn cho phép chủ hồ sơ rà soát khi chưa ký. Cổng trạm phải lấy bằng chứng từ collection PGD, không tin cờ hoàn tất do browser gửi.
 
@@ -348,6 +354,9 @@ Template kết quả PGD là schema dẫn xuất cho form nhập liệu: mọi t
 - Các mẫu TT58 có trường snapshot riêng `assessmentMethod` cho mục **Phương thức ĐGSPH**. Theo biểu mẫu nguồn, khi chọn `methodCode=TT58`, giao diện mặc định `METHOD_7` — **Phương thức 7**; server chỉ nhận mã trong catalog phương thức đánh giá đã cấu hình, không coi `methodCode` là giá trị thay thế. Trường này được bind vào phiếu tiếp nhận, kế hoạch/lấy mẫu, báo cáo, quyết định và chứng thư khi template có placeholder tương ứng.
 - Với `methodCode=QT-GĐ-14`, form tiếp nhận, kế hoạch giám định và biên bản lấy mẫu có cell riêng cho cỡ lô bó/kiện/cuộn, cờ cùng mác nhiều loại sản phẩm và căn cứ kế hoạch thủ công; các cell này được lưu trong snapshot hồ sơ và dùng để hiển thị kế hoạch lấy mẫu theo bảng nguồn. Nếu cỡ lô ngoài dải 1–3200 thì phải ghi căn cứ/kế hoạch thủ công, không tự ngoại suy.
 - Mỗi template có `templateId`, `code`, `version`, `status`, nhóm sản phẩm, loại hình giám định, format hỗ trợ, `fileName`/asset DOCX và danh sách placeholder trích xuất từ file. Template được quản lý/duyệt tại **Cài đặt PGD**; template đang được dùng để phát hành không được sửa tại chỗ.
+- Bộ biểu mẫu PGD được chuẩn hóa thêm từ nhóm bìa hồ sơ giám định thép, phiếu phân công, kế hoạch đánh giá, biên bản hiện trường, biên bản lấy mẫu, phiếu ghi chép buổi sáng/chiều, diễn biến vụ giám định, bản đánh giá kết quả thử nghiệm và bộ TT58. Runtime chỉ dùng asset/definition đã duyệt trong repo hoặc Storage PGD; không đọc lại file nguồn.
+- Các loại template mới là `DOSSIER_COVER`, `CASE_TIMELINE`, `FIELD_ACTIVITY_LOG`, `LAB_RESULT_REVIEW`, `INSPECTION_MINUTES` và `SAMPLE_HANDOVER`. `INSPECTION_MINUTES` chuẩn hóa BM-GĐ-07.21 với thông tin nhận dạng lô, chứng từ tham chiếu, mô tả trước giám định, kết quả, kết luận và xác nhận khách hàng; `SAMPLE_HANDOVER` chuẩn hóa BM-QT-09-04 với bên giao/nhận, mã PTN, dòng mẫu, chỉ tiêu và phương pháp. Template hiện trường/lấy mẫu/kế hoạch hiện có được mở rộng bằng table cell cho lịch, đoàn, dòng sản phẩm, dòng mẫu, mốc thời gian và nhận xét; template bìa/mục lục lấy projection từ checklist hồ sơ PGD mới.
+- Phiếu PTN có thể tham chiếu đơn vị gửi, người nhận, yêu cầu thử nghiệm, mẫu sau thử nghiệm và chính sách lưu mẫu. Các trường phí thử nghiệm, trả trước, còn lại và thanh toán xuất hiện trong mẫu nguồn nhưng bị loại khỏi data model/UI PGD theo phạm vi đã chốt.
 
 ### 0A.7. Module quản lý template DOCX và sinh tài liệu PGD
 
@@ -358,6 +367,12 @@ Template kết quả PGD là schema dẫn xuất cho form nhập liệu: mọi t
 - Sinh DOCX/PDF PGD đi qua `/api/pgd/documents/generate`, tạo context hash từ snapshot hồ sơ + cell values + template snapshot. Metadata kết quả ghi tại `pgdDocuments` với `domain=pgd`, source pointers, version, checksum, người sinh và thời điểm; bytes tài liệu không ghi vào JSONB. Khi private Storage đã cấu hình, bytes được ghi vào bucket PGD riêng qua `file_assets` và tải lại qua `/api/pgd/documents/:documentId/download`; nếu môi trường chưa có Storage, lần sinh hiện tại vẫn trả file trực tiếp nhưng không coi response đó là bản lưu lâu dài.
 - Catalog template/cell đi qua `/api/pgd/document-templates` và mutation quản lý đi qua `PUT /api/pgd/document-templates/:templateId`; template đã `PUBLISHED` không bị sửa tại chỗ mà tạo phiên bản mới để giữ lineage.
 - Khi báo cáo/chứng thư chuyển sang duyệt hoặc ký, hệ thống khóa template snapshot, cell values, tiêu chuẩn và context hash. Mọi bản sinh sau đó phải là phiên bản mới có lineage riêng; template được cập nhật không làm thay đổi tài liệu đã khóa.
+
+### 0A.8. Cập nhật module cell và bề mặt hồ sơ theo biểu mẫu PGD
+
+- `PgdCellManager` phải quản lý được cả cell scalar và cell bảng: key, nhãn, section, hàng/cột, kiểu, binding, bắt buộc, đơn vị, danh sách cột bảng và giới hạn số dòng. Editor bảng trong form sinh tài liệu hiển thị theo hàng/cột nghiệp vụ, không yêu cầu người dùng nhập JSON.
+- Card hồ sơ PGD bổ sung các panel **Kế hoạch & phân công**, **Diễn biến vụ giám định**, **Ghi chép hiện trường**, **Phân lô & lấy mẫu**, **Đánh giá KQTN** và **Bìa hồ sơ**. Mỗi panel đọc/ghi collection PGD tương ứng và khóa theo lifecycle/hậu ký.
+- Bề mặt PGD vẫn không có module báo giá hoặc thanh toán. Chỉ theo dõi bàn giao PTN, tiếp nhận kết quả, lưu mẫu và trả kết quả giám định.
 
 ---
 
