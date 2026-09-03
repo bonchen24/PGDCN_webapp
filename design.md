@@ -374,6 +374,16 @@ Template kết quả PGD là schema dẫn xuất cho form nhập liệu: mọi t
 - Card hồ sơ PGD bổ sung các panel **Kế hoạch & phân công**, **Diễn biến vụ giám định**, **Ghi chép hiện trường**, **Phân lô & lấy mẫu**, **Đánh giá KQTN** và **Bìa hồ sơ**. Mỗi panel đọc/ghi collection PGD tương ứng và khóa theo lifecycle/hậu ký.
 - Bề mặt PGD vẫn không có module báo giá hoặc thanh toán. Chỉ theo dõi bàn giao PTN, tiếp nhận kết quả, lưu mẫu và trả kết quả giám định.
 
+### 0A.9. Chủ hồ sơ, bộ hồ sơ và trình lãnh đạo PGD
+
+- Mỗi `PgdInspectionRequest` có một **chủ hồ sơ** (`ownerUsername`, `ownerAssignedAt`) theo suốt vòng đời từ PYC đến đóng gói/trình duyệt. Khi tạo PYC, chủ hồ sơ mặc định là người tạo nếu chưa truyền giá trị khác; Admin/Quản lý PGD được gán lại và mutation phải audit. `PgdInspectionAssignment` vẫn giữ đoàn giám định/người soát xét như vai trò phối hợp, không thay thế chủ hồ sơ.
+- Khi tạo hồ sơ, hệ thống tạo projection bộ hồ sơ PGD từ `getPgdDossierRequirements(productGroup)` và các template/method hiện hành. Bộ hồ sơ có dòng checklist cho PYC, phân công, kế hoạch, hiện trường/lấy mẫu, PTN, báo cáo, quyết định, chứng thư, bìa/mục lục và chứng từ thương mại-kỹ thuật khi phát sinh. Đây là danh sách tài liệu thuộc hồ sơ trong app, không phải thao tác kiểm tra folder.
+- Card hồ sơ PGD có khu vực **Bộ hồ sơ** làm nơi chủ hồ sơ xem thiếu/có/miễn, phiên bản, tài liệu upload và tài liệu sinh từ template. Sổ/queue chỉ là projection đọc nhanh và luôn dẫn về card hồ sơ; không tạo module folder checker hoặc màn hình kiểm tra đường dẫn nguồn.
+- Mọi template PGD có mapping một-một hoặc mapping có kiểm soát tới `requirementCode`. Khi người dùng sinh DOCX/PDF từ form placeholder, bản sinh được ghi pointer vào `pgdDocuments`, đồng thời có thể xác nhận vào dòng checklist `pgdDossierDocuments` với source pointer, version, checksum, template snapshot và context hash. Không copy byte vào JSONB.
+- PGD có endpoint package chuyên biệt theo `requestId` để dựng manifest/ZIP từ pointer PGD đã xác minh trong Storage private. Package phải ghi hồ sơ, chủ hồ sơ, phiên bản tài liệu và trạng thái checklist; không ghi Desktop/UNC path và không tự động import tài liệu. Khi thiếu asset private, giao diện hiển thị cảnh báo và vẫn cho rà soát metadata, không giả nhận package hoàn chỉnh.
+- Chủ hồ sơ được sửa các form và tài liệu tại trạm đang mở; khi chuyển sang `TECHNICAL_REVIEW`/`LEADERSHIP_APPROVAL`, hồ sơ được trình dạng read-only package cho người duyệt. Trả lại phải ghi lý do; phê duyệt/ký khóa snapshot. Admin/Quản lý có thể reassign chủ hồ sơ trước khi khóa.
+- Tiêu chí nghiệm thu PGD phải chứng minh PYC tự gán chủ hồ sơ, checklist được tạo trong app, form/placeholder sinh và liên kết đúng biên bản/tài liệu, package trình lãnh đạo, RBAC chủ hồ sơ/người duyệt, cùng invariant không đọc/scan/import Desktop/UNC.
+
 ---
 
 ## 1. TỔNG QUAN DỰ ÁN & TRIẾT LÝ THIẾT KẾ FRONTEND
