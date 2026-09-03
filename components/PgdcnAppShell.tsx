@@ -191,6 +191,14 @@ export default function PgdcnAppShell({ initialDomain = 'department' }: PgdcnApp
     setMobileOpen(false);
     if (!requestId) return;
   };
+  const openPcnWorkspace = () => {
+    setActiveTarget({ domain: 'PCN', section: 'proposals' });
+    setMobileOpen(false);
+  };
+  const openPgdWorkspace = () => {
+    setActiveTarget({ domain: 'PGD', section: 'intake' });
+    setMobileOpen(false);
+  };
 
   const openPcnSection = (section: PcnSection) => {
     setActiveTarget(getSharedTargetForPcnSection(section) || { domain: 'PCN', section });
@@ -201,7 +209,7 @@ export default function PgdcnAppShell({ initialDomain = 'department' }: PgdcnApp
   };
 
   const content = activeTarget.domain === 'department' && activeTarget.section === 'department-dashboard' ? (
-    <PgdcnDashboardView scopes={scopes} pcnDossiers={pcn.dossiers} pgdRequests={pgd.requests} notifications={notifications} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenAssistant={() => navigate({ domain: 'department', section: 'assistant' })} onOpenActivity={() => navigate({ domain: 'department', section: 'activityLogs' })} onOpenNotifications={handleOpenNotifications} onSelectNotification={handleDashboardNotificationSelect} />
+    <PgdcnDashboardView scopes={scopes} pcnDossiers={pcn.dossiers} pgdRequests={pgd.requests} notifications={notifications} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} onOpenNotifications={handleOpenNotifications} onSelectNotification={handleDashboardNotificationSelect} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'customers' ? (
     <PgdcnCustomersView scopes={scopes} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'system-settings' ? (
