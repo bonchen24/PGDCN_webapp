@@ -31,6 +31,9 @@ export interface PgdDossierDocument {
   checksum: string;
   uploadedByUsername: string;
   uploadedAt: string;
+  documentNumber?: string;
+  documentDate?: string;
+  note?: string;
   fileAssetId?: string;
   mimeType?: string;
   byteSize?: number;
@@ -139,6 +142,9 @@ export function buildPgdDossierDocument(input: Partial<PgdDossierDocument>, now 
     checksum,
     uploadedByUsername,
     uploadedAt: now,
+    ...(clean((input as PgdDossierDocument).documentNumber) ? { documentNumber: clean((input as PgdDossierDocument).documentNumber) } : {}),
+    ...(clean((input as PgdDossierDocument).documentDate) ? { documentDate: clean((input as PgdDossierDocument).documentDate) } : {}),
+    ...(clean((input as PgdDossierDocument).note) ? { note: clean((input as PgdDossierDocument).note) } : {}),
     ...(clean((input as PgdDossierDocument).fileAssetId) ? { fileAssetId: clean((input as PgdDossierDocument).fileAssetId) } : {}),
     ...(clean((input as PgdDossierDocument).mimeType) ? { mimeType: clean((input as PgdDossierDocument).mimeType) } : {}),
     ...(Number.isFinite((input as PgdDossierDocument).byteSize) ? { byteSize: (input as PgdDossierDocument).byteSize } : {}),
