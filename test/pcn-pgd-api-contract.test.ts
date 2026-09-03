@@ -53,24 +53,31 @@ test('PGD server boundary is domain-scoped and has no PCN collection fallback', 
   assert.doesNotMatch(source, /collectionName === 'certificationDossiers'.*[\s\S]{0,180}PGD/);
 });
 
-test('PCN schema seeds the PGD catalog and keeps QC20 only in PCN fields', () => {
+test('PCN schema seeds the PGD catalog and keeps stainless steel out of PCN fields', () => {
   const source = read('sql/pcn-schema.sql');
   assert.match(source, /pgdResultTemplates/);
   assert.match(source, /STEEL_LOT_INSPECTION/);
   assert.match(source, /MACHINERY_LINE_INSPECTION/);
   assert.match(source, /COAL_LOT_INSPECTION/);
-  assert.match(source, /pcnCertificationFields.*QC20|QC20.*pcnCertificationFields/);
+  assert.match(source, /GĐ-THEP-KG/);
+  assert.match(source, /QCVN 20:2019\/BKHCN/);
+  assert.match(source, /Sửa đổi 1:2021 QCVN 20:2019\/BKHCN/);
+  assert.doesNotMatch(source, /pcnCertificationFields[^\n]*QC20|QC20[^\n]*pcnCertificationFields/);
   assert.doesNotMatch(source, /pgdInspectionRequests[^\n]*QC20|QC20[^\n]*pgdInspectionRequests/);
 });
 
-test('QC20 PCN profile carries the standard amendment and Method 7 references', () => {
-  const schema = read('sql/pcn-schema.sql');
-  const templateCatalog = read('utils/pcnDossierTemplateCatalog.ts');
-  const workflow = read('utils/pcnWorkflow.ts');
-  assert.match(schema, /Sửa đổi 1:2021 QCVN 20:2019\/BKHCN/);
-  assert.match(schema, /METHOD_7|Phương thức 7/);
-  assert.match(templateCatalog, /QC20_GCN\.docx/);
-  assert.match(templateCatalog, /QC20_QD\.docx/);
-  assert.match(templateCatalog, /QCVN 20:2019\/BKHCN/);
-  assert.match(workflow, /code: 'QC20'[\s\S]{0,280}method: 'METHOD_7'/);
+test('PGD steel profile carries the standard amendment, Method 7 and source-derived form fields', () => {
+  const domain = read('utils/pgdDomain.ts');
+  const templates = read('utils/pgdDocumentTemplates.ts');
+  const workspace = read('components/PgdWorkspace.tsx');
+  assert.match(domain, /GĐ-THEP-KG/);
+  assert.match(domain, /QCVN 20:2019\/BKHCN/);
+  assert.match(domain, /Sửa đổi 1:2021 QCVN 20:2019\/BKHCN/);
+  assert.match(domain, /METHOD_7/);
+  for (const field of ['productForm', 'manufacturerLotCode', 'hsCode', 'lotDefinition', 'customsDocuments']) {
+    assert.match(templates, new RegExp(field));
+    assert.match(workspace, new RegExp(field));
+  }
+  assert.match(workspace, /TT58/);
+  assert.match(workspace, /QT-GĐ-14/);
 });

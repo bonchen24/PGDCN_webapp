@@ -18,13 +18,12 @@ import {
   markPcnProposalConverted,
 } from '../utils/pcnPolicy.ts';
 
-test('registers Quy chuẩn 4, Quy chuẩn 9, and Quy chuẩn 20 as expandable PCN fields', () => {
+test('registers the active PCN certification fields as expandable work areas', () => {
   assert.deepEqual(
     DEFAULT_PCN_CERTIFICATION_FIELDS.map((field) => ({ code: field.code, name: field.name })),
     [
       { code: 'QC4', name: 'Quy chuẩn 4' },
       { code: 'QC9', name: 'Quy chuẩn 9' },
-      { code: 'QC20', name: 'Quy chuẩn 20' },
     ],
   );
   assert.equal('primaryField' in DEFAULT_PCN_CERTIFICATION_FIELDS[0], false);

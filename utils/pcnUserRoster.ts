@@ -37,7 +37,7 @@ function mapSystemRole(accountType: string): PcnSystemRole {
 }
 
 function extractFieldCodes(fieldAssignment: string): string[] {
-  const matches = clean(fieldAssignment).toUpperCase().match(/\bQC(?:4|9|20)\b/g) || [];
+  const matches = clean(fieldAssignment).toUpperCase().match(/\bQC(?:4|9)\b/g) || [];
   const allowed = new Set<string>(PCN_CERTIFICATION_FIELD_CODES);
   return [...new Set(matches.filter((code) => allowed.has(code)))];
 }

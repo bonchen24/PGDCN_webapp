@@ -28,6 +28,11 @@ test('PGD UI has a dedicated DOCX settings surface and document generation modul
   assert.match(documentPanel, /steelLotSize: request\.productDetails\?\.steelLotSize/);
   assert.match(documentPanel, /steelSameGradeMultiProduct: request\.productDetails\?\.steelSameGradeMultiProduct/);
   assert.match(documentPanel, /steelManualSamplingPlanNote: request\.productDetails\?\.steelManualSamplingPlanNote/);
+  assert.match(documentPanel, /productForm: request\.productDetails\?\.productForm/);
+  assert.match(documentPanel, /countryOfOrigin: request\.productDetails\?\.countryOfOrigin/);
+  assert.match(documentPanel, /manufacturerLotCode: request\.productDetails\?\.manufacturerLotCode/);
+  assert.match(documentPanel, /hsCode: request\.productDetails\?\.hsCode/);
+  assert.match(documentPanel, /lotDefinition: request\.productDetails\?\.lotDefinition/);
   assert.match(documentPanel, /assessmentMethod: request\.assessmentMethod/);
   assert.doesNotMatch(documentPanel, /PgdCellManager/);
   assert.doesNotMatch(documentPanel, /\/api\/db|PCN_OPERATIONAL_TEMPLATE|QC20/i);

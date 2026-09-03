@@ -16,9 +16,9 @@ import {
 const root = path.resolve(process.cwd());
 const read = (relativePath: string) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 
-test('PCN settings baseline covers QC4, QC9, QC20 and dedicated lab routes', () => {
-  assert.deepEqual(DEFAULT_PCN_SETTINGS.fieldCodes, ['QC4', 'QC9', 'QC20']);
-  assert.deepEqual(DEFAULT_PCN_SETTINGS.labRoutes.QC20, ['CHEMICAL_ANALYSIS']);
+test('PCN settings baseline covers only PCN fields and dedicated lab routes', () => {
+  assert.deepEqual(DEFAULT_PCN_SETTINGS.fieldCodes, ['QC4', 'QC9']);
+  assert.equal('QC20' in DEFAULT_PCN_SETTINGS.labRoutes, false);
   assert.ok(DEFAULT_PCN_SETTINGS.labRoutes.QC4.includes('PERFORMANCE'));
   assert.ok(DEFAULT_PCN_SETTINGS.labRoutes.QC9.includes('EMC'));
   assert.equal(DEFAULT_PCN_SETTINGS.storage.privateOnly, true);
@@ -35,7 +35,7 @@ test('settings is an Admin surface, not a new workflow page', () => {
   assert.match(workspace, /PcnSettingsView/);
   assert.match(view, /QC4/);
   assert.match(view, /QC9/);
-  assert.match(view, /QC20/);
+  assert.doesNotMatch(view, /QC20/);
   assert.match(api, /\/api\/pcn\/settings/);
   assert.match(server, /app\.get\('\/api\/pcn\/settings'/);
   assert.match(server, /app\.put\('\/api\/pcn\/settings'/);

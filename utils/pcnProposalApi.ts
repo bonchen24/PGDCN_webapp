@@ -13,7 +13,6 @@ export type PcnProposalUpdateInput = Partial<Pick<
   | 'manufacturer'
   | 'manufacturerAddress'
   | 'quantity'
-  | 'qc20Scope'
 >> & {
   customerSnapshot?: Partial<CertificationProposal['customerSnapshot']>;
 };

@@ -65,8 +65,8 @@ test('sample coding keeps PCN lot code, physical sample codes, and seal stamp se
   const form: PcnOperationalForms['sampleCoding'] = {
     codedAt: '2026-08-31',
     coder: 'Nhân viên PCN',
-    lotCode: 'QC20-LOT-01',
-    sampleCodes: ['QC20-LOT-01-01'],
+    lotCode: 'QC4-LOT-01',
+    sampleCodes: ['QC4-LOT-01-01'],
     sealCode: 'TEM-01',
     notes: '',
   };

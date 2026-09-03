@@ -33,6 +33,7 @@ test('PGD catalog contains the operational document set derived from department 
   assert.equal(getPgdDocumentTemplate('INSPECTION_CERTIFICATE', 'STEEL_METAL')?.methodCodes?.includes('TT58'), true);
   assert.equal(getPgdDocumentTemplate('INSPECTION_CERTIFICATE', 'STEEL_METAL')?.methodCodes?.includes('QT-GĐ-14'), true);
   assert.equal(getPgdDocumentTemplate('DECISION', 'STEEL_METAL')?.methodCodes?.includes('QT-GĐ-14'), true);
+  assert.equal(getPgdDocumentTemplate('INSPECTION_CERTIFICATE', 'STEEL_METAL', 'TT58')?.methodCodes?.includes('TT58'), true);
 });
 
 test('PGD decision output has an independent approval document contract', () => {
@@ -47,6 +48,10 @@ test('QT-GĐ-14 exposes its lot sampling inputs in intake and sample-taking cell
   const intake = getPgdDocumentTemplate('INTAKE_REQUEST', 'STEEL_METAL')!;
   const sampleTaking = getPgdDocumentTemplate('SAMPLE_TAKING', 'STEEL_METAL')!;
   for (const template of [intake, sampleTaking]) {
+    for (const key of ['productForm', 'countryOfOrigin', 'manufacturerLotCode', 'hsCode', 'lotDefinition', 'customsDocuments']) {
+      assert.equal(template.cells.some((cell) => cell.key === key), true, `Missing ${key}`);
+      assert.equal(template.placeholderKeys.includes(key), true, `Missing placeholder ${key}`);
+    }
     assert.equal(template.cells.find((cell) => cell.key === 'steelLotSize')?.binding, 'request.productDetails.steelLotSize');
     assert.equal(template.cells.find((cell) => cell.key === 'steelSameGradeMultiProduct')?.binding, 'request.productDetails.steelSameGradeMultiProduct');
     assert.equal(template.cells.find((cell) => cell.key === 'steelManualSamplingPlanNote')?.binding, 'request.productDetails.steelManualSamplingPlanNote');

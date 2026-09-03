@@ -303,12 +303,17 @@ const sharedCells = {
   assessmentMethod: cell({ key: 'assessmentMethod', label: 'Phương thức ĐGSPH', sectionCode: 'criteria', row: 2, column: 4, type: 'TEXT', required: false, binding: 'request.assessmentMethod', validation: { options: ['METHOD_7'] } }),
   conclusion: cell({ key: 'conclusion', label: 'Kết luận', sectionCode: 'conclusion', row: 1, column: 5, type: 'TEXT', required: true }),
   productDetails: [
+    cell({ key: 'productForm', label: 'Dạng sản phẩm', sectionCode: 'product', row: 3, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.productForm' }),
     cell({ key: 'grade', label: 'Mác / model / cấp sản phẩm', sectionCode: 'product', row: 4, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.grade' }),
     cell({ key: 'dimensions', label: 'Kích thước / thông số', sectionCode: 'product', row: 5, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.dimensions' }),
     cell({ key: 'productStandard', label: 'Tiêu chuẩn sản phẩm công bố', sectionCode: 'product', row: 6, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.productStandard' }),
     cell({ key: 'origin', label: 'Xuất xứ', sectionCode: 'product', row: 7, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.origin' }),
-    cell({ key: 'manufacturer', label: 'Nhà sản xuất', sectionCode: 'product', row: 8, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.manufacturer' }),
-    cell({ key: 'importer', label: 'Nhà nhập khẩu', sectionCode: 'product', row: 9, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.importer' }),
+    cell({ key: 'countryOfOrigin', label: 'Nước xuất xứ', sectionCode: 'product', row: 8, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.countryOfOrigin' }),
+    cell({ key: 'manufacturer', label: 'Nhà sản xuất', sectionCode: 'product', row: 9, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.manufacturer' }),
+    cell({ key: 'manufacturerLotCode', label: 'Số lô nhà sản xuất / lô hàng', sectionCode: 'product', row: 10, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.manufacturerLotCode' }),
+    cell({ key: 'importer', label: 'Nhà nhập khẩu', sectionCode: 'product', row: 11, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.importer' }),
+    cell({ key: 'hsCode', label: 'Mã HS', sectionCode: 'product', row: 12, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.hsCode' }),
+    cell({ key: 'lotDefinition', label: 'Cách xác định lô', sectionCode: 'product', row: 13, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.lotDefinition' }),
     cell({ key: 'customsDocuments', label: 'Chứng từ hải quan / thương mại', sectionCode: 'documents', row: 1, column: 7, type: 'TABLE', required: false, binding: 'request.productDetails.customsDocuments', tableColumns: ['document', 'number', 'date'] }),
   ],
   steelSampling: [
@@ -382,7 +387,7 @@ export const DEFAULT_PGD_DOCUMENT_TEMPLATES: readonly PgdDocumentTemplate[] = [
     cell({ key: 'agenda', label: 'Chương trình thực hiện', sectionCode: 'schedule', row: 2, column: 2, type: 'TABLE', required: true, tableColumns: ['time', 'activity', 'owner'] }),
     cell({ key: 'team', label: 'Thành phần đoàn', sectionCode: 'assignment', row: 1, column: 3, type: 'TABLE', required: true, tableColumns: ['name', 'role', 'phone'] }),
     sharedCells.standards, sharedCells.assessmentMethod,
-    ...sharedCells.steelSampling,
+    ...sharedCells.productDetails, ...sharedCells.steelSampling,
     cell({ key: 'note', label: 'Ghi chú kế hoạch', sectionCode: 'note', row: 1, column: 6, type: 'TEXT', required: false }),
   ], 'Mẫu kế hoạch giám định PGD đã chuẩn hóa'),
   template('pgd-template-field-inspection', 'FIELD_INSPECTION', 'PGD-BM-04', 'Biên bản giám định hiện trường', [
@@ -395,6 +400,7 @@ export const DEFAULT_PGD_DOCUMENT_TEMPLATES: readonly PgdDocumentTemplate[] = [
     cell({ key: 'measurements', label: 'Kích thước / đo đạc', sectionCode: 'measurements', row: 1, column: 4, type: 'TABLE', required: false, tableColumns: ['item', 'value', 'unit'] }),
     cell({ key: 'nonconformities', label: 'Điểm không phù hợp', sectionCode: 'findings', row: 4, column: 3, type: 'TABLE', required: false, tableColumns: ['code', 'description', 'action'] }),
     cell({ key: 'sampleRows', label: 'Mẫu đã lấy', sectionCode: 'samples', row: 1, column: 5, type: 'TABLE', required: true, tableColumns: ['sampleCode', 'quantity', 'disposition'] }),
+    ...sharedCells.productDetails,
   ], 'Mẫu biên bản hiện trường PGD đã chuẩn hóa'),
   template('pgd-template-sample-taking', 'SAMPLE_TAKING', 'PGD-BM-05', 'Biên bản lấy mẫu', [
     sharedCells.requestCode, sharedCells.productName, sharedCells.lotCode, sharedCells.customerName, sharedCells.customerAddress,
@@ -403,7 +409,7 @@ export const DEFAULT_PGD_DOCUMENT_TEMPLATES: readonly PgdDocumentTemplate[] = [
     cell({ key: 'sampleRows', label: 'Danh sách mẫu', sectionCode: 'sampling', row: 1, column: 3, type: 'TABLE', required: true, tableColumns: ['sampleCode', 'description', 'quantity', 'unit', 'seal'] }),
     cell({ key: 'purpose', label: 'Mục đích lấy mẫu', sectionCode: 'sampling', row: 2, column: 3, type: 'TEXT', required: true }),
     cell({ key: 'samplingMethod', label: 'Phương pháp lấy mẫu', sectionCode: 'sampling', row: 3, column: 3, type: 'TEXT', required: true }),
-    sharedCells.assessmentMethod, ...sharedCells.steelSampling,
+    sharedCells.assessmentMethod, ...sharedCells.productDetails, ...sharedCells.steelSampling,
   ], 'Mẫu biên bản lấy mẫu PGD đã chuẩn hóa'),
   template('pgd-template-lab-request', 'LAB_REQUEST', 'PGD-BM-06', 'Phiếu giao nhận và yêu cầu PTN', [
     sharedCells.requestCode, sharedCells.customerName, sharedCells.productName,
@@ -420,7 +426,7 @@ export const DEFAULT_PGD_DOCUMENT_TEMPLATES: readonly PgdDocumentTemplate[] = [
     sharedCells.standards, sharedCells.assessmentMethod,
     cell({ key: 'labResults', label: 'Kết quả PTN', sectionCode: 'results', row: 1, column: 3, type: 'TABLE', required: false, tableColumns: ['item', 'value', 'unit', 'method'] }),
     cell({ key: 'fieldFindings', label: 'Kết quả hiện trường', sectionCode: 'results', row: 2, column: 3, type: 'TABLE', required: false, tableColumns: ['item', 'value'] }),
-    sharedCells.conclusion,
+    sharedCells.conclusion, ...sharedCells.steelSampling,
     cell({ key: 'reportedAt', label: 'Ngày lập báo cáo', sectionCode: 'identity', row: 3, column: 1, type: 'DATE', required: true }),
     ...sharedCells.productDetails,
   ], 'Mẫu báo cáo kết quả PGD đã chuẩn hóa', ALL_METHOD_CODES),
@@ -486,11 +492,12 @@ export function validatePgdDocumentTemplate(template: Partial<PgdDocumentTemplat
   return issues;
 }
 
-export function getPgdDocumentTemplate(kind: PgdDocumentTemplateKind, productGroup?: PgdProductGroup): PgdDocumentTemplate | undefined {
+export function getPgdDocumentTemplate(kind: PgdDocumentTemplateKind, productGroup?: PgdProductGroup, methodCode?: string): PgdDocumentTemplate | undefined {
   const template = DEFAULT_PGD_DOCUMENT_TEMPLATES.find((candidate) =>
     candidate.active
     && candidate.kind === kind
-    && (!productGroup || candidate.productGroups.includes(productGroup)),
+    && (!productGroup || candidate.productGroups.includes(productGroup))
+    && (!methodCode || !candidate.methodCodes?.length || candidate.methodCodes.includes(methodCode)),
   );
   return template ? cloneTemplate(template) : undefined;
 }

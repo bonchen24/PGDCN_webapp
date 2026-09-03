@@ -82,8 +82,6 @@ import type {
   PcnSignerDelegation,
   PcnQualityDocument,
   PcnSettings,
-  PcnQc20ChemicalCompositionRequirement,
-  PcnQc20ScopeSnapshot,
   PcnDraftFormKind,
   PcnDraftOutput,
   PcnDraftWorkspace,
@@ -191,7 +189,6 @@ import type { PcnDossierUpdateInput } from './utils/pcnDossierApi.ts';
 import type { PcnProposalUpdateInput } from './utils/pcnProposalApi.ts';
 import { buildPcnQualityDocument } from './utils/pcnQualityDocuments.ts';
 import { normalizePcnSettings } from './utils/pcnSettings.ts';
-import { confirmPcnQc20ScopeConfiguration, getPcnQc20Readiness, normalizePcnQc20ScopeConfiguration } from './utils/pcnQc20ScopeGovernance.ts';
 import { isPcnOcrFileSupported, normalizePcnOcrDraft, normalizePcnOcrEvidence } from './utils/pcnOcrPolicy.ts';
 import { getPcnOperationalFormKind, normalizePcnOperationalFormsPatch } from './utils/pcnOperationalForms.ts';
 import { mergePcnDocumentWaivers, normalizePcnDocumentWaiverPatch } from './utils/pcnDocumentWaivers.ts';
@@ -360,7 +357,7 @@ function buildPcnOcrDraftFromText(text: string, context: 'proposal' | 'result', 
     put('manufacturer', ['nhà sản xuất', 'manufacturer']);
     put('manufacturerAddress', ['địa chỉ nhà sản xuất', 'manufacturer address']);
     put('quantity', ['số lượng', 'quantity']);
-    const fieldsFromText = ['QC4', 'QC9', 'QC20'].filter((code) => new RegExp(`(?:${code}|QCVN\\s*${code.slice(2)})`, 'i').test(text));
+    const fieldsFromText = ['QC4', 'QC9'].filter((code) => new RegExp(`(?:${code}|QCVN\\s*${code.slice(2)})`, 'i').test(text));
     if (fieldsFromText.length > 0) fields.fieldCodes = fieldsFromText.join(',');
   } else {
     put('reportNumber', ['số báo cáo', 'số phiếu', 'report no', 'report number']);
@@ -1367,7 +1364,7 @@ function validatePcnUserInput(input: Record<string, any>, current: Record<string
     return { error: 'Role chức vụ phòng ban PCN không hợp lệ.' };
   }
   if (input.fieldCodes !== undefined && (!Array.isArray(input.fieldCodes) || input.fieldCodes.some((code: unknown) => !PCN_CERTIFICATION_FIELD_CODES.includes(String(code).trim().toUpperCase() as typeof PCN_CERTIFICATION_FIELD_CODES[number])))) {
-    return { error: 'Phạm vi Lĩnh vực PCN chỉ được gồm QC4, QC9 hoặc QC20.' };
+    return { error: 'Phạm vi Lĩnh vực PCN chỉ được gồm QC4 hoặc QC9.' };
   }
   const rawDepartmentScopes = input.departmentScopes ?? current.departmentScopes;
   if (rawDepartmentScopes !== undefined && (!Array.isArray(rawDepartmentScopes) || rawDepartmentScopes.some((scope: unknown) => !['PCN', 'PGD'].includes(String(scope).trim().toUpperCase())))) {
@@ -1422,7 +1419,7 @@ function validatePcnSignerDelegationInput(input: Record<string, any>): { data?: 
   const reason = String(input.reason || '').trim();
   if (!grantorUsername || !delegateUsername || !approvedByUsername) return { error: 'Ủy quyền phải có người ủy quyền, người được ủy quyền và người phê duyệt.' };
   if (grantorUsername === delegateUsername) return { error: 'Người ủy quyền và người được ủy quyền không được trùng nhau.' };
-  if (fieldCodes.length === 0 || fieldCodes.some((code) => !PCN_CERTIFICATION_FIELD_CODES.includes(code as typeof PCN_CERTIFICATION_FIELD_CODES[number]))) return { error: 'Ủy quyền phải chỉ rõ ít nhất một Lĩnh vực QC4, QC9 hoặc QC20.' };
+  if (fieldCodes.length === 0 || fieldCodes.some((code) => !PCN_CERTIFICATION_FIELD_CODES.includes(code as typeof PCN_CERTIFICATION_FIELD_CODES[number]))) return { error: 'Ủy quyền phải chỉ rõ ít nhất một Lĩnh vực QC4 hoặc QC9.' };
   const from = Date.parse(effectiveFrom);
   const until = Date.parse(effectiveUntil);
   if (!Number.isFinite(from) || !Number.isFinite(until) || from > until) return { error: 'Thời hạn ủy quyền không hợp lệ.' };
@@ -1774,71 +1771,6 @@ function normalizePcnSampleList(value: unknown): string[] {
   )).sort();
 }
 
-function normalizePcnQc20Scope(value: unknown): PcnQc20ScopeSnapshot | undefined {
-  if (value === undefined || value === null || value === '') return undefined;
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw Object.assign(new Error('Thông tin phạm vi QC20 không hợp lệ.'), { statusCode: 400 });
-  }
-  const source = value as Record<string, unknown>;
-  const scope: PcnQc20ScopeSnapshot = {};
-  for (const key of ['productForm', 'grade', 'nominalDimensions', 'hsCode', 'manufacturerLotCode', 'importer', 'countryOfOrigin', 'appliedStandard'] as const) {
-    if (source[key] === undefined || source[key] === null) continue;
-    if (typeof source[key] !== 'string') {
-      throw Object.assign(new Error(`Trường qc20Scope.${key} phải là chuỗi.`), { statusCode: 400 });
-    }
-    const normalized = String(source[key]).trim();
-    if (normalized) scope[key] = normalized;
-  }
-  if (source.lotDefinition !== undefined && source.lotDefinition !== null && source.lotDefinition !== '') {
-    const lotDefinition = String(source.lotDefinition).trim().toUpperCase();
-    if (!['PRODUCT_LOT', 'SHIPMENT_LOT'].includes(lotDefinition)) {
-      throw Object.assign(new Error('Cách xác định lô QC20 không hợp lệ.'), { statusCode: 400 });
-    }
-    scope.lotDefinition = lotDefinition as PcnQc20ScopeSnapshot['lotDefinition'];
-  }
-  for (const key of ['chromiumMinPercent', 'carbonMaxPercent'] as const) {
-    if (source[key] === undefined || source[key] === null || source[key] === '') continue;
-    const numeric = Number(source[key]);
-    if (!Number.isFinite(numeric) || numeric < 0 || numeric > 100) {
-      throw Object.assign(new Error(`Trường qc20Scope.${key} phải là phần trăm hợp lệ.`), { statusCode: 400 });
-    }
-    scope[key] = numeric;
-  }
-  if (source.chemicalCompositionRequirements !== undefined) {
-    if (!Array.isArray(source.chemicalCompositionRequirements)) {
-      throw Object.assign(new Error('Trường qc20Scope.chemicalCompositionRequirements phải là danh sách.'), { statusCode: 400 });
-    }
-    const requirements: PcnQc20ChemicalCompositionRequirement[] = [];
-    for (const item of source.chemicalCompositionRequirements.slice(0, 50)) {
-      if (!item || typeof item !== 'object' || Array.isArray(item)) {
-        throw Object.assign(new Error('Mỗi chỉ tiêu thành phần QC20 phải là một đối tượng.'), { statusCode: 400 });
-      }
-      const input = item as Record<string, unknown>;
-      const element = String(input.element || '').trim();
-      if (!element || element.length > 30) {
-        throw Object.assign(new Error('Chỉ tiêu thành phần QC20 phải có tên nguyên tố hợp lệ.'), { statusCode: 400 });
-      }
-      const requirement: PcnQc20ChemicalCompositionRequirement = { element };
-      for (const key of ['minPercent', 'maxPercent'] as const) {
-        if (input[key] === undefined || input[key] === null || input[key] === '') continue;
-        const numeric = Number(input[key]);
-        if (!Number.isFinite(numeric) || numeric < 0 || numeric > 100) {
-          throw Object.assign(new Error(`Giới hạn ${key} của thành phần QC20 không hợp lệ.`), { statusCode: 400 });
-        }
-        requirement[key] = numeric;
-      }
-      if (input.source !== undefined && input.source !== null) {
-        if (typeof input.source !== 'string') throw Object.assign(new Error('Nguồn đối chiếu thành phần QC20 phải là chuỗi.'), { statusCode: 400 });
-        const sourceLabel = input.source.trim();
-        if (sourceLabel) requirement.source = sourceLabel.slice(0, 255);
-      }
-      requirements.push(requirement);
-    }
-    if (requirements.length > 0) scope.chemicalCompositionRequirements = requirements;
-  }
-  return Object.keys(scope).length > 0 ? scope : undefined;
-}
-
 function normalizePcnSampleLabCodes(value: unknown): PcnSampleLabCode[] {
   const allowed = new Set(PCN_SAMPLE_LAB_OPTIONS.map((item) => item.code));
   const codes = Array.from(new Set(
@@ -2072,8 +2004,7 @@ function samePcnSampleLotCreation(left: PcnSampleLot, right: PcnSampleLot): bool
     && String(left.notes || '').trim() === String(right.notes || '').trim()
     && JSON.stringify(normalizePcnSampleList(left.fieldCodes)) === JSON.stringify(normalizePcnSampleList(right.fieldCodes))
     && JSON.stringify(normalizePcnSampleList(left.routeIds)) === JSON.stringify(normalizePcnSampleList(right.routeIds))
-    && itemIdsMatch
-    && JSON.stringify(left.qc20Snapshot || {}) === JSON.stringify(right.qc20Snapshot || {});
+    && itemIdsMatch;
 }
 
 function samePcnLabRequestCreation(left: OutboundLabRequest, right: OutboundLabRequest): boolean {
@@ -3181,7 +3112,7 @@ async function startServer() {
             if (isPgdDocumentTemplateRecordAllowed(candidate)) template = normalizePgdDocumentTemplate(candidate);
           }
         }
-        template = template || getPgdDocumentTemplate(kind, request.productGroup);
+        template = template || getPgdDocumentTemplate(kind, request.productGroup, request.method);
         if (!template || template.kind !== kind || template.status === 'RETIRED' || !template.active) throw Object.assign(new Error('Không tìm thấy template tài liệu PGD phù hợp.'), { statusCode: 404 });
         const now = new Date().toISOString();
         const context = buildPgdDocumentContext({
@@ -4568,132 +4499,6 @@ async function startServer() {
     }
   });
 
-  app.get('/api/pcn/settings/qc20-readiness', async (req, res) => {
-    if (DATABASE_PROFILE !== 'pcn') {
-      res.status(404).json({ error: 'Kiểm tra sẵn sàng QC20 chỉ khả dụng trong profile PCN.' });
-      return;
-    }
-    if (!requirePcnSession(req, res)) return;
-    try {
-      const [settingsResult, templateResult] = await Promise.all([
-        pool.query(
-          `SELECT document_id, data FROM app_documents
-           WHERE collection_name = 'systemConfig' AND document_id = $1
-           LIMIT 1`,
-          ['pcn-settings'],
-        ),
-        pool.query(
-          `SELECT document_id, data FROM app_documents
-           WHERE collection_name = 'pcnTemplateDefinitions'
-             AND upper(data->>'fieldCode') = 'QC20'`,
-        ),
-      ]);
-      const settings = settingsResult.rows[0] ? normalizePcnSettings(mapDocumentRow(settingsResult.rows[0])) : normalizePcnSettings({});
-      const templates = mergePcnTemplateCatalog(templateResult.rows.map((row: any) => ({ ...row.data, id: row.document_id })) as PcnTemplateDefinition[]);
-      const templateAssetIds = templates
-        .filter((template) => ['CERTIFICATE', 'DECISION'].includes(template.documentKind))
-        .map((template) => template.fileAssetId)
-        .filter((assetId): assetId is string => Boolean(assetId));
-      const assetResult = await pool.query(
-        `SELECT id, bucket_name, source_collection, source_document_id, source_json_path, mime_type
-         FROM file_assets WHERE id = ANY($1::text[])`,
-        [templateAssetIds],
-      );
-      const privateTemplateAssetIds = new Set(
-        assetResult.rows
-          .filter((asset: any) => String(asset.bucket_name) === getPcnStorageBucket()
-            && asset.source_collection === 'pcnTemplateDefinitions'
-            && asset.source_json_path === 'fileAssetId'
-            && asset.mime_type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-            && templates.some((template) => template.id === asset.source_document_id && template.fileAssetId === asset.id))
-          .map((asset: any) => String(asset.id)),
-      );
-      res.json({ readiness: getPcnQc20Readiness({ scopeConfiguration: settings.qc20ScopeConfiguration, templates, privateTemplateAssetIds }) });
-    } catch (error: any) {
-      console.error('PCN QC20 readiness error:', error);
-      res.status(500).json({ error: error?.message || String(error) });
-    }
-  });
-
-  app.post('/api/pcn/settings/qc20-scope/confirm', async (req, res) => {
-    if (!requirePcnAdmin(req, res)) return;
-    const incoming = req.body?.scopeConfiguration ?? req.body?.scope;
-    if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
-      res.status(400).json({ error: 'Dữ liệu xác nhận phạm vi QC20 không hợp lệ.' });
-      return;
-    }
-    const actor = getPcnSessionUser(req)!;
-    const now = new Date().toISOString();
-    try {
-      const result = await withPgTransaction(async (client) => {
-        const existingResult = await client.query(
-          `SELECT document_id, data FROM app_documents
-           WHERE collection_name = 'systemConfig' AND document_id = $1
-           LIMIT 1 FOR UPDATE`,
-          ['pcn-settings'],
-        );
-        const previousSettings = existingResult.rows[0] ? normalizePcnSettings(mapDocumentRow(existingResult.rows[0])) : normalizePcnSettings({});
-        const nextScope = confirmPcnQc20ScopeConfiguration(incoming, actor.username, now);
-        const previousScope = normalizePcnQc20ScopeConfiguration(previousSettings.qc20ScopeConfiguration);
-        const comparable = (scope: ReturnType<typeof normalizePcnQc20ScopeConfiguration>) => JSON.stringify({
-          scopeVersion: scope.scopeVersion,
-          standardRefs: scope.standardRefs,
-          method: scope.method,
-          sourceReferences: scope.sourceReferences,
-          productForms: scope.productForms,
-          grades: scope.grades,
-          hsCodes: scope.hsCodes,
-          appliedStandards: scope.appliedStandards,
-          chemicalCompositionRequirements: scope.chemicalCompositionRequirements,
-          confirmationNote: scope.confirmationNote,
-        });
-        if (previousScope.status === 'CONFIRMED' && comparable(previousScope) === comparable(nextScope)) {
-          return { settings: previousSettings, idempotent: true, activityLog: undefined };
-        }
-        const settings = normalizePcnSettings({
-          ...previousSettings,
-          qc20ScopeConfiguration: nextScope,
-          updatedAt: now,
-          updatedBy: actor.username,
-        });
-        await client.query(
-          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
-           VALUES ('systemConfig', $1, $2::jsonb, CURRENT_TIMESTAMP)
-           ON CONFLICT (collection_name, document_id)
-           DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP`,
-          ['pcn-settings', JSON.stringify(getDocumentPayload(settings))],
-        );
-        const activityLog = buildActivityLog({
-          id: stablePcnMutationId('activity-pcn-qc20-scope-confirm', comparable(nextScope)),
-          action: 'CONFIGURED',
-          entityType: 'PCN_FIELD',
-          entityId: 'QC20',
-          entityLabel: 'Quy chuẩn 20',
-          actorUsername: actor.username,
-          actorName: actor.name,
-          actorRole: actor.systemRole || actor.role,
-          summary: 'Xác nhận phạm vi và profile thử QC20',
-          changes: diffActivityFields(previousScope, nextScope, ['status', 'scopeVersion', 'standardRefs', 'method', 'sourceReferences', 'productForms', 'grades', 'hsCodes', 'appliedStandards', 'chemicalCompositionRequirements', 'confirmedByUsername', 'confirmedAt', 'confirmationNote']),
-          source: 'UI',
-          createdAt: now,
-        });
-        const validationError = validateActivityLogPayload(activityLog);
-        if (validationError) throw Object.assign(new Error(validationError), { statusCode: 400 });
-        await client.query(
-          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
-           VALUES ('activityLogs', $1, $2::jsonb, CURRENT_TIMESTAMP)
-           ON CONFLICT (collection_name, document_id) DO NOTHING`,
-          [activityLog.id, JSON.stringify(getDocumentPayload(activityLog))],
-        );
-        return { settings, idempotent: false, activityLog };
-      });
-      res.json(result);
-    } catch (error: any) {
-      console.error('PCN QC20 scope confirmation error:', error);
-      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
-    }
-  });
-
   app.get('/api/pcn/personal-settings', async (req, res) => {
     if (DATABASE_PROFILE !== 'pcn') {
       res.status(404).json({ error: 'Thiết lập cá nhân PCN chỉ khả dụng trong profile PCN.' });
@@ -4818,12 +4623,7 @@ async function startServer() {
           ['pcn-settings'],
         );
         const previous = previousResult.rows[0] ? normalizePcnSettings(mapDocumentRow(previousResult.rows[0])) : normalizePcnSettings({});
-        // QC20 scope confirmation has its own Admin boundary; a generic settings save
-        // may not downgrade or replace the confirmed catalogue.
-        const settings = normalizePcnSettings({
-          ...requestedSettings,
-          qc20ScopeConfiguration: previous.qc20ScopeConfiguration,
-        });
+        const settings = normalizePcnSettings(requestedSettings);
         await client.query(
           `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
            VALUES ('systemConfig', $1, $2::jsonb, CURRENT_TIMESTAMP)
@@ -6640,16 +6440,6 @@ async function startServer() {
             privateTemplateAssetIds.add(String(asset.id));
           }
         }
-        if (fieldCodes.includes('QC20')) {
-          const qc20Readiness = getPcnQc20Readiness({
-            scopeConfiguration: normalizePcnSettings(settingsResult.rows[0] ? mapDocumentRow(settingsResult.rows[0]) : {}).qc20ScopeConfiguration,
-            templates: officialTemplates,
-            privateTemplateAssetIds,
-          });
-          if (!qc20Readiness.ready) {
-            throw Object.assign(new Error(`QC20 chưa sẵn sàng phát hành: ${qc20Readiness.reasons.join('; ')}`), { statusCode: 409 });
-          }
-        }
         const documentReadiness = getPcnIssuanceOfficialDocumentReadiness({
           context: officialContext,
           issuance: { issuanceNumber, issuedAt, signerUsername },
@@ -6739,17 +6529,7 @@ async function startServer() {
       res.status(400).json({ error: 'Lĩnh vực của Đề nghị và hồ sơ phải giống nhau.' });
       return;
     }
-    let normalizedQc20Scope: PcnQc20ScopeSnapshot | undefined;
-    try {
-      normalizedQc20Scope = normalizePcnQc20Scope(proposal.qc20Scope);
-    } catch (error: any) {
-      res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message || error) });
-      return;
-    }
-    const intakeProposal = {
-      ...proposal,
-      ...(normalizedQc20Scope ? { qc20Scope: normalizedQc20Scope } : {}),
-    };
+    const intakeProposal = proposal;
     const intakeValidation = validatePcnProposalIntake(intakeProposal);
     if (!intakeValidation.valid) {
       res.status(400).json({
@@ -6939,7 +6719,6 @@ async function startServer() {
       'manufacturer',
       'manufacturerAddress',
       'quantity',
-      'qc20Scope',
     ]);
     const unknownFields = Object.keys(rawUpdates).filter((field) => !allowedFields.has(field));
     if (unknownFields.length > 0) {
@@ -7044,10 +6823,6 @@ async function startServer() {
           }
           updates.quantity = quantity;
         }
-        if (rawUpdates.qc20Scope !== undefined) {
-          updates.qc20Scope = normalizePcnQc20Scope(rawUpdates.qc20Scope);
-        }
-
         const candidate = { ...proposal, ...updates, id: proposal.id, proposalCode: proposal.proposalCode, fieldCodes: proposal.fieldCodes } as CertificationProposal;
         const intakeValidation = validatePcnProposalIntake(candidate);
         if (!intakeValidation.valid) {
@@ -7074,7 +6849,6 @@ async function startServer() {
           'manufacturer',
           'manufacturerAddress',
           'quantity',
-          'qc20Scope',
         ]);
         if (proposalChanges.length === 0) return { proposal, dossier, activityLogs: [], idempotent: true };
 

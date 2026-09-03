@@ -45,6 +45,7 @@ export const PGD_ASSESSMENT_METHOD_OPTIONS = [
 export type PgdAssessmentMethod = typeof PGD_ASSESSMENT_METHOD_OPTIONS[number]['code'];
 export type PgdProductGroup = 'STEEL_METAL' | 'MACHINERY_LINE' | 'COAL' | 'OTHER';
 export type PgdSampleDisposition = 'LAB' | 'RETAINED';
+export type PgdSteelLotDefinition = 'PRODUCT_LOT' | 'SHIPMENT_LOT';
 export type PgdLabRequestStatus = 'DRAFT' | 'SENT' | 'RECEIVED' | 'RESULT_RECEIVED' | 'ISSUE' | 'CLOSED';
 export type PgdApprovalStatus = 'PENDING' | 'APPROVED' | 'RETURNED';
 export type PgdResultFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'TABLE';
@@ -88,13 +89,19 @@ export interface PgdMethodOption {
   name: string;
 }
 
+export const PGD_STEEL_CATALOG_ITEM_CODE = 'GĐ-THEP-KG';
+export const PGD_STEEL_STANDARD_REFS = [
+  'QCVN 20:2019/BKHCN',
+  'Sửa đổi 1:2021 QCVN 20:2019/BKHCN',
+] as const;
+
 /** PGD catalog is intentionally not a copy of the PCN certification fields. */
 export const DEFAULT_PGD_CATALOG: readonly PgdCatalogItem[] = [
   {
     id: 'STEEL_LOT_INSPECTION',
     domain: PGD_DOMAIN,
-    code: 'GĐ-THEP-LO',
-    name: 'Giám định lô thép và vật liệu kim loại',
+    code: PGD_STEEL_CATALOG_ITEM_CODE,
+    name: 'Giám định thép không gỉ',
     productGroup: 'STEEL_METAL',
     inspectionTypes: ['VISUAL_DIMENSIONAL', 'QUANTITY_WEIGHT', 'CHEMICAL', 'MECHANICAL'],
     methodOptions: [
@@ -106,7 +113,7 @@ export const DEFAULT_PGD_CATALOG: readonly PgdCatalogItem[] = [
       { code: 'QT-GĐ-10', name: 'Giám định vật liệu kim loại' },
       { code: 'QT-GĐ-14', name: 'Giám định chất lượng thép theo TTLT 58/2015' },
     ],
-    defaultStandards: ['JIS', 'ASTM', 'GB/T'],
+    defaultStandards: [...PGD_STEEL_STANDARD_REFS, 'JIS', 'ASTM', 'GB/T'],
     slaLabel: '5–7 ngày',
     active: true,
   },
@@ -185,6 +192,7 @@ export function isPgdCatalogItemAllowed(catalogItemId: string, catalog: readonly
   return catalog.some((item) => item.domain === PGD_DOMAIN
     && item.active
     && item.id === normalizedId
+    && (item.productGroup !== 'STEEL_METAL' || item.code === PGD_STEEL_CATALOG_ITEM_CODE)
     && !/QC20/i.test(`${item.id} ${item.code} ${item.name}`)
     && item.methodOptions.every((method) => !/QC20/i.test(`${method.code} ${method.name}`)));
 }
@@ -198,6 +206,8 @@ export function isPgdCatalogRecordAllowed(value: unknown): value is PgdCatalogIt
     && typeof item.name === 'string'
     && !/QC20/i.test(`${item.id} ${item.code} ${item.name}`)
     && ['STEEL_METAL', 'MACHINERY_LINE', 'COAL', 'OTHER'].includes(String(item.productGroup || ''))
+    && (item.productGroup !== 'STEEL_METAL' || item.code === PGD_STEEL_CATALOG_ITEM_CODE)
+    && Array.isArray(item.defaultStandards)
     && item.active === true
     && Array.isArray(item.methodOptions)
     && item.methodOptions.every((method) => method && typeof method.code === 'string' && typeof method.name === 'string' && Boolean(method.code.trim()) && Boolean(method.name.trim()) && !/QC20/i.test(`${method.code} ${method.name}`));
@@ -214,12 +224,17 @@ export interface PgdRequesterSnapshot {
 export type PgdCustomerSnapshot = Pick<CustomerRef, 'name' | 'address' | 'taxId' | 'phone' | 'email' | 'contactPerson'>;
 
 export interface PgdProductDetails {
+  productForm?: string;
   grade?: string;
   dimensions?: string;
   productStandard?: string;
   origin?: string;
+  countryOfOrigin?: string;
   manufacturer?: string;
+  manufacturerLotCode?: string;
   importer?: string;
+  hsCode?: string;
+  lotDefinition?: PgdSteelLotDefinition;
   customsDocuments?: Array<{ document?: string; number?: string; date?: string }>;
   steelLotSize?: number;
   steelSameGradeMultiProduct?: boolean;
@@ -614,9 +629,38 @@ export function validatePgdIntake(input: Partial<PgdInspectionRequestInput>, cat
   }
   if (!isPgdCatalogItemAllowed(String(input.catalogItemId || ''), catalog)) issues.push({ field: 'catalogItemId', message: 'Loại hình không thuộc catalog PGD hoặc đã bị loại khỏi miền PGD.' });
   const catalogItem = catalog.find((item) => item.id === String(input.catalogItemId || '').trim() && item.domain === PGD_DOMAIN && item.active);
+  const isStainlessSteel = catalogItem?.productGroup === 'STEEL_METAL' && catalogItem.code === PGD_STEEL_CATALOG_ITEM_CODE;
   if (catalogItem && catalogItem.productGroup !== input.productGroup) issues.push({ field: 'productGroup', message: 'Loại hình giám định không khớp nhóm sản phẩm PGD.' });
   if (catalogItem && String(input.method || '').trim() && !catalogItem.methodOptions.some((method) => method.code.toUpperCase() === String(input.method).trim().toUpperCase())) {
     issues.push({ field: 'method', message: 'Mã phương thức PGD phải được chọn từ catalog của loại hình giám định.' });
+  }
+  if (isStainlessSteel) {
+    const details = input.productDetails || {};
+    const requiredSteelFields: Array<[keyof PgdProductDetails, string]> = [
+      ['productForm', 'Dạng sản phẩm thép'],
+      ['grade', 'Mác thép'],
+      ['dimensions', 'Kích thước thép'],
+      ['productStandard', 'Tiêu chuẩn sản phẩm'],
+      ['manufacturer', 'Nhà sản xuất'],
+      ['importer', 'Nhà nhập khẩu'],
+      ['hsCode', 'Mã HS'],
+      ['manufacturerLotCode', 'Số lô nhà sản xuất / lô hàng'],
+      ['lotDefinition', 'Cách xác định lô'],
+    ];
+    for (const [key, label] of requiredSteelFields) {
+      if (!String(details[key] || '').trim()) issues.push({ field: `productDetails.${key}`, message: `Cần nhập ${label} cho hồ sơ thép không gỉ.` });
+    }
+    if (!String(details.countryOfOrigin || details.origin || '').trim()) issues.push({ field: 'productDetails.countryOfOrigin', message: 'Cần nhập nước xuất xứ cho hồ sơ thép không gỉ.' });
+    if (!String(input.lotCode || '').trim()) issues.push({ field: 'lotCode', message: 'Cần nhập số lô hàng thép không gỉ.' });
+    if (!Array.isArray(details.customsDocuments) || details.customsDocuments.length === 0) {
+      issues.push({ field: 'productDetails.customsDocuments', message: 'Cần ghi nhận ít nhất một chứng từ hải quan / thương mại.' });
+    }
+    const method = String(input.method || '').trim().toUpperCase();
+    if (!['TT58', 'QT-GĐ-14'].includes(method) && !issues.some((issue) => issue.field === 'method')) issues.push({ field: 'method', message: 'Hồ sơ thép không gỉ phải chọn TT58 hoặc QT-GĐ-14.' });
+    if (input.assessmentMethod !== 'METHOD_7') issues.push({ field: 'assessmentMethod', message: 'Hồ sơ thép không gỉ phải dùng Phương thức 7.' });
+    if (Array.isArray(input.standards) && input.standards.length > 0 && !input.standards.some((standard) => /QCVN\s*20:2019|Sửa đổi 1:2021/i.test(String(standard)))) {
+      issues.push({ field: 'standards', message: 'Tiêu chuẩn hồ sơ thép không gỉ phải có QCVN 20:2019/BKHCN và Sửa đổi 1:2021.' });
+    }
   }
   if (input.assessmentMethod !== undefined && !PGD_ASSESSMENT_METHOD_OPTIONS.some((option) => option.code === input.assessmentMethod)) {
     issues.push({ field: 'assessmentMethod', message: 'Phương thức ĐGSPH phải được chọn từ danh mục đã xác nhận.' });

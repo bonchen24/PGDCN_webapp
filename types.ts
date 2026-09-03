@@ -219,7 +219,7 @@ export type PcnCertificationFieldCode = string;
 export type PcnCertificationFieldScopeStatus = 'CONFIRMED' | 'NEEDS_PCN_CONFIRMATION';
 
 /** Active PCN field catalog. Keep this list separate from the DDT/legacy model. */
-export const PCN_CERTIFICATION_FIELD_CODES = ['QC4', 'QC9', 'QC20'] as const;
+export const PCN_CERTIFICATION_FIELD_CODES = ['QC4', 'QC9'] as const;
 
 export interface PcnCertificationField {
   code: PcnCertificationFieldCode;
@@ -230,51 +230,6 @@ export interface PcnCertificationField {
   amendmentRefs?: string[];
   scopeStatus?: PcnCertificationFieldScopeStatus;
   active: boolean;
-}
-
-export type PcnQc20LotDefinition = 'PRODUCT_LOT' | 'SHIPMENT_LOT';
-
-export interface PcnQc20ChemicalCompositionRequirement {
-  element: string;
-  minPercent?: number;
-  maxPercent?: number;
-  source?: string;
-}
-
-/**
- * Confirmed scope data for QCVN 20. These values are captured from the
- * proposal instead of being inferred from a product name or a file name.
- */
-export interface PcnQc20ScopeSnapshot {
-  productForm?: string;
-  grade?: string;
-  nominalDimensions?: string;
-  hsCode?: string;
-  lotDefinition?: PcnQc20LotDefinition;
-  manufacturerLotCode?: string;
-  importer?: string;
-  countryOfOrigin?: string;
-  appliedStandard?: string;
-  chromiumMinPercent?: number;
-  carbonMaxPercent?: number;
-  chemicalCompositionRequirements?: PcnQc20ChemicalCompositionRequirement[];
-}
-
-/** Controlled, room-level QC20 catalogue confirmed by an Admin PCN. */
-export interface PcnQc20ScopeConfiguration {
-  status: PcnCertificationFieldScopeStatus;
-  scopeVersion: string;
-  standardRefs: string[];
-  method: PcnCertificationMethod;
-  sourceReferences: string[];
-  productForms: string[];
-  grades: string[];
-  hsCodes: string[];
-  appliedStandards: string[];
-  chemicalCompositionRequirements: PcnQc20ChemicalCompositionRequirement[];
-  confirmedByUsername?: string;
-  confirmedAt?: string;
-  confirmationNote?: string;
 }
 
 export type PcnProposalChannel = 'DIRECT' | 'EMAIL' | 'ONLINE_ZALO' | 'OTHER';
@@ -302,7 +257,6 @@ export interface CertificationProposal {
   createdAt?: string;
   updatedAt?: string;
   historicalImport?: PcnHistoricalImportMetadata;
-  qc20Scope?: PcnQc20ScopeSnapshot;
 }
 
 export type PcnDossierStatus =
@@ -866,8 +820,6 @@ export interface PcnSampleLot {
   quantity: number;
   unit?: string;
   fieldCodes: PcnCertificationFieldCode[];
-  /** Snapshot used by QC20 to keep the material/lot identity with the sample. */
-  qc20Snapshot?: Pick<PcnQc20ScopeSnapshot, 'grade' | 'nominalDimensions' | 'manufacturerLotCode' | 'lotDefinition'>;
   routeIds: string[];
   status: PcnSampleLotStatus;
   currentLocation: string;
@@ -1343,7 +1295,6 @@ export interface PcnSettings {
     bucket: string;
     privateOnly: true;
   };
-  qc20ScopeConfiguration: PcnQc20ScopeConfiguration;
   updatedAt?: string;
   updatedBy?: string;
 }

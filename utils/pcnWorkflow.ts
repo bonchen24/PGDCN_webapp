@@ -20,15 +20,6 @@ export const DEFAULT_PCN_CERTIFICATION_FIELDS: PcnCertificationField[] = [
     standardRefs: ['QCVN 9', 'TCVN 7492-1:2018'],
     active: true,
   },
-  {
-    code: 'QC20',
-    name: 'Quy chuẩn 20',
-    standardRefs: ['QCVN 20:2019/BKHCN', 'Sửa đổi 1:2021 QCVN 20:2019/BKHCN'],
-    method: 'METHOD_7',
-    amendmentRefs: ['Sửa đổi 1:2021 QCVN 20:2019/BKHCN'],
-    scopeStatus: 'NEEDS_PCN_CONFIRMATION',
-    active: true,
-  },
 ];
 
 export { PCN_CERTIFICATION_FIELD_CODES };
@@ -45,12 +36,7 @@ export function mergePcnCertificationFields(configuredFields: PcnCertificationFi
       const baseline = DEFAULT_PCN_CERTIFICATION_FIELDS.find((field) => field.code === code)!;
       const configured = configuredByCode.get(code);
       const merged = configured ? { ...baseline, ...configured, code } : baseline;
-      const withQc20Method = code === 'QC20' && !merged.method
-        ? { ...merged, method: 'METHOD_7' as const, amendmentRefs: baseline.amendmentRefs }
-        : merged;
-      return code === 'QC20' && withQc20Method.scopeStatus !== 'CONFIRMED'
-        ? { ...withQc20Method, scopeStatus: 'NEEDS_PCN_CONFIRMATION' as const }
-        : withQc20Method;
+      return merged;
     })
     .filter((field) => field.active !== false);
 }

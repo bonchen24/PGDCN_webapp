@@ -118,20 +118,18 @@ test('PCN operational projection hides historical dossier data but preserves the
   assert.deepEqual(snapshot.customers, [historicalCustomer, currentCustomer]);
 });
 
-test('PCN field catalog keeps QC20 available when an older database only has QC4 and QC9', () => {
-  const fields = mergePcnCertificationFields(DEFAULT_PCN_CERTIFICATION_FIELDS.filter((field) => field.code !== 'QC20'));
+test('PCN field catalog does not backfill the PGD stainless-steel scope', () => {
+  const fields = mergePcnCertificationFields(DEFAULT_PCN_CERTIFICATION_FIELDS);
 
-  assert.deepEqual(fields.map((field) => field.code), ['QC4', 'QC9', 'QC20']);
-  assert.equal(fields.find((field) => field.code === 'QC20')?.scopeStatus, 'NEEDS_PCN_CONFIRMATION');
+  assert.deepEqual(fields.map((field) => field.code), ['QC4', 'QC9']);
+  assert.equal(fields.some((field) => field.code === 'QC20'), false);
 });
 
-test('PCN checklist backfills the QC20 dossier pack when an older database is missing it', () => {
-  const oldRequirements = DEFAULT_PCN_DOCUMENT_REQUIREMENTS.filter((item) => item.fieldCode !== 'QC20');
-  const requirements = mergePcnDocumentRequirements(oldRequirements);
+test('PCN checklist does not backfill a PGD dossier pack', () => {
+  const requirements = mergePcnDocumentRequirements(DEFAULT_PCN_DOCUMENT_REQUIREMENTS);
 
-  assert.ok(requirements.some((item) => item.id === 'QC20-SAMPLE_CODING'));
-  assert.ok(requirements.some((item) => item.id === 'QC20-CERTIFICATE'));
-  assert.equal(requirements.find((item) => item.id === 'QC20-SAMPLE_CODING')?.stationKeys?.[0], 'SAMPLING_LAB');
+  assert.equal(requirements.some((item) => item.fieldCode === 'QC20'), false);
+  assert.equal(requirements.some((item) => /QC20/i.test(item.id)), false);
 });
 
 test('PCN bootstrap keeps imported staff as PCN personnel with a separate department-role field', () => {

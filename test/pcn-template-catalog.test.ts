@@ -68,16 +68,11 @@ test('PCN baseline template paths stay relative to the surveyed source-family ro
     ['pcn-qc9-proposal-method-1-tdc', 'Hồ sơ chứng nhận QCVN9 2026/mẫu pyc bên TĐC/BM-02-32 Mẫu yêu cầu CNSP PT1.docx'],
     ['pcn-qc9-proposal-method-1', 'Hồ sơ chứng nhận QCVN9 2026/File kết quả mẫu/BM-QT-06-05a De nghi chung nhan san pham theo phuong thuc 1.doc'],
     ['pcn-qc9-evaluation-report-method-1-7', 'Hồ sơ chứng nhận QCVN9 2026/File kết quả mẫu/BM-QT-09-09a-BC đánh giá CNSP theo pt1 và 7.doc'],
-    ['pcn-qc20-proposal-pending', 'QC20/CHUA_CO_NGUON/PROPOSAL.docx'],
-    ['pcn-qc20-certificate-pending', 'QC20/CHUA_CO_NGUON/CERTIFICATE.docx'],
-    ['pcn-qc20-decision-pending', 'QC20/CHUA_CO_NGUON/DECISION.docx'],
-    ['pcn-qc20-sample-handover-pending', 'QC20/CHUA_CO_NGUON/SAMPLE_HANDOVER.docx'],
   ]);
 
   for (const template of PCN_TEMPLATE_CATALOG) {
     assert.equal(template.sourceFingerprint.sourceRelativePath, expectedPaths.get(template.id), template.id);
-    if (template.fieldCode === 'QC20') assert.match(template.sourceFingerprint.sourceRelativePath, /^QC20\/CHUA_CO_NGUON\//);
-    else assert.match(template.sourceFingerprint.sourceRelativePath, /^Hồ sơ chứng nhận QCVN[49] 2026\//);
+    assert.match(template.sourceFingerprint.sourceRelativePath, /^Hồ sơ chứng nhận QCVN[49] 2026\//);
   }
 });
 

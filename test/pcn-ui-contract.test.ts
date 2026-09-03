@@ -38,7 +38,7 @@ test('PCN workspace exposes field filters and the preserved customer list', () =
   assert.match(source, /ProposalRegisterRow/);
   assert.match(workflow, /Quy chuẩn 4/);
   assert.match(workflow, /Quy chuẩn 9/);
-  assert.match(workflow, /Quy chuẩn 20/);
+  assert.doesNotMatch(workflow, /Quy chuẩn 20/);
   assert.match(source, /field\.name/);
   assert.match(source, /PcnDossierDetailView/);
   assert.match(source, /PcnPipelineBoard/);
@@ -148,7 +148,8 @@ test('PCN visual inspection resolves uploader usernames to display names', () =>
 
 test('PCN settings keeps template configuration in the single admin surface', () => {
   assert.match(pcnSettings, /Cài đặt PCN/);
-  assert.match(pcnSettings, /Khung checklist theo QC4\/QC9\/QC20/);
+  assert.match(pcnSettings, /Khung checklist theo QC4\/QC9/);
+  assert.doesNotMatch(pcnSettings, /QC20/);
   assert.match(pcnSettings, /getPcnDossierTemplateProfiles/);
   assert.match(pcnSettings, /stationGroups/);
   assert.doesNotMatch(pcnSettings, /PcnTemplateManagementView/);

@@ -526,7 +526,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
       proposalId: proposal.id,
       customerSnapshot: { ...proposal.customerSnapshot },
       fieldCodes: proposal.fieldCodes,
-      method: proposal.fieldCodes.includes('QC20') ? 'METHOD_7' : 'METHOD_1',
+      method: 'METHOD_1',
       status: 'INTAKE_REVIEW',
       labRequestIds: [],
       returnedResultIds: [],

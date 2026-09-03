@@ -42,10 +42,10 @@ test('PCN roster mapping recognizes explicit PCN field codes without treating fr
     email: 'nguyen.tien.thanh.dt9k51@gmail.com',
     accountType: 'staff',
     position: 'Chuyên viên chứng nhận',
-    fieldAssignment: 'QC4, QC9, QC20',
+    fieldAssignment: 'QC4, QC9',
   });
 
-  assert.deepEqual(mapped.fieldCodes, ['QC4', 'QC9', 'QC20']);
+  assert.deepEqual(mapped.fieldCodes, ['QC4', 'QC9']);
   assert.equal(mapped.departmentRoleCode, 'CERTIFICATION_EXPERT');
 });
 

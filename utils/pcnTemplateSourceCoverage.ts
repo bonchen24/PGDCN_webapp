@@ -211,7 +211,7 @@ export function buildPcnTemplateSourceCoverage(
     if (row.status === 'NEEDS_ANNOTATION') fieldSummary.needsAnnotation += 1;
     if (row.status === 'READY_TO_APPLY') fieldSummary.readyToApply += 1;
     return result;
-  }, { ...emptyCounts(), byField: { QC4: emptyCounts(), QC9: emptyCounts(), QC20: emptyCounts() } });
+  }, { ...emptyCounts(), byField: { QC4: emptyCounts(), QC9: emptyCounts() } });
   return { rows, summary, readOnly: true };
 }
 

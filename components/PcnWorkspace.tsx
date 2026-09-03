@@ -42,7 +42,7 @@ import PcnSidebar, { PCN_SECTION_ICONS } from './PcnSidebar';
 import { usePcnStore } from '../store-pcn';
 import { usePcnSessionStore } from '../utils/pcnSessionState';
 import { clearPcnSession, getPcnSession } from '../utils/pcnAuthApi';
-import type { AppNotification, CertificationDossier, CertificationProposal, PcnDossierStatus, PcnCertificationField, PcnQc20ScopeSnapshot } from '../types';
+import type { AppNotification, CertificationDossier, CertificationProposal, PcnDossierStatus, PcnCertificationField } from '../types';
 import type { PcnProposalUpdateInput } from '../utils/pcnProposalApi';
 import { PcnIntakeApiError } from '../utils/pcnIntakeApi';
 import { formatPcnIntakeValidationIssues, indexPcnIntakeValidationIssues, validatePcnProposalIntake } from '../utils/pcnIntakePolicy';
@@ -285,20 +285,6 @@ function ProposalRegisterRow({ proposal, dossier, canEdit, onOpenDossier, onEdit
   );
 }
 
-type PcnQc20FormScope = {
-  productForm: string;
-  grade: string;
-  nominalDimensions: string;
-  hsCode: string;
-  appliedStandard: string;
-  lotDefinition: PcnQc20ScopeSnapshot['lotDefinition'] | '';
-  manufacturerLotCode: string;
-  importer: string;
-  countryOfOrigin: string;
-  chromiumMinPercent: string;
-  carbonMaxPercent: string;
-};
-
 type PcnProposalForm = {
   proposalCode: string;
   channel: CertificationProposal['channel'];
@@ -319,46 +305,7 @@ type PcnProposalForm = {
   manufacturerAddress: string;
   quantity: string;
   fieldCodes: string[];
-  qc20Scope: PcnQc20FormScope;
 };
-
-function emptyPcnQc20Scope(): PcnQc20FormScope {
-  return {
-    productForm: '',
-    grade: '',
-    nominalDimensions: '',
-    hsCode: '',
-    appliedStandard: '',
-    lotDefinition: '',
-    manufacturerLotCode: '',
-    importer: '',
-    countryOfOrigin: '',
-    chromiumMinPercent: '',
-    carbonMaxPercent: '',
-  };
-}
-
-function toPcnQc20Scope(scope: PcnQc20FormScope, active: boolean): PcnQc20ScopeSnapshot | undefined {
-  if (!active) return undefined;
-  const normalized: PcnQc20ScopeSnapshot = {};
-  for (const key of ['productForm', 'grade', 'nominalDimensions', 'hsCode', 'appliedStandard', 'manufacturerLotCode', 'importer', 'countryOfOrigin'] as const) {
-    const value = scope[key].trim();
-    if (value) normalized[key] = value;
-  }
-  if (scope.lotDefinition) normalized.lotDefinition = scope.lotDefinition;
-  const compositionRequirements: NonNullable<PcnQc20ScopeSnapshot['chemicalCompositionRequirements']> = [];
-  const chromiumMinPercent = scope.chromiumMinPercent.trim() ? Number(scope.chromiumMinPercent) : Number.NaN;
-  const carbonMaxPercent = scope.carbonMaxPercent.trim() ? Number(scope.carbonMaxPercent) : Number.NaN;
-  if (Number.isFinite(chromiumMinPercent)) compositionRequirements.push({ element: 'Cr', minPercent: chromiumMinPercent, source: 'Thông tin đối chiếu QC20' });
-  if (Number.isFinite(carbonMaxPercent)) compositionRequirements.push({ element: 'C', maxPercent: carbonMaxPercent, source: 'Thông tin đối chiếu QC20' });
-  if (compositionRequirements.length > 0) normalized.chemicalCompositionRequirements = compositionRequirements;
-  for (const [key, value] of [['chromiumMinPercent', scope.chromiumMinPercent], ['carbonMaxPercent', scope.carbonMaxPercent] ] as const) {
-    if (!value.trim()) continue;
-    const numeric = Number(value);
-    if (Number.isFinite(numeric)) normalized[key] = numeric;
-  }
-  return normalized;
-}
 
 function ProposalView({ fields, proposals, dossiers, customers, canEdit, initialDossierId, initialFieldCode, openFormRequest, onSave, onUpdateProposal, onOpenDossier }: { fields: PcnCertificationField[]; proposals: CertificationProposal[]; dossiers: CertificationDossier[]; customers: Array<{ name: string; address?: string; customerCode?: string; taxId?: string; phone?: string; email?: string; contactPerson?: string }>; canEdit: boolean; initialDossierId?: string; initialFieldCode?: string; openFormRequest?: number; onSave: (proposal: CertificationProposal) => Promise<void>; onUpdateProposal: (proposalId: string, updates: PcnProposalUpdateInput) => Promise<void>; onOpenDossier: (dossier: CertificationDossier) => void }) {
   const [openForm, setOpenForm] = useState(false);
@@ -371,7 +318,7 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
   const emptyForm = () => ({
     proposalCode: '', channel: 'DIRECT' as CertificationProposal['channel'], customerName: '', customerId: '', address: '', warehouseAddress: '',
     contactPerson: '', taxId: '', phone: '', email: '', productName: '', model: '', brand: '', productType: '', specifications: '',
-    manufacturer: '', manufacturerAddress: '', quantity: '1', fieldCodes: [], qc20Scope: emptyPcnQc20Scope(),
+    manufacturer: '', manufacturerAddress: '', quantity: '1', fieldCodes: [],
   });
   const [form, setForm] = useState<PcnProposalForm>(emptyForm());
   const codeReview = reviewPcnCodes(form.fieldCodes, form.proposalCode);
@@ -419,12 +366,6 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
       manufacturerAddress: proposal.manufacturerAddress || '',
       quantity: String(proposal.quantity || 1),
       fieldCodes: proposal.fieldCodes,
-      qc20Scope: {
-        ...emptyPcnQc20Scope(),
-        ...(proposal.qc20Scope || {}),
-        chromiumMinPercent: proposal.qc20Scope?.chromiumMinPercent === undefined ? '' : String(proposal.qc20Scope.chromiumMinPercent),
-        carbonMaxPercent: proposal.qc20Scope?.carbonMaxPercent === undefined ? '' : String(proposal.qc20Scope.carbonMaxPercent),
-      },
     });
     setOpenForm(true);
   };
@@ -467,7 +408,6 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
     event.preventDefault();
     if (saving) return;
     if (!canEdit) return;
-    const qc20Scope = toPcnQc20Scope(form.qc20Scope, form.fieldCodes.includes('QC20'));
     const intakeValidation = validatePcnProposalIntake({
       customerSnapshot: {
         name: form.customerName,
@@ -484,7 +424,6 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
       manufacturer: form.manufacturer,
       quantity: form.quantity,
       fieldCodes: form.fieldCodes,
-      qc20Scope,
     });
     if (!intakeValidation.valid) {
       setValidationErrors(indexPcnIntakeValidationIssues(intakeValidation.issues));
@@ -508,7 +447,6 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
           manufacturer: form.manufacturer.trim() || undefined,
           manufacturerAddress: form.manufacturerAddress.trim() || undefined,
           quantity: Number(form.quantity),
-          qc20Scope,
         });
         toast.success('Đã lưu thay đổi Đề nghị.');
       } else {
@@ -522,7 +460,6 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
           productName: form.productName.trim(), model: form.model.trim() || undefined, brand: form.brand.trim() || undefined,
           productType: form.productType.trim() || undefined, specifications: form.specifications.trim() || undefined,
           manufacturer: form.manufacturer.trim() || undefined, manufacturerAddress: form.manufacturerAddress.trim() || undefined, quantity: Math.max(1, Number(form.quantity) || 1), fieldCodes: form.fieldCodes,
-          ...(qc20Scope ? { qc20Scope } : {}),
           receivedAt: now, createdAt: now, updatedAt: now,
         };
         await onSave(proposal);
@@ -564,7 +501,7 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
   return (
     <div className="pcn-page-surface min-w-0 p-3 md:p-5 space-y-4 mobile-safe-bottom bg-slate-50/60">
       <div className="flex items-start justify-between gap-3"><div><h1 className="text-xl font-black text-slate-900">Quản lý Đề nghị</h1><p className="text-[11px] text-slate-500 mt-1">Mỗi thẻ là một Đề nghị và một bộ hồ sơ liên kết. PYC chỉ phát sinh khi cần kết nối phòng thử nghiệm khác.</p></div>{!openForm && canEdit && <button onClick={() => { reset(); setOpenForm(true); }} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white"><Plus size={14} /> Tạo Đề nghị</button>}</div>
-      {openForm && <form onSubmit={submit} className="rounded-xl border border-emerald-200 bg-white p-3 md:p-4 shadow-sm space-y-3"><div className="flex items-center justify-between"><div><h2 className="text-sm font-black text-slate-800">{editingProposal ? 'Sửa thông tin Đề nghị' : 'Thông tin Đề nghị / bộ hồ sơ'}</h2>{editingProposal && <p className="mt-1 text-[10px] text-amber-700">Chỉ sửa được ở giai đoạn đầu vào; mã Đề nghị và Lĩnh vực được giữ nguyên.</p>}</div><button type="button" onClick={() => { reset(); setOpenForm(false); }} disabled={saving} className="text-slate-400 hover:text-slate-700 disabled:opacity-40"><X size={16} /></button></div><PcnOcrPanel context="proposal" onApply={applyProposalOcr} disabled={saving} /><div className="grid md:grid-cols-3 gap-2"><Field label="Mã Đề nghị / mã đăng ký"><input value={form.proposalCode} disabled={Boolean(editingProposal)} onChange={(event) => setForm({ ...form, proposalCode: event.target.value })} placeholder="Ví dụ: 0665, 0109-01 hoặc IEMM 0105" />{codeReview.needsReview && <p role="status" className="mt-1 text-[9px] font-bold leading-4 text-amber-700">{codeReview.message}{codeReview.normalized ? ` Giá trị chuẩn hóa: ${codeReview.normalized}` : ''}</p>}</Field><Field label="Kênh tiếp nhận"><select value={form.channel} onChange={(event) => setForm({ ...form, channel: event.target.value as CertificationProposal['channel'] })}><option value="DIRECT">Trực tiếp</option><option value="EMAIL">Email</option><option value="ONLINE_ZALO">Online / Zalo</option><option value="OTHER">Khác</option></select></Field><Field label="Số lượng mẫu *" error={validationErrors.quantity}><input type="number" min="1" value={form.quantity} aria-invalid={Boolean(validationErrors.quantity)} onChange={(event) => setForm({ ...form, quantity: event.target.value })} /></Field></div><div className="grid md:grid-cols-2 gap-2"><Field label="Khách hàng *" error={validationErrors['customerSnapshot.name']}><PcnCatalogCombobox id="pcn-customer" label="Khách hàng *" hideLabel value={customerValue} options={customerOptions} unmatchedOption={legacyCustomerOption} onChange={handleCustomerSelection} required invalid={Boolean(validationErrors['customerSnapshot.name'])} aria-invalid={Boolean(validationErrors['customerSnapshot.name'])} disabled={saving} placeholder="Tìm mã hoặc tên khách hàng..." /></Field><Field label="Địa chỉ khách hàng *" error={validationErrors['customerSnapshot.address']}><input value={form.address} aria-invalid={Boolean(validationErrors['customerSnapshot.address'])} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="Tự điền từ Danh sách khách hàng" /></Field></div><div className="grid md:grid-cols-4 gap-2"><Field label="Người liên hệ hoặc Mã số thuế *" error={validationErrors['customerSnapshot.contactPerson']}><input value={form.contactPerson} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} onChange={(event) => setForm({ ...form, contactPerson: event.target.value })} /></Field><Field label="Mã số thuế"><input value={form.taxId} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} onChange={(event) => setForm({ ...form, taxId: event.target.value })} /></Field><Field label="Điện thoại"><input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></Field><Field label="Email"><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></Field></div><Field label="Địa chỉ/kho liên quan *" error={validationErrors.warehouseAddress}><input value={form.warehouseAddress} aria-invalid={Boolean(validationErrors.warehouseAddress)} onChange={(event) => setForm({ ...form, warehouseAddress: event.target.value })} placeholder="Nơi lấy/giao mẫu hoặc kho liên quan" /></Field><div className="grid md:grid-cols-4 gap-2"><Field label="Tên sản phẩm *" error={validationErrors.productName}><input value={form.productName} aria-invalid={Boolean(validationErrors.productName)} onChange={(event) => setForm({ ...form, productName: event.target.value })} /></Field><Field label="Kiểu/loại sản phẩm *" error={validationErrors.productType}><input value={form.productType} aria-invalid={Boolean(validationErrors.productType)} onChange={(event) => setForm({ ...form, productType: event.target.value })} /></Field><Field label="Model *" error={validationErrors.model}><input value={form.model} aria-invalid={Boolean(validationErrors.model)} onChange={(event) => setForm({ ...form, model: event.target.value })} /></Field><Field label="Nhãn hiệu *" error={validationErrors.brand}><input value={form.brand} aria-invalid={Boolean(validationErrors.brand)} onChange={(event) => setForm({ ...form, brand: event.target.value })} /></Field></div><div className="grid md:grid-cols-3 gap-2"><Field label="Nhà sản xuất *" error={validationErrors.manufacturer}><input value={form.manufacturer} onChange={(event) => setForm({ ...form, manufacturer: event.target.value })} /></Field><Field label="Địa chỉ nhà sản xuất"><input value={form.manufacturerAddress} onChange={(event) => setForm({ ...form, manufacturerAddress: event.target.value })} /></Field><Field label="Thông số kỹ thuật / mô tả *" error={validationErrors.specifications}><textarea rows={2} value={form.specifications} aria-invalid={Boolean(validationErrors.specifications)} onChange={(event) => setForm({ ...form, specifications: event.target.value })} /></Field></div><div><div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Lĩnh vực *</div><div className="flex flex-wrap gap-2">{fields.map((field) => <label key={field.code} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold cursor-pointer ${form.fieldCodes.includes(field.code) ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}><input type="checkbox" checked={form.fieldCodes.includes(field.code)} aria-invalid={Boolean(validationErrors.fieldCodes)} disabled={Boolean(editingProposal)} onChange={(event) => setForm({ ...form, fieldCodes: event.target.checked ? [...form.fieldCodes, field.code] : form.fieldCodes.filter((code) => code !== field.code) })} />{field.name}{field.scopeStatus === 'NEEDS_PCN_CONFIRMATION' && <span className="rounded bg-amber-50 px-1 py-0.5 text-[8px] font-black text-amber-700">xác nhận phạm vi</span>}</label>)}</div>{validationErrors.fieldCodes && <p role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{validationErrors.fieldCodes}</p>}</div>{form.fieldCodes.includes('QC20') && <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3"><div className="text-[10px] font-black text-amber-900">Phạm vi QC20 / nhận diện lô</div><p className="mt-1 text-[9px] leading-4 text-amber-800">Nhập theo hồ sơ thực tế; các ngưỡng Cr/C chỉ là dữ liệu đối chiếu, không thay thế kết luận đánh giá phạm vi.</p><div className="mt-2 grid gap-2 md:grid-cols-3"><Field label="Dạng sản phẩm *" error={validationErrors['qc20Scope.productForm']}><input value={form.qc20Scope.productForm} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, productForm: event.target.value } })} /></Field><Field label="Mác thép *" error={validationErrors['qc20Scope.grade']}><input value={form.qc20Scope.grade} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, grade: event.target.value } })} /></Field><Field label="Kích thước danh nghĩa *" error={validationErrors['qc20Scope.nominalDimensions']}><input value={form.qc20Scope.nominalDimensions} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, nominalDimensions: event.target.value } })} /></Field><Field label="Mã HS *" error={validationErrors['qc20Scope.hsCode']}><input value={form.qc20Scope.hsCode} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, hsCode: event.target.value } })} /></Field><Field label="Tiêu chuẩn áp dụng *" error={validationErrors['qc20Scope.appliedStandard']}><input value={form.qc20Scope.appliedStandard} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, appliedStandard: event.target.value } })} placeholder="TCVN / ASTM / tiêu chuẩn áp dụng" /></Field><Field label="Cách xác định lô *" error={validationErrors['qc20Scope.lotDefinition']}><select value={form.qc20Scope.lotDefinition} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, lotDefinition: event.target.value as PcnProposalForm['qc20Scope']['lotDefinition'] } })}><option value="">Chọn cách xác định lô</option><option value="PRODUCT_LOT">Lô sản phẩm</option><option value="SHIPMENT_LOT">Lô hàng hóa</option></select></Field><Field label="Số lô nhà sản xuất / lô hàng"><input value={form.qc20Scope.manufacturerLotCode} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, manufacturerLotCode: event.target.value } })} /></Field><Field label="Nhà nhập khẩu"><input value={form.qc20Scope.importer} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, importer: event.target.value } })} /></Field><Field label="Nước xuất xứ"><input value={form.qc20Scope.countryOfOrigin} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, countryOfOrigin: event.target.value } })} /></Field><Field label="Cr tối thiểu (%)"><input type="number" min="0" max="100" step="0.01" value={form.qc20Scope.chromiumMinPercent} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, chromiumMinPercent: event.target.value } })} /></Field><Field label="C tối đa (%)"><input type="number" min="0" max="100" step="0.01" value={form.qc20Scope.carbonMaxPercent} onChange={(event) => setForm({ ...form, qc20Scope: { ...form.qc20Scope, carbonMaxPercent: event.target.value } })} /></Field></div></div>}<div className="flex justify-end gap-2"><button type="button" onClick={() => { reset(); setOpenForm(false); }} disabled={saving} className="rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-600 disabled:opacity-40">Hủy</button><button type="submit" disabled={saving} aria-busy={saving} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : editingProposal ? 'Lưu thay đổi' : 'Tạo Đề nghị & bộ hồ sơ'}</button></div></form>}
+      {openForm && <form onSubmit={submit} className="rounded-xl border border-emerald-200 bg-white p-3 md:p-4 shadow-sm space-y-3"><div className="flex items-center justify-between"><div><h2 className="text-sm font-black text-slate-800">{editingProposal ? 'Sửa thông tin Đề nghị' : 'Thông tin Đề nghị / bộ hồ sơ'}</h2>{editingProposal && <p className="mt-1 text-[10px] text-amber-700">Chỉ sửa được ở giai đoạn đầu vào; mã Đề nghị và Lĩnh vực được giữ nguyên.</p>}</div><button type="button" onClick={() => { reset(); setOpenForm(false); }} disabled={saving} className="text-slate-400 hover:text-slate-700 disabled:opacity-40"><X size={16} /></button></div><PcnOcrPanel context="proposal" onApply={applyProposalOcr} disabled={saving} /><div className="grid md:grid-cols-3 gap-2"><Field label="Mã Đề nghị / mã đăng ký"><input value={form.proposalCode} disabled={Boolean(editingProposal)} onChange={(event) => setForm({ ...form, proposalCode: event.target.value })} placeholder="Ví dụ: 0665, 0109-01 hoặc IEMM 0105" />{codeReview.needsReview && <p role="status" className="mt-1 text-[9px] font-bold leading-4 text-amber-700">{codeReview.message}{codeReview.normalized ? ` Giá trị chuẩn hóa: ${codeReview.normalized}` : ''}</p>}</Field><Field label="Kênh tiếp nhận"><select value={form.channel} onChange={(event) => setForm({ ...form, channel: event.target.value as CertificationProposal['channel'] })}><option value="DIRECT">Trực tiếp</option><option value="EMAIL">Email</option><option value="ONLINE_ZALO">Online / Zalo</option><option value="OTHER">Khác</option></select></Field><Field label="Số lượng mẫu *" error={validationErrors.quantity}><input type="number" min="1" value={form.quantity} aria-invalid={Boolean(validationErrors.quantity)} onChange={(event) => setForm({ ...form, quantity: event.target.value })} /></Field></div><div className="grid md:grid-cols-2 gap-2"><Field label="Khách hàng *" error={validationErrors['customerSnapshot.name']}><PcnCatalogCombobox id="pcn-customer" label="Khách hàng *" hideLabel value={customerValue} options={customerOptions} unmatchedOption={legacyCustomerOption} onChange={handleCustomerSelection} required invalid={Boolean(validationErrors['customerSnapshot.name'])} aria-invalid={Boolean(validationErrors['customerSnapshot.name'])} disabled={saving} placeholder="Tìm mã hoặc tên khách hàng..." /></Field><Field label="Địa chỉ khách hàng *" error={validationErrors['customerSnapshot.address']}><input value={form.address} aria-invalid={Boolean(validationErrors['customerSnapshot.address'])} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="Tự điền từ Danh sách khách hàng" /></Field></div><div className="grid md:grid-cols-4 gap-2"><Field label="Người liên hệ hoặc Mã số thuế *" error={validationErrors['customerSnapshot.contactPerson']}><input value={form.contactPerson} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} onChange={(event) => setForm({ ...form, contactPerson: event.target.value })} /></Field><Field label="Mã số thuế"><input value={form.taxId} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} onChange={(event) => setForm({ ...form, taxId: event.target.value })} /></Field><Field label="Điện thoại"><input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></Field><Field label="Email"><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></Field></div><Field label="Địa chỉ/kho liên quan *" error={validationErrors.warehouseAddress}><input value={form.warehouseAddress} aria-invalid={Boolean(validationErrors.warehouseAddress)} onChange={(event) => setForm({ ...form, warehouseAddress: event.target.value })} placeholder="Nơi lấy/giao mẫu hoặc kho liên quan" /></Field><div className="grid md:grid-cols-4 gap-2"><Field label="Tên sản phẩm *" error={validationErrors.productName}><input value={form.productName} aria-invalid={Boolean(validationErrors.productName)} onChange={(event) => setForm({ ...form, productName: event.target.value })} /></Field><Field label="Kiểu/loại sản phẩm *" error={validationErrors.productType}><input value={form.productType} aria-invalid={Boolean(validationErrors.productType)} onChange={(event) => setForm({ ...form, productType: event.target.value })} /></Field><Field label="Model *" error={validationErrors.model}><input value={form.model} aria-invalid={Boolean(validationErrors.model)} onChange={(event) => setForm({ ...form, model: event.target.value })} /></Field><Field label="Nhãn hiệu *" error={validationErrors.brand}><input value={form.brand} aria-invalid={Boolean(validationErrors.brand)} onChange={(event) => setForm({ ...form, brand: event.target.value })} /></Field></div><div className="grid md:grid-cols-3 gap-2"><Field label="Nhà sản xuất *" error={validationErrors.manufacturer}><input value={form.manufacturer} onChange={(event) => setForm({ ...form, manufacturer: event.target.value })} /></Field><Field label="Địa chỉ nhà sản xuất"><input value={form.manufacturerAddress} onChange={(event) => setForm({ ...form, manufacturerAddress: event.target.value })} /></Field><Field label="Thông số kỹ thuật / mô tả *" error={validationErrors.specifications}><textarea rows={2} value={form.specifications} aria-invalid={Boolean(validationErrors.specifications)} onChange={(event) => setForm({ ...form, specifications: event.target.value })} /></Field></div><div><div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Lĩnh vực *</div><div className="flex flex-wrap gap-2">{fields.map((field) => <label key={field.code} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold cursor-pointer ${form.fieldCodes.includes(field.code) ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}><input type="checkbox" checked={form.fieldCodes.includes(field.code)} aria-invalid={Boolean(validationErrors.fieldCodes)} disabled={Boolean(editingProposal)} onChange={(event) => setForm({ ...form, fieldCodes: event.target.checked ? [...form.fieldCodes, field.code] : form.fieldCodes.filter((code) => code !== field.code) })} />{field.name}{field.scopeStatus === 'NEEDS_PCN_CONFIRMATION' && <span className="rounded bg-amber-50 px-1 py-0.5 text-[8px] font-black text-amber-700">xác nhận phạm vi</span>}</label>)}</div>{validationErrors.fieldCodes && <p role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{validationErrors.fieldCodes}</p>}</div><div className="flex justify-end gap-2"><button type="button" onClick={() => { reset(); setOpenForm(false); }} disabled={saving} className="rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-600 disabled:opacity-40">Hủy</button><button type="submit" disabled={saving} aria-busy={saving} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : editingProposal ? 'Lưu thay đổi' : 'Tạo Đề nghị & bộ hồ sơ'}</button></div></form>}
       <div className="grid gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-[minmax(0,1fr)_190px_170px_auto]">
         <label className="block"><span className="sr-only">Tìm Đề nghị</span><input aria-label="Tìm Đề nghị" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã, khách hàng, sản phẩm, model..." className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px] outline-none focus:border-emerald-400" /></label>
         <select aria-label="Lọc trạng thái hồ sơ" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as PcnDossierStatus | '')} className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="">Tất cả trạng thái</option>{Object.entries(statusLabels).map(([status, label]) => <option key={status} value={status}>{label}</option>)}</select>

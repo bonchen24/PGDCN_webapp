@@ -36,5 +36,5 @@ test('PCN runtime smoke command is registered and read-only for business data', 
 
 test('PCN runtime smoke checks the public application shell before authentication', () => {
   assert.match(scriptSource, /runCheck\(\s*'public app shell'[\s\S]{0,260}request\('\/'\)/);
-  assert.match(scriptSource, /Phòng Chứng nhận - TVCI/);
+  assert.match(scriptSource, /Phòng Giám định - Chứng nhận - TVCI/);
 });

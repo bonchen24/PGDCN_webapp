@@ -7,19 +7,13 @@ import type {
   PcnSampleLotStatus,
   PcnSampleRoute,
   PcnSampleRouteStatus,
-  PcnQc20LotDefinition,
 } from '../types.ts';
 import { PCN_SAMPLE_LAB_OPTIONS } from '../types.ts';
 import { getPcnTimestampDenial } from './pcnDossierDate.ts';
 
 const STANDARD_ELECTRICAL_LABS: readonly PcnSampleLabCode[] = ['PERFORMANCE', 'EMC', 'ELECTRICAL_SAFETY'];
-const STANDARD_QC20_LABS: readonly PcnSampleLabCode[] = ['CHEMICAL_ANALYSIS'];
 
-/**
- * Return the default route set for the selected fields. QC20 is a material
- * conformity profile, so it must not silently inherit the three electrical
- * testing-room routes used by QC4/QC9.
- */
+/** Return the default route set for the active PCN fields. */
 export function getPcnSampleLabCodesForFields(fieldCodes: readonly string[]): PcnSampleLabCode[] {
   const normalized = new Set(fieldCodes.map((code) => String(code || '').trim().toUpperCase()).filter(Boolean));
   const result: PcnSampleLabCode[] = [];
@@ -27,7 +21,6 @@ export function getPcnSampleLabCodesForFields(fieldCodes: readonly string[]): Pc
     for (const code of codes) if (!result.includes(code)) result.push(code);
   };
   if (normalized.has('QC4') || normalized.has('QC9')) append(STANDARD_ELECTRICAL_LABS);
-  if (normalized.has('QC20')) append(STANDARD_QC20_LABS);
   return result;
 }
 
@@ -44,12 +37,6 @@ export interface PcnSampleLotDraft {
   sampleItems?: PcnSampleItemDraft[];
   fieldCodes?: string[];
   labCodes: PcnSampleLabCode[];
-  qc20Snapshot?: {
-    grade?: string;
-    nominalDimensions?: string;
-    manufacturerLotCode?: string;
-    lotDefinition?: PcnQc20LotDefinition;
-  };
   receivedAt?: string;
   notes?: string;
 }
@@ -292,14 +279,6 @@ export function buildPcnSampleLot(
   if (unsupportedLabCodes.length > 0) {
     throw new Error(`Tuyến phòng thử không phù hợp với Lĩnh vực: ${unsupportedLabCodes.join(', ')}`);
   }
-  if (fieldCodes.includes('QC20')) {
-    const qc20Snapshot = draft.qc20Snapshot;
-    if (!String(qc20Snapshot?.grade || '').trim()) throw new Error('Lô QC20 phải có mác thép đã xác nhận');
-    if (!String(qc20Snapshot?.nominalDimensions || '').trim()) throw new Error('Lô QC20 phải có kích thước danh nghĩa');
-    if (!String(qc20Snapshot?.manufacturerLotCode || '').trim()) throw new Error('Lô QC20 phải có số lô nhà sản xuất hoặc lô hàng');
-    const lotDefinition = String(qc20Snapshot?.lotDefinition || '').trim().toUpperCase();
-    if (!['PRODUCT_LOT', 'SHIPMENT_LOT'].includes(lotDefinition)) throw new Error('Lô QC20 phải xác định là lô sản phẩm hoặc lô hàng hóa');
-  }
   const receivedAtDenial = getPcnTimestampDenial('Thời điểm tiếp nhận lô mẫu', receivedAt);
   if (receivedAtDenial) throw new Error(receivedAtDenial);
   const routeIds = assignedLabCodes.map((code) => `${draft.id}-${code.toLowerCase()}`);
@@ -320,14 +299,6 @@ export function buildPcnSampleLot(
   for (const [key, value] of Object.entries({ model: items.length === 1 ? items[0].model : undefined, brand: items.length === 1 ? items[0].brand : undefined, unit: items.length === 1 ? items[0].unit : undefined, receivedAt, notes: draft.notes })) {
     const normalized = String(value || '').trim();
     if (normalized) Object.assign(lot, { [key]: normalized });
-  }
-  if (fieldCodes.includes('QC20') && draft.qc20Snapshot) {
-    lot.qc20Snapshot = {
-      grade: String(draft.qc20Snapshot.grade || '').trim(),
-      nominalDimensions: String(draft.qc20Snapshot.nominalDimensions || '').trim(),
-      manufacturerLotCode: String(draft.qc20Snapshot.manufacturerLotCode || '').trim(),
-      lotDefinition: String(draft.qc20Snapshot.lotDefinition || '').trim().toUpperCase() as PcnQc20LotDefinition,
-    };
   }
   const routes: PcnSampleRoute[] = assignedLabCodes.map((labCode, index) => ({
     id: routeIds[index],

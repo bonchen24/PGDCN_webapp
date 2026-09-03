@@ -1,8 +1,6 @@
 import type { PcnCertificationFieldCode, PcnOcrProvider, PcnSampleLabCode, PcnSettings } from '../types.ts';
-import { DEFAULT_PCN_QC20_SCOPE_CONFIGURATION, normalizePcnQc20ScopeConfiguration } from './pcnQc20ScopeGovernance.ts';
-
-const FIELD_CODES: PcnCertificationFieldCode[] = ['QC4', 'QC9', 'QC20'];
-const LAB_CODES: PcnSampleLabCode[] = ['PERFORMANCE', 'EMC', 'ELECTRICAL_SAFETY', 'CHEMICAL_ANALYSIS'];
+const FIELD_CODES: PcnCertificationFieldCode[] = ['QC4', 'QC9'];
+const LAB_CODES: PcnSampleLabCode[] = ['PERFORMANCE', 'EMC', 'ELECTRICAL_SAFETY'];
 
 export const DEFAULT_PCN_SETTINGS: PcnSettings = {
   id: 'pcn-settings',
@@ -10,7 +8,6 @@ export const DEFAULT_PCN_SETTINGS: PcnSettings = {
   labRoutes: {
     QC4: ['PERFORMANCE', 'EMC', 'ELECTRICAL_SAFETY'],
     QC9: ['PERFORMANCE', 'EMC', 'ELECTRICAL_SAFETY'],
-    QC20: ['CHEMICAL_ANALYSIS'],
   },
   checklist: {
     requireFilesBeforeAdvance: true,
@@ -30,7 +27,6 @@ export const DEFAULT_PCN_SETTINGS: PcnSettings = {
     bucket: 'pcn-files',
     privateOnly: true,
   },
-  qc20ScopeConfiguration: { ...DEFAULT_PCN_QC20_SCOPE_CONFIGURATION },
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -93,7 +89,6 @@ export function normalizePcnSettings(value: unknown): PcnSettings {
       bucket: cleanString(storage.bucket, DEFAULT_PCN_SETTINGS.storage.bucket),
       privateOnly: true,
     },
-    qc20ScopeConfiguration: normalizePcnQc20ScopeConfiguration(input.qc20ScopeConfiguration),
     ...(typeof input.updatedAt === 'string' ? { updatedAt: input.updatedAt } : {}),
     ...(typeof input.updatedBy === 'string' ? { updatedBy: input.updatedBy } : {}),
   };

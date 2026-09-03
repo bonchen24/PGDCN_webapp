@@ -2,6 +2,8 @@
 // OS support: Web/Node
 // Description: Shared validation policy for the PCN certification-proposal intake boundary
 
+import { PCN_CERTIFICATION_FIELD_CODES } from '../types.ts';
+
 export interface PcnIntakeValidationIssue {
   field: string;
   message: string;
@@ -61,12 +63,13 @@ export function validatePcnProposalIntake(input: unknown): PcnIntakeValidationRe
     if (fieldCodes.some((value) => !value)) {
       issues.push({ field: 'fieldCodes', message: 'Mã Lĩnh vực không được để trống.' });
     }
+    if (fieldCodes.some((value) => !PCN_CERTIFICATION_FIELD_CODES.includes(value as typeof PCN_CERTIFICATION_FIELD_CODES[number]))) {
+      issues.push({ field: 'fieldCodes', message: 'PCN chỉ hỗ trợ lĩnh vực QC4 hoặc QC9; hồ sơ thép không gỉ thuộc PGD.' });
+    }
     if (new Set(fieldCodes).size !== fieldCodes.length) {
       issues.push({ field: 'fieldCodes', message: 'Mỗi Lĩnh vực chỉ được chọn một lần.' });
     }
   }
-
-  validateQc20Scope(proposal, issues);
 
   return { valid: issues.length === 0, issues };
 }
@@ -82,27 +85,4 @@ export function indexPcnIntakeValidationIssues(issues: PcnIntakeValidationIssue[
   }, {});
 }
 
-function validateQc20Scope(proposal: Record<string, unknown>, issues: PcnIntakeValidationIssue[]): void {
-  const fieldCodes = Array.isArray(proposal.fieldCodes)
-    ? proposal.fieldCodes.map((value) => text(value).toUpperCase()).filter(Boolean)
-    : [];
-  if (!fieldCodes.includes('QC20')) return;
-
-  const scope = isRecord(proposal.qc20Scope) ? proposal.qc20Scope : {};
-  const requiredFields: Array<[string, string]> = [
-    ['productForm', 'Dạng sản phẩm QC20 là bắt buộc.'],
-    ['grade', 'Mác thép QC20 là bắt buộc.'],
-    ['nominalDimensions', 'Kích thước danh nghĩa QC20 là bắt buộc.'],
-    ['hsCode', 'Mã HS QC20 là bắt buộc.'],
-    ['appliedStandard', 'Tiêu chuẩn áp dụng QC20 là bắt buộc.'],
-    ['lotDefinition', 'Phải xác định QC20 theo lô sản phẩm hoặc lô hàng hóa.'],
-  ];
-  for (const [field, message] of requiredFields) {
-    addRequiredIssue(issues, scope[field], `qc20Scope.${field}`, message);
-  }
-  if (text(scope.lotDefinition) && !['PRODUCT_LOT', 'SHIPMENT_LOT'].includes(text(scope.lotDefinition).toUpperCase())) {
-    issues.push({ field: 'qc20Scope.lotDefinition', message: 'Cách xác định lô QC20 không hợp lệ.' });
-  }
-}
-
-// --- End of pcnIntakePolicy.ts ---
+// --- End of utils/pcnIntakePolicy.ts ---

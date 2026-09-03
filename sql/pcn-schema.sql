@@ -142,8 +142,7 @@ CREATE TABLE IF NOT EXISTS file_assets (
 INSERT INTO app_documents (collection_name, document_id, data, updated_at)
 VALUES
     ('pcnCertificationFields', 'QC4', '{"code":"QC4","name":"Quy chuẩn 4","standardRefs":["QCVN 4:2009/BKHCN"],"active":true}'::jsonb, CURRENT_TIMESTAMP),
-    ('pcnCertificationFields', 'QC9', '{"code":"QC9","name":"Quy chuẩn 9","standardRefs":["QCVN 9","TCVN 7492-1:2018"],"active":true}'::jsonb, CURRENT_TIMESTAMP),
-    ('pcnCertificationFields', 'QC20', '{"code":"QC20","name":"Quy chuẩn 20","standardRefs":["QCVN 20:2019/BKHCN","Sửa đổi 1:2021 QCVN 20:2019/BKHCN"],"method":"METHOD_7","methodLabel":"Phương thức 7","scopeStatus":"NEEDS_PCN_CONFIRMATION","active":true}'::jsonb, CURRENT_TIMESTAMP)
+    ('pcnCertificationFields', 'QC9', '{"code":"QC9","name":"Quy chuẩn 9","standardRefs":["QCVN 9","TCVN 7492-1:2018"],"active":true}'::jsonb, CURRENT_TIMESTAMP)
 ON CONFLICT (collection_name, document_id) DO NOTHING;
 
 -- One safe, non-secret settings snapshot is seeded for a fresh PCN database.
@@ -153,7 +152,7 @@ INSERT INTO app_documents (collection_name, document_id, data, updated_at)
 VALUES (
     'systemConfig',
     'pcn-settings',
-    '{"id":"pcn-settings","fieldCodes":["QC4","QC9","QC20"],"labRoutes":{"QC4":["PERFORMANCE","EMC","ELECTRICAL_SAFETY"],"QC9":["PERFORMANCE","EMC","ELECTRICAL_SAFETY"],"QC20":["CHEMICAL_ANALYSIS"]},"checklist":{"requireFilesBeforeAdvance":true,"showCompletenessToManagers":true},"coding":{"proposalPrefix":"DN","dossierPrefix":"HS","sampleLotPrefix":"M"},"ocr":{"enabled":true,"provider":"PADDLEOCR","confidenceThreshold":0.75},"storage":{"bucket":"pcn-files","privateOnly":true}}'::jsonb,
+    '{"id":"pcn-settings","fieldCodes":["QC4","QC9"],"labRoutes":{"QC4":["PERFORMANCE","EMC","ELECTRICAL_SAFETY"],"QC9":["PERFORMANCE","EMC","ELECTRICAL_SAFETY"]},"checklist":{"requireFilesBeforeAdvance":true,"showCompletenessToManagers":true},"coding":{"proposalPrefix":"DN","dossierPrefix":"HS","sampleLotPrefix":"M"},"ocr":{"enabled":true,"provider":"PADDLEOCR","confidenceThreshold":0.75},"storage":{"bucket":"pcn-files","privateOnly":true}}'::jsonb,
     CURRENT_TIMESTAMP
 )
 ON CONFLICT (collection_name, document_id) DO NOTHING;
@@ -236,50 +235,14 @@ SET data = CASE
 END,
 updated_at = app_documents.updated_at;
 
--- QC20 starts with the common PCN dossier checklist. Its product scope and
--- official templates are intentionally confirmed through PCN configuration.
-INSERT INTO app_documents (collection_name, document_id, data, updated_at)
-SELECT
-    'pcnDocumentRequirements',
-    item->>'id',
-    item - 'id',
-    CURRENT_TIMESTAMP
-FROM jsonb_array_elements('[
-  {"id":"QC20-PROPOSAL","fieldCode":"QC20","code":"PROPOSAL","name":"Đề nghị / đơn đăng ký","stages":["INTAKE"],"stationKeys":["INTAKE","DOCUMENTS"],"required":true,"active":true,"sortOrder":10},
-  {"id":"QC20-COMMERCIAL","fieldCode":"QC20","code":"COMMERCIAL","name":"Hồ sơ thương mại và chứng từ hải quan","stages":["INTAKE"],"stationKeys":["INTAKE","DOCUMENTS"],"required":true,"active":true,"sortOrder":20},
-  {"id":"QC20-SCOPE_EVIDENCE","fieldCode":"QC20","code":"SCOPE_EVIDENCE","name":"Hồ sơ phạm vi, mã HS và tiêu chuẩn áp dụng","stages":["INTAKE"],"stationKeys":["INTAKE","DOCUMENTS"],"required":true,"active":true,"sortOrder":22},
-  {"id":"QC20-LOT_IDENTITY","fieldCode":"QC20","code":"LOT_IDENTITY","name":"Bằng chứng mác, kích thước và xác định lô","stages":["INTAKE"],"stationKeys":["INTAKE","DOCUMENTS"],"required":true,"active":true,"sortOrder":23},
-  {"id":"QC20-ASSIGNMENT_FORM","fieldCode":"QC20","code":"ASSIGNMENT_FORM","name":"Phiếu phân công chứng nhận","stages":["INTAKE"],"stationKeys":["ASSIGNMENT"],"required":true,"active":true,"sortOrder":25},
-  {"id":"QC20-EVALUATION_PLAN","fieldCode":"QC20","code":"EVALUATION_PLAN","name":"Kế hoạch đánh giá CNSP","stages":["INTAKE"],"stationKeys":["EVALUATION"],"required":true,"active":true,"sortOrder":26},
-  {"id":"QC20-FIELD_INSPECTION","fieldCode":"QC20","code":"FIELD_INSPECTION","name":"Biên bản kiểm tra tại hiện trường","stages":["INTAKE"],"stationKeys":["EVALUATION"],"required":true,"active":true,"sortOrder":27},
-  {"id":"QC20-LAB_REQUEST","fieldCode":"QC20","code":"LAB_REQUEST","name":"PYC gửi phòng thử nghiệm","stages":["LAB_ROUTING"],"stationKeys":["SAMPLING_LAB"],"required":true,"active":true,"sortOrder":30},
-  {"id":"QC20-SAMPLE_CODING","fieldCode":"QC20","code":"SAMPLE_CODING","name":"Biên bản mã hóa mẫu theo lô","stages":["LAB_ROUTING"],"stationKeys":["SAMPLING_LAB"],"required":true,"active":true,"sortOrder":35},
-  {"id":"QC20-SAMPLE_HANDOVER","fieldCode":"QC20","code":"SAMPLE_HANDOVER","name":"Biên bản lấy / giao mẫu","stages":["LAB_ROUTING"],"stationKeys":["SAMPLING_LAB"],"required":true,"active":true,"sortOrder":40},
-  {"id":"QC20-SAMPLE_RETURN","fieldCode":"QC20","code":"SAMPLE_RETURN","name":"Biên bản trả mẫu","stages":["LAB_ROUTING"],"stationKeys":["SAMPLING_LAB"],"required":false,"active":true,"sortOrder":50},
-  {"id":"QC20-TEST_REPORT","fieldCode":"QC20","code":"TEST_REPORT","name":"Báo cáo / KQTN","stages":["TECHNICAL_REVIEW"],"stationKeys":["RESULTS","TECHNICAL_REVIEW"],"required":true,"active":true,"sortOrder":60},
-  {"id":"QC20-CERTIFICATION_RESULT","fieldCode":"QC20","code":"CERTIFICATION_RESULT","name":"Kết quả chứng nhận / phụ lục","stages":["TECHNICAL_REVIEW"],"stationKeys":["TECHNICAL_REVIEW"],"required":true,"active":true,"sortOrder":70},
-  {"id":"QC20-CORRECTIVE_ACTION_LETTER","fieldCode":"QC20","code":"CORRECTIVE_ACTION_LETTER","name":"Công văn khắc phục","stages":["TECHNICAL_REVIEW"],"stationKeys":["CORRECTION"],"required":false,"active":true,"sortOrder":80},
-  {"id":"QC20-CERTIFICATE","fieldCode":"QC20","code":"CERTIFICATE","name":"Giấy chứng nhận","stages":["ISSUANCE"],"stationKeys":["APPROVAL","ISSUANCE"],"required":true,"active":true,"sortOrder":90},
-  {"id":"QC20-DECISION","fieldCode":"QC20","code":"DECISION","name":"Quyết định","stages":["ISSUANCE"],"stationKeys":["APPROVAL","ISSUANCE"],"required":true,"active":true,"sortOrder":100},
-  {"id":"QC20-CLIENT_PACKAGE","fieldCode":"QC20","code":"CLIENT_PACKAGE","name":"Hồ sơ gửi khách hàng","stages":["DELIVERY"],"stationKeys":["DELIVERY_ARCHIVE"],"required":true,"active":true,"sortOrder":110},
-  {"id":"QC20-ARCHIVE_SCAN","fieldCode":"QC20","code":"ARCHIVE_SCAN","name":"Bản scan lưu hồ sơ","stages":["ARCHIVE"],"stationKeys":["DELIVERY_ARCHIVE"],"required":true,"active":true,"sortOrder":120}
-]'::jsonb) AS item
-ON CONFLICT (collection_name, document_id) DO UPDATE
-SET data = CASE
-  WHEN app_documents.data ? 'stationKeys' THEN app_documents.data
-  WHEN EXCLUDED.data ? 'stationKeys' THEN app_documents.data || jsonb_build_object('stationKeys', EXCLUDED.data->'stationKeys')
-  ELSE app_documents.data
-END,
-updated_at = app_documents.updated_at;
-
--- PGD owns an independent catalog and result-template snapshots. QC20 is
--- intentionally absent here; it remains a PCN certification field only.
+-- PGD owns an independent catalog and result-template snapshots for
+-- stainless-steel inspection. PCN has no stainless-steel field.
 INSERT INTO app_documents (collection_name, document_id, data, updated_at)
 VALUES
-    ('pgdCatalog', 'STEEL_LOT_INSPECTION', '{"id":"STEEL_LOT_INSPECTION","domain":"pgd","code":"GĐ-THEP-LO","name":"Giám định lô thép và vật liệu kim loại","productGroup":"STEEL_METAL","inspectionTypes":["VISUAL_DIMENSIONAL","QUANTITY_WEIGHT","CHEMICAL","MECHANICAL"],"defaultStandards":["JIS","ASTM","GB/T"],"slaLabel":"5–7 ngày","active":true}'::jsonb, CURRENT_TIMESTAMP),
-    ('pgdCatalog', 'MACHINERY_LINE_INSPECTION', '{"id":"MACHINERY_LINE_INSPECTION","domain":"pgd","code":"GĐ-MAY-01","name":"Giám định máy móc và dây chuyền","productGroup":"MACHINERY_LINE","inspectionTypes":["VISUAL_DIMENSIONAL","MECHANICAL","FIELD_ASSESSMENT"],"defaultStandards":["Hồ sơ kỹ thuật","Tiêu chuẩn hợp đồng"],"slaLabel":"3–5 ngày","active":true}'::jsonb, CURRENT_TIMESTAMP),
-    ('pgdCatalog', 'COAL_LOT_INSPECTION', '{"id":"COAL_LOT_INSPECTION","domain":"pgd","code":"GĐ-THAN-01","name":"Giám định lô than","productGroup":"COAL","inspectionTypes":["VISUAL_DIMENSIONAL","QUANTITY_WEIGHT","CHEMICAL"],"defaultStandards":["TCVN 8910","Tiêu chuẩn hợp đồng"],"slaLabel":"Theo kế hoạch","active":true}'::jsonb, CURRENT_TIMESTAMP),
-    ('pgdResultTemplates', 'pgd-template-steel-v1', '{"id":"pgd-template-steel-v1","domain":"pgd","catalogId":"STEEL_LOT_INSPECTION","code":"PGD-THEP-01","name":"Biên bản và chứng thư giám định lô thép","version":"1","productGroup":"STEEL_METAL","active":true,"fields":[{"key":"conformityConclusion","label":"Kết luận giám định","type":"TEXT","required":true},{"key":"quantityVerified","label":"Khối lượng / số lượng xác nhận","type":"NUMBER","required":true},{"key":"standardReference","label":"Tiêu chuẩn áp dụng","type":"TEXT","required":true}]}'::jsonb, CURRENT_TIMESTAMP),
+    ('pgdCatalog', 'STEEL_LOT_INSPECTION', '{"id":"STEEL_LOT_INSPECTION","domain":"pgd","code":"GĐ-THEP-KG","name":"Giám định thép không gỉ","productGroup":"STEEL_METAL","inspectionTypes":["VISUAL_DIMENSIONAL","QUANTITY_WEIGHT","CHEMICAL","MECHANICAL"],"methodOptions":[{"code":"TT58","name":"Thông tư 58 - giám định thép"},{"code":"QT-GĐ-02","name":"Giám định số lượng"},{"code":"QT-GĐ-03","name":"Giám định khối lượng qua cân"},{"code":"QT-GĐ-04","name":"Giám định quy cách / phẩm chất hàng hóa"},{"code":"QT-GĐ-06","name":"Giám định xuất xứ"},{"code":"QT-GĐ-10","name":"Giám định vật liệu kim loại"},{"code":"QT-GĐ-14","name":"Giám định chất lượng thép theo TTLT 58/2015"}],"defaultStandards":["QCVN 20:2019/BKHCN","Sửa đổi 1:2021 QCVN 20:2019/BKHCN","JIS","ASTM","GB/T"],"slaLabel":"5–7 ngày","active":true}'::jsonb, CURRENT_TIMESTAMP),
+    ('pgdCatalog', 'MACHINERY_LINE_INSPECTION', '{"id":"MACHINERY_LINE_INSPECTION","domain":"pgd","code":"GĐ-MAY-01","name":"Giám định máy móc và dây chuyền","productGroup":"MACHINERY_LINE","inspectionTypes":["VISUAL_DIMENSIONAL","MECHANICAL","FIELD_ASSESSMENT"],"methodOptions":[{"code":"QT-GĐ-04","name":"Giám định quy cách / phẩm chất hàng hóa"},{"code":"QT-GĐ-05","name":"Giám định tình trạng"},{"code":"QT-GĐ-06","name":"Giám định xuất xứ"},{"code":"QT-GĐ-07","name":"Giám định tình trạng máy móc đã qua sử dụng"},{"code":"QT-GĐ-09","name":"Giám định máy móc thiết bị"},{"code":"QT-GĐ-12","name":"Giám định tính đồng bộ dây chuyền / máy móc"}],"defaultStandards":["Hồ sơ kỹ thuật","Tiêu chuẩn hợp đồng"],"slaLabel":"3–5 ngày","active":true}'::jsonb, CURRENT_TIMESTAMP),
+    ('pgdCatalog', 'COAL_LOT_INSPECTION', '{"id":"COAL_LOT_INSPECTION","domain":"pgd","code":"GĐ-THAN-01","name":"Giám định lô than","productGroup":"COAL","inspectionTypes":["VISUAL_DIMENSIONAL","QUANTITY_WEIGHT","CHEMICAL"],"methodOptions":[{"code":"QT-GĐ-02","name":"Giám định số lượng"},{"code":"QT-GĐ-03","name":"Giám định khối lượng qua cân"},{"code":"QT-GĐ-04","name":"Giám định quy cách / phẩm chất hàng hóa"},{"code":"QT-GĐ-08","name":"Giám định than"}],"defaultStandards":["TCVN 8910","Tiêu chuẩn hợp đồng"],"slaLabel":"Theo kế hoạch","active":true}'::jsonb, CURRENT_TIMESTAMP),
+    ('pgdResultTemplates', 'pgd-template-steel-v1', '{"id":"pgd-template-steel-v1","domain":"pgd","catalogId":"STEEL_LOT_INSPECTION","code":"PGD-THEP-01","name":"Biên bản và chứng thư giám định thép không gỉ","version":"1","productGroup":"STEEL_METAL","active":true,"fields":[{"key":"productForm","label":"Dạng sản phẩm","type":"TEXT","required":true},{"key":"grade","label":"Mác thép","type":"TEXT","required":true},{"key":"dimensions","label":"Kích thước","type":"TEXT","required":true},{"key":"conformityConclusion","label":"Kết luận giám định","type":"TEXT","required":true},{"key":"quantityVerified","label":"Khối lượng / số lượng xác nhận","type":"NUMBER","required":true},{"key":"standardReference","label":"Tiêu chuẩn áp dụng","type":"TEXT","required":true}]}'::jsonb, CURRENT_TIMESTAMP),
     ('pgdResultTemplates', 'pgd-template-machinery-v1', '{"id":"pgd-template-machinery-v1","domain":"pgd","catalogId":"MACHINERY_LINE_INSPECTION","code":"PGD-MAY-01","name":"Biên bản và chứng thư giám định máy móc, dây chuyền","version":"1","productGroup":"MACHINERY_LINE","active":true,"fields":[{"key":"condition","label":"Tình trạng thiết bị","type":"TEXT","required":true},{"key":"serialNumbers","label":"Số serial / nhận dạng","type":"TEXT","required":true},{"key":"conformityConclusion","label":"Kết luận giám định","type":"TEXT","required":true}]}'::jsonb, CURRENT_TIMESTAMP),
     ('pgdResultTemplates', 'pgd-template-coal-v1', '{"id":"pgd-template-coal-v1","domain":"pgd","catalogId":"COAL_LOT_INSPECTION","code":"PGD-THAN-01","name":"Biên bản và chứng thư giám định lô than","version":"1","productGroup":"COAL","active":true,"fields":[{"key":"qualityParameters","label":"Thông số chất lượng","type":"TABLE","required":true},{"key":"quantityVerified","label":"Khối lượng / số lượng xác nhận","type":"NUMBER","required":true},{"key":"conformityConclusion","label":"Kết luận giám định","type":"TEXT","required":true}]}'::jsonb, CURRENT_TIMESTAMP)
 ON CONFLICT (collection_name, document_id) DO NOTHING;

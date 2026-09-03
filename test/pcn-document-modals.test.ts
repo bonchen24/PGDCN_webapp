@@ -91,7 +91,7 @@ test('PCN keeps template configuration in admin settings and excludes DDT templa
   assert.doesNotMatch(activeShell, /DocxSettingsModal|ReportGeneratorView|SettingsModal/);
   assert.match(settings, /QC4/);
   assert.match(settings, /QC9/);
-  assert.match(settings, /QC20/);
+  assert.doesNotMatch(settings, /QC20/);
   assert.match(settings, /template|biểu mẫu/i);
 });
 

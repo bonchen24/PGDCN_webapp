@@ -176,54 +176,6 @@ export const PCN_TEMPLATE_CATALOG: PcnTemplateDefinition[] = [
       sha256: '57c00e0ba5ee682cf863a8bc1b76b2ad2b2c481d09fce2b2c5b84df28f4917c8',
     },
   },
-  {
-    id: 'pcn-qc20-proposal-pending',
-    fieldCode: 'QC20',
-    documentKind: 'PROPOSAL',
-    displayName: 'Đề nghị QC20 — cấu hình chờ xác nhận',
-    sourceLabel: 'QC20 / chưa có bộ mẫu chính thức — cần Admin PCN xác nhận',
-    format: 'DOCX',
-    status: 'NEEDS_ANNOTATION',
-    placeholderKeys: [],
-    requiredPlaceholderKeys: ['loai_sp', 'ten_cong_ty', 'dia_chi_ct'],
-    sourceFingerprint: { sourceRelativePath: 'QC20/CHUA_CO_NGUON/PROPOSAL.docx', byteSize: 0 },
-  },
-  {
-    id: 'pcn-qc20-certificate-pending',
-    fieldCode: 'QC20',
-    documentKind: 'CERTIFICATE',
-    displayName: 'GCN QC20 — cấu hình chờ xác nhận',
-    sourceLabel: 'QC20 / chưa có bộ mẫu chính thức — cần Admin PCN xác nhận',
-    format: 'DOCX',
-    status: 'NEEDS_ANNOTATION',
-    placeholderKeys: [],
-    requiredPlaceholderKeys: ['loai_sp', 'ten_cong_ty', 'dia_chi_ct', 'so_dang_ky', 'ngay_cap_CN'],
-    sourceFingerprint: { sourceRelativePath: 'QC20/CHUA_CO_NGUON/CERTIFICATE.docx', byteSize: 0 },
-  },
-  {
-    id: 'pcn-qc20-decision-pending',
-    fieldCode: 'QC20',
-    documentKind: 'DECISION',
-    displayName: 'Quyết định QC20 — cấu hình chờ xác nhận',
-    sourceLabel: 'QC20 / chưa có bộ mẫu chính thức — cần Admin PCN xác nhận',
-    format: 'DOCX',
-    status: 'NEEDS_ANNOTATION',
-    placeholderKeys: [],
-    requiredPlaceholderKeys: ['so_dang_ky', 'loai_sp', 'ten_cong_ty', 'dia_chi_ct', 'ngay_cap_CN', 'ngay_qd'],
-    sourceFingerprint: { sourceRelativePath: 'QC20/CHUA_CO_NGUON/DECISION.docx', byteSize: 0 },
-  },
-  {
-    id: 'pcn-qc20-sample-handover-pending',
-    fieldCode: 'QC20',
-    documentKind: 'SAMPLE_HANDOVER',
-    displayName: 'Biên bản giao mẫu QC20 — cấu hình chờ xác nhận',
-    sourceLabel: 'QC20 / chưa có bộ mẫu chính thức — cần Admin PCN xác nhận',
-    format: 'DOCX',
-    status: 'NEEDS_ANNOTATION',
-    placeholderKeys: [],
-    requiredPlaceholderKeys: ['so_dang_ky', 'ten_cong_ty', 'ngay_lay_mau', 'loai_sp', 'model', 'nhan_hieu'],
-    sourceFingerprint: { sourceRelativePath: 'QC20/CHUA_CO_NGUON/SAMPLE_HANDOVER.docx', byteSize: 0 },
-  },
 ];
 
 /**
@@ -302,7 +254,7 @@ export function mergePcnTemplateCatalog(
 ): PcnTemplateDefinition[] {
   const merged = new Map(baseline.map((template) => [template.id, toPcnTemplateRuntimeProjection(template)]));
   for (const template of runtimeTemplates) {
-    if (template?.id && ['QC4', 'QC9', 'QC20'].includes(normalizeFieldCode(template.fieldCode))) merged.set(template.id, toPcnTemplateRuntimeProjection(template));
+    if (template?.id && ['QC4', 'QC9'].includes(normalizeFieldCode(template.fieldCode))) merged.set(template.id, toPcnTemplateRuntimeProjection(template));
   }
   return [...merged.values()];
 }

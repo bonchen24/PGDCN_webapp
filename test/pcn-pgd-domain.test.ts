@@ -41,14 +41,31 @@ const intake = {
   weightUnit: 'tấn',
   inspectionScope: 'Ngoại quan, kích thước và lấy mẫu phân tích',
   inspectionLocation: 'Kho khách hàng',
-  standards: ['ASTM A36'],
+  method: 'TT58' as const,
+  assessmentMethod: 'METHOD_7' as const,
+  lotCode: 'LOT-2026-001',
+  standards: ['QCVN 20:2019/BKHCN', 'Sửa đổi 1:2021 QCVN 20:2019/BKHCN', 'ASTM A36'],
+  productDetails: {
+    productForm: 'Thép cuộn cán nguội',
+    grade: '304',
+    dimensions: '1.0 x 1219 mm',
+    productStandard: 'JIS G4305',
+    origin: 'Việt Nam',
+    countryOfOrigin: 'Việt Nam',
+    manufacturer: 'Nhà máy A',
+    manufacturerLotCode: 'MFG-LOT-001',
+    importer: 'Công ty A',
+    hsCode: '7219.32.00',
+    lotDefinition: 'SHIPMENT_LOT' as const,
+    customsDocuments: [{ document: 'Tờ khai hải quan', number: 'HQ-001', date: '2026-09-01' }],
+  },
 };
 
 function requestWith(status: PgdInspectionRequest['status']): PgdInspectionRequest {
   return createPgdInspectionRequest({ ...intake, status });
 }
 
-test('PGD catalog is separate and does not expose PCN QC20', () => {
+test('PGD catalog owns the stainless-steel inspection scope without a PCN field code', () => {
   assert.ok(DEFAULT_PGD_CATALOG.length >= 3);
   assert.ok(DEFAULT_PGD_CATALOG.some((item) => item.productGroup === 'STEEL_METAL'));
   assert.ok(DEFAULT_PGD_CATALOG.some((item) => item.productGroup === 'MACHINERY_LINE'));
@@ -56,6 +73,7 @@ test('PGD catalog is separate and does not expose PCN QC20', () => {
   assert.equal(DEFAULT_PGD_CATALOG.some((item) => JSON.stringify(item).toUpperCase().includes('QC20')), false);
   assert.equal(PGD_COLLECTIONS.requests, 'pgdInspectionRequests');
   assert.equal(PGD_COLLECTIONS.certificates, 'pgdInspectionCertificates');
+  assert.equal(DEFAULT_PGD_CATALOG.find((item) => item.id === 'STEEL_LOT_INSPECTION')?.code, 'GĐ-THEP-KG');
   assert.equal(isPgdCatalogItemAllowed('STEEL_LOT_INSPECTION'), true);
   assert.equal(isPgdCatalogItemAllowed('QC20'), false);
 });
@@ -68,7 +86,7 @@ test('PGD method metadata is derived from the researched inspection procedures a
   assert.ok(machinery?.methodOptions.some((item) => item.code === 'QT-GĐ-07'));
   assert.ok(coal?.methodOptions.some((item) => item.code === 'QT-GĐ-08'));
   assert.deepEqual(validatePgdIntake({ ...intake, method: 'phương pháp tự nhập' }).map((issue) => issue.field), ['method']);
-  assert.deepEqual(validatePgdIntake({ ...intake, method: 'QT-GĐ-10' }), []);
+  assert.equal(validatePgdIntake({ ...intake, method: 'QT-GĐ-10' }).some((issue) => issue.field === 'method'), true);
   assert.deepEqual(validatePgdIntake({ ...intake, method: 'TT58' }), []);
   assert.deepEqual(PGD_ASSESSMENT_METHOD_OPTIONS.map((item) => item.code), ['METHOD_7']);
   assert.deepEqual(validatePgdIntake({ ...intake, method: 'TT58', assessmentMethod: 'METHOD_7' }), []);
@@ -98,8 +116,8 @@ test('QT-GĐ-14 uses the researched steel lot sampling table without extrapolati
   assert.equal(getPgdSteelTtlt58SamplingPlan(100, true)?.mechanicalWeightSampleCount, 2);
   assert.equal(getPgdSteelTtlt58SamplingPlan(3200, false)?.visualLabelSampleCount, 8);
   assert.equal(getPgdSteelTtlt58SamplingPlan(3201, false), null);
-  assert.equal(validatePgdIntake({ ...intake, method: 'QT-GĐ-14', productDetails: { steelLotSize: 3201 } }).some((issue) => issue.field === 'productDetails.steelManualSamplingPlanNote'), true);
-  assert.deepEqual(validatePgdIntake({ ...intake, method: 'QT-GĐ-14', productDetails: { steelLotSize: 3201, steelManualSamplingPlanNote: 'Áp dụng kế hoạch lấy mẫu được trưởng phòng phê duyệt.' } }), []);
+  assert.equal(validatePgdIntake({ ...intake, method: 'QT-GĐ-14', productDetails: { ...intake.productDetails, steelLotSize: 3201 } }).some((issue) => issue.field === 'productDetails.steelManualSamplingPlanNote'), true);
+  assert.deepEqual(validatePgdIntake({ ...intake, method: 'QT-GĐ-14', productDetails: { ...intake.productDetails, steelLotSize: 3201, steelManualSamplingPlanNote: 'Áp dụng kế hoạch lấy mẫu được trưởng phòng phê duyệt.' } }), []);
 });
 
 test('PGD intake requires customer, lot, scope and location without reusing PCN proposal rules', () => {
@@ -170,7 +188,7 @@ test('PGD request starts at DRAFT and snapshots new-dossier intake data', () => 
   assert.equal(request.domain, 'pgd');
   assert.equal(request.createdAt, '2026-09-02T01:00:00.000Z');
   assert.notEqual(request.customerSnapshot, intake.customerSnapshot);
-  assert.deepEqual(request.standards, ['ASTM A36']);
+  assert.deepEqual(request.standards, ['QCVN 20:2019/BKHCN', 'Sửa đổi 1:2021 QCVN 20:2019/BKHCN', 'ASTM A36']);
 });
 
 test('PGD workflow only advances through the ordered lifecycle and gates lab results', () => {

@@ -39,7 +39,7 @@ function requirement(
   };
 }
 
-/** Initial business baseline for the active PCN QC4/QC9/QC20 field catalog. */
+/** Initial business baseline for the active PCN QC4/QC9 field catalog. */
 const BASE_PCN_DOCUMENT_REQUIREMENTS: PcnDocumentRequirement[] = [
   requirement('QC4', 'PROPOSAL', 'Đề nghị / đơn đăng ký', [...INTAKE], 10),
   requirement('QC4', 'COMMERCIAL', 'Báo giá / hợp đồng', [...INTAKE], 20),
@@ -74,26 +74,6 @@ const BASE_PCN_DOCUMENT_REQUIREMENTS: PcnDocumentRequirement[] = [
   requirement('QC9', 'CLIENT_PACKAGE', 'Hồ sơ gửi khách hàng', [...DELIVERY], 120),
   requirement('QC9', 'ARCHIVE_SCAN', 'Bản scan lưu hồ sơ', [...ARCHIVE], 130),
 
-  // QC20 follows the same dossier lifecycle. Product scope and official
-  // source templates remain configurable until PCN approves the field pack.
-  requirement('QC20', 'PROPOSAL', 'Đề nghị / đơn đăng ký', [...INTAKE], 10),
-  requirement('QC20', 'COMMERCIAL', 'Hồ sơ thương mại và chứng từ hải quan', [...INTAKE], 20),
-  requirement('QC20', 'SCOPE_EVIDENCE', 'Hồ sơ phạm vi, mã HS và tiêu chuẩn áp dụng', [...INTAKE], 22),
-  requirement('QC20', 'LOT_IDENTITY', 'Bằng chứng mác, kích thước và xác định lô', [...INTAKE], 23),
-  requirement('QC20', 'ASSIGNMENT_FORM', 'Phiếu phân công chứng nhận', [...INTAKE], 25),
-  requirement('QC20', 'EVALUATION_PLAN', 'Kế hoạch đánh giá CNSP', [...INTAKE], 26),
-  requirement('QC20', 'FIELD_INSPECTION', 'Biên bản kiểm tra tại hiện trường', [...INTAKE], 27),
-  requirement('QC20', 'LAB_REQUEST', 'PYC gửi phòng thử nghiệm', [...LAB], 30),
-  requirement('QC20', 'SAMPLE_CODING', 'Biên bản mã hóa mẫu theo lô', [...LAB], 35),
-  requirement('QC20', 'SAMPLE_HANDOVER', 'Biên bản lấy / giao mẫu', [...LAB], 40),
-  requirement('QC20', 'SAMPLE_RETURN', 'Biên bản trả mẫu', [...LAB], 50, { required: false }),
-  requirement('QC20', 'TEST_REPORT', 'Báo cáo / KQTN', [...TECHNICAL], 60),
-  requirement('QC20', 'CERTIFICATION_RESULT', 'Kết quả chứng nhận / phụ lục', [...TECHNICAL], 70),
-  requirement('QC20', 'CORRECTIVE_ACTION_LETTER', 'Công văn khắc phục', [...TECHNICAL], 80, { required: false }),
-  requirement('QC20', 'CERTIFICATE', 'Giấy chứng nhận', [...ISSUANCE], 90),
-  requirement('QC20', 'DECISION', 'Quyết định', [...ISSUANCE], 100),
-  requirement('QC20', 'CLIENT_PACKAGE', 'Hồ sơ gửi khách hàng', [...DELIVERY], 110),
-  requirement('QC20', 'ARCHIVE_SCAN', 'Bản scan lưu hồ sơ', [...ARCHIVE], 120),
 ];
 
 const DEFAULT_PCN_STATION_KEYS: Record<string, PcnDossierStationKey[]> = {
@@ -128,24 +108,6 @@ const DEFAULT_PCN_STATION_KEYS: Record<string, PcnDossierStationKey[]> = {
   'QC9-DECISION': ['APPROVAL', 'ISSUANCE'],
   'QC9-CLIENT_PACKAGE': ['DELIVERY_ARCHIVE'],
   'QC9-ARCHIVE_SCAN': ['DELIVERY_ARCHIVE'],
-  'QC20-PROPOSAL': ['INTAKE', 'DOCUMENTS'],
-  'QC20-COMMERCIAL': ['INTAKE', 'DOCUMENTS'],
-  'QC20-SCOPE_EVIDENCE': ['INTAKE', 'DOCUMENTS'],
-  'QC20-LOT_IDENTITY': ['INTAKE', 'DOCUMENTS'],
-  'QC20-ASSIGNMENT_FORM': ['ASSIGNMENT'],
-  'QC20-EVALUATION_PLAN': ['EVALUATION'],
-  'QC20-FIELD_INSPECTION': ['EVALUATION'],
-  'QC20-LAB_REQUEST': ['SAMPLING_LAB'],
-  'QC20-SAMPLE_CODING': ['SAMPLING_LAB'],
-  'QC20-SAMPLE_HANDOVER': ['SAMPLING_LAB'],
-  'QC20-SAMPLE_RETURN': ['SAMPLING_LAB'],
-  'QC20-TEST_REPORT': ['RESULTS', 'TECHNICAL_REVIEW'],
-  'QC20-CERTIFICATION_RESULT': ['TECHNICAL_REVIEW'],
-  'QC20-CORRECTIVE_ACTION_LETTER': ['CORRECTION'],
-  'QC20-CERTIFICATE': ['APPROVAL', 'ISSUANCE'],
-  'QC20-DECISION': ['APPROVAL', 'ISSUANCE'],
-  'QC20-CLIENT_PACKAGE': ['DELIVERY_ARCHIVE'],
-  'QC20-ARCHIVE_SCAN': ['DELIVERY_ARCHIVE'],
 };
 
 /** Baseline requirements carry exact station routing while preserving old stage data. */

@@ -8,10 +8,11 @@ test('normalizes PCN code separators without dropping leading zeroes', () => {
   assert.equal(normalizePcnCode(' iemm   0114 - sp - 01 '), 'IEMM 0114-SP-01');
 });
 
-test('recognizes observed QC4/QC9/QC20 registration, IEMM and PYC code families', () => {
+test('recognizes observed QC4/QC9 registration, IEMM and PYC code families', () => {
   assert.equal(classifyPcnCode('QC4', '0665').family, 'FIELD_REGISTRATION');
   assert.equal(classifyPcnCode('QC9', '0105-01').family, 'FIELD_REGISTRATION');
-  assert.equal(classifyPcnCode('QC20', 'QC20.123.1').family, 'CERTIFICATION_REFERENCE');
+  assert.equal(classifyPcnCode('QC20', 'QC20.123.1').family, 'UNKNOWN');
+  assert.equal(classifyPcnCode('QC20', 'QC20.123.1').recognized, false);
   assert.equal(classifyPcnCode('QC9', 'IEMM 0114-SP-01').family, 'IEMM_REFERENCE');
   assert.equal(classifyPcnCode('QC9', 'PYC 1655_R0').family, 'PYC_REFERENCE');
 });

@@ -120,8 +120,8 @@ async function main(): Promise<void> {
   if (!password) throw new Error('Thiếu PCN_SMOKE_PASSWORD; không truyền mật khẩu qua tham số dòng lệnh.');
 
   await runCheck('public app shell', () => request('/'), (result) => ({
-    ok: result.status === 200 && typeof result.payload === 'string' && result.payload.includes('<title>Phòng Chứng nhận - TVCI</title>'),
-    detail: result.status === 200 ? 'HTTP 200; PCN app shell rendered' : `HTTP ${result.status}`,
+    ok: result.status === 200 && typeof result.payload === 'string' && result.payload.includes('<title>Phòng Giám định - Chứng nhận - TVCI</title>'),
+    detail: result.status === 200 ? 'HTTP 200; PGD-CN app shell rendered' : `HTTP ${result.status}`,
   }));
 
   await runCheck('public health', () => request('/api/health'), (result) => jsonStatusCheck(
@@ -201,7 +201,7 @@ async function main(): Promise<void> {
         detail: `HTTP ${result.status}; apply requires fresh fingerprint and confirmation`,
       }),
     );
-    const fields = await runCheck('QC4/QC9/QC20 field catalog', () => request('/api/db/pcnCertificationFields'), (result) => statusCheck(result, 200));
+    const fields = await runCheck('QC4/QC9 PCN field catalog', () => request('/api/db/pcnCertificationFields'), (result) => statusCheck(result, 200));
     const users = await runCheck('PCN user catalog', () => request('/api/pcn/users'), (result) => statusCheck(result, 200));
     const departmentRoles = await runCheck('PCN department-role catalog', () => request('/api/pcn/department-roles'), (result) => statusCheck(result, 200));
     const documentRequirements = await runCheck(
@@ -256,8 +256,11 @@ async function main(): Promise<void> {
           && isRecord(payload.settings)
           && payload.settings.id === 'pcn-settings'
           && Array.isArray(payload.settings.fieldCodes)
-          && payload.settings.fieldCodes.includes('QC20'),
-        'HTTP 200; settings include QC20',
+          && payload.settings.fieldCodes.length === 2
+          && payload.settings.fieldCodes.includes('QC4')
+          && payload.settings.fieldCodes.includes('QC9')
+          && !payload.settings.fieldCodes.includes('QC20'),
+        'HTTP 200; settings include only QC4/QC9',
       ),
     );
     await runCheck(
