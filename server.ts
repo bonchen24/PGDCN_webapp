@@ -2792,6 +2792,8 @@ async function startServer() {
         return;
       }
 
+      let uploadedBucketName: string | undefined;
+      let uploadedObjectPath: string | undefined;
       try {
         const persisted = await withPgTransaction(async (client) => {
           const requestResult = await client.query(
@@ -2853,6 +2855,8 @@ async function startServer() {
 
             await storage.ensurePrivateBucket(bucketName, 20 * 1024 * 1024);
             await storage.uploadObject({ bucketName, objectPath, body: file.buffer, mimeType });
+            uploadedBucketName = bucketName;
+            uploadedObjectPath = objectPath;
             try {
               await client.query(
                 `INSERT INTO file_assets (id, bucket_name, object_path, source_collection, source_document_id, source_json_path, mime_type, byte_size, sha256)
@@ -2861,30 +2865,30 @@ async function startServer() {
               );
             } catch (error) {
               await storage.deleteObject({ bucketName, objectPath }).catch(() => undefined);
+              uploadedBucketName = undefined;
+              uploadedObjectPath = undefined;
               throw error;
             }
             fileAssetId = assetId;
           }
 
-          const next = {
-            ...buildPgdDossierDocument({
-              id: documentId,
-              requestId: request.id,
-              requirementCode,
-              title,
-              fileName,
-              version,
-              checksum,
-              uploadedByUsername: actor.username,
-              ...(fileAssetId ? { fileAssetId } : {}),
-              ...(mimeType ? { mimeType } : {}),
-              ...(Number.isFinite(byteSize) ? { byteSize } : {}),
-              ...(current?.id ? { supersedesDocumentId: current.id } : {}),
-            }),
+          const next = buildPgdDossierDocument({
+            id: documentId,
+            requestId: request.id,
+            requirementCode,
+            title,
+            fileName,
+            version,
+            checksum,
+            uploadedByUsername: actor.username,
             ...(documentNumber ? { documentNumber } : {}),
             ...(documentDate ? { documentDate } : {}),
             ...(note ? { note } : {}),
-          };
+            ...(fileAssetId ? { fileAssetId } : {}),
+            ...(mimeType ? { mimeType } : {}),
+            ...(Number.isFinite(byteSize) ? { byteSize } : {}),
+            ...(current?.id ? { supersedesDocumentId: current.id } : {}),
+          });
 
           await client.query(
             `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
@@ -2904,6 +2908,9 @@ async function startServer() {
         });
         res.status(201).json({ dossierDocument: persisted });
       } catch (error: any) {
+        if (uploadedBucketName && uploadedObjectPath) {
+          await getPgdStorageClient().deleteObject({ bucketName: uploadedBucketName, objectPath: uploadedObjectPath }).catch(() => undefined);
+        }
         res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
       }
     });
