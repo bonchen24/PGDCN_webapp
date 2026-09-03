@@ -549,7 +549,9 @@ Description: Persistent project memory and verified deployment observations for 
 - PYC PGD lưu thêm `transportName`; `PgdLabRequest` lưu `laboratoryCode` và snapshot `senderUnit`. Hai template mới được định tuyến vào trạm `FIELD_SAMPLING`, snapshot template/cell/context hash giữ nguyên khi sinh tài liệu.
 - Gói DOCX `templates/pgd` và `manifest.json` đã tái sinh phiên bản `1.2`; header dùng đúng tên **Phòng Giám định - Chứng nhận**.
 - Kiểm chứng mới nhất: `npm test` **665/665**, `npm run lint`, `npm run build` và `git diff --check` pass; BM-14/BM-15 render sạch một trang.
-- Commit và Docker Desktop production chưa hoàn tất trong phiên này: sandbox chặn ghi `.git/index.lock` và cả hai lần xin quyền nâng cao cho Git/Docker bị backend approval trả `404`. Không được coi là đã commit/deploy cho đến khi chạy lại trên môi trường có quyền.
+- Đã commit phần source-form/cell/document workflow tại `27f63a8` (`feat: complete PGD source forms and document workflow`); các file `dist` sinh tự động, backup, attachment, `tmp` và kế hoạch nội bộ vẫn được giữ ngoài commit.
+- Docker Desktop production đã rebuild/recreate từ tree sau commit. Image `pcn_webapp-webapp:latest` digest `sha256:fbb0f056a54c0260807897699e4af7ab9df1c26e4c9a0c076553421a318a24f7`; container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`.
+- Smoke test sau rebuild: `/api/health`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200; PostgreSQL kết nối và schema khởi tạo thành công. Cảnh báo backup tự động còn lại do Supabase Storage chưa cấu hình.
 
 ## Files quan trọng
 
