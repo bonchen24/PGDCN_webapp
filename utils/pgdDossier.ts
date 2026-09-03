@@ -94,16 +94,13 @@ export function getPgdDossierRequirements(productGroup: PgdProductGroup): PgdDos
   if (productGroup === 'MACHINERY_LINE') {
     return [
       ...base,
-      requirement('REQUEST_PYC', 'REQUEST', 'Phiếu yêu cầu giám định'),
       requirement('MACHINERY_TECHNICAL_DOSSIER', 'TECHNICAL', 'Hồ sơ kỹ thuật máy móc / dây chuyền'),
-      requirement('FIELD_INSPECTION_MINUTES', 'FIELD', 'Biên bản giám định hiện trường'),
     ];
   }
 
   return [
     ...base,
     requirement('TECHNICAL_OVERVIEW', 'TECHNICAL', 'Hồ sơ kỹ thuật / mô tả hàng hóa'),
-    requirement('FIELD_INSPECTION_MINUTES', 'FIELD', 'Biên bản giám định hiện trường'),
   ];
 }
 
