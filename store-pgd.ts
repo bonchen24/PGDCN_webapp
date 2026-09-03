@@ -18,13 +18,17 @@ import type {
   PgdGeneratedDocument,
 } from './utils/pgdDomain.ts';
 import type { PgdDocumentTemplate } from './utils/pgdDocumentTemplates.ts';
+import type { PgdDossierDocument, PgdDossierRequirement } from './utils/pgdDossier.ts';
 import type { CustomerRef, PcnUserAccount } from './types.ts';
 import {
   approvePgdStep,
   createPgdInspection,
+  destroyPgdSample as destroyPgdSampleApi,
   fetchPgdBootstrap,
+  getPgdDossierDocuments,
   savePgdAssignment,
   savePgdCertificate,
+  savePgdDossierDocument as savePgdDossierDocumentApi,
   savePgdFieldInspection,
   savePgdLabRequest,
   savePgdLabResult,
@@ -50,6 +54,7 @@ interface PgdStoreState {
   certificates: PgdInspectionCertificate[];
   approvals: PgdApprovalStep[];
   documentTemplates: PgdDocumentTemplate[];
+  dossierDocuments: PgdDossierDocument[];
   documents: PgdGeneratedDocument[];
   isLoading: boolean;
   isLoaded: boolean;
@@ -60,7 +65,10 @@ interface PgdStoreState {
   transitionRequest: (requestId: string, status: PgdInspectionStatus, context?: PgdTransitionContext) => Promise<PgdInspectionRequest>;
   saveAssignment: (assignment: PgdInspectionAssignment) => Promise<PgdInspectionAssignment>;
   saveFieldInspection: (inspection: PgdFieldInspection) => Promise<PgdFieldInspection>;
+  fetchDossierDocuments: (requestId: string) => Promise<{ dossierDocuments: PgdDossierDocument[]; requirements: PgdDossierRequirement[] }>;
+  saveDossierDocument: (requestId: string, input: Parameters<typeof savePgdDossierDocumentApi>[1]) => Promise<PgdDossierDocument>;
   splitSample: (input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string }) => Promise<PgdSample[]>;
+  destroySample: (sampleId: string, note: string) => Promise<PgdSample>;
   saveLabRequest: (labRequest: PgdLabRequest) => Promise<PgdLabRequest>;
   saveLabResult: (result: PgdLabResult) => Promise<PgdLabResult>;
   saveReport: (report: PgdInspectionReport) => Promise<PgdInspectionReport>;
@@ -74,7 +82,7 @@ const emptyState = {
   customers: [], users: [],
   catalog: [], templates: [], requests: [], assignments: [], fieldInspections: [], samples: [],
   labRequests: [], labResults: [], reports: [], certificates: [], approvals: [], isLoading: false, isLoaded: false,
-  documentTemplates: [], documents: [],
+  documentTemplates: [], dossierDocuments: [], documents: [],
 };
 
 function replaceOne<T extends { id: string }>(items: T[], next: T): T[] {
@@ -126,12 +134,32 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
     }));
     return next;
   },
+  fetchDossierDocuments: async (requestId) => {
+    const result = await getPgdDossierDocuments(requestId);
+    set((state) => ({
+      dossierDocuments: [
+        ...result.dossierDocuments,
+        ...state.dossierDocuments.filter((item) => item.requestId !== requestId),
+      ],
+    }));
+    return result;
+  },
+  saveDossierDocument: async (requestId, input) => {
+    const next = await savePgdDossierDocumentApi(requestId, input);
+    set((state) => ({ dossierDocuments: replaceOne(state.dossierDocuments, next) }));
+    return next;
+  },
   splitSample: async (input) => {
     const next = await splitPgdSampleApi(input);
     set((state) => ({
       samples: [...next, ...state.samples.filter((item) => !next.some((candidate) => candidate.id === item.id))],
       requests: state.requests.map((request) => request.id === input.requestId ? { ...request, sampleIds: [...new Set([...request.sampleIds, ...next.map((item) => item.id)])] } : request),
     }));
+    return next;
+  },
+  destroySample: async (sampleId, note) => {
+    const next = await destroyPgdSampleApi(sampleId, note);
+    set((state) => ({ samples: replaceOne(state.samples, next) }));
     return next;
   },
   saveLabRequest: async (labRequest) => {

@@ -22,6 +22,7 @@ import type {
   PgdDocumentTemplateFormat,
   PgdDocumentTemplateKind,
 } from './pgdDocumentTemplates.ts';
+import type { PgdDossierDocument, PgdDossierRequirement } from './pgdDossier.ts';
 
 export interface PgdBootstrapSnapshot {
   customers: CustomerRef[];
@@ -38,12 +39,28 @@ export interface PgdBootstrapSnapshot {
   reports: PgdInspectionReport[];
   approvals: PgdApprovalStep[];
   documentTemplates: PgdDocumentTemplate[];
+  dossierDocuments: PgdDossierDocument[];
   documents: PgdGeneratedDocument[];
 }
 
 export interface PgdDocumentGenerationResponse {
   document: PgdGeneratedDocument;
   contentBase64: string;
+}
+
+export interface PgdRequestDossierDocumentsResponse {
+  dossierDocuments: PgdDossierDocument[];
+  requirements: PgdDossierRequirement[];
+}
+
+export interface SavePgdDossierDocumentInput {
+  requirementCode: string;
+  title: string;
+  file?: File;
+  fileName?: string;
+  documentNumber?: string;
+  documentDate?: string;
+  note?: string;
 }
 
 async function parseResponse(response: Response): Promise<any> {
@@ -57,10 +74,13 @@ async function parseResponse(response: Response): Promise<any> {
 }
 
 async function request(path: string, init: RequestInit = {}): Promise<any> {
+  const headers = init.body instanceof FormData
+    ? { ...(init.headers || {}) }
+    : { 'Content-Type': 'application/json', ...(init.headers || {}) };
   const response = await fetch(path, {
     ...init,
     credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
+    headers,
   });
   return parseResponse(response);
 }
@@ -84,6 +104,7 @@ export async function fetchPgdBootstrap(): Promise<PgdBootstrapSnapshot> {
     certificates: Array.isArray(payload?.certificates) ? payload.certificates : [],
     approvals: Array.isArray(payload?.approvals) ? payload.approvals : [],
     documentTemplates: Array.isArray(payload?.documentTemplates) ? payload.documentTemplates : [],
+    dossierDocuments: Array.isArray(payload?.dossierDocuments) ? payload.dossierDocuments : [],
     documents: Array.isArray(payload?.documents) ? payload.documents : [],
   };
 }
@@ -113,6 +134,35 @@ export function getPgdDocumentDownloadUrl(documentId: string): string {
   return `/api/pgd/documents/${encodeURIComponent(documentId)}/download`;
 }
 
+export function getPgdDossierDocumentDownloadUrl(documentId: string): string {
+  return `/api/pgd/dossier-documents/${encodeURIComponent(documentId)}/download`;
+}
+
+export function getPgdTemplateSourceUrl(templateId: string): string {
+  return `/api/pgd/document-templates/${encodeURIComponent(templateId)}/source`;
+}
+
+export async function getPgdDossierDocuments(requestId: string): Promise<PgdRequestDossierDocumentsResponse> {
+  const payload = await request(`/api/pgd/requests/${encodeURIComponent(requestId)}/dossier-documents`);
+  return {
+    dossierDocuments: Array.isArray(payload?.dossierDocuments) ? payload.dossierDocuments as PgdDossierDocument[] : [],
+    requirements: Array.isArray(payload?.requirements) ? payload.requirements as PgdDossierRequirement[] : [],
+  };
+}
+
+export async function savePgdDossierDocument(requestId: string, input: SavePgdDossierDocumentInput): Promise<PgdDossierDocument> {
+  const form = new FormData();
+  form.set('requirementCode', input.requirementCode);
+  form.set('title', input.title);
+  if (input.file) form.set('file', input.file);
+  if (input.fileName) form.set('fileName', input.fileName);
+  if (input.documentNumber) form.set('documentNumber', input.documentNumber);
+  if (input.documentDate) form.set('documentDate', input.documentDate);
+  if (input.note) form.set('note', input.note);
+  const payload = await request(`/api/pgd/requests/${encodeURIComponent(requestId)}/dossier-documents`, { method: 'POST', body: form });
+  return payload.dossierDocument as PgdDossierDocument;
+}
+
 export async function createPgdInspection(input: PgdInspectionRequestInput): Promise<PgdInspectionRequest> {
   const payload = await request('/api/pgd/requests', json(input));
   return payload.request as PgdInspectionRequest;
@@ -136,6 +186,11 @@ export async function savePgdFieldInspection(inspection: PgdFieldInspection): Pr
 export async function splitPgdSample(input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string }): Promise<PgdSample[]> {
   const payload = await request('/api/pgd/samples/split', json(input));
   return Array.isArray(payload.samples) ? payload.samples as PgdSample[] : [];
+}
+
+export async function destroyPgdSample(sampleId: string, note: string): Promise<PgdSample> {
+  const payload = await request(`/api/pgd/samples/${encodeURIComponent(sampleId)}/destroy`, json({ note }));
+  return payload.sample as PgdSample;
 }
 
 export async function savePgdLabRequest(labRequest: PgdLabRequest): Promise<PgdLabRequest> {

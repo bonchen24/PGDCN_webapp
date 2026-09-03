@@ -148,7 +148,14 @@ import {
   type PgdDocumentTemplateFormat,
   type PgdDocumentTemplateKind,
 } from "./utils/pgdDocumentTemplates.ts";
+import {
+  buildPgdDossierDocument,
+  getPgdDossierRequirements,
+  markPgdSampleDestroyed,
+  type PgdDossierDocument,
+} from "./utils/pgdDossier.ts";
 import { buildPgdDocumentContext, buildPgdDocumentOutput } from "./utils/pgdDocumentGeneration.ts";
+import { inspectPgdTemplateSource, resolvePgdTemplateSourcePath } from "./utils/pgdTemplatePack.ts";
 import { getPgdAssignmentApprovalDenial, getPgdOperationalStepGateDenial, getPgdPostSignatureMutationDenial, validatePgdResultValues } from "./utils/pgdWorkflow.ts";
 import { buildKqtnPdfContentDisposition } from "./utils/kqtnPdfHeaders.js";
 import { normalizeSystemUserRole } from "./utils/systemUserRole.js";
@@ -717,6 +724,7 @@ function getDocumentPayload(value: any): Record<string, any> {
   delete data.id;
   delete data.privateAssetVerified;
   delete data.privateAssetVerificationIssue;
+  delete data.sourceInspection;
   return data;
 }
 
@@ -730,6 +738,10 @@ function stableJson(value: unknown): string {
 
 function mapDocumentRow(row: { document_id: string; data: Record<string, any> }) {
   return { ...(row.data || {}), id: row.document_id };
+}
+
+function projectPgdDocumentTemplate(template: PgdDocumentTemplate): PgdDocumentTemplate {
+  return { ...template, sourceInspection: inspectPgdTemplateSource(template) };
 }
 
 function mapPgdcnActivityQueryRow(
@@ -1711,6 +1723,34 @@ function assertPgdRequestEvidenceMutationAllowed(request: PgdInspectionRequest):
   if (denial) throw Object.assign(new Error(denial), { statusCode: 409 });
 }
 
+function normalizePgdMultipartText(value: unknown): string | undefined {
+  const normalized = String(value ?? '').trim();
+  return normalized ? normalized : undefined;
+}
+
+function buildPgdDossierMetadataChecksum(input: {
+  requestId: string;
+  requirementCode: string;
+  title: string;
+  fileName: string;
+  version: number;
+  documentNumber?: string;
+  documentDate?: string;
+  note?: string;
+}): string {
+  const seed = {
+    requestId: input.requestId,
+    requirementCode: input.requirementCode,
+    title: input.title,
+    fileName: input.fileName,
+    version: input.version,
+    documentNumber: input.documentNumber || '',
+    documentDate: input.documentDate || '',
+    note: input.note || '',
+  };
+  return createHash('sha256').update(JSON.stringify(seed)).digest('hex');
+}
+
 function normalizePcnSampleList(value: unknown): string[] {
   return Array.from(new Set(
     (Array.isArray(value) ? value : [])
@@ -2651,6 +2691,7 @@ async function startServer() {
         PGD_COLLECTIONS.reports,
         PGD_COLLECTIONS.certificates,
         PGD_COLLECTIONS.approvals,
+        PGD_COLLECTIONS.dossierDocuments,
         PGD_COLLECTIONS.documents,
       ];
       const results = await Promise.all(collections.map((collection) => pool.query(
@@ -2681,14 +2722,231 @@ async function startServer() {
         labRequests: items[5],
         labResults: items[6],
         templates: items[7],
-        documentTemplates: Array.from(documentTemplatesById.values()).filter((template) => template.active && template.status !== 'RETIRED'),
+        documentTemplates: Array.from(documentTemplatesById.values()).filter((template) => template.active && template.status !== 'RETIRED').map(projectPgdDocumentTemplate),
         reports: items[9],
         certificates: items[10],
         approvals: items[11],
-        documents: items[12],
+        dossierDocuments: items[12],
+        documents: items[13],
       });
     } catch (error: any) {
       res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.get('/api/pgd/requests/:requestId/dossier-documents', async (req, res) => {
+    if (!requirePgdSession(req, res)) return;
+    try {
+      const requestId = decodeURIComponent(String(req.params.requestId || '')).trim();
+      const requestResult = await pool.query(
+        `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`,
+        [PGD_COLLECTIONS.requests, requestId],
+      );
+      if (!requestResult.rows[0]) {
+        res.status(404).json({ error: 'Không tìm thấy hồ sơ PGD.' });
+        return;
+      }
+      const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
+      const documentResult = await pool.query(
+        `SELECT document_id, data
+           FROM app_documents
+          WHERE collection_name = $1
+            AND data->>'requestId' = $2
+            AND data->>'domain' = 'pgd'
+          ORDER BY COALESCE((data->>'version')::int, 0) DESC, updated_at DESC, document_id DESC`,
+        [PGD_COLLECTIONS.dossierDocuments, request.id],
+      );
+      res.json({
+        dossierDocuments: documentResult.rows.map((row: any) => mapDocumentRow(row)) as PgdDossierDocument[],
+        requirements: getPgdDossierRequirements(request.productGroup),
+      });
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pgd/requests/:requestId/dossier-documents', async (req, res) => {
+    if (!requirePgdCollectionMutation(req, res, PGD_COLLECTIONS.dossierDocuments, 'write')) return;
+    upload.single('file')(req, res, async (uploadError: any) => {
+      if (uploadError) {
+        res.status(400).json({ error: uploadError?.message || 'Không thể đọc tệp chứng từ PGD.' });
+        return;
+      }
+      const actor = getPgdSessionUser(req)!;
+      const requestId = decodeURIComponent(String(req.params.requestId || '')).trim();
+      const file = req.file;
+      const requirementCode = normalizePgdMultipartText(req.body?.requirementCode);
+      const title = normalizePgdMultipartText(req.body?.title);
+      const documentNumber = normalizePgdMultipartText(req.body?.documentNumber);
+      const documentDate = normalizePgdMultipartText(req.body?.documentDate);
+      const note = normalizePgdMultipartText(req.body?.note);
+      const requestedFileName = normalizePgdMultipartText(req.body?.fileName);
+      const fileName = file?.originalname ? sanitizePcnPathSegment(file.originalname) : sanitizePcnPathSegment(requestedFileName || `${requirementCode || 'pgd-dossier'}.meta`);
+
+      if (!requestId || !requirementCode || !title) {
+        res.status(400).json({ error: 'Cần có requestId, requirementCode và tiêu đề chứng từ PGD.' });
+        return;
+      }
+      if (file && !isPgdStorageConfigured()) {
+        res.status(503).json({ error: 'Private Storage PGD chưa được cấu hình; hiện chỉ cho phép lưu metadata chứng từ, chưa thể nhận byte file.' });
+        return;
+      }
+
+      try {
+        const persisted = await withPgTransaction(async (client) => {
+          const requestResult = await client.query(
+            `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1 FOR UPDATE`,
+            [PGD_COLLECTIONS.requests, requestId],
+          );
+          if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD để lưu chứng từ.'), { statusCode: 404 });
+          const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
+          assertPgdRequestEvidenceMutationAllowed(request);
+
+          const requirements = getPgdDossierRequirements(request.productGroup);
+          if (!requirements.some((item) => item.code === requirementCode)) {
+            throw Object.assign(new Error('Mã yêu cầu checklist PGD không thuộc nhóm sản phẩm của hồ sơ.'), { statusCode: 400 });
+          }
+
+          const currentResult = await client.query(
+            `SELECT document_id, data
+               FROM app_documents
+              WHERE collection_name = $1
+                AND data->>'requestId' = $2
+                AND data->>'requirementCode' = $3
+                AND data->>'domain' = 'pgd'
+              ORDER BY COALESCE((data->>'version')::int, 0) DESC, updated_at DESC, document_id DESC
+              LIMIT 1
+              FOR UPDATE`,
+            [PGD_COLLECTIONS.dossierDocuments, request.id, requirementCode],
+          );
+          const current = currentResult.rows[0] ? mapDocumentRow(currentResult.rows[0]) as PgdDossierDocument : undefined;
+          const version = (Number(current?.version) || 0) + 1;
+          const documentId = `pgd-dossier-document-${randomUUID()}`;
+
+          const checksum = file
+            ? createHash('sha256').update(file.buffer).digest('hex')
+            : buildPgdDossierMetadataChecksum({
+              requestId: request.id,
+              requirementCode,
+              title,
+              fileName,
+              version,
+              documentNumber,
+              documentDate,
+              note,
+            });
+          if (!/^[a-f0-9]{64}$/i.test(checksum)) {
+            throw Object.assign(new Error('Checksum chứng từ PGD phải là SHA-256 64 ký tự hex.'), { statusCode: 400 });
+          }
+
+          let fileAssetId: string | undefined;
+          let mimeType: string | undefined;
+          let byteSize: number | undefined;
+          if (file) {
+            const storage = getPgdStorageClient();
+            const bucketName = getPgdStorageBucket();
+            const assetId = `pgd-file-${checksum.slice(0, 16)}-${randomUUID().slice(0, 8)}`;
+            const safeFileName = sanitizePcnPathSegment(fileName);
+            const objectPath = `pgd/dossierDocuments/${sanitizePcnPathSegment(request.id)}/${sanitizePcnPathSegment(requirementCode)}/${assetId}-${checksum}-${safeFileName}`;
+            mimeType = String(file.mimetype || 'application/octet-stream').toLowerCase();
+            byteSize = file.size;
+
+            await storage.ensurePrivateBucket(bucketName, 20 * 1024 * 1024);
+            await storage.uploadObject({ bucketName, objectPath, body: file.buffer, mimeType });
+            try {
+              await client.query(
+                `INSERT INTO file_assets (id, bucket_name, object_path, source_collection, source_document_id, source_json_path, mime_type, byte_size, sha256)
+                 VALUES ($1, $2, $3, $4, $5, 'fileAssetId', $6, $7, $8)`,
+                [assetId, bucketName, objectPath, PGD_COLLECTIONS.dossierDocuments, documentId, mimeType, byteSize, checksum],
+              );
+            } catch (error) {
+              await storage.deleteObject({ bucketName, objectPath }).catch(() => undefined);
+              throw error;
+            }
+            fileAssetId = assetId;
+          }
+
+          const next = {
+            ...buildPgdDossierDocument({
+              id: documentId,
+              requestId: request.id,
+              requirementCode,
+              title,
+              fileName,
+              version,
+              checksum,
+              uploadedByUsername: actor.username,
+              ...(fileAssetId ? { fileAssetId } : {}),
+              ...(mimeType ? { mimeType } : {}),
+              ...(Number.isFinite(byteSize) ? { byteSize } : {}),
+              ...(current?.id ? { supersedesDocumentId: current.id } : {}),
+            }),
+            ...(documentNumber ? { documentNumber } : {}),
+            ...(documentDate ? { documentDate } : {}),
+            ...(note ? { note } : {}),
+          };
+
+          await client.query(
+            `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+             VALUES ($1, $2, $3::jsonb, CURRENT_TIMESTAMP)`,
+            [PGD_COLLECTIONS.dossierDocuments, next.id, JSON.stringify(getDocumentPayload(next))],
+          );
+          await writePgdActivity(client, actor, {
+            action: current ? 'UPDATED' : 'CREATED',
+            entityType: 'PGD_REQUEST',
+            entityId: request.id,
+            entityLabel: request.requestCode,
+            requestCode: request.requestCode,
+            summary: `${current ? 'Thay thế' : 'Bổ sung'} chứng từ dossier PGD ${requirementCode} cho ${request.requestCode}`,
+            idSuffix: `dossier-document-${next.id}`,
+          });
+          return next;
+        });
+        res.status(201).json({ dossierDocument: persisted });
+      } catch (error: any) {
+        res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
+      }
+    });
+  });
+
+  app.get('/api/pgd/dossier-documents/:documentId/download', async (req, res) => {
+    if (!requirePgdSession(req, res)) return;
+    try {
+      const documentId = decodeURIComponent(String(req.params.documentId || '')).trim();
+      const documentResult = await pool.query(
+        `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`,
+        [PGD_COLLECTIONS.dossierDocuments, documentId],
+      );
+      const metadata = documentResult.rows[0] ? mapDocumentRow(documentResult.rows[0]) as PgdDossierDocument : undefined;
+      if (!metadata) {
+        res.status(404).json({ error: 'Không tìm thấy chứng từ dossier PGD.' });
+        return;
+      }
+      if (!metadata.fileAssetId) {
+        res.status(404).json({ error: 'Chứng từ dossier PGD này chỉ có metadata, không có file private để tải.' });
+        return;
+      }
+      const assetResult = await pool.query(
+        `SELECT bucket_name, object_path, mime_type
+           FROM file_assets
+          WHERE id = $1
+            AND source_collection = $2
+            AND source_document_id = $3
+            AND source_json_path = 'fileAssetId'
+          LIMIT 1`,
+        [metadata.fileAssetId, PGD_COLLECTIONS.dossierDocuments, documentId],
+      );
+      const asset = assetResult.rows[0];
+      if (!asset) {
+        res.status(404).json({ error: 'Không tìm thấy provenance file private của chứng từ dossier PGD.' });
+        return;
+      }
+      const downloaded = await getPgdStorageClient().downloadObject({ bucketName: asset.bucket_name, objectPath: asset.object_path });
+      res.setHeader('Content-Type', downloaded.contentType || asset.mime_type || metadata.mimeType || 'application/octet-stream');
+      res.setHeader('Content-Disposition', buildPcnFileContentDisposition(metadata.fileName || 'pgd-dossier-document', 'attachment'));
+      res.send(downloaded.body);
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
     }
   });
 
@@ -2702,9 +2960,40 @@ async function startServer() {
       const persisted = result.rows.map((row: any) => mapDocumentRow(row)).filter(isPgdDocumentTemplateRecordAllowed) as PgdDocumentTemplate[];
       const byId = new Map(getPgdDocumentTemplates().map((template) => [template.id, template]));
       for (const template of persisted) byId.set(template.id, normalizePgdDocumentTemplate(template));
-      res.json({ templates: Array.from(byId.values()).filter((template) => template.active && template.status !== 'RETIRED') });
+      res.json({ templates: Array.from(byId.values()).filter((template) => template.active && template.status !== 'RETIRED').map(projectPgdDocumentTemplate) });
     } catch (error: any) {
       res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.get('/api/pgd/document-templates/:templateId/source', async (req, res) => {
+    if (!requirePgdSession(req, res)) return;
+    try {
+      const requestedId = decodeURIComponent(String(req.params.templateId || '')).trim();
+      const result = await pool.query(
+        `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`,
+        [PGD_COLLECTIONS.documentTemplates, requestedId],
+      );
+      const persisted = result.rows[0] ? mapDocumentRow(result.rows[0]) : undefined;
+      const template = persisted && isPgdDocumentTemplateRecordAllowed(persisted)
+        ? normalizePgdDocumentTemplate(persisted)
+        : getPgdDocumentTemplates().find((candidate) => candidate.id === requestedId);
+      if (!template) {
+        res.status(404).json({ error: 'Không tìm thấy template DOCX PGD.' });
+        return;
+      }
+      const inspection = inspectPgdTemplateSource(template);
+      const sourcePath = resolvePgdTemplateSourcePath(template);
+      if (!sourcePath || inspection.status !== 'READY') {
+        res.status(409).json({ error: inspection.message || 'File DOCX nguồn PGD chưa sẵn sàng.' });
+        return;
+      }
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="${template.fileName.replace(/"/g, '_')}"`);
+      res.setHeader('Content-Length', String(inspection.byteSize || fs.statSync(sourcePath).size));
+      res.send(fs.readFileSync(sourcePath));
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 500).json({ error: error?.message || String(error) });
     }
   });
 
@@ -2729,6 +3018,11 @@ async function startServer() {
       const issues = validatePgdDocumentTemplate(candidate);
       if (issues.length > 0) {
         res.status(400).json({ error: `Template PGD chưa hợp lệ: ${issues.join(' ')}` });
+        return;
+      }
+      const sourceInspection = inspectPgdTemplateSource(candidate as PgdDocumentTemplate);
+      if (sourceInspection.status !== 'READY') {
+        res.status(400).json({ error: sourceInspection.message || 'File DOCX nguồn PGD chưa khớp placeholder metadata.' });
         return;
       }
       const persisted = await withPgTransaction(async (client) => {
@@ -2764,7 +3058,7 @@ async function startServer() {
         });
         return next;
       });
-      res.json({ template: persisted });
+      res.json({ template: projectPgdDocumentTemplate(persisted) });
     } catch (error: any) {
       res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
     }
@@ -3191,6 +3485,56 @@ async function startServer() {
         });
       });
       res.status(201).json({ samples });
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pgd/samples/:sampleId/destroy', async (req, res) => {
+    if (!requirePgdCollectionMutation(req, res, PGD_COLLECTIONS.samples, 'write')) return;
+    try {
+      const actor = getPgdSessionUser(req)!;
+      const sampleId = decodeURIComponent(String(req.params.sampleId || '')).trim();
+      const note = normalizePgdMultipartText(req.body?.note);
+      if (!sampleId || !note) {
+        res.status(400).json({ error: 'Cần có mã mẫu và lý do hủy mẫu PGD.' });
+        return;
+      }
+      const sample = await withPgTransaction(async (client) => {
+        const sampleResult = await client.query(
+          `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1 FOR UPDATE`,
+          [PGD_COLLECTIONS.samples, sampleId],
+        );
+        if (!sampleResult.rows[0]) throw Object.assign(new Error('Không tìm thấy mẫu PGD.'), { statusCode: 404 });
+        const currentSample = mapDocumentRow(sampleResult.rows[0]) as PgdSample;
+        const requestResult = await client.query(
+          `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1 FOR UPDATE`,
+          [PGD_COLLECTIONS.requests, currentSample.requestId],
+        );
+        if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD của mẫu cần hủy.'), { statusCode: 404 });
+        const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
+        assertPgdRequestEvidenceMutationAllowed(request);
+        const destroyed = markPgdSampleDestroyed(currentSample, actor.username, note, new Date().toISOString());
+        await client.query(
+          `UPDATE app_documents
+              SET data = $2::jsonb,
+                  updated_at = CURRENT_TIMESTAMP
+            WHERE collection_name = $1
+              AND document_id = $3`,
+          [PGD_COLLECTIONS.samples, JSON.stringify(getDocumentPayload(destroyed)), destroyed.id],
+        );
+        await writePgdActivity(client, actor, {
+          action: 'UPDATED',
+          entityType: 'PGD_SAMPLE',
+          entityId: destroyed.id,
+          entityLabel: destroyed.sampleCode,
+          requestCode: request.requestCode,
+          summary: `Hủy mẫu lưu PGD ${destroyed.sampleCode} của ${request.requestCode}`,
+          idSuffix: `sample-destroy-${destroyed.id}`,
+        });
+        return destroyed;
+      });
+      res.json({ sample });
     } catch (error: any) {
       res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
     }
