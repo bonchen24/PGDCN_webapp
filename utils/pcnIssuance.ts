@@ -133,4 +133,26 @@ export function archivePcnIssuancePackage(
   return { ...issuance, status: 'ARCHIVED', archivedAt, updatedAt: archivedAt };
 }
 
+export function withdrawPcnIssuancePackage(
+  issuance: IssuancePackage,
+  input: { reason: string; withdrawnByUsername: string; withdrawnAt?: string },
+): IssuancePackage {
+  if (!['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(issuance.status)) {
+    throw new Error('Chỉ được thu hồi bộ phát hành sau khi đã phê duyệt hoặc phát hành');
+  }
+  const reason = String(input.reason || '').trim();
+  const withdrawnByUsername = String(input.withdrawnByUsername || '').trim();
+  if (!reason) throw new Error('Thu hồi hồ sơ phải có lý do');
+  if (!withdrawnByUsername) throw new Error('Thu hồi hồ sơ phải ghi nhận người thực hiện');
+  const withdrawnAt = normalizePcnUtcTimestamp('Thời điểm thu hồi', input.withdrawnAt || new Date().toISOString());
+  return {
+    ...issuance,
+    status: 'RETURNED',
+    withdrawalReason: reason,
+    withdrawnByUsername,
+    withdrawnAt,
+    updatedAt: withdrawnAt,
+  };
+}
+
 // --- End of pcnIssuance.ts ---

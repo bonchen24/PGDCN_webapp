@@ -37,14 +37,14 @@ test('PYC and KQTN modules hide mutation controls and guard callbacks for viewer
 });
 
 test('dossier and issuance modules keep viewer controls read-only', () => {
-  assert.match(dossier, /if \(isUpdating\) return;\s*if \(!canEditMilestones\) return;/);
-  assert.match(dossier, /if \(!canEditMilestones \|\| !file/);
+  assert.match(dossier, /if \(isUpdating\) return;\s*if \(!canEditDossierSteps\) return;/);
+  assert.match(dossier, /if \(!canEditDossierSteps \|\| !file/);
   assert.doesNotMatch(dossier, /PcnHistoricalReviewPanel|historicalImport|historicalReview/);
-  assert.match(dossier, /canEditMilestones && \(canProcessRequirement \?/);
+  assert.match(dossier, /canEditDossierSteps && \(canProcessRequirement \?/);
 
   assert.match(issuance, /canMutate: boolean/);
   assert.match(issuance, /if \(!canMutate\) return;/);
-  assert.match(issuance, /canMutate && !issuance/);
+  assert.match(issuance, /canMutate && dossier\.status === 'TECHNICAL_REVIEW' && \(!issuance/);
   assert.match(issuance, /canMutate && issuance &&/);
 
 });

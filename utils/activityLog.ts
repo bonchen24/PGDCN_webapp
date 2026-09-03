@@ -2,7 +2,7 @@
 // OS support: Web/Node
 // Description: Pure builders, diff helpers, redaction, and access policy for system activity logs
 
-import type { ActivityLog, ActivityLogAction, ActivityLogChange, ActivityLogEntityType, UserAccount, UserRole } from '../types.ts';
+import type { ActivityLog, ActivityLogAction, ActivityLogChange, ActivityLogDomain, ActivityLogEntityType, UserAccount, UserRole } from '../types.ts';
 import { getUserFullName } from './userIdentity.ts';
 
 export interface ActivityLogActor {
@@ -19,6 +19,7 @@ export interface ActivityLogActor {
 export interface ActivityLogInput {
   id?: string;
   createdAt?: string;
+  domain?: ActivityLogDomain;
   actor?: ActivityLogActor | null;
   actorUsername?: string;
   actorName?: string;
@@ -101,6 +102,7 @@ export const buildActivityLog = (input: ActivityLogInput): ActivityLog => {
   const log: ActivityLog = {
     id: String(input.id || createActivityId()),
     createdAt: input.createdAt || new Date().toISOString(),
+    ...(input.domain ? { domain: input.domain } : {}),
     actorName: actorName || 'Người dùng hệ thống',
     action: input.action,
     entityType: input.entityType,
@@ -160,6 +162,15 @@ export const activityEntityLabels: Record<ActivityLogEntityType, string> = {
   PCN_QUALITY_DOCUMENT: 'Tài liệu chất lượng PCN',
   PCN_DRAFT: 'Bản soạn thảo PCN',
   PCN_SAMPLE_LOT: 'Lô mẫu PCN',
+  PGD_REQUEST: 'Hồ sơ PGD',
+  PGD_ASSIGNMENT: 'Phân công PGD',
+  PGD_FIELD_INSPECTION: 'Hiện trường PGD',
+  PGD_SAMPLE: 'Mẫu PGD',
+  PGD_LAB_REQUEST: 'PYC PTN PGD',
+  PGD_LAB_RESULT: 'Kết quả PGD',
+  PGD_REPORT: 'Báo cáo PGD',
+  PGD_CERTIFICATE: 'Chứng thư PGD',
+  PGD_APPROVAL: 'Phê duyệt PGD',
   REQUEST: 'Phiếu yêu cầu',
   HANDOVER_DOC: 'Biên bản giao nhận',
   KQTN_RECORD: 'Kết quả thử nghiệm',

@@ -51,11 +51,11 @@ const presentProposal: PcnDossierDocument = {
 
 test('exposes exactly five user-facing PCN workflow stages', () => {
   assert.deepEqual(PCN_WORKFLOW_STAGES.map((stage) => stage.key), [
-    'INTAKE', 'SAMPLING_LAB', 'RESULTS', 'APPROVAL', 'DELIVERY_ARCHIVE',
+    'INTAKE', 'SAMPLING_LAB', 'RESULTS', 'TECHNICAL_REVIEW', 'APPROVAL',
   ]);
   assert.equal(PCN_WORKFLOW_STAGES.length, 5);
   assert.equal(getPcnWorkflowStage('FIELD_EVALUATION')?.key, 'INTAKE');
-  assert.equal(getPcnWorkflowStage('TECHNICAL_REVIEW')?.key, 'RESULTS');
+  assert.equal(getPcnWorkflowStage('TECHNICAL_REVIEW')?.key, 'TECHNICAL_REVIEW');
   assert.equal(getPcnWorkflowStageByKey('SAMPLING_LAB')?.title, 'Lấy mẫu & gửi PTN');
 });
 
@@ -78,6 +78,7 @@ test('a skipped required document only resolves the gate with a non-empty reason
         requirementId: 'QC4-ASSIGNMENT',
         reason: 'Không phát sinh đánh giá tại hiện trường theo phạm vi đã phê duyệt.',
         decidedAt: '2026-08-31T01:00:00.000Z',
+        decidedBy: 'owner-qc4',
         decidedByUsername: 'owner-qc4',
       },
     },
@@ -92,6 +93,24 @@ test('a skipped required document only resolves the gate with a non-empty reason
     documents: [presentProposal],
     documentWaivers: gate.documentWaivers,
   }), true);
+});
+
+test('an incomplete waiver cannot satisfy a stage gate', () => {
+  const gate = buildPcnDossierStageGate({
+    dossier,
+    requirements,
+    documents: [presentProposal],
+    documentWaivers: {
+      'QC4-ASSIGNMENT': {
+        requirementId: 'QC4-ASSIGNMENT',
+        reason: 'Có lý do nhưng thiếu người quyết định.',
+        decidedAt: '2026-08-31T01:00:00.000Z',
+      },
+    },
+  });
+
+  assert.equal(gate.complete, false);
+  assert.deepEqual(gate.missingRequirementIds, ['QC4-ASSIGNMENT']);
 });
 
 test('a dossier cannot jump over a user-facing stage', () => {
@@ -133,7 +152,7 @@ test('compact workflow projections expose five steps and collapse detailed statu
   });
 
   assert.deepEqual(overview.nodes.map((node) => node.key), [
-    'INTAKE', 'SAMPLING_LAB', 'RESULTS', 'APPROVAL', 'DELIVERY_ARCHIVE', 'EXCEPTIONS',
+    'INTAKE', 'SAMPLING_LAB', 'RESULTS', 'TECHNICAL_REVIEW', 'APPROVAL', 'EXCEPTIONS',
   ]);
   assert.equal(detail.nodes.length, 6);
   assert.equal(detail.currentNodeKey, 'INTAKE');
@@ -160,7 +179,7 @@ test('document processing is limited to the current or completed user-facing ste
   assert.equal(canProcessPcnDossierRequirement(samplingDossier, futureResultRequirement), false);
   assert.equal(canProcessPcnOperationalForm(samplingDossier, 'SAMPLE_TAKING'), true);
   assert.equal(canProcessPcnOperationalForm(samplingDossier, 'EVALUATION_REPORT'), false);
-  assert.equal(canProcessPcnOperationalForm(samplingDossier, 'COMMERCIAL'), false);
+  assert.equal(canProcessPcnOperationalForm(samplingDossier, 'COMMERCIAL'), true);
   assert.equal(canCreatePcnLabRequest({ status: 'INTAKE_REVIEW' }), false);
   assert.equal(canCreatePcnLabRequest(samplingDossier), true);
   assert.equal(canCreatePcnLabRequest({ status: 'CORRECTIVE_ACTION' }), true);

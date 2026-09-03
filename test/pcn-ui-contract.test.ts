@@ -104,7 +104,7 @@ test('PCN dashboard shows one switchable work surface instead of duplicating que
   assert.match(source, /useState<'QUEUE' \| 'WORKFLOW'>\('WORKFLOW'\)/);
   assert.match(source, /data-testid="pcn-dashboard-work-surface"/);
   assert.match(source, /Việc cần làm/);
-  assert.match(source, /Bản đồ quy trình/);
+  assert.match(source, /Hồ sơ cần hoàn thiện/);
   assert.match(source, /dashboardWorkSurface === 'WORKFLOW'/);
 });
 
@@ -203,8 +203,8 @@ test('PCN section dossier shortcuts preserve the operator station context', () =
   const source = fs.readFileSync(workspacePath, 'utf8');
 
   assert.match(source, /function openDossierAtCurrentStation|const openDossierAtCurrentStation/);
-  assert.match(source, /setSelectedDossierTab\(initialTab \|\| 'documents'\)/);
-  assert.match(source, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\('documents'\); setSelectedDossierId\(dossier\.id\); \}\}/);
+  assert.match(source, /setSelectedDossierTab\(initialTab\)/);
+  assert.match(source, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\(undefined\); setSelectedDossierId\(dossier\.id\); \}\}/);
   assert.match(source, /<PcnDashboard[\s\S]*onOpenDossier=\{openDossierAtCurrentStation\}/);
   assert.match(source, /<PcnPipelineBoard[\s\S]*onOpenDossier=\{onOpenDossier\}/);
   assert.match(source, /<PcnWorkQueueView[\s\S]*onOpenDossier=\{onOpenDossier\}/);
@@ -258,7 +258,7 @@ test('all PCN modal source files declare a viewport bound and scrollable body', 
   for (const file of files) {
     const source = read(file);
     assert.match(source, /max-h-\[/, file);
-    assert.match(source, /mobile-scroll-y|overflow-auto/, file);
+    assert.match(source, /mobile-scroll-y|pcn-dossier-focus-scroll|overflow-auto/, file);
   }
 });
 
@@ -306,4 +306,33 @@ test('catalog combobox exposes keyboard and assistive technology semantics', () 
   assert.match(source, /ArrowDown/);
   assert.match(source, /Enter/);
   assert.match(source, /max-h-64[^"']*overflow-y-auto[^"']*mobile-scroll-y/);
+});
+
+test('long PCN catalogs support accent-insensitive Vietnamese token search', () => {
+  const combobox = read('components/PcnCatalogCombobox.tsx');
+  const search = read('utils/pcnSearch.ts');
+  assert.match(combobox, /normalizePcnSearchText/);
+  assert.match(combobox, /filterPcnCatalogOptions/);
+  assert.match(search, /tokens\.every/);
+  assert.match(search, /Đđ/);
+  assert.match(search, /normalize\('NFD'\)/);
+});
+
+test('long PCN data catalogs use the searchable combobox instead of native selects', () => {
+  const files = [
+    'components/PcnDocumentGenerationPanel.tsx',
+    'components/PcnDossierDetailView.tsx',
+    'components/PcnDraftingWorkspaceView.tsx',
+    'components/PcnIssuanceView.tsx',
+    'components/PcnOperationalFormModal.tsx',
+    'components/PcnPersonalSettingsPanel.tsx',
+    'components/PcnResultReturnView.tsx',
+    'components/PcnSampleFlowView.tsx',
+    'components/PcnSignerDelegationPanel.tsx',
+    'components/PcnLabRequestView.tsx',
+  ];
+
+  for (const file of files) {
+    assert.match(read(file), /PcnCatalogCombobox/, file);
+  }
 });

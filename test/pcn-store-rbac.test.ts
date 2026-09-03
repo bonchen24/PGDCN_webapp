@@ -63,11 +63,11 @@ test('Zustand PCN store guards every mutation while leaving reads and preflight 
   ];
   for (const method of mutationMethods) {
     const methodBody = getMethodBody(method);
-    assert.match(methodBody, /assertPcnStore(?:Admin)?MutationAllowed\(\);/,
+    assert.match(methodBody, /assertPcnStore(?:Admin|Personnel)?MutationAllowed\(\);/,
       `${method} must enforce the client-side PCN mutation guard before calling an API`);
   }
-  assert.doesNotMatch(getMethodBody('refreshPcnNotifications'), /assertPcnStore(?:Admin)?MutationAllowed\(\);/);
-  assert.doesNotMatch(getMethodBody('preflightDossierDocuments'), /assertPcnStore(?:Admin)?MutationAllowed\(\);/);
-  assert.doesNotMatch(getMethodBody('preflightOfficialDocuments'), /assertPcnStore(?:Admin)?MutationAllowed\(\);/);
-  assert.doesNotMatch(getMethodBody('preflightPcnTemplateSources'), /assertPcnStore(?:Admin)?MutationAllowed\(\);/);
+  assert.doesNotMatch(getMethodBody('refreshPcnNotifications'), /assertPcnStore(?:Admin|Personnel)?MutationAllowed\(\);/);
+  assert.doesNotMatch(getMethodBody('preflightDossierDocuments'), /assertPcnStore(?:Admin|Personnel)?MutationAllowed\(\);/);
+  assert.doesNotMatch(getMethodBody('preflightOfficialDocuments'), /assertPcnStore(?:Admin|Personnel)?MutationAllowed\(\);/);
+  assert.doesNotMatch(getMethodBody('preflightPcnTemplateSources'), /assertPcnStore(?:Admin|Personnel)?MutationAllowed\(\);/);
 });

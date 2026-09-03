@@ -7,6 +7,7 @@ import {
   PCN_APPEND_ONLY_COLLECTIONS,
   PCN_DEDICATED_MUTATION_COLLECTIONS,
   PCN_STAFF_MUTABLE_COLLECTIONS,
+  getPcnDepartmentScopeDenial,
   getPcnCollectionMutationDenial,
 } from '../utils/pcnRbac.ts';
 
@@ -43,6 +44,16 @@ test('server rechecks PCN mutation role on generic and business endpoints', () =
   assert.doesNotMatch(serverSource, /app\.post\('\/api\/pcn\/historical-review'/);
   assert.match(serverSource, /app\.post\('\/api\/pcn\/documents\/generate'/);
   assert.match(serverSource, /app\.post\("\/api\/pcn\/files"/);
+});
+
+test('department scopes isolate PCN from PGD at the server session boundary', () => {
+  assert.match(getPcnDepartmentScopeDenial({ systemRole: 'staff', departmentScopes: ['PGD'] }) || '', /scope PCN/i);
+  assert.equal(getPcnDepartmentScopeDenial({ systemRole: 'staff', departmentScopes: ['PCN'] }), null);
+  assert.equal(getPcnDepartmentScopeDenial({ systemRole: 'staff', departmentScopes: ['PCN', 'PGD'] }), null);
+  assert.equal(getPcnDepartmentScopeDenial({ systemRole: 'staff' }), null);
+  assert.match(serverSource, /requirePcnDepartmentSessionMiddleware/);
+  assert.match(serverSource, /app\.use\(\['\/api\/db', '\/api\/db-meta', '\/api\/pcn', '\/api\/activity-logs'\], requirePcnDepartmentSessionMiddleware\)/);
+  assert.match(serverSource, /app\.use\('\/api\/pgd', requirePcnSessionMiddleware\)/);
 });
 
 // --- End of pcn-rbac-boundary.test.ts ---

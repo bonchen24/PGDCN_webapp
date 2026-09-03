@@ -42,7 +42,7 @@ test('approval modal exposes the dossier completeness evidence and visual-check 
   assert.match(issuanceView, /codeReview\.needsReview/);
   assert.match(issuanceView, /Mã PCN/);
   assert.match(issuanceView, /onOpenDossier/);
-  assert.match(workspace, /setSelectedDossierTab\('documents'\)/);
+  assert.match(workspace, /setSelectedDossierTab\(undefined\)/);
   assert.match(server, /getPcnApprovalDecisionDenial/);
   assert.match(server, /collection_name = 'systemUsers'/);
   assert.match(server, /approvalActor/);

@@ -115,6 +115,25 @@ test('requests KPI summary with multiple actors and GMT+7 date bounds', async ()
   assert.equal(url.searchParams.get('to'), '2026-08-18');
 });
 
+test('requests the whole-room activity projection with an explicit domain filter', async () => {
+  const calls: string[] = [];
+  const client = createActivityLogClient(async (input) => {
+    calls.push(String(input));
+    return new Response(JSON.stringify({ items: [] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  });
+
+  await client.fetchPage({ domain: 'PGD', limit: 20 });
+  await client.fetchSummary({ domain: 'PCN' });
+
+  const pageUrl = new URL(calls[0], 'http://localhost');
+  const summaryUrl = new URL(calls[1], 'http://localhost');
+  assert.equal(pageUrl.searchParams.get('domain'), 'PGD');
+  assert.equal(summaryUrl.searchParams.get('domain'), 'PCN');
+});
+
 test('server exposes grouped activity summary and repeated actor filtering', () => {
   const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
   assert.match(serverSource, /app\.get\("\/api\/activity-logs\/summary"/);
@@ -127,6 +146,14 @@ test('server aggregates KPI summary to one row per actor username', () => {
   assert.match(serverSource, /MAX\(COALESCE\(data->>'actorName', 'Hệ thống'\)\) AS "actorName"/);
   assert.match(serverSource, /GROUP BY data->>'actorUsername'/);
   assert.doesNotMatch(serverSource, /GROUP BY data->>'actorUsername', data->>'actorName'/);
+});
+
+test('server activity routes read both domain-owned append-only collections', () => {
+  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  assert.match(serverSource, /pgdActivityLogs/);
+  assert.match(serverSource, /UNION ALL/);
+  assert.match(serverSource, /activityDomain|domain.*PCN|domain.*PGD/);
+  assert.match(serverSource, /departmentScopes/);
 });
 
 // --- End of activity-log-api.test.ts ---

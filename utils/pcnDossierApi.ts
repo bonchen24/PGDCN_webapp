@@ -2,7 +2,7 @@
 // OS support: Web
 // Description: Same-origin API client for atomic PCN dossier metadata mutations
 
-import type { ActivityLog, CertificationDossier } from '../types.ts';
+import type { ActivityLog, CertificationDossier, IssuancePackage, PcnApprovalStep } from '../types.ts';
 
 type PcnNullableDossierField =
   | 'ownerUsername'
@@ -20,6 +20,8 @@ export type PcnDossierUpdateInput =
 
 export interface PcnDossierMutationResponse {
   dossier: CertificationDossier;
+  approvalSteps?: PcnApprovalStep[];
+  issuance?: IssuancePackage;
   activityLog?: ActivityLog;
   idempotent?: boolean;
 }

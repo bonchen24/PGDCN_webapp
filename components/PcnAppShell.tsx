@@ -2,7 +2,9 @@
 
 import { useEffect } from 'react';
 
-import PcnWorkspace from './PcnWorkspace';
+import PgdcnAppShell from './PgdcnAppShell';
+
+// PcnWorkspace remains the embedded PCN workspace behind this compatibility shell.
 
 export default function PcnAppShell() {
   useEffect(() => {
@@ -12,5 +14,5 @@ export default function PcnAppShell() {
     });
   }, []);
 
-  return <PcnWorkspace />;
+  return <PgdcnAppShell initialDomain="PCN" />;
 }

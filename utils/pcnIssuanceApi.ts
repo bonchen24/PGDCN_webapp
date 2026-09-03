@@ -75,6 +75,17 @@ export function archivePcnIssuance(
   return postPcnIssuanceMutation(`/api/pcn/issuance/${encodeURIComponent(issuanceId)}/archive`, { idempotencyKey });
 }
 
+export function withdrawPcnIssuance(
+  issuanceId: string,
+  input: { reason: string },
+  idempotencyKey = createIdempotencyKey('issuance-withdraw'),
+): Promise<PcnIssuanceMutationResponse> {
+  return postPcnIssuanceMutation(`/api/pcn/issuance/${encodeURIComponent(issuanceId)}/withdraw`, {
+    reason: input.reason,
+    idempotencyKey,
+  });
+}
+
 export function attachPcnIssuanceFile(
   issuanceId: string,
   assetId: string,

@@ -40,7 +40,7 @@ import { reviewPcnTemplate as reviewPcnTemplateApi, uploadPcnTemplate as uploadP
 import { annotatePcnTemplate as annotatePcnTemplateApi } from './utils/pcnTemplateAnnotationApi';
 import { getPcnDocumentId, mergePcnCustomers } from './utils/pcnStorePolicy';
 import { getPcnIssuanceReadiness } from './utils/pcnIssuance';
-import { actOnPcnApprovalStep, archivePcnIssuance, attachPcnIssuanceFile, createPcnIssuanceBundle, deliverPcnIssuance } from './utils/pcnIssuanceApi';
+import { actOnPcnApprovalStep, archivePcnIssuance, attachPcnIssuanceFile, createPcnIssuanceBundle, deliverPcnIssuance, withdrawPcnIssuance } from './utils/pcnIssuanceApi';
 import { updatePcnDossierRetention } from './utils/pcnRetentionApi';
 import { submitPcnReturnedResult } from './utils/pcnResultApi';
 import { attachPcnReturnedResultFile } from './utils/pcnResultFileApi';
@@ -64,7 +64,7 @@ import { attachPcnQualityDocumentFile, createPcnQualityDocument, updatePcnQualit
 import { createPcnCustomer, deletePcnCustomer, updatePcnCustomer } from './utils/pcnCustomerApi';
 import type { PcnSampleLotDraft, PcnSampleRouteUpdate } from './utils/pcnSampleFlow';
 import type { ActivityLog } from './types';
-import { assertPcnClientAdmin, assertPcnClientMutationAllowed } from './utils/pcnRbac';
+import { assertPcnClientAdmin, assertPcnClientMutationAllowed, assertPcnPersonnelAdmin } from './utils/pcnRbac';
 import { filterPcnFutureWorkRelations, filterPcnFutureWorkSnapshot } from './utils/pcnActiveData';
 import { usePcnSessionStore } from './utils/pcnSessionState';
 import {
@@ -130,6 +130,7 @@ interface PcnStoreState {
   issuePackage: (issuanceId: string, input: { issuanceNumber: string; signerUsername: string; issuedAt?: string }, idempotencyKey?: string) => Promise<void>;
   deliverPackage: (issuanceId: string, input: { recipient: string; deliveredAt?: string; note?: string }, idempotencyKey?: string) => Promise<void>;
   archivePackage: (issuanceId: string, idempotencyKey?: string) => Promise<void>;
+  withdrawPackage: (issuanceId: string, reason: string, idempotencyKey?: string) => Promise<void>;
   setDossierLegalHold: (dossierId: string, input: { legalHold: boolean; reason?: string }) => Promise<void>;
   attachIssuanceFile: (issuanceId: string, file: File) => Promise<void>;
   addPcnUser: (input: PcnUserInput) => Promise<void>;
@@ -173,6 +174,10 @@ function assertPcnStoreMutationAllowed(): void {
 
 function assertPcnStoreAdminMutationAllowed(): void {
   assertPcnClientAdmin(usePcnSessionStore.getState().currentUser);
+}
+
+function assertPcnStorePersonnelMutationAllowed(): void {
+  assertPcnPersonnelAdmin(usePcnSessionStore.getState().currentUser);
 }
 
 export const usePcnStore = create<PcnStoreState>((set, get) => ({
@@ -312,25 +317,25 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
   },
 
   addPcnUser: async (input) => {
-    assertPcnStoreAdminMutationAllowed();
+    assertPcnStorePersonnelMutationAllowed();
     const user = await createPcnUser(input);
     set((state) => ({ users: [user, ...state.users.filter((item) => item.username !== user.username)] }));
   },
 
   updatePcnUser: async (username, input) => {
-    assertPcnStoreAdminMutationAllowed();
+    assertPcnStorePersonnelMutationAllowed();
     const user = await updatePcnUser(username, input);
     set((state) => ({ users: state.users.map((item) => item.username === user.username ? user : item) }));
   },
 
   deletePcnUser: async (username) => {
-    assertPcnStoreAdminMutationAllowed();
+    assertPcnStorePersonnelMutationAllowed();
     await deletePcnUserApi(username);
     set((state) => ({ users: state.users.filter((item) => item.username !== username) }));
   },
 
   resetPcnUserPassword: async (username, password) => {
-    assertPcnStoreAdminMutationAllowed();
+    assertPcnStorePersonnelMutationAllowed();
     await resetPcnUserPassword(username, password);
   },
 
@@ -521,7 +526,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
       proposalId: proposal.id,
       customerSnapshot: { ...proposal.customerSnapshot },
       fieldCodes: proposal.fieldCodes,
-      method: 'METHOD_1',
+      method: proposal.fieldCodes.includes('QC20') ? 'METHOD_7' : 'METHOD_1',
       status: 'INTAKE_REVIEW',
       labRequestIds: [],
       returnedResultIds: [],
@@ -638,6 +643,12 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     const result = await updatePcnDossier(dossierId, updates);
     set((state) => ({
       dossiers: state.dossiers.map((item) => item.id === result.dossier.id ? result.dossier : item),
+      ...(result.approvalSteps ? {
+        approvalSteps: [...result.approvalSteps, ...state.approvalSteps.filter((item) => !result.approvalSteps!.some((next) => next.id === item.id))],
+      } : {}),
+      ...(result.issuance ? {
+        issuancePackages: [result.issuance, ...state.issuancePackages.filter((item) => item.id !== result.issuance!.id)],
+      } : {}),
       ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs] } : {}),
     }));
   },
@@ -872,6 +883,26 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
       issuancePackages: state.issuancePackages.map((item) => item.id === result.issuance.id ? result.issuance : item),
       dossiers: state.dossiers.map((item) => item.id === result.dossier.id ? result.dossier : item),
       ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs.filter((item) => item.id !== result.activityLog?.id)] } : {}),
+    }));
+  },
+
+  withdrawPackage: async (issuanceId, reason, idempotencyKey) => {
+    assertPcnStoreMutationAllowed();
+    const issuance = get().issuancePackages.find((item) => item.id === issuanceId);
+    if (!issuance) throw new Error('Không tìm thấy bộ phát hành');
+    if (!['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(issuance.status)) {
+      throw new Error('Chỉ được thu hồi hồ sơ sau khi đã phê duyệt hoặc phát hành');
+    }
+    const normalizedReason = String(reason || '').trim();
+    if (!normalizedReason) throw new Error('Thu hồi hồ sơ phải có lý do');
+    const result = await withdrawPcnIssuance(issuanceId, { reason: normalizedReason }, idempotencyKey);
+    set((state) => ({
+      issuancePackages: state.issuancePackages.map((item) => item.id === result.issuance.id ? result.issuance : item),
+      dossiers: state.dossiers.map((item) => item.id === result.dossier.id ? result.dossier : item),
+      approvalSteps: result.approvalSteps
+        ? [...result.approvalSteps, ...state.approvalSteps.filter((item) => !result.approvalSteps!.some((next) => next.id === item.id))]
+        : state.approvalSteps,
+      ...(result.activityLogs ? { activityLogs: [...result.activityLogs, ...state.activityLogs] } : result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs.filter((item) => item.id !== result.activityLog?.id)] } : {}),
     }));
   },
 

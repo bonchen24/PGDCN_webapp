@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { CheckCircle2, FileText, FolderOpen, Plus, RefreshCw, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { PCN_SAMPLE_LAB_OPTIONS } from '../types';
+
 import type {
   CertificationDossier,
   CertificationProposal,
@@ -19,6 +21,8 @@ import { getPcnGeneratedDocumentsForKind } from '../utils/pcnGeneratedDocumentVi
 import { buildPcnLabRequest, getNextPcnLabRequestStatuses, getPcnLabFieldSelection } from '../utils/pcnLabRouting';
 import { isPcnInternalSampleRequest } from '../utils/pcnLabOperations';
 import { getPcnDossierCustomerSnapshot } from '../utils/pcnDossierPolicy';
+import { getPcnSampleRouteSnapshotForItem, isPcnSampleRouteAssignedToItem } from '../utils/pcnSampleFlow';
+import PcnCatalogCombobox from './PcnCatalogCombobox';
 import PcnLabRequestDetailModal from './PcnLabRequestDetailModal';
 
 function makeId(): string {
@@ -129,6 +133,26 @@ export function PcnLabRequestView({
     : fields;
   const dossierLots = sampleLots.filter((lot) => lot.dossierId === form.dossierId);
   const lotRoutes = sampleRoutes.filter((route) => route.sampleLotId === form.sampleLotId);
+  const dossierOptions = dossiers
+    .filter((dossier) => !initialDossierId || dossier.id === initialDossierId)
+    .map((dossier) => {
+      const customerName = getPcnDossierCustomerSnapshot(dossier, proposals.find((proposal) => proposal.id === dossier.proposalId))?.name;
+      return {
+        value: dossier.id,
+        label: `${dossier.dossierCode} — ${customerName || 'Chưa có khách hàng'}`,
+        searchText: [dossier.id, dossier.dossierCode, customerName, dossier.proposalId].filter(Boolean).join(' '),
+      };
+    });
+  const lotOptions = dossierLots.map((lot) => ({
+    value: lot.id,
+    label: `${lot.lotCode} — ${lot.sampleName}${sampleItems.filter((item) => item.sampleLotId === lot.id).length > 0 ? ` · ${sampleItems.filter((item) => item.sampleLotId === lot.id).length} mẫu/model` : ''}`,
+    searchText: [lot.id, lot.lotCode, lot.sampleName, lot.model, lot.brand].filter(Boolean).join(' '),
+  }));
+  const routeOptions = lotRoutes.map((route) => ({
+    value: route.id,
+    label: `${route.labName} — ${route.status}`,
+    searchText: [route.id, route.labName, route.labCode, route.status].filter(Boolean).join(' '),
+  }));
   const visibleRequests = initialDossierId
     ? requests.filter((request) => request.dossierId === initialDossierId && isPcnInternalSampleRequest(request, sampleRoutes))
     : requests.filter((request) => isPcnInternalSampleRequest(request, sampleRoutes));
@@ -137,6 +161,8 @@ export function PcnLabRequestView({
   const selectedRequestProposal = selectedRequestDossier ? proposals.find((proposal) => proposal.id === selectedRequestDossier.proposalId) : undefined;
   const selectedRequestLot = selectedRequest?.sampleLotId ? sampleLots.find((lot) => lot.id === selectedRequest.sampleLotId) : undefined;
   const selectedRequestRoute = selectedRequest?.sampleRouteId ? sampleRoutes.find((route) => route.id === selectedRequest.sampleRouteId) : undefined;
+  const configuredLaboratoryNames = PCN_SAMPLE_LAB_OPTIONS.map((option) => option.name);
+  const laboratoryNeedsReview = Boolean(form.laboratoryName && !configuredLaboratoryNames.includes(form.laboratoryName));
   const selectedRequestDocuments = selectedRequest ? getPcnGeneratedDocumentsForKind(generatedDocuments, selectedRequest.dossierId, 'LAB_REQUEST', undefined, selectedRequest.id) : [];
   const selectedLatestDocx = selectedRequestDocuments.find((document) => document.format === 'DOCX');
   const selectedLatestPdf = selectedRequestDocuments.find((document) => document.format === 'PDF');
@@ -240,13 +266,10 @@ export function PcnLabRequestView({
             <div className="min-h-0 flex-1 mobile-scroll-y space-y-3 overflow-y-auto p-3 md:p-4">
               <div className="grid gap-2 md:grid-cols-3">
             <Field label="Hồ sơ chứng nhận *">
-              <select value={form.dossierId} onChange={(event) => {
-                const dossier = dossiers.find((item) => item.id === event.target.value);
-                setForm({ ...form, dossierId: event.target.value, fieldCode: getPcnLabFieldSelection(dossier?.fieldCodes || [], form.fieldCode), sampleLotId: '', sampleRouteId: '' });
-              }}>
-                <option value="">Chọn hồ sơ</option>
-                {dossiers.filter((dossier) => !initialDossierId || dossier.id === initialDossierId).map((dossier) => <option key={dossier.id} value={dossier.id}>{dossier.dossierCode} — {getPcnDossierCustomerSnapshot(dossier, proposals.find((proposal) => proposal.id === dossier.proposalId))?.name || 'Chưa có khách hàng'}</option>)}
-              </select>
+              <PcnCatalogCombobox id="pcn-lab-request-dossier" label="Hồ sơ chứng nhận" hideLabel required value={form.dossierId} onChange={(value) => {
+                const dossier = dossiers.find((item) => item.id === value);
+                setForm({ ...form, dossierId: value, fieldCode: getPcnLabFieldSelection(dossier?.fieldCodes || [], form.fieldCode), sampleLotId: '', sampleRouteId: '' });
+              }} options={dossierOptions} placeholder={dossierOptions.length > 0 ? 'Tìm mã hồ sơ hoặc khách hàng...' : 'Chưa có hồ sơ'} />
             </Field>
             <Field label="Lĩnh vực *">
               <select value={form.fieldCode} onChange={(event) => setForm({ ...form, fieldCode: event.target.value })} disabled={!form.dossierId}>
@@ -257,25 +280,19 @@ export function PcnLabRequestView({
             <Field label="Số PYC"><input value={form.pycNumber} onChange={(event) => setForm({ ...form, pycNumber: event.target.value })} placeholder="Tự sinh nếu bỏ trống" /></Field>
           </div>
               <div className="grid gap-2 md:grid-cols-3">
-            <Field label="Phòng thử nghiệm nhận *"><input value={form.laboratoryName} onChange={(event) => setForm({ ...form, laboratoryName: event.target.value })} placeholder="Ví dụ: PTN HSNL" /></Field>
+            <Field label="Phòng thử nghiệm nhận *"><select required value={form.laboratoryName} onChange={(event) => setForm({ ...form, laboratoryName: event.target.value })}><option value="">Chọn phòng thử nghiệm</option>{laboratoryNeedsReview && <option value={form.laboratoryName}>Giá trị hiện tại cần rà soát: {form.laboratoryName}</option>}{PCN_SAMPLE_LAB_OPTIONS.map((option) => <option key={option.code} value={option.name}>{option.name}</option>)}</select></Field>
             <Field label="Hạn trả KQTN"><input type="date" value={form.targetDate} onChange={(event) => setForm({ ...form, targetDate: event.target.value })} /></Field>
             <Field label="Chỉ tiêu/tiêu chuẩn"><input value={form.criteria} onChange={(event) => setForm({ ...form, criteria: event.target.value })} /></Field>
           </div>
               <div className="grid gap-2 md:grid-cols-2">
             <Field label="Lô mẫu PCN *">
-              <select value={form.sampleLotId} onChange={(event) => setForm({ ...form, sampleLotId: event.target.value, sampleRouteId: '' })}>
-                <option value="">Chọn lô mẫu</option>
-                {dossierLots.map((lot) => <option key={lot.id} value={lot.id}>{lot.lotCode} — {lot.sampleName}{sampleItems.filter((item) => item.sampleLotId === lot.id).length > 0 ? ` · ${sampleItems.filter((item) => item.sampleLotId === lot.id).length} mẫu/model` : ''}</option>)}
-              </select>
+              <PcnCatalogCombobox id="pcn-lab-request-lot" label="Lô mẫu PCN" hideLabel required value={form.sampleLotId} onChange={(value) => setForm({ ...form, sampleLotId: value, sampleRouteId: '' })} options={lotOptions} placeholder={lotOptions.length > 0 ? 'Tìm mã lô, mẫu hoặc model...' : 'Chưa có lô mẫu'} disabled={!form.dossierId} />
             </Field>
             <Field label="Tuyến phòng thử *">
-              <select value={form.sampleRouteId} onChange={(event) => {
-                const route = lotRoutes.find((item) => item.id === event.target.value);
-                setForm({ ...form, sampleRouteId: event.target.value, laboratoryName: route?.labName || form.laboratoryName });
-              }} disabled={!form.sampleLotId}>
-                <option value="">Chọn tuyến phòng thử</option>
-                {lotRoutes.map((route) => <option key={route.id} value={route.id}>{route.labName} — {route.status}</option>)}
-              </select>
+              <PcnCatalogCombobox id="pcn-lab-request-route" label="Tuyến phòng thử" hideLabel required value={form.sampleRouteId} onChange={(value) => {
+                const route = lotRoutes.find((item) => item.id === value);
+                setForm({ ...form, sampleRouteId: value, laboratoryName: route?.labName || form.laboratoryName });
+              }} options={routeOptions} placeholder={routeOptions.length > 0 ? 'Tìm phòng thử hoặc trạng thái tuyến...' : 'Chưa có tuyến phòng thử'} disabled={!form.sampleLotId} />
             </Field>
           </div>
               <Field label="Ghi chú giao nhận"><textarea rows={2} value={form.handoverNote} onChange={(event) => setForm({ ...form, handoverNote: event.target.value })} placeholder="Thông tin mẫu, niêm phong hoặc yêu cầu giao nhận" /></Field>
@@ -296,6 +313,7 @@ export function PcnLabRequestView({
           const nextStatus = getNextPcnLabRequestStatuses(request.status).find((status) => status !== 'CANCELLED');
           const linkedRoute = request.sampleRouteId ? sampleRoutes.find((route) => route.id === request.sampleRouteId) : undefined;
           const requestItems = request.sampleLotId ? sampleItems.filter((item) => item.sampleLotId === request.sampleLotId) : [];
+          const linkedRouteItems = linkedRoute ? requestItems.filter((item) => isPcnSampleRouteAssignedToItem(linkedRoute, item.id, item)).map((item) => ({ item, route: getPcnSampleRouteSnapshotForItem(linkedRoute, item.id) })) : [];
           const requestDocuments = getPcnGeneratedDocumentsForKind(generatedDocuments, request.dossierId, 'LAB_REQUEST', undefined, request.id);
           const latestDocx = requestDocuments.find((document) => document.format === 'DOCX');
           const latestPdf = requestDocuments.find((document) => document.format === 'PDF');
@@ -314,9 +332,9 @@ export function PcnLabRequestView({
                   <p className="mt-1 text-[11px] font-bold text-slate-700">{request.laboratoryName} <span className="font-normal text-slate-400">• {customerSnapshot?.name || 'Hồ sơ PCN'}</span></p>
                   <p className="text-[10px] text-slate-500">{dossier?.dossierCode || request.dossierId} • {fieldName(fields, request.fieldCode)}{request.criteria ? ` • ${request.criteria}` : ''}</p>
                   <p className="mt-1 text-[10px] text-slate-400">Giao: {formatDate(request.handoverAt)} • PTN nhận: {formatDate(request.receivedAt)} • Hạn KQ: {formatDate(request.targetDate)}</p>
-                  {linkedRoute && <p className="mt-1 text-[10px] font-bold text-emerald-700">Liên kết tuyến mẫu: {linkedRoute.labName} • {linkedRoute.status}</p>}
+                  {linkedRoute && <p className="mt-1 text-[10px] font-bold text-emerald-700">Liên kết tuyến mẫu: {linkedRoute.labName} • {linkedRouteItems.length > 0 ? linkedRouteItems.map(({ item, route }) => `${item.sampleCode}: ${route.status}`).join(' · ') : linkedRoute.status}</p>}
                   {request.integration && <p className="mt-1 text-[10px] text-slate-500">Đồng bộ: <b className={integrationStatus === 'ACKNOWLEDGED' ? 'text-emerald-700' : integrationStatus === 'ERROR' ? 'text-rose-700' : 'text-amber-700'}>{integrationStatus}</b>{request.integration.externalRequestCode ? ` • PYC PTN: ${request.integration.externalRequestCode}` : ''}{request.integration.lastErrorMessage ? ` • ${request.integration.lastErrorMessage}` : ''}</p>}
-                  {linkedRoute?.execution && <p className="mt-1 text-[10px] text-indigo-700">Tiến độ thử: <b>{linkedRoute.execution.status}</b>{linkedRoute.execution.scheduledDate ? ` • Lịch ${formatDate(linkedRoute.execution.scheduledDate)}` : ''}{linkedRoute.execution.outcome ? ` • Kết quả ${linkedRoute.execution.outcome}` : ''}</p>}
+                  {linkedRouteItems.length > 0 ? <div className="mt-1 space-y-0.5 text-[10px] text-indigo-700"><div className="font-bold">Tiến độ thử theo mẫu:</div>{linkedRouteItems.map(({ item, route }) => <div key={item.id}>{item.sampleCode} · {item.model}: <b>{route.execution?.status || 'UNSCHEDULED'}</b>{route.execution?.scheduledDate ? ` • Lịch ${formatDate(route.execution.scheduledDate)}` : ''}{route.execution?.outcome && route.execution.outcome !== 'PENDING' ? ` • Kết quả ${route.execution.outcome}` : ''}</div>)}</div> : linkedRoute?.execution && <p className="mt-1 text-[10px] text-indigo-700">Tiến độ thử: <b>{linkedRoute.execution.status}</b>{linkedRoute.execution.scheduledDate ? ` • Lịch ${formatDate(linkedRoute.execution.scheduledDate)}` : ''}{linkedRoute.execution.outcome ? ` • Kết quả ${linkedRoute.execution.outcome}` : ''}</p>}
                   {requestItems.length > 0 && <div className="mt-1 flex flex-wrap gap-1 text-[9px] text-slate-600">{requestItems.map((item) => <span key={item.id} className="rounded-full bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700">{item.sampleCode} · {item.model} · SL {item.quantity}</span>)}</div>}
                   {request.sampleIssue && <p className="mt-1 text-[10px] font-bold text-rose-600">Mẫu có vấn đề: {request.sampleIssue.description}</p>}
                   <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[9px]">

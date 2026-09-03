@@ -95,6 +95,7 @@ function WorkflowNodeButton({ node, mode, selected, current, onSelectNode }: {
   onSelectNode?: (nodeKey: PcnPipelineStationKey) => void;
 }) {
   const statusLabel = node.currentStatus ? getPcnDossierStatusLabel(node.currentStatus) : undefined;
+  const isInteractive = mode === 'dossier' && Boolean(onSelectNode);
   const nodeDescription = [
     node.title,
     statusLabel,
@@ -103,19 +104,14 @@ function WorkflowNodeButton({ node, mode, selected, current, onSelectNode }: {
     node.blocked ? 'bị chặn' : undefined,
     node.returned ? 'đã trả về' : undefined,
   ].filter(Boolean).join(', ');
-  return (
-    <button
-      type="button"
-      onClick={() => onSelectNode?.(node.key)}
-      aria-label={`Mở bước ${nodeDescription}`}
-      aria-current={current ? 'step' : undefined}
-      aria-pressed={selected}
-      className={joinClasses(
-        'group flex min-h-11 min-w-[154px] max-w-[188px] flex-1 flex-col rounded-xl border p-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1',
-        stateClasses(node),
-        selected && 'ring-2 ring-indigo-500 ring-offset-1',
-      )}
-    >
+  const nodeClassName = joinClasses(
+    'group flex min-h-11 min-w-[154px] max-w-[188px] flex-1 flex-col rounded-xl border p-2 text-left',
+    isInteractive && 'transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1',
+    stateClasses(node),
+    isInteractive && selected && 'ring-2 ring-indigo-500 ring-offset-1',
+  );
+  const content = (
+    <>
       <div className="flex items-start gap-2">
         <span className={joinClasses('relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg', iconClasses(node), current && 'motion-safe:animate-pulse')}>
           {node.number ? <span className="absolute -right-1 -top-1 rounded-full bg-white px-1 text-[8px] font-black text-slate-500 shadow-sm">{node.number}</span> : null}
@@ -130,8 +126,12 @@ function WorkflowNodeButton({ node, mode, selected, current, onSelectNode }: {
         <NodeStatus node={node} mode={mode} />
         {node.missingDocumentCount > 0 && <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[8px] font-black text-amber-700"><AlertTriangle size={10} /> {node.missingDocumentCount} thiếu</span>}
       </div>
-    </button>
+    </>
   );
+  if (!isInteractive) {
+    return <div role="group" aria-label={`Bước ${nodeDescription}`} aria-current={current ? 'step' : undefined} className={nodeClassName}>{content}</div>;
+  }
+  return <button type="button" onClick={() => onSelectNode?.(node.key)} aria-label={`Mở bước ${nodeDescription}`} aria-current={current ? 'step' : undefined} aria-pressed={selected} className={nodeClassName}>{content}</button>;
 }
 
 export function PcnWorkflowMap({ projection, mode, selectedNodeKey, onSelectNode, className }: PcnWorkflowMapProps) {
@@ -147,7 +147,7 @@ export function PcnWorkflowMap({ projection, mode, selectedNodeKey, onSelectNode
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700"><GitBranch size={16} aria-hidden="true" /></span>
           <div>
             <h2 className="text-xs font-black text-slate-900">Bản đồ quy trình</h2>
-            <p className="mt-0.5 text-[9px] leading-4 text-slate-500">{mode === 'overview' ? `${projection.totalDossierCount} hồ sơ trong phạm vi đang xem` : 'Bấm một bước để mở đúng vùng dữ liệu của hồ sơ'}</p>
+            <p className="mt-0.5 text-[9px] leading-4 text-slate-500">{mode === 'overview' ? `${projection.totalDossierCount} hồ sơ trong phạm vi đang xem · Chỉ xem` : 'Bấm một bước để mở đúng vùng dữ liệu của hồ sơ'}</p>
           </div>
         </div>
         {projection.hasReturned && <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[9px] font-black text-orange-700"><RotateCcw size={11} /> Có luồng trả về/khắc phục</span>}

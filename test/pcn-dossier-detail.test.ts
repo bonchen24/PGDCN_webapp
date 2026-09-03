@@ -7,6 +7,7 @@ import { getPcnDossierNextStatuses } from '../utils/pcnWorkflow.ts';
 const detailPath = new URL('../components/PcnDossierDetailView.tsx', import.meta.url);
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
+const issuanceSource = fs.readFileSync(new URL('../components/PcnIssuanceView.tsx', import.meta.url), 'utf8');
 
 test('exposes only valid next states for a PCN dossier', () => {
   assert.deepEqual(getPcnDossierNextStatuses('DRAFT'), ['INTAKE_REVIEW', 'CANCELLED']);
@@ -17,7 +18,7 @@ test('exposes only valid next states for a PCN dossier', () => {
 test('dossier detail keeps the PCN operational tabs and avoids schedule concepts', () => {
   assert.equal(fs.existsSync(detailPath), true);
   const source = fs.readFileSync(detailPath, 'utf8');
-  for (const label of ['Tổng quan', 'Tài liệu hồ sơ', 'Mẫu & PYC', 'KQTN', 'Phê duyệt & phát hành', 'Tệp liên kết trong bộ hồ sơ', 'Lịch sử xử lý']) {
+  for (const label of ['Tổng quan', 'Tài liệu hồ sơ', 'Mẫu & PYC', 'KQTN', 'Phê duyệt', 'Tệp liên kết trong bộ hồ sơ', 'Lịch sử xử lý']) {
     assert.match(source, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
   assert.doesNotMatch(source, /Lịch ITD|Lịch EMC|auto.?schedule/i);
@@ -114,6 +115,33 @@ test('dossier detail uses one compact region selector instead of a visible tab s
   assert.match(source, /selectableTabs\.filter/);
 });
 
+test('dossier detail opens the current workflow region and only presents step-five preparation from technical review', () => {
+  const source = fs.readFileSync(detailPath, 'utf8');
+  assert.match(source, /setActiveTab\(initialTab \|\| getPcnDossierStationTab\(currentStation\.key\)\)/);
+  assert.match(issuanceSource, /dossier\.status === 'TECHNICAL_REVIEW'[\s\S]*?issuance\.status === 'RETURNED'/);
+  const openHandler = workspaceSource.slice(
+    workspaceSource.indexOf('const openDossierAtCurrentStation'),
+    workspaceSource.indexOf('const findNotificationDossier'),
+  );
+  assert.match(openHandler, /setSelectedDossierTab\(initialTab\)/);
+  assert.doesNotMatch(openHandler, /initialTab \|\| 'documents'/);
+  assert.match(workspaceSource, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\(undefined\);/);
+});
+
+test('dossier detail provides a focused workspace and an obvious document supplementation path', () => {
+  const source = fs.readFileSync(detailPath, 'utf8');
+
+  assert.match(source, /data-testid="pcn-dossier-focus-shell"/);
+  assert.match(source, /aria-label="Không gian làm việc hồ sơ"/);
+  assert.match(source, /h-\[100dvh\] min-h-0 w-full flex-col/);
+  assert.match(source, /const openDocumentCompletion = \(\) =>/);
+  assert.match(source, /Bổ sung tài liệu/);
+  assert.match(source, /scrollIntoView\(/);
+  assert.match(source, /id=\{`pcn-dossier-requirement-\$\{requirement\.id\}`\}/);
+  assert.match(source, /current \? 'Thay phiên bản' : 'Bổ sung file'/);
+  assert.match(source, /'Đang khóa'|Chưa đến bước hiện tại/);
+});
+
 test('dossier document operations stay in one open detail region after visual inspection', () => {
   const source = fs.readFileSync(detailPath, 'utf8');
   assert.match(source, /data-testid="pcn-document-history"/);
@@ -136,7 +164,7 @@ test('station checklist stays read-only while the document region owns version u
   const source = fs.readFileSync(detailPath, 'utf8');
   const stationChecklistSource = source.slice(source.indexOf('function DossierStationChecklist'), source.indexOf('function DossierWorkflowSummary'));
   assert.match(source, /function DossierStationChecklist\(\{ stationChecklist, users \}/);
-  assert.match(source, /Tải phiên mới/);
+  assert.match(source, /current \? 'Thay phiên bản' : 'Bổ sung file'/);
   assert.match(source, /data-testid="pcn-document-history"/);
   assert.doesNotMatch(stationChecklistSource, /type="file"/);
   assert.doesNotMatch(stationChecklistSource, /onUploadDocument\(item\.requirement\.id, file\)/);

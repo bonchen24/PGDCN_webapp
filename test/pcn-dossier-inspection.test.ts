@@ -44,7 +44,7 @@ test('builds stage and exact-station visual checklists from current versioned do
   });
   assert.deepEqual(inspection.stages.map((stage) => [stage.stage, stage.label, stage.present, stage.total]), [
     ['INTAKE', 'Tiếp nhận & đầu vào', 1, 2],
-    ['TECHNICAL_REVIEW', 'KQTN & soát xét', 0, 1],
+    ['TECHNICAL_REVIEW', 'KQTN & đánh giá / hoàn thiện & soát xét trước duyệt', 0, 1],
   ]);
   assert.deepEqual(inspection.stations.map((station) => [station.key, station.label, station.present, station.total, station.stationScore]), [
     ['INTAKE', 'Tiếp nhận Đề nghị', 1, 2, 50],

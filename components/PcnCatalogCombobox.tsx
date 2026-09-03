@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Search, X } from 'lucide-react';
+import { filterPcnCatalogOptions, normalizePcnSearchText } from '../utils/pcnSearch';
 
 export type PcnCatalogOption = {
   value: string;
@@ -25,10 +26,6 @@ export type PcnCatalogComboboxProps = {
   unmatchedOption?: PcnCatalogOption;
   hideLabel?: boolean;
 };
-
-function normalize(value: string): string {
-  return value.trim().toLocaleLowerCase();
-}
 
 export function PcnCatalogCombobox({
   id,
@@ -63,9 +60,8 @@ export function PcnCatalogCombobox({
   }, [options, unmatchedOption, value]);
 
   const filteredOptions = useMemo(() => {
-    const query = normalize(inputValue);
-    if (!query || selectedOption?.label === inputValue) return mergedOptions;
-    return mergedOptions.filter((option) => normalize([option.value, option.label, option.searchText, option.description].filter(Boolean).join(' ')).includes(query));
+    if (!normalizePcnSearchText(inputValue) || selectedOption?.label === inputValue) return mergedOptions;
+    return filterPcnCatalogOptions(mergedOptions, inputValue, (option) => [option.value, option.label, option.searchText, option.description]);
   }, [inputValue, mergedOptions, selectedOption?.label]);
 
   const enabledIndexes = useMemo(

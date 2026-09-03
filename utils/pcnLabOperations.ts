@@ -8,7 +8,13 @@ import type {
   PcnSampleRoute,
   ReturnedTestResult,
 } from '../types.ts';
-import { derivePcnSampleRouteReadiness, sortPcnSampleRoutes } from './pcnSampleFlow.ts';
+import {
+  derivePcnSampleLotStatus,
+  derivePcnSampleRouteReadiness,
+  getPcnSampleRouteSnapshotForItem as routeSnapshotForItem,
+  isPcnSampleRouteAssignedToItem as routeAppliesToItem,
+  sortPcnSampleRoutes,
+} from './pcnSampleFlow.ts';
 
 export interface PcnLabOperationsInput {
   dossiers: CertificationDossier[];
@@ -145,25 +151,6 @@ function getSampleItemsForLot(sampleItems: PcnSampleItem[], lot: PcnSampleLot): 
     quantity: lot.quantity,
     ...(clean(lot.unit) ? { unit: clean(lot.unit) } : {}),
   }];
-}
-
-function routeAppliesToItem(route: PcnSampleRoute, sampleItemId: string, sampleItem?: PcnSampleItem): boolean {
-  const hasExplicitRouteScope = Boolean(route.sampleItemIds?.length);
-  if (hasExplicitRouteScope) {
-    return Boolean(route.sampleItemIds?.includes(sampleItemId))
-      && (!sampleItem?.testLabCodes?.length || sampleItem.testLabCodes.includes(route.labCode));
-  }
-  if (sampleItem?.testLabCodes?.length) return false;
-  // A route without item scope is retained only for the synthetic item created
-  // for a legacy lot that has no child sample records. It must not fan out to
-  // every real sample/model in a newly itemized lot.
-  return !hasExplicitRouteScope && sampleItemId.endsWith('-legacy-item');
-}
-
-function routeSnapshotForItem(route: PcnSampleRoute, sampleItemId: string): PcnSampleRoute {
-  const itemSnapshot = route.itemSnapshots?.[sampleItemId];
-  if (!itemSnapshot) return route;
-  return { ...route, ...itemSnapshot };
 }
 
 function derivePcnSampleItemLocation(routes: PcnSampleRoute[], fallback: string): string {
@@ -318,6 +305,7 @@ export function buildPcnSampleFlowProjections(input: PcnLabOperationsInput): Pcn
 
     for (const lot of dossierLots) {
       const lotRoutes = sortPcnSampleRoutes(input.sampleRoutes.filter((route) => route.sampleLotId === lot.id));
+      const lotProjection = derivePcnSampleLotStatus(lotRoutes, getSampleItemsForLot(sampleItems, lot));
       for (const [itemIndex, item] of getSampleItemsForLot(sampleItems, lot).entries()) {
         const itemRoutes = lotRoutes.filter((route) => routeAppliesToItem(route, item.id, item)).map((route) => routeSnapshotForItem(route, item.id));
         const readiness = derivePcnSampleRouteReadiness(itemRoutes, item);
@@ -367,7 +355,7 @@ export function buildPcnSampleFlowProjections(input: PcnLabOperationsInput): Pcn
           ...(item.brand ? { brand: item.brand } : {}),
           quantity: item.quantity,
           ...(item.unit ? { unit: item.unit } : {}),
-          lotStatus: lot.status,
+          lotStatus: lotProjection.status,
           currentLocation,
           ...(activeRoutes[0] ? { activeRouteId: activeRoutes[0].routeId } : {}),
           activeRouteCount: activeRoutes.length,

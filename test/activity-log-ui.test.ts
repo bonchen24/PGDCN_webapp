@@ -31,6 +31,15 @@ test('activity log view exposes filters, details, pagination, and CSV export wit
   assert.doesNotMatch(source, /deleteActivityLog|deleteDocFromPostgres\(['"]activityLogs['"]/);
 });
 
+test('activity log view presents a whole-room PCN/PGD projection with scoped source access', () => {
+  const source = readSource('../components/ActivityLogView.tsx');
+  for (const marker of ['Nhật ký hoạt động', 'Miền', 'Tất cả', 'PCN', 'PGD', 'domain', 'canOpenPgdcnActivitySource']) {
+    assert.ok(source.includes(marker), `Missing whole-room activity marker: ${marker}`);
+  }
+  assert.match(source, /departmentScopes/);
+  assert.match(source, /navigationTarget/);
+});
+
 test('App places activity log immediately before system settings and renders the view', () => {
   const source = readSource('../App.tsx');
   const activityIndex = source.indexOf("id: 'activity_log'");

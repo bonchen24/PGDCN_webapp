@@ -19,6 +19,7 @@ import type {
 } from '../types';
 import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
 import { mergePcnOperationalForm, validatePcnOperationalForm } from '../utils/pcnOperationalForms';
+import PcnCatalogCombobox from './PcnCatalogCombobox';
 
 export type PcnOperationalFormValue =
   | PcnAssignmentForm
@@ -133,7 +134,16 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
   </FormField>;
   const date = (field: string) => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]}><input type="date" value={String(form[field] ?? '')} onChange={(event) => setField(field, event.target.value)} disabled={!canEdit || isSaving} className={controlClass} /></FormField>;
   const array = (field: string, placeholder = 'Mỗi dòng một giá trị') => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]} wide><textarea value={toLines(form[field])} onChange={(event) => setField(field, event.target.value.split('\n'))} placeholder={placeholder} rows={3} disabled={!canEdit || isSaving} className={controlClass} /></FormField>;
-  const user = (field: string, emptyLabel = 'Chưa chọn') => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]}><select value={String(form[field] ?? '')} onChange={(event) => setField(field, event.target.value)} disabled={!canEdit || isSaving} className={controlClass}><option value="">{emptyLabel}</option>{activeUsers.map((item) => <option key={item.username} value={item.username}>{displayUser(item)}</option>)}</select></FormField>;
+  const user = (field: string, emptyLabel = 'Chưa chọn') => {
+    const label = FIELD_LABELS[field] || field;
+    const options = activeUsers.map((item) => ({
+      value: item.username,
+      label: displayUser(item),
+      searchText: [item.username, item.name, item.position, item.departmentRoleCode].filter(Boolean).join(' '),
+      description: item.username,
+    }));
+    return <FormField label={label} field={field} error={errors[field]}><PcnCatalogCombobox id={`pcn-operational-${kind.toLowerCase()}-${field}`} label={label} hideLabel value={String(form[field] ?? '')} options={options} onChange={(value) => setField(field, value)} placeholder={options.length > 0 ? `Tìm ${label.toLocaleLowerCase('vi-VN')}...` : emptyLabel} disabled={!canEdit || isSaving} /></FormField>;
+  };
   const number = (field: string) => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]}><input type="number" min="0" value={String(form[field] ?? '')} onChange={(event) => setField(field, event.target.value === '' ? '' : Number(event.target.value))} disabled={!canEdit || isSaving} className={controlClass} /></FormField>;
 
   const fields = (() => {

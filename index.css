@@ -303,6 +303,21 @@
     scrollbar-gutter: stable;
   }
 
+  /* The focused PCN dossier keeps its chrome fixed and gives the mobile body a real flex scroll boundary. */
+  .pcn-dossier-focus-scroll {
+    height: 0;
+    min-height: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scrollbar-width: thin;
+    scrollbar-color: var(--pcn-scrollbar-thumb) var(--pcn-scrollbar-track);
+    scrollbar-gutter: stable;
+  }
+
   .mobile-scroll-x::-webkit-scrollbar,
   .mobile-scroll-y::-webkit-scrollbar {
     width: 6px;

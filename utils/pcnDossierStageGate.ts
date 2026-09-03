@@ -16,6 +16,8 @@ import {
   getPcnWorkflowStageIndex,
   type PcnWorkflowStage,
 } from './pcnWorkflowStages.ts';
+import { getPcnDossierReopenStatus } from './pcnDossierStepAccess.ts';
+import { isPcnDocumentWaiverValid } from './pcnDocumentWaivers.ts';
 
 function hasCurrentDocument(document: PcnDossierDocument | undefined): boolean {
   if (!document || document.status !== 'PRESENT' || !document.currentVersionId) return false;
@@ -29,9 +31,18 @@ function requirementBelongsToStage(requirement: PcnDocumentRequirement, stage: P
   return requirement.stages.some((item) => stage.requirementStages.includes(item));
 }
 
+const POST_APPROVAL_STATUSES = new Set<PcnDossierStatus>(['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED']);
+
 /** Returns the compact workflow step that owns a checklist requirement. */
 export function getPcnRequirementWorkflowStageIndex(requirement: PcnDocumentRequirement): number {
   return PCN_WORKFLOW_STAGES.findIndex((stage) => requirementBelongsToStage(requirement, stage));
+}
+
+/** Return the first actionable status for the compact step owning a requirement. */
+export function getPcnRequirementReopenStatus(requirement: PcnDocumentRequirement): PcnDossierStatus | undefined {
+  const stageIndex = getPcnRequirementWorkflowStageIndex(requirement);
+  const stage = stageIndex >= 0 ? PCN_WORKFLOW_STAGES[stageIndex] : undefined;
+  return stage ? getPcnDossierReopenStatus(stage.key) : undefined;
 }
 
 /**
@@ -46,6 +57,7 @@ export function canProcessPcnDossierRequirement(
 ): boolean {
   const currentStage = getPcnWorkflowStage(dossier.status);
   if (!currentStage) return true;
+  if (POST_APPROVAL_STATUSES.has(dossier.status)) return false;
   const requirementStageIndex = getPcnRequirementWorkflowStageIndex(requirement);
   if (requirementStageIndex < 0) return true;
   return requirementStageIndex <= getPcnWorkflowStageIndex(currentStage.key);
@@ -97,7 +109,7 @@ export function buildPcnDossierStageGate(input: {
   for (const requirement of requirements.filter((item) => item.required)) {
     if (hasCurrentDocument(documentsByRequirement.get(requirement.id)) || resolvedRequirementIds.has(requirement.id)) continue;
     const waiver = input.documentWaivers?.[requirement.id];
-    if (waiver?.reason?.trim()) {
+    if (isPcnDocumentWaiverValid(waiver)) {
       waivedRequirementIds.push(requirement.id);
     } else {
       missingRequirementIds.push(requirement.id);

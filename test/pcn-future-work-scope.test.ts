@@ -61,16 +61,16 @@ test('PCN navigation keeps dossier cards while exposing management projections a
   assert.match(dossierDetail, /label: 'Tài liệu hồ sơ'/);
   assert.match(dossierDetail, /label: 'Mẫu & PYC'/);
   assert.match(dossierDetail, /label: 'KQTN'/);
-  assert.match(dossierDetail, /label: 'Phê duyệt & phát hành'/);
+  assert.match(dossierDetail, /label: 'Phê duyệt'/);
   assert.doesNotMatch(dossierDetail, /label: '(Sinh Word\/PDF|Đề nghị & đầu vào|Tệp đính kèm|Lịch sử)'/);
   assert.match(dossierDetail, /data-testid="pcn-proposal-summary"/);
   assert.match(dossierDetail, /PcnDocumentOutputModal/);
 });
 
-test('opening a dossier from the proposal register starts in the document region', () => {
+test('opening a dossier from the proposal register lets the detail view choose the current region', () => {
   const workspace = read('components/PcnWorkspace.tsx');
 
-  assert.match(workspace, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\('documents'\); setSelectedDossierId\(dossier\.id\); \}\}/);
+  assert.match(workspace, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\(undefined\); setSelectedDossierId\(dossier\.id\); \}\}/);
   assert.doesNotMatch(workspace, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\('overview'\); setSelectedDossierId\(dossier\.id\); \}\}/);
 });
 

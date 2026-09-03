@@ -18,7 +18,7 @@ test('standard PCN dossiers cover one complete QC4 flow and one waiver-aware QC9
 
   for (const fixture of PCN_STANDARD_DOSSIER_FIXTURES) {
     const result = buildPcnStandardDossierFlow(fixture);
-    assert.deepEqual(result.stageKeys, ['INTAKE', 'SAMPLING_LAB', 'RESULTS', 'APPROVAL', 'DELIVERY_ARCHIVE']);
+    assert.deepEqual(result.stageKeys, ['INTAKE', 'SAMPLING_LAB', 'RESULTS', 'TECHNICAL_REVIEW', 'APPROVAL']);
     assert.equal(result.dossier.status, 'ARCHIVED');
     assert.equal(result.issuance.status, 'ARCHIVED');
     assert.equal(result.sampleLot.status, 'CLOSED');

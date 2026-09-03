@@ -6,6 +6,8 @@ import type {
   PcnSystemRole,
   PcnUserAccount,
   UserAccount,
+  DepartmentScope,
+  PgdDepartmentRoleCode,
 } from '../types.ts';
 import { PCN_CERTIFICATION_FIELD_CODES } from '../types.ts';
 import { getCanonicalUserKey, getUserFullName, normalizeUserKey } from './userIdentity.ts';
@@ -30,6 +32,15 @@ const PCN_DEPARTMENT_ROLES: PcnDepartmentRoleCode[] = [
   'UNASSIGNED',
 ];
 
+const PGD_ROLES: PgdDepartmentRoleCode[] = [
+  'PGD_ADMIN',
+  'PGD_MANAGER',
+  'PGD_TECHNICAL',
+  'PGD_FIELD_INSPECTOR',
+  'PGD_DOCUMENT_CLERK',
+  'PGD_VIEWER',
+];
+
 export const PCN_INITIAL_EXCLUDED_USERNAMES = new Set(['nguyenthivananh']);
 
 function isPcnSystemRole(value: unknown): value is PcnSystemRole {
@@ -38,6 +49,27 @@ function isPcnSystemRole(value: unknown): value is PcnSystemRole {
 
 function isPcnDepartmentRole(value: unknown): value is PcnDepartmentRoleCode {
   return PCN_DEPARTMENT_ROLES.includes(String(value || '').trim().toUpperCase() as PcnDepartmentRoleCode);
+}
+
+function isDepartmentScope(value: unknown): value is DepartmentScope {
+  return value === 'PCN' || value === 'PGD';
+}
+
+function isPgdRole(value: unknown): value is PgdDepartmentRoleCode {
+  return PGD_ROLES.includes(String(value || '').trim().toUpperCase() as PgdDepartmentRoleCode);
+}
+
+export function getDepartmentScopes(data: Record<string, unknown> | undefined, systemRole?: PcnSystemRole): DepartmentScope[] {
+  const configured = Array.isArray(data?.departmentScopes)
+    ? data.departmentScopes.filter(isDepartmentScope)
+    : [];
+  if (configured.length > 0) return Array.from(new Set(configured));
+  return systemRole === 'admin' ? ['PCN', 'PGD'] : ['PCN'];
+}
+
+export function getPgdRole(data: Record<string, unknown> | undefined): PgdDepartmentRoleCode | undefined {
+  const value = String(data?.pgdRole || '').trim().toUpperCase();
+  return isPgdRole(value) ? value : undefined;
 }
 
 export function normalizePcnSystemRole(data: Record<string, unknown> | undefined, fallback: PcnSystemRole = 'staff'): PcnSystemRole {
@@ -128,6 +160,8 @@ export function toPcnUserAccount(row: PcnUserRow): PcnUserAccount {
   const systemRole = normalizePcnSystemRole(userData);
   const phone = stringValue(userData.phone || userData['Số điện thoại']);
   const email = stringValue(userData.email || userData['Email']);
+  const departmentScopes = getDepartmentScopes(userData, systemRole);
+  const pgdRole = getPgdRole(userData);
   return {
     username: getCanonicalUserKey(row.documentId, userData),
     name: getUserFullName(userData),
@@ -136,6 +170,8 @@ export function toPcnUserAccount(row: PcnUserRow): PcnUserAccount {
     departmentRoleCode: normalizePcnDepartmentRole(userData),
     fieldCodes: getPcnFieldCodes(userData),
     active: userData.active !== false && userData.isActive !== false,
+    departmentScopes,
+    ...(pgdRole ? { pgdRole } : {}),
     position: stringValue(userData.position || userData['Chức vụ']),
     ...(phone ? { phone } : {}),
     ...(email ? { email } : {}),
@@ -201,6 +237,8 @@ export function verifyPcnSessionToken(token: string, secret: string, now = Date.
     const expiresAt = Number(claims.expiresAt || 0);
     if (!user || !stringValue(user.username) || !stringValue(user.name) || !stringValue(user.role) || expiresAt <= now) return null;
     const systemRole = normalizePcnSystemRole(user as unknown as Record<string, unknown>);
+    const departmentScopes = getDepartmentScopes(user as unknown as Record<string, unknown>, systemRole);
+    const pgdRole = getPgdRole(user as unknown as Record<string, unknown>);
     return {
       username: stringValue(user.username),
       name: stringValue(user.name),
@@ -209,6 +247,8 @@ export function verifyPcnSessionToken(token: string, secret: string, now = Date.
       departmentRoleCode: normalizePcnDepartmentRole(user as unknown as Record<string, unknown>),
       fieldCodes: getPcnFieldCodes(user as unknown as Record<string, unknown>),
       active: user.active !== false,
+      departmentScopes,
+      ...(pgdRole ? { pgdRole } : {}),
       ...(stringValue(user.position) ? { position: stringValue(user.position) } : {}),
     };
   } catch {

@@ -31,6 +31,19 @@ test('PYC mutations use dedicated transaction endpoints and remain outside gener
   assert.match(viewSource, /disabled=\{!form\.dossierId\}/);
 });
 
+test('PYC dispatch binds the authenticated PCN actor instead of trusting the request body', () => {
+  const dispatchRoute = serverSource.slice(
+    serverSource.indexOf("app.post('/api/pcn/lab-requests/:requestId/dispatch'"),
+    serverSource.indexOf("app.post('/api/pcn/lab-requests/:requestId/reconcile'"),
+  );
+
+  assert.match(dispatchRoute, /const sessionActor = getPcnSessionUser\(req\)/);
+  assert.match(dispatchRoute, /initiatedBy:\s*\{/);
+  assert.match(dispatchRoute, /username:\s*sessionActor\.username/);
+  assert.match(dispatchRoute, /sourceSystem:\s*'PCN'/);
+  assert.doesNotMatch(dispatchRoute, /req\.body.*initiatedBy/);
+});
+
 test('PYC API client sends the complete request and an idempotent status transition', async () => {
   const originalFetch = globalThis.fetch;
   const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];

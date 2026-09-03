@@ -103,7 +103,7 @@ test('assistant snapshot carries the five-step dossier context and sample flow f
   const route: PcnSampleRoute = { id: 'route-1', sampleLotId: 'lot-1', labCode: 'EMC', labName: 'Phòng thử EMC', status: 'RECEIVED', labRequestId: 'pyc-1' };
   const request: OutboundLabRequest = { id: 'pyc-1', pycNumber: 'PYC-001', dossierId: 'd-1', fieldCode: 'QC4', laboratoryName: 'Phòng thử EMC', status: 'RECEIVED', requestedAt: '2026-08-09' };
   const snapshot = buildPcnAssistantSnapshot({ dossiers: [dossier()], proposals: [proposal], requirements: [], documents: [], labRequests: [request], sampleLots: [lot], sampleRoutes: [route], returnedResults: [] });
-  assert.equal(snapshot.dossiers[0].workflowStage, 'Bước 3 · KQTN & soát xét');
+  assert.equal(snapshot.dossiers[0].workflowStage, 'Bước 3 · KQTN & đánh giá');
   assert.equal(snapshot.dossiers[0].completeness.requiredDocumentTotal >= 0, true);
   assert.equal(snapshot.samples[0].lotCode, 'LO-QC4-01');
   assert.equal(snapshot.routes[0].laboratory, 'Phòng thử EMC');

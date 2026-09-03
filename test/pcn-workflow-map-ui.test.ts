@@ -22,6 +22,13 @@ test('workflow graphic exposes a separate exception branch and uses no business-
   assert.doesNotMatch(source, /onUpdateStatus|fetch\(/);
 });
 
+test('aggregate workflow nodes are read-only while dossier nodes are selectable', () => {
+  assert.match(source, /const isInteractive = mode === 'dossier'/);
+  assert.match(source, /if \(!isInteractive\)/);
+  assert.match(source, /Bước \$\{nodeDescription\}/);
+  assert.match(source, /onClick=\{\(\) => onSelectNode/);
+});
+
 test('active PCN work surfaces use workflow-step language instead of station UI', () => {
   const files = [
     'PcnPipelineBoard.tsx',

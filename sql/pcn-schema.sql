@@ -15,8 +15,8 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF OLD.collection_name IN ('activityLogs', 'agentAuditLogs') THEN
-        RAISE EXCEPTION 'Activity log nghiệp vụ và audit AI PCN là append-only, không được sửa hoặc xóa.';
+    IF OLD.collection_name IN ('activityLogs', 'agentAuditLogs', 'pgdActivityLogs') THEN
+        RAISE EXCEPTION 'Activity log nghiệp vụ và audit AI là append-only, không được sửa hoặc xóa.';
     END IF;
     IF TG_OP = 'DELETE' THEN
         RETURN OLD;
@@ -75,6 +75,7 @@ BEGIN
 
     notification_data := jsonb_strip_nulls(jsonb_build_object(
         'id', 'pcn-notif-' || NEW.document_id,
+        'domain', 'PCN',
         'type', 'BUSINESS_ACTIVITY',
         'title', CASE entity_type
             WHEN 'PCN_PROPOSAL' THEN 'Đề nghị PCN mới'
@@ -142,7 +143,7 @@ INSERT INTO app_documents (collection_name, document_id, data, updated_at)
 VALUES
     ('pcnCertificationFields', 'QC4', '{"code":"QC4","name":"Quy chuẩn 4","standardRefs":["QCVN 4:2009/BKHCN"],"active":true}'::jsonb, CURRENT_TIMESTAMP),
     ('pcnCertificationFields', 'QC9', '{"code":"QC9","name":"Quy chuẩn 9","standardRefs":["QCVN 9","TCVN 7492-1:2018"],"active":true}'::jsonb, CURRENT_TIMESTAMP),
-    ('pcnCertificationFields', 'QC20', '{"code":"QC20","name":"Quy chuẩn 20","standardRefs":["QCVN 20:2019/BKHCN","Sửa đổi 1:2021 QCVN 20:2019/BKHCN"],"scopeStatus":"NEEDS_PCN_CONFIRMATION","active":true}'::jsonb, CURRENT_TIMESTAMP)
+    ('pcnCertificationFields', 'QC20', '{"code":"QC20","name":"Quy chuẩn 20","standardRefs":["QCVN 20:2019/BKHCN","Sửa đổi 1:2021 QCVN 20:2019/BKHCN"],"method":"METHOD_7","methodLabel":"Phương thức 7","scopeStatus":"NEEDS_PCN_CONFIRMATION","active":true}'::jsonb, CURRENT_TIMESTAMP)
 ON CONFLICT (collection_name, document_id) DO NOTHING;
 
 -- One safe, non-secret settings snapshot is seeded for a fresh PCN database.
@@ -173,7 +174,7 @@ ON CONFLICT (collection_name, document_id) DO NOTHING;
 -- first-login default and must be reset by the PCN administrator.
 INSERT INTO app_documents (collection_name, document_id, data, updated_at)
 VALUES
-    ('systemUsers', 'luongxuanhung', '{"username":"luongxuanhung","name":"Lương Xuân Hùng","role":"admin","systemRole":"admin","departmentRoleCode":"LEADERSHIP","fieldCodes":[],"active":true,"position":"Phó trưởng phòng","source":"PCN_INITIAL_IMPORT"}'::jsonb, CURRENT_TIMESTAMP),
+    ('systemUsers', 'luongxuanhung', '{"username":"luongxuanhung","name":"Lương Xuân Hùng","role":"admin","systemRole":"admin","departmentRoleCode":"LEADERSHIP","fieldCodes":[],"departmentScopes":["PCN","PGD"],"pgdRole":"PGD_ADMIN","active":true,"position":"Phó trưởng phòng","source":"PCN_INITIAL_IMPORT"}'::jsonb, CURRENT_TIMESTAMP),
     ('systemUsers', 'tranhoangphuong', '{"username":"tranhoangphuong","name":"Trần Hoàng Phương","role":"staff","systemRole":"staff","departmentRoleCode":"UNASSIGNED","fieldCodes":[],"active":true,"position":"Nhân viên PCN","source":"PCN_INITIAL_IMPORT"}'::jsonb, CURRENT_TIMESTAMP),
     ('systemUsers', 'nguyentuanthanh', '{"username":"nguyentuanthanh","name":"Nguyễn Tuấn Thành","role":"staff","systemRole":"staff","departmentRoleCode":"UNASSIGNED","fieldCodes":[],"active":true,"position":"Nhân viên PCN","source":"PCN_INITIAL_IMPORT"}'::jsonb, CURRENT_TIMESTAMP),
     ('systemUsers', 'vuthitham', '{"username":"vuthitham","name":"Vũ Thị Thắm","role":"staff","systemRole":"staff","departmentRoleCode":"UNASSIGNED","fieldCodes":[],"active":true,"position":"Nhân viên PCN","source":"PCN_INITIAL_IMPORT"}'::jsonb, CURRENT_TIMESTAMP),
@@ -227,7 +228,7 @@ FROM jsonb_array_elements('[
   {"id":"QC9-CLIENT_PACKAGE","fieldCode":"QC9","code":"CLIENT_PACKAGE","name":"Hồ sơ gửi khách hàng","stages":["DELIVERY"],"stationKeys":["DELIVERY_ARCHIVE"],"required":true,"active":true,"sortOrder":120},
   {"id":"QC9-ARCHIVE_SCAN","fieldCode":"QC9","code":"ARCHIVE_SCAN","name":"Bản scan lưu hồ sơ","stages":["ARCHIVE"],"stationKeys":["DELIVERY_ARCHIVE"],"required":true,"active":true,"sortOrder":130}
 ]'::jsonb) AS item
-ON CONFLICT (collection_name, document_id) DO UPDATE
+    ON CONFLICT (collection_name, document_id) DO UPDATE
 SET data = CASE
   WHEN app_documents.data ? 'stationKeys' THEN app_documents.data
   WHEN EXCLUDED.data ? 'stationKeys' THEN app_documents.data || jsonb_build_object('stationKeys', EXCLUDED.data->'stationKeys')
@@ -245,7 +246,7 @@ SELECT
     CURRENT_TIMESTAMP
 FROM jsonb_array_elements('[
   {"id":"QC20-PROPOSAL","fieldCode":"QC20","code":"PROPOSAL","name":"Đề nghị / đơn đăng ký","stages":["INTAKE"],"stationKeys":["INTAKE","DOCUMENTS"],"required":true,"active":true,"sortOrder":10},
-  {"id":"QC20-COMMERCIAL","fieldCode":"QC20","code":"COMMERCIAL","name":"Báo giá / hợp đồng","stages":["INTAKE"],"stationKeys":["INTAKE","DOCUMENTS"],"required":true,"active":true,"sortOrder":20},
+  {"id":"QC20-COMMERCIAL","fieldCode":"QC20","code":"COMMERCIAL","name":"Hồ sơ thương mại và chứng từ hải quan","stages":["INTAKE"],"stationKeys":["INTAKE","DOCUMENTS"],"required":true,"active":true,"sortOrder":20},
   {"id":"QC20-SCOPE_EVIDENCE","fieldCode":"QC20","code":"SCOPE_EVIDENCE","name":"Hồ sơ phạm vi, mã HS và tiêu chuẩn áp dụng","stages":["INTAKE"],"stationKeys":["INTAKE","DOCUMENTS"],"required":true,"active":true,"sortOrder":22},
   {"id":"QC20-LOT_IDENTITY","fieldCode":"QC20","code":"LOT_IDENTITY","name":"Bằng chứng mác, kích thước và xác định lô","stages":["INTAKE"],"stationKeys":["INTAKE","DOCUMENTS"],"required":true,"active":true,"sortOrder":23},
   {"id":"QC20-ASSIGNMENT_FORM","fieldCode":"QC20","code":"ASSIGNMENT_FORM","name":"Phiếu phân công chứng nhận","stages":["INTAKE"],"stationKeys":["ASSIGNMENT"],"required":true,"active":true,"sortOrder":25},
@@ -270,6 +271,18 @@ SET data = CASE
   ELSE app_documents.data
 END,
 updated_at = app_documents.updated_at;
+
+-- PGD owns an independent catalog and result-template snapshots. QC20 is
+-- intentionally absent here; it remains a PCN certification field only.
+INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+VALUES
+    ('pgdCatalog', 'STEEL_LOT_INSPECTION', '{"id":"STEEL_LOT_INSPECTION","domain":"pgd","code":"GĐ-THEP-LO","name":"Giám định lô thép và vật liệu kim loại","productGroup":"STEEL_METAL","inspectionTypes":["VISUAL_DIMENSIONAL","QUANTITY_WEIGHT","CHEMICAL","MECHANICAL"],"defaultStandards":["JIS","ASTM","GB/T"],"slaLabel":"5–7 ngày","active":true}'::jsonb, CURRENT_TIMESTAMP),
+    ('pgdCatalog', 'MACHINERY_LINE_INSPECTION', '{"id":"MACHINERY_LINE_INSPECTION","domain":"pgd","code":"GĐ-MAY-01","name":"Giám định máy móc và dây chuyền","productGroup":"MACHINERY_LINE","inspectionTypes":["VISUAL_DIMENSIONAL","MECHANICAL","FIELD_ASSESSMENT"],"defaultStandards":["Hồ sơ kỹ thuật","Tiêu chuẩn hợp đồng"],"slaLabel":"3–5 ngày","active":true}'::jsonb, CURRENT_TIMESTAMP),
+    ('pgdCatalog', 'COAL_LOT_INSPECTION', '{"id":"COAL_LOT_INSPECTION","domain":"pgd","code":"GĐ-THAN-01","name":"Giám định lô than","productGroup":"COAL","inspectionTypes":["VISUAL_DIMENSIONAL","QUANTITY_WEIGHT","CHEMICAL"],"defaultStandards":["TCVN 8910","Tiêu chuẩn hợp đồng"],"slaLabel":"Theo kế hoạch","active":true}'::jsonb, CURRENT_TIMESTAMP),
+    ('pgdResultTemplates', 'pgd-template-steel-v1', '{"id":"pgd-template-steel-v1","domain":"pgd","catalogId":"STEEL_LOT_INSPECTION","code":"PGD-THEP-01","name":"Biên bản và chứng thư giám định lô thép","version":"1","productGroup":"STEEL_METAL","active":true,"fields":[{"key":"conformityConclusion","label":"Kết luận giám định","type":"TEXT","required":true},{"key":"quantityVerified","label":"Khối lượng / số lượng xác nhận","type":"NUMBER","required":true},{"key":"standardReference","label":"Tiêu chuẩn áp dụng","type":"TEXT","required":true}]}'::jsonb, CURRENT_TIMESTAMP),
+    ('pgdResultTemplates', 'pgd-template-machinery-v1', '{"id":"pgd-template-machinery-v1","domain":"pgd","catalogId":"MACHINERY_LINE_INSPECTION","code":"PGD-MAY-01","name":"Biên bản và chứng thư giám định máy móc, dây chuyền","version":"1","productGroup":"MACHINERY_LINE","active":true,"fields":[{"key":"condition","label":"Tình trạng thiết bị","type":"TEXT","required":true},{"key":"serialNumbers","label":"Số serial / nhận dạng","type":"TEXT","required":true},{"key":"conformityConclusion","label":"Kết luận giám định","type":"TEXT","required":true}]}'::jsonb, CURRENT_TIMESTAMP),
+    ('pgdResultTemplates', 'pgd-template-coal-v1', '{"id":"pgd-template-coal-v1","domain":"pgd","catalogId":"COAL_LOT_INSPECTION","code":"PGD-THAN-01","name":"Biên bản và chứng thư giám định lô than","version":"1","productGroup":"COAL","active":true,"fields":[{"key":"qualityParameters","label":"Thông số chất lượng","type":"TABLE","required":true},{"key":"quantityVerified","label":"Khối lượng / số lượng xác nhận","type":"NUMBER","required":true},{"key":"conformityConclusion","label":"Kết luận giám định","type":"TEXT","required":true}]}'::jsonb, CURRENT_TIMESTAMP)
+ON CONFLICT (collection_name, document_id) DO NOTHING;
 
 CREATE INDEX IF NOT EXISTS idx_pcn_app_documents_collection_updated
 ON app_documents(collection_name, updated_at DESC);

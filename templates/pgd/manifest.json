@@ -1,0 +1,259 @@
+{
+  "domain": "pgd",
+  "version": "1.0",
+  "description": "Bộ biểu mẫu DOCX PGD với placeholder [[key]] làm nguồn cho form nhập liệu và sinh tài liệu.",
+  "templates": [
+    {
+      "id": "pgd-template-intake-request",
+      "kind": "INTAKE_REQUEST",
+      "code": "PGD-BM-01",
+      "fileName": "PGD-BM-01.docx",
+      "placeholderKeys": [
+        "customerAddress",
+        "customerName",
+        "customsDocuments",
+        "dimensions",
+        "grade",
+        "importer",
+        "inspectionLocation",
+        "inspectionScope",
+        "intakeChannel",
+        "lotCode",
+        "manufacturer",
+        "origin",
+        "productName",
+        "productStandard",
+        "quantity",
+        "requestCode",
+        "standards"
+      ],
+      "requiredPlaceholderKeys": [
+        "customerAddress",
+        "customerName",
+        "inspectionLocation",
+        "inspectionScope",
+        "intakeChannel",
+        "productName",
+        "quantity",
+        "requestCode",
+        "standards"
+      ]
+    },
+    {
+      "id": "pgd-template-assignment",
+      "kind": "ASSIGNMENT",
+      "code": "PGD-BM-02",
+      "fileName": "PGD-BM-02.docx",
+      "placeholderKeys": [
+        "customerAddress",
+        "customerName",
+        "inspectors",
+        "leadInspector",
+        "productName",
+        "requestCode",
+        "scheduledAt",
+        "standards",
+        "technicalReviewer"
+      ],
+      "requiredPlaceholderKeys": [
+        "customerAddress",
+        "customerName",
+        "inspectors",
+        "leadInspector",
+        "productName",
+        "requestCode",
+        "scheduledAt",
+        "standards",
+        "technicalReviewer"
+      ]
+    },
+    {
+      "id": "pgd-template-inspection-plan",
+      "kind": "INSPECTION_PLAN",
+      "code": "PGD-BM-03",
+      "fileName": "PGD-BM-03.docx",
+      "placeholderKeys": [
+        "agenda",
+        "customerAddress",
+        "customerName",
+        "inspectionDate",
+        "note",
+        "productName",
+        "requestCode",
+        "standards",
+        "team"
+      ],
+      "requiredPlaceholderKeys": [
+        "agenda",
+        "customerAddress",
+        "customerName",
+        "inspectionDate",
+        "productName",
+        "requestCode",
+        "standards",
+        "team"
+      ]
+    },
+    {
+      "id": "pgd-template-field-inspection",
+      "kind": "FIELD_INSPECTION",
+      "code": "PGD-BM-04",
+      "fileName": "PGD-BM-04.docx",
+      "placeholderKeys": [
+        "customerAddress",
+        "customerName",
+        "labeling",
+        "location",
+        "lotCode",
+        "lotObservation",
+        "measurements",
+        "nonconformities",
+        "packaging",
+        "performedAt",
+        "productName",
+        "requestCode",
+        "sampleRows"
+      ],
+      "requiredPlaceholderKeys": [
+        "customerAddress",
+        "customerName",
+        "labeling",
+        "location",
+        "lotObservation",
+        "packaging",
+        "performedAt",
+        "productName",
+        "requestCode",
+        "sampleRows"
+      ]
+    },
+    {
+      "id": "pgd-template-sample-taking",
+      "kind": "SAMPLE_TAKING",
+      "code": "PGD-BM-05",
+      "fileName": "PGD-BM-05.docx",
+      "placeholderKeys": [
+        "customerAddress",
+        "customerName",
+        "lotCode",
+        "productName",
+        "purpose",
+        "requestCode",
+        "sampledAt",
+        "sampleRows",
+        "samplingLocation",
+        "samplingMethod"
+      ],
+      "requiredPlaceholderKeys": [
+        "customerAddress",
+        "customerName",
+        "productName",
+        "purpose",
+        "requestCode",
+        "sampledAt",
+        "sampleRows",
+        "samplingLocation",
+        "samplingMethod"
+      ]
+    },
+    {
+      "id": "pgd-template-lab-request",
+      "kind": "LAB_REQUEST",
+      "code": "PGD-BM-06",
+      "fileName": "PGD-BM-06.docx",
+      "placeholderKeys": [
+        "customerName",
+        "laboratoryName",
+        "productName",
+        "receiver",
+        "requestCode",
+        "sampleRows",
+        "sender",
+        "sentAt",
+        "testItems"
+      ],
+      "requiredPlaceholderKeys": [
+        "customerName",
+        "laboratoryName",
+        "productName",
+        "requestCode",
+        "sampleRows",
+        "sender",
+        "sentAt",
+        "testItems"
+      ]
+    },
+    {
+      "id": "pgd-template-inspection-report",
+      "kind": "INSPECTION_REPORT",
+      "code": "PGD-BM-07",
+      "fileName": "PGD-BM-07.docx",
+      "placeholderKeys": [
+        "conclusion",
+        "customerAddress",
+        "customerName",
+        "customsDocuments",
+        "dimensions",
+        "fieldFindings",
+        "grade",
+        "importer",
+        "labResults",
+        "lotCode",
+        "manufacturer",
+        "origin",
+        "productName",
+        "productStandard",
+        "reportedAt",
+        "reportNumber",
+        "requestCode",
+        "standards"
+      ],
+      "requiredPlaceholderKeys": [
+        "conclusion",
+        "customerAddress",
+        "customerName",
+        "productName",
+        "reportedAt",
+        "reportNumber",
+        "requestCode",
+        "standards"
+      ]
+    },
+    {
+      "id": "pgd-template-inspection-certificate",
+      "kind": "INSPECTION_CERTIFICATE",
+      "code": "PGD-BM-08",
+      "fileName": "PGD-BM-08.docx",
+      "placeholderKeys": [
+        "certificateScope",
+        "conclusion",
+        "customerAddress",
+        "customerName",
+        "customsDocuments",
+        "dimensions",
+        "documentNumber",
+        "grade",
+        "importer",
+        "lotCode",
+        "manufacturer",
+        "origin",
+        "productName",
+        "productStandard",
+        "requestCode",
+        "resultRows",
+        "signedAt",
+        "standards"
+      ],
+      "requiredPlaceholderKeys": [
+        "certificateScope",
+        "conclusion",
+        "customerAddress",
+        "customerName",
+        "documentNumber",
+        "productName",
+        "requestCode",
+        "standards"
+      ]
+    }
+  ]
+}

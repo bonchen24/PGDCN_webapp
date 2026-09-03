@@ -20,6 +20,7 @@ import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS } from '../utils/pcnDossierDocuments.
 const workspace = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
 const pipelineBoard = fs.readFileSync(new URL('../components/PcnPipelineBoard.tsx', import.meta.url), 'utf8');
 const dossierDetail = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
+const design = fs.readFileSync(new URL('../design.md', import.meta.url), 'utf8');
 
 const dossier: CertificationDossier = {
   id: 'dossier-pipeline', dossierCode: 'HS-PIPELINE', proposalId: 'proposal-pipeline', ownerUsername: 'owner-qc4',
@@ -196,13 +197,13 @@ test('owner assignment accepts only active non-viewer users in dossier scope', (
   assert.match(getPcnDossierOwnerAssignmentDenial({ currentUsername: '', nextUsername: 'owner-qc9', dossierFieldCodes: ['QC4'], users }) || '', /Lĩnh vực/i);
 });
 
-test('PCN workspace exposes a graphic workflow surface on the dashboard', () => {
+test('PCN workspace exposes one dossier-card surface on the dashboard', () => {
   assert.match(workspace, /PcnPipelineBoard/);
-  assert.match(pipelineBoard, /PcnWorkflowMap/);
-  assert.match(pipelineBoard, /buildPcnWorkflowOverview/);
-  assert.match(pipelineBoard, /Bản đồ quy trình/);
-  assert.match(pipelineBoard, /selectedNodeKey/);
-  assert.match(pipelineBoard, /onSelectNode/);
+  assert.match(pipelineBoard, /Hồ sơ cần hoàn thiện/);
+  assert.doesNotMatch(pipelineBoard, /PcnWorkflowMap/);
+  assert.doesNotMatch(pipelineBoard, /buildPcnWorkflowOverview/);
+  assert.doesNotMatch(pipelineBoard, /selectedNodeKey/);
+  assert.doesNotMatch(pipelineBoard, /onSelectNode/);
   assert.match(pipelineBoard, /buildPcnDossierCompleteness/);
   assert.match(pipelineBoard, /Tài liệu còn thiếu/);
   assert.match(pipelineBoard, /missingRequiredByStage/);
@@ -241,7 +242,7 @@ test('dossier detail exposes the selected station score beside its upload checkl
   assert.match(dossierDetail, /Điểm bước/);
   assert.match(dossierDetail, /data-testid="pcn-workflow-step-checklist"/);
   assert.match(dossierDetail, /Chi tiết phiên và tải tài liệu/);
-  assert.match(dossierDetail, /Tải phiên mới/);
+  assert.match(dossierDetail, /current \? 'Thay phiên bản' : 'Bổ sung file'/);
   assert.doesNotMatch(dossierDetail, /onUploadDocument\(item\.requirement\.id, file\)/);
 });
 
@@ -252,9 +253,11 @@ test('workflow cards expose the existing self-claim action for unassigned dossie
   assert.match(workspace, /<PcnPipelineBoard[\s\S]{0,900}onClaimDossier=\{onClaimDossier\}/);
 });
 
-test('graphic workflow exposes a single exception branch and avoids station columns', () => {
-  assert.match(pipelineBoard, /PcnWorkflowMap/);
-  assert.match(pipelineBoard, /selectedNodeKey/);
+test('dashboard keeps workflow navigation inside the dossier detail', () => {
+  assert.doesNotMatch(pipelineBoard, /PcnWorkflowMap/);
+  assert.doesNotMatch(pipelineBoard, /selectedNodeKey/);
+  assert.match(dossierDetail, /PcnWorkflowMap/);
+  assert.match(dossierDetail, /buildPcnDossierWorkflowMap/);
   assert.doesNotMatch(pipelineBoard, /getPcnPipelineStationCatalog/);
   assert.doesNotMatch(pipelineBoard, /StationColumn/);
   assert.doesNotMatch(pipelineBoard, /Hồ sơ cần làm tại trạm/);
@@ -271,11 +274,11 @@ test('pipeline field filter keeps multi-field dossiers visible in the selected f
   assert.deepEqual(filterPcnDossiersByField([dossier, multiFieldDossier]), [dossier, multiFieldDossier]);
 });
 
-test('graphic workflow exposes a field filter and scopes its card list', () => {
+test('dossier-card surface exposes a field filter and scopes its card list', () => {
   assert.match(pipelineBoard, /Lọc theo Lĩnh vực/);
   assert.match(pipelineBoard, /filterPcnDossiersByField/);
   assert.match(pipelineBoard, /fieldFilter/);
-  assert.match(pipelineBoard, /buildPcnWorkflowOverview/);
+  assert.match(pipelineBoard, /visibleDossiers/);
   assert.match(workspace, /<PcnPipelineBoard[^>]*fields=\{fields\}/);
 });
 
@@ -287,7 +290,7 @@ test('Kanban cards use human-readable PCN identity labels', () => {
   assert.match(pipelineBoard, /Cần đối chiếu mã nguồn/);
 });
 
-test('workflow filters and node actions keep touch-friendly hit areas', () => {
+test('dashboard filters and dossier actions keep touch-friendly hit areas', () => {
   assert.equal((pipelineBoard.match(/min-h-11/g) || []).length >= 2, true);
 });
 
@@ -300,11 +303,28 @@ test('workflow node actions open the matching dossier work area', () => {
   assert.equal(getPcnDossierStationTab('APPROVAL'), 'issuance');
   assert.equal(getPcnDossierStationTab('EXCEPTIONS'), 'documents');
   assert.match(pipelineBoard, /getPcnDossierStationTab/);
-  assert.match(pipelineBoard, /PcnWorkflowMap/);
+  assert.match(dossierDetail, /PcnWorkflowMap/);
   assert.match(dossierDetail, /initialTab/);
   assert.match(dossierDetail, /getPcnDossierStationTab/);
   assert.match(workspace, /selectedDossierTab/);
   assert.match(workspace, /initialTab=\{selectedDossierTab\}/);
+});
+
+test('workflow steps belong to one dossier and do not filter the dashboard card list', () => {
+  assert.doesNotMatch(pipelineBoard, /selectedNodeKey/);
+  assert.doesNotMatch(pipelineBoard, /filterPcnWorkflowDossiers/);
+  assert.doesNotMatch(pipelineBoard, /Bấm vào một bước để lọc/);
+  assert.match(dossierDetail, /buildPcnDossierWorkflowMap/);
+  assert.match(dossierDetail, /onSelectNode/);
+});
+
+test('active design keeps workflow steps scoped to one dossier', () => {
+  assert.match(design, /Phạm vi của quy trình là \*\*một hồ sơ cụ thể\*\*/);
+  assert.match(design, /Dashboard hiển thị danh sách hồ sơ và chỉ dùng các bộ lọc phạm vi nghiệp vụ/);
+  assert.match(design, /Graphic workflow của chi tiết hồ sơ hiển thị tên 5 bước/);
+  assert.doesNotMatch(design, /lưới card hồ sơ bên dưới được lọc theo trạng thái thật/);
+  assert.doesNotMatch(design, /Dashboard PCN ưu tiên \*\*graphic workflow và card hồ sơ\*\*/);
+  assert.doesNotMatch(design, /Mỗi nút trong graphic workflow phải hiển thị tên bước, trạng thái tổng hợp, số hồ sơ/);
 });
 
 test('dossier detail binds upload controls to the selected workflow node', () => {
@@ -312,7 +332,7 @@ test('dossier detail binds upload controls to the selected workflow node', () =>
   assert.match(dossierDetail, /stationKey: selectedWorkflowNodeKey/);
   assert.match(dossierDetail, /const station = getPcnPipelineStationByKey\(selectedWorkflowNodeKey\)/);
   assert.match(dossierDetail, /activeWorkflowNodeKey=\{station\.key\}/);
-  assert.match(dossierDetail, /Tải phiên mới/);
+  assert.match(dossierDetail, /current \? 'Thay phiên bản' : 'Bổ sung file'/);
 });
 
 test('station generation action selects the first useful internal form', () => {

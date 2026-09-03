@@ -6,6 +6,76 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Chốt hiện trạng 2026-09-03 — Dashboard gọn và notifications chung PGDCN
+
+- Dashboard PGDCN đã chuyển sang bố cục gọn, responsive nhiều cột hơn và có thêm các card KPI vận hành; card **KPI người dùng** được giữ như một điểm nhìn chính.
+- Bổ sung card **Thông báo phòng** ngay trên Dashboard và chuông notification trong header dùng chung cho cả PCN và PGD; không tách thành hai phòng/luồng riêng.
+- Feed dùng chung collection `notifications` trong `app_documents`, chuẩn hóa notification PCN legacy về `domain=PCN` và notification mới của PGD về `domain=PGD`; hiển thị tối đa 50 bản ghi mới nhất, có badge miền và trạng thái chưa đọc.
+- PGD phát notification ở các mốc nghiệp vụ lớn: tiếp nhận request, đổi trạng thái, phân công, hiện trường, mẫu, yêu cầu PTN, KQTN, báo cáo, chứng thư và duyệt; các chỉnh sửa nhỏ/import/restore/template không phát notification.
+- API dùng chung: `GET /api/pgdcn/notifications`, đánh dấu một notification đã đọc, đọc tất cả và xóa feed; server lọc theo `departmentScopes`, audience và target username; viewer chỉ đọc.
+- Mở chuông hoặc card sẽ refresh feed; chọn notification sẽ đánh dấu đã đọc từ Dashboard (nếu chưa đọc) và điều hướng về đúng bề mặt PCN/PGD.
+- Đã thêm spec/plan và regression tests cho projection, API, event emission, UI dropdown, shell refresh và Dashboard card. Verification chốt: `npm test` **657/657 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass.
+- Không thay đổi `.env`, không ghi secret/credential, không đưa attachment, file tạm hoặc bundle `dist` sinh tự động vào commit.
+
+## Chốt hiện trạng 2026-09-03 — Cài đặt DOCX PCN/PGD và bộ template thật
+
+- Header `Soạn thảo tài liệu PCN` và `Tạo tài liệu PGD` đã có nút `Cài đặt DOCX`; nút PCN mở `Cài đặt PCN`, nút PGD mở `Cài đặt PGD`.
+- `Cài đặt hệ thống` dùng chung chỉ còn phạm vi Nhân sự & tài khoản. Cấu hình template DOCX, placeholder và sinh tài liệu thuộc từng phòng tương ứng.
+- PGD quản lý 8 biểu mẫu DOCX thật (`PGD-BM-01` đến `PGD-BM-08`) cùng `fileName`, `placeholderKeys`, `requiredPlaceholderKeys`; form nhập liệu được suy ra từ metadata placeholder.
+- `utils/pgdDocumentGeneration.ts` đọc DOCX đóng gói trong `templates/pgd/*.docx` và render bằng Docxtemplater với delimiter `[[key]]`. Bảng DOCX giả kiểu `Cell/Giá trị` đã được loại khỏi luồng sinh tài liệu; hydration vẫn tương thích các bản ghi template cũ đã lưu.
+- Bộ asset gồm `templates/pgd/*.docx`, `templates/pgd/manifest.json`, `templates/pgd/README.md`; script tạo asset là `scripts/generate-pgd-docx-templates.ts`. `design.md` đã cập nhật các mục §0.3, §0A.4 và §0A.6–0A.7.
+- Kiểm chứng hiện tại: 25/25 test liên quan đạt; `next build` đạt; `git diff --check` đạt. Full suite có 1097 test với 6 lỗi lịch sử/ngoài phạm vi ở root App Router và attachment/source discovery/manual mapping.
+- Chưa render visual DOCX vì môi trường thiếu LibreOffice/`soffice`; các kiểm tra OOXML, manifest, placeholder và generation structure đã đạt.
+- Lần chạy typecheck độc lập hiện bị nhiễu bởi nhóm thay đổi notification PGDCN chưa hoàn chỉnh ngoài phạm vi (`test/pgdcn-notification-*`, `utils/pgdcnNotification*`, `NotificationDomain`); không thay đổi nhóm này trong task template.
+- Không ghi `.env`, secret, credential, đường dẫn UNC/Desktop hay dữ liệu hồ sơ thật.
+
+## Chốt hiện trạng 2026-09-02 — Điều hướng chung PGDCN và Cài đặt hệ thống
+
+- Shell `/pgdcn/` đã đưa **Tổng quan phòng**, **Khách hàng**, **Trợ lý AI**, **Nhật ký hoạt động** và **Cài đặt hệ thống** vào nhánh dùng chung; Dashboard/Khách hàng/Nhân sự không còn lặp trong menu chi tiết PCN/PGD.
+- PCN chỉ còn các lối vào nghiệp vụ Đề nghị, Sổ điều hành, PYC & luân chuyển mẫu và Soạn thảo tài liệu; PGD chỉ còn Tiếp nhận PYC, Hồ sơ đang xử lý, Hiện trường & Lấy mẫu, PTN & Bàn giao mẫu, Báo cáo & Chứng thư và Template & Cell PGD. QC20 vẫn chỉ thuộc PCN.
+- `Cài đặt hệ thống → Nhân sự & tài khoản` dùng danh sách tài khoản PGDCN hợp nhất. Admin hoặc Quản lý (`LEADERSHIP`/`PGD_MANAGER`) được gán trực tiếp `departmentScopes`, `position`, role nghiệp vụ, phạm vi Lĩnh vực, trạng thái và reset mật khẩu; không có màn hình/collection danh mục phòng ban hoặc chức vụ riêng. Password không trả về client.
+- Sidebar PGDCN đã giảm nhịp layout xuống `space-y-0.5`, item `min-h-9`, `gap-2`, padding compact; mobile vẫn giữ `mobile-touch-target`.
+- Verification sau thay đổi: contract mới **9/9 pass**, `npm test` **656/656 pass**, `npm run lint` (tsc noEmit) pass, `npm run build` pass. Docker image `pcn_webapp-webapp:latest` digest `sha256:e119a53a3d63afac5f7942167bd8156b49dee20f78dbd0c4cad036dc7e5747e5`; container `pcn_webapp-webapp-1` đang `Up`, publish `0.0.0.0:2357->2357/tcp`; `/api/health`, `/pgdcn/`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200.
+- Không đọc/sửa/xóa thư mục `\\TVCI_NAS\\P. Giám định - Chứng nhận`, không import hồ sơ lịch sử, không đọc UNC/Desktop lúc runtime. Chưa thay đổi `.env` và không ghi secret/credential/dữ liệu hồ sơ thật vào Memory/Obsidian.
+
+## Chốt hiện trạng 2026-09-02 — Phòng Giám định - Chứng nhận (PGDCN)
+
+- PGDCN hiện có hai miền tách biệt: PCN — Chứng nhận và PGD — Giám định; dùng chung session/tài khoản/khách hàng theo quyền nhưng tách collection, API, RBAC, catalog và lifecycle.
+- QC20 (`QCVN 20:2019/BKHCN` + Sửa đổi 1:2021, Phương thức 7) chỉ thuộc PCN; không xuất hiện trong catalog PGD.
+- PGD đã có luồng hồ sơ mới từ tiếp nhận/năng lực → phân công → hiện trường/lấy mẫu → PTN/KQ → báo cáo/chứng thư → duyệt/ký/trả/lưu trữ; thanh toán là cảnh báo, không chặn trả kết quả giai đoạn đầu.
+- PGD đã chuẩn hóa 8 template từ biểu mẫu phòng đọc read-only, có quản lý cell bật/tắt, typed validation, snapshot/version, sinh DOCX/PDF, context hash/checksum và tải lại file private khi Storage có cấu hình.
+- Nguồn `\\TVCI_NAS\\P. Giám định - Chứng nhận` chỉ là nguồn tham chiếu lúc phát triển; runtime không đọc UNC/Desktop, không import hồ sơ lịch sử và không sửa/xóa file nguồn.
+- Verification chốt: PCN **656/656**, nhóm PGD/PGDCN **56/56**, nhóm template/cell/document **10/10**, lint/build pass. Docker `pcn_webapp-webapp-1` đang `Up` trên cổng `2357`, image digest hiện hành `sha256:e119a53a3d63afac5f7942167bd8156b49dee20f78dbd0c4cad036dc7e5747e5`, health và route PGD trả HTTP 200.
+- Lưu ý vận hành: automatic backup chưa chạy vì Supabase Storage chưa được cấu hình ngoài repository; không ghi secret, credential hay dữ liệu hồ sơ thật vào Memory/Obsidian.
+
+## Cập nhật 2026-09-02 — Xây dựng PGD template/cell và triển khai Docker production
+
+- Đã đọc ở chế độ chỉ đọc thư mục `\\TVCI_NAS\\P. Giám định - Chứng nhận`, tập trung vào các biểu mẫu trong `Giám định\\Mẫu biên bản`. Đã rút trích khung nghiệp vụ từ bộ biểu mẫu PGD, đặc biệt nhóm TT58: hồ sơ giám định, phân công, PYC phân tích, biên bản hiện trường/lấy mẫu và chứng thư; không sửa, xóa hoặc import hồ sơ lịch sử.
+- Catalog PGD trong app có 8 template: PYC/tiếp nhận, phân công, kế hoạch, biên bản hiện trường, lấy mẫu, giao nhận/PYC PTN, báo cáo giám định và chứng thư giám định. QC20 và các biểu mẫu QC20 được giữ trong PCN, không đưa vào catalog PGD.
+- Đã bổ sung module quản lý cell PGD với key/nhãn/vị trí/kiểu dữ liệu/bắt buộc/đơn vị/binding/validation; hỗ trợ TEXT, NUMBER, DATE, BOOLEAN và TABLE. Cell value được kiểm tra theo schema, còn template đã phát hành được snapshot/version hóa, không sửa tại chỗ.
+- Audit bổ sung đã hoàn thiện trạng thái bật/tắt cell: `active=false` giữ trong snapshot lineage nhưng không render và không tạo required gate; lịch sử tài liệu có asset private có nút tải lại qua endpoint PGD riêng.
+- Đã bổ sung sinh DOCX/PDF qua API PGD, context hash, checksum, source snapshots và metadata `pgdDocuments`. Khi Storage PGD được cấu hình, file được lưu private qua `file_assets`; hiện môi trường chưa cấu hình Storage nên API vẫn trả file trực tiếp, không coi response là lưu trữ lâu dài.
+- UI có mục **Template & Cell PGD** trong `/pgdcn/pgd`; PYC PGD nhận thêm mác/model, kích thước, tiêu chuẩn sản phẩm, xuất xứ, nhà sản xuất/nhập khẩu và chứng từ hải quan.
+- Ranh giới an toàn: module PGD không đọc UNC/Desktop lúc runtime, không có historical import, không dùng collection PCN/QC20 và không tích hợp thư mục nguồn vào app.
+- Verification: `npm test` **656/656 pass**, test riêng PGD template/cell/document **10/10 pass**; toàn bộ nhóm PGD/PGDCN liên quan **56/56 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` không có lỗi whitespace.
+- Docker Desktop production: sau audit active-cell/download đã chạy lại `docker compose --env-file .env -f docker-compose.pcn.yml up --build -d` thành công. Image `pcn_webapp-webapp:latest`, digest `sha256:2ae5e85c5c62169a1c295877b527cf76a6d8b09a63ef26f94aa2156e33c953a0`; container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`; `/api/health` và `/` đều HTTP 200; log xác nhận PostgreSQL connected/schema initialized.
+- Cảnh báo vận hành hiện tại: automatic backup không chạy vì Supabase Storage chưa được cấu hình trong env triển khai. Không thay đổi `.env`, không ghi secret/credential hoặc dữ liệu hồ sơ thật vào Memory/Obsidian.
+
+## Cập nhật 2026-09-02 — Kiểm tra ảnh và sửa lần hai responsive mobile PCN
+
+- Ảnh thực tế xác nhận lần sửa scroll trước chưa đủ: `DossierWorkflowSummary` (bản đồ bước + tóm tắt bước) vẫn nằm trước `main`, chiếm gần hết viewport và bị `overflow-hidden` của focused shell cắt; vì vậy checklist/vùng bổ sung phía dưới không thể tiếp cận bằng cuộn. Ảnh dashboard đồng thời cho thấy card hồ sơ có nguy cơ tràn mép phải bởi nội dung mã dài/status badge.
+- Đã đưa workflow summary vào trong body `pcn-dossier-focus-scroll` để bản đồ bước, checklist và toàn bộ vùng hồ sơ cuộn cùng một surface; header nhận diện, bộ chọn vùng và footer vẫn ngoài vùng nội dung. Card pipeline thêm `min-w-0 w-full overflow-hidden`, mã hồ sơ `break-all`, status badge `max-w/truncate`, và các wrapper dashboard `min-w-0/w-full`.
+- `design.md` đã ghi rõ quy tắc này: trên mobile chỉ giữ chrome cần thiết trong viewport; nội dung workflow nằm trong scroll body và card dashboard không được cắt ngang.
+- Verification: `npm run test:pcn` **635/635 pass**, `npx tsc --noEmit -p tsconfig.json` pass, `npm run lint` pass, `npm run build` pass, `git diff --check` pass.
+- Docker Desktop production đã rebuild/recreate thành công; image `pcn_webapp-webapp:latest` có image ID/digest `sha256:3ae998a85680f803e12f09f66624fa5686b2b9ccaa51a6a36cdd83e45dd89819`. Container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`; `/api/health` và `/` đều trả HTTP 200; startup log xác nhận PostgreSQL connected/schema initialized.
+
+## Cập nhật 2026-09-02 — Sửa scroll mobile cho workspace hồ sơ PCN
+
+- Workspace hồ sơ toàn màn hình đã có scroll dọc độc lập cho vùng nội dung trên mobile: shell dùng chiều cao `100dvh` và `min-h-0`; content flex child dùng `h-0 min-h-0 flex-1` cùng class `pcn-dossier-focus-scroll` (`overflow-y: auto`, `touch-action: pan-y`, `-webkit-overflow-scrolling: touch`). Header, bản đồ workflow, bộ chọn vùng và footer giữ nguyên trong viewport; checklist/lịch sử phiên/nút bổ sung file đều có thể quan sát bằng cuộn cảm ứng.
+- Bổ sung regression contract trong `test/pcn-mobile-scroll.test.ts` và cập nhật UI contract để nhận diện boundary cuộn riêng của dossier focus shell.
+- Verification: `npm run test:pcn` **633/633 pass**, `npx tsc --noEmit -p tsconfig.json` pass, `npm run lint` pass, `npm run build` pass, `git diff --check` pass.
+- Docker Desktop production đã rebuild; image `pcn_webapp-webapp:latest` có image ID/digest `sha256:e1c171891f2797d19777c057fd28ac626f10880fbf1a06fa3eedb2022d235064`. Container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`; `/api/health` và `/` đều trả HTTP 200; log xác nhận PostgreSQL connected/schema initialized.
+
 ## Cập nhật 2026-09-02 — Trợ lý AI hỗ trợ kiểm duyệt hồ sơ PCN
 
 - Trợ lý nằm độc lập trên sidebar với nhãn **Trợ lý phê duyệt**, nhưng chỉ là công cụ hỗ trợ phán đoán/kiểm duyệt; không có nút/API phê duyệt, không đổi trạng thái hồ sơ, không khóa hồ sơ, không gọi approval/issuance và không ghi activity/audit.

@@ -246,6 +246,7 @@ function normalizeWaivers(fixture: PcnStandardDossierFixture): Record<string, Pc
     requirementId,
     reason,
     decidedAt: FLOW_TIMES.intake,
+    decidedBy: 'luongxuanhung',
     decidedByUsername: 'luongxuanhung',
   }]));
 }
@@ -404,9 +405,9 @@ export function buildPcnStandardDossierFlow(fixture: PcnStandardDossierFixture):
   const stageGateStatuses: Array<{ status: PcnDossierStatus; label: string }> = [
     { status: 'FIELD_EVALUATION', label: 'INTAKE' },
     { status: 'SENT_TO_LAB', label: 'SAMPLING_LAB' },
-    { status: 'TECHNICAL_REVIEW', label: 'RESULTS' },
-    { status: 'APPROVED', label: 'APPROVAL' },
-    { status: 'ARCHIVED', label: 'DELIVERY_ARCHIVE' },
+    { status: 'AWAITING_RESULTS', label: 'RESULTS' },
+    { status: 'TECHNICAL_REVIEW', label: 'TECHNICAL_REVIEW' },
+    { status: 'ARCHIVED', label: 'APPROVAL' },
   ];
   const stageGates = stageGateStatuses.map(({ status }) => buildPcnDossierStageGate({ dossier: { ...dossier, status }, documents, documentWaivers: waivers }));
   return {

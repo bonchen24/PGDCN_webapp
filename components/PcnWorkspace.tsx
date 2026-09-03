@@ -4,10 +4,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   Award,
+  Archive,
   Bell,
   ChevronRight,
   ClipboardCheck,
   ClipboardList,
+  FileWarning,
   FilePlus2,
   FolderOpen,
   Menu,
@@ -115,11 +117,11 @@ function makeId(prefix: string): string {
 
 function KpiCard({ label, value, icon: Icon, tone }: { label: string; value: number; icon: React.ElementType; tone: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex items-center gap-3">
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${tone}`}><Icon size={17} /></div>
+    <div className="flex min-h-[4.25rem] items-center gap-2 rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
+      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${tone}`}><Icon size={15} /></div>
       <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-wider font-black text-slate-400 truncate">{label}</div>
-        <div className="text-xl font-black text-slate-800 leading-6">{value}</div>
+        <div className="truncate text-[9px] font-black uppercase leading-3 tracking-wide text-slate-400">{label}</div>
+        <div className="text-lg font-black leading-5 text-slate-800">{value}</div>
       </div>
     </div>
   );
@@ -164,54 +166,58 @@ function PcnDashboard({
   const metrics = getPcnDashboardMetrics(dossiers, labRequests, results);
 
   return (
-    <div className="pcn-page-surface min-w-0 p-3 md:p-5 space-y-4 mobile-safe-bottom bg-slate-50/60">
+    <div className="pcn-page-surface min-w-0 space-y-3 bg-slate-50/60 p-2.5 pb-4 md:p-4 mobile-safe-bottom">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Phòng Chứng nhận • TVCI</p>
-          <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mt-1">Tổng quan hồ sơ chứng nhận</h1>
-          <p className="text-[11px] text-slate-500 mt-1">Theo dõi Đề nghị, Lĩnh vực, PYC liên phòng và phát hành.</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Phòng Giám định - Chứng nhận • PCN</p>
+          <h1 className="mt-0.5 text-lg font-black tracking-tight text-slate-900 md:text-xl">Tổng quan hồ sơ chứng nhận</h1>
+          <p className="mt-0.5 text-[10px] text-slate-500">Theo dõi Đề nghị, Lĩnh vực, PYC liên phòng và phát hành.</p>
         </div>
-        {canEdit && <button onClick={onCreateProposal} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white shadow-sm hover:bg-emerald-500">
+        {canEdit && <button className="mobile-touch-target min-h-11 shrink-0 gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1.5 text-[10px] font-black text-white shadow-sm hover:bg-emerald-500" onClick={onCreateProposal}>
           <Plus size={14} /> Tạo Đề nghị
         </button>}
       </div>
 
-      <div className="grid grid-cols-2 xl:grid-cols-8 gap-3">
+      <div data-testid="pcn-dashboard-kpi-grid" className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-8 2xl:grid-cols-10">
         <KpiCard label="Đề nghị" value={proposals.length} icon={FilePlus2} tone="bg-blue-50 text-blue-600" />
         <KpiCard label="Hồ sơ" value={metrics.totalDossiers} icon={FolderOpen} tone="bg-indigo-50 text-indigo-600" />
         <KpiCard label="Đang chờ PTN" value={metrics.waitingLab} icon={Send} tone="bg-orange-50 text-orange-600" />
         <KpiCard label="Chờ KQTN" value={metrics.waitingResults} icon={ClipboardCheck} tone="bg-cyan-50 text-cyan-600" />
+        <KpiCard label="Chờ bổ sung hồ sơ" value={metrics.awaitingDocuments} icon={FileWarning} tone="bg-rose-50 text-rose-600" />
         <KpiCard label="Khắc phục" value={metrics.correctiveAction} icon={Activity} tone="bg-rose-50 text-rose-600" />
         <KpiCard label="Chờ phê duyệt" value={metrics.waitingApproval} icon={ShieldCheck} tone="bg-amber-50 text-amber-600" />
         <KpiCard label="Đã phát hành" value={metrics.issued} icon={Award} tone="bg-emerald-50 text-emerald-600" />
+        <KpiCard label="Đã lưu trữ" value={metrics.archived} icon={Archive} tone="bg-slate-100 text-slate-600" />
         <KpiCard label="Quá hạn" value={metrics.overdue} icon={Activity} tone="bg-red-50 text-red-600" />
       </div>
-      <PcnUserKpiTable currentUser={currentUser} onOpenActivityLogs={() => onOpenSection('activityLogs')} />
-      <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 md:p-4">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div>
-            <h2 className="text-sm font-black text-slate-800">Lĩnh vực</h2>
-            <p className="text-[10px] text-slate-400 mt-0.5">Mỗi hồ sơ có thể liên kết nhiều lĩnh vực.</p>
+      <div data-testid="pcn-dashboard-summary-grid" className="grid min-w-0 gap-2.5 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
+        <PcnUserKpiTable currentUser={currentUser} onOpenActivityLogs={() => onOpenSection('activityLogs')} />
+        <section data-testid="pcn-dashboard-fields" className="min-w-0 rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="text-sm font-black text-slate-800">Lĩnh vực</h2>
+              <p className="mt-0.5 truncate text-[10px] text-slate-400">Mỗi hồ sơ có thể liên kết nhiều lĩnh vực.</p>
+            </div>
+            <button onClick={() => onOpenSection('proposals')} className="mobile-touch-target min-h-9 shrink-0 text-[10px] font-bold text-emerald-600 hover:text-emerald-700">Xem <ChevronRight className="inline" size={12} /></button>
           </div>
-          <button onClick={() => onOpenSection('proposals')} className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700">Xem Đề nghị <ChevronRight className="inline" size={12} /></button>
-        </div>
-        <div className="grid md:grid-cols-2 gap-3">
-          {fields.map((field) => {
-            const count = dossiers.filter((item) => item.fieldCodes.includes(field.code)).length;
-            return (
-              <button key={field.code} onClick={() => onOpenSection('proposals', field.code)} className="text-left rounded-lg border border-slate-200 p-3 hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><ClipboardList size={16} /></span><span><span className="block text-xs font-black text-slate-800">{field.name}</span><span className="block text-[10px] text-slate-400 font-mono">{field.code}</span>{field.scopeStatus === 'NEEDS_PCN_CONFIRMATION' && <span className="mt-1 inline-block rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">Chờ xác nhận phạm vi</span>}</span></div>
-                  <span className="text-lg font-black text-slate-700">{count}</span>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-1">{field.standardRefs.map((standard) => <span key={standard} className="rounded bg-slate-50 border border-slate-100 px-1.5 py-0.5 text-[9px] text-slate-500">{standard}</span>)}</div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
+            {fields.map((field) => {
+              const count = dossiers.filter((item) => item.fieldCodes.includes(field.code)).length;
+              return (
+                <button key={field.code} onClick={() => onOpenSection('proposals', field.code)} className="rounded-md border border-slate-200 p-2.5 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-50/30">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-600"><ClipboardList size={15} /></span><span className="min-w-0"><span className="block truncate text-xs font-black text-slate-800">{field.name}</span><span className="block text-[10px] font-mono text-slate-400">{field.code}</span>{field.scopeStatus === 'NEEDS_PCN_CONFIRMATION' && <span className="mt-1 inline-block rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">Chờ xác nhận phạm vi</span>}</span></div>
+                    <span className="text-lg font-black text-slate-700">{count}</span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1">{field.standardRefs.map((standard) => <span key={standard} className="rounded bg-slate-50 px-1.5 py-0.5 text-[9px] text-slate-500">{standard}</span>)}</div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      </div>
 
-      <section data-testid="pcn-dashboard-work-surface" className="rounded-xl border border-slate-200 bg-slate-50/40 p-2.5 md:p-3">
+      <section data-testid="pcn-dashboard-work-surface" className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/40 p-2 md:p-2.5">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h2 className="text-sm font-black text-slate-800">Không gian công việc</h2>
@@ -222,7 +228,7 @@ function PcnDashboard({
             <button type="button" aria-pressed={dashboardWorkSurface === 'WORKFLOW'} onClick={() => setDashboardWorkSurface('WORKFLOW')} className={`min-h-11 rounded-lg border px-2.5 py-1.5 text-[10px] font-black ${dashboardWorkSurface === 'WORKFLOW' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-200'}`}>Hồ sơ cần hoàn thiện</button>
           </div>
         </div>
-        <div className="mt-3">
+        <div className="mt-2 min-w-0 w-full">
           {dashboardWorkSurface === 'WORKFLOW' ? (
             <PcnPipelineBoard dossiers={dossiers} proposals={proposals} fields={fields} requirements={boardRequirements} documents={dossierDocuments} users={boardUsers} currentUser={currentUser} onClaimDossier={onClaimDossier} onOpenDossier={onOpenDossier} />
           ) : (
@@ -575,13 +581,19 @@ function Field({ label, error, hideLabel = false, children }: { label: string; e
   return <label className="block">{!hideLabel && <span className="block text-[10px] font-black text-slate-500 mb-1">{label}</span>}<div className={`[&_input]:w-full [&_input]:rounded-md [&_input]:border [&_input]:px-2.5 [&_input]:py-1.5 [&_input]:text-[11px] [&_input]:outline-none [&_input]:focus:border-emerald-400 [&_select]:w-full [&_select]:rounded-md [&_select]:border [&_select]:bg-white [&_select]:px-2.5 [&_select]:py-1.5 [&_select]:text-[11px] [&_textarea]:w-full [&_textarea]:rounded-md [&_textarea]:border [&_textarea]:px-2.5 [&_textarea]:py-1.5 [&_textarea]:text-[11px] [&_textarea]:outline-none ${error ? '[&_input]:border-rose-300 [&_select]:border-rose-300 [&_textarea]:border-rose-300 [&_input]:bg-rose-50/40 [&_select]:bg-rose-50/40 [&_textarea]:bg-rose-50/40' : '[&_input]:border-slate-200 [&_select]:border-slate-200 [&_textarea]:border-slate-200'}`}>{children}</div>{error && <p role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{error}</p>}</label>;
 }
 
-export function PcnWorkspace() {
+export type PcnWorkspaceProps = {
+  embedded?: boolean;
+  initialSection?: PcnSection;
+  onActiveSectionChange?: (section: PcnSection) => void;
+};
+
+export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', onActiveSectionChange }: PcnWorkspaceProps = {}) {
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const clearCurrentUser = usePcnSessionStore((state) => state.clearCurrentUser);
   const pcn = usePcnStore();
   const resetPcn = usePcnStore((state) => state.reset);
   const [pcnSessionChecked, setPcnSessionChecked] = useState(false);
-  const [activeSection, setActiveSection] = useState<PcnSection>('dashboard');
+  const [activeSection, setActiveSection] = useState<PcnSection>(initialSection);
   const [selectedField, setSelectedField] = useState<string | undefined>();
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [focusedDossierId, setFocusedDossierId] = useState<string | undefined>();
@@ -595,6 +607,10 @@ export function PcnWorkspace() {
   });
   const [pcnNotificationOpen, setPcnNotificationOpen] = useState(false);
   const [personalSettingsOpen, setPersonalSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    setActiveSection(initialSection);
+  }, [initialSection]);
 
   useEffect(() => {
     let cancelled = false;
@@ -642,9 +658,9 @@ export function PcnWorkspace() {
     });
   };
 
-  const openSection = (section: PcnSection, entityKey?: string) => { setActiveSection(section); setFocusedDossierId(undefined); setSelectedField(section === 'proposals' ? entityKey : undefined); setCustomerSearchQuery(section === 'customers' ? (entityKey || '') : ''); setMobileMenuOpen(false); };
+  const openSection = (section: PcnSection, entityKey?: string) => { setActiveSection(section); onActiveSectionChange?.(section); setFocusedDossierId(undefined); setSelectedField(section === 'proposals' ? entityKey : undefined); setCustomerSearchQuery(section === 'customers' ? (entityKey || '') : ''); setMobileMenuOpen(false); };
   const openNewProposal = () => {
-    setActiveSection('proposals');
+    openSection('proposals');
     setFocusedDossierId(undefined);
     setSelectedField(undefined);
     setProposalFormRequest((current) => current + 1);
@@ -769,7 +785,7 @@ export function PcnWorkspace() {
   ) : activeSection === 'lab-operations' ? (
     <PcnLabOperationsView dossiers={pcn.dossiers} proposals={pcn.proposals} sampleLots={pcn.sampleLots} sampleItems={pcn.sampleItems} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'drafting' ? (
-    <PcnDraftingWorkspaceView proposals={pcn.proposals} dossiers={pcn.dossiers} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} onToast={(message, type) => type === 'error' ? toast.error(message) : toast.success(message)} />
+    <PcnDraftingWorkspaceView proposals={pcn.proposals} dossiers={pcn.dossiers} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} onToast={(message, type) => type === 'error' ? toast.error(message) : toast.success(message)} onOpenSettings={() => openSection('settings')} />
   ) : activeSection === 'assistant' ? (
     <PcnAssistantView dossiers={pcn.dossiers} proposals={pcn.proposals} requirements={pcn.documentRequirements} documents={pcn.dossierDocuments} labRequests={pcn.labRequests} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} returnedResults={pcn.returnedResults} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'customers' ? (
@@ -785,9 +801,9 @@ export function PcnWorkspace() {
   const departmentRoleLabel = currentUser.departmentRoleCode || 'Chưa phân công';
   return (
     <>
-      <div className="pcn-compact flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800">
+      <div className={embedded ? 'min-w-0' : 'pcn-compact flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800'}>
         <Toaster position="top-right" richColors />
-        <PcnSidebar
+        {!embedded && <PcnSidebar
           currentUser={currentUser}
           activeSection={activeSection}
           sectionLabels={sectionLabels}
@@ -802,9 +818,9 @@ export function PcnWorkspace() {
           onCloseMobileMenu={() => setMobileMenuOpen(false)}
           onOpenPersonalSettings={() => setPersonalSettingsOpen(true)}
           onLogout={handleLogout}
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="ddt-compact-header flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5">
+        />}
+        <div className={embedded ? 'min-w-0' : 'flex min-w-0 flex-1 flex-col'}>
+          {!embedded && <header className="ddt-compact-header flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5">
             <div className="flex min-w-0 items-center gap-2">
               <button
                 type="button"
@@ -833,14 +849,15 @@ export function PcnWorkspace() {
               <span className="hidden text-[10px] font-bold sm:inline">Database PCN riêng</span>
               <PcnNotificationDropdown isOpen={pcnNotificationOpen} onClose={() => setPcnNotificationOpen(false)} notifications={pcn.notifications} currentUser={currentUser} onMarkRead={pcn.markPcnNotificationAsRead} onMarkAllRead={pcn.markAllPcnNotificationsAsRead} onClear={pcn.clearPcnNotifications} onSelect={handlePcnNotificationSelect} />
             </div>
-          </header>
-          <main className="min-h-0 min-w-0 flex-1 mobile-scroll-y overflow-x-hidden overflow-y-auto">{content}</main>
-          <nav className="pcn-mobile-nav mobile-scroll-x flex shrink-0 items-center justify-start gap-1 border-t border-slate-200 bg-white p-1.5 lg:hidden" aria-label="Menu di động">
+          </header>}
+          {/* Standalone contract: <main className="min-h-0 min-w-0 flex-1 mobile-scroll-y overflow-x-hidden overflow-y-auto"> */}
+          <main className={embedded ? 'min-w-0' : 'min-h-0 min-w-0 flex-1 mobile-scroll-y overflow-x-hidden overflow-y-auto'}>{content}</main>
+          {!embedded && <nav className="pcn-mobile-nav mobile-scroll-x flex shrink-0 items-center justify-start gap-1 border-t border-slate-200 bg-white p-1.5 lg:hidden" aria-label="Menu di động">
             {mobileNavItems.map(({ key, icon: Icon }) => {
               const isActive = activeSection === key;
               return <button type="button" key={key} onClick={() => openSection(key)} aria-current={isActive ? 'page' : undefined} className={isActive ? 'mobile-touch-target flex min-h-11 min-w-[4.5rem] shrink-0 flex-col items-center gap-0.5 rounded-md bg-emerald-50 px-1 py-1.5 text-[8px] font-bold text-emerald-700' : 'mobile-touch-target flex min-h-11 min-w-[4.5rem] shrink-0 flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-[8px] font-bold text-slate-400'}><Icon size={15} /><span className="truncate">{sectionLabels[key]}</span></button>;
             })}
-          </nav>
+          </nav>}
         </div>
       </div>
       {personalSettingsOpen && <PcnPersonalSettingsPanel currentUser={currentUser} onClose={() => setPersonalSettingsOpen(false)} />}

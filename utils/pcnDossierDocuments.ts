@@ -77,7 +77,7 @@ const BASE_PCN_DOCUMENT_REQUIREMENTS: PcnDocumentRequirement[] = [
   // QC20 follows the same dossier lifecycle. Product scope and official
   // source templates remain configurable until PCN approves the field pack.
   requirement('QC20', 'PROPOSAL', 'Đề nghị / đơn đăng ký', [...INTAKE], 10),
-  requirement('QC20', 'COMMERCIAL', 'Báo giá / hợp đồng', [...INTAKE], 20),
+  requirement('QC20', 'COMMERCIAL', 'Hồ sơ thương mại và chứng từ hải quan', [...INTAKE], 20),
   requirement('QC20', 'SCOPE_EVIDENCE', 'Hồ sơ phạm vi, mã HS và tiêu chuẩn áp dụng', [...INTAKE], 22),
   requirement('QC20', 'LOT_IDENTITY', 'Bằng chứng mác, kích thước và xác định lô', [...INTAKE], 23),
   requirement('QC20', 'ASSIGNMENT_FORM', 'Phiếu phân công chứng nhận', [...INTAKE], 25),

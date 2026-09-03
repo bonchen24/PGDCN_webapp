@@ -29,9 +29,11 @@ import { getPcnFileUrl } from '../utils/pcnFileApi';
 import { getPcnOfficialSourceUpdatedAt, selectPcnOfficialTemplate } from '../utils/pcnOfficialDocumentPolicy';
 import { getPcnTemplateReadiness } from '../utils/pcnTemplateCatalog';
 import { getPcnAuthorizedSignerOptions, type PcnAuthorizedSignerOption } from '../utils/pcnSignerAuthorization';
+import { getPcnEffectiveApprovalSteps } from '../utils/pcnApproval';
 import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
 import type { PcnSignerDelegationInput } from '../utils/pcnSignerDelegationApi';
 import type { PcnOfficialPreflightResponse } from '../utils/pcnOfficialDocumentApi';
+import PcnCatalogCombobox from './PcnCatalogCombobox';
 
 const visibleStatuses: PcnDossierStatus[] = [
   'TECHNICAL_REVIEW',
@@ -68,6 +70,7 @@ type PcnIssuanceViewProps = {
   onIssue: (issuanceId: string, input: { issuanceNumber: string; signerUsername: string; issuedAt?: string }) => Promise<void>;
   onDeliver: (issuanceId: string, input: { recipient: string; deliveredAt?: string; note?: string }) => Promise<void>;
   onArchive: (issuanceId: string) => Promise<void>;
+  onWithdraw: (issuanceId: string, reason: string) => Promise<void>;
   onAttachFile: (issuanceId: string, file: File) => Promise<void>;
   officialDocuments: PcnOfficialGeneratedDocument[];
   onPreflightOfficialDocuments: (issuanceId: string, formats?: PcnGeneratedDocumentFormat[]) => Promise<PcnOfficialPreflightResponse>;
@@ -88,8 +91,8 @@ function EmptyIssuanceState() {
   return (
     <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center">
       <Award size={18} className="mx-auto text-slate-400" />
-      <p className="mt-2 text-xs font-black text-slate-600">Chưa có hồ sơ trong hàng đợi phát hành</p>
-      <p className="mt-1 text-[10px] text-slate-400">Hồ sơ sau soát xét kỹ thuật sẽ xuất hiện tại đây.</p>
+      <p className="mt-2 text-xs font-black text-slate-600">Chưa có hồ sơ trong vùng phê duyệt</p>
+      <p className="mt-1 text-[10px] text-slate-400">Hồ sơ sau khi hoàn thiện bước 4 sẽ xuất hiện tại đây; cấp số, giao và lưu trữ là lifecycle sau phê duyệt.</p>
     </div>
   );
 }
@@ -125,6 +128,13 @@ function IssueModal({
   users: PcnUserAccount[];
   isSubmitting: boolean;
 }) {
+  const signerCatalogOptions = signerOptions.map((option) => ({
+    value: option.username,
+    label: `${getPcnUserDisplayName(option.username, users)} · ${option.mode === 'DIRECT' ? 'Trực tiếp' : 'Ủy quyền đến ' + new Date(option.validUntil || '').toLocaleDateString('vi-VN')}`,
+    searchText: [option.username, getPcnUserDisplayName(option.username, users), option.mode, option.validUntil].filter(Boolean).join(' '),
+    description: option.mode === 'DIRECT' ? 'Ký trực tiếp' : `Ủy quyền đến ${new Date(option.validUntil || '').toLocaleDateString('vi-VN')}`,
+  }));
+
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/50 p-0 sm:items-center sm:p-4">
       <form onSubmit={onSubmit} aria-busy={isSubmitting} className="mobile-scroll-y max-h-[94dvh] w-full max-w-md rounded-t-2xl bg-white p-4 shadow-2xl sm:rounded-2xl">
@@ -139,9 +149,7 @@ function IssueModal({
         </label>
         <label className="mt-2 block text-[10px] font-black text-slate-500">
           Người ký
-          <select required disabled={isSubmitting} value={form.signerUsername} onChange={(event) => onChange({ ...form, signerUsername: event.target.value })} className={inputClass}>
-            {signerOptions.map((option) => <option key={option.username + '-' + (option.delegationId || option.mode)} value={option.username}>{getPcnUserDisplayName(option.username, users)} · {option.mode === 'DIRECT' ? 'Trực tiếp' : 'Ủy quyền đến ' + new Date(option.validUntil || '').toLocaleDateString('vi-VN')}</option>)}
-          </select>
+          <PcnCatalogCombobox id="pcn-issuance-signer" label="Người ký" hideLabel required disabled={isSubmitting} value={form.signerUsername} onChange={(value) => onChange({ ...form, signerUsername: value })} options={signerCatalogOptions} placeholder="Tìm người ký..." />
           {signerOptions.length === 0 && <span className="mt-1 block text-[10px] font-bold text-rose-600">Chưa có người ký hợp lệ cho Lĩnh vực và ngày cấp này.</span>}
         </label>
         <label className="mt-2 block text-[10px] font-black text-slate-500">
@@ -205,6 +213,7 @@ export function PcnIssuanceView({
   onIssue,
   onDeliver,
   onArchive,
+  onWithdraw,
   onAttachFile,
   officialDocuments,
   onPreflightOfficialDocuments,
@@ -223,8 +232,10 @@ export function PcnIssuanceView({
   const [selectedApproval, setSelectedApproval] = useState<string>();
   const [issueForm, setIssueForm] = useState<IssueForm>();
   const [deliveryForm, setDeliveryForm] = useState<DeliveryForm>();
+  const [withdrawForm, setWithdrawForm] = useState<{ id: string; reason: string }>();
   const [submittingIssueId, setSubmittingIssueId] = useState<string>();
   const [submittingDeliveryId, setSubmittingDeliveryId] = useState<string>();
+  const [submittingWithdrawalId, setSubmittingWithdrawalId] = useState<string>();
   const [archivingIssuanceId, setArchivingIssuanceId] = useState<string>();
   const [uploadingIssuanceId, setUploadingIssuanceId] = useState<string>();
   const [generatingIssuanceId, setGeneratingIssuanceId] = useState<string>();
@@ -232,7 +243,7 @@ export function PcnIssuanceView({
   const [preparingDossierId, setPreparingDossierId] = useState<string>();
   const [officialPreflights, setOfficialPreflights] = useState<Record<string, { format: PcnGeneratedDocumentFormat; response: PcnOfficialPreflightResponse }>>({});
   const visible = dossiers.filter((dossier) => visibleStatuses.includes(dossier.status) && (!initialDossierId || dossier.id === initialDossierId));
-  const selectedSteps = selectedApproval ? approvalSteps.filter((step) => step.dossierId === selectedApproval) : [];
+  const selectedSteps = selectedApproval ? getPcnEffectiveApprovalSteps(approvalSteps.filter((step) => step.dossierId === selectedApproval)) : [];
   const currentPcnUser = currentUser ? users.find((user) => user.username.trim().toLowerCase() === currentUser.username.trim().toLowerCase()) : undefined;
   const selectedApprovalDossier = selectedApproval ? dossiers.find((dossier) => dossier.id === selectedApproval) : undefined;
   const selectedApprovalEvidence: PcnApprovalEvidence | undefined = selectedApprovalDossier ? (() => {
@@ -318,6 +329,19 @@ export function PcnIssuanceView({
     }).then(() => setDeliveryForm(undefined)).catch(() => undefined).finally(() => setSubmittingDeliveryId(undefined));
   };
 
+  const submitWithdrawal = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!canMutate || !withdrawForm || submittingWithdrawalId === withdrawForm.id) return;
+    const submittedForm = withdrawForm;
+    const reason = submittedForm.reason.trim();
+    if (!reason) {
+      toast.error('Thu hồi hồ sơ phải có lý do.');
+      return;
+    }
+    setSubmittingWithdrawalId(submittedForm.id);
+    void onWithdraw(submittedForm.id, reason).then(() => setWithdrawForm(undefined)).catch(() => undefined).finally(() => setSubmittingWithdrawalId(undefined));
+  };
+
   const archiveIssuance = async (issuanceId: string) => {
     if (archivingIssuanceId === issuanceId) return;
     if (!canMutate) return;
@@ -377,8 +401,8 @@ export function PcnIssuanceView({
   return (
     <div className="pcn-page-surface min-w-0 bg-slate-50/60 p-3 pb-20 md:p-5">
       <div>
-        <h1 className="text-xl font-black text-slate-900">Phê duyệt & Phát hành</h1>
-        <p className="mt-1 text-[11px] text-slate-500">Theo dõi soát xét, phê duyệt và bộ GCN/QĐ/chứng thư của hồ sơ.</p>
+        <h1 className="text-xl font-black text-slate-900">Phê duyệt</h1>
+        <p className="mt-1 text-[11px] text-slate-500">Lãnh đạo quyết định bước 5; sau đó bộ phận được phân quyền thực hiện cấp số, giao khách hàng và lưu trữ.</p>
         {initialDossierId && <p className="mt-2 text-[10px] font-black text-emerald-700">Đang tập trung hồ sơ: {dossiers.find((dossier) => dossier.id === initialDossierId)?.dossierCode || initialDossierId}</p>}
       </div>
       <PcnSignerDelegationPanel currentUser={currentUser} users={users} fields={fields} delegations={signerDelegations} onCreate={onCreateSignerDelegation} onRevoke={onRevokeSignerDelegation} />
@@ -390,7 +414,8 @@ export function PcnIssuanceView({
           const completeness = buildPcnDossierCompleteness({ dossier, proposal, requirements: documentRequirements, documents: dossierDocuments });
           const codeReview = completeness.codeReview;
           const customerSnapshot = getPcnDossierCustomerSnapshot(dossier, proposal);
-          const steps = approvalSteps.filter((step) => step.dossierId === dossier.id);
+          const steps = getPcnEffectiveApprovalSteps(approvalSteps.filter((step) => step.dossierId === dossier.id));
+          const canWithdraw = Boolean(currentPcnUser && (currentPcnUser.departmentRoleCode === 'LEADERSHIP' || dossier && issuance?.signerUsername?.trim().toLowerCase() === currentPcnUser.username.trim().toLowerCase()));
           const issueReady = issuance?.status === 'APPROVED' && dossier.status === 'APPROVED';
           const signerOptions = getPcnAuthorizedSignerOptions({
             fieldCodes: dossier.fieldCodes,
@@ -424,19 +449,20 @@ export function PcnIssuanceView({
                     {customerSnapshot?.name || 'Chưa gắn khách hàng'} <span className="font-normal text-slate-400">• {proposal?.productName || ''}</span>
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-slate-500">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1"><ShieldCheck size={12} /> {steps.filter((step) => step.status === 'APPROVED').length}/{steps.length || 4} bước duyệt</span><span className={`rounded-md px-2 py-1 ${completeness.score < 100 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>Hoàn thiện {completeness.score}%</span><span title={codeReview.message || getPcnCodeFamilyLabel(codeReview.family)} className={`rounded-md px-2 py-1 ${codeReview.needsReview ? 'bg-amber-50 text-amber-700' : 'bg-slate-50 text-slate-500'}`}>Mã PCN: {codeReview.source || 'Chưa có'} · {codeReview.needsReview ? 'Cần đối chiếu mã nguồn' : getPcnCodeFamilyLabel(codeReview.family)}</span>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1"><ShieldCheck size={12} /> {steps.filter((step) => step.status === 'APPROVED').length}/{steps.length || 1} quyết định Lãnh đạo</span><span className={`rounded-md px-2 py-1 ${completeness.score < 100 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>Hoàn thiện {completeness.score}%</span><span title={codeReview.message || getPcnCodeFamilyLabel(codeReview.family)} className={`rounded-md px-2 py-1 ${codeReview.needsReview ? 'bg-amber-50 text-amber-700' : 'bg-slate-50 text-slate-500'}`}>Mã PCN: {codeReview.source || 'Chưa có'} · {codeReview.needsReview ? 'Cần đối chiếu mã nguồn' : getPcnCodeFamilyLabel(codeReview.family)}</span>
                     {issuance && <span className="rounded-md bg-slate-50 px-2 py-1">{issuanceStatusLabel(issuance.status)}</span>}
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-end gap-1.5">
-                  {canMutate && !issuance && <button onClick={() => void prepareIssuance(dossier)} disabled={preparingDossierId === dossier.id} aria-busy={preparingDossierId === dossier.id} className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"><FileCheck2 size={12} /> {preparingDossierId === dossier.id ? 'Đang tạo…' : 'Tạo bộ GCN/QĐ'}</button>}
-                  {canMutate && issuance && ['PENDING_APPROVAL', 'RETURNED'].includes(issuance.status) && <button onClick={() => setSelectedApproval(dossier.id)} className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[10px] font-bold text-indigo-700"><ShieldCheck size={12} /> Mở phê duyệt</button>}
+                  {canMutate && dossier.status === 'TECHNICAL_REVIEW' && (!issuance || issuance.status === 'RETURNED') && <button onClick={() => void prepareIssuance(dossier)} disabled={preparingDossierId === dossier.id} aria-busy={preparingDossierId === dossier.id} className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"><FileCheck2 size={12} /> {preparingDossierId === dossier.id ? 'Đang trình…' : issuance ? 'Trình lại bước 5' : 'Tạo bộ GCN/QĐ'}</button>}
+                  {canMutate && issuance && issuance.status === 'PENDING_APPROVAL' && <button onClick={() => setSelectedApproval(dossier.id)} className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[10px] font-bold text-indigo-700"><ShieldCheck size={12} /> Mở phê duyệt bước 5</button>}
                   {issueReady && !issuanceTemplatesReady && <span title="Cần template GCN/QĐ đã phê duyệt và có asset private hợp lệ" className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-black text-amber-800"><ShieldCheck size={12} /> Chưa thể cấp số: {issuanceTemplateReasons.join(', ')}</span>}
                   {canMutate && issueReady && issuanceTemplatesReady && signerOptions.length > 0 && <button onClick={() => setIssueForm({ id: issuance.id, issuanceNumber: issuance.issuanceNumber || '', signerUsername: signerOptions.some((option) => option.username === issuance.signerUsername) ? (issuance.signerUsername || '') : signerOptions[0].username, issuedAt: new Date().toISOString().slice(0, 10) })} className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-[10px] font-black text-white"><Hash size={12} /> Cấp số phát hành</button>}
                   {issueReady && signerOptions.length === 0 && <span title="Cần gán Lĩnh vực và chức vụ người ký hoặc tạo ủy quyền còn hạn" className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-black text-amber-800"><ShieldCheck size={12} /> Chưa thể cấp số: chưa có người ký hợp lệ</span>}
                   {canMutate && issuance?.status === 'ISSUED' && <button onClick={() => setDeliveryForm({ id: issuance.id, recipient: issuance.deliveryRecipient || customerSnapshot?.name || '', note: issuance.deliveryNote || '', deliveredAt: new Date().toISOString().slice(0, 10) })} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[10px] font-black text-emerald-700">Giao khách hàng</button>}
                   {canMutate && issuance?.status === 'DELIVERED' && <button onClick={() => void archiveIssuance(issuance.id)} disabled={archivingIssuanceId === issuance.id} aria-busy={archivingIssuanceId === issuance.id} className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-[10px] font-black text-slate-700 disabled:cursor-wait disabled:opacity-60">{archivingIssuanceId === issuance.id ? 'Đang lưu…' : 'Lưu trữ'}</button>}
+                  {canMutate && canWithdraw && issuance && ['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(issuance.status) && <button onClick={() => setWithdrawForm({ id: issuance.id, reason: '' })} className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] font-black text-rose-700">Thu hồi để rà soát</button>}
                   {issuance && ['ISSUED', 'DELIVERED', 'ARCHIVED'].includes(issuance.status) && <>
                     <button onClick={() => void preflightOfficialDocuments(issuance.id, 'DOCX')} disabled={preflightingIssuanceId === issuance.id} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700 disabled:cursor-wait disabled:opacity-50"><FileCheck2 size={12} /> {preflightingIssuanceId === issuance.id ? 'Đang kiểm tra…' : 'Kiểm tra dữ liệu chính thức (Word)'}</button>
                     <button onClick={() => void preflightOfficialDocuments(issuance.id, 'PDF')} disabled={preflightingIssuanceId === issuance.id} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700 disabled:cursor-wait disabled:opacity-50"><FileCheck2 size={12} /> {preflightingIssuanceId === issuance.id ? 'Đang kiểm tra…' : 'Kiểm tra dữ liệu chính thức (PDF)'}</button>
@@ -468,6 +494,7 @@ export function PcnIssuanceView({
       {canMutate && selectedApproval && <PcnApprovalModal steps={selectedSteps} users={users} currentUser={currentPcnUser} dossierFieldCodes={selectedApprovalDossier?.fieldCodes || []} evidence={selectedApprovalEvidence} onAct={onApproveStep} onOpenDossier={openSelectedDossierChecklist} onClose={() => setSelectedApproval(undefined)} />}
       {canMutate && issueForm && <IssueModal form={issueForm} onChange={setIssueForm} onClose={() => setIssueForm(undefined)} onSubmit={submitIssue} signerOptions={issueSignerOptions} users={users} isSubmitting={submittingIssueId === issueForm.id} />}
       {canMutate && deliveryForm && <DeliveryModal form={deliveryForm} onChange={setDeliveryForm} onClose={() => setDeliveryForm(undefined)} onSubmit={submitDelivery} isSubmitting={submittingDeliveryId === deliveryForm.id} />}
+      {canMutate && withdrawForm && <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/50 p-0 sm:items-center sm:p-4"><form onSubmit={submitWithdrawal} className="w-full max-w-md rounded-t-2xl bg-white p-4 shadow-2xl sm:rounded-2xl"><div className="flex items-center justify-between"><h2 className="text-sm font-black text-slate-900">Thu hồi hồ sơ</h2><button type="button" onClick={() => setWithdrawForm(undefined)} disabled={submittingWithdrawalId === withdrawForm.id} className="text-slate-400">×</button></div><p className="mt-1 text-[10px] text-slate-500">Thao tác này giữ nguyên số, file và lịch sử phát hành; hồ sơ sẽ quay về bước 4 để rà soát.</p><label className="mt-3 block text-[10px] font-black text-slate-500">Lý do thu hồi<textarea required rows={4} value={withdrawForm.reason} onChange={(event) => setWithdrawForm({ ...withdrawForm, reason: event.target.value })} className={inputClass} placeholder="Nêu rõ lý do cần mở lại hồ sơ." /></label><button type="submit" disabled={submittingWithdrawalId === withdrawForm.id} className="mt-4 w-full rounded-md bg-rose-600 px-3 py-2 text-[11px] font-black text-white disabled:opacity-60">{submittingWithdrawalId === withdrawForm.id ? 'Đang thu hồi…' : 'Xác nhận thu hồi'}</button></form></div>}
     </div>
   );
 }

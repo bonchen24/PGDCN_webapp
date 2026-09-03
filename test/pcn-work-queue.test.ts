@@ -140,7 +140,7 @@ test('work queue carries required document gaps grouped by document stage', () =
 
   assert.deepEqual(row.missingRequiredByStage, [
     { stage: 'INTAKE', label: 'Tiếp nhận & đầu vào', labels: ['Đề nghị'] },
-    { stage: 'TECHNICAL_REVIEW', label: 'KQTN & soát xét', labels: ['KQTN'] },
+    { stage: 'TECHNICAL_REVIEW', label: 'KQTN & đánh giá / hoàn thiện & soát xét trước duyệt', labels: ['KQTN'] },
   ]);
   assert.match(workQueueView, /missingRequiredByStage/);
   assert.match(workQueueView, /Tài liệu bắt buộc còn thiếu/);

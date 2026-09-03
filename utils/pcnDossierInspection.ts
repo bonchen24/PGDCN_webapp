@@ -14,6 +14,7 @@ import type {
 import { getPcnDocumentRequirements } from './pcnDossierDocuments.ts';
 import { getPcnDossierStationScore, PCN_PIPELINE_STATIONS } from './pcnDossierPipeline.ts';
 import { PCN_WORKFLOW_STAGES } from './pcnWorkflowStages.ts';
+import { isPcnDocumentWaiverValid } from './pcnDocumentWaivers.ts';
 
 export interface PcnDossierInspectionItem {
   requirement: PcnDocumentRequirement;
@@ -78,8 +79,8 @@ const STAGE_ORDER: readonly PcnDocumentRequirementStage[] = [
 const STAGE_LABELS: Record<PcnDocumentRequirementStage, string> = {
   INTAKE: 'Tiếp nhận & đầu vào',
   LAB_ROUTING: 'Lấy mẫu & gửi PTN',
-  TECHNICAL_REVIEW: 'KQTN & soát xét',
-  ISSUANCE: 'Phê duyệt & phát hành',
+  TECHNICAL_REVIEW: 'KQTN & đánh giá / hoàn thiện & soát xét trước duyệt',
+  ISSUANCE: 'Phê duyệt',
   DELIVERY: 'Giao khách hàng',
   ARCHIVE: 'Lưu hồ sơ',
 };
@@ -108,7 +109,7 @@ function getCurrentVersion(document?: PcnDossierDocument): PcnDossierDocumentVer
 
 function buildInspectionItem(requirement: PcnDocumentRequirement, document?: PcnDossierDocument, waiver?: PcnDossierDocumentWaiver): PcnDossierInspectionItem {
   const currentVersion = getCurrentVersion(document);
-  const status = currentVersion ? 'PRESENT' as const : waiver?.reason?.trim() ? 'WAIVED' as const : 'MISSING' as const;
+  const status = currentVersion ? 'PRESENT' as const : isPcnDocumentWaiverValid(waiver) ? 'WAIVED' as const : 'MISSING' as const;
   return {
     requirement,
     status,

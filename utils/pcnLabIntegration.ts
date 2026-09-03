@@ -31,6 +31,14 @@ export const PCN_LAB_STATUS_EVENT_TYPES = [
 
 export type PcnLabStatusEventType = typeof PCN_LAB_STATUS_EVENT_TYPES[number];
 
+export interface PcnIntegrationActorSnapshot {
+  username: string;
+  name: string;
+  role?: string;
+  position?: string;
+  sourceSystem: 'PCN';
+}
+
 export interface PcnLabDispatchPayload {
   contractVersion: typeof PCN_LAB_INTEGRATION_CONTRACT_VERSION;
   sourceSystem: 'PCN';
@@ -38,6 +46,7 @@ export interface PcnLabDispatchPayload {
   messageId: string;
   idempotencyKey: string;
   sentAt: string;
+  initiatedBy?: PcnIntegrationActorSnapshot;
   callback: {
     path: '/api/pcn/integrations/lab-status-events';
     eventTypes: readonly PcnLabStatusEventType[];
@@ -100,6 +109,7 @@ export interface PcnLabDispatchInput {
   messageId: string;
   idempotencyKey: string;
   sentAt?: string;
+  initiatedBy?: PcnIntegrationActorSnapshot;
 }
 
 export interface PcnLabStatusEventInput {
@@ -171,6 +181,19 @@ function normalizeSequence(value: unknown): number {
   return sequence;
 }
 
+function normalizeInitiatedBy(value: PcnIntegrationActorSnapshot | undefined): PcnIntegrationActorSnapshot | undefined {
+  if (!value) return undefined;
+  const sourceSystem = required(value.sourceSystem, 'Nguồn người khởi tạo PYC');
+  if (sourceSystem.toUpperCase() !== 'PCN') throw new Error('Nguồn người khởi tạo PYC phải là PCN.');
+  return {
+    username: required(value.username, 'Username người khởi tạo PYC').toLowerCase(),
+    name: required(value.name, 'Tên người khởi tạo PYC'),
+    ...(optional(value.role) ? { role: optional(value.role) } : {}),
+    ...(optional(value.position) ? { position: optional(value.position) } : {}),
+    sourceSystem: 'PCN',
+  };
+}
+
 /**
  * Build the only payload that may leave the PCN server. It intentionally
  * contains sample/PYC identity and test context, never credentials or files.
@@ -179,6 +202,7 @@ export function buildPcnLabDispatchPayload(input: PcnLabDispatchInput): PcnLabDi
   const targetSystem = normalizeSystemCode(input.targetSystemCode, 'Mã app phòng thử');
   const messageId = required(input.messageId, 'messageId');
   const idempotencyKey = required(input.idempotencyKey, 'idempotencyKey');
+  const initiatedBy = normalizeInitiatedBy(input.initiatedBy);
   if (input.request.dossierId !== input.dossier.id || input.lot.dossierId !== input.dossier.id || input.route.sampleLotId !== input.lot.id) {
     throw new Error('PYC, hồ sơ, lô mẫu và tuyến mẫu không cùng một quan hệ PCN.');
   }
@@ -210,6 +234,7 @@ export function buildPcnLabDispatchPayload(input: PcnLabDispatchInput): PcnLabDi
     messageId,
     idempotencyKey,
     sentAt: input.sentAt || new Date().toISOString(),
+    ...(initiatedBy ? { initiatedBy } : {}),
     callback: {
       path: '/api/pcn/integrations/lab-status-events',
       eventTypes: PCN_LAB_STATUS_EVENT_TYPES,
@@ -337,7 +362,16 @@ export function mapPcnLabStatusEvent(input: PcnLabStatusEventInput): PcnLabStatu
       mapping.execution = { ...executionBase, status: 'IN_PROGRESS', ...(optional(input.startedAt) ? { startedAt: optional(input.startedAt) } : {}) };
       break;
     case 'TEST_COMPLETED':
-      mapping.execution = { ...executionBase, status: 'COMPLETED', ...(optional(input.completedAt) ? { completedAt: optional(input.completedAt) } : {}) };
+      if (input.outcome !== undefined && !['PENDING', 'PASS', 'FAIL'].includes(input.outcome)) throw new Error('outcome phòng thử không hợp lệ.');
+      mapping.execution = {
+        ...executionBase,
+        status: 'COMPLETED',
+        ...(optional(input.scheduledDate) ? { scheduledDate: optional(input.scheduledDate) } : {}),
+        ...(optional(input.startedAt) ? { startedAt: optional(input.startedAt) } : {}),
+        ...(optional(input.completedAt) ? { completedAt: optional(input.completedAt) } : {}),
+        ...(input.outcome !== undefined ? { outcome: input.outcome } : {}),
+        ...(optional(input.externalReportNumber) ? { externalReportNumber: optional(input.externalReportNumber) } : {}),
+      };
       break;
     case 'RESULT_UPDATED': {
       const outcome = input.outcome || 'PENDING';

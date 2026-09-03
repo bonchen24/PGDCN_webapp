@@ -9,6 +9,7 @@ import type {
   PcnDossierStationKey,
   PcnGeneratedDocumentKind,
   PcnOfficialDocumentKind,
+  PcnCertificationMethod,
 } from '../types.ts';
 import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, getPcnDocumentRequirements } from './pcnDossierDocuments.ts';
 import { PCN_PIPELINE_STATIONS } from './pcnDossierPipeline.ts';
@@ -42,6 +43,8 @@ export interface PcnDossierTemplateProfile {
   stationGroups: PcnDossierTemplateStationGroup[];
   generatedKinds: PcnGeneratedDocumentKind[];
   officialOutputs: PcnOfficialDocumentKind[];
+  standardRefs?: string[];
+  method?: PcnCertificationMethod;
 }
 
 /**
@@ -67,8 +70,8 @@ const STAGE_ORDER: readonly PcnDocumentRequirementStage[] = [
 const STAGE_LABELS: Record<PcnDocumentRequirementStage, string> = {
   INTAKE: 'Tiếp nhận & đầu vào',
   LAB_ROUTING: 'Lấy mẫu & gửi PTN',
-  TECHNICAL_REVIEW: 'KQTN & soát xét',
-  ISSUANCE: 'Phê duyệt & phát hành',
+  TECHNICAL_REVIEW: 'KQTN & đánh giá / hoàn thiện & soát xét trước duyệt',
+  ISSUANCE: 'Phê duyệt',
   DELIVERY: 'Giao khách hàng',
   ARCHIVE: 'Lưu hồ sơ',
 };
@@ -179,33 +182,35 @@ const PROFILE_META: Array<Omit<PcnDossierTemplateAuthoringProfile, 'stageGroups'
     id: 'QC20_BLANK_PACK',
     fieldCode: 'QC20',
     title: 'Bộ hồ sơ mẫu Quy chuẩn 20',
-    description: 'Khung hồ sơ mẫu trống QC20 theo pipeline PCN; phạm vi sản phẩm và biểu mẫu chính thức đang chờ PCN xác nhận.',
-    sourceBasis: 'Cấu hình khởi tạo từ QCVN 20:2019/BKHCN và quy trình hồ sơ chung; chưa có bộ hồ sơ QC20 nguồn được duyệt.',
+    description: 'Bộ hồ sơ chứng nhận lô thép không gỉ theo QCVN 20:2019/BKHCN, Sửa đổi 1:2021 và Phương thức 7; phạm vi pháp lý vẫn là cấu hình chờ xác nhận bởi Admin PCN trước phát hành.',
+    sourceBasis: 'Chuẩn hóa nghiệp vụ PCN từ QCVN 20:2019/BKHCN, Sửa đổi 1:2021 và mẫu biểu QC20 được cung cấp để tham khảo read-only; cấu hình chờ xác nhận, không lưu đường dẫn nguồn.',
+    standardRefs: ['QCVN 20:2019/BKHCN', 'Sửa đổi 1:2021 QCVN 20:2019/BKHCN'],
+    method: 'METHOD_7',
     isBlank: true,
     sourceFormReferences: [
-      'Biểu mẫu Đề nghị QC20 — chưa có nguồn chính thức',
+      'QC20_GCN.docx — giấy chứng nhận lô hàng hóa thép không gỉ',
+      'QC20_QD.docx — quyết định cấp giấy chứng nhận phù hợp',
       'Phiếu phân công và kế hoạch đánh giá — cấu hình cần xác nhận',
-      'Biên bản kiểm tra, mã hóa và giao mẫu — cấu hình cần xác nhận',
-      'PYC và KQTN — cấu hình cần xác nhận theo phòng thử nghiệm',
-      'GCN và Quyết định QC20 — chưa có mẫu chính thức',
+      'Biên bản kiểm tra hiện trường, lấy mẫu, mã hóa và giao mẫu lô thép',
+      'PYC và KQTN phân tích thành phần hóa học theo mác thép',
     ],
     sourceMappings: [
-      { requirementCode: 'PROPOSAL', references: ['Chưa có nguồn QC20 chính thức'], note: 'Chỉ là vị trí cấu hình, không được dùng để sinh bản chính thức.' },
-      { requirementCode: 'COMMERCIAL', references: ['Hồ sơ thương mại theo Đề nghị — cần xác nhận'] },
+      { requirementCode: 'PROPOSAL', references: ['Đề nghị chứng nhận lô hàng hóa theo Phương thức 7'], note: 'Nội dung form phải được Admin PCN duyệt trước khi sinh bản chính thức.' },
+      { requirementCode: 'COMMERCIAL', references: ['Hồ sơ thương mại và chứng từ hải quan theo lô hàng — cần xác nhận'] },
       { requirementCode: 'SCOPE_EVIDENCE', references: ['Hồ sơ phạm vi, mã HS, tiêu chuẩn công bố và bằng chứng áp dụng — cần xác nhận'] },
       { requirementCode: 'LOT_IDENTITY', references: ['Mác thép, kích thước danh nghĩa, số lô nhà sản xuất/lô hàng — cần xác nhận'] },
       { requirementCode: 'ASSIGNMENT_FORM', references: ['Biểu mẫu dùng chung PCN — cần xác nhận áp dụng QC20'] },
       { requirementCode: 'EVALUATION_PLAN', references: ['Biểu mẫu dùng chung PCN — cần xác nhận áp dụng QC20'] },
-      { requirementCode: 'FIELD_INSPECTION', references: ['Chưa có nguồn QC20 chính thức'] },
-      { requirementCode: 'LAB_REQUEST', references: ['PYC gửi phòng thử nghiệm — cần xác nhận tuyến QC20'] },
+      { requirementCode: 'FIELD_INSPECTION', references: ['Biên bản kiểm tra hiện trường lô thép không gỉ'] },
+      { requirementCode: 'LAB_REQUEST', references: ['PYC gửi PTN phân tích thành phần hóa học'] },
       { requirementCode: 'SAMPLE_CODING', references: ['Biên bản mã hóa mẫu theo lô — cần xác nhận'] },
       { requirementCode: 'SAMPLE_HANDOVER', references: ['Biên bản lấy / giao mẫu — cần xác nhận'] },
       { requirementCode: 'SAMPLE_RETURN', references: ['Chưa có nguồn QC20 chính thức'], note: 'Chỉ tạo khi nghiệp vụ trả mẫu phát sinh và được xác nhận.' },
       { requirementCode: 'TEST_REPORT', references: ['KQTN theo biểu mẫu phòng thử nghiệm — cần xác nhận'] },
-      { requirementCode: 'CERTIFICATION_RESULT', references: ['Báo cáo đánh giá QC20 — chưa có nguồn chính thức'] },
+      { requirementCode: 'CERTIFICATION_RESULT', references: ['Báo cáo đánh giá sự phù hợp lô thép không gỉ theo Phương thức 7'] },
       { requirementCode: 'CORRECTIVE_ACTION_LETTER', references: ['Công văn khắc phục — cần xác nhận'] },
-      { requirementCode: 'CERTIFICATE', references: ['GCN QC20 — chưa có nguồn chính thức'] },
-      { requirementCode: 'DECISION', references: ['Quyết định QC20 — chưa có nguồn chính thức'] },
+      { requirementCode: 'CERTIFICATE', references: ['QC20_GCN.docx'] },
+      { requirementCode: 'DECISION', references: ['QC20_QD.docx'] },
       { requirementCode: 'CLIENT_PACKAGE', references: ['Bộ giao khách hàng — cần xác nhận'] },
       { requirementCode: 'ARCHIVE_SCAN', references: ['Bộ lưu hồ sơ — cần xác nhận'] },
     ],

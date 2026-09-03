@@ -116,7 +116,77 @@ export function sortPcnSampleRoutes(routes: PcnSampleRoute[]): PcnSampleRoute[] 
 }
 
 export function isPcnSampleRouteCompleteForNext(route: PcnSampleRoute): boolean {
-  return ['RESULT_RETURNED', 'RETURNED_TO_PCN', 'CLOSED'].includes(route.status);
+  return ['RESULT_RETURNED', 'RETURNED_TO_PCN', 'CLOSED'].includes(route.status)
+    || route.execution?.status === 'COMPLETED';
+}
+
+/**
+ * Resolve the explicit item scope of a route. Legacy routes without a scope
+ * are only valid for the synthetic item used by an un-itemized legacy lot;
+ * they must never fan out across every model in a new lot.
+ */
+export function isPcnSampleRouteAssignedToItem(route: PcnSampleRoute, sampleItemId: string, sampleItem?: PcnSampleItem): boolean {
+  const hasExplicitRouteScope = Boolean(route.sampleItemIds?.length);
+  if (hasExplicitRouteScope) {
+    return Boolean(route.sampleItemIds?.includes(sampleItemId))
+      && (!sampleItem?.testLabCodes?.length || sampleItem.testLabCodes.includes(route.labCode));
+  }
+  if (sampleItem?.testLabCodes?.length) return false;
+  return sampleItemId.endsWith('-legacy-item');
+}
+
+/** Return the route state for one item, preferring the item snapshot. */
+export function getPcnSampleRouteSnapshotForItem(route: PcnSampleRoute, sampleItemId: string): PcnSampleRoute {
+  const itemSnapshot = route.itemSnapshots?.[sampleItemId];
+  if (!itemSnapshot) return route;
+  return { ...route, ...itemSnapshot };
+}
+
+function routeStatusFromItemSnapshots(route: PcnSampleRoute, itemSnapshots: PcnSampleRoute[]): PcnSampleRouteStatus {
+  const statuses = itemSnapshots.map((itemRoute) => itemRoute.status);
+  if (statuses.length === 0) return route.status;
+  if (statuses.some((status) => status === 'ISSUE')) return 'ISSUE';
+  if (statuses.every((status) => status === 'CLOSED' || status === 'CANCELLED')) return 'CLOSED';
+  if (statuses.every((status) => ['RETURNED_TO_PCN', 'CLOSED', 'CANCELLED'].includes(status))) return 'RETURNED_TO_PCN';
+  if (statuses.some((status) => status === 'RESULT_RETURNED')) return 'RESULT_RETURNED';
+  if (statuses.some((status) => status === 'RECEIVED')) return 'RECEIVED';
+  if (statuses.some((status) => status === 'SENT')) return 'SENT';
+  return 'PENDING';
+}
+
+function latestItemRoute(itemRoutes: PcnSampleRoute[]): PcnSampleRoute | undefined {
+  return [...itemRoutes].sort((left, right) => {
+    const leftSequence = Number(left.execution?.lastExternalSequence || 0);
+    const rightSequence = Number(right.execution?.lastExternalSequence || 0);
+    return rightSequence - leftSequence
+      || String(right.execution?.lastSyncedAt || right.updatedAt || '').localeCompare(String(left.execution?.lastSyncedAt || left.updatedAt || ''))
+      || String(right.id).localeCompare(String(left.id));
+  })[0];
+}
+
+/**
+ * Project item snapshots back to the route aggregate used by legacy cards and
+ * lot-level summaries. Item snapshots remain the source for item views.
+ */
+export function projectPcnSampleRouteFromItemSnapshots(route: PcnSampleRoute, sampleItems?: PcnSampleItem[]): PcnSampleRoute {
+  const itemIds = route.sampleItemIds?.length
+    ? route.sampleItemIds
+    : (sampleItems || []).filter((item) => isPcnSampleRouteAssignedToItem(route, item.id, item)).map((item) => item.id);
+  if (itemIds.length === 0) return route;
+  const itemRoutes = itemIds.map((itemId) => getPcnSampleRouteSnapshotForItem(route, itemId));
+  const latest = latestItemRoute(itemRoutes);
+  const latestExecution = latest?.execution || itemRoutes.map((itemRoute) => itemRoute.execution).find(Boolean);
+  const next: PcnSampleRoute = {
+    ...route,
+    status: routeStatusFromItemSnapshots(route, itemRoutes),
+    ...(latestExecution ? { execution: latestExecution } : {}),
+    updatedAt: latest?.updatedAt || route.updatedAt,
+  };
+  for (const field of ['sentAt', 'receivedAt', 'resultReturnedAt', 'returnedAt', 'note'] as const) {
+    const value = latest?.[field] || itemRoutes.map((itemRoute) => itemRoute[field]).find(Boolean);
+    if (value) next[field] = value;
+  }
+  return next;
 }
 
 export function getPcnSampleRouteStartDenial(
@@ -128,7 +198,9 @@ export function getPcnSampleRouteStartDenial(
   const assignedItems = sampleItems.filter((item) => route.sampleItemIds?.includes(item.id));
   if (assignedItems.length === 0) return 'Tuyến mẫu không xác định được mẫu/model được gán.';
   const blockedItem = assignedItems.find((item) => {
-    const itemRoutes = siblingRoutes.filter((candidate) => candidate.sampleItemIds?.includes(item.id));
+    const itemRoutes = siblingRoutes
+      .filter((candidate) => candidate.sampleItemIds?.includes(item.id))
+      .map((candidate) => getPcnSampleRouteSnapshotForItem(candidate, item.id));
     return derivePcnSampleRouteReadiness(itemRoutes, item)[route.id] !== 'READY';
   });
   return blockedItem
@@ -147,7 +219,7 @@ export function derivePcnSampleRouteReadiness(
   for (const route of sortPcnSampleRoutes(routes)) {
     let value: PcnSampleRouteReadiness;
     if (route.status === 'CANCELLED') value = 'CANCELLED';
-    else if (['RESULT_RETURNED', 'RETURNED_TO_PCN', 'CLOSED'].includes(route.status)) value = 'COMPLETED';
+    else if (['RESULT_RETURNED', 'RETURNED_TO_PCN', 'CLOSED'].includes(route.status) || route.execution?.status === 'COMPLETED') value = 'COMPLETED';
     else if (route.status === 'ISSUE' || route.execution?.status === 'BLOCKED') value = 'BLOCKED';
     else if (route.status === 'PENDING') {
       value = executionMode === 'PARALLEL'
@@ -290,15 +362,36 @@ export function transitionPcnSampleRoute(
   return next;
 }
 
-export function derivePcnSampleLotStatus(routes: PcnSampleRoute[]): { status: PcnSampleLotStatus; currentLocation: string } {
-  if (routes.length === 0 || routes.every((route) => route.status === 'PENDING')) return { status: 'PREPARED', currentLocation: 'Kho PCN' };
-  if (routes.some((route) => route.status === 'ISSUE')) return { status: 'ISSUE', currentLocation: 'Cần xử lý mẫu' };
-  if (routes.every((route) => route.status === 'CLOSED' || route.status === 'CANCELLED')) return { status: 'CLOSED', currentLocation: 'Đã hoàn tất' };
-  if (routes.every((route) => ['RETURNED_TO_PCN', 'CLOSED', 'CANCELLED'].includes(route.status))) return { status: 'RETURNED_TO_PCN', currentLocation: 'Kho PCN' };
-  const receivedRoute = routes.find((route) => route.status === 'RECEIVED');
-  if (receivedRoute) return { status: 'AT_LAB', currentLocation: receivedRoute.labName };
-  if (routes.some((route) => route.status === 'RESULT_RETURNED')) return { status: 'RESULTS_PENDING', currentLocation: 'Chờ PCN tiếp nhận KQTN' };
-  if (routes.some((route) => route.status === 'SENT')) return { status: 'IN_TRANSIT', currentLocation: 'Đang luân chuyển tới PTN' };
+function derivePcnSampleItemLocation(routes: PcnSampleRoute[], fallback: string): string {
+  if (routes.length === 0) return fallback;
+  if (routes.some((route) => route.status === 'ISSUE' || route.execution?.status === 'BLOCKED')) return 'Cần xử lý mẫu';
+  if (routes.every((route) => route.status === 'CLOSED' || route.status === 'CANCELLED')) return 'Đã hoàn tất';
+  const receivedLabs = routes.filter((route) => route.status === 'RECEIVED').map((route) => route.labName).filter(Boolean);
+  if (receivedLabs.length > 0) return Array.from(new Set(receivedLabs)).join(' · ');
+  const inTransitLabs = routes.filter((route) => route.status === 'SENT').map((route) => route.labName).filter(Boolean);
+  if (inTransitLabs.length > 0) return `Đang luân chuyển tới ${Array.from(new Set(inTransitLabs)).join(' · ')}`;
+  if (routes.some((route) => route.status === 'RESULT_RETURNED')) return 'Chờ PCN tiếp nhận KQTN';
+  if (routes.some((route) => route.status === 'RETURNED_TO_PCN')) return 'Kho PCN';
+  return fallback;
+}
+
+export function derivePcnSampleLotStatus(routes: PcnSampleRoute[], sampleItems?: PcnSampleItem[]): { status: PcnSampleLotStatus; currentLocation: string } {
+  const projectedRoutes = sampleItems?.length ? routes.map((route) => projectPcnSampleRouteFromItemSnapshots(route, sampleItems)) : routes;
+  if (projectedRoutes.length === 0 || projectedRoutes.every((route) => route.status === 'PENDING')) return { status: 'PREPARED', currentLocation: 'Kho PCN' };
+  if (projectedRoutes.some((route) => route.status === 'ISSUE' || route.execution?.status === 'BLOCKED')) return { status: 'ISSUE', currentLocation: 'Cần xử lý mẫu' };
+  if (projectedRoutes.every((route) => route.status === 'CLOSED' || route.status === 'CANCELLED')) return { status: 'CLOSED', currentLocation: 'Đã hoàn tất' };
+  if (projectedRoutes.every((route) => ['RETURNED_TO_PCN', 'CLOSED', 'CANCELLED'].includes(route.status))) return { status: 'RETURNED_TO_PCN', currentLocation: 'Kho PCN' };
+  const receivedLabs = projectedRoutes.filter((route) => route.status === 'RECEIVED').map((route) => route.labName).filter(Boolean);
+  if (receivedLabs.length > 0) return { status: 'AT_LAB', currentLocation: Array.from(new Set(receivedLabs)).join(' · ') };
+  if (projectedRoutes.some((route) => route.status === 'RESULT_RETURNED')) return { status: 'RESULTS_PENDING', currentLocation: 'Chờ PCN tiếp nhận KQTN' };
+  if (projectedRoutes.some((route) => route.status === 'SENT')) return { status: 'IN_TRANSIT', currentLocation: 'Đang luân chuyển tới PTN' };
+  if (sampleItems?.length) {
+    const itemLocations = sampleItems
+      .map((item) => routes.filter((route) => isPcnSampleRouteAssignedToItem(route, item.id, item)).map((route) => getPcnSampleRouteSnapshotForItem(route, item.id)))
+      .map((itemRoutes) => derivePcnSampleItemLocation(itemRoutes, 'Kho PCN'))
+      .filter((location) => location !== 'Kho PCN');
+    if (itemLocations.length > 0) return { status: 'AT_LAB', currentLocation: Array.from(new Set(itemLocations)).join(' · ') };
+  }
   return { status: 'PREPARED', currentLocation: 'Kho PCN' };
 }
 

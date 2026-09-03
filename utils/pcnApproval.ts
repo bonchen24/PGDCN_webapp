@@ -1,17 +1,10 @@
 import type { PcnApprovalDecision, PcnApprovalStep, PcnDepartmentRoleCode, PcnUserAccount } from '../types.ts';
 
-export const PCN_APPROVAL_ROLES = [
-  'Điều phối / Lãnh đạo',
-  'Chuyên gia đánh giá / kỹ thuật',
-  'Chuyên gia thẩm xét',
-  'Người có thẩm quyền cuối',
-] as const;
+export const PCN_APPROVAL_ROLES = ['Lãnh đạo'] as const;
+export const PCN_LEADERSHIP_APPROVAL_ROLE = PCN_APPROVAL_ROLES[0];
 
 const APPROVAL_ROLE_DEPARTMENT_CODES: Record<string, readonly PcnDepartmentRoleCode[]> = {
-  'Điều phối / Lãnh đạo': ['SAMPLE_COORDINATOR', 'LEADERSHIP'],
-  'Chuyên gia đánh giá / kỹ thuật': ['CERTIFICATION_EXPERT', 'TECHNICAL_REVIEWER'],
-  'Chuyên gia thẩm xét': ['TECHNICAL_REVIEWER'],
-  'Người có thẩm quyền cuối': ['LEADERSHIP'],
+  [PCN_LEADERSHIP_APPROVAL_ROLE]: ['LEADERSHIP'],
 };
 
 function normalizeUsername(value: unknown): string {
@@ -58,25 +51,33 @@ export function buildPcnApprovalSteps(
 ): PcnApprovalStep[] {
   const normalizedDossierId = String(dossierId || '').trim();
   if (!normalizedDossierId) throw new Error('Chuỗi phê duyệt phải gắn với hồ sơ PCN');
-  return PCN_APPROVAL_ROLES.map((role, index) => ({
-    id: `approval-${normalizedDossierId}-${index + 1}`,
+  return PCN_APPROVAL_ROLES.map((role) => ({
+    id: `approval-leadership-${normalizedDossierId}`,
     dossierId: normalizedDossierId,
-    sequence: index + 1,
+    sequence: 1,
     role,
-    ...(assigneeUsernames[index] ? { assigneeUsername: assigneeUsernames[index] } : {}),
+    ...(assigneeUsernames[0] ? { assigneeUsername: assigneeUsernames[0] } : {}),
     status: 'PENDING' as const,
     createdAt: now,
   }));
 }
 
-export function getNextPendingPcnApprovalStep(steps: PcnApprovalStep[]): PcnApprovalStep | undefined {
+/** Only the new single leadership decision is effective for the current flow. */
+export function getPcnEffectiveApprovalSteps(steps: PcnApprovalStep[]): PcnApprovalStep[] {
   return [...steps]
+    .filter((step) => step.role === PCN_LEADERSHIP_APPROVAL_ROLE)
+    .sort((left, right) => left.sequence - right.sequence || left.id.localeCompare(right.id));
+}
+
+export function getNextPendingPcnApprovalStep(steps: PcnApprovalStep[]): PcnApprovalStep | undefined {
+  return getPcnEffectiveApprovalSteps(steps)
     .filter((step) => step.status === 'PENDING')
-    .sort((left, right) => left.sequence - right.sequence)[0];
+    [0];
 }
 
 export function isPcnApprovalComplete(steps: PcnApprovalStep[]): boolean {
-  return steps.length > 0 && steps.every((step) => step.status === 'APPROVED');
+  const effectiveSteps = getPcnEffectiveApprovalSteps(steps);
+  return effectiveSteps.length > 0 && effectiveSteps.every((step) => step.status === 'APPROVED');
 }
 
 export function applyPcnApprovalDecision(
@@ -88,6 +89,9 @@ export function applyPcnApprovalDecision(
 ): PcnApprovalStep[] {
   const current = steps.find((step) => step.id === stepId);
   if (!current) throw new Error('Không tìm thấy bước phê duyệt PCN');
+  if (current.role !== PCN_LEADERSHIP_APPROVAL_ROLE) {
+    throw new Error('Chỉ quyết định phê duyệt của Lãnh đạo là bước hiệu lực.');
+  }
   const nextPending = getNextPendingPcnApprovalStep(steps);
   if (!nextPending || nextPending.id !== current.id) {
     throw new Error('Các bước phê duyệt PCN phải thực hiện theo tuần tự');

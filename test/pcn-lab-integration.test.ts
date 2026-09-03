@@ -91,6 +91,13 @@ test('dispatch payload contains PCN route identity and no credential/file fields
     targetSystemCode: 'PERFORMANCE',
     messageId: 'msg-1',
     idempotencyKey: 'PCN:r-1:pyc-1:v1',
+    initiatedBy: {
+      username: 'luongxuanhung',
+      name: 'Lương Xuân Hùng',
+      role: 'staff',
+      position: 'Chuyên viên PCN',
+      sourceSystem: 'PCN',
+    },
   });
 
   assert.equal(payload.request.pcnRouteId, 'r-1');
@@ -98,8 +105,38 @@ test('dispatch payload contains PCN route identity and no credential/file fields
   assert.equal(payload.samples[0].pcnSampleItemId, 'item-1');
   assert.equal(payload.samples[1].quantity, 1);
   assert.equal(payload.route.sequence, 1);
+  assert.deepEqual(payload.initiatedBy, {
+    username: 'luongxuanhung',
+    name: 'Lương Xuân Hùng',
+    role: 'staff',
+    position: 'Chuyên viên PCN',
+    sourceSystem: 'PCN',
+  });
   assert.equal('secret' in payload, false);
   assert.equal('fileBytes' in payload.samples[0], false);
+  assert.equal('password' in payload.initiatedBy, false);
+  assert.equal('token' in payload.initiatedBy, false);
+});
+
+test('dispatch payload rejects an incomplete PCN actor snapshot', () => {
+  assert.throws(
+    () => buildPcnLabDispatchPayload({
+      request: requestFixture(),
+      lot: lotFixture(),
+      sampleItems: sampleItemsFixture(),
+      route: routeFixture(),
+      dossier: dossierFixture(),
+      targetSystemCode: 'PERFORMANCE',
+      messageId: 'msg-actor-invalid',
+      idempotencyKey: 'PCN:r-1:pyc-1:actor-invalid:v1',
+      initiatedBy: {
+        username: 'luongxuanhung',
+        name: ' ',
+        sourceSystem: 'PCN',
+      },
+    }),
+    /Tên người khởi tạo PYC là bắt buộc/,
+  );
 });
 
 test('dispatch payload scopes samples to the route when a lot is split across routes', () => {
@@ -149,13 +186,21 @@ test('event mapping keeps TEST_COMPLETED distinct from a formal returned result'
     externalSequence: 4,
     pcnRouteId: 'r-2',
     eventType: 'TEST_COMPLETED',
+    scheduledDate: '2026-09-03',
+    startedAt: '2026-09-03T07:00:00.000Z',
     completedAt: '2026-09-03T08:00:00.000Z',
+    outcome: 'FAIL',
+    externalReportNumber: 'EMC-FAIL-002',
     occurredAt: '2026-09-03T08:01:00.000Z',
   });
 
   assert.equal(mapped.routeStatus, undefined);
   assert.equal(mapped.execution.status, 'COMPLETED');
-  assert.equal(mapped.execution.outcome, undefined);
+  assert.equal(mapped.execution.scheduledDate, '2026-09-03');
+  assert.equal(mapped.execution.startedAt, '2026-09-03T07:00:00.000Z');
+  assert.equal(mapped.execution.completedAt, '2026-09-03T08:00:00.000Z');
+  assert.equal(mapped.execution.outcome, 'FAIL');
+  assert.equal(mapped.execution.externalReportNumber, 'EMC-FAIL-002');
   assert.equal(mapped.internalEventType, 'UPDATED');
 });
 

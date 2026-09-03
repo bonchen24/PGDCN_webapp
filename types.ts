@@ -225,6 +225,9 @@ export interface PcnCertificationField {
   code: PcnCertificationFieldCode;
   name: string;
   standardRefs: string[];
+  /** Certification method and amendment references used by the field baseline. */
+  method?: PcnCertificationMethod;
+  amendmentRefs?: string[];
   scopeStatus?: PcnCertificationFieldScopeStatus;
   active: boolean;
 }
@@ -502,7 +505,10 @@ export interface PcnDossierDocumentWaiver {
   requirementId: string;
   reason: string;
   decidedAt: string;
-  decidedByUsername: string;
+  /** Canonical actor field for new API payloads. */
+  decidedBy?: string;
+  /** Backward-compatible field retained for existing PCN data. */
+  decidedByUsername?: string;
 }
 
 export type PcnHistoricalImportReviewStatus = 'PENDING_REVIEW' | 'REVIEWED';
@@ -1049,6 +1055,10 @@ export interface IssuancePackage {
   deliveryNote?: string;
   deliveredAt?: string;
   archivedAt?: string;
+  /** Withdrawal evidence is append-only metadata; issued files/numbers remain intact. */
+  withdrawalReason?: string;
+  withdrawnByUsername?: string;
+  withdrawnAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -1082,11 +1092,29 @@ export type NotificationEntityType =
   | 'PCN_LAB_REQUEST'
   | 'PCN_RESULT'
   | 'PCN_APPROVAL'
-  | 'PCN_ISSUANCE';
+  | 'PCN_ISSUANCE'
+  | 'PGD_REQUEST'
+  | 'PGD_ASSIGNMENT'
+  | 'PGD_FIELD_INSPECTION'
+  | 'PGD_SAMPLE'
+  | 'PGD_LAB_REQUEST'
+  | 'PGD_LAB_RESULT'
+  | 'PGD_REPORT'
+  | 'PGD_CERTIFICATE'
+  | 'PGD_APPROVAL';
 
 export type NotificationAction = 'CREATED' | 'UPDATED' | 'DELETED' | 'STATUS_CHANGED' | 'SCHEDULED' | 'UNSCHEDULED' | 'ASSIGNED';
 
 export type ActivityLogAction = NotificationAction | 'IMPORTED' | 'RESTORED' | 'CONFIGURED';
+
+export type ActivityLogDomain = DepartmentScope;
+
+export type AssistantDomain = DepartmentScope;
+export type AssistantReviewStatus = 'PASS' | 'WARNING' | 'ERROR' | 'NOT_EVALUABLE';
+
+export type AssistantReviewRequest =
+  | { domain: 'PCN'; fieldCode: string; dossierId: string }
+  | { domain: 'PGD'; requestId: string };
 
 export type ActivityLogEntityType =
   | NotificationEntityType
@@ -1120,6 +1148,7 @@ export interface ActivityLogChange {
 export interface ActivityLog {
   id: string;
   createdAt: string;
+  domain?: ActivityLogDomain;
   actorUsername?: string;
   actorName: string;
   actorRole?: UserRole;
@@ -1157,10 +1186,14 @@ export interface ActivityKpiSummary {
 
 export type NotificationTargetRole = 'admin' | 'staff' | 'all';
 
+export type NotificationDomain = DepartmentScope;
+
 export type AppNotificationType = 'NEW_REQUEST' | 'STATUS_CHANGE' | 'BUSINESS_ACTIVITY' | 'SYSTEM';
 
 export interface AppNotification {
   id: string;
+  /** Shared PGDCN rows carry their source domain; legacy PCN rows may omit it. */
+  domain?: NotificationDomain;
   type: AppNotificationType;
   title: string;
   message: string;
@@ -1228,6 +1261,15 @@ export const INITIAL_TESTERS: Tester[] = [
 export const DEFAULT_TESTER = INITIAL_TESTERS[0].name;
 
 export type UserRole = 'admin' | 'tester' | 'staff' | 'viewer' | 'guest' | 'office_clerk';
+
+export type DepartmentScope = 'PCN' | 'PGD';
+export type PgdDepartmentRoleCode =
+  | 'PGD_ADMIN'
+  | 'PGD_MANAGER'
+  | 'PGD_TECHNICAL'
+  | 'PGD_FIELD_INSPECTOR'
+  | 'PGD_DOCUMENT_CLERK'
+  | 'PGD_VIEWER';
 
 export type PcnSystemRole = 'admin' | 'staff' | 'viewer';
 export type PcnDepartmentRoleCode =
@@ -1308,6 +1350,9 @@ export interface UserAccount {
   departmentRoleCode?: PcnDepartmentRoleCode;
   fieldCodes?: PcnCertificationFieldCode[];
   active?: boolean;
+  /** Shared identity may be explicitly scoped to PCN, PGD, or both. */
+  departmentScopes?: DepartmentScope[];
+  pgdRole?: PgdDepartmentRoleCode;
 }
 
 export interface PcnUserAccount extends UserAccount {
@@ -1316,6 +1361,8 @@ export interface PcnUserAccount extends UserAccount {
   departmentRoleCode: PcnDepartmentRoleCode;
   fieldCodes: PcnCertificationFieldCode[];
   active: boolean;
+  departmentScopes?: DepartmentScope[];
+  pgdRole?: PgdDepartmentRoleCode;
 }
 
 export interface UserPreferences {

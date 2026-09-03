@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, CircleUserRound, FileWarning, GitBranch, UserRound } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, CircleUserRound, ClipboardList, FileWarning, UserRound } from 'lucide-react';
 
 import type { CertificationDossier, CertificationProposal, PcnCertificationField, PcnDossierDocument, PcnDocumentRequirement, PcnUserAccount, UserAccount } from '../types';
-import { PcnWorkflowMap } from './PcnWorkflowMap';
 import { getPcnDossierCustomerSnapshot } from '../utils/pcnDossierPolicy';
 import { buildPcnWorkQueueRows } from '../utils/pcnWorkQueue';
 import { buildPcnDossierCompleteness, filterPcnDossiersByField, getPcnPipelineStation } from '../utils/pcnDossierPipeline';
@@ -12,7 +11,6 @@ import { getPcnWorkflowStage } from '../utils/pcnWorkflowStages';
 import { getPcnDossierStationTab, type PcnDossierDetailTab } from '../utils/pcnDossierNavigation';
 import { getPcnDossierAssignmentDenial, getPcnOwnerAssignmentAuthorityDenial } from '../utils/pcnDossierAssignment';
 import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
-import { buildPcnWorkflowOverview, filterPcnWorkflowDossiers } from '../utils/pcnWorkflowMap';
 import { getPcnDossierStatusLabel } from '../utils/pcnWorkflow';
 
 type BoardScope = 'ALL' | 'MINE' | 'OVERDUE';
@@ -55,15 +53,15 @@ function DossierPipelineCard({ dossier, proposal, requirements, documents, users
   const exceptionReason = dossier.exceptionReason?.trim();
   const codeReview = completeness.codeReview;
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
+    <article className="min-w-0 w-full overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-mono text-[11px] font-black text-slate-800">{dossier.dossierCode}</p>
+          <p className="break-all font-mono text-[11px] font-black text-slate-800">{dossier.dossierCode}</p>
           <p className="mt-1 truncate text-[11px] font-black text-slate-700" title={snapshot?.name || undefined}>{snapshot?.name || 'Chưa gắn khách hàng'}</p>
           <p className="truncate text-[10px] text-slate-500">{proposal?.productName || 'Chưa có sản phẩm'}{proposal?.model ? ` · ${proposal.model}` : ''}</p>
           <p className={`mt-1 truncate text-[9px] font-bold ${codeReview.needsReview ? 'text-amber-700' : 'text-slate-400'}`} title={codeReview.source || 'Chưa có mã nguồn PCN'}>Mã nguồn PCN: {codeReview.source || 'Chưa có'}{codeReview.needsReview ? ' · Cần đối chiếu mã nguồn' : ` · ${codeReview.normalized}`}</p>
         </div>
-        <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-black ${overdue ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`} title={getPcnDossierStatusLabel(dossier.status)}>{overdue ? 'Quá hạn' : station.title}</span>
+        <span className={`max-w-[42%] shrink-0 truncate rounded-full border px-1.5 py-0.5 text-[9px] font-black ${overdue ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`} title={getPcnDossierStatusLabel(dossier.status)}>{overdue ? 'Quá hạn' : station.title}</span>
       </div>
 
       <div className="mt-3 rounded-lg bg-slate-50 p-2">
@@ -101,7 +99,6 @@ export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, do
 }) {
   const [scope, setScope] = useState<BoardScope>('ALL');
   const [fieldFilter, setFieldFilter] = useState('');
-  const [selectedNodeKey, setSelectedNodeKey] = useState<Parameters<typeof filterPcnWorkflowDossiers>[1]>();
   const [claimingDossierId, setClaimingDossierId] = useState<string | null>(null);
   const proposalsById = useMemo(() => new Map(proposals.map((proposal) => [proposal.id, proposal])), [proposals]);
   const overdueIds = useMemo(() => new Set(buildPcnWorkQueueRows({ dossiers, proposals }).filter((row) => row.priority === 'OVERDUE').map((row) => row.dossierId)), [dossiers, proposals]);
@@ -113,8 +110,6 @@ export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, do
     if (scope === 'OVERDUE') return overdueIds.has(dossier.id);
     return true;
   }), [currentUser?.username, fieldScopedDossiers, overdueIds, scope]);
-  const workflowProjection = useMemo(() => buildPcnWorkflowOverview({ dossiers: visibleDossiers, proposals, requirements, documents, compact: true }), [documents, proposals, requirements, visibleDossiers]);
-  const selectedDossiers = useMemo(() => selectedNodeKey ? filterPcnWorkflowDossiers(visibleDossiers, selectedNodeKey, { compact: true }) : visibleDossiers, [selectedNodeKey, visibleDossiers]);
   const mineCount = fieldScopedDossiers.filter((dossier) => normalizeUsername(dossier.ownerUsername) === normalizeUsername(currentUser?.username)).length;
   const overdueCount = fieldScopedDossiers.filter((dossier) => overdueIds.has(dossier.id)).length;
   const getClaimDenial = (dossier: CertificationDossier): string | null => {
@@ -144,11 +139,11 @@ export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, do
   };
 
   return (
-    <section className="pcn-page-surface min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4">
+    <section className="pcn-page-surface min-w-0 w-full rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-2">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700"><GitBranch size={17} /></span>
-          <div><h2 className="text-sm font-black text-slate-800">Bản đồ quy trình PCN</h2><p className="mt-0.5 text-[10px] text-slate-400">Bấm vào một bước để lọc đúng các card hồ sơ đang ở bước đó.</p></div>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700"><ClipboardList size={17} /></span>
+          <div><h2 className="text-sm font-black text-slate-800">Hồ sơ cần hoàn thiện</h2><p className="mt-0.5 text-[10px] text-slate-400">Mỗi card là một hồ sơ; mở card để xem quy trình 5 bước và checklist của chính hồ sơ đó.</p></div>
         </div>
         <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
           {([{ value: 'ALL', label: 'Tất cả' }, { value: 'MINE', label: `Chủ hồ sơ của tôi${mineCount ? ` (${mineCount})` : ''}` }, { value: 'OVERDUE', label: `Quá hạn${overdueCount ? ` (${overdueCount})` : ''}` }] as Array<{ value: BoardScope; label: string }>).map((item) => <button key={item.value} type="button" onClick={() => setScope(item.value)} className={`min-h-11 rounded-lg border px-2.5 py-1.5 ${scope === item.value ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-200'}`}>{item.label}</button>)}
@@ -157,16 +152,11 @@ export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, do
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px] font-bold" role="group" aria-label="Lọc theo Lĩnh vực"><span className="mr-1 text-slate-500">Lĩnh vực:</span><button type="button" onClick={() => setFieldFilter('')} aria-pressed={fieldFilter === ''} className={`min-h-11 rounded-lg border px-2.5 py-1.5 ${fieldFilter === '' ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-200'}`}>Tất cả Lĩnh vực</button>{boardFieldCodes.map((code) => <button key={code} type="button" onClick={() => setFieldFilter(code)} aria-pressed={fieldFilter === code} className={`min-h-11 rounded-lg border px-2.5 py-1.5 ${fieldFilter === code ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-200'}`}>{fieldLabels.get(code) || code}</button>)}</div>
 
-      <div className="mt-3">
-        <PcnWorkflowMap projection={workflowProjection} mode="overview" selectedNodeKey={selectedNodeKey} onSelectNode={setSelectedNodeKey} />
-      </div>
-
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
-        <div><h3 className="text-xs font-black text-slate-800">Hồ sơ dạng card</h3><p className="mt-0.5 text-[9px] text-slate-400">{selectedNodeKey ? `Đang lọc theo bước đã chọn · ${selectedDossiers.length}/${visibleDossiers.length}` : `${selectedDossiers.length} hồ sơ trong phạm vi đang xem`}</p></div>
-        {selectedNodeKey && <button type="button" onClick={() => setSelectedNodeKey(undefined)} className="min-h-11 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">Xem tất cả hồ sơ</button>}
+        <div><h3 className="text-xs font-black text-slate-800">Danh sách hồ sơ</h3><p className="mt-0.5 text-[9px] text-slate-400">{visibleDossiers.length} hồ sơ trong phạm vi đang xem</p></div>
       </div>
-      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-        {selectedDossiers.length === 0 ? <p className="col-span-full rounded-lg border border-dashed border-slate-200 bg-slate-50/70 p-5 text-center text-[10px] text-slate-400">Chưa có hồ sơ ở bước này.</p> : selectedDossiers.map((dossier) => <DossierPipelineCard key={dossier.id} dossier={dossier} proposal={proposalsById.get(dossier.proposalId)} requirements={requirements} documents={documents} users={users} overdue={overdueIds.has(dossier.id)} claimDenial={getClaimDenial(dossier)} claiming={claimingDossierId === dossier.id} onClaimDossier={onClaimDossier ? claimDossier : undefined} onOpenDossier={onOpenDossier} />)}
+      <div className="mt-3 min-w-0 w-full grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {visibleDossiers.length === 0 ? <p className="col-span-full rounded-lg border border-dashed border-slate-200 bg-slate-50/70 p-5 text-center text-[10px] text-slate-400">Chưa có hồ sơ phù hợp với phạm vi đang xem.</p> : visibleDossiers.map((dossier) => <DossierPipelineCard key={dossier.id} dossier={dossier} proposal={proposalsById.get(dossier.proposalId)} requirements={requirements} documents={documents} users={users} overdue={overdueIds.has(dossier.id)} claimDenial={getClaimDenial(dossier)} claiming={claimingDossierId === dossier.id} onClaimDossier={onClaimDossier ? claimDossier : undefined} onOpenDossier={onOpenDossier} />)}
       </div>
       <p className="mt-3 inline-flex items-center gap-1 text-[9px] text-slate-400"><UserRound size={11} /> Chủ hồ sơ chịu trách nhiệm từ Đề nghị đến đóng gói và lưu trữ. Tài liệu thiếu chỉ được xác nhận qua checklist và phiên bản đã tải lên.</p>
     </section>

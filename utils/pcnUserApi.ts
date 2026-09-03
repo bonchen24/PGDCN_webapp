@@ -3,6 +3,8 @@ import type {
   PcnDepartmentRoleCode,
   PcnSystemRole,
   PcnUserAccount,
+  DepartmentScope,
+  PgdDepartmentRoleCode,
 } from '../types.ts';
 
 export interface PcnDepartmentRole {
@@ -23,6 +25,8 @@ export interface PcnUserInput {
   position?: string;
   phone?: string;
   email?: string;
+  departmentScopes?: DepartmentScope[];
+  pgdRole?: PgdDepartmentRoleCode;
 }
 
 async function parseResponse(response: Response): Promise<any> {

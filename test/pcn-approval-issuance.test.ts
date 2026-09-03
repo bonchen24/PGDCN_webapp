@@ -45,29 +45,28 @@ const passedResult: ReturnedTestResult = {
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 
-test('creates a sequential four-step PCN approval chain', () => {
+test('creates one effective leadership PCN approval step', () => {
   const steps = buildPcnApprovalSteps('dossier-1', '2026-08-27T08:00:00.000Z');
-  assert.equal(steps.length, 4);
-  assert.deepEqual(steps.map((step) => step.sequence), [1, 2, 3, 4]);
-  assert.equal(steps[0].role, 'Điều phối / Lãnh đạo');
-  assert.equal(steps[3].role, 'Người có thẩm quyền cuối');
+  assert.equal(steps.length, 1);
+  assert.deepEqual(steps.map((step) => step.sequence), [1]);
+  assert.equal(steps[0].role, 'Lãnh đạo');
   assert.equal(getNextPendingPcnApprovalStep(steps)?.id, steps[0].id);
 });
 
-test('approval cannot skip a pending step and records return reasons', () => {
+test('the leadership approval step records approval and return reasons', () => {
   const steps = buildPcnApprovalSteps('dossier-1', '2026-08-27T08:00:00.000Z');
+  const approved = applyPcnApprovalDecision(steps, steps[0].id, 'APPROVE', 'Đã kiểm tra', '2026-08-27T08:02:00.000Z');
+  assert.equal(approved[0].status, 'APPROVED');
+  assert.equal(getNextPendingPcnApprovalStep(approved), undefined);
+  assert.equal(isPcnApprovalComplete(approved), true);
   assert.throws(
-    () => applyPcnApprovalDecision(steps, steps[1].id, 'APPROVE', undefined, '2026-08-27T08:01:00.000Z'),
-    /tuần tự|trước|step/i,
+    () => applyPcnApprovalDecision(approved, steps[0].id, 'APPROVE', undefined, '2026-08-27T08:02:30.000Z'),
+    /tuần tự|hoàn tất|pending/i,
   );
 
-  const firstApproved = applyPcnApprovalDecision(steps, steps[0].id, 'APPROVE', 'Đã kiểm tra', '2026-08-27T08:02:00.000Z');
-  assert.equal(firstApproved[0].status, 'APPROVED');
-  assert.equal(getNextPendingPcnApprovalStep(firstApproved)?.id, steps[1].id);
-
-  const returned = applyPcnApprovalDecision(firstApproved, steps[1].id, 'RETURN', 'Bổ sung biên bản đánh giá', '2026-08-27T08:03:00.000Z');
-  assert.equal(returned[1].status, 'RETURNED');
-  assert.equal(returned[1].comment, 'Bổ sung biên bản đánh giá');
+  const returned = applyPcnApprovalDecision(steps, steps[0].id, 'RETURN', 'Bổ sung biên bản đánh giá', '2026-08-27T08:03:00.000Z');
+  assert.equal(returned[0].status, 'RETURNED');
+  assert.equal(returned[0].comment, 'Bổ sung biên bản đánh giá');
   assert.equal(isPcnApprovalComplete(returned), false);
 });
 
@@ -77,15 +76,14 @@ test('approval decisions require the assigned or role-appropriate PCN actor', ()
   const reviewer: PcnUserAccount = { username: 'reviewer', name: 'Soát xét', role: 'staff', systemRole: 'staff', departmentRoleCode: 'TECHNICAL_REVIEWER', fieldCodes: ['QC4'], active: true };
   const leader: PcnUserAccount = { username: 'leader', name: 'Lãnh đạo', role: 'admin', systemRole: 'admin', departmentRoleCode: 'LEADERSHIP', fieldCodes: ['QC4'], active: true };
   const viewer: PcnUserAccount = { username: 'viewer', name: 'Chỉ xem', role: 'viewer', systemRole: 'viewer', departmentRoleCode: 'LEADERSHIP', fieldCodes: ['QC4'], active: true };
+  const leaderOutsideField: PcnUserAccount = { ...leader, username: 'leader-qc9', fieldCodes: ['QC9'] };
 
   assert.equal(getPcnApprovalDecisionDenial(steps[0], leader), null);
   assert.match(getPcnApprovalDecisionDenial(steps[0], expert) || '', /chức vụ|vai trò/i);
-  assert.equal(getPcnApprovalDecisionDenial(steps[1], expert), null);
-  assert.equal(getPcnApprovalDecisionDenial(steps[2], reviewer), null);
-  assert.equal(getPcnApprovalDecisionDenial(steps[3], leader), null);
-  assert.match(getPcnApprovalDecisionDenial(steps[3], viewer) || '', /viewer|đọc/i);
-  assert.match(getPcnApprovalDecisionDenial({ ...steps[1], assigneeUsername: 'reviewer' }, expert) || '', /đích danh|giao/i);
-  assert.match(getPcnApprovalDecisionDenial(steps[1], expert, ['QC9']) || '', /lĩnh vực/i);
+  assert.match(getPcnApprovalDecisionDenial(steps[0], reviewer) || '', /chức vụ|vai trò/i);
+  assert.match(getPcnApprovalDecisionDenial(steps[0], viewer) || '', /viewer|đọc|chức vụ|vai trò/i);
+  assert.match(getPcnApprovalDecisionDenial({ ...steps[0], assigneeUsername: 'reviewer' }, expert) || '', /đích danh|giao/i);
+  assert.match(getPcnApprovalDecisionDenial(steps[0], leaderOutsideField, ['QC4']) || '', /lĩnh vực/i);
 });
 
 test('issuance package maps method 5 templates and requires a completed approval chain', () => {

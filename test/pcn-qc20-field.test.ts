@@ -29,6 +29,7 @@ test('QC20 is a first-class certification field with standards metadata', () => 
 test('QC20 receives a complete dossier checklist routed through the existing stations', () => {
   const requirements = getPcnDocumentRequirements(['QC20']);
   const codes = new Set(requirements.map((item) => item.code));
+  assert.match(requirements.find((item) => item.code === 'COMMERCIAL')?.name || '', /hải quan/i);
 
   for (const code of ['PROPOSAL', 'COMMERCIAL', 'ASSIGNMENT_FORM', 'EVALUATION_PLAN', 'FIELD_INSPECTION', 'LAB_REQUEST', 'SAMPLE_CODING', 'SAMPLE_HANDOVER', 'TEST_REPORT', 'CERTIFICATION_RESULT', 'CERTIFICATE', 'DECISION', 'CLIENT_PACKAGE', 'ARCHIVE_SCAN']) {
     assert.ok(codes.has(code), `QC20 checklist is missing ${code}`);

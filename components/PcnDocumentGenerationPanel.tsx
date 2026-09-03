@@ -14,6 +14,7 @@ import { getPcnOperationalTemplateForKind } from '../utils/pcnOperationalTemplat
 import { isPcnInternalSampleRequest } from '../utils/pcnLabOperations';
 import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
 import { canProcessPcnGeneratedDocument } from '../utils/pcnWorkflowStages';
+import PcnCatalogCombobox, { type PcnCatalogOption } from './PcnCatalogCombobox';
 import { PcnFilePreviewButton } from './PcnDossierFilePreview';
 
 type PcnDocumentPreflightContext = {
@@ -161,6 +162,25 @@ export function PcnDocumentGenerationPanel({
   const selectedLabRequest = dossierLabRequests.find((request) => request.id === activeLabRequestId);
   const selectedLabRequestLot = selectedLabRequest?.sampleLotId ? lotById.get(selectedLabRequest.sampleLotId) : undefined;
   const selectedLabRequestRoute = selectedLabRequest?.sampleRouteId ? dossierRoutes.find((route) => route.id === selectedLabRequest.sampleRouteId) : dossierRoutes.find((route) => route.labRequestId === selectedLabRequest?.id);
+  const routeOptions = useMemo<PcnCatalogOption[]>(() => dossierRoutes.map((route) => {
+    const lot = lotById.get(route.sampleLotId);
+    const pyc = dossierLabRequests.find((request) => request.id === route.labRequestId || request.sampleRouteId === route.id);
+    return {
+      value: route.id,
+      label: `${lot?.lotCode || route.sampleLotId} · ${route.labName} · ${route.status}${pyc ? ` · ${pyc.pycNumber}` : ''}`,
+      searchText: [route.id, route.labName, route.status, lot?.lotCode, lot?.sampleName, pyc?.pycNumber].filter(Boolean).join(' '),
+      description: [lot?.sampleName, lot?.model, pyc?.pycNumber].filter(Boolean).join(' · '),
+    };
+  }), [dossierLabRequests, dossierRoutes, lotById]);
+  const labRequestOptions = useMemo<PcnCatalogOption[]>(() => dossierLabRequests.map((request) => {
+    const lot = request.sampleLotId ? lotById.get(request.sampleLotId) : undefined;
+    return {
+      value: request.id,
+      label: `${request.pycNumber} · ${request.laboratoryName} · ${request.status}${lot ? ` · ${lot.lotCode}` : ''}`,
+      searchText: [request.id, request.pycNumber, request.laboratoryName, request.status, lot?.lotCode, lot?.sampleName].filter(Boolean).join(' '),
+      description: [lot?.sampleName, request.fieldCode].filter(Boolean).join(' · '),
+    };
+  }), [dossierLabRequests, lotById]);
   const operationalTemplate = getPcnOperationalTemplateForKind(selectedKind, dossier.fieldCodes);
   const dossierDocuments = useMemo(() => getPcnGeneratedDocumentsForKind(generatedDocuments, dossier.id, selectedKind, requiresSampleRoute(selectedKind) ? activeRouteId : undefined, requiresLabRequest(selectedKind) ? activeLabRequestId : undefined), [activeLabRequestId, activeRouteId, dossier.id, generatedDocuments, selectedKind]);
   const officialTemplates = useMemo(() => getPcnTemplatesForFields(dossier.fieldCodes, templates)
@@ -329,23 +349,12 @@ export function PcnDocumentGenerationPanel({
       {operationalTemplate && <p className="mt-1 rounded-md border border-emerald-100 bg-emerald-50/60 px-2 py-1.5 text-[9px] text-emerald-800">Nguồn form PCN: <b>{operationalTemplate.fileName}</b> · {operationalTemplate.status === 'OFFICIAL_CANDIDATE' ? 'ứng viên mẫu chính thức, vẫn phải duyệt riêng' : 'mẫu vận hành nháp'}</p>}
     </div>
     {requiresSampleRoute(selectedKind) && <div className="rounded-lg border border-indigo-200 bg-white p-2.5">
-      <label className="block text-[9px] font-black uppercase tracking-wide text-slate-500" htmlFor="pcn-sample-route">Chọn tuyến mẫu</label>
-      <select id="pcn-sample-route" aria-label="Chọn tuyến mẫu" value={activeRouteId} onChange={(event) => setSelectedRouteId(event.target.value)} className="mt-1.5 w-full rounded-md border border-slate-200 bg-white px-2 py-2 text-[10px] text-slate-700 outline-none focus:border-indigo-400">
-        <option value="">Chưa có tuyến mẫu thuộc hồ sơ</option>
-        {dossierRoutes.map((route) => { const lot = lotById.get(route.sampleLotId); const pyc = labRequests.find((request) => request.id === route.labRequestId || request.sampleRouteId === route.id); return <option key={route.id} value={route.id}>{lot?.lotCode || route.sampleLotId} · {route.labName} · {route.status}{pyc ? ` · ${pyc.pycNumber}` : ''}</option>; })}
-      </select>
+      <PcnCatalogCombobox id="pcn-sample-route" label="Chọn tuyến mẫu" hideLabel value={activeRouteId} onChange={setSelectedRouteId} options={routeOptions} placeholder={routeOptions.length > 0 ? 'Tìm lô, mẫu, phòng thử hoặc PYC...' : 'Chưa có tuyến mẫu thuộc hồ sơ'} disabled={isGenerating || isPreflighting} />
       {selectedRoute && <p className="mt-1.5 text-[9px] leading-4 text-slate-500">Lô <b>{selectedLot?.lotCode}</b> • {selectedLot?.sampleName} • {selectedRoute.labName} • PYC: {selectedPyc?.pycNumber || 'chưa tạo'} • Trạng thái tuyến: {selectedRoute.status}</p>}
       {!activeRouteId && <p className="mt-1.5 text-[9px] font-bold text-amber-700">Cần tạo lô và tuyến mẫu trước khi sinh biên bản.</p>}
     </div>}
     {requiresLabRequest(selectedKind) && <div className="rounded-lg border border-indigo-200 bg-white p-2.5">
-      <label className="block text-[9px] font-black uppercase tracking-wide text-slate-500" htmlFor="pcn-lab-request">Chọn PYC gửi PTN</label>
-      <select id="pcn-lab-request" aria-label="Chọn PYC gửi PTN" value={activeLabRequestId} onChange={(event) => setSelectedLabRequestId(event.target.value)} className="mt-1.5 w-full rounded-md border border-slate-200 bg-white px-2 py-2 text-[10px] text-slate-700 outline-none focus:border-indigo-400">
-        <option value="">Chưa có PYC thuộc hồ sơ</option>
-        {dossierLabRequests.map((request) => {
-          const lot = request.sampleLotId ? lotById.get(request.sampleLotId) : undefined;
-          return <option key={request.id} value={request.id}>{request.pycNumber} · {request.laboratoryName} · {request.status}{lot ? ` · ${lot.lotCode}` : ''}</option>;
-        })}
-      </select>
+      <PcnCatalogCombobox id="pcn-lab-request" label="Chọn PYC gửi PTN" hideLabel value={activeLabRequestId} onChange={setSelectedLabRequestId} options={labRequestOptions} placeholder={labRequestOptions.length > 0 ? 'Tìm số PYC, phòng thử, lô hoặc mẫu...' : 'Chưa có PYC thuộc hồ sơ'} disabled={isGenerating || isPreflighting} />
       {selectedLabRequest && <p className="mt-1.5 text-[9px] leading-4 text-slate-500">PYC <b>{selectedLabRequest.pycNumber}</b> • {selectedLabRequest.laboratoryName} • Lô: {selectedLabRequestLot?.lotCode || 'chưa nối'} • Tuyến: {selectedLabRequestRoute?.labName || 'chưa nối'} • Hạn trả: {selectedLabRequest.targetDate || 'chưa đặt'}</p>}
       {!activeLabRequestId && <p className="mt-1.5 text-[9px] font-bold text-amber-700">Cần tạo PYC gửi PTN thuộc hồ sơ trước khi sinh phiếu.</p>}
     </div>}

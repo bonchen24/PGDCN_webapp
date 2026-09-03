@@ -40,32 +40,32 @@ export const PCN_WORKFLOW_STAGES: readonly PcnWorkflowStage[] = [
   {
     key: 'RESULTS',
     number: 3,
-    title: 'KQTN & soát xét',
-    description: 'Nhận scan KQTN, xác nhận OCR, xử lý bổ sung và soát xét kỹ thuật.',
-    actionLabel: 'Xử lý KQTN & soát xét',
-    statuses: ['AWAITING_RESULTS', 'CORRECTIVE_ACTION', 'TECHNICAL_REVIEW'],
-    detailedStationKeys: ['RESULTS', 'CORRECTION', 'TECHNICAL_REVIEW'],
+    title: 'KQTN & đánh giá',
+    description: 'Nhận scan KQTN, xác nhận OCR, xử lý bổ sung/khắc phục và lập báo cáo đánh giá.',
+    actionLabel: 'Xử lý KQTN & đánh giá',
+    statuses: ['AWAITING_RESULTS', 'CORRECTIVE_ACTION'],
+    detailedStationKeys: ['RESULTS', 'CORRECTION'],
+    requirementStages: ['TECHNICAL_REVIEW'],
+  },
+  {
+    key: 'TECHNICAL_REVIEW',
+    number: 4,
+    title: 'Hoàn thiện & soát xét trước duyệt',
+    description: 'Hoàn thiện bộ hồ sơ, kiểm tra checklist và soát xét kỹ thuật trước khi trình lãnh đạo.',
+    actionLabel: 'Hoàn thiện & soát xét',
+    statuses: ['TECHNICAL_REVIEW'],
+    detailedStationKeys: ['TECHNICAL_REVIEW'],
     requirementStages: ['TECHNICAL_REVIEW'],
   },
   {
     key: 'APPROVAL',
-    number: 4,
-    title: 'Phê duyệt & phát hành',
-    description: 'Đóng gói, trình duyệt, cấp số và phát hành GCN/QĐ.',
-    actionLabel: 'Xử lý phê duyệt & phát hành',
-    statuses: ['WAITING_APPROVAL', 'APPROVED', 'ISSUED'],
+    number: 5,
+    title: 'Phê duyệt',
+    description: 'Lãnh đạo kiểm tra bộ hồ sơ, bản dự thảo GCN/QĐ và quyết định phê duyệt.',
+    actionLabel: 'Phê duyệt hồ sơ',
+    statuses: ['WAITING_APPROVAL', 'APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'],
     detailedStationKeys: ['APPROVAL', 'ISSUANCE'],
     requirementStages: ['ISSUANCE'],
-  },
-  {
-    key: 'DELIVERY_ARCHIVE',
-    number: 5,
-    title: 'Giao khách hàng & lưu hồ sơ',
-    description: 'Giao bộ hồ sơ, ghi nhận bàn giao và hoàn tất bản lưu.',
-    actionLabel: 'Hoàn tất giao & lưu hồ sơ',
-    statuses: ['DELIVERED', 'ARCHIVED'],
-    detailedStationKeys: ['DELIVERY_ARCHIVE'],
-    requirementStages: ['DELIVERY', 'ARCHIVE'],
   },
 ] as const;
 
@@ -88,7 +88,7 @@ export const PCN_OPERATIONAL_FORM_STAGE_KEYS: Readonly<Record<PcnOperationalForm
   SAMPLE_TAKING: 'SAMPLING_LAB',
   SAMPLE_CODING: 'SAMPLING_LAB',
   EVALUATION_REPORT: 'RESULTS',
-  COMMERCIAL: 'DELIVERY_ARCHIVE',
+  COMMERCIAL: 'INTAKE',
 };
 
 export function getPcnOperationalFormWorkflowStageIndex(kind: PcnOperationalFormKind): number {
@@ -98,6 +98,7 @@ export function getPcnOperationalFormWorkflowStageIndex(kind: PcnOperationalForm
 export function canProcessPcnOperationalForm(dossier: Pick<CertificationDossier, 'status'>, kind: PcnOperationalFormKind): boolean {
   const currentStage = getPcnWorkflowStage(dossier.status);
   if (!currentStage) return true;
+  if (['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(dossier.status)) return false;
   const formStageIndex = getPcnOperationalFormWorkflowStageIndex(kind);
   return formStageIndex >= 0 && formStageIndex <= getPcnWorkflowStageIndex(currentStage.key);
 }
@@ -110,7 +111,8 @@ export function canCreatePcnLabRequest(dossier: Pick<CertificationDossier, 'stat
 export function canProcessPcnSampleFlow(dossier: Pick<CertificationDossier, 'status'>): boolean {
   const currentStage = getPcnWorkflowStage(dossier.status);
   if (!currentStage) return true;
-  return getPcnWorkflowStageIndex(currentStage.key) >= getPcnWorkflowStageIndex('SAMPLING_LAB') && dossier.status !== 'ARCHIVED';
+  return getPcnWorkflowStageIndex(currentStage.key) >= getPcnWorkflowStageIndex('SAMPLING_LAB')
+    && !['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(dossier.status);
 }
 
 const PCN_GENERATED_DOCUMENT_STAGE_KEYS: Readonly<Partial<Record<PcnGeneratedDocumentKind, PcnPipelineStationKey>>> = {
@@ -134,6 +136,7 @@ export function canProcessPcnGeneratedDocument(
   const targetStageKey = PCN_GENERATED_DOCUMENT_STAGE_KEYS[kind];
   const currentStage = getPcnWorkflowStage(dossier.status);
   if (!targetStageKey || !currentStage) return true;
+  if (['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(dossier.status)) return false;
   return getPcnWorkflowStageIndex(targetStageKey) <= getPcnWorkflowStageIndex(currentStage.key);
 }
 

@@ -2,10 +2,11 @@
 // OS support: Web/Node
 // Description: Cursor-paginated REST client for append-only system activity logs
 
-import type { ActivityKpiSummary, ActivityLog, ActivityLogAction, ActivityLogEntityType } from '../types';
+import type { ActivityKpiSummary, ActivityLog, ActivityLogAction, ActivityLogDomain, ActivityLogEntityType } from '../types';
 
 export interface ActivityLogFilters {
   limit?: number;
+  domain?: ActivityLogDomain | 'ALL';
   actor?: string | string[];
   action?: ActivityLogAction | '';
   entityType?: ActivityLogEntityType | '';
@@ -71,6 +72,7 @@ export function createActivityLogClient(fetchImpl: typeof fetch = fetch): Activi
       const params = new URLSearchParams();
       params.set('limit', String(clampLimit(filters.limit)));
       if (cursor) params.set('cursor', cursor);
+      if (filters.domain && filters.domain !== 'ALL') params.set('domain', filters.domain);
       normalizeActors(filters.actor).forEach(actor => params.append('actor', actor));
       if (filters.action) params.set('action', filters.action);
       if (filters.entityType) params.set('entityType', filters.entityType);
@@ -88,6 +90,7 @@ export function createActivityLogClient(fetchImpl: typeof fetch = fetch): Activi
 
     async fetchSummary(filters: ActivityLogFilters = {}): Promise<ActivityKpiPage> {
       const params = new URLSearchParams();
+      if (filters.domain && filters.domain !== 'ALL') params.set('domain', filters.domain);
       normalizeActors(filters.actor).forEach(actor => params.append('actor', actor));
       if (filters.from) params.set('from', filters.from);
       if (filters.to) params.set('to', filters.to);

@@ -4,7 +4,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Download, Filter, History, Loader2, RefreshCw, Search, X } from 'lucide-react';
-import { PRESET_ACCOUNTS, type ActivityLog, type ActivityLogAction, type ActivityLogEntityType, type UserAccount } from '../types';
+import { PRESET_ACCOUNTS, type ActivityLogAction, type ActivityLogDomain, type ActivityLogEntityType, type UserAccount } from '../types';
 import {
   activityActionLabels,
   activityEntityLabels,
@@ -18,6 +18,7 @@ import {
   type ActivityPeriod,
 } from '../utils/activityLogTime';
 import { getUserFullName } from '../utils/userIdentity';
+import { canOpenPgdcnActivitySource, type PgdcnActivityLog } from '../utils/pgdcnActivity';
 import { PcnUserKpiTable } from './PcnUserKpiTable';
 
 const PAGE_SIZE = 50;
@@ -29,6 +30,7 @@ const ACTIVITY_PERIOD_LABELS: Record<ActivityPeriod, string> = {
 };
 
 interface ActivityFilters {
+  domain: ActivityLogDomain | 'ALL';
   search: string;
   action: ActivityLogAction | '';
   entityType: ActivityLogEntityType | '';
@@ -41,6 +43,7 @@ export interface ActivityLogViewProps {
 }
 
 const INITIAL_FILTERS: ActivityFilters = {
+  domain: 'ALL',
   search: '',
   action: '',
   entityType: '',
@@ -52,14 +55,18 @@ const csvCell = (value: unknown): string => {
   return `"${text.replace(/"/g, '""')}"`;
 };
 
-const exportActivityLogs = (logs: ActivityLog[]): void => {
+const getActivityActionLabel = (action: string): string => activityActionLabels[action as ActivityLogAction] || action;
+const getActivityEntityLabel = (entityType: string): string => activityEntityLabels[entityType as ActivityLogEntityType] || entityType;
+
+const exportActivityLogs = (logs: PgdcnActivityLog[]): void => {
   const rows = [
-    ['Thời gian', 'Người thực hiện', 'Hành động', 'Đối tượng', 'Định danh', 'Mô tả'],
+    ['Miền', 'Thời gian', 'Người thực hiện', 'Hành động', 'Đối tượng', 'Định danh', 'Mô tả'],
     ...logs.map(log => [
+      log.domain,
       formatActivityTime(log.createdAt),
       log.actorName || 'Hệ thống',
-      activityActionLabels[log.action] || log.action,
-      activityEntityLabels[log.entityType] || log.entityType,
+      getActivityActionLabel(log.action),
+      getActivityEntityLabel(log.entityType),
       log.entityLabel || log.requestCode || log.docNumber || log.reportNo || log.entityId || '',
       log.summary,
     ]),
@@ -69,7 +76,7 @@ const exportActivityLogs = (logs: ActivityLog[]): void => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `Nhat_ky_he_thong_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.download = `Nhat_ky_hoat_dong_${new Date().toISOString().slice(0, 10)}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 };
@@ -80,6 +87,7 @@ const toApiFilters = (
   periodBounds = getActivityPeriodBounds(filters.period),
 ): ActivityLogFilters => ({
   limit: PAGE_SIZE,
+  domain: filters.domain,
   search: filters.search.trim() || undefined,
   actor: actors.length > 0 ? actors : undefined,
   action: filters.action || undefined,
@@ -95,16 +103,19 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
   const [selectedActors, setSelectedActors] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [isUserFilterOpen, setIsUserFilterOpen] = useState(false);
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [logs, setLogs] = useState<PgdcnActivityLog[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
-  const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [selectedLog, setSelectedLog] = useState<PgdcnActivityLog | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const logRequestSequence = useRef(0);
 
-  const canView = isActivityLogVisibleToUser(currentUser);
+  const hasDepartmentScope = currentUser?.departmentScopes === undefined
+    || (currentUser.departmentScopes || []).some(scope => scope === 'PCN' || scope === 'PGD');
+  const canView = isActivityLogVisibleToUser(currentUser) && hasDepartmentScope;
+  const currentDepartmentScopes = (currentUser?.departmentScopes || []).filter(scope => scope === 'PCN' || scope === 'PGD') as Array<'PCN' | 'PGD'>;
 
   const userOptions = useMemo(() => {
     const directory = providedSystemUsers === undefined ? [...PRESET_ACCOUNTS, ...(systemUsers || [])] : systemUsers || [];
@@ -136,7 +147,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
     try {
       const page = await activityLogClient.fetchPage(toApiFilters(filters, selectedActors, periodBounds), null);
       if (requestId !== logRequestSequence.current) return;
-      setLogs(page.items);
+      setLogs(page.items as unknown as PgdcnActivityLog[]);
       setNextCursor(page.nextCursor);
       setHasMore(page.hasMore);
     } catch (loadError: any) {
@@ -162,7 +173,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
     try {
       const page = await activityLogClient.fetchPage(toApiFilters(filters, selectedActors, periodBounds), nextCursor);
       if (requestId !== logRequestSequence.current) return;
-      setLogs(previous => [...previous, ...page.items]);
+      setLogs(previous => [...previous, ...(page.items as unknown as PgdcnActivityLog[])]);
       setNextCursor(page.nextCursor);
       setHasMore(page.hasMore);
     } catch (loadError: any) {
@@ -193,7 +204,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
 
   if (!canView) {
     return (
-      <section className="h-full flex items-center justify-center p-6" aria-label="Nhật ký hệ thống">
+      <section className="h-full flex items-center justify-center p-6" aria-label="Nhật ký hoạt động">
         <div className="max-w-md rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center text-rose-800 shadow-sm">
           <AlertCircle className="mx-auto mb-3" size={28} />
           <h2 className="text-sm font-black uppercase tracking-wide">Không có quyền truy cập</h2>
@@ -204,15 +215,15 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
   }
 
   return (
-    <section className="h-full min-h-0 flex flex-col bg-slate-50 p-3 sm:p-5 overflow-y-auto overscroll-contain mobile-safe-bottom" aria-label="Nhật ký hệ thống">
+    <section className="h-full min-h-0 flex flex-col bg-slate-50 p-3 sm:p-5 overflow-y-auto overscroll-contain mobile-safe-bottom" aria-label="Nhật ký hoạt động (Nhật ký hệ thống)">
       <div className="flex flex-col gap-2 border-b border-slate-200 pb-3 shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-slate-900">
               <History className="shrink-0 text-emerald-600" size={20} aria-hidden="true" />
-              <h1 className="truncate text-base font-black uppercase tracking-tight sm:text-lg">Nhật ký hệ thống</h1>
+              <h1 className="truncate text-base font-black uppercase tracking-tight sm:text-lg">Nhật ký hoạt động</h1>
             </div>
-            <p className="mt-0.5 truncate text-[10px] font-medium text-slate-500 sm:text-xs">Theo dõi lịch sử thao tác nghiệp vụ trên toàn hệ thống.</p>
+            <p className="mt-0.5 truncate text-[10px] font-medium text-slate-500 sm:text-xs">Theo dõi hoạt động Giám định và Chứng nhận trên toàn phòng.</p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-500">{loadedLabel}</span>
@@ -252,6 +263,14 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
             </button>
           </div>
           <div className={`${isFiltersOpen ? 'grid' : 'hidden'} grid-cols-2 gap-2 md:grid md:grid-cols-8`} role="search" aria-label="Bộ lọc nhật ký">
+            <label className="col-span-2 md:col-span-1">
+              <span className="sr-only">Miền nghiệp vụ</span>
+              <select value={filters.domain} onChange={event => updateFilter('domain', event.target.value as ActivityLogDomain | 'ALL')} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold outline-none focus:border-emerald-400 sm:min-h-9" aria-label="Miền nghiệp vụ">
+                <option value="ALL">Tất cả</option>
+                <option value="PCN">PCN · Chứng nhận</option>
+                <option value="PGD">PGD · Giám định</option>
+              </select>
+            </label>
             <label className="relative col-span-2 md:col-span-2">
               <span className="sr-only">Tìm kiếm</span>
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} aria-hidden="true" />
@@ -327,23 +346,24 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
           <div className="flex h-48 flex-col items-center justify-center gap-2 text-center text-slate-400"><History size={28} /><p className="text-xs font-bold">Chưa có hoạt động phù hợp với bộ lọc.</p></div>
         ) : (
           <>
-            <div className="hidden min-w-[760px] grid-cols-[150px_150px_130px_150px_minmax(280px,1fr)] gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-wide text-slate-400 md:grid">
-              <span>Thời gian</span><span>Người thực hiện</span><span>Hành động</span><span>Đối tượng</span><span>Mô tả</span>
+            <div className="hidden min-w-[850px] grid-cols-[90px_150px_150px_130px_150px_minmax(280px,1fr)] gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-wide text-slate-400 md:grid">
+              <span>Miền</span><span>Thời gian</span><span>Người thực hiện</span><span>Hành động</span><span>Đối tượng</span><span>Mô tả</span>
             </div>
             <div className="divide-y divide-slate-100">
               {logs.map(log => (
                 <button key={log.id} type="button" onClick={() => setSelectedLog(log)} className="block w-full text-left transition hover:bg-emerald-50/50 focus:bg-emerald-50/50 focus:outline-none">
-                  <div className="hidden min-w-[760px] grid-cols-[150px_150px_130px_150px_minmax(280px,1fr)] items-center gap-3 px-4 py-3 md:grid">
+                  <div className="hidden min-w-[850px] grid-cols-[90px_150px_150px_130px_150px_minmax(280px,1fr)] items-center gap-3 px-4 py-3 md:grid">
+                    <span className={`inline-flex w-fit rounded-full px-2 py-1 text-[9px] font-black ${log.domain === 'PGD' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>{log.domain}</span>
                     <span className="text-[11px] font-semibold text-slate-500">{formatActivityTime(log.createdAt)}</span>
                     <span className="truncate text-xs font-bold text-slate-700">{log.actorName || 'Hệ thống'}</span>
-                    <span className="text-[10px] font-black uppercase text-emerald-700">{activityActionLabels[log.action] || log.action}</span>
-                    <span className="truncate text-[10px] font-bold text-slate-500">{activityEntityLabels[log.entityType] || log.entityType}</span>
+                    <span className="text-[10px] font-black uppercase text-emerald-700">{getActivityActionLabel(log.action)}</span>
+                    <span className="truncate text-[10px] font-bold text-slate-500">{getActivityEntityLabel(log.entityType)}</span>
                     <span className="truncate text-xs text-slate-700">{log.summary}</span>
                   </div>
                   <div className="flex flex-col gap-2 p-3 md:hidden">
-                    <div className="flex items-center justify-between gap-2"><span className="text-[10px] font-semibold text-slate-400">{formatActivityTime(log.createdAt)}</span><span className="text-[10px] font-black uppercase text-emerald-700">{activityActionLabels[log.action] || log.action}</span></div>
+                    <div className="flex items-center justify-between gap-2"><span className={`rounded-full px-2 py-1 text-[9px] font-black ${log.domain === 'PGD' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>{log.domain}</span><span className="text-[10px] font-semibold text-slate-400">{formatActivityTime(log.createdAt)}</span><span className="text-[10px] font-black uppercase text-emerald-700">{getActivityActionLabel(log.action)}</span></div>
                     <div className="text-xs font-bold text-slate-700">{log.summary}</div>
-                    <div className="flex flex-wrap gap-2 text-[10px] text-slate-500"><span>{log.actorName || 'Hệ thống'}</span><span>·</span><span>{activityEntityLabels[log.entityType] || log.entityType}</span></div>
+                    <div className="flex flex-wrap gap-2 text-[10px] text-slate-500"><span>{log.actorName || 'Hệ thống'}</span><span>·</span><span>{getActivityEntityLabel(log.entityType)}</span></div>
                   </div>
                 </button>
               ))}
@@ -368,10 +388,19 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div><span className="font-bold text-slate-400">Thời gian</span><p>{formatActivityTime(selectedLog.createdAt)}</p></div>
                 <div><span className="font-bold text-slate-400">Người thực hiện</span><p>{selectedLog.actorName || 'Hệ thống'}</p></div>
-                <div><span className="font-bold text-slate-400">Hành động</span><p>{activityActionLabels[selectedLog.action] || selectedLog.action}</p></div>
-                <div><span className="font-bold text-slate-400">Đối tượng</span><p>{activityEntityLabels[selectedLog.entityType] || selectedLog.entityType}</p></div>
+                <div><span className="font-bold text-slate-400">Miền</span><p>{selectedLog.domain}</p></div>
+                <div><span className="font-bold text-slate-400">Hành động</span><p>{getActivityActionLabel(selectedLog.action)}</p></div>
+                <div><span className="font-bold text-slate-400">Đối tượng</span><p>{getActivityEntityLabel(selectedLog.entityType)}</p></div>
                 <div><span className="font-bold text-slate-400">Định danh</span><p>{selectedLog.entityLabel || selectedLog.requestCode || selectedLog.docNumber || selectedLog.reportNo || selectedLog.entityId || '—'}</p></div>
-                <div><span className="font-bold text-slate-400">Nguồn</span><p>{selectedLog.source}</p></div>
+                <div><span className="font-bold text-slate-400">Nguồn</span><p>{selectedLog.source || selectedLog.sourceCollection}</p></div>
+              </div>
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px]">
+                <span className="font-bold text-slate-400">Nguồn nghiệp vụ</span>
+                <p className={canOpenPgdcnActivitySource(selectedLog, currentDepartmentScopes) ? 'text-emerald-700' : 'text-slate-500'}>
+                  {selectedLog.navigationTarget && canOpenPgdcnActivitySource(selectedLog, currentDepartmentScopes)
+                    ? `Có thể mở nguồn ${selectedLog.navigationTarget.domain}`
+                    : 'Chỉ hiển thị audit projection theo quyền phiên hiện tại.'}
+                </p>
               </div>
               <div className="mt-5">
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Thay đổi dữ liệu</h3>

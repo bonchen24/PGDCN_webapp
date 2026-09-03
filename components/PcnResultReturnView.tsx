@@ -18,6 +18,7 @@ import { getPcnDataIntegrityReport, type PcnDataIntegrityIssue } from '../utils/
 import { getPcnDossierCustomerSnapshot } from '../utils/pcnDossierPolicy';
 import { isPcnInternalSampleRequest } from '../utils/pcnLabOperations';
 import { buildPcnReturnedResult } from '../utils/pcnResultPolicy';
+import PcnCatalogCombobox from './PcnCatalogCombobox';
 import PcnOcrPanel from './PcnOcrPanel';
 import PcnResultDetailModal from './PcnResultDetailModal';
 
@@ -82,6 +83,17 @@ export function PcnResultReturnView({
     && dossiers.some((dossier) => dossier.id === request.dossierId)
     && (!initialDossierId || request.dossierId === initialDossierId),
   );
+  const requestOptions = eligibleRequests.map((request) => {
+    const dossier = dossiers.find((item) => item.id === request.dossierId);
+    const proposal = proposals.find((item) => item.id === dossier?.proposalId);
+    const customerName = dossier ? getPcnDossierCustomerSnapshot(dossier, proposal)?.name : undefined;
+    return {
+      value: request.id,
+      label: `${request.pycNumber} — ${request.laboratoryName} — ${request.status} — ${customerName || dossier?.dossierCode || 'Hồ sơ PCN'}`,
+      searchText: [request.id, request.pycNumber, request.laboratoryName, request.status, request.fieldCode, customerName, dossier?.dossierCode, proposal?.proposalCode].filter(Boolean).join(' '),
+      description: [dossier?.dossierCode, customerName].filter(Boolean).join(' · '),
+    };
+  });
   const visibleResults = initialDossierId
     ? results.filter((result) => result.dossierId === initialDossierId && internalRequestIds.has(result.labRequestId))
     : results.filter((result) => internalRequestIds.has(result.labRequestId));
@@ -250,7 +262,7 @@ export function PcnResultReturnView({
             <div className="min-h-0 flex-1 mobile-scroll-y space-y-3 overflow-y-auto p-3 md:p-4">
           <PcnOcrPanel context="result" onApply={applyResultOcr} onFileSelected={selectResultFile} disabled={saving} />
           <div className="grid gap-2 md:grid-cols-3">
-            <label className="block md:col-span-2"><span className="mb-1 block text-[10px] font-black text-slate-500">PYC gửi PTN *</span><select required value={form.labRequestId} onChange={(event) => setForm({ ...form, labRequestId: event.target.value })} className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="">Chọn PYC đã gửi/đã nhận hoặc thử lại</option>{eligibleRequests.map((request) => { const dossier = dossiers.find((item) => item.id === request.dossierId); const proposal = proposals.find((proposal) => proposal.id === dossier?.proposalId); const customerSnapshot = dossier ? getPcnDossierCustomerSnapshot(dossier, proposal) : undefined; return <option key={request.id} value={request.id}>{request.pycNumber} — {request.laboratoryName} — {request.status} — {customerSnapshot?.name || dossier?.dossierCode || 'Hồ sơ PCN'}</option>; })}</select></label>
+            <label className="block md:col-span-2"><span className="mb-1 block text-[10px] font-black text-slate-500">PYC gửi PTN *</span><PcnCatalogCombobox id="pcn-result-return-request" label="PYC gửi PTN" hideLabel required value={form.labRequestId} onChange={(value) => setForm({ ...form, labRequestId: value })} options={requestOptions} placeholder={requestOptions.length > 0 ? 'Tìm số PYC, phòng thử hoặc khách hàng...' : 'Chưa có PYC phù hợp'} /></label>
             <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Vòng KQTN *</span><input type="number" min="1" required value={form.round} onChange={(event) => setForm({ ...form, round: event.target.value })} className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" /></label>
           </div>
           <div className="grid gap-2 md:grid-cols-3">

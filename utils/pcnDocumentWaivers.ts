@@ -13,6 +13,17 @@ export interface PcnDocumentWaiverPatchResult {
 
 const MAX_WAIVER_REASON_LENGTH = 1000;
 
+export function isPcnDocumentWaiverValid(waiver?: Partial<PcnDossierDocumentWaiver>): boolean {
+  const decidedBy = String(waiver?.decidedBy || waiver?.decidedByUsername || '').trim();
+  const decidedAt = String(waiver?.decidedAt || '').trim();
+  return Boolean(
+    String(waiver?.reason || '').trim()
+      && decidedBy
+      && decidedAt
+      && Number.isFinite(Date.parse(decidedAt)),
+  );
+}
+
 export function normalizePcnDocumentWaiverPatch(input: unknown): PcnDocumentWaiverPatchResult {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return { values: {}, errors: { documentWaivers: 'Danh sách đánh dấu bỏ qua tài liệu không hợp lệ.' } };
@@ -64,6 +75,7 @@ export function mergePcnDocumentWaivers(
       requirementId,
       reason: value.reason,
       decidedAt,
+      decidedBy: decidedByUsername,
       decidedByUsername,
     };
   }

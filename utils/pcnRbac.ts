@@ -9,6 +9,33 @@ export interface PcnClientUserRole {
   username?: string;
   role?: string;
   systemRole?: string;
+  position?: string;
+  departmentRoleCode?: string;
+  pgdRole?: string;
+  departmentScopes?: string[];
+}
+
+export function isPcnPersonnelManager(user: PcnClientUserRole | null | undefined): boolean {
+  if (!user) return false;
+  if (user.systemRole === 'admin' || user.role === 'admin') return true;
+  return user.departmentRoleCode === 'LEADERSHIP'
+    || user.pgdRole === 'PGD_MANAGER'
+    || String(user.position || '').toLocaleLowerCase('vi-VN').includes('quản lý')
+    || String(user.position || '').toLocaleLowerCase('vi-VN').includes('trưởng phòng');
+}
+
+/**
+ * PCN is a department scope, not an implied permission of the shared login.
+ * Legacy users without an explicit scope retain the PCN default; once scopes
+ * are configured, the list is authoritative for both PCN and PGD.
+ */
+export function getPcnDepartmentScopeDenial(
+  user: PcnClientUserRole | null | undefined,
+): string | null {
+  if (!user) return 'Phiên PCN không hợp lệ.';
+  const scopes = new Set((user.departmentScopes || []).map((scope) => String(scope).trim().toUpperCase()));
+  if (scopes.size === 0 || scopes.has('PCN')) return null;
+  return 'Tài khoản chưa được cấp scope PCN.';
 }
 
 export function getPcnClientMutationDenial(
@@ -29,6 +56,12 @@ export function assertPcnClientMutationAllowed(user: PcnClientUserRole | null | 
 export function assertPcnClientAdmin(user: PcnClientUserRole | null | undefined): void {
   if (!user || (user.systemRole !== 'admin' && user.role !== 'admin')) {
     throw new Error('Chỉ Admin PCN được thực hiện thao tác này.');
+  }
+}
+
+export function assertPcnPersonnelAdmin(user: PcnClientUserRole | null | undefined): void {
+  if (!isPcnPersonnelManager(user)) {
+    throw new Error('Chỉ Admin hoặc Quản lý được quản lý nhân sự PGDCN.');
   }
 }
 

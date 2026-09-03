@@ -8,8 +8,11 @@ import {
   buildPcnSampleLot,
   derivePcnSampleLotStatus,
   derivePcnSampleRouteReadiness,
+  getPcnSampleRouteSnapshotForItem,
+  getPcnSampleRouteStartDenial,
   getNextPcnSampleRouteStatuses,
   isPcnSampleRouteCompleteForNext,
+  projectPcnSampleRouteFromItemSnapshots,
   sortPcnSampleRoutes,
   transitionPcnSampleRoute,
 } from '../utils/pcnSampleFlow.ts';
@@ -156,6 +159,38 @@ test('a passed execution makes exactly the next pending route ready', () => {
   });
 });
 
+test('a completed execution opens the next sequential route before formal KQTN return', () => {
+  const routes: PcnSampleRoute[] = [
+    {
+      id: 'route-1', sampleLotId: 'lot-1', labCode: 'PERFORMANCE', labName: 'Hiệu suất', status: 'RECEIVED', sequence: 1,
+      execution: { status: 'COMPLETED', outcome: 'FAIL', sourceSystemCode: 'PERFORMANCE' },
+    },
+    { id: 'route-2', sampleLotId: 'lot-1', labCode: 'EMC', labName: 'EMC', status: 'PENDING', sequence: 2 },
+  ];
+  assert.deepEqual(derivePcnSampleRouteReadiness(routes, { id: 'item-1', quantity: 1 }), {
+    'route-1': 'COMPLETED',
+    'route-2': 'READY',
+  });
+  assert.equal(isPcnSampleRouteCompleteForNext(routes[0]), true);
+});
+
+test('route dispatch checks each assigned model snapshot instead of a shared route aggregate', () => {
+  const previous: PcnSampleRoute = {
+    id: 'route-1', sampleLotId: 'lot-1', labCode: 'PERFORMANCE', labName: 'Hiệu suất', status: 'RECEIVED', sequence: 1,
+    sampleItemIds: ['item-a', 'item-b'],
+    itemSnapshots: {
+      'item-a': { status: 'RECEIVED', execution: { status: 'COMPLETED', outcome: 'PASS', sourceSystemCode: 'PERFORMANCE' } },
+      'item-b': { status: 'RECEIVED', execution: { status: 'IN_PROGRESS', sourceSystemCode: 'PERFORMANCE' } },
+    },
+  };
+  const next: PcnSampleRoute = { id: 'route-2', sampleLotId: 'lot-1', labCode: 'EMC', labName: 'EMC', status: 'PENDING', sequence: 2, sampleItemIds: ['item-a', 'item-b'] };
+  const items = [
+    { id: 'item-a', sampleLotId: 'lot-1', sampleCode: 'A', sampleType: 'Thiết bị', model: 'A', quantity: 1 },
+    { id: 'item-b', sampleLotId: 'lot-1', sampleCode: 'B', sampleType: 'Thiết bị', model: 'B', quantity: 1 },
+  ];
+  assert.match(getPcnSampleRouteStartDenial(next, [previous, next], items), /chặng trước/);
+});
+
 test('sample route flow does not allow skipping the receiving step', () => {
   assert.deepEqual(getNextPcnSampleRouteStatuses('PENDING'), ['SENT', 'CANCELLED']);
   const route: PcnSampleRoute = {
@@ -219,6 +254,49 @@ test('aggregate lot status reflects multiple room routes', () => {
   const atEmc: PcnSampleRoute = { id: 'r2', sampleLotId: 'lot', labCode: 'EMC', labName: 'Phòng thử EMC', status: 'RECEIVED' };
   assert.equal(derivePcnSampleLotStatus([pending, atEmc]).status, 'AT_LAB');
   assert.equal(derivePcnSampleLotStatus([pending, atEmc]).currentLocation, 'Phòng thử EMC');
+});
+
+test('projects item-scoped execution snapshots without changing another model', () => {
+  const route: PcnSampleRoute = {
+    id: 'route-emc', sampleLotId: 'lot', labCode: 'EMC', labName: 'Phòng thử EMC', status: 'SENT', sequence: 1,
+    sampleItemIds: ['item-a', 'item-b'],
+    itemSnapshots: {
+      'item-a': {
+        status: 'RECEIVED',
+        execution: {
+          status: 'COMPLETED', outcome: 'FAIL', scheduledDate: '2026-09-03',
+          startedAt: '2026-09-03T07:00:00.000Z', completedAt: '2026-09-03T08:00:00.000Z',
+          sourceSystemCode: 'EMC', lastExternalSequence: 4,
+        },
+      },
+      'item-b': { status: 'SENT', execution: { status: 'SCHEDULED', scheduledDate: '2026-09-04', sourceSystemCode: 'EMC', lastExternalSequence: 3 } },
+    },
+  };
+  const itemA = getPcnSampleRouteSnapshotForItem(route, 'item-a');
+  const itemB = getPcnSampleRouteSnapshotForItem(route, 'item-b');
+  assert.equal(itemA.status, 'RECEIVED');
+  assert.equal(itemA.execution?.outcome, 'FAIL');
+  assert.equal(itemA.execution?.completedAt, '2026-09-03T08:00:00.000Z');
+  assert.equal(itemB.status, 'SENT');
+  assert.equal(itemB.execution?.status, 'SCHEDULED');
+  const aggregate = projectPcnSampleRouteFromItemSnapshots(route);
+  assert.equal(aggregate.status, 'RECEIVED');
+  assert.equal(aggregate.execution?.outcome, 'FAIL');
+  assert.equal(aggregate.execution?.scheduledDate, '2026-09-03');
+});
+
+test('item-scoped lot projection shows the testing room while one model is being tested', () => {
+  const route: PcnSampleRoute = {
+    id: 'route-emc', sampleLotId: 'lot', labCode: 'EMC', labName: 'Phòng thử EMC', status: 'SENT', sequence: 1,
+    sampleItemIds: ['item-a'],
+    itemSnapshots: {
+      'item-a': { status: 'RECEIVED', execution: { status: 'COMPLETED', outcome: 'PASS', sourceSystemCode: 'EMC' } },
+    },
+  };
+  assert.deepEqual(
+    derivePcnSampleLotStatus([route], [{ id: 'item-a', sampleLotId: 'lot', sampleCode: 'EMC-01', sampleType: 'Thiết bị', model: 'M-01', quantity: 1, testLabCodes: ['EMC'] }]),
+    { status: 'AT_LAB', currentLocation: 'Phòng thử EMC' },
+  );
 });
 
 test('PCN sample flow has its own collections inside the dossier card', () => {
@@ -285,4 +363,6 @@ test('sample flow keeps each lot collapsed until the user opens its assigned rou
   assert.match(sampleFlowSource, /aria-expanded=\{isExpanded\}/);
   assert.match(sampleFlowSource, /aria-controls=\{`lot-flow-\$\{lot\.id\}`\}/);
   assert.match(sampleFlowSource, /id=\{`lot-flow-\$\{lot\.id\}`\}/);
+  assert.match(sampleFlowSource, /getPcnSampleRouteSnapshotForItem/);
+  assert.match(sampleFlowSource, /itemSnapshots/);
 });

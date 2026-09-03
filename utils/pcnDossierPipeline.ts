@@ -17,6 +17,7 @@ import { getPcnDossierAssignmentDenial, type PcnDossierAssignmentInput } from '.
 import { reviewPcnCodes, type PcnCodeReview } from './pcnCodePolicy.ts';
 import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, getPcnDocumentRequirements } from './pcnDossierDocuments.ts';
 import { getPcnWorkflowStageByKey } from './pcnWorkflowStages.ts';
+import { isPcnDocumentWaiverValid } from './pcnDocumentWaivers.ts';
 
 export type PcnPipelineStationKey = PcnDossierStationKey;
 
@@ -219,8 +220,8 @@ const DOCUMENT_STAGE_ORDER: readonly PcnDocumentRequirementStage[] = [
 const DOCUMENT_STAGE_LABELS: Record<PcnDocumentRequirementStage, string> = {
   INTAKE: 'Tiếp nhận & đầu vào',
   LAB_ROUTING: 'Lấy mẫu & gửi PTN',
-  TECHNICAL_REVIEW: 'KQTN & soát xét',
-  ISSUANCE: 'Phê duyệt & phát hành',
+  TECHNICAL_REVIEW: 'KQTN & đánh giá / hoàn thiện & soát xét trước duyệt',
+  ISSUANCE: 'Phê duyệt',
   DELIVERY: 'Giao khách hàng',
   ARCHIVE: 'Lưu hồ sơ',
 };
@@ -270,7 +271,7 @@ export function buildPcnDossierStationChecklist(input: {
       ? document.versions.find((version) => version.assetId === document.currentVersionId)
       : undefined;
     const waiver = input.documentWaivers?.[requirement.id];
-    const status = currentVersion ? 'PRESENT' as const : waiver?.reason?.trim() ? 'WAIVED' as const : 'MISSING' as const;
+    const status = currentVersion ? 'PRESENT' as const : isPcnDocumentWaiverValid(waiver) ? 'WAIVED' as const : 'MISSING' as const;
     return {
       requirement,
       status,
@@ -348,7 +349,7 @@ export function buildPcnDossierCompleteness(input: {
   const documentWaivers = input.documentWaivers || input.dossier.documentWaivers;
   const required = requirements.filter((item) => item.required);
   const documentByRequirement = new Map((input.documents || []).filter((item) => item.dossierId === input.dossier.id).map((item) => [item.requirementId, item]));
-  const missingRequirementIds = required.filter((item) => !hasCurrentDocument(documentByRequirement.get(item.id)) && !documentWaivers?.[item.id]?.reason?.trim()).map((item) => item.id);
+  const missingRequirementIds = required.filter((item) => !hasCurrentDocument(documentByRequirement.get(item.id)) && !isPcnDocumentWaiverValid(documentWaivers?.[item.id])).map((item) => item.id);
   const missingRequirements = required.filter((item) => missingRequirementIds.includes(item.id));
   const stationChecklist = buildPcnDossierStationChecklist({
     dossierId: input.dossier.id,
