@@ -1927,7 +1927,7 @@ async function buildPgdDossierPackageSnapshot(client: any, request: PgdInspectio
       || String(asset.source_json_path || '') !== expectedSourceJsonPath
       || String(asset.sha256 || '').toLowerCase() !== entry.checksum
       || Number(asset.byte_size) !== entry.byteSize) {
-      throw Object.assign(new Error(`Provenance file asset ${entry.assetId} không khớp hồ sơ PGD.`), { statusCode: 409 });
+      throw Object.assign(new Error(`Provenance file asset ${entry.assetId} không khớp hồ sơ PGD.`), { statusCode: 409, assetId: entry.assetId, manifest: candidateManifest });
     }
   }
   const verifiedPointers = pointers.map((pointer) => {
@@ -3398,6 +3398,7 @@ async function startServer() {
 
   app.get('/api/pgd/requests/:requestId/package', async (req, res) => {
     if (!requirePgdSession(req, res)) return;
+    let packageManifest: PgdDossierPackageManifest | undefined;
     const requestId = decodeURIComponent(String(req.params.requestId || '')).trim();
     if (!requestId) {
       res.status(400).json({ error: 'Thiếu mã hồ sơ PGD.' });
@@ -3416,6 +3417,7 @@ async function startServer() {
       }
       const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
       const packageSnapshot = await buildPgdDossierPackageSnapshot(pool, request);
+      packageManifest = packageSnapshot.manifest;
       if (!packageSnapshot.manifest.complete) {
         res.status(409).json({
           error: `Bộ hồ sơ chưa sẵn sàng: thiếu ${packageSnapshot.manifest.missingRequirementCodes.length} mục checklist và ${packageSnapshot.manifest.missingAssetIds.length} file private.`,
@@ -3442,12 +3444,12 @@ async function startServer() {
       const storage = manifest.entries.length > 0 ? getPgdStorageClient() : undefined;
       for (const entry of manifest.entries) {
         const asset = assetsById.get(entry.assetId);
-        if (!storage || !asset) throw Object.assign(new Error(`File asset ${entry.assetId} thiếu vị trí Storage.`), { statusCode: 409 });
+        if (!storage || !asset) throw Object.assign(new Error(`File asset ${entry.assetId} thiếu vị trí Storage.`), { statusCode: 409, assetId: entry.assetId });
         const downloaded = await storage.downloadObject({ bucketName: String(asset.bucket_name), objectPath: String(asset.object_path) });
         const actualByteSize = downloaded.body.byteLength;
         const actualSha256 = createHash('sha256').update(downloaded.body).digest('hex');
         if (actualByteSize !== entry.byteSize || actualSha256 !== entry.checksum) {
-          throw Object.assign(new Error(`File asset ${entry.assetId} không khớp byte size/SHA-256 với metadata.`), { statusCode: 409 });
+          throw Object.assign(new Error(`File asset ${entry.assetId} không khớp byte size/SHA-256 với metadata.`), { statusCode: 409, assetId: entry.assetId });
         }
         archive.addFile(entry.archivePath, downloaded.body);
       }
@@ -3459,7 +3461,15 @@ async function startServer() {
       res.send(body);
     } catch (error: any) {
       console.error('PGD dossier package error:', error);
-      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
+      const assetId = String(error?.assetId || '').trim();
+      const manifest = error?.manifest || (packageManifest && assetId
+        ? {
+          ...packageManifest,
+          complete: false,
+          missingAssetIds: Array.from(new Set([...packageManifest.missingAssetIds, assetId])),
+        }
+        : packageManifest);
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error), ...(manifest ? { manifest } : {}) });
     }
   });
 

@@ -21,6 +21,8 @@ test('PGD dossier operations expose owner, generated-document attachment, and pa
   assert.match(server, /api\/pgd\/requests\/:requestId\/package/);
   assert.match(server, /buildPgdDossierPackageManifest/);
   assert.match(server, /buildPgdDossierPackageSnapshot/);
+  assert.match(server, /const manifest = error\?\.manifest/);
+  assert.match(server, /assetId: entry\.assetId/);
   assert.match(server, /packageManifestHash/);
   assert.match(server, /ROW_NUMBER\(\) OVER/);
   assert.match(server, /resolvePgdTemplateSourcePath/);

@@ -102,6 +102,28 @@ export interface PgdDossierDocument {
   originDocumentId?: string;
 }
 
+/**
+ * Return the current dossier document for each checklist requirement.
+ *
+ * Bootstrap and the dossier endpoint deliberately retain every immutable
+ * version so the audit trail remains available. Mutating surfaces, however,
+ * must project one deterministic current row per requirement before counting
+ * or attaching generated output.
+ */
+export function getCurrentPgdDossierDocuments(documents: readonly PgdDossierDocument[]): PgdDossierDocument[] {
+  const currentByRequirement = new Map<string, PgdDossierDocument>();
+  const ordered = [...documents].sort((left, right) => (
+    left.requirementCode.localeCompare(right.requirementCode)
+    || right.version - left.version
+    || right.uploadedAt.localeCompare(left.uploadedAt)
+    || right.id.localeCompare(left.id)
+  ));
+  for (const document of ordered) {
+    if (!currentByRequirement.has(document.requirementCode)) currentByRequirement.set(document.requirementCode, clone(document));
+  }
+  return Array.from(currentByRequirement.values());
+}
+
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }

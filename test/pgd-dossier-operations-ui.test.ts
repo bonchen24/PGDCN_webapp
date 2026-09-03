@@ -15,6 +15,7 @@ test('PGD workspace puts dossier owner, document generation, checklist, and pack
   assert.match(operations, /PgdDocumentGenerationPanel/);
   assert.match(operations, /Bộ hồ sơ & đóng gói/);
   assert.match(operations, /attachGeneratedDocument/);
+  assert.match(operations, /getCurrentPgdDossierDocuments/);
   assert.match(operations, /getPgdDossierPackageUrl/);
   assert.match(operations, /missingRequirementCodes/);
   assert.match(operations, /Đang đóng gói/);

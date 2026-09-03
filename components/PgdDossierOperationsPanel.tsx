@@ -8,7 +8,7 @@ import { usePcnSessionStore } from '../utils/pcnSessionState';
 import { usePgdStore } from '../store-pgd';
 import type { PgdGeneratedDocument, PgdInspectionRequest } from '../utils/pgdDomain';
 import { getPgdDossierPackageUrl, type PgdDossierPackageManifest } from '../utils/pgdApi';
-import { getPgdDossierRequirementForTemplate } from '../utils/pgdDossier';
+import { getCurrentPgdDossierDocuments, getPgdDossierRequirementForTemplate } from '../utils/pgdDossier';
 import type { PgdDossierDocument, PgdDossierRequirement } from '../utils/pgdDossier';
 import { getPgdPostSignatureMutationDenial } from '../utils/pgdWorkflow';
 import PgdDocumentGenerationPanel from './PgdDocumentGenerationPanel';
@@ -40,9 +40,10 @@ export default function PgdDossierOperationsPanel({ request, requirements, dossi
   const ownerEditable = Boolean(isManager && editable && currentUser);
   const dossierEditable = Boolean(canMutate && editable && (isManager || isOwner));
   const generatedDocuments = useMemo(() => pgd.documents.filter((document) => document.requestId === request.id), [pgd.documents, request.id]);
-  const attachedGeneratedIds = useMemo(() => new Set(dossierDocuments.map((document) => document.originDocumentId).filter(Boolean)), [dossierDocuments]);
+  const currentDossierDocuments = useMemo(() => getCurrentPgdDossierDocuments(dossierDocuments), [dossierDocuments]);
+  const attachedGeneratedIds = useMemo(() => new Set(currentDossierDocuments.map((document) => document.originDocumentId).filter(Boolean)), [currentDossierDocuments]);
   const requiredTotal = requirements.filter((requirement) => requirement.required).length;
-  const requiredPresent = requirements.filter((requirement) => requirement.required && dossierDocuments.some((document) => document.requirementCode === requirement.code)).length;
+  const requiredPresent = requirements.filter((requirement) => requirement.required && currentDossierDocuments.some((document) => document.requirementCode === requirement.code)).length;
   const lockedReason = getPgdPostSignatureMutationDenial(request.status);
 
   useEffect(() => {
@@ -119,7 +120,7 @@ export default function PgdDossierOperationsPanel({ request, requirements, dossi
         {lockedReason && <p className="mt-1 text-[9px] font-bold text-amber-700">{lockedReason}</p>}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-3"><div className="rounded-lg border border-white bg-white p-2"><div className="text-[9px] font-black uppercase text-slate-400">Bắt buộc hiện hành</div><div className="mt-1 text-lg font-black text-blue-700">{requiredPresent}/{requiredTotal}</div></div><div className="rounded-lg border border-white bg-white p-2"><div className="text-[9px] font-black uppercase text-slate-400">Biểu mẫu đã sinh</div><div className="mt-1 text-lg font-black text-slate-800">{generatedDocuments.length}</div></div><div className="rounded-lg border border-white bg-white p-2"><div className="text-[9px] font-black uppercase text-slate-400">Đã đưa vào checklist</div><div className="mt-1 text-lg font-black text-emerald-700">{dossierDocuments.length}</div></div></div>
+      <div className="grid gap-2 sm:grid-cols-3"><div className="rounded-lg border border-white bg-white p-2"><div className="text-[9px] font-black uppercase text-slate-400">Bắt buộc hiện hành</div><div className="mt-1 text-lg font-black text-blue-700">{requiredPresent}/{requiredTotal}</div></div><div className="rounded-lg border border-white bg-white p-2"><div className="text-[9px] font-black uppercase text-slate-400">Biểu mẫu đã sinh</div><div className="mt-1 text-lg font-black text-slate-800">{generatedDocuments.length}</div></div><div className="rounded-lg border border-white bg-white p-2"><div className="text-[9px] font-black uppercase text-slate-400">Đã đưa vào checklist</div><div className="mt-1 text-lg font-black text-emerald-700">{currentDossierDocuments.length}</div></div></div>
 
       <PgdDocumentGenerationPanel request={request} templates={pgd.documentTemplates} documents={generatedDocuments} canMutate={dossierEditable} />
 

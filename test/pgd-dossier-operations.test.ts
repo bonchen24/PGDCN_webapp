@@ -8,6 +8,8 @@ import {
 } from '../utils/pgdDomain.ts';
 import {
   buildPgdDossierChecklist,
+  buildPgdDossierDocument,
+  getCurrentPgdDossierDocuments,
   getPgdDossierRequirements,
   getPgdDossierRequirementForTemplate,
 } from '../utils/pgdDossier.ts';
@@ -149,4 +151,25 @@ test('PGD package manifest is deterministic, PGD-only, and reports missing priva
       kind: 'DOSSIER_DOCUMENT',
     } as any],
   }), /PGD/);
+});
+
+test('current dossier projection keeps only the newest version for each checklist requirement', () => {
+  const createDocument = (id: string, requirementCode: string, version: number, uploadedAt: string) => buildPgdDossierDocument({
+    id,
+    requestId: 'pgd-request-operations-1',
+    requirementCode,
+    title: requirementCode,
+    fileName: `${id}.pdf`,
+    version,
+    checksum: 'd'.repeat(64),
+    uploadedByUsername: 'nv.phu.trach',
+  }, uploadedAt);
+  const current = getCurrentPgdDossierDocuments([
+    createDocument('pyc-v1', 'REQUEST_PYC', 1, '2026-09-03T01:00:00.000Z'),
+    createDocument('pyc-v2', 'REQUEST_PYC', 2, '2026-09-03T02:00:00.000Z'),
+    createDocument('report-v1', 'INSPECTION_REPORT', 1, '2026-09-03T01:30:00.000Z'),
+  ]);
+  assert.equal(current.length, 2);
+  assert.equal(current.find((document) => document.requirementCode === 'REQUEST_PYC')?.id, 'pyc-v2');
+  assert.equal(current.find((document) => document.requirementCode === 'INSPECTION_REPORT')?.id, 'report-v1');
 });
