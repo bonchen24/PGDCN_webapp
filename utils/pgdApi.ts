@@ -69,6 +69,42 @@ export interface SavePgdDossierDocumentInput {
   note?: string;
 }
 
+export interface PgdDossierPackageManifest {
+  format: 'PGD_DOSSIER_PACKAGE_V1';
+  domain: 'pgd';
+  dossierCode: string;
+  ownerUsername?: string;
+  generatedAt: string;
+  complete: boolean;
+  missingAssetIds: string[];
+  missingRequirementCodes: string[];
+  checklist: Array<{
+    requirementCode: string;
+    group: string;
+    title: string;
+    required: boolean;
+    status: 'MISSING' | 'PRESENT' | 'WAIVED';
+    currentDocumentId?: string;
+    currentDocumentVersion?: number;
+    waiverReason?: string;
+    waivedByUsername?: string;
+    waivedAt?: string;
+  }>;
+  entries: Array<{
+    assetId: string;
+    archivePath: string;
+    fileName: string;
+    sourceCollection: string;
+    sourceDocumentId: string;
+    version: number;
+    checksum: string;
+    mimeType: string;
+    byteSize: number;
+    kind: 'DOSSIER_DOCUMENT' | 'GENERATED_DOCUMENT';
+    contextHash?: string;
+  }>;
+}
+
 async function parseResponse(response: Response): Promise<any> {
   const contentType = response.headers.get('content-type') || '';
   const payload = contentType.includes('application/json') ? await response.json() : await response.text();
@@ -149,6 +185,10 @@ export function getPgdDossierDocumentDownloadUrl(documentId: string): string {
   return `/api/pgd/dossier-documents/${encodeURIComponent(documentId)}/download`;
 }
 
+export function getPgdDossierPackageUrl(requestId: string): string {
+  return `/api/pgd/requests/${encodeURIComponent(requestId)}/package`;
+}
+
 export function getPgdTemplateSourceUrl(templateId: string): string {
   return `/api/pgd/document-templates/${encodeURIComponent(templateId)}/source`;
 }
@@ -172,6 +212,16 @@ export async function savePgdDossierDocument(requestId: string, input: SavePgdDo
   if (input.note) form.set('note', input.note);
   const payload = await request(`/api/pgd/requests/${encodeURIComponent(requestId)}/dossier-documents`, { method: 'POST', body: form });
   return payload.dossierDocument as PgdDossierDocument;
+}
+
+export async function attachPgdGeneratedDocument(requestId: string, input: { documentId: string; requirementCode: string; title?: string }): Promise<PgdDossierDocument> {
+  const payload = await request(`/api/pgd/requests/${encodeURIComponent(requestId)}/dossier-documents/attach-generated`, json(input));
+  return payload.dossierDocument as PgdDossierDocument;
+}
+
+export async function assignPgdDossierOwner(requestId: string, ownerUsername: string): Promise<PgdInspectionRequest> {
+  const payload = await request(`/api/pgd/requests/${encodeURIComponent(requestId)}/owner`, { method: 'PUT', body: JSON.stringify({ ownerUsername }) });
+  return payload.request as PgdInspectionRequest;
 }
 
 export async function createPgdInspection(input: PgdInspectionRequestInput): Promise<PgdInspectionRequest> {

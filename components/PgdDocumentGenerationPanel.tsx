@@ -64,6 +64,7 @@ function initialValue(cell: PgdTemplateCell, request: PgdInspectionRequest, pref
   const registryDocumentNumber = (kind: string): string => request.registryMetadata?.documents?.find((document) => document.kind === kind)?.number || '';
   const byKey: Record<string, unknown> = {
     requestCode: request.requestCode,
+    ownerUsername: request.ownerUsername || '',
     customerName: request.customerSnapshot.name,
     customerAddress: request.customerSnapshot.address,
     productName: request.productName,

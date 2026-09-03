@@ -1,4 +1,5 @@
-import { PGD_COLLECTIONS, PGD_DOMAIN, type PgdProductGroup, type PgdSample, type PgdSampleDisposition, type PgdValidationIssue } from './pgdDomain.ts';
+import { PGD_COLLECTIONS, PGD_DOMAIN, type PgdDossierChecklistItem, type PgdProductGroup, type PgdSample, type PgdSampleDisposition, type PgdValidationIssue } from './pgdDomain.ts';
+import type { PgdDocumentTemplateKind } from './pgdDocumentTemplates.ts';
 import type { PgdOperationalStationKey } from './pgdWorkflow.ts';
 
 export type PgdDossierRequirementGroup =
@@ -17,6 +18,64 @@ export interface PgdDossierRequirement {
   title: string;
   required: boolean;
   description?: string;
+}
+
+export function buildPgdDossierChecklist(productGroup: PgdProductGroup, now = new Date().toISOString()): PgdDossierChecklistItem[] {
+  return getPgdDossierRequirements(productGroup).map((item) => ({
+    domain: PGD_DOMAIN,
+    requirementCode: item.code,
+    group: item.group,
+    title: item.title,
+    required: item.required,
+    status: 'MISSING' as const,
+    updatedAt: now,
+  }));
+}
+
+export function reconcilePgdDossierChecklist(
+  productGroup: PgdProductGroup,
+  existing: readonly PgdDossierChecklistItem[] | undefined,
+  currentDocuments: readonly Pick<PgdDossierDocument, 'requirementCode' | 'id' | 'version'>[] = [],
+  now = new Date().toISOString(),
+): PgdDossierChecklistItem[] {
+  const existingByCode = new Map((existing || []).map((item) => [item.requirementCode, item]));
+  const documentByCode = new Map(currentDocuments.map((document) => [document.requirementCode, document]));
+  return buildPgdDossierChecklist(productGroup, now).map((item) => {
+    const previous = existingByCode.get(item.requirementCode);
+    const document = documentByCode.get(item.requirementCode);
+    if (document) {
+      return {
+        ...item,
+        status: 'PRESENT' as const,
+        currentDocumentId: document.id,
+        currentDocumentVersion: document.version,
+        updatedAt: now,
+      };
+    }
+    if (previous?.status === 'WAIVED' && previous.waiverReason?.trim()) {
+      return {
+        ...item,
+        status: 'WAIVED' as const,
+        waiverReason: previous.waiverReason.trim(),
+        ...(previous.waivedByUsername?.trim() ? { waivedByUsername: previous.waivedByUsername.trim() } : {}),
+        ...(previous.waivedAt ? { waivedAt: previous.waivedAt } : {}),
+        updatedAt: previous.updatedAt || now,
+      };
+    }
+    return { ...item, updatedAt: previous?.updatedAt || now };
+  });
+}
+
+export function markPgdDossierChecklistPresent(
+  productGroup: PgdProductGroup,
+  existing: readonly PgdDossierChecklistItem[] | undefined,
+  document: Pick<PgdDossierDocument, 'requirementCode' | 'id' | 'version'>,
+  now = new Date().toISOString(),
+): PgdDossierChecklistItem[] {
+  const existingDocuments = (existing || [])
+    .filter((item) => item.status === 'PRESENT' && item.currentDocumentId && item.currentDocumentVersion)
+    .map((item) => ({ requirementCode: item.requirementCode, id: item.currentDocumentId!, version: item.currentDocumentVersion! }));
+  return reconcilePgdDossierChecklist(productGroup, existing, [...existingDocuments, document], now);
 }
 
 export interface PgdDossierDocument {
@@ -39,6 +98,8 @@ export interface PgdDossierDocument {
   mimeType?: string;
   byteSize?: number;
   supersedesDocumentId?: string;
+  originCollection?: typeof PGD_COLLECTIONS.documents;
+  originDocumentId?: string;
 }
 
 function clone<T>(value: T): T {
@@ -74,12 +135,12 @@ function requirement(code: string, group: PgdDossierRequirementGroup, title: str
 
 export function getPgdDossierRequirementStationKey(requirementCode: string): PgdOperationalStationKey {
   const code = clean(requirementCode).toUpperCase();
-  if (['REQUEST_PYC', 'REQUEST_SUPPORTING', 'COMMERCIAL_CONTRACT', 'COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_OF_LADING', 'CUSTOMS_DECLARATION', 'CERTIFICATE_OF_ORIGIN'].includes(code)) {
+  if (['REQUEST_PYC', 'REQUEST_SUPPORTING', 'ASSIGNMENT_FORM', 'COMMERCIAL_CONTRACT', 'COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_OF_LADING', 'CUSTOMS_DECLARATION', 'CERTIFICATE_OF_ORIGIN'].includes(code)) {
     return 'INTAKE_CAPABILITY';
   }
   if (code === 'INSPECTION_PLAN' || code.startsWith('TECHNICAL_')) return 'PREPARATION';
-  if (code === 'FIELD_INSPECTION_MINUTES' || code === 'FIELD_SAMPLE_TAKING') return 'FIELD_SAMPLING';
-  if (code === 'SAMPLE_HANDOVER_LAB' || code === 'LAB_RESULT') return 'LAB_RESULTS';
+  if (['FIELD_INSPECTION_MINUTES', 'FIELD_SAMPLE_TAKING', 'FIELD_ACTIVITY_LOG'].includes(code)) return 'FIELD_SAMPLING';
+  if (['SAMPLE_HANDOVER_LAB', 'LAB_RESULT', 'LAB_RESULT_REVIEW'].includes(code)) return 'LAB_RESULTS';
   return 'REPORT_APPROVAL_RETURN';
 }
 
@@ -87,6 +148,7 @@ export function getPgdDossierRequirements(productGroup: PgdProductGroup): PgdDos
   const base: PgdDossierRequirement[] = [
     requirement('REQUEST_PYC', 'REQUEST', 'Phiếu yêu cầu giám định'),
     requirement('REQUEST_SUPPORTING', 'REQUEST', 'Tài liệu tiếp nhận và thông tin PYC'),
+    requirement('ASSIGNMENT_FORM', 'REQUEST', 'Phiếu phân công hồ sơ', false, 'Snapshot phân công nhân sự và người soát xét kỹ thuật.'),
     requirement('COMMERCIAL_CONTRACT', 'COMMERCIAL_CUSTOMS', 'Hợp đồng', false, 'Bổ sung khi hồ sơ có hợp đồng làm căn cứ giám định.'),
     requirement('COMMERCIAL_INVOICE', 'COMMERCIAL_CUSTOMS', 'Hóa đơn thương mại', false, 'Chỉ áp dụng khi hồ sơ có giao dịch thương mại tương ứng.'),
     requirement('PACKING_LIST', 'COMMERCIAL_CUSTOMS', 'Packing list', false, 'Chỉ áp dụng khi lô hàng có packing list.'),
@@ -95,11 +157,14 @@ export function getPgdDossierRequirements(productGroup: PgdProductGroup): PgdDos
     requirement('CERTIFICATE_OF_ORIGIN', 'COMMERCIAL_CUSTOMS', 'C/O - chứng nhận xuất xứ', false, 'Chỉ áp dụng khi khách hàng cung cấp hoặc phạm vi yêu cầu có xác định xuất xứ.'),
     requirement('INSPECTION_PLAN', 'TECHNICAL', 'Kế hoạch giám định', true),
     requirement('FIELD_INSPECTION_MINUTES', 'FIELD', 'Biên bản giám định hiện trường'),
+    requirement('FIELD_ACTIVITY_LOG', 'FIELD', 'Nhật ký hoạt động hiện trường', false, 'Dùng để ghi nhận các lần làm việc, điều chỉnh hoặc phát sinh tại hiện trường.'),
     requirement('SAMPLE_HANDOVER_LAB', 'LAB_SUBCONTRACTOR', 'Phiếu giao nhận mẫu PTN'),
     requirement('LAB_RESULT', 'RESULT_ISSUANCE', 'Kết quả PTN'),
+    requirement('LAB_RESULT_REVIEW', 'RESULT_ISSUANCE', 'Phiếu xem xét kết quả PTN', false, 'Snapshot xem xét tính đầy đủ và phù hợp của kết quả PTN.'),
     requirement('INSPECTION_REPORT', 'RESULT_ISSUANCE', 'Báo cáo kết quả / báo cáo đánh giá giám định'),
     requirement('DECISION', 'RESULT_ISSUANCE', 'Quyết định phê duyệt / phát hành', false, 'Bổ sung khi loại hình hoặc quy trình yêu cầu quyết định riêng.'),
     requirement('INSPECTION_CERTIFICATE', 'RESULT_ISSUANCE', 'Chứng thư giám định'),
+    requirement('DOSSIER_COVER', 'ARCHIVE', 'Bìa / mục lục bộ hồ sơ', false, 'Tài liệu tổng hợp được sinh khi đóng gói hồ sơ.'),
     requirement('ARCHIVE_INDEX', 'ARCHIVE', 'Hồ sơ lưu trữ'),
   ];
 
@@ -124,11 +189,39 @@ export function getPgdDossierRequirements(productGroup: PgdProductGroup): PgdDos
   ];
 }
 
+const PGD_TEMPLATE_REQUIREMENT_CODES: Partial<Record<PgdDocumentTemplateKind, string>> = {
+  INTAKE_REQUEST: 'REQUEST_PYC',
+  ASSIGNMENT: 'ASSIGNMENT_FORM',
+  INSPECTION_PLAN: 'INSPECTION_PLAN',
+  FIELD_INSPECTION: 'FIELD_INSPECTION_MINUTES',
+  SAMPLE_TAKING: 'FIELD_SAMPLE_TAKING',
+  LAB_REQUEST: 'SAMPLE_HANDOVER_LAB',
+  INSPECTION_REPORT: 'INSPECTION_REPORT',
+  DECISION: 'DECISION',
+  INSPECTION_CERTIFICATE: 'INSPECTION_CERTIFICATE',
+  DOSSIER_COVER: 'DOSSIER_COVER',
+  CASE_TIMELINE: 'REQUEST_SUPPORTING',
+  FIELD_ACTIVITY_LOG: 'FIELD_ACTIVITY_LOG',
+  LAB_RESULT_REVIEW: 'LAB_RESULT_REVIEW',
+  INSPECTION_MINUTES: 'FIELD_INSPECTION_MINUTES',
+  SAMPLE_HANDOVER: 'SAMPLE_HANDOVER_LAB',
+};
+
+export function getPgdDossierRequirementForTemplate(kind: PgdDocumentTemplateKind, productGroup: PgdProductGroup = 'OTHER'): PgdDossierRequirement | undefined {
+  const code = PGD_TEMPLATE_REQUIREMENT_CODES[kind];
+  if (!code) return undefined;
+  return getPgdDossierRequirements(productGroup).find((item) => item.code === code);
+}
+
 export function buildPgdDossierDocument(input: Partial<PgdDossierDocument>, now = new Date().toISOString()): PgdDossierDocument {
   if (clean(input.domain) && input.domain !== PGD_DOMAIN) throw new Error('Tài liệu dossier PGD không được nhận domain ngoài PGD.');
   if (clean(input.sourceCollection) && input.sourceCollection !== PGD_COLLECTIONS.dossierDocuments) throw new Error('Tài liệu dossier PGD phải đến từ collection PGD.');
   if (clean(input.sourceDocumentId) && clean(input.sourceDocumentId) !== clean(input.id)) throw new Error('sourceDocumentId của dossier PGD phải trùng id bản ghi.');
   if (hasPgdSourceMetadata(input) && clean(input.sourceCollection) !== PGD_COLLECTIONS.dossierDocuments) throw new Error('Tài liệu dossier PGD phải có provenance collection PGD hợp lệ.');
+  const originCollection = clean((input as PgdDossierDocument).originCollection);
+  const originDocumentId = clean((input as PgdDossierDocument).originDocumentId);
+  if (originCollection && originCollection !== PGD_COLLECTIONS.documents) throw new Error('Nguồn gốc biểu mẫu PGD chỉ được trỏ tới collection tài liệu PGD.');
+  if (Boolean(originCollection) !== Boolean(originDocumentId)) throw new Error('Tài liệu dossier PGD cần đủ origin collection và origin document.');
 
   const version = Number(input.version);
   if (!Number.isInteger(version) || version < 1) throw new Error('Phiên bản dossier PGD phải là số nguyên dương.');
@@ -166,6 +259,7 @@ export function buildPgdDossierDocument(input: Partial<PgdDossierDocument>, now 
     ...(clean((input as PgdDossierDocument).mimeType) ? { mimeType: clean((input as PgdDossierDocument).mimeType) } : {}),
     ...(Number.isFinite((input as PgdDossierDocument).byteSize) ? { byteSize: (input as PgdDossierDocument).byteSize } : {}),
     ...(clean((input as PgdDossierDocument).supersedesDocumentId) ? { supersedesDocumentId: clean((input as PgdDossierDocument).supersedesDocumentId) } : {}),
+    ...(originCollection ? { originCollection: PGD_COLLECTIONS.documents, originDocumentId } : {}),
   };
 }
 

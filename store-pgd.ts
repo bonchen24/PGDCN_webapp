@@ -23,6 +23,8 @@ import type { PgdDossierDocument, PgdDossierRequirement } from './utils/pgdDossi
 import type { CustomerRef, PcnUserAccount } from './types.ts';
 import {
   approvePgdStep,
+  assignPgdDossierOwner,
+  attachPgdGeneratedDocument,
   createPgdInspection,
   destroyPgdSample as destroyPgdSampleApi,
   fetchPgdBootstrap,
@@ -83,6 +85,8 @@ interface PgdStoreState {
   saveDossierIndex: (index: PgdDossierIndex) => Promise<PgdDossierIndex>;
   fetchDossierDocuments: (requestId: string) => Promise<{ dossierDocuments: PgdDossierDocument[]; requirements: PgdDossierRequirement[] }>;
   saveDossierDocument: (requestId: string, input: Parameters<typeof savePgdDossierDocumentApi>[1]) => Promise<PgdDossierDocument>;
+  assignOwner: (requestId: string, ownerUsername: string) => Promise<PgdInspectionRequest>;
+  attachGeneratedDocument: (requestId: string, input: { documentId: string; requirementCode: string; title?: string }) => Promise<PgdDossierDocument>;
   splitSample: (input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string }) => Promise<PgdSample[]>;
   destroySample: (sampleId: string, note: string) => Promise<PgdSample>;
   saveLabRequest: (labRequest: PgdLabRequest) => Promise<PgdLabRequest>;
@@ -188,6 +192,16 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
   },
   saveDossierDocument: async (requestId, input) => {
     const next = await savePgdDossierDocumentApi(requestId, input);
+    set((state) => ({ dossierDocuments: replaceOne(state.dossierDocuments, next) }));
+    return next;
+  },
+  assignOwner: async (requestId, ownerUsername) => {
+    const next = await assignPgdDossierOwner(requestId, ownerUsername);
+    mergeRequest(set, next);
+    return next;
+  },
+  attachGeneratedDocument: async (requestId, input) => {
+    const next = await attachPgdGeneratedDocument(requestId, input);
     set((state) => ({ dossierDocuments: replaceOne(state.dossierDocuments, next) }));
     return next;
   },

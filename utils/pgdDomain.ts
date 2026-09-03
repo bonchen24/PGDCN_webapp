@@ -317,6 +317,23 @@ export interface PgdGeneratedDocument {
   lockedAt?: string;
 }
 
+export type PgdDossierChecklistStatus = 'MISSING' | 'PRESENT' | 'WAIVED';
+
+export interface PgdDossierChecklistItem {
+  domain: typeof PGD_DOMAIN;
+  requirementCode: string;
+  group: string;
+  title: string;
+  required: boolean;
+  status: PgdDossierChecklistStatus;
+  currentDocumentId?: string;
+  currentDocumentVersion?: number;
+  waiverReason?: string;
+  waivedByUsername?: string;
+  waivedAt?: string;
+  updatedAt: string;
+}
+
 export interface PgdInspectionRequestInput {
   id: string;
   requestCode: string;
@@ -345,6 +362,10 @@ export interface PgdInspectionRequestInput {
   registryMetadata?: PgdRequestRegistryMetadata;
   targetDate?: string;
   note?: string;
+  /** Người phụ trách xuyên suốt hồ sơ; server luôn chuẩn hóa theo actor khi tạo PYC. */
+  ownerUsername?: string;
+  ownerAssignedAt?: string;
+  dossierChecklist?: PgdDossierChecklistItem[];
   status?: PgdInspectionStatus;
 }
 
@@ -518,6 +539,8 @@ export interface PgdApprovalStep {
   actedByUsername?: string;
   actedAt?: string;
   comment?: string;
+  packageManifestHash?: string;
+  packageManifestSnapshot?: Record<string, unknown>;
 }
 
 export type PgdApprovalRole = PgdApprovalStep['role'];
@@ -775,6 +798,23 @@ export function createPgdInspectionRequest(input: PgdInspectionRequestInput, now
     sampleIds: [],
     labRequestIds: [],
     createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Reassigns the single operational owner of a new PGD dossier.
+ * This helper deliberately changes only the owner snapshot and timestamp;
+ * authorization and activity-log writing stay at the server boundary.
+ */
+export function assignPgdDossierOwner(request: PgdInspectionRequest, ownerUsername: string, now = new Date().toISOString()): PgdInspectionRequest {
+  const normalizedOwner = String(ownerUsername || '').trim();
+  if (!normalizedOwner) throw new Error('Hồ sơ PGD cần username người phụ trách.');
+  return {
+    ...clone(request),
+    domain: PGD_DOMAIN,
+    ownerUsername: normalizedOwner,
+    ownerAssignedAt: now,
     updatedAt: now,
   };
 }

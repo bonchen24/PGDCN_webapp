@@ -10,6 +10,7 @@ import { buildPgdSampleRegister, getPgdDossierRequirementStationKey } from '../u
 import type { PgdDossierDocument, PgdDossierRequirement, PgdDossierRequirementGroup } from '../utils/pgdDossier';
 import { getPgdDossierDocumentDownloadUrl } from '../utils/pgdApi';
 import { getPgdOperationalStepAccess } from '../utils/pgdWorkflow';
+import PgdDossierOperationsPanel from './PgdDossierOperationsPanel';
 
 const REQUIREMENT_GROUP_LABELS: Record<PgdDossierRequirementGroup, string> = {
   REQUEST: 'Tiếp nhận yêu cầu',
@@ -225,6 +226,7 @@ export default ({
 
   return (
     <section className="space-y-3">
+      <PgdDossierOperationsPanel request={request} requirements={requirements} dossierDocuments={dossierDocuments} canMutate={canMutate} editable={editable} />
       <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>

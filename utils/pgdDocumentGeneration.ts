@@ -36,7 +36,7 @@ import { inspectPgdTemplateSource, resolvePgdTemplateSourcePath } from './pgdTem
 
 export interface PgdDocumentContext {
   domain: 'pgd';
-  request: Pick<PgdInspectionRequest, 'id' | 'requestCode' | 'productGroup' | 'productName' | 'lotCode' | 'inspectionScope' | 'inspectionLocation' | 'standards' | 'updatedAt' | 'transportName' | 'registryMetadata'>;
+  request: Pick<PgdInspectionRequest, 'id' | 'requestCode' | 'productGroup' | 'productName' | 'lotCode' | 'inspectionScope' | 'inspectionLocation' | 'standards' | 'updatedAt' | 'transportName' | 'registryMetadata' | 'ownerUsername'>;
   sourceSnapshots: {
     assignmentId?: string;
     inspectionPlanId?: string;
@@ -254,6 +254,7 @@ function requestBoundValues(input: PgdDocumentContextInput): Record<string, unkn
     bound.signedAt = input.certificate.signedAt;
   }
   bound.registrationNumber = input.request.registryMetadata?.registrationNumber || input.request.requestCode;
+  bound.ownerUsername = input.request.ownerUsername || '';
   bound.receivedAt = input.request.registryMetadata?.receivedAt || input.now;
   bound.technicalDossierNote = input.request.registryMetadata?.technicalDossierNote || '';
   bound.deficiencyNote = input.request.registryMetadata?.deficiencyNote || '';
@@ -295,6 +296,7 @@ export function buildPgdDocumentContext(input: PgdDocumentContextInput): PgdDocu
       inspectionLocation: input.request.inspectionLocation,
       standards: [...input.request.standards],
       updatedAt: input.request.updatedAt,
+      ...(input.request.ownerUsername ? { ownerUsername: input.request.ownerUsername } : {}),
     },
     sourceSnapshots: {
       ...(input.assignment?.id ? { assignmentId: input.assignment.id } : {}),
