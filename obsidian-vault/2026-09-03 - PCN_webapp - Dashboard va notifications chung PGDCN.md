@@ -31,6 +31,13 @@ Description: PGDCN dashboard density and shared PCN/PGD notifications
 - Client API: `utils/pgdcnNotificationApi.ts`
 - Shared UI: `components/PgdcnNotificationDropdown.tsx`, `components/PgdcnAppShell.tsx`, `components/PgdcnDashboardView.tsx`
 
+## Production Docker Desktop
+
+- Lệnh triển khai: `docker compose --env-file .env -f docker-compose.yml up -d --build webapp`.
+- Image: `pcn_webapp-webapp:latest`, digest `sha256:51dad484894f48efbf417ee99b619135c3901fd36d6eb1a8303bd1731712f1b7`.
+- Container: `pcn_webapp-webapp-1`, trạng thái `Up`, publish `0.0.0.0:2357->2357/tcp`.
+- Smoke test: `/api/health`, `/pgdcn/`, `/pgdcn/pcn/`, `/pgdcn/pgd/` trả HTTP 200 sau redirect; PostgreSQL connected và schema initialized.
+
 ## Kiểm chứng
 
 - `npm test`: **657/657 pass**.

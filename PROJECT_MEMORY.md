@@ -15,6 +15,8 @@ Description: Persistent project memory and verified deployment observations for 
 - API dùng chung: `GET /api/pgdcn/notifications`, đánh dấu một notification đã đọc, đọc tất cả và xóa feed; server lọc theo `departmentScopes`, audience và target username; viewer chỉ đọc.
 - Mở chuông hoặc card sẽ refresh feed; chọn notification sẽ đánh dấu đã đọc từ Dashboard (nếu chưa đọc) và điều hướng về đúng bề mặt PCN/PGD.
 - Đã thêm spec/plan và regression tests cho projection, API, event emission, UI dropdown, shell refresh và Dashboard card. Verification chốt: `npm test` **657/657 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass.
+- Docker Desktop production đã build/recreate thành công bằng `docker compose --env-file .env -f docker-compose.yml up -d --build webapp`; image `pcn_webapp-webapp:latest` digest `sha256:51dad484894f48efbf417ee99b619135c3901fd36d6eb1a8303bd1731712f1b7`, container `pcn_webapp-webapp-1` đang `Up` trên cổng `2357`.
+- Smoke test production: `/api/health`, `/pgdcn/`, `/pgdcn/pcn/` và `/pgdcn/pgd/` đều trả HTTP 200 sau redirect; startup log xác nhận PostgreSQL connected và schema initialized.
 - Không thay đổi `.env`, không ghi secret/credential, không đưa attachment, file tạm hoặc bundle `dist` sinh tự động vào commit.
 
 ## Chốt hiện trạng 2026-09-03 — Cài đặt DOCX PCN/PGD và bộ template thật
