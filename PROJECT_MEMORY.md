@@ -15,7 +15,7 @@ Description: Persistent project memory and verified deployment observations for 
 - UI `components/PgdcnDashboardView.tsx` giữ test id KPI/notifications, tách accent PCN emerald và PGD blue, hỗ trợ responsive 2/4/6 cột, `ddt-compact`, `pcn-page-surface`, `mobile-safe-bottom`, `mobile-touch-target`, `min-w-0`; shell điều hướng CTA về PCN `proposals` và PGD `intake`.
 - Regression tests: focused dashboard **5/5 pass**; full suite **657/657 pass**; `npm run lint` pass; `npm run build` pass; `git diff --check` pass.
 - Các commit feature trên `master`: `5f9d90d` projection, `32a3c47` cockpit UI, `a3f4807` shell CTA wiring, `b289ec2` compact density; spec đã lưu tại `docs/superpowers/specs/2026-09-03-pgdcn-shared-dashboard-redesign-design.md`.
-- Docker Desktop production đã build/recreate bằng `docker compose --env-file .env -f docker-compose.pcn.yml up --build -d`. Image `pcn_webapp-webapp:latest` digest `sha256:e13c822dd7890533c971ae6fd00d1841c07950769ba8ef0368535e48a5c31c61`; container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`.
+- Docker Desktop production đã build/recreate bằng `docker compose --env-file .env -f docker-compose.pcn.yml up --build -d`. Image `pcn_webapp-webapp:latest` digest `sha256:8cd04de8b5e31b4f6e605a28ddb0a4147c7bb9c7e6bc42d504ec1e61cb40f0c5`; container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`.
 - Smoke test production: `/api/health`, `/pgdcn/`, `/pgdcn/pcn/`, `/pgdcn/pgd/` đều HTTP 200; log xác nhận PostgreSQL connected, schema initialized và server chạy port `2357`.
 - Automatic backup hiện cảnh báo không chạy vì Supabase Storage chưa được cấu hình; không thay đổi `.env`, không ghi secret/credential/dữ liệu hồ sơ thật vào Memory/Obsidian.
 

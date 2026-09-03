@@ -18,7 +18,7 @@ Description: PGD template/cell module and verified PCN/PGD production deployment
 ### Docker Desktop production — image hiện hành
 
 - Lệnh: `docker compose --env-file .env -f docker-compose.pcn.yml up --build -d`.
-- Image: `pcn_webapp-webapp:latest`, digest `sha256:e13c822dd7890533c971ae6fd00d1841c07950769ba8ef0368535e48a5c31c61`.
+- Image: `pcn_webapp-webapp:latest`, digest `sha256:8cd04de8b5e31b4f6e605a28ddb0a4147c7bb9c7e6bc42d504ec1e61cb40f0c5`.
 - Container: `pcn_webapp-webapp`, trạng thái `Up`, publish `0.0.0.0:2357->2357/tcp`.
 - Smoke: `/api/health`, `/pgdcn/`, `/pgdcn/pcn/`, `/pgdcn/pgd/` đều HTTP 200; log xác nhận PostgreSQL connected/schema initialized/server port 2357.
 - Cảnh báo: automatic backup chưa chạy vì Supabase Storage chưa cấu hình trong env triển khai. Không thay đổi `.env` hoặc ghi secret/credential/dữ liệu hồ sơ thật vào note.
