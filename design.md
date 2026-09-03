@@ -29,6 +29,7 @@ Description: File thiết kế chi tiết kiến trúc, dữ liệu, Frontend UI
    - 4.6. [PcnTemplateSettingsModal & Quản lý Template DOCX PCN](#46-pcntemplatesettingsmodal--quản-lý-template-docx-pcn)
 5. [CẤU TRÚC LAYOUT TỔNG THỂ & BẢNG ĐIỀU HƯỚNG](#5-cấu-trúc-layout-tổng-thể--bảng-điều-hướng)
    - 5.2. [Tỷ lệ hiển thị giao diện toàn cục](#52-tỷ-lệ-hiển-thị-giao-diện-toàn-cục)
+   - 5.2.1.2. [Dashboard PGDCN dùng chung — Operations cockpit](#5212-dashboard-pgdcn-dùng-chung--operations-cockpit)
    - 5.3. [Chuẩn responsive cho mobile](#53-chuẩn-responsive-cho-mobile)
 6. [MÔ HÌNH DỮ LIỆU & SCHEMA (DATA MODELS & TYPES)](#6-mô-hình-dữ-liệu--schema-data-models--types)
 7. [CƠ CHẾ BẢO MẬT, PHÂN QUYỀN & LƯU TRỮ](#7-cơ-chế-bảo-mật-phân-quyền--lưu-trữ)
@@ -820,6 +821,19 @@ Nhật ký đồng bộ và chẩn đoán PostgreSQL không hiển thị thành 
 - Dải KPI chính của trang **Tổng quan** dùng 8 cột ở desktop rộng và 10 cột ở màn hình rất rộng; mỗi card giữ chiều cao, icon, nhãn và số liệu đồng đều để đọc nhanh. Ở mobile, dải KPI chuyển về 2 cột và ở tablet là 4 cột để giữ kích thước chữ và vùng chạm tối thiểu. Dải KPI gồm các projection read-only về Đề nghị, Hồ sơ, PTN/KQTN, hồ sơ cần bổ sung, khắc phục, phê duyệt, phát hành, lưu trữ và quá hạn; không tạo metric hoặc collection mới.
 - Khối **KPI nhân viên** và khối **Lĩnh vực** nằm cùng một hàng ở desktop, ưu tiên chiều rộng lớn hơn cho KPI nhân viên và chiều rộng gọn hơn cho Lĩnh vực; ở mobile hai khối xếp dọc.
 - Việc gộp hàng chỉ thay đổi bố cục trình bày; dữ liệu, bộ lọc, điều hướng, callback và phân quyền của các khối được giữ nguyên.
+
+#### 5.2.1.2. Dashboard PGDCN dùng chung — Operations cockpit
+
+- `Tổng quan phòng` là dashboard điều hành dùng chung cho hai miền PCN — Chứng nhận và PGD — nhưng chỉ là projection đọc nhanh; không tạo collection, schema, workflow state hay business card liên miền.
+- Bố cục chuẩn theo thứ tự: command header → dải 6 KPI → `Hàng đợi hành động` → `Pipeline theo miền` → `Mốc sắp tới` → `Thông báo phòng`. Desktop ưu tiên hàng đợi ở cột rộng và pipeline ở cột gọn; mobile xếp đúng thứ tự hành động này.
+- Command header chỉ có các CTA nghiệp vụ được phép theo scope: `Tạo Đề nghị` cho PCN và `Tiếp nhận PYC` cho PGD. Không đặt `Trợ lý AI` hoặc `Nhật ký hoạt động` trong Header hay vùng action chính của dashboard; hai chức năng vẫn truy cập từ sidebar dùng chung.
+- Dải KPI giữ đúng 6 projection hiện hành: `Hồ sơ PCN`, `Hồ sơ PGD`, `PCN cần xử lý`, `PGD cần xử lý`, `Hồ sơ cần AI hỗ trợ`, `Quá hạn / cần chú ý`; không thêm metric hoặc collection mới. Desktop dùng 6 cột, tablet 4 cột, mobile 2 cột.
+- `Hàng đợi hành động` lấy từ các hồ sơ/request đang cần xử lý hoặc quá hạn, sắp quá hạn trước rồi tới độ ưu tiên bottleneck, sau đó `domain` và `id` để kết quả ổn định. Mỗi dòng có badge miền, mã hồ sơ/PYC, trạng thái tiếng Việt, lý do, hạn nếu có và mở đúng entity gốc.
+- `Pipeline theo miền` luôn tách hai panel PCN/PGD bằng màu emerald/blue. Mỗi panel hiển thị tổng số nguồn, số đang xử lý, bottleneck chính và phân bổ status; tổng segment phải khớp tổng source, kể cả status lạ được đưa vào nhóm `Khác`.
+- `Mốc sắp tới` chỉ là projection từ `targetDate` PCN và `inspectionScheduledAt` PGD, sắp ngày tăng dần, tối đa 5 dòng, loại ngày không hợp lệ; không trở thành lịch/bộ điều phối mới.
+- `Thông báo phòng` tiếp tục dùng cùng collection/feed `notifications` do shell sở hữu, hiển thị tối đa 5 dòng và không sao chép state đọc/xóa sang dashboard.
+- Dashboard phải lọc dữ liệu theo `departmentScopes` trước khi tính KPI, pipeline, queue và milestones; người dùng đơn scope không được thấy số liệu miền còn lại. Mọi CTA điều hướng về workspace chuẩn và không mutation trực tiếp.
+- Tuân thủ `ddt-compact`, `pcn-page-surface`, `mobile-scroll-y`, `mobile-safe-bottom`, `mobile-touch-target`, `min-w-0` và nguyên tắc không dùng màu làm tín hiệu duy nhất.
 
 ---
 

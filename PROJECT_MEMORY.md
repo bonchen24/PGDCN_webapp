@@ -6,6 +6,19 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Chốt hiện trạng 2026-09-03 — Dashboard chung PGDCN Operations cockpit
+
+- Dashboard dùng chung `/pgdcn/` đã được thiết kế lại theo mô hình Operations cockpit cho cả PCN — Chứng nhận và PGD — nhưng vẫn giữ collection, lifecycle, status và workspace riêng của từng miền.
+- Bố cục mới: command header `Điều hành phòng` → 6 KPI hiện hành → `Hàng đợi hành động` ưu tiên quá hạn → `Pipeline theo miền` → `Mốc sắp tới` tối đa 5 dòng → `Thông báo phòng` dùng chung.
+- Header/vùng action chính chỉ còn CTA theo scope: PCN `Tạo Đề nghị`, PGD `Tiếp nhận PYC`; đã bỏ nút `Trợ lý AI` và `Nhật ký hoạt động` khỏi dashboard/header, sidebar vẫn giữ hai route này.
+- Projection `utils/pgdcnDashboard.ts` đã thêm status label tiếng Việt, bottleneck theo ưu tiên miền, pipeline segment có nhóm `Khác`, queue quá hạn/cần xử lý, milestone sort/cap và lọc `departmentScopes` trước toàn bộ phép đếm.
+- UI `components/PgdcnDashboardView.tsx` giữ test id KPI/notifications, tách accent PCN emerald và PGD blue, hỗ trợ responsive 2/4/6 cột, `ddt-compact`, `pcn-page-surface`, `mobile-safe-bottom`, `mobile-touch-target`, `min-w-0`; shell điều hướng CTA về PCN `proposals` và PGD `intake`.
+- Regression tests: focused dashboard **5/5 pass**; full suite **657/657 pass**; `npm run lint` pass; `npm run build` pass; `git diff --check` pass.
+- Các commit feature trên `master`: `5f9d90d` projection, `32a3c47` cockpit UI, `a3f4807` shell CTA wiring, `b289ec2` compact density; spec đã lưu tại `docs/superpowers/specs/2026-09-03-pgdcn-shared-dashboard-redesign-design.md`.
+- Docker Desktop production đã build/recreate bằng `docker compose --env-file .env -f docker-compose.pcn.yml up --build -d`. Image `pcn_webapp-webapp:latest` digest `sha256:e13c822dd7890533c971ae6fd00d1841c07950769ba8ef0368535e48a5c31c61`; container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`.
+- Smoke test production: `/api/health`, `/pgdcn/`, `/pgdcn/pcn/`, `/pgdcn/pgd/` đều HTTP 200; log xác nhận PostgreSQL connected, schema initialized và server chạy port `2357`.
+- Automatic backup hiện cảnh báo không chạy vì Supabase Storage chưa được cấu hình; không thay đổi `.env`, không ghi secret/credential/dữ liệu hồ sơ thật vào Memory/Obsidian.
+
 ## Chốt hiện trạng 2026-09-03 — Dashboard gọn và notifications chung PGDCN
 
 - Dashboard PGDCN đã chuyển sang bố cục gọn, responsive nhiều cột hơn và có thêm các card KPI vận hành; card **KPI người dùng** được giữ như một điểm nhìn chính.

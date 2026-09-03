@@ -6,6 +6,23 @@ Description: PGD template/cell module and verified PCN/PGD production deployment
 
 # PCN_webapp — PGD template, cell và Docker production — 2026-09-02
 
+## Cập nhật 2026-09-03 — Dashboard chung PGDCN Operations cockpit
+
+- Dashboard `/pgdcn/` đã chuyển sang cockpit điều hành dùng chung cho PCN và PGD, giữ nguyên ranh giới dữ liệu/workspace riêng và lọc theo `departmentScopes` trước khi tính số liệu.
+- Thứ tự giao diện: `Điều hành phòng`, 6 KPI, `Hàng đợi hành động` ưu tiên quá hạn, pipeline PCN/PGD tách biệt, mốc sắp tới tối đa 5 dòng và notification feed dùng chung.
+- Header không còn `Trợ lý AI` hoặc `Nhật ký hoạt động`; CTA hiển thị theo quyền: PCN `Tạo Đề nghị`, PGD `Tiếp nhận PYC`. Hai route AI/activity vẫn ở sidebar dùng chung.
+- Projection/UI đã thêm status tiếng Việt, bottleneck, pipeline segment/nhóm `Khác`, queue, milestone và điều hướng CTA về PCN `proposals` / PGD `intake`. Accent PCN emerald, PGD blue; responsive/compact contracts được giữ.
+- Verification: focused dashboard **5/5**, full suite **657/657**, lint, production build và `git diff --check` đều đạt.
+- Commit trên `master`: `5f9d90d`, `32a3c47`, `a3f4807`, `b289ec2`; đặc tả tại `docs/superpowers/specs/2026-09-03-pgdcn-shared-dashboard-redesign-design.md`.
+
+### Docker Desktop production — image hiện hành
+
+- Lệnh: `docker compose --env-file .env -f docker-compose.pcn.yml up --build -d`.
+- Image: `pcn_webapp-webapp:latest`, digest `sha256:e13c822dd7890533c971ae6fd00d1841c07950769ba8ef0368535e48a5c31c61`.
+- Container: `pcn_webapp-webapp`, trạng thái `Up`, publish `0.0.0.0:2357->2357/tcp`.
+- Smoke: `/api/health`, `/pgdcn/`, `/pgdcn/pcn/`, `/pgdcn/pgd/` đều HTTP 200; log xác nhận PostgreSQL connected/schema initialized/server port 2357.
+- Cảnh báo: automatic backup chưa chạy vì Supabase Storage chưa cấu hình trong env triển khai. Không thay đổi `.env` hoặc ghi secret/credential/dữ liệu hồ sơ thật vào note.
+
 ## Cập nhật điều hướng và Cài đặt hệ thống — 2026-09-02
 
 - Shell `/pgdcn/` hiện tổ chức nhánh dùng chung gồm Tổng quan phòng, Khách hàng, Trợ lý AI, Nhật ký hoạt động và Cài đặt hệ thống; menu nghiệp vụ PCN/PGD không lặp Dashboard, Khách hàng hoặc Nhân sự.
