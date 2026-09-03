@@ -13,7 +13,7 @@ import {
 } from '../utils/pgdDocumentTemplates.ts';
 
 test('PGD catalog contains the operational document set derived from department forms', () => {
-  assert.equal(DEFAULT_PGD_DOCUMENT_TEMPLATES.length, 8);
+  assert.equal(DEFAULT_PGD_DOCUMENT_TEMPLATES.length, 9);
   assert.deepEqual(DEFAULT_PGD_DOCUMENT_TEMPLATES.map((template) => template.kind), [
     'INTAKE_REQUEST',
     'ASSIGNMENT',
@@ -22,6 +22,7 @@ test('PGD catalog contains the operational document set derived from department 
     'SAMPLE_TAKING',
     'LAB_REQUEST',
     'INSPECTION_REPORT',
+    'DECISION',
     'INSPECTION_CERTIFICATE',
   ]);
   for (const template of DEFAULT_PGD_DOCUMENT_TEMPLATES) {
@@ -30,6 +31,38 @@ test('PGD catalog contains the operational document set derived from department 
     assert.doesNotMatch(JSON.stringify(template), /QC20|Desktop|TVCI_NAS|\\\\/i);
   }
   assert.equal(getPgdDocumentTemplate('INSPECTION_CERTIFICATE', 'STEEL_METAL')?.methodCodes?.includes('TT58'), true);
+  assert.equal(getPgdDocumentTemplate('INSPECTION_CERTIFICATE', 'STEEL_METAL')?.methodCodes?.includes('QT-GĐ-14'), true);
+  assert.equal(getPgdDocumentTemplate('DECISION', 'STEEL_METAL')?.methodCodes?.includes('QT-GĐ-14'), true);
+});
+
+test('PGD decision output has an independent approval document contract', () => {
+  const decision = getPgdDocumentTemplate('DECISION', 'STEEL_METAL')!;
+  assert.equal(decision.code, 'PGD-BM-09');
+  assert.equal(decision.cells.find((cell) => cell.key === 'decisionNumber')?.required, true);
+  assert.equal(decision.cells.find((cell) => cell.key === 'decisionText')?.required, true);
+  assert.equal(decision.cells.some((cell) => cell.key === 'paymentStatus' || cell.key === 'quotation'), false);
+});
+
+test('QT-GĐ-14 exposes its lot sampling inputs in intake and sample-taking cells', () => {
+  const intake = getPgdDocumentTemplate('INTAKE_REQUEST', 'STEEL_METAL')!;
+  const sampleTaking = getPgdDocumentTemplate('SAMPLE_TAKING', 'STEEL_METAL')!;
+  for (const template of [intake, sampleTaking]) {
+    assert.equal(template.cells.find((cell) => cell.key === 'steelLotSize')?.binding, 'request.productDetails.steelLotSize');
+    assert.equal(template.cells.find((cell) => cell.key === 'steelSameGradeMultiProduct')?.binding, 'request.productDetails.steelSameGradeMultiProduct');
+    assert.equal(template.cells.find((cell) => cell.key === 'steelManualSamplingPlanNote')?.binding, 'request.productDetails.steelManualSamplingPlanNote');
+    assert.equal(template.placeholderKeys.includes('steelLotSize'), true);
+    assert.equal(template.placeholderKeys.includes('steelSameGradeMultiProduct'), true);
+    assert.equal(template.placeholderKeys.includes('steelManualSamplingPlanNote'), true);
+  }
+});
+
+test('TT58 keeps the source-derived conformity assessment method as a dedicated cell', () => {
+  for (const kind of ['INTAKE_REQUEST', 'INSPECTION_PLAN', 'SAMPLE_TAKING', 'INSPECTION_REPORT', 'DECISION', 'INSPECTION_CERTIFICATE'] as const) {
+    const template = getPgdDocumentTemplate(kind, 'STEEL_METAL')!;
+    const assessmentMethod = template.cells.find((cell) => cell.key === 'assessmentMethod');
+    assert.equal(assessmentMethod?.binding, 'request.assessmentMethod');
+    assert.equal(template.placeholderKeys.includes('assessmentMethod'), true);
+  }
 });
 
 test('PGD cell definitions are normalized and duplicate or unsafe cells are rejected', () => {

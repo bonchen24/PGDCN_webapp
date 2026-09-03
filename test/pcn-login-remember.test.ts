@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 import {
+  isPasswordCredentialStorageAvailable,
   loadPasswordCredential,
   storePasswordCredential,
 } from '../utils/passwordCredential.ts';
@@ -48,6 +49,36 @@ test('stores a password only through the browser credential manager', async () =
   assert.deepEqual(
     { id: (stored as { id: string }).id, password: (stored as { password: string }).password },
     { id: 'operator', password: 'secret' },
+  );
+});
+
+test('reports whether the browser can store a password credential', () => {
+  class FakePasswordCredential {
+    constructor(input: { id: string; password: string }) {
+      void input;
+    }
+  }
+
+  assert.equal(
+    isPasswordCredentialStorageAvailable(
+      { store: async () => undefined },
+      FakePasswordCredential,
+    ),
+    true,
+  );
+  assert.equal(
+    isPasswordCredentialStorageAvailable(
+      { get: async () => null },
+      FakePasswordCredential,
+    ),
+    false,
+  );
+  assert.equal(
+    isPasswordCredentialStorageAvailable(
+      { store: async () => undefined },
+      null,
+    ),
+    false,
   );
 });
 

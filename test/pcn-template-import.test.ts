@@ -141,7 +141,9 @@ test('template definition merge replaces the current file when a new upload has 
   assert.equal(merged.sourceFingerprint.byteSize, 22);
   assert.deepEqual(merged.placeholderKeys, ['loai_sp', 'ten_cong_ty', 'dia_chi_ct']);
   assert.equal(merged.importedByUsername, 'admin-moi');
-  assert.equal(merged.status, 'APPROVED');
+  assert.equal(merged.status, 'NEEDS_ANNOTATION');
+  assert.equal(merged.approvedAt, undefined);
+  assert.equal(merged.approvedByUsername, undefined);
 });
 
 test('template import CLI is dry-run first, explicit apply/approve, and has no Desktop watcher', () => {

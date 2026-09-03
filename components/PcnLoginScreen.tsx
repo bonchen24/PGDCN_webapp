@@ -5,6 +5,7 @@ import { Eye, EyeOff, Loader2, Lock, ShieldCheck, User } from 'lucide-react';
 
 import { establishPcnSession } from '../utils/pcnAuthApi';
 import {
+  isPasswordCredentialStorageAvailable,
   loadPasswordCredential,
   storePasswordCredential,
   type PasswordCredentialConstructor,
@@ -27,12 +28,16 @@ export default function PcnLoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [canRememberPassword, setCanRememberPassword] = useState<boolean | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void loadPasswordCredential(getBrowserPasswordCredentialManager()).then((credential) => {
+    const manager = getBrowserPasswordCredentialManager();
+    const CredentialConstructor = getBrowserPasswordCredentialConstructor();
+    setCanRememberPassword(isPasswordCredentialStorageAvailable(manager, CredentialConstructor));
+    void loadPasswordCredential(manager).then((credential) => {
       if (cancelled || !credential) return;
       setUsername(credential.username);
       setPassword(credential.password);
@@ -55,7 +60,6 @@ export default function PcnLoginScreen() {
     setError('');
     try {
       const session = await establishPcnSession(normalizedUsername, password);
-      usePcnSessionStore.getState().setCurrentUser(session.user);
       if (rememberMe) {
         await storePasswordCredential(
           getBrowserPasswordCredentialManager(),
@@ -64,6 +68,7 @@ export default function PcnLoginScreen() {
           password,
         );
       }
+      usePcnSessionStore.getState().setCurrentUser(session.user);
     } catch (sessionError: any) {
       console.error('PCN server session initialization failed:', sessionError);
       setError(sessionError?.message || 'Tài khoản hoặc mật khẩu không chính xác.');
@@ -87,7 +92,7 @@ export default function PcnLoginScreen() {
           <span className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300">IEMM • TVCI</span>
         </div>
         <h1 className="mt-6 text-center text-2xl font-black uppercase tracking-tight text-white">Hệ thống chứng nhận</h1>
-        <p className="mt-2 text-center text-xs font-medium text-slate-400">Phòng Giám định - Chứng nhận • Miền PCN (Phòng Chứng nhận)</p>
+        <p className="mt-2 text-center text-xs font-medium text-slate-400">Giám định - Chứng nhận • Miền PCN (Phòng Chứng nhận)</p>
 
         <div className="mt-8 rounded-3xl border border-slate-700/50 bg-slate-800/80 px-6 py-8 shadow-2xl backdrop-blur-md">
           <form className="space-y-5" onSubmit={handleLogin}>
@@ -112,18 +117,23 @@ export default function PcnLoginScreen() {
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <label htmlFor="pcn-password" className="block text-xs font-bold uppercase tracking-wider text-slate-300">Mật khẩu</label>
-                <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-slate-400" title="Lưu trong trình quản lý mật khẩu của trình duyệt">
+                <label
+                  className={`flex items-center gap-1.5 text-[11px] font-medium ${canRememberPassword === false ? 'cursor-not-allowed text-slate-600' : 'cursor-pointer text-slate-400'}`}
+                  title={canRememberPassword === false ? 'Trình duyệt này không hỗ trợ lưu mật khẩu tự động' : 'Lưu trong trình quản lý mật khẩu của trình duyệt'}
+                >
                   <input
                     id="pcn-remember-me"
                     name="remember-me"
                     type="checkbox"
                     checked={rememberMe}
+                    disabled={canRememberPassword !== true}
                     onChange={(event) => setRememberMe(event.target.checked)}
                     className="h-3.5 w-3.5 cursor-pointer rounded border-slate-700 bg-slate-900/60 text-emerald-500 focus:ring-emerald-500/50"
                   />
                   Lưu mật khẩu
                 </label>
               </div>
+              {canRememberPassword === false && <p className="mt-1 text-right text-[10px] text-slate-600">Trình duyệt chưa hỗ trợ lưu tự động</p>}
               <div className="relative rounded-2xl shadow-sm">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500"><Lock size={18} /></div>
                 <input

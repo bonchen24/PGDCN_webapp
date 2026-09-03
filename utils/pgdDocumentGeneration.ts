@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
@@ -26,6 +25,7 @@ import {
   type PgdDocumentTemplateSnapshot,
 } from './pgdDocumentTemplates.ts';
 import { extractPcnTemplatePlaceholderKeys } from './pcnTemplateDiscovery.ts';
+import { inspectPgdTemplateSource, resolvePgdTemplateSourcePath } from './pgdTemplatePack.ts';
 
 export interface PgdDocumentContext {
   domain: 'pgd';
@@ -179,6 +179,17 @@ function requestBoundValues(input: PgdDocumentContextInput): Record<string, unkn
     bound.conclusion = input.certificate.conclusion;
     bound.signedAt = input.certificate.signedAt;
   }
+  bound.registrationNumber = input.request.registryMetadata?.registrationNumber || input.request.requestCode;
+  bound.receivedAt = input.request.registryMetadata?.receivedAt || input.now;
+  bound.technicalDossierNote = input.request.registryMetadata?.technicalDossierNote || '';
+  bound.deficiencyNote = input.request.registryMetadata?.deficiencyNote || '';
+  bound.returnedPackageNote = input.request.registryMetadata?.returnedPackageNote || '';
+  bound.courierName = input.request.registryMetadata?.courierName || '';
+  bound.registryDocuments = (input.request.registryMetadata?.documents || []).map((document) => ({
+    kind: document.kind,
+    number: document.number || '',
+    date: document.date || '',
+  }));
   bound.certificateScope = request.inspectionScope;
   bound.inspectionDate = request.inspectionScheduledAt;
   bound.samplingLocation = request.inspectionLocation;
@@ -233,8 +244,10 @@ function safeFilePart(value: string): string {
 
 function buildDocx(context: PgdDocumentContext): Buffer {
   const fileName = String(context.templateSnapshot.fileName || `${context.templateSnapshot.code}.docx`).trim();
-  if (!fileName || /[\\/]/.test(fileName)) throw new Error('Template DOCX PGD không có tên file hợp lệ.');
-  const templatePath = path.join(process.cwd(), 'templates', 'pgd', fileName);
+  const templatePath = resolvePgdTemplateSourcePath(context.templateSnapshot);
+  if (!fileName || !templatePath) throw new Error('Template DOCX PGD không có tên file hợp lệ.');
+  const inspection = inspectPgdTemplateSource(context.templateSnapshot);
+  if (inspection.status !== 'READY') throw new Error(inspection.message || `File template DOCX PGD chưa sẵn sàng: ${fileName}`);
   if (!existsSync(templatePath)) throw new Error(`Không tìm thấy file template DOCX PGD: ${fileName}`);
 
   const sourceBytes = readFileSync(templatePath);

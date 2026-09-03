@@ -6,6 +6,65 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-03 — Governance QC20 và review template PCN
+
+- Đã hoàn thiện boundary quản trị QC20 trong PCN: `PcnSettings.qc20ScopeConfiguration` tách khỏi snapshot `CertificationProposal.qc20Scope`; mặc định vẫn `NEEDS_PCN_CONFIRMATION`, không tự suy diễn danh mục pháp lý/kỹ thuật từ hồ sơ nguồn.
+- Admin PCN xác nhận qua `POST /api/pcn/settings/qc20-scope/confirm` với `scopeVersion`, nguồn đối chiếu, dạng sản phẩm, mác thép, mã HS, tiêu chuẩn áp dụng, profile thành phần hóa học và ghi chú. Server lưu actor/thời điểm/audit, idempotent khi gửi lại cùng cấu hình và không ghi đè snapshot hồ sơ cũ. `GET /api/pcn/settings/qc20-readiness` là projection read-only.
+- Preflight phát hành QC20 nay bắt buộc đồng thời phạm vi/profile đã xác nhận và hai template `CERTIFICATE`/`DECISION` có asset private đúng fingerprint, MIME và provenance. UI Cài đặt PCN hiển thị preflight và các thao tác `Phê duyệt`, `Yêu cầu chỉnh sửa`, `Ngừng dùng`.
+- Upload asset mới cho template đã duyệt tự chuyển về `NEEDS_ANNOTATION`, xóa actor/thời điểm duyệt cũ và audit đủ thay đổi; asset mới phải review lại trước khi dùng. Không sao chép/sửa/xóa/import file từ thư mục PGD/UNC.
+- Verification lượt này: `npm test` (active PCN) **678/678**, focused governance/template **18/18**, `npm run lint`, `npm run build`, `git diff --check` pass. Full maintenance suite **1140/1145**; 5 lỗi còn lại thuộc contract historical attachment/source discovery nằm ngoài runtime active vì design cấm history/import.
+- Docker Desktop production đã rebuild/recreate: image `pcn_webapp-webapp:latest` digest `sha256:e1418ca3f15658a402a82f02252f003e114c9663ed275b6c410f3948cb9c6721`; container `pcn_webapp-webapp` `Up`, publish `0.0.0.0:2357->2357/tcp`; `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200.
+
+## Cập nhật 2026-09-03 — Lưu Phương thức ĐGSPH theo biểu mẫu TT58
+
+- Rà soát lại mẫu TT58 trong folder PGD cho thấy Chứng thư có mục **Phương thức ĐGSPH: Phương thức 7**. Đã bổ sung trường snapshot `assessmentMethod` riêng cho `PgdInspectionRequest`; mã nguồn được chuẩn hóa là `METHOD_7`, không dùng mã quy trình `TT58` để thay thế.
+- Intake PGD tự chọn mặc định `Phương thức 7` khi dùng `TT58` và bắt buộc xác nhận tại giao diện; domain/server chỉ nhận mã trong catalog. Cell `assessmentMethod` được bind vào phiếu tiếp nhận, kế hoạch, biên bản lấy mẫu, báo cáo, quyết định và chứng thư; module sinh tài liệu hiển thị control lựa chọn và prefill từ snapshot hồ sơ.
+- Bộ DOCX/manifest PGD đã tái sinh với placeholder mới; không bổ sung báo giá hoặc thanh toán. Không import dữ liệu lịch sử, không đọc Desktop/UNC lúc runtime; file nguồn PGD không bị sửa/xóa/copy.
+- Kiểm chứng: focused **31/31**, full `npm test` **672/672**, `npm run lint`, `npm run build`, `git diff --check` pass.
+- Docker Desktop production đã rebuild/recreate: image `pcn_webapp-webapp:latest` digest `sha256:a543c4111dcec3dc577e2e2624a13a159fce4a479e72dacb4ca8591f2c258bc3`; container `pcn_webapp-webapp-1` đang `Up` trên port `2357`; log xác nhận PostgreSQL connected/schema initialized/server running; `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200.
+
+## Cập nhật 2026-09-03 — Hoàn thiện Quyết định PGD và deploy production
+
+- Bổ sung template/cell `DECISION` cho PGD, mã `PGD-BM-09`, gồm số quyết định, ngày, căn cứ, nội dung phê duyệt/phát hành và người ký; template được phép dùng cho các mã phương thức PGD, bao gồm `QT-GĐ-14`.
+- Bộ template PGD hiện có **9** loại; panel sinh tài liệu hiển thị “Quyết định PGD”. Các cell QT-GĐ-14 (`steelLotSize`, `steelSameGradeMultiProduct`, `steelManualSamplingPlanNote`) được prefill từ `request.productDetails` khi sinh tài liệu; các giá trị này tiếp tục được snapshot vào hồ sơ phát hành.
+- Không bổ sung báo giá hoặc thanh toán vào PGD. Không import dữ liệu lịch sử, không đọc Desktop/UNC lúc runtime; file nguồn PGD không bị sửa/xóa/copy.
+- Kiểm chứng: `npm run build` pass sau thay đổi; full `npm test` **672/672**, `npm run lint`, `git diff --check` pass. Không có script `typecheck` riêng; typecheck đã chạy qua lint/build.
+- Docker Desktop production đã rebuild/recreate: image `pcn_webapp-webapp:latest` digest `sha256:378eaa36076eb84bbd96b50aecce3ce5d925078d539e488f38cc97e8304196c9`; container `pcn_webapp-webapp-1` đang `Up` trên port `2357`; log xác nhận PostgreSQL connected/schema initialized/server running; `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200.
+
+## Cập nhật 2026-09-03 — QT-GĐ-14 PGD: bảng lấy mẫu và template/cell
+
+- Đã đọc read-only quy trình `QT-GĐ-14. Qtrinh rieng gd thep theo ttlt58 - icontrol.docx` trong folder PGD. Nguồn xác nhận phạm vi giám định chất lượng lô thép sản xuất trong nước/nhập khẩu theo TTLT 58/2015 và bảng cỡ lô `1–25`, `26–50`, `51–150`, `151–500`, `501–1200`, `1201–3200`.
+- Catalog PGD đã có phương thức `QT-GĐ-14`; bảng nghiệp vụ trả về số mẫu ngoại quan/nhãn `2/3/3/5/5/8`, cơ lý/khối lượng `2/2/3/3/3/3`, hóa học/lớp phủ `1`, AQL `4` và `1.5`; cùng mác nhiều loại sản phẩm dùng cột B. Ngoài dải 1–3200 không tự ngoại suy và yêu cầu ghi căn cứ/kế hoạch thủ công.
+- PYC, kế hoạch giám định và biên bản lấy mẫu có các cell `steelLotSize`, `steelSameGradeMultiProduct`, `steelManualSamplingPlanNote`; các giá trị được bind từ `request.productDetails`, snapshot cùng tài liệu và xuất hiện trong DOCX/manifest. `QT-GĐ-14` vẫn là mã nghiệp vụ PGD, không phải `QC20`; QC20 chỉ ở PCN.
+- Không bổ sung báo giá hoặc thanh toán vào PGD. Không import dữ liệu lịch sử, không đọc Desktop/UNC lúc runtime; file nguồn PGD không bị sửa/xóa/copy.
+- Kiểm chứng sau cập nhật: focused PGD **25/25**, full `npm test` **672/672**, `npm run lint`, `npm run build`, `git diff --check` đều pass. Repo không có script `typecheck` riêng; typecheck đã chạy qua lint/build.
+- Docker production đã rebuild/recreate: image `pcn_webapp-webapp:latest` digest `sha256:4b5adb7cb5925ad72c3c7477d95f1659e4eb3bea96e664fe5a864f0cff9ee840`; container `pcn_webapp-webapp-1` tạo mới và `Up` trên port `2357`; log xác nhận PostgreSQL connected/schema initialized/server running; `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200.
+
+## Cập nhật 2026-09-03 — PGD không quản lý báo giá và thanh toán
+
+- Phạm vi PGD mới chỉ lưu và xử lý thông tin nghiệp vụ từ sổ phòng: số đăng ký/ngày tiếp nhận, hợp đồng, hóa đơn, packing list, vận đơn, tờ khai hải quan, C/O, hồ sơ kỹ thuật, thiếu hồ sơ, hoàn trả và chuyển phát.
+- Đã loại bỏ báo giá và thanh toán khỏi catalog chứng từ, intake, bảng Sổ đăng ký, card chi tiết, domain PGD, template DOCX và manifest; không ảnh hưởng các trường PCN cùng tên ở miền PCN.
+- `PGD-BM-01` snapshot các cell đăng ký còn lại; template pack được tái sinh sau khi thu hẹp phạm vi.
+- Kiểm chứng cuối: focused PGD **25/25**, full `npm test` **671/671**, `npm run lint`, `npm run build` và `git diff --check` đều pass.
+- Docker production đã rebuild/recreate: image `pcn_webapp-webapp:latest` digest `sha256:7245982be5b01b7987c8592fea84378dc234bc7803d5aaeaa8587f14a0292c0e`; container `pcn_webapp-webapp-1` `Up` trên port `2357`; health và ba route PGDCN đều HTTP 200, PostgreSQL connected/schema initialized.
+
+## Cập nhật 2026-09-03 — Sổ đăng ký PGD theo nguồn phòng
+
+- Bổ sung `registryMetadata` cho PYC PGD mới: số đăng ký, ngày tiếp nhận và tham chiếu hợp đồng, hóa đơn, packing list, vận đơn, tờ khai, C/O, hồ sơ kỹ thuật hoặc chứng từ khác. Metadata được validate/normalize ở domain và snapshot cùng hồ sơ; không phải import sổ lịch sử.
+- Màn hình `Hồ sơ đang xử lý` nay là bảng `Sổ đăng ký PGD` có tìm kiếm theo chứng từ, lọc nhóm sản phẩm/trạng thái và mở đúng card hồ sơ; không cho sửa trực tiếp trên projection.
+- Template `PGD-BM-01` và renderer DOCX đã bind thêm `registrationNumber`, `receivedAt`, `registryDocuments`; pack `templates/pgd` được tái sinh và manifest/placeholder đã khớp.
+- Verification sau mở rộng: test liên quan **19/19**, full `npm test` **671/671**, `npm run lint`, `npm run build`, `git diff --check` đều pass.
+- Docker production đã rebuild/recreate bằng `docker compose --env-file .env -f docker-compose.yml up -d --build webapp`. Image hiện hành digest `sha256:530fd168072ec89174a4e30bb61b0ceb0aea4b86a1a008c1a75580508499c35d`; `pcn_webapp-webapp-1` đang `Up`, publish `0.0.0.0:2357->2357/tcp`. Smoke `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200; log xác nhận PostgreSQL connected/schema initialized.
+
+## Cập nhật 2026-09-03 — Rà soát sâu nguồn PGD và hoàn thiện hồ sơ chứng từ/mẫu
+
+- Rà soát read-only bổ sung cho folder PGD xác nhận ngoài bộ TT58 còn có nhóm hồ sơ giám định thép, máy/dây chuyền, than; sổ đăng ký thép/máy/giám định ngoài; bộ quy trình `QT-GĐ-02`, `03`, `04`, `05`, `06`, `07`, `08`, `09`, `10`, `12`; cùng tài liệu năng lực/đánh giá VICAS, VIAS, ISO và audit log ngày công. Đây chỉ là nguồn tham chiếu nghiệp vụ, không sửa/xóa/copy/import vào app.
+- Catalog PGD đã bổ sung lựa chọn mã quy trình có kiểm soát theo nhóm: thép/kim loại (`QT-GĐ-02/03/04/06/10`), máy/dây chuyền (`QT-GĐ-04/05/06/07/09/12`) và than (`QT-GĐ-02/03/04/08`). Mã phương thức không còn là ô nhập tự do; `QT-GĐ-14` chưa gán vì nguồn chưa xác nhận tên/phạm vi. `QC20` vẫn chỉ thuộc PCN.
+- PGD dossier dùng collection riêng `pgdDossierDocuments`, checklist hiện bao phủ PYC, hợp đồng, hóa đơn, packing list, vận đơn, tờ khai, C/O, hồ sơ kỹ thuật, kế hoạch, hiện trường/lấy mẫu, giao nhận PTN, KQTN, báo cáo, quyết định, chứng thư và lưu trữ. Chứng từ thương mại có cờ tùy chọn theo điều kiện hồ sơ.
+- Dossier evidence và sổ mẫu đã được khóa theo đúng trạm nghiệp vụ ở cả UI/server; lỗi tải checklist không làm mất danh sách thiếu; file input được reset sau lưu; hủy mẫu lưu chỉ ghi trạng thái + actor/thời điểm/lý do sau hạn lưu, không xóa dòng.
+- Kiểm chứng sau vòng review: 24/24 test domain/API/UI dossier-sample pass, full `npm test` 670/670 pass, `npm run lint`, `npm run build` và `git diff --check` pass. Review cuối APPROVED.
+- Docker production đã rebuild/recreate bằng `docker compose --env-file .env -f docker-compose.yml up -d --build webapp`. Image `pcn_webapp-webapp:latest` digest `sha256:5eb8b637b2ba8d8e0949641b1dcb8f240ad87a92b608628c0d4c5b073577485f`; container `pcn_webapp-webapp-1` đang `Up`, publish `0.0.0.0:2357->2357/tcp`. Smoke `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200; log xác nhận PostgreSQL connected/schema initialized.
+
 ## Chốt hiện trạng 2026-09-03 — Dashboard chung PGDCN Operations cockpit
 
 - Dashboard dùng chung `/pgdcn/` đã được thiết kế lại theo mô hình Operations cockpit cho cả PCN — Chứng nhận và PGD — nhưng vẫn giữ collection, lifecycle, status và workspace riêng của từng miền.
@@ -38,10 +97,13 @@ Description: Persistent project memory and verified deployment observations for 
 - `Cài đặt hệ thống` dùng chung chỉ còn phạm vi Nhân sự & tài khoản. Cấu hình template DOCX, placeholder và sinh tài liệu thuộc từng phòng tương ứng.
 - PGD quản lý 8 biểu mẫu DOCX thật (`PGD-BM-01` đến `PGD-BM-08`) cùng `fileName`, `placeholderKeys`, `requiredPlaceholderKeys`; form nhập liệu được suy ra từ metadata placeholder.
 - `utils/pgdDocumentGeneration.ts` đọc DOCX đóng gói trong `templates/pgd/*.docx` và render bằng Docxtemplater với delimiter `[[key]]`. Bảng DOCX giả kiểu `Cell/Giá trị` đã được loại khỏi luồng sinh tài liệu; hydration vẫn tương thích các bản ghi template cũ đã lưu.
+- `utils/pgdTemplatePack.ts` kiểm tra trực tiếp file nguồn, kích thước và độ khớp placeholder; server trả `sourceInspection` cho bootstrap/API, còn `GET /api/pgd/document-templates/:templateId/source` cho phép tải đúng DOCX trong folder PGD. PUT và generation đều chặn source thiếu hoặc metadata lệch.
+- `Cài đặt PGD` hiển thị trạng thái file nguồn, byte size, danh sách placeholder, chênh lệch thiếu/thừa và nút `Tải DOCX nguồn`.
+- Form `Tạo tài liệu PGD` đã dùng `PgdTableFieldEditor`: các placeholder `TABLE` nhập theo dòng/cột, có nhãn nghiệp vụ, thêm/xóa dòng, kiểu input số/ngày/giờ và không còn JSON textarea.
 - Bộ asset gồm `templates/pgd/*.docx`, `templates/pgd/manifest.json`, `templates/pgd/README.md`; script tạo asset là `scripts/generate-pgd-docx-templates.ts`. `design.md` đã cập nhật các mục §0.3, §0A.4 và §0A.6–0A.7.
-- Kiểm chứng hiện tại: 25/25 test liên quan đạt; `next build` đạt; `git diff --check` đạt. Full suite có 1097 test với 6 lỗi lịch sử/ngoài phạm vi ở root App Router và attachment/source discovery/manual mapping.
+- Kiểm chứng hiện tại: 18/18 test PGD liên quan đạt; `npm run lint` đạt; `next build` đạt; `git diff --check` đạt. Full suite có 1114 test, 1108 đạt và 6 lỗi lịch sử/ngoài phạm vi ở root App Router và attachment/source discovery/manual mapping.
 - Chưa render visual DOCX vì môi trường thiếu LibreOffice/`soffice`; các kiểm tra OOXML, manifest, placeholder và generation structure đã đạt.
-- Lần chạy typecheck độc lập hiện bị nhiễu bởi nhóm thay đổi notification PGDCN chưa hoàn chỉnh ngoài phạm vi (`test/pgdcn-notification-*`, `utils/pgdcnNotification*`, `NotificationDomain`); không thay đổi nhóm này trong task template.
+- Typecheck độc lập hiện đạt qua `npm run lint`.
 - Không ghi `.env`, secret, credential, đường dẫn UNC/Desktop hay dữ liệu hồ sơ thật.
 
 ## Chốt hiện trạng 2026-09-02 — Điều hướng chung PGDCN và Cài đặt hệ thống
@@ -57,7 +119,7 @@ Description: Persistent project memory and verified deployment observations for 
 
 - PGDCN hiện có hai miền tách biệt: PCN — Chứng nhận và PGD — Giám định; dùng chung session/tài khoản/khách hàng theo quyền nhưng tách collection, API, RBAC, catalog và lifecycle.
 - QC20 (`QCVN 20:2019/BKHCN` + Sửa đổi 1:2021, Phương thức 7) chỉ thuộc PCN; không xuất hiện trong catalog PGD.
-- PGD đã có luồng hồ sơ mới từ tiếp nhận/năng lực → phân công → hiện trường/lấy mẫu → PTN/KQ → báo cáo/chứng thư → duyệt/ký/trả/lưu trữ; thanh toán là cảnh báo, không chặn trả kết quả giai đoạn đầu.
+- PGD đã có luồng hồ sơ mới từ tiếp nhận/năng lực → phân công → hiện trường/lấy mẫu → PTN/KQ → báo cáo/chứng thư → duyệt/ký/trả/lưu trữ; không bao gồm quản lý báo giá hoặc thanh toán.
 - PGD đã chuẩn hóa 8 template từ biểu mẫu phòng đọc read-only, có quản lý cell bật/tắt, typed validation, snapshot/version, sinh DOCX/PDF, context hash/checksum và tải lại file private khi Storage có cấu hình.
 - Nguồn `\\TVCI_NAS\\P. Giám định - Chứng nhận` chỉ là nguồn tham chiếu lúc phát triển; runtime không đọc UNC/Desktop, không import hồ sơ lịch sử và không sửa/xóa file nguồn.
 - Verification chốt: PCN **656/656**, nhóm PGD/PGDCN **56/56**, nhóm template/cell/document **10/10**, lint/build pass. Docker `pcn_webapp-webapp-1` đang `Up` trên cổng `2357`, image digest hiện hành `sha256:e119a53a3d63afac5f7942167bd8156b49dee20f78dbd0c4cad036dc7e5747e5`, health và route PGD trả HTTP 200.
@@ -470,6 +532,15 @@ Description: Persistent project memory and verified deployment observations for 
 - `design.md` đã cập nhật quy tắc Bulk Upload: Gemini là tùy chọn cho luồng khác, không phải dependency của bulk; lỗi/thiếu key không được chặn tách hoặc mapping thủ công.
 - Verification sau thay đổi: `npm test` **312/312 pass**, `npm run lint` (tsc) pass, `npm run build` pass, `git diff --check` pass. Build chỉ còn cảnh báo chunk lớn hiện hữu.
 - Image production cần rebuild sau commit mới; không đưa `dist` sinh tự động, `.env` hoặc attachment vào commit.
+
+## Cập nhật 2026-09-03 — Commit và rebuild production PGDCN
+
+- Commit đã tạo trên nhánh `master`: `e7ebaa6` — `feat: complete PGDCN QC20 governance and PGD document workflow`.
+- Nội dung commit gồm code/schema/UI PGDCN, QC20 governance trong PCN, PGD template/cell/document workflow, template PGD-BM-01..09, test, `design.md` và memory/obs. Không commit `dist` sinh tự động, backup `.bak`, attachment, `tmp` hoặc kế hoạch nội bộ.
+- Verification trước commit: `npm test` **678/678 pass**, `npm run lint` (tsc noEmit) pass, `npm run build` pass, `git diff --cached --check` pass.
+- Docker Desktop production đã rebuild/recreate bằng `docker compose -f docker-compose.pcn.yml up --build -d`. Image `pcn_webapp-webapp:latest` digest `sha256:ccdd19d462bcc801b0990988f276fd3861b836fe1f184d20cb1cc7d4ad981e25`; container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`.
+- Smoke test sau deploy: `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200; production Next build hoàn tất và container khởi động thành công.
+- Full maintenance suite vẫn có **1140/1145 pass**; 5 lỗi còn lại thuộc contract historical attachment/source-discovery bị loại khỏi active runner theo nguyên tắc không import hồ sơ lịch sử, không ảnh hưởng active PCN/PGD.
 
 ## Files quan trọng
 

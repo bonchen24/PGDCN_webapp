@@ -20,7 +20,7 @@ const request: PgdInspectionRequest = {
   productGroup: 'STEEL_METAL', catalogItemId: 'steel-1', productName: 'Thép cuộn',
   quantity: 10, unit: 'tấn', inspectionScope: 'Kiểm tra số lượng và chất lượng',
   inspectionLocation: 'Kho A', standards: ['TCVN 1651'], documentPointers: [], sampleIds: ['sample-1'],
-  labRequestIds: ['lab-1'], payment: { status: 'NOT_REQUIRED' }, createdAt: '2026-09-01T08:00:00.000Z', updatedAt: '2026-09-01T09:00:00.000Z',
+  labRequestIds: ['lab-1'], createdAt: '2026-09-01T08:00:00.000Z', updatedAt: '2026-09-01T09:00:00.000Z',
 };
 
 const assignment: PgdInspectionAssignment = { id: 'assignment-1', domain: 'pgd', requestId: request.id, inspectorUsernames: ['inspector'], status: 'APPROVED' };

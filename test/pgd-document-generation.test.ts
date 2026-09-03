@@ -30,7 +30,6 @@ const request: PgdInspectionRequest = {
   labRequestIds: ['lab-1'],
   status: 'RESULTS_REVIEW',
   documentPointers: [],
-  payment: { status: 'PENDING' },
   createdAt: '2026-09-02T01:00:00.000Z',
   updatedAt: '2026-09-02T04:00:00.000Z',
 };

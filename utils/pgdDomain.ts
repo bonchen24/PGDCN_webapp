@@ -39,6 +39,10 @@ export type PgdInspectionStatus =
   | 'ON_HOLD';
 
 export type PgdIntakeChannel = 'DIRECT' | 'PHONE' | 'ONLINE_ZALO' | 'EMAIL' | 'OTHER';
+export const PGD_ASSESSMENT_METHOD_OPTIONS = [
+  { code: 'METHOD_7', name: 'Phương thức 7' },
+] as const;
+export type PgdAssessmentMethod = typeof PGD_ASSESSMENT_METHOD_OPTIONS[number]['code'];
 export type PgdProductGroup = 'STEEL_METAL' | 'MACHINERY_LINE' | 'COAL' | 'OTHER';
 export type PgdSampleDisposition = 'LAB' | 'RETAINED';
 export type PgdLabRequestStatus = 'DRAFT' | 'SENT' | 'RECEIVED' | 'RESULT_RECEIVED' | 'ISSUE' | 'CLOSED';
@@ -73,9 +77,15 @@ export interface PgdCatalogItem {
   name: string;
   productGroup: PgdProductGroup;
   inspectionTypes: string[];
+  methodOptions: PgdMethodOption[];
   defaultStandards: string[];
   slaLabel: string;
   active: boolean;
+}
+
+export interface PgdMethodOption {
+  code: string;
+  name: string;
 }
 
 /** PGD catalog is intentionally not a copy of the PCN certification fields. */
@@ -87,6 +97,15 @@ export const DEFAULT_PGD_CATALOG: readonly PgdCatalogItem[] = [
     name: 'Giám định lô thép và vật liệu kim loại',
     productGroup: 'STEEL_METAL',
     inspectionTypes: ['VISUAL_DIMENSIONAL', 'QUANTITY_WEIGHT', 'CHEMICAL', 'MECHANICAL'],
+    methodOptions: [
+      { code: 'TT58', name: 'Thông tư 58 - giám định thép' },
+      { code: 'QT-GĐ-02', name: 'Giám định số lượng' },
+      { code: 'QT-GĐ-03', name: 'Giám định khối lượng qua cân' },
+      { code: 'QT-GĐ-04', name: 'Giám định quy cách / phẩm chất hàng hóa' },
+      { code: 'QT-GĐ-06', name: 'Giám định xuất xứ' },
+      { code: 'QT-GĐ-10', name: 'Giám định vật liệu kim loại' },
+      { code: 'QT-GĐ-14', name: 'Giám định chất lượng thép theo TTLT 58/2015' },
+    ],
     defaultStandards: ['JIS', 'ASTM', 'GB/T'],
     slaLabel: '5–7 ngày',
     active: true,
@@ -98,6 +117,14 @@ export const DEFAULT_PGD_CATALOG: readonly PgdCatalogItem[] = [
     name: 'Giám định máy móc và dây chuyền',
     productGroup: 'MACHINERY_LINE',
     inspectionTypes: ['VISUAL_DIMENSIONAL', 'MECHANICAL', 'FIELD_ASSESSMENT'],
+    methodOptions: [
+      { code: 'QT-GĐ-04', name: 'Giám định quy cách / phẩm chất hàng hóa' },
+      { code: 'QT-GĐ-05', name: 'Giám định tình trạng' },
+      { code: 'QT-GĐ-06', name: 'Giám định xuất xứ' },
+      { code: 'QT-GĐ-07', name: 'Giám định tình trạng máy móc đã qua sử dụng' },
+      { code: 'QT-GĐ-09', name: 'Giám định máy móc thiết bị' },
+      { code: 'QT-GĐ-12', name: 'Giám định tính đồng bộ dây chuyền / máy móc' },
+    ],
     defaultStandards: ['Hồ sơ kỹ thuật', 'Tiêu chuẩn hợp đồng'],
     slaLabel: '3–5 ngày',
     active: true,
@@ -109,16 +136,57 @@ export const DEFAULT_PGD_CATALOG: readonly PgdCatalogItem[] = [
     name: 'Giám định lô than',
     productGroup: 'COAL',
     inspectionTypes: ['VISUAL_DIMENSIONAL', 'QUANTITY_WEIGHT', 'CHEMICAL'],
+    methodOptions: [
+      { code: 'QT-GĐ-02', name: 'Giám định số lượng' },
+      { code: 'QT-GĐ-03', name: 'Giám định khối lượng qua cân' },
+      { code: 'QT-GĐ-04', name: 'Giám định quy cách / phẩm chất hàng hóa' },
+      { code: 'QT-GĐ-08', name: 'Giám định than' },
+    ],
     defaultStandards: ['TCVN 8910', 'Tiêu chuẩn hợp đồng'],
     slaLabel: 'Theo kế hoạch',
     active: true,
   },
 ];
 
+export interface PgdSteelTtlt58SamplingPlan {
+  lotSizeMin: number;
+  lotSizeMax: number;
+  visualLabelSampleCount: number;
+  mechanicalWeightSampleCount: number;
+  chemicalCoatingSampleCount: number;
+  aqlVisualDimensionWeight: 4;
+  aqlMechanicalChemicalCoating: 1.5;
+  reference: 'QT-GĐ-14 / TTLT 58/2015';
+}
+
+const PGD_STEEL_TTLT58_SAMPLING_TABLE: readonly PgdSteelTtlt58SamplingPlan[] = [
+  { lotSizeMin: 1, lotSizeMax: 25, visualLabelSampleCount: 2, mechanicalWeightSampleCount: 2, chemicalCoatingSampleCount: 1, aqlVisualDimensionWeight: 4, aqlMechanicalChemicalCoating: 1.5, reference: 'QT-GĐ-14 / TTLT 58/2015' },
+  { lotSizeMin: 26, lotSizeMax: 50, visualLabelSampleCount: 3, mechanicalWeightSampleCount: 2, chemicalCoatingSampleCount: 1, aqlVisualDimensionWeight: 4, aqlMechanicalChemicalCoating: 1.5, reference: 'QT-GĐ-14 / TTLT 58/2015' },
+  { lotSizeMin: 51, lotSizeMax: 150, visualLabelSampleCount: 3, mechanicalWeightSampleCount: 3, chemicalCoatingSampleCount: 1, aqlVisualDimensionWeight: 4, aqlMechanicalChemicalCoating: 1.5, reference: 'QT-GĐ-14 / TTLT 58/2015' },
+  { lotSizeMin: 151, lotSizeMax: 500, visualLabelSampleCount: 5, mechanicalWeightSampleCount: 3, chemicalCoatingSampleCount: 1, aqlVisualDimensionWeight: 4, aqlMechanicalChemicalCoating: 1.5, reference: 'QT-GĐ-14 / TTLT 58/2015' },
+  { lotSizeMin: 501, lotSizeMax: 1200, visualLabelSampleCount: 5, mechanicalWeightSampleCount: 3, chemicalCoatingSampleCount: 1, aqlVisualDimensionWeight: 4, aqlMechanicalChemicalCoating: 1.5, reference: 'QT-GĐ-14 / TTLT 58/2015' },
+  { lotSizeMin: 1201, lotSizeMax: 3200, visualLabelSampleCount: 8, mechanicalWeightSampleCount: 3, chemicalCoatingSampleCount: 1, aqlVisualDimensionWeight: 4, aqlMechanicalChemicalCoating: 1.5, reference: 'QT-GĐ-14 / TTLT 58/2015' },
+];
+
+/** Returns the QT-GĐ-14 appendix plan; multi-product lots use the B column (one fewer mechanical/weight sample). */
+export function getPgdSteelTtlt58SamplingPlan(lotSize: number, sameGradeMultiProduct: boolean): PgdSteelTtlt58SamplingPlan | null {
+  if (!Number.isInteger(lotSize) || lotSize < 1) return null;
+  const sourcePlan = PGD_STEEL_TTLT58_SAMPLING_TABLE.find((plan) => lotSize >= plan.lotSizeMin && lotSize <= plan.lotSizeMax);
+  if (!sourcePlan) return null;
+  return {
+    ...sourcePlan,
+    mechanicalWeightSampleCount: sameGradeMultiProduct ? Math.max(1, sourcePlan.mechanicalWeightSampleCount - 1) : sourcePlan.mechanicalWeightSampleCount,
+  };
+}
+
 export function isPgdCatalogItemAllowed(catalogItemId: string, catalog: readonly PgdCatalogItem[] = DEFAULT_PGD_CATALOG): boolean {
   const normalizedId = String(catalogItemId || '').trim();
   if (!normalizedId || /QC20/i.test(normalizedId)) return false;
-  return catalog.some((item) => item.domain === PGD_DOMAIN && item.active && item.id === normalizedId && !/QC20/i.test(`${item.id} ${item.code} ${item.name}`));
+  return catalog.some((item) => item.domain === PGD_DOMAIN
+    && item.active
+    && item.id === normalizedId
+    && !/QC20/i.test(`${item.id} ${item.code} ${item.name}`)
+    && item.methodOptions.every((method) => !/QC20/i.test(`${method.code} ${method.name}`)));
 }
 
 export function isPgdCatalogRecordAllowed(value: unknown): value is PgdCatalogItem {
@@ -130,7 +198,9 @@ export function isPgdCatalogRecordAllowed(value: unknown): value is PgdCatalogIt
     && typeof item.name === 'string'
     && !/QC20/i.test(`${item.id} ${item.code} ${item.name}`)
     && ['STEEL_METAL', 'MACHINERY_LINE', 'COAL', 'OTHER'].includes(String(item.productGroup || ''))
-    && item.active === true;
+    && item.active === true
+    && Array.isArray(item.methodOptions)
+    && item.methodOptions.every((method) => method && typeof method.code === 'string' && typeof method.name === 'string' && Boolean(method.code.trim()) && Boolean(method.name.trim()) && !/QC20/i.test(`${method.code} ${method.name}`));
 }
 
 export interface PgdRequesterSnapshot {
@@ -151,6 +221,40 @@ export interface PgdProductDetails {
   manufacturer?: string;
   importer?: string;
   customsDocuments?: Array<{ document?: string; number?: string; date?: string }>;
+  steelLotSize?: number;
+  steelSameGradeMultiProduct?: boolean;
+  steelManualSamplingPlanNote?: string;
+}
+
+export const PGD_REGISTRY_DOCUMENT_KINDS = [
+  'CONTRACT',
+  'INVOICE',
+  'PACKING_LIST',
+  'BILL_OF_LADING',
+  'CUSTOMS_DECLARATION',
+  'CERTIFICATE_OF_ORIGIN',
+  'TECHNICAL_DOSSIER',
+  'OTHER',
+] as const;
+
+export type PgdRegistryDocumentKind = typeof PGD_REGISTRY_DOCUMENT_KINDS[number];
+
+export interface PgdRegistryDocument {
+  kind: PgdRegistryDocumentKind;
+  number?: string;
+  date?: string;
+  note?: string;
+}
+
+/** Source-derived registry metadata for a new request; never a historical workbook import. */
+export interface PgdRequestRegistryMetadata {
+  registrationNumber?: string;
+  receivedAt?: string;
+  documents?: PgdRegistryDocument[];
+  technicalDossierNote?: string;
+  deficiencyNote?: string;
+  returnedPackageNote?: string;
+  courierName?: string;
 }
 
 export interface PgdDocumentPointer {
@@ -193,12 +297,6 @@ export interface PgdGeneratedDocument {
   lockedAt?: string;
 }
 
-export interface PgdPaymentTracker {
-  required?: boolean;
-  status: 'NOT_REQUIRED' | 'PENDING' | 'PARTIAL' | 'SETTLED';
-  note?: string;
-}
-
 export interface PgdInspectionRequestInput {
   id: string;
   requestCode: string;
@@ -221,7 +319,9 @@ export interface PgdInspectionRequestInput {
   inspectionScheduledAt?: string;
   standards: string[];
   method?: string;
+  assessmentMethod?: PgdAssessmentMethod;
   documentPointers?: PgdDocumentPointer[];
+  registryMetadata?: PgdRequestRegistryMetadata;
   targetDate?: string;
   note?: string;
   status?: PgdInspectionStatus;
@@ -236,7 +336,6 @@ export interface PgdInspectionRequest extends Omit<PgdInspectionRequestInput, 's
   sampleIds: string[];
   labRequestIds: string[];
   resultTemplateSnapshotId?: string;
-  payment: PgdPaymentTracker;
   createdAt: string;
   updatedAt: string;
 }
@@ -423,15 +522,86 @@ export interface PgdTransitionContext {
   reportReady?: boolean;
   hasCertificate?: boolean;
   signed?: boolean;
-  paymentRequired?: boolean;
-  paymentSettled?: boolean;
 }
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-export function validatePgdIntake(input: Partial<PgdInspectionRequestInput>): PgdValidationIssue[] {
+function isValidIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/.test(value)) return false;
+  const parsed = new Date(value.length === 10 ? `${value}T00:00:00.000Z` : value);
+  return !Number.isNaN(parsed.getTime());
+}
+
+export function validatePgdRegistryMetadata(input: unknown): PgdValidationIssue[] {
+  const issues: PgdValidationIssue[] = [];
+  if (input === undefined) return issues;
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return [{ field: 'registryMetadata', message: 'Metadata sổ đăng ký PGD không hợp lệ.' }];
+  }
+  const metadata = input as Partial<PgdRequestRegistryMetadata>;
+  if (metadata.registrationNumber !== undefined && (typeof metadata.registrationNumber !== 'string' || metadata.registrationNumber.trim().length > 120)) {
+    issues.push({ field: 'registryMetadata.registrationNumber', message: 'Số đăng ký PGD không hợp lệ hoặc quá dài.' });
+  }
+  if (metadata.receivedAt !== undefined && (typeof metadata.receivedAt !== 'string' || !isValidIsoDate(metadata.receivedAt.trim()))) {
+    issues.push({ field: 'registryMetadata.receivedAt', message: 'Ngày tiếp nhận PGD phải là ngày hợp lệ.' });
+  }
+  const noteFields = [
+    ['technicalDossierNote', 'Ghi chú hồ sơ kỹ thuật'],
+    ['deficiencyNote', 'Ghi chú thiếu hồ sơ'],
+    ['returnedPackageNote', 'Ghi chú hoàn trả'],
+    ['courierName', 'Đơn vị chuyển phát'],
+  ] as const;
+  for (const [key, label] of noteFields) {
+    const value = metadata[key];
+    if (value !== undefined && (typeof value !== 'string' || value.trim().length > 500)) {
+      issues.push({ field: `registryMetadata.${key}`, message: `${label} không hợp lệ hoặc quá dài.` });
+    }
+  }
+  if (metadata.documents !== undefined && !Array.isArray(metadata.documents)) {
+    issues.push({ field: 'registryMetadata.documents', message: 'Danh sách chứng từ sổ đăng ký PGD không hợp lệ.' });
+  } else if (Array.isArray(metadata.documents)) {
+    metadata.documents.forEach((document, index) => {
+      if (!document || typeof document !== 'object' || Array.isArray(document) || !PGD_REGISTRY_DOCUMENT_KINDS.includes(String((document as Partial<PgdRegistryDocument>).kind || '') as PgdRegistryDocumentKind)) {
+        issues.push({ field: `registryMetadata.documents[${index}].kind`, message: 'Loại chứng từ sổ đăng ký PGD không hợp lệ.' });
+        return;
+      }
+      const item = document as Partial<PgdRegistryDocument>;
+      if (item.number !== undefined && (typeof item.number !== 'string' || item.number.trim().length > 160)) issues.push({ field: `registryMetadata.documents[${index}].number`, message: 'Số chứng từ sổ đăng ký PGD không hợp lệ hoặc quá dài.' });
+      if (item.date !== undefined && (typeof item.date !== 'string' || !isValidIsoDate(item.date.trim()))) issues.push({ field: `registryMetadata.documents[${index}].date`, message: 'Ngày chứng từ sổ đăng ký PGD không hợp lệ.' });
+      if (item.note !== undefined && (typeof item.note !== 'string' || item.note.trim().length > 500)) issues.push({ field: `registryMetadata.documents[${index}].note`, message: 'Ghi chú chứng từ sổ đăng ký PGD không hợp lệ hoặc quá dài.' });
+    });
+  }
+  return issues;
+}
+
+export function normalizePgdRegistryMetadata(input: unknown): PgdRequestRegistryMetadata | undefined {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return undefined;
+  const metadata = input as Partial<PgdRequestRegistryMetadata>;
+  const documents = Array.isArray(metadata.documents)
+    ? metadata.documents
+      .filter((document): document is PgdRegistryDocument => Boolean(document && typeof document === 'object' && !Array.isArray(document) && PGD_REGISTRY_DOCUMENT_KINDS.includes(String((document as Partial<PgdRegistryDocument>).kind || '') as PgdRegistryDocumentKind)))
+      .map((document) => ({
+        kind: document.kind,
+        ...(String(document.number || '').trim() ? { number: String(document.number).trim() } : {}),
+        ...(String(document.date || '').trim() ? { date: String(document.date).trim() } : {}),
+        ...(String(document.note || '').trim() ? { note: String(document.note).trim() } : {}),
+      }))
+    : [];
+  const normalized: PgdRequestRegistryMetadata = {
+    ...(String(metadata.registrationNumber || '').trim() ? { registrationNumber: String(metadata.registrationNumber).trim() } : {}),
+    ...(String(metadata.receivedAt || '').trim() ? { receivedAt: String(metadata.receivedAt).trim() } : {}),
+    ...(documents.length > 0 ? { documents } : {}),
+    ...(String(metadata.technicalDossierNote || '').trim() ? { technicalDossierNote: String(metadata.technicalDossierNote).trim() } : {}),
+    ...(String(metadata.deficiencyNote || '').trim() ? { deficiencyNote: String(metadata.deficiencyNote).trim() } : {}),
+    ...(String(metadata.returnedPackageNote || '').trim() ? { returnedPackageNote: String(metadata.returnedPackageNote).trim() } : {}),
+    ...(String(metadata.courierName || '').trim() ? { courierName: String(metadata.courierName).trim() } : {}),
+  };
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+export function validatePgdIntake(input: Partial<PgdInspectionRequestInput>, catalog: readonly PgdCatalogItem[] = DEFAULT_PGD_CATALOG): PgdValidationIssue[] {
   const issues: PgdValidationIssue[] = [];
   if (!String(input.id || '').trim()) issues.push({ field: 'id', message: 'PYC PGD cần có mã định danh.' });
   if (!String(input.requestCode || '').trim()) issues.push({ field: 'requestCode', message: 'Cần nhập mã PYC giám định.' });
@@ -442,12 +612,28 @@ export function validatePgdIntake(input: Partial<PgdInspectionRequestInput>): Pg
   if (!['STEEL_METAL', 'MACHINERY_LINE', 'COAL', 'OTHER'].includes(String(input.productGroup || ''))) {
     issues.push({ field: 'productGroup', message: 'Nhóm sản phẩm PGD không hợp lệ.' });
   }
-  if (!isPgdCatalogItemAllowed(String(input.catalogItemId || ''))) issues.push({ field: 'catalogItemId', message: 'Loại hình không thuộc catalog PGD hoặc đã bị loại khỏi miền PGD.' });
-  const catalogItem = DEFAULT_PGD_CATALOG.find((item) => item.id === String(input.catalogItemId || '').trim());
+  if (!isPgdCatalogItemAllowed(String(input.catalogItemId || ''), catalog)) issues.push({ field: 'catalogItemId', message: 'Loại hình không thuộc catalog PGD hoặc đã bị loại khỏi miền PGD.' });
+  const catalogItem = catalog.find((item) => item.id === String(input.catalogItemId || '').trim() && item.domain === PGD_DOMAIN && item.active);
   if (catalogItem && catalogItem.productGroup !== input.productGroup) issues.push({ field: 'productGroup', message: 'Loại hình giám định không khớp nhóm sản phẩm PGD.' });
+  if (catalogItem && String(input.method || '').trim() && !catalogItem.methodOptions.some((method) => method.code.toUpperCase() === String(input.method).trim().toUpperCase())) {
+    issues.push({ field: 'method', message: 'Mã phương thức PGD phải được chọn từ catalog của loại hình giám định.' });
+  }
+  if (input.assessmentMethod !== undefined && !PGD_ASSESSMENT_METHOD_OPTIONS.some((option) => option.code === input.assessmentMethod)) {
+    issues.push({ field: 'assessmentMethod', message: 'Phương thức ĐGSPH phải được chọn từ danh mục đã xác nhận.' });
+  }
+  if (String(input.method || '').trim().toUpperCase() === 'QT-GĐ-14' && input.productDetails?.steelLotSize !== undefined) {
+    const lotSize = input.productDetails.steelLotSize;
+    if (!Number.isInteger(lotSize) || lotSize < 1) {
+      issues.push({ field: 'productDetails.steelLotSize', message: 'Cỡ lô QT-GĐ-14 phải là số nguyên dương theo đơn vị bó/kiện/cuộn.' });
+    } else if (!getPgdSteelTtlt58SamplingPlan(lotSize, input.productDetails.steelSameGradeMultiProduct === true)
+      && !String(input.productDetails.steelManualSamplingPlanNote || '').trim()) {
+      issues.push({ field: 'productDetails.steelManualSamplingPlanNote', message: 'Cỡ lô ngoài bảng 1–3200 cần ghi căn cứ/kế hoạch lấy mẫu thủ công.' });
+    }
+  }
   if (input.documentPointers !== undefined && (!Array.isArray(input.documentPointers) || input.documentPointers.some((pointer) => pointer.domain !== PGD_DOMAIN || pointer.sourceCollection !== PGD_COLLECTIONS.documents || !String(pointer.sourceDocumentId || '').trim() || !Number.isInteger(pointer.version) || pointer.version < 1 || !/^[a-f0-9]{64}$/i.test(String(pointer.checksum || ''))))) {
     issues.push({ field: 'documentPointers', message: 'Tài liệu PGD phải có provenance, phiên bản và checksum hợp lệ của collection PGD.' });
   }
+  issues.push(...validatePgdRegistryMetadata(input.registryMetadata));
   if (!String(input.productName || '').trim()) issues.push({ field: 'productName', message: 'Cần nhập tên hàng hóa/sản phẩm.' });
   if (!String(input.inspectionLocation || '').trim()) issues.push({ field: 'inspectionLocation', message: 'Cần nhập địa điểm giám định.' });
   if (!Array.isArray(input.standards) || input.standards.length === 0 || input.standards.every((item) => !String(item || '').trim())) {
@@ -517,17 +703,18 @@ export function validatePgdInspectors(
   return issues;
 }
 
-export function createPgdInspectionRequest(input: PgdInspectionRequestInput, now = new Date().toISOString()): PgdInspectionRequest {
-  const issues = validatePgdIntake(input);
+export function createPgdInspectionRequest(input: PgdInspectionRequestInput, now = new Date().toISOString(), catalog: readonly PgdCatalogItem[] = DEFAULT_PGD_CATALOG): PgdInspectionRequest {
+  const issues = validatePgdIntake(input, catalog);
   if (issues.length > 0) throw new Error(`Dữ liệu PYC PGD chưa đủ: ${issues.map((issue) => issue.field).join(', ')}`);
+  const registryMetadata = normalizePgdRegistryMetadata(input.registryMetadata);
   return {
     ...clone(input),
     domain: PGD_DOMAIN,
+    ...(registryMetadata ? { registryMetadata } : {}),
     status: 'DRAFT',
     documentPointers: clone(input.documentPointers || []),
     sampleIds: [],
     labRequestIds: [],
-    payment: { required: false, status: 'NOT_REQUIRED' },
     createdAt: now,
     updatedAt: now,
   };

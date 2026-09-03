@@ -47,7 +47,9 @@ test('major PGD mutation routes pass explicit notification drafts', () => {
     '/api/pgd/certificates',
     '/api/pgd/approvals',
   ]) {
-    const routeStart = serverSource.indexOf(route);
+    const escapedRoute = route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const routeMatch = new RegExp(`app\\.(?:get|post|put|patch|delete)\\((['"])${escapedRoute}\\1`).exec(serverSource);
+    const routeStart = routeMatch?.index ?? -1;
     assert.ok(routeStart >= 0, `Missing route ${route}`);
     const routeEnd = serverSource.indexOf('app.', routeStart + route.length);
     const routeSource = serverSource.slice(routeStart, routeEnd > routeStart ? routeEnd : routeStart + 5000);

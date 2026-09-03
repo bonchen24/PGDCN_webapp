@@ -7,11 +7,13 @@ const modalSource = fs.readFileSync(new URL('../components/PcnTemplateSettingsMo
 const apiSource = fs.readFileSync(new URL('../utils/pcnTemplateApi.ts', import.meta.url), 'utf8');
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 
-test('existing PCN template management surface exposes only current-file download and replacement upload', () => {
+test('PCN template management surface exposes current-file upload/download and controlled review', () => {
   assert.match(settingsSource, /onUploadTemplate/);
   assert.match(settingsSource, /Tải xuống/);
   assert.match(settingsSource, /Tải bản mới/);
-  assert.doesNotMatch(settingsSource, /onReviewTemplate|onAnnotateTemplate|PcnTemplateReviewAction|PcnTemplateAnnotationMapping/);
+  assert.match(settingsSource, /onReviewTemplate/);
+  assert.match(settingsSource, /PcnTemplateReviewAction/);
+  assert.match(settingsSource, /Yêu cầu chỉnh sửa/);
   assert.doesNotMatch(modalSource, /onReviewTemplate|onAnnotateTemplate|mapping|placeholder/i);
 });
 

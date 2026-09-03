@@ -16,6 +16,13 @@ export interface SavedPasswordCredential {
   password: string;
 }
 
+export function isPasswordCredentialStorageAvailable(
+  manager: PasswordCredentialManager | null | undefined,
+  CredentialConstructor: PasswordCredentialConstructor | null | undefined,
+): boolean {
+  return typeof manager?.store === 'function' && Boolean(CredentialConstructor);
+}
+
 export async function loadPasswordCredential(
   manager: PasswordCredentialManager | null | undefined,
 ): Promise<SavedPasswordCredential | null> {

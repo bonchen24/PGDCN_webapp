@@ -1,4 +1,5 @@
 import { PGD_COLLECTIONS, PGD_DOMAIN, type PgdProductGroup, type PgdSample, type PgdSampleDisposition, type PgdValidationIssue } from './pgdDomain.ts';
+import type { PgdOperationalStationKey } from './pgdWorkflow.ts';
 
 export type PgdDossierRequirementGroup =
   | 'REQUEST'
@@ -71,17 +72,33 @@ function requirement(code: string, group: PgdDossierRequirementGroup, title: str
   return { domain: PGD_DOMAIN, code, group, title, required, ...(description ? { description } : {}) };
 }
 
+export function getPgdDossierRequirementStationKey(requirementCode: string): PgdOperationalStationKey {
+  const code = clean(requirementCode).toUpperCase();
+  if (['REQUEST_PYC', 'REQUEST_SUPPORTING', 'COMMERCIAL_CONTRACT', 'COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_OF_LADING', 'CUSTOMS_DECLARATION', 'CERTIFICATE_OF_ORIGIN'].includes(code)) {
+    return 'INTAKE_CAPABILITY';
+  }
+  if (code === 'INSPECTION_PLAN' || code.startsWith('TECHNICAL_')) return 'PREPARATION';
+  if (code === 'FIELD_INSPECTION_MINUTES' || code === 'FIELD_SAMPLE_TAKING') return 'FIELD_SAMPLING';
+  if (code === 'SAMPLE_HANDOVER_LAB' || code === 'LAB_RESULT') return 'LAB_RESULTS';
+  return 'REPORT_APPROVAL_RETURN';
+}
+
 export function getPgdDossierRequirements(productGroup: PgdProductGroup): PgdDossierRequirement[] {
   const base: PgdDossierRequirement[] = [
     requirement('REQUEST_PYC', 'REQUEST', 'Phiếu yêu cầu giám định'),
     requirement('REQUEST_SUPPORTING', 'REQUEST', 'Tài liệu tiếp nhận và thông tin PYC'),
-    requirement('COMMERCIAL_INVOICE', 'COMMERCIAL_CUSTOMS', 'Hóa đơn thương mại'),
-    requirement('PACKING_LIST', 'COMMERCIAL_CUSTOMS', 'Packing list'),
-    requirement('BILL_OF_LADING', 'COMMERCIAL_CUSTOMS', 'Vận đơn'),
-    requirement('CUSTOMS_DECLARATION', 'COMMERCIAL_CUSTOMS', 'Tờ khai hải quan'),
+    requirement('COMMERCIAL_CONTRACT', 'COMMERCIAL_CUSTOMS', 'Hợp đồng', false, 'Bổ sung khi hồ sơ có hợp đồng làm căn cứ giám định.'),
+    requirement('COMMERCIAL_INVOICE', 'COMMERCIAL_CUSTOMS', 'Hóa đơn thương mại', false, 'Chỉ áp dụng khi hồ sơ có giao dịch thương mại tương ứng.'),
+    requirement('PACKING_LIST', 'COMMERCIAL_CUSTOMS', 'Packing list', false, 'Chỉ áp dụng khi lô hàng có packing list.'),
+    requirement('BILL_OF_LADING', 'COMMERCIAL_CUSTOMS', 'Vận đơn', false, 'Chỉ áp dụng khi lô hàng có vận chuyển bằng đường biển/đường bộ tương ứng.'),
+    requirement('CUSTOMS_DECLARATION', 'COMMERCIAL_CUSTOMS', 'Tờ khai hải quan', false, 'Chỉ áp dụng khi hồ sơ có thủ tục hải quan.'),
+    requirement('CERTIFICATE_OF_ORIGIN', 'COMMERCIAL_CUSTOMS', 'C/O - chứng nhận xuất xứ', false, 'Chỉ áp dụng khi khách hàng cung cấp hoặc phạm vi yêu cầu có xác định xuất xứ.'),
+    requirement('INSPECTION_PLAN', 'TECHNICAL', 'Kế hoạch giám định', true),
     requirement('FIELD_INSPECTION_MINUTES', 'FIELD', 'Biên bản giám định hiện trường'),
     requirement('SAMPLE_HANDOVER_LAB', 'LAB_SUBCONTRACTOR', 'Phiếu giao nhận mẫu PTN'),
     requirement('LAB_RESULT', 'RESULT_ISSUANCE', 'Kết quả PTN'),
+    requirement('INSPECTION_REPORT', 'RESULT_ISSUANCE', 'Báo cáo kết quả / báo cáo đánh giá giám định'),
+    requirement('DECISION', 'RESULT_ISSUANCE', 'Quyết định phê duyệt / phát hành', false, 'Bổ sung khi loại hình hoặc quy trình yêu cầu quyết định riêng.'),
     requirement('INSPECTION_CERTIFICATE', 'RESULT_ISSUANCE', 'Chứng thư giám định'),
     requirement('ARCHIVE_INDEX', 'ARCHIVE', 'Hồ sơ lưu trữ'),
   ];

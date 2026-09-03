@@ -134,6 +134,11 @@ export function replacePcnTemplateFileDefinition(
     ...base,
     fileAssetId: input.assetId,
     storageScope: 'PCN_PRIVATE',
+    // A new asset has not been reviewed yet, even when the previous asset was approved.
+    // Never carry approval metadata across a fingerprint change.
+    status: 'NEEDS_ANNOTATION',
+    approvedAt: undefined,
+    approvedByUsername: undefined,
     placeholderKeys: [...input.placeholderKeys],
     sourceFingerprint: {
       ...current.sourceFingerprint,

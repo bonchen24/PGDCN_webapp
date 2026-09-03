@@ -95,7 +95,7 @@ test('PCN keeps template configuration in admin settings and excludes DDT templa
   assert.match(settings, /template|biểu mẫu/i);
 });
 
-test('PCN template settings use the existing in-place surface for current-file download and replacement upload', () => {
+test('PCN template settings use the existing in-place surface for upload, download and review', () => {
   const settings = read('components/PcnSettingsView.tsx');
   const modal = read('components/PcnTemplateSettingsModal.tsx');
 
@@ -103,8 +103,9 @@ test('PCN template settings use the existing in-place surface for current-file d
   assert.match(settings, /onUploadTemplate/);
   assert.match(settings, /Tải xuống/);
   assert.match(settings, /Tải bản mới/);
-  assert.doesNotMatch(settings, /window\.prompt/);
-  assert.doesNotMatch(settings, /onReviewTemplate|onAnnotateTemplate/);
+  assert.match(settings, /onReviewTemplate/);
+  assert.match(settings, /PcnTemplateReviewAction/);
+  assert.match(settings, /Yêu cầu chỉnh sửa/);
   assert.doesNotMatch(modal, /mapping|placeholder|annotatePcnTemplate|onReviewTemplate|onAnnotateTemplate/i);
   assert.match(modal, /Tải xuống file hiện tại/);
   assert.match(modal, /ghi đè file hiện tại/);

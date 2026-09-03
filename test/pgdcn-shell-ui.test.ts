@@ -18,11 +18,12 @@ test('shared sidebar renders both domain groups from department scopes', () => {
   }
 });
 
-test('department dashboard exposes six KPIs, domain cards and activity action', () => {
+test('department dashboard exposes six KPIs, domain cards and a shared activity entrypoint', () => {
   const source = read('../components/PgdcnDashboardView.tsx');
-  for (const marker of ['data-testid="pgdcn-dashboard-kpi-grid"', 'Hồ sơ PCN', 'Hồ sơ PGD', 'PCN cần xử lý', 'PGD cần xử lý', 'Hồ sơ cần AI hỗ trợ', 'Quá hạn / cần chú ý', 'Việc cần chú ý', 'Nhật ký hoạt động']) {
+  for (const marker of ['data-testid="pgdcn-dashboard-kpi-grid"', 'Hồ sơ PCN', 'Hồ sơ PGD', 'PCN cần xử lý', 'PGD cần xử lý', 'Hồ sơ cần AI hỗ trợ', 'Quá hạn / cần chú ý', 'Việc cần chú ý']) {
     assert.ok(source.includes(marker), `Missing dashboard marker: ${marker}`);
   }
+  assert.doesNotMatch(source, /Nhật ký hoạt động/);
   assert.match(source, /min-w-0/);
   assert.match(source, /grid-cols-2/);
 });

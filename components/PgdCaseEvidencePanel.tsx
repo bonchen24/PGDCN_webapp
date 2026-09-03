@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Download, FileBadge2, FlaskConical, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { usePgdStore } from '../store-pgd';
 import type { PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
-import { buildPgdSampleRegister } from '../utils/pgdDossier';
+import { buildPgdSampleRegister, getPgdDossierRequirementStationKey } from '../utils/pgdDossier';
 import type { PgdDossierDocument, PgdDossierRequirement, PgdDossierRequirementGroup } from '../utils/pgdDossier';
 import { getPgdDossierDocumentDownloadUrl } from '../utils/pgdApi';
+import { getPgdOperationalStepAccess } from '../utils/pgdWorkflow';
 
 const REQUIREMENT_GROUP_LABELS: Record<PgdDossierRequirementGroup, string> = {
   REQUEST: 'Tiếp nhận yêu cầu',
@@ -98,6 +99,7 @@ export type PgdCaseEvidencePanelProps = {
   canMutate: boolean;
   editable: boolean;
   lockedReason?: string | null;
+  loadError?: string | null;
 };
 
 export default ({
@@ -108,9 +110,11 @@ export default ({
   canMutate,
   editable,
   lockedReason,
+  loadError,
 }: PgdCaseEvidencePanelProps) => {
   const saveDossierDocument = usePgdStore((state) => state.saveDossierDocument);
   const destroyPgdSample = usePgdStore((state) => state.destroySample);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<DocumentFormState>(() => ({
     ...initialForm,
     requirementCode: requirements[0]?.code || '',
@@ -118,6 +122,12 @@ export default ({
   }));
   const [busy, setBusy] = useState(false);
   const register = useMemo(() => buildPgdSampleRegister(samples), [samples]);
+  const requirementAccess = useMemo(() => new Map(requirements.map((requirement) => [
+    requirement.code,
+    getPgdOperationalStepAccess({ status: request.status, targetStationKey: getPgdDossierRequirementStationKey(requirement.code) }),
+  ] as const)), [request.status, requirements]);
+  const selectedRequirementAccess = requirementAccess.get(form.requirementCode);
+  const sampleAccess = useMemo(() => getPgdOperationalStepAccess({ status: request.status, targetStationKey: 'FIELD_SAMPLING' }), [request.status]);
   const groupedRequirements = useMemo(() => {
     const grouped = new Map<PgdDossierRequirementGroup, PgdDossierRequirement[]>();
     for (const requirement of requirements) {
@@ -166,6 +176,10 @@ export default ({
       toast.error('Cần nhập tiêu đề chứng từ.');
       return;
     }
+    if (!selectedRequirementAccess?.editable) {
+      toast.error(selectedRequirementAccess?.reason || 'Checklist này đang bị khóa theo trạm hồ sơ.');
+      return;
+    }
     setBusy(true);
     try {
       await saveDossierDocument(request.id, {
@@ -184,6 +198,7 @@ export default ({
         requirementCode: form.requirementCode,
         title: selected?.title || '',
       });
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error: any) {
       toast.error(error?.message || 'Không thể lưu hồ sơ chứng từ.');
     } finally {
@@ -217,9 +232,12 @@ export default ({
               <FileBadge2 size={15} className="text-blue-600" />
               Hồ sơ chứng từ
             </h3>
-            <p className="mt-1 text-[10px] text-slate-500">Checklist hồ sơ đi theo đúng collection dossierDocuments của PGD, tách riêng với tài liệu đầu ra đã sinh.</p>
+            <p className="mt-1 text-[10px] text-slate-500">Checklist hồ sơ đi theo đúng collection pgdDossierDocuments của PGD, tách riêng với tài liệu đầu ra đã sinh.</p>
           </div>
-          {lockedReason ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-black text-amber-700">{lockedReason}</span> : null}
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {loadError ? <span role="alert" className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-black text-amber-700">{loadError}</span> : null}
+            {lockedReason ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-black text-amber-700">{lockedReason}</span> : null}
+          </div>
         </div>
 
         <div className="mt-3 space-y-3">
@@ -296,7 +314,7 @@ export default ({
               >
                 <option value="">Chọn checklist...</option>
                 {requirements.map((requirement) => (
-                  <option key={requirement.code} value={requirement.code}>{requirement.code} · {requirement.title}</option>
+                  <option key={requirement.code} value={requirement.code} disabled={!requirementAccess.get(requirement.code)?.editable}>{requirement.code} · {requirement.title}{requirementAccess.get(requirement.code)?.editable ? '' : ' · Đang khóa'}</option>
                 ))}
               </select>
             </label>
@@ -306,7 +324,7 @@ export default ({
                 aria-label="Tiêu đề chứng từ PGD"
                 value={form.title}
                 onChange={(event) => updateForm('title', event.target.value)}
-                disabled={!canMutate || !editable || busy}
+                disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
                 className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400"
               />
             </label>
@@ -316,7 +334,7 @@ export default ({
                 aria-label="Số chứng từ PGD"
                 value={form.documentNumber}
                 onChange={(event) => updateForm('documentNumber', event.target.value)}
-                disabled={!canMutate || !editable || busy}
+                disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
                 className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400"
               />
             </label>
@@ -327,7 +345,7 @@ export default ({
                 aria-label="Ngày chứng từ PGD"
                 value={form.documentDate}
                 onChange={(event) => updateForm('documentDate', event.target.value)}
-                disabled={!canMutate || !editable || busy}
+                disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
                 className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400"
               />
             </label>
@@ -338,7 +356,7 @@ export default ({
                 aria-label="Ghi chú chứng từ PGD"
                 value={form.note}
                 onChange={(event) => updateForm('note', event.target.value)}
-                disabled={!canMutate || !editable || busy}
+                disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
                 className="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-[10px] outline-none focus:border-blue-400"
               />
             </label>
@@ -348,7 +366,8 @@ export default ({
                 type="file"
                 aria-label="Tải file chứng từ PGD"
                 onChange={(event) => updateForm('file', event.target.files?.[0] || null)}
-                disabled={!canMutate || !editable || busy}
+                ref={fileInputRef}
+                disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
                 className="block min-h-10 w-full rounded-lg border border-dashed border-slate-300 bg-white px-2 py-2 text-[10px] text-slate-500"
               />
             </label>
@@ -358,7 +377,7 @@ export default ({
             <button
               type="submit"
               title="Lưu chứng từ dossier PGD"
-              disabled={!canMutate || !editable || busy}
+              disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
               className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? 'Đang lưu...' : 'Lưu chứng từ'}
@@ -411,7 +430,7 @@ export default ({
                         <button
                           type="button"
                           title={`Hủy mẫu ${sample.sampleCode}`}
-                          disabled={!canMutate || !editable || busy}
+                          disabled={!canMutate || !editable || busy || !sampleAccess.editable}
                           onClick={() => void destroySample(sample)}
                           className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-rose-200 bg-white px-2 text-[9px] font-black text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >

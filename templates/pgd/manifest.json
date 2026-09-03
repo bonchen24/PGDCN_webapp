@@ -9,9 +9,12 @@
       "code": "PGD-BM-01",
       "fileName": "PGD-BM-01.docx",
       "placeholderKeys": [
+        "assessmentMethod",
+        "courierName",
         "customerAddress",
         "customerName",
         "customsDocuments",
+        "deficiencyNote",
         "dimensions",
         "grade",
         "importer",
@@ -24,8 +27,16 @@
         "productName",
         "productStandard",
         "quantity",
+        "receivedAt",
+        "registrationNumber",
+        "registryDocuments",
         "requestCode",
-        "standards"
+        "returnedPackageNote",
+        "standards",
+        "steelLotSize",
+        "steelManualSamplingPlanNote",
+        "steelSameGradeMultiProduct",
+        "technicalDossierNote"
       ],
       "requiredPlaceholderKeys": [
         "customerAddress",
@@ -35,6 +46,7 @@
         "intakeChannel",
         "productName",
         "quantity",
+        "receivedAt",
         "requestCode",
         "standards"
       ]
@@ -74,6 +86,7 @@
       "fileName": "PGD-BM-03.docx",
       "placeholderKeys": [
         "agenda",
+        "assessmentMethod",
         "customerAddress",
         "customerName",
         "inspectionDate",
@@ -81,6 +94,9 @@
         "productName",
         "requestCode",
         "standards",
+        "steelLotSize",
+        "steelManualSamplingPlanNote",
+        "steelSameGradeMultiProduct",
         "team"
       ],
       "requiredPlaceholderKeys": [
@@ -133,6 +149,7 @@
       "code": "PGD-BM-05",
       "fileName": "PGD-BM-05.docx",
       "placeholderKeys": [
+        "assessmentMethod",
         "customerAddress",
         "customerName",
         "lotCode",
@@ -142,7 +159,10 @@
         "sampledAt",
         "sampleRows",
         "samplingLocation",
-        "samplingMethod"
+        "samplingMethod",
+        "steelLotSize",
+        "steelManualSamplingPlanNote",
+        "steelSameGradeMultiProduct"
       ],
       "requiredPlaceholderKeys": [
         "customerAddress",
@@ -189,6 +209,7 @@
       "code": "PGD-BM-07",
       "fileName": "PGD-BM-07.docx",
       "placeholderKeys": [
+        "assessmentMethod",
         "conclusion",
         "customerAddress",
         "customerName",
@@ -220,11 +241,56 @@
       ]
     },
     {
+      "id": "pgd-template-decision",
+      "kind": "DECISION",
+      "code": "PGD-BM-09",
+      "fileName": "PGD-BM-09.docx",
+      "placeholderKeys": [
+        "assessmentMethod",
+        "conclusion",
+        "customerAddress",
+        "customerName",
+        "customsDocuments",
+        "decisionBasis",
+        "decisionDate",
+        "decisionNumber",
+        "decisionSigner",
+        "decisionText",
+        "dimensions",
+        "grade",
+        "importer",
+        "lotCode",
+        "manufacturer",
+        "origin",
+        "productName",
+        "productStandard",
+        "requestCode",
+        "standards",
+        "steelLotSize",
+        "steelManualSamplingPlanNote",
+        "steelSameGradeMultiProduct"
+      ],
+      "requiredPlaceholderKeys": [
+        "conclusion",
+        "customerAddress",
+        "customerName",
+        "decisionBasis",
+        "decisionDate",
+        "decisionNumber",
+        "decisionSigner",
+        "decisionText",
+        "productName",
+        "requestCode",
+        "standards"
+      ]
+    },
+    {
       "id": "pgd-template-inspection-certificate",
       "kind": "INSPECTION_CERTIFICATE",
       "code": "PGD-BM-08",
       "fileName": "PGD-BM-08.docx",
       "placeholderKeys": [
+        "assessmentMethod",
         "certificateScope",
         "conclusion",
         "customerAddress",

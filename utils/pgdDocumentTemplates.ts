@@ -11,6 +11,7 @@ export type PgdDocumentTemplateKind =
   | 'SAMPLE_TAKING'
   | 'LAB_REQUEST'
   | 'INSPECTION_REPORT'
+  | 'DECISION'
   | 'INSPECTION_CERTIFICATE';
 
 export type PgdDocumentTemplateFormat = 'DOCX' | 'PDF';
@@ -64,6 +65,8 @@ export interface PgdDocumentTemplate {
   /** Placeholder keys discovered from the packaged DOCX asset. */
   placeholderKeys: string[];
   requiredPlaceholderKeys: string[];
+  /** Read-only server projection of the packaged DOCX source. */
+  sourceInspection?: import('./pgdTemplatePack.ts').PgdTemplateSourceInspection;
   sourceFormLabel: string;
   active: boolean;
 }
@@ -286,11 +289,18 @@ function cell(input: PgdTemplateCellInput): PgdTemplateCell {
 
 const sharedCells = {
   requestCode: cell({ key: 'requestCode', label: 'Mã PYC', sectionCode: 'identity', row: 1, column: 1, type: 'TEXT', required: true, binding: 'request.requestCode' }),
+  registrationNumber: cell({ key: 'registrationNumber', label: 'Số đăng ký', sectionCode: 'identity', row: 2, column: 1, type: 'TEXT', required: false, binding: 'request.registryMetadata.registrationNumber' }),
+  receivedAt: cell({ key: 'receivedAt', label: 'Ngày tiếp nhận', sectionCode: 'identity', row: 3, column: 1, type: 'DATE', required: true, binding: 'request.registryMetadata.receivedAt' }),
+  technicalDossierNote: cell({ key: 'technicalDossierNote', label: 'Ghi chú hồ sơ kỹ thuật', sectionCode: 'documents', row: 3, column: 7, type: 'TEXT', required: false, binding: 'request.registryMetadata.technicalDossierNote' }),
+  deficiencyNote: cell({ key: 'deficiencyNote', label: 'Thiếu hồ sơ', sectionCode: 'documents', row: 4, column: 7, type: 'TEXT', required: false, binding: 'request.registryMetadata.deficiencyNote' }),
+  returnedPackageNote: cell({ key: 'returnedPackageNote', label: 'Hoàn trả', sectionCode: 'documents', row: 5, column: 7, type: 'TEXT', required: false, binding: 'request.registryMetadata.returnedPackageNote' }),
+  courierName: cell({ key: 'courierName', label: 'Chuyển phát', sectionCode: 'documents', row: 6, column: 7, type: 'TEXT', required: false, binding: 'request.registryMetadata.courierName' }),
   customerName: cell({ key: 'customerName', label: 'Khách hàng', sectionCode: 'customer', row: 1, column: 2, type: 'TEXT', required: true, binding: 'request.customerSnapshot.name' }),
   customerAddress: cell({ key: 'customerAddress', label: 'Địa chỉ', sectionCode: 'customer', row: 2, column: 2, type: 'TEXT', required: true, binding: 'request.customerSnapshot.address' }),
   productName: cell({ key: 'productName', label: 'Tên hàng hóa / thiết bị', sectionCode: 'product', row: 1, column: 3, type: 'TEXT', required: true, binding: 'request.productName' }),
   lotCode: cell({ key: 'lotCode', label: 'Số lô / số nhận dạng', sectionCode: 'product', row: 2, column: 3, type: 'TEXT', required: false, binding: 'request.lotCode' }),
   standards: cell({ key: 'standards', label: 'Tiêu chuẩn áp dụng', sectionCode: 'criteria', row: 1, column: 4, type: 'TABLE', required: true, binding: 'request.standards', tableColumns: ['standard'] }),
+  assessmentMethod: cell({ key: 'assessmentMethod', label: 'Phương thức ĐGSPH', sectionCode: 'criteria', row: 2, column: 4, type: 'TEXT', required: false, binding: 'request.assessmentMethod', validation: { options: ['METHOD_7'] } }),
   conclusion: cell({ key: 'conclusion', label: 'Kết luận', sectionCode: 'conclusion', row: 1, column: 5, type: 'TEXT', required: true }),
   productDetails: [
     cell({ key: 'grade', label: 'Mác / model / cấp sản phẩm', sectionCode: 'product', row: 4, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.grade' }),
@@ -301,9 +311,22 @@ const sharedCells = {
     cell({ key: 'importer', label: 'Nhà nhập khẩu', sectionCode: 'product', row: 9, column: 3, type: 'TEXT', required: false, binding: 'request.productDetails.importer' }),
     cell({ key: 'customsDocuments', label: 'Chứng từ hải quan / thương mại', sectionCode: 'documents', row: 1, column: 7, type: 'TABLE', required: false, binding: 'request.productDetails.customsDocuments', tableColumns: ['document', 'number', 'date'] }),
   ],
+  steelSampling: [
+    cell({ key: 'steelLotSize', label: 'Cỡ lô (bó/kiện/cuộn)', sectionCode: 'sampling', row: 4, column: 2, type: 'NUMBER', required: false, unit: 'bó/kiện/cuộn', binding: 'request.productDetails.steelLotSize', validation: { min: 1 } }),
+    cell({ key: 'steelSameGradeMultiProduct', label: 'Cùng mác, nhiều loại sản phẩm', sectionCode: 'sampling', row: 5, column: 2, type: 'BOOLEAN', required: false, binding: 'request.productDetails.steelSameGradeMultiProduct' }),
+    cell({ key: 'steelManualSamplingPlanNote', label: 'Kế hoạch thủ công / căn cứ', sectionCode: 'sampling', row: 6, column: 2, type: 'TEXT', required: false, binding: 'request.productDetails.steelManualSamplingPlanNote' }),
+  ],
+  decision: [
+    cell({ key: 'decisionNumber', label: 'Số quyết định', sectionCode: 'identity', row: 2, column: 1, type: 'TEXT', required: true }),
+    cell({ key: 'decisionDate', label: 'Ngày quyết định', sectionCode: 'identity', row: 3, column: 1, type: 'DATE', required: true }),
+    cell({ key: 'decisionBasis', label: 'Căn cứ phê duyệt', sectionCode: 'approval', row: 1, column: 4, type: 'TEXT', required: true }),
+    cell({ key: 'decisionText', label: 'Nội dung quyết định', sectionCode: 'approval', row: 2, column: 4, type: 'TEXT', required: true }),
+    cell({ key: 'decisionSigner', label: 'Người ký quyết định', sectionCode: 'approval', row: 3, column: 4, type: 'TEXT', required: true }),
+  ],
+  registryDocuments: cell({ key: 'registryDocuments', label: 'Tham chiếu chứng từ sổ đăng ký', sectionCode: 'documents', row: 2, column: 7, type: 'TABLE', required: false, binding: 'request.registryMetadata.documents', tableColumns: ['kind', 'number', 'date'] }),
 };
 
-const ALL_METHOD_CODES = ['TT58', 'GENERIC'];
+const ALL_METHOD_CODES = ['TT58', 'QT-GĐ-14', 'GENERIC'];
 
 function template(
   id: string,
@@ -336,14 +359,14 @@ function template(
 
 export const DEFAULT_PGD_DOCUMENT_TEMPLATES: readonly PgdDocumentTemplate[] = [
   template('pgd-template-intake-request', 'INTAKE_REQUEST', 'PGD-BM-01', 'Phiếu tiếp nhận yêu cầu giám định', [
-    sharedCells.requestCode, sharedCells.customerName, sharedCells.customerAddress,
+    sharedCells.requestCode, sharedCells.registrationNumber, sharedCells.receivedAt, sharedCells.customerName, sharedCells.customerAddress,
     cell({ key: 'intakeChannel', label: 'Kênh tiếp nhận', sectionCode: 'identity', row: 1, column: 2, type: 'TEXT', required: true, binding: 'request.intakeChannel' }),
     sharedCells.productName, sharedCells.lotCode,
     cell({ key: 'quantity', label: 'Số lượng / khối lượng', sectionCode: 'product', row: 3, column: 3, type: 'NUMBER', required: true, unit: 'đơn vị', binding: 'request.quantity' }),
     cell({ key: 'inspectionScope', label: 'Phạm vi giám định', sectionCode: 'criteria', row: 2, column: 4, type: 'TEXT', required: true, binding: 'request.inspectionScope' }),
     cell({ key: 'inspectionLocation', label: 'Địa điểm giám định', sectionCode: 'location', row: 1, column: 6, type: 'TEXT', required: true, binding: 'request.inspectionLocation' }),
-    sharedCells.standards,
-    ...sharedCells.productDetails,
+    sharedCells.standards, sharedCells.assessmentMethod,
+    ...sharedCells.productDetails, ...sharedCells.steelSampling, sharedCells.registryDocuments, sharedCells.technicalDossierNote, sharedCells.deficiencyNote, sharedCells.returnedPackageNote, sharedCells.courierName,
   ], 'Mẫu tiếp nhận PYC PGD đã chuẩn hóa'),
   template('pgd-template-assignment', 'ASSIGNMENT', 'PGD-BM-02', 'Phiếu phân công giám định', [
     sharedCells.requestCode, sharedCells.customerName, sharedCells.customerAddress, sharedCells.productName,
@@ -358,7 +381,8 @@ export const DEFAULT_PGD_DOCUMENT_TEMPLATES: readonly PgdDocumentTemplate[] = [
     cell({ key: 'inspectionDate', label: 'Ngày giám định', sectionCode: 'schedule', row: 1, column: 2, type: 'DATE', required: true }),
     cell({ key: 'agenda', label: 'Chương trình thực hiện', sectionCode: 'schedule', row: 2, column: 2, type: 'TABLE', required: true, tableColumns: ['time', 'activity', 'owner'] }),
     cell({ key: 'team', label: 'Thành phần đoàn', sectionCode: 'assignment', row: 1, column: 3, type: 'TABLE', required: true, tableColumns: ['name', 'role', 'phone'] }),
-    sharedCells.standards,
+    sharedCells.standards, sharedCells.assessmentMethod,
+    ...sharedCells.steelSampling,
     cell({ key: 'note', label: 'Ghi chú kế hoạch', sectionCode: 'note', row: 1, column: 6, type: 'TEXT', required: false }),
   ], 'Mẫu kế hoạch giám định PGD đã chuẩn hóa'),
   template('pgd-template-field-inspection', 'FIELD_INSPECTION', 'PGD-BM-04', 'Biên bản giám định hiện trường', [
@@ -379,6 +403,7 @@ export const DEFAULT_PGD_DOCUMENT_TEMPLATES: readonly PgdDocumentTemplate[] = [
     cell({ key: 'sampleRows', label: 'Danh sách mẫu', sectionCode: 'sampling', row: 1, column: 3, type: 'TABLE', required: true, tableColumns: ['sampleCode', 'description', 'quantity', 'unit', 'seal'] }),
     cell({ key: 'purpose', label: 'Mục đích lấy mẫu', sectionCode: 'sampling', row: 2, column: 3, type: 'TEXT', required: true }),
     cell({ key: 'samplingMethod', label: 'Phương pháp lấy mẫu', sectionCode: 'sampling', row: 3, column: 3, type: 'TEXT', required: true }),
+    sharedCells.assessmentMethod, ...sharedCells.steelSampling,
   ], 'Mẫu biên bản lấy mẫu PGD đã chuẩn hóa'),
   template('pgd-template-lab-request', 'LAB_REQUEST', 'PGD-BM-06', 'Phiếu giao nhận và yêu cầu PTN', [
     sharedCells.requestCode, sharedCells.customerName, sharedCells.productName,
@@ -392,18 +417,26 @@ export const DEFAULT_PGD_DOCUMENT_TEMPLATES: readonly PgdDocumentTemplate[] = [
   template('pgd-template-inspection-report', 'INSPECTION_REPORT', 'PGD-BM-07', 'Báo cáo kết quả giám định', [
     sharedCells.requestCode, sharedCells.customerName, sharedCells.customerAddress, sharedCells.productName, sharedCells.lotCode,
     cell({ key: 'reportNumber', label: 'Số báo cáo', sectionCode: 'identity', row: 2, column: 1, type: 'TEXT', required: true }),
-    sharedCells.standards,
+    sharedCells.standards, sharedCells.assessmentMethod,
     cell({ key: 'labResults', label: 'Kết quả PTN', sectionCode: 'results', row: 1, column: 3, type: 'TABLE', required: false, tableColumns: ['item', 'value', 'unit', 'method'] }),
     cell({ key: 'fieldFindings', label: 'Kết quả hiện trường', sectionCode: 'results', row: 2, column: 3, type: 'TABLE', required: false, tableColumns: ['item', 'value'] }),
     sharedCells.conclusion,
     cell({ key: 'reportedAt', label: 'Ngày lập báo cáo', sectionCode: 'identity', row: 3, column: 1, type: 'DATE', required: true }),
     ...sharedCells.productDetails,
   ], 'Mẫu báo cáo kết quả PGD đã chuẩn hóa', ALL_METHOD_CODES),
+  template('pgd-template-decision', 'DECISION', 'PGD-BM-09', 'Quyết định phê duyệt / phát hành kết quả giám định', [
+    sharedCells.requestCode, sharedCells.customerName, sharedCells.customerAddress, sharedCells.productName, sharedCells.lotCode,
+    sharedCells.standards, sharedCells.assessmentMethod,
+    ...sharedCells.decision,
+    ...sharedCells.steelSampling,
+    ...sharedCells.productDetails,
+    sharedCells.conclusion,
+  ], 'Mẫu quyết định PGD đã chuẩn hóa', ALL_METHOD_CODES),
   template('pgd-template-inspection-certificate', 'INSPECTION_CERTIFICATE', 'PGD-BM-08', 'Chứng thư giám định', [
     sharedCells.requestCode, sharedCells.customerName, sharedCells.customerAddress, sharedCells.productName, sharedCells.lotCode,
     cell({ key: 'documentNumber', label: 'Số chứng thư', sectionCode: 'identity', row: 2, column: 1, type: 'TEXT', required: true }),
     cell({ key: 'certificateScope', label: 'Hạng mục giám định', sectionCode: 'criteria', row: 1, column: 2, type: 'TEXT', required: true }),
-    sharedCells.standards,
+    sharedCells.standards, sharedCells.assessmentMethod,
     cell({ key: 'resultRows', label: 'Danh mục kết quả', sectionCode: 'results', row: 1, column: 3, type: 'TABLE', required: false, tableColumns: ['item', 'result', 'unit'] }),
     sharedCells.conclusion,
     cell({ key: 'signedAt', label: 'Ngày ký', sectionCode: 'approval', row: 1, column: 4, type: 'DATE', required: false }),
@@ -424,7 +457,7 @@ export function isPgdDocumentTemplateRecordAllowed(value: unknown): value is Pgd
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const template = value as Partial<PgdDocumentTemplate>;
   if (template.domain !== PGD_DOMAIN || !String(template.id || '').trim() || !String(template.code || '').trim() || !String(template.name || '').trim()) return false;
-  if (!['INTAKE_REQUEST', 'ASSIGNMENT', 'INSPECTION_PLAN', 'FIELD_INSPECTION', 'SAMPLE_TAKING', 'LAB_REQUEST', 'INSPECTION_REPORT', 'INSPECTION_CERTIFICATE'].includes(String(template.kind || ''))) return false;
+  if (!['INTAKE_REQUEST', 'ASSIGNMENT', 'INSPECTION_PLAN', 'FIELD_INSPECTION', 'SAMPLE_TAKING', 'LAB_REQUEST', 'INSPECTION_REPORT', 'DECISION', 'INSPECTION_CERTIFICATE'].includes(String(template.kind || ''))) return false;
   if (!['DRAFT', 'PUBLISHED', 'RETIRED'].includes(String(template.status || ''))) return false;
   if (!Array.isArray(template.productGroups) || template.productGroups.some((item) => !ALL_PRODUCT_GROUPS.includes(item as PgdProductGroup))) return false;
   if (!Array.isArray(template.formats) || template.formats.some((format) => !['DOCX', 'PDF'].includes(String(format)))) return false;
@@ -440,7 +473,7 @@ export function validatePgdDocumentTemplate(template: Partial<PgdDocumentTemplat
   if (template.domain !== PGD_DOMAIN) issues.push('Template phải thuộc miền PGD.');
   if (!String(template.id || '').trim() || !String(template.code || '').trim() || !String(template.name || '').trim()) issues.push('Template cần có mã định danh, mã biểu mẫu và tên.');
   if (!String(template.version || '').trim()) issues.push('Template cần có phiên bản.');
-  if (!['INTAKE_REQUEST', 'ASSIGNMENT', 'INSPECTION_PLAN', 'FIELD_INSPECTION', 'SAMPLE_TAKING', 'LAB_REQUEST', 'INSPECTION_REPORT', 'INSPECTION_CERTIFICATE'].includes(String(template.kind || ''))) issues.push('Loại template PGD không hợp lệ.');
+  if (!['INTAKE_REQUEST', 'ASSIGNMENT', 'INSPECTION_PLAN', 'FIELD_INSPECTION', 'SAMPLE_TAKING', 'LAB_REQUEST', 'INSPECTION_REPORT', 'DECISION', 'INSPECTION_CERTIFICATE'].includes(String(template.kind || ''))) issues.push('Loại template PGD không hợp lệ.');
   if (!Array.isArray(template.productGroups) || template.productGroups.length === 0 || template.productGroups.some((item) => !ALL_PRODUCT_GROUPS.includes(item as PgdProductGroup))) issues.push('Nhóm sản phẩm của template không hợp lệ.');
   if (!Array.isArray(template.formats) || template.formats.length === 0 || template.formats.some((format) => !['DOCX', 'PDF'].includes(String(format)))) issues.push('Định dạng template phải là DOCX hoặc PDF.');
   if (template.fileName !== undefined && (!String(template.fileName || '').trim() || /[\\/]/.test(String(template.fileName)))) issues.push('Template cần có tên file DOCX tương đối, không chứa thư mục.');

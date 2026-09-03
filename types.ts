@@ -260,6 +260,23 @@ export interface PcnQc20ScopeSnapshot {
   chemicalCompositionRequirements?: PcnQc20ChemicalCompositionRequirement[];
 }
 
+/** Controlled, room-level QC20 catalogue confirmed by an Admin PCN. */
+export interface PcnQc20ScopeConfiguration {
+  status: PcnCertificationFieldScopeStatus;
+  scopeVersion: string;
+  standardRefs: string[];
+  method: PcnCertificationMethod;
+  sourceReferences: string[];
+  productForms: string[];
+  grades: string[];
+  hsCodes: string[];
+  appliedStandards: string[];
+  chemicalCompositionRequirements: PcnQc20ChemicalCompositionRequirement[];
+  confirmedByUsername?: string;
+  confirmedAt?: string;
+  confirmationNote?: string;
+}
+
 export type PcnProposalChannel = 'DIRECT' | 'EMAIL' | 'ONLINE_ZALO' | 'OTHER';
 export type PcnProposalStatus = 'DRAFT' | 'RECEIVED' | 'REJECTED' | 'CONVERTED';
 
@@ -1326,6 +1343,7 @@ export interface PcnSettings {
     bucket: string;
     privateOnly: true;
   };
+  qc20ScopeConfiguration: PcnQc20ScopeConfiguration;
   updatedAt?: string;
   updatedBy?: string;
 }

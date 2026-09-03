@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   DEFAULT_PGD_CATALOG,
+  PGD_ASSESSMENT_METHOD_OPTIONS,
   PGD_COLLECTIONS,
   PGD_WORKFLOW_STATES,
   createPgdInspectionRequest,
@@ -10,6 +11,7 @@ import {
   isPgdCatalogItemAllowed,
   getPgdApprovalDenial,
   getPgdTransitionDenial,
+  getPgdSteelTtlt58SamplingPlan,
   validatePgdAssignment,
   validatePgdInspectors,
   snapshotPgdResultTemplate,
@@ -17,6 +19,7 @@ import {
   buildPgdLabRequest,
   buildPgdLabResult,
   validatePgdIntake,
+  validatePgdRegistryMetadata,
   type PgdInspectionRequest,
   type PgdLabRequest,
   type PgdResultTemplate,
@@ -57,10 +60,85 @@ test('PGD catalog is separate and does not expose PCN QC20', () => {
   assert.equal(isPgdCatalogItemAllowed('QC20'), false);
 });
 
+test('PGD method metadata is derived from the researched inspection procedures and rejects free text', () => {
+  const steel = DEFAULT_PGD_CATALOG.find((item) => item.id === 'STEEL_LOT_INSPECTION');
+  const machinery = DEFAULT_PGD_CATALOG.find((item) => item.id === 'MACHINERY_LINE_INSPECTION');
+  const coal = DEFAULT_PGD_CATALOG.find((item) => item.id === 'COAL_LOT_INSPECTION');
+  assert.deepEqual(steel?.methodOptions.map((item) => item.code), ['TT58', 'QT-GĐ-02', 'QT-GĐ-03', 'QT-GĐ-04', 'QT-GĐ-06', 'QT-GĐ-10', 'QT-GĐ-14']);
+  assert.ok(machinery?.methodOptions.some((item) => item.code === 'QT-GĐ-07'));
+  assert.ok(coal?.methodOptions.some((item) => item.code === 'QT-GĐ-08'));
+  assert.deepEqual(validatePgdIntake({ ...intake, method: 'phương pháp tự nhập' }).map((issue) => issue.field), ['method']);
+  assert.deepEqual(validatePgdIntake({ ...intake, method: 'QT-GĐ-10' }), []);
+  assert.deepEqual(validatePgdIntake({ ...intake, method: 'TT58' }), []);
+  assert.deepEqual(PGD_ASSESSMENT_METHOD_OPTIONS.map((item) => item.code), ['METHOD_7']);
+  assert.deepEqual(validatePgdIntake({ ...intake, method: 'TT58', assessmentMethod: 'METHOD_7' }), []);
+  assert.equal(validatePgdIntake({ ...intake, assessmentMethod: 'METHOD_9' as any }).some((issue) => issue.field === 'assessmentMethod'), true);
+  assert.deepEqual(validatePgdIntake({ ...intake, catalogItemId: 'STEEL-LOCAL', method: 'QT-GĐ-14' }, [
+    ...DEFAULT_PGD_CATALOG.filter((item) => item.id !== 'STEEL_LOT_INSPECTION'),
+    { ...steel!, id: 'STEEL-LOCAL', methodOptions: [{ code: 'QT-GĐ-14', name: 'Phương thức do quản lý xác nhận' }] },
+  ]), []);
+  const unsafeCatalogItem = { ...steel!, id: 'STEEL-LOCAL-Q', methodOptions: [{ code: 'QC20', name: 'Không được dùng trong PGD' }] };
+  assert.equal(isPgdCatalogItemAllowed(unsafeCatalogItem.id, [unsafeCatalogItem]), false);
+  assert.match(validatePgdIntake({ ...intake, catalogItemId: unsafeCatalogItem.id, method: 'QC20' }, [unsafeCatalogItem])[0]?.field || '', /catalogItemId/);
+});
+
+test('QT-GĐ-14 uses the researched steel lot sampling table without extrapolating', () => {
+  const steel = DEFAULT_PGD_CATALOG.find((item) => item.id === 'STEEL_LOT_INSPECTION');
+  assert.equal(steel?.methodOptions.some((method) => method.code === 'QT-GĐ-14'), true);
+  assert.deepEqual(getPgdSteelTtlt58SamplingPlan(1, false), {
+    lotSizeMin: 1,
+    lotSizeMax: 25,
+    visualLabelSampleCount: 2,
+    mechanicalWeightSampleCount: 2,
+    chemicalCoatingSampleCount: 1,
+    aqlVisualDimensionWeight: 4,
+    aqlMechanicalChemicalCoating: 1.5,
+    reference: 'QT-GĐ-14 / TTLT 58/2015',
+  });
+  assert.equal(getPgdSteelTtlt58SamplingPlan(100, true)?.mechanicalWeightSampleCount, 2);
+  assert.equal(getPgdSteelTtlt58SamplingPlan(3200, false)?.visualLabelSampleCount, 8);
+  assert.equal(getPgdSteelTtlt58SamplingPlan(3201, false), null);
+  assert.equal(validatePgdIntake({ ...intake, method: 'QT-GĐ-14', productDetails: { steelLotSize: 3201 } }).some((issue) => issue.field === 'productDetails.steelManualSamplingPlanNote'), true);
+  assert.deepEqual(validatePgdIntake({ ...intake, method: 'QT-GĐ-14', productDetails: { steelLotSize: 3201, steelManualSamplingPlanNote: 'Áp dụng kế hoạch lấy mẫu được trưởng phòng phê duyệt.' } }), []);
+});
+
 test('PGD intake requires customer, lot, scope and location without reusing PCN proposal rules', () => {
   assert.deepEqual(validatePgdIntake(intake), []);
   const issues = validatePgdIntake({ ...intake, productName: '', inspectionLocation: '', standards: [] });
   assert.deepEqual(issues.map((issue) => issue.field), ['productName', 'inspectionLocation', 'standards']);
+});
+
+test('PGD registry metadata captures source-derived request and dossier references', () => {
+  const request = createPgdInspectionRequest({
+    ...intake,
+    registryMetadata: {
+      registrationNumber: 'SĐK-GĐ-2026-001',
+      receivedAt: '2026-09-03',
+      documents: [
+        { kind: 'CONTRACT', number: 'HD-001', date: '2026-09-01' },
+        { kind: 'BILL_OF_LADING', number: 'BL-001', date: '2026-08-30' },
+        { kind: 'TECHNICAL_DOSSIER', number: 'HSKT-001' },
+      ],
+      technicalDossierNote: 'Đã nhận bản vẽ và catalogue thiết bị.',
+      deficiencyNote: 'Chờ bổ sung C/O.',
+      returnedPackageNote: 'Đã trả bộ hồ sơ thiếu cho khách hàng.',
+      courierName: 'Chuyển phát nội bộ',
+    },
+  }, '2026-09-03T08:00:00.000Z');
+  assert.deepEqual(request.registryMetadata, {
+    registrationNumber: 'SĐK-GĐ-2026-001',
+    receivedAt: '2026-09-03',
+    documents: [
+      { kind: 'CONTRACT', number: 'HD-001', date: '2026-09-01' },
+      { kind: 'BILL_OF_LADING', number: 'BL-001', date: '2026-08-30' },
+      { kind: 'TECHNICAL_DOSSIER', number: 'HSKT-001' },
+    ],
+    technicalDossierNote: 'Đã nhận bản vẽ và catalogue thiết bị.',
+    deficiencyNote: 'Chờ bổ sung C/O.',
+    returnedPackageNote: 'Đã trả bộ hồ sơ thiếu cho khách hàng.',
+    courierName: 'Chuyển phát nội bộ',
+  });
+  assert.deepEqual(validatePgdRegistryMetadata({ documents: [{ kind: 'QC20' }] }), [{ field: 'registryMetadata.documents[0].kind', message: 'Loại chứng từ sổ đăng ký PGD không hợp lệ.' }]);
 });
 
 test('PGD intake validates the request identity and rejects cross-domain document pointers', () => {
@@ -106,7 +184,7 @@ test('PGD workflow only advances through the ordered lifecycle and gates lab res
   assert.equal(getPgdTransitionDenial('WAITING_LAB_RESULTS', 'RESULTS_REVIEW', { labRequests: [{ ...pendingLab, status: 'RESULT_RECEIVED' }] }), null);
   assert.equal(getPgdTransitionDenial('TECHNICAL_REVIEW', 'LEADERSHIP_APPROVAL', { reportReady: false }), 'Chưa hoàn thiện báo cáo giám định để trình phê duyệt.');
   assert.equal(getPgdTransitionDenial('LEADERSHIP_APPROVAL', 'SIGNED', { hasCertificate: false }), 'Chưa có dự thảo chứng thư giám định để trình ký.');
-  assert.equal(getPgdTransitionDenial('SIGNED', 'RESULT_RETURNED', { signed: true, paymentRequired: true, paymentSettled: false }), null);
+  assert.equal(getPgdTransitionDenial('SIGNED', 'RESULT_RETURNED', { signed: true }), null);
   assert.notEqual(getPgdTransitionDenial('DRAFT', 'ARCHIVED', {}), null);
 });
 

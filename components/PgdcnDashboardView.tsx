@@ -99,7 +99,7 @@ function AttentionQueue({ items, onOpenPcn, onOpenPgd }: Pick<PgdcnDashboardView
     <section data-testid="pgdcn-dashboard-attention-queue" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2"><Timer size={17} className="text-amber-500" /><h2 className="text-base font-black text-slate-900">Hàng đợi hành động</h2></div>
+          <div className="flex items-center gap-2"><Timer size={17} className="text-amber-500" /><h2 className="text-base font-black text-slate-900">Việc cần chú ý <span className="font-normal text-slate-400">· Hàng đợi hành động</span></h2></div>
           <p className="mt-1 text-[11px] leading-4 text-slate-500">Ưu tiên hồ sơ quá hạn, sau đó đến các trạng thái đang cần xử lý.</p>
         </div>
         <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-600">{formatCount(items.length)} hồ sơ</span>

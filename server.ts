@@ -125,6 +125,7 @@ import {
   type PgdApprovalStep,
   type PgdFieldInspection,
   type PgdInspectionAssignment,
+  type PgdCatalogItem,
   type PgdInspectionCertificate,
   type PgdInspectionReport,
   type PgdInspectionRequest,
@@ -151,12 +152,13 @@ import {
 import {
   buildPgdDossierDocument,
   getPgdDossierRequirements,
+  getPgdDossierRequirementStationKey,
   markPgdSampleDestroyed,
   type PgdDossierDocument,
 } from "./utils/pgdDossier.ts";
 import { buildPgdDocumentContext, buildPgdDocumentOutput } from "./utils/pgdDocumentGeneration.ts";
 import { inspectPgdTemplateSource, resolvePgdTemplateSourcePath } from "./utils/pgdTemplatePack.ts";
-import { getPgdAssignmentApprovalDenial, getPgdOperationalStepGateDenial, getPgdPostSignatureMutationDenial, validatePgdResultValues } from "./utils/pgdWorkflow.ts";
+import { getPgdAssignmentApprovalDenial, getPgdOperationalStepAccess, getPgdOperationalStepGateDenial, getPgdPostSignatureMutationDenial, validatePgdResultValues, type PgdOperationalStationKey } from "./utils/pgdWorkflow.ts";
 import { buildKqtnPdfContentDisposition } from "./utils/kqtnPdfHeaders.js";
 import { normalizeSystemUserRole } from "./utils/systemUserRole.js";
 import { isKqtnPaymentManager, isKqtnPaymentStateChanged } from "./utils/kqtnPaymentPolicy.js";
@@ -189,6 +191,7 @@ import type { PcnDossierUpdateInput } from './utils/pcnDossierApi.ts';
 import type { PcnProposalUpdateInput } from './utils/pcnProposalApi.ts';
 import { buildPcnQualityDocument } from './utils/pcnQualityDocuments.ts';
 import { normalizePcnSettings } from './utils/pcnSettings.ts';
+import { confirmPcnQc20ScopeConfiguration, getPcnQc20Readiness, normalizePcnQc20ScopeConfiguration } from './utils/pcnQc20ScopeGovernance.ts';
 import { isPcnOcrFileSupported, normalizePcnOcrDraft, normalizePcnOcrEvidence } from './utils/pcnOcrPolicy.ts';
 import { getPcnOperationalFormKind, normalizePcnOperationalFormsPatch } from './utils/pcnOperationalForms.ts';
 import { mergePcnDocumentWaivers, normalizePcnDocumentWaiverPatch } from './utils/pcnDocumentWaivers.ts';
@@ -1723,6 +1726,18 @@ function assertPgdRequestEvidenceMutationAllowed(request: PgdInspectionRequest):
   if (denial) throw Object.assign(new Error(denial), { statusCode: 409 });
 }
 
+function assertPgdRequestStationMutationAllowed(request: PgdInspectionRequest, targetStationKey: PgdOperationalStationKey): void {
+  const access = getPgdOperationalStepAccess({ status: request.status, targetStationKey });
+  if (!access.editable) throw Object.assign(new Error(access.reason || 'Thao tác PGD đang bị khóa theo trạm hồ sơ.'), { statusCode: 409 });
+}
+
+function getPgdGeneratedDocumentStationKey(kind: PgdDocumentTemplateKind): PgdOperationalStationKey {
+  if (kind === 'INTAKE_REQUEST') return 'INTAKE_CAPABILITY';
+  if (kind === 'ASSIGNMENT' || kind === 'INSPECTION_PLAN') return 'PREPARATION';
+  if (kind === 'FIELD_INSPECTION' || kind === 'SAMPLE_TAKING' || kind === 'LAB_REQUEST') return 'FIELD_SAMPLING';
+  return 'REPORT_APPROVAL_RETURN';
+}
+
 function normalizePgdMultipartText(value: unknown): string | undefined {
   const normalized = String(value ?? '').trim();
   return normalized ? normalized : undefined;
@@ -2805,8 +2820,16 @@ async function startServer() {
           assertPgdRequestEvidenceMutationAllowed(request);
 
           const requirements = getPgdDossierRequirements(request.productGroup);
-          if (!requirements.some((item) => item.code === requirementCode)) {
+          const requirement = requirements.find((item) => item.code === requirementCode);
+          if (!requirement) {
             throw Object.assign(new Error('Mã yêu cầu checklist PGD không thuộc nhóm sản phẩm của hồ sơ.'), { statusCode: 400 });
+          }
+          const requirementAccess = getPgdOperationalStepAccess({
+            status: request.status,
+            targetStationKey: getPgdDossierRequirementStationKey(requirement.code),
+          });
+          if (!requirementAccess.editable) {
+            throw Object.assign(new Error(requirementAccess.reason || 'Checklist PGD đang bị khóa theo trạm hồ sơ.'), { statusCode: 409 });
           }
 
           const currentResult = await client.query(
@@ -3139,6 +3162,7 @@ async function startServer() {
         );
         if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD để sinh tài liệu.'), { statusCode: 404 });
         const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
+        assertPgdRequestStationMutationAllowed(request, getPgdGeneratedDocumentStationKey(kind));
         const sourceRows = await Promise.all([
           client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC`, [PGD_COLLECTIONS.assignments, requestId]),
           client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC`, [PGD_COLLECTIONS.fieldInspections, requestId]),
@@ -3239,7 +3263,10 @@ async function startServer() {
     try {
       const actor = getPgdSessionUser(req)!;
       const input = (req.body || {}) as PgdInspectionRequestInput;
-      const request = createPgdInspectionRequest(input);
+      const catalogResult = await pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd' ORDER BY document_id`, [PGD_COLLECTIONS.catalog]);
+      const persistedCatalog = catalogResult.rows.map((row: any) => mapDocumentRow(row)).filter(isPgdCatalogRecordAllowed) as PgdCatalogItem[];
+      const catalog = persistedCatalog.length > 0 ? persistedCatalog : DEFAULT_PGD_CATALOG;
+      const request = createPgdInspectionRequest(input, new Date().toISOString(), catalog);
       const result = await withPgTransaction(async (client) => {
         const existing = await client.query(
           `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 LIMIT 1 FOR UPDATE`,
@@ -3348,6 +3375,7 @@ async function startServer() {
         if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD của phân công.'), { statusCode: 404 });
         const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
         assertPgdRequestEvidenceMutationAllowed(request);
+        assertPgdRequestStationMutationAllowed(request, request.status === 'CAPABILITY_REVIEW' ? 'INTAKE_CAPABILITY' : 'PREPARATION');
         const usersResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'systemUsers' ORDER BY document_id`);
         const users = usersResult.rows.map((row: any) => toPcnUserAccount({ documentId: row.document_id, data: row.data || {} }));
         const assignmentIssues = validatePgdAssignment(assignment, users);
@@ -3409,6 +3437,7 @@ async function startServer() {
         if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD của biên bản hiện trường.'), { statusCode: 404 });
         const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
         assertPgdRequestEvidenceMutationAllowed(request);
+        assertPgdRequestStationMutationAllowed(request, 'FIELD_SAMPLING');
         const usersResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'systemUsers' ORDER BY document_id`);
         const users = usersResult.rows.map((row: any) => toPcnUserAccount({ documentId: row.document_id, data: row.data || {} }));
         const inspectorIssues = validatePgdInspectors(inspection.inspectorUsernames, users);
@@ -3463,6 +3492,7 @@ async function startServer() {
         if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD để tách mẫu.'), { statusCode: 404 });
         const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
         assertPgdRequestEvidenceMutationAllowed(request);
+        assertPgdRequestStationMutationAllowed(request, 'FIELD_SAMPLING');
         for (const sample of samples) {
           await client.query(
             `INSERT INTO app_documents (collection_name, document_id, data, updated_at) VALUES ($1, $2, $3::jsonb, CURRENT_TIMESTAMP)
@@ -3521,6 +3551,7 @@ async function startServer() {
         if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD của mẫu cần hủy.'), { statusCode: 404 });
         const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
         assertPgdRequestEvidenceMutationAllowed(request);
+        assertPgdRequestStationMutationAllowed(request, 'FIELD_SAMPLING');
         const destroyed = markPgdSampleDestroyed(currentSample, actor.username, note, new Date().toISOString());
         await client.query(
           `UPDATE app_documents
@@ -3561,6 +3592,7 @@ async function startServer() {
         if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD của yêu cầu PTN.'), { statusCode: 404 });
         const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
         assertPgdRequestEvidenceMutationAllowed(request);
+        assertPgdRequestStationMutationAllowed(request, 'FIELD_SAMPLING');
         const sampleResult = await client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`, [PGD_COLLECTIONS.samples, labRequest.sampleId]);
         const sample = sampleResult.rows[0]?.data as PgdSample | undefined;
         if (!sample || sample.requestId !== labRequest.requestId || sample.disposition !== 'LAB') throw Object.assign(new Error('Mẫu PTN không thuộc hồ sơ PGD hoặc không phải phần mẫu gửi PTN.'), { statusCode: 409 });
@@ -3616,6 +3648,7 @@ async function startServer() {
         if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD của kết quả PTN.'), { statusCode: 404 });
         const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
         assertPgdRequestEvidenceMutationAllowed(request);
+        assertPgdRequestStationMutationAllowed(request, 'LAB_RESULTS');
         const labRequestResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`, [PGD_COLLECTIONS.labRequests, result.labRequestId]);
         if (!labRequestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy yêu cầu PTN PGD.'), { statusCode: 404 });
         if (String(labRequestResult.rows[0].data?.requestId || '') !== result.requestId) throw Object.assign(new Error('Kết quả PTN không khớp hồ sơ PGD.'), { statusCode: 409 });
@@ -3668,6 +3701,7 @@ async function startServer() {
         if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD của báo cáo.'), { statusCode: 404 });
         const currentRequest = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
         assertPgdRequestEvidenceMutationAllowed(currentRequest);
+        assertPgdRequestStationMutationAllowed(currentRequest, 'REPORT_APPROVAL_RETURN');
         const templateId = String(report.templateSnapshot?.templateId || '').trim();
         if (!templateId) throw Object.assign(new Error('Báo cáo PGD phải liên kết template kết quả đã snapshot.'), { statusCode: 400 });
         const templateResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`, [PGD_COLLECTIONS.resultTemplates, templateId]);
@@ -3745,6 +3779,7 @@ async function startServer() {
         if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD của chứng thư.'), { statusCode: 404 });
         const currentRequest = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
         assertPgdRequestEvidenceMutationAllowed(currentRequest);
+        assertPgdRequestStationMutationAllowed(currentRequest, 'REPORT_APPROVAL_RETURN');
         const reportResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC LIMIT 1`, [PGD_COLLECTIONS.reports, certificate.requestId]);
         if (!reportResult.rows[0]) throw Object.assign(new Error('Chưa có báo cáo giám định PGD đã kiểm tra để lập chứng thư.'), { statusCode: 409 });
         const sourceReport = mapDocumentRow(reportResult.rows[0]) as PgdInspectionReport;
@@ -3804,6 +3839,7 @@ async function startServer() {
         if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD để phê duyệt.'), { statusCode: 404 });
         const current = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
         assertPgdRequestEvidenceMutationAllowed(current);
+        assertPgdRequestStationMutationAllowed(current, 'REPORT_APPROVAL_RETURN');
         const approvalDenial = getPgdApprovalDenial(current.status, step.role, actor);
         if (approvalDenial) throw Object.assign(new Error(approvalDenial), { statusCode: 403 });
         const now = new Date().toISOString();
@@ -4532,6 +4568,132 @@ async function startServer() {
     }
   });
 
+  app.get('/api/pcn/settings/qc20-readiness', async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') {
+      res.status(404).json({ error: 'Kiểm tra sẵn sàng QC20 chỉ khả dụng trong profile PCN.' });
+      return;
+    }
+    if (!requirePcnSession(req, res)) return;
+    try {
+      const [settingsResult, templateResult] = await Promise.all([
+        pool.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'systemConfig' AND document_id = $1
+           LIMIT 1`,
+          ['pcn-settings'],
+        ),
+        pool.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'pcnTemplateDefinitions'
+             AND upper(data->>'fieldCode') = 'QC20'`,
+        ),
+      ]);
+      const settings = settingsResult.rows[0] ? normalizePcnSettings(mapDocumentRow(settingsResult.rows[0])) : normalizePcnSettings({});
+      const templates = mergePcnTemplateCatalog(templateResult.rows.map((row: any) => ({ ...row.data, id: row.document_id })) as PcnTemplateDefinition[]);
+      const templateAssetIds = templates
+        .filter((template) => ['CERTIFICATE', 'DECISION'].includes(template.documentKind))
+        .map((template) => template.fileAssetId)
+        .filter((assetId): assetId is string => Boolean(assetId));
+      const assetResult = await pool.query(
+        `SELECT id, bucket_name, source_collection, source_document_id, source_json_path, mime_type
+         FROM file_assets WHERE id = ANY($1::text[])`,
+        [templateAssetIds],
+      );
+      const privateTemplateAssetIds = new Set(
+        assetResult.rows
+          .filter((asset: any) => String(asset.bucket_name) === getPcnStorageBucket()
+            && asset.source_collection === 'pcnTemplateDefinitions'
+            && asset.source_json_path === 'fileAssetId'
+            && asset.mime_type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            && templates.some((template) => template.id === asset.source_document_id && template.fileAssetId === asset.id))
+          .map((asset: any) => String(asset.id)),
+      );
+      res.json({ readiness: getPcnQc20Readiness({ scopeConfiguration: settings.qc20ScopeConfiguration, templates, privateTemplateAssetIds }) });
+    } catch (error: any) {
+      console.error('PCN QC20 readiness error:', error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pcn/settings/qc20-scope/confirm', async (req, res) => {
+    if (!requirePcnAdmin(req, res)) return;
+    const incoming = req.body?.scopeConfiguration ?? req.body?.scope;
+    if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
+      res.status(400).json({ error: 'Dữ liệu xác nhận phạm vi QC20 không hợp lệ.' });
+      return;
+    }
+    const actor = getPcnSessionUser(req)!;
+    const now = new Date().toISOString();
+    try {
+      const result = await withPgTransaction(async (client) => {
+        const existingResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'systemConfig' AND document_id = $1
+           LIMIT 1 FOR UPDATE`,
+          ['pcn-settings'],
+        );
+        const previousSettings = existingResult.rows[0] ? normalizePcnSettings(mapDocumentRow(existingResult.rows[0])) : normalizePcnSettings({});
+        const nextScope = confirmPcnQc20ScopeConfiguration(incoming, actor.username, now);
+        const previousScope = normalizePcnQc20ScopeConfiguration(previousSettings.qc20ScopeConfiguration);
+        const comparable = (scope: ReturnType<typeof normalizePcnQc20ScopeConfiguration>) => JSON.stringify({
+          scopeVersion: scope.scopeVersion,
+          standardRefs: scope.standardRefs,
+          method: scope.method,
+          sourceReferences: scope.sourceReferences,
+          productForms: scope.productForms,
+          grades: scope.grades,
+          hsCodes: scope.hsCodes,
+          appliedStandards: scope.appliedStandards,
+          chemicalCompositionRequirements: scope.chemicalCompositionRequirements,
+          confirmationNote: scope.confirmationNote,
+        });
+        if (previousScope.status === 'CONFIRMED' && comparable(previousScope) === comparable(nextScope)) {
+          return { settings: previousSettings, idempotent: true, activityLog: undefined };
+        }
+        const settings = normalizePcnSettings({
+          ...previousSettings,
+          qc20ScopeConfiguration: nextScope,
+          updatedAt: now,
+          updatedBy: actor.username,
+        });
+        await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('systemConfig', $1, $2::jsonb, CURRENT_TIMESTAMP)
+           ON CONFLICT (collection_name, document_id)
+           DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP`,
+          ['pcn-settings', JSON.stringify(getDocumentPayload(settings))],
+        );
+        const activityLog = buildActivityLog({
+          id: stablePcnMutationId('activity-pcn-qc20-scope-confirm', comparable(nextScope)),
+          action: 'CONFIGURED',
+          entityType: 'PCN_FIELD',
+          entityId: 'QC20',
+          entityLabel: 'Quy chuẩn 20',
+          actorUsername: actor.username,
+          actorName: actor.name,
+          actorRole: actor.systemRole || actor.role,
+          summary: 'Xác nhận phạm vi và profile thử QC20',
+          changes: diffActivityFields(previousScope, nextScope, ['status', 'scopeVersion', 'standardRefs', 'method', 'sourceReferences', 'productForms', 'grades', 'hsCodes', 'appliedStandards', 'chemicalCompositionRequirements', 'confirmedByUsername', 'confirmedAt', 'confirmationNote']),
+          source: 'UI',
+          createdAt: now,
+        });
+        const validationError = validateActivityLogPayload(activityLog);
+        if (validationError) throw Object.assign(new Error(validationError), { statusCode: 400 });
+        await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('activityLogs', $1, $2::jsonb, CURRENT_TIMESTAMP)
+           ON CONFLICT (collection_name, document_id) DO NOTHING`,
+          [activityLog.id, JSON.stringify(getDocumentPayload(activityLog))],
+        );
+        return { settings, idempotent: false, activityLog };
+      });
+      res.json(result);
+    } catch (error: any) {
+      console.error('PCN QC20 scope confirmation error:', error);
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
+    }
+  });
+
   app.get('/api/pcn/personal-settings', async (req, res) => {
     if (DATABASE_PROFILE !== 'pcn') {
       res.status(404).json({ error: 'Thiết lập cá nhân PCN chỉ khả dụng trong profile PCN.' });
@@ -4646,7 +4808,7 @@ async function startServer() {
     }
     const actor = getPcnSessionUser(req)!;
     const now = new Date().toISOString();
-    const settings = normalizePcnSettings({ ...incoming, id: 'pcn-settings', updatedAt: now, updatedBy: actor.username }) as PcnSettings;
+    const requestedSettings = normalizePcnSettings({ ...incoming, id: 'pcn-settings', updatedAt: now, updatedBy: actor.username }) as PcnSettings;
     try {
       const result = await withPgTransaction(async (client) => {
         const previousResult = await client.query(
@@ -4656,6 +4818,12 @@ async function startServer() {
           ['pcn-settings'],
         );
         const previous = previousResult.rows[0] ? normalizePcnSettings(mapDocumentRow(previousResult.rows[0])) : normalizePcnSettings({});
+        // QC20 scope confirmation has its own Admin boundary; a generic settings save
+        // may not downgrade or replace the confirmed catalogue.
+        const settings = normalizePcnSettings({
+          ...requestedSettings,
+          qc20ScopeConfiguration: previous.qc20ScopeConfiguration,
+        });
         await client.query(
           `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
            VALUES ('systemConfig', $1, $2::jsonb, CURRENT_TIMESTAMP)
@@ -6387,7 +6555,7 @@ async function startServer() {
         const fieldCodes = Array.isArray(dossier.fieldCodes)
           ? dossier.fieldCodes.map((code) => String(code).trim().toUpperCase()).filter(Boolean)
           : [];
-        const [resultRows, approvalRows, userRows, delegationRows] = await Promise.all([
+        const [resultRows, approvalRows, userRows, delegationRows, settingsResult] = await Promise.all([
           client.query(
             `SELECT document_id, data FROM app_documents
              WHERE collection_name = 'returnedResults' AND data->>'dossierId' = $1`,
@@ -6406,6 +6574,12 @@ async function startServer() {
           client.query(
             `SELECT document_id, data FROM app_documents
              WHERE collection_name = 'pcnSignerDelegations' AND data->>'status' = 'ACTIVE'`,
+          ),
+          client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'systemConfig' AND document_id = $1
+             LIMIT 1`,
+            ['pcn-settings'],
           ),
         ]);
         const results = resultRows.rows.map((row: any) => mapDocumentRow(row)) as ReturnedTestResult[];
@@ -6464,6 +6638,16 @@ async function startServer() {
             && asset.source_json_path === 'fileAssetId'
             && asset.mime_type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
             privateTemplateAssetIds.add(String(asset.id));
+          }
+        }
+        if (fieldCodes.includes('QC20')) {
+          const qc20Readiness = getPcnQc20Readiness({
+            scopeConfiguration: normalizePcnSettings(settingsResult.rows[0] ? mapDocumentRow(settingsResult.rows[0]) : {}).qc20ScopeConfiguration,
+            templates: officialTemplates,
+            privateTemplateAssetIds,
+          });
+          if (!qc20Readiness.ready) {
+            throw Object.assign(new Error(`QC20 chưa sẵn sàng phát hành: ${qc20Readiness.reasons.join('; ')}`), { statusCode: 409 });
           }
         }
         const documentReadiness = getPcnIssuanceOfficialDocumentReadiness({
@@ -9887,6 +10071,10 @@ async function startServer() {
       res.status(400).json({ error: 'Thiếu mã template hoặc thao tác review không hợp lệ.' });
       return;
     }
+    if (action === 'REQUEST_ANNOTATION' && !reason) {
+      res.status(400).json({ error: 'Yêu cầu chỉnh sửa template phải có lý do.' });
+      return;
+    }
     try {
       const actor = getPcnSessionUser(req)!;
       const result = await withPgTransaction(async (client) => {
@@ -12135,7 +12323,7 @@ async function startServer() {
           actorRole: actor.systemRole || actor.role,
           summary: `Thay file template DOCX ${current.displayName}`,
           source: 'UI',
-          changes: diffActivityFields(current, next, ['fileAssetId', 'sourceFingerprint', 'placeholderKeys', 'importedByUsername', 'importedAt', 'annotation', 'sourceOriginalFingerprint']),
+          changes: diffActivityFields(current, next, ['fileAssetId', 'sourceFingerprint', 'placeholderKeys', 'status', 'approvedAt', 'approvedByUsername', 'importedByUsername', 'importedAt', 'annotation', 'sourceOriginalFingerprint']),
           createdAt: now,
         });
         const validationError = validateActivityLogPayload(activityLog);

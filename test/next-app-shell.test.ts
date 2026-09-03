@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const read = (path: string) => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('Next App Router exposes a client PCN shell at the root route', () => {
+test('Next App Router exposes the shared PGDCN shell at the root route', () => {
   const layout = read('app/layout.tsx');
   const page = read('app/page.tsx');
   const shell = read('components/PcnAppShell.tsx');
@@ -16,7 +16,8 @@ test('Next App Router exposes a client PCN shell at the root route', () => {
   assert.match(page, /PcnAppShell/);
   assert.match(shell, /^['"]use client['"]/m);
   assert.match(shell, /navigator\.serviceWorker\.register\(['"]\/sw\.js['"]\)/);
-  assert.match(shell, /from ['"]\.\/PcnWorkspace['"]/);
+  assert.match(shell, /PgdcnAppShell/);
+  assert.match(shell, /initialDomain="PCN"/);
   assert.doesNotMatch(shell, /from ['"]\.\.\/App['"]/);
   assert.match(nextConfig, /reactStrictMode/);
 });

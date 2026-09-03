@@ -793,7 +793,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', o
   ) : activeSection === 'activityLogs' ? (
     <ActivityLogView currentUser={currentUser} systemUsers={pcn.users} />
   ) : activeSection === 'settings' && isPcnAdmin ? (
-    <PcnSettingsView currentUser={currentUser} templates={pcn.templates} onUploadTemplate={pcn.uploadPcnTemplate} />
+    <PcnSettingsView currentUser={currentUser} templates={pcn.templates} onUploadTemplate={pcn.uploadPcnTemplate} onReviewTemplate={pcn.reviewPcnTemplate} />
   ) : activeSection === 'users' && isPcnAdmin ? (
     <PcnUserManagementView users={pcn.users} roles={pcn.departmentRoles} fields={pcn.fields} currentUser={currentUser} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
   ) : null;
