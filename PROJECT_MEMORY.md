@@ -561,6 +561,16 @@ Description: Persistent project memory and verified deployment observations for 
 - Docker Desktop production đã rebuild/recreate từ tree sau commit. Image `pcn_webapp-webapp:latest` digest `sha256:3e81a6aa36adb1528828d184e4f1ac520a3e6996eccff478ad8bf0059e416c5c`; container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`.
 - Smoke test sau rebuild: `/api/health`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200; PostgreSQL kết nối và schema khởi tạo thành công. Cảnh báo backup tự động còn lại do Supabase Storage chưa cấu hình.
 
+## Cập nhật 2026-09-04 — Hợp nhất Cài đặt hệ thống PGDCN
+
+- Đã cập nhật `design.md`: chỉ dùng một bề mặt **Cài đặt hệ thống** cho nhân sự, cấu hình PCN/PGD và quản trị template DOCX; không có mục/route sidebar riêng tên Cài đặt PCN hoặc Cài đặt PGD.
+- Sidebar dùng chung giữ các nhánh Tổng quan phòng, Khách hàng, Trợ lý AI, Nhật ký hoạt động và Cài đặt hệ thống; các nhóm PCN/PGD chỉ còn nghiệp vụ vận hành. Nút Cài đặt DOCX trong workspace vẫn mở đúng khu vực dùng chung.
+- `PgdcnSystemSettingsView` hiện gom quản lý nhân sự, cấu hình PCN + template DOCX PCN và template DOCX PGD. Ranh giới API/collection PCN và PGD vẫn độc lập; chỉ hợp nhất lớp điều hướng/UI.
+- Điều hướng tương thích `settings` từ workspace PCN/PGD được ánh xạ về `{ domain: 'department', section: 'system-settings' }`; không thay đổi dữ liệu lịch sử, không đọc Desktop/UNC lúc runtime.
+- Commit: `e402ed3` — `feat: consolidate PGDCN system settings`.
+- Verification: focused settings/navigation **15/15 pass**, `npm test` **665/665 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass.
+- Docker Desktop production đã rebuild/recreate; image `pcn_webapp-webapp:latest` digest `sha256:8ee281a121d0919b386ddf60bd2487614eb994b9678a9d7b7fb6e4562e1c89c1`, container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`. Smoke `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200.
+
 ## Files quan trọng
 
 - `server.ts`: Express API, PostgreSQL routes, HMR integration và Gemini endpoints.
