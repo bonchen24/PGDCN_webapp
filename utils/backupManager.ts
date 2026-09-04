@@ -20,6 +20,8 @@ const execFileAsync = promisify(execFile);
 export const BACKUP_DIR = path.join(process.cwd(), 'backups');
 
 const SAFE_FILENAME_PATTERN = /^[A-Za-z0-9._-]+\.(?:dump|zip)$/;
+export const DEFAULT_BACKUP_RETENTION_COUNT = 3;
+export const DEFAULT_BACKUP_MAX_TOTAL_BYTES = 2 * 1024 * 1024 * 1024;
 
 export function getBackupProfile(profileValue: unknown = process.env.APP_PROFILE): 'pcn' | 'ddt' {
   return String(profileValue || '').trim().toLowerCase() === 'pcn' ? 'pcn' : 'ddt';
@@ -33,9 +35,25 @@ export function getBackupAutoPrefix(profileValue: unknown = process.env.APP_PROF
   return `${getBackupPrefix(profileValue)}_auto_`;
 }
 
+export interface BackupRetentionPolicy {
+  retentionCount: number;
+  maxTotalBytes: number;
+}
+
+function positiveIntegerOrFallback(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.max(1, Math.floor(parsed)) : fallback;
+}
+
+export function getBackupRetentionPolicy(env: NodeJS.ProcessEnv = process.env): BackupRetentionPolicy {
+  return {
+    retentionCount: positiveIntegerOrFallback(env.BACKUP_RETENTION_COUNT, DEFAULT_BACKUP_RETENTION_COUNT),
+    maxTotalBytes: positiveIntegerOrFallback(env.BACKUP_MAX_TOTAL_BYTES, DEFAULT_BACKUP_MAX_TOTAL_BYTES),
+  };
+}
+
 const backupProfile = getBackupProfile();
 const backupPrefix = getBackupPrefix();
-const AUTO_PREFIX = getBackupAutoPrefix();
 const DATABASE_ENTRY_NAME = 'database.dump';
 const STORAGE_MANIFEST_ENTRY_NAME = 'storage/manifest.json';
 
@@ -217,7 +235,7 @@ async function createPostgresDump(filePath: string): Promise<void> {
   ]);
 }
 
-export async function createBackup(label: 'auto' | 'manual'): Promise<BackupInfo> {
+export async function createBackup(label: 'manual'): Promise<BackupInfo> {
   ensureBackupDir();
   const filename = `${backupPrefix}_${label}_${timestampSlug(new Date())}.zip`;
   const archivePath = path.join(BACKUP_DIR, filename);
@@ -344,14 +362,26 @@ export function deleteBackup(filename: string): void {
   fs.unlinkSync(filePath);
 }
 
-export function applyRetention(retentionCount: number): void {
-  const autoBackups = listBackups().filter(b => b.filename.startsWith(AUTO_PREFIX));
-  const stale = autoBackups.slice(retentionCount);
-  for (const b of stale) {
+export function applyRetention(
+  retentionCount = getBackupRetentionPolicy().retentionCount,
+  maxTotalBytes = getBackupRetentionPolicy().maxTotalBytes,
+): void {
+  const backups = listBackups();
+  const safeRetentionCount = positiveIntegerOrFallback(retentionCount, DEFAULT_BACKUP_RETENTION_COUNT);
+  const safeMaxTotalBytes = positiveIntegerOrFallback(maxTotalBytes, DEFAULT_BACKUP_MAX_TOTAL_BYTES);
+  let remainingCount = backups.length;
+  let totalBytes = backups.reduce((total, backup) => total + backup.sizeBytes, 0);
+
+  for (const backup of [...backups].reverse()) {
+    if (remainingCount <= safeRetentionCount && totalBytes <= safeMaxTotalBytes) break;
+    // Always retain at least the newest archive, even when one archive exceeds the size cap.
+    if (remainingCount <= 1) break;
     try {
-      fs.unlinkSync(path.join(BACKUP_DIR, b.filename));
+      fs.unlinkSync(path.join(BACKUP_DIR, backup.filename));
+      remainingCount -= 1;
+      totalBytes -= backup.sizeBytes;
     } catch (err: any) {
-      console.error(`Failed to remove stale backup ${b.filename}:`, err.message);
+      console.error(`Failed to remove stale backup ${backup.filename}:`, err.message);
     }
   }
 }

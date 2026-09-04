@@ -276,7 +276,7 @@ import {
   createBackup,
   deleteBackup,
   getBackupPath,
-  getBackupAutoPrefix,
+  getBackupRetentionPolicy,
   isPgToolAvailable,
   listBackups,
   recordBackupActivity,
@@ -13885,7 +13885,8 @@ async function startServer() {
       }
       const backup = await createBackup("manual");
       await recordBackupActivity('CREATED', backup.filename, getBackupAuditActor(req), 'UI');
-      applyRetention(Number(process.env.BACKUP_RETENTION_COUNT || 14));
+      const retention = getBackupRetentionPolicy();
+      applyRetention(retention.retentionCount, retention.maxTotalBytes);
       res.json(backup);
     } catch (error: any) {
       console.error("Manual backup error:", error);
@@ -15988,47 +15989,10 @@ HƯỚNG DẪN QUAN TRỌNG:
   });
 
   await initDbSchema();
-  await scheduleAutoBackups();
 
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
-}
-
-async function scheduleAutoBackups() {
-  const enabled = String(process.env.BACKUP_ENABLED ?? "true").toLowerCase() !== "false";
-  if (!enabled) {
-    console.log("Automatic backups disabled via BACKUP_ENABLED=false.");
-    return;
-  }
-  if (!(await isPgToolAvailable())) {
-    console.warn("pg_dump not found on PATH — automatic backups are disabled. Install PostgreSQL client tools to enable them.");
-    return;
-  }
-
-  const intervalHours = Number(process.env.BACKUP_INTERVAL_HOURS || 24);
-  const retentionCount = Number(process.env.BACKUP_RETENTION_COUNT || 14);
-  const intervalMs = intervalHours * 60 * 60 * 1000;
-
-  const runScheduledBackup = async () => {
-    try {
-      const backup = await createBackup("auto");
-      await recordBackupActivity('CREATED', backup.filename);
-      applyRetention(retentionCount);
-      console.log("Automatic backup completed.");
-    } catch (error: any) {
-      console.error("Automatic backup failed:", error?.message || error);
-    }
-  };
-
-  const autoBackups = listBackups().filter(b => b.filename.startsWith(getBackupAutoPrefix()));
-  const latest = autoBackups[0];
-  const isStale = !latest || (Date.now() - new Date(latest.createdAt).getTime()) >= intervalMs;
-
-  if (isStale) {
-    setTimeout(runScheduledBackup, 30 * 1000);
-  }
-  setInterval(runScheduledBackup, intervalMs);
 }
 
 startServer();
