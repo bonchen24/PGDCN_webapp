@@ -24,7 +24,8 @@ test('PGD workspace has its own shell/sidebar and does not import PCN catalog st
   assert.match(workspace, /usePgdStore/);
   assert.match(read('store-pgd.ts'), /fetchPgdBootstrap|\/api\/pgd/);
   assert.doesNotMatch(workspace, /PCN_CERTIFICATION_FIELD_CODES|QC20|usePcnStore/);
-  assert.match(workspace, /PGD_OPERATIONAL_STATIONS/);
+  assert.match(workspace, /PgdWorkflowMap/);
+  assert.match(read('components/PgdWorkflowMap.tsx'), /PGD_OPERATIONAL_STATIONS/);
   assert.match(workspace, /getPgdOperationalStepAccess/);
   assert.match(workspace, /validatePgdResultValues/);
   assert.match(workspace, /buildPgdFieldInspection/);

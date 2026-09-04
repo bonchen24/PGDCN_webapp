@@ -27,7 +27,7 @@ test('shared shell routes customers and system settings before domain workspaces
   assert.match(source, /PgdcnSystemSettingsView/);
   assert.match(source, /section === 'customers'/);
   assert.match(source, /section === 'system-settings'/);
-  assert.match(source, /section === 'settings'/);
+  assert.doesNotMatch(source, /if \(section === 'settings'\)/);
 });
 
 test('system settings puts personnel assignment and password operations in one shared surface', () => {
@@ -36,7 +36,7 @@ test('system settings puts personnel assignment and password operations in one s
     assert.ok(source.includes(marker), `Missing system settings marker: ${marker}`);
   }
   assert.match(source, /PcnSettingsView/);
-  assert.match(source, /PgdTemplateSettingsWorkspace/);
+  assert.doesNotMatch(source, /PgdTemplateSettingsWorkspace/);
   assert.doesNotMatch(source, /Danh mục phòng ban|Danh mục chức vụ/);
 });
 

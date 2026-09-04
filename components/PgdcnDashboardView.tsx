@@ -85,7 +85,7 @@ function CommandHeader({ scopes, onOpenPcnWorkspace, onOpenPgdWorkspace }: Pick<
           )}
           {scopes.includes('PGD') && (
             <button type="button" onClick={onOpenPgdWorkspace} className="mobile-touch-target inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-500 px-3.5 text-[11px] font-black text-white shadow-sm transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300">
-              <Inbox size={16} /> Tiếp nhận PYC
+              <Inbox size={16} /> Tạo PYC
             </button>
           )}
         </div>

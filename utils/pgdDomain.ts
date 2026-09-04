@@ -228,6 +228,31 @@ export interface PgdRequesterSnapshot {
 
 export type PgdCustomerSnapshot = Pick<CustomerRef, 'name' | 'address' | 'taxId' | 'phone' | 'email' | 'contactPerson'>;
 
+export interface PgdMachineryDetails {
+  machineType?: string;
+  model?: string;
+  serialNumber?: string;
+  manufacturingYear?: number;
+  technicalParameters?: string;
+  condition?: string;
+  completeness?: string;
+  synchronization?: string;
+  installationStatus?: string;
+  safetyStandard?: string;
+}
+
+export interface PgdCoalDetails {
+  coalType?: string;
+  source?: string;
+  sizeRange?: string;
+  qualityStandard?: string;
+  samplingBasis?: string;
+  moisture?: number;
+  ash?: number;
+  calorificValue?: number;
+  sulfur?: number;
+}
+
 export interface PgdProductDetails {
   productForm?: string;
   grade?: string;
@@ -244,6 +269,8 @@ export interface PgdProductDetails {
   steelLotSize?: number;
   steelSameGradeMultiProduct?: boolean;
   steelManualSamplingPlanNote?: string;
+  machinery?: PgdMachineryDetails;
+  coal?: PgdCoalDetails;
 }
 
 export const PGD_REGISTRY_DOCUMENT_KINDS = [
@@ -698,6 +725,40 @@ export function validatePgdIntake(input: Partial<PgdInspectionRequestInput>, cat
     if (input.assessmentMethod !== 'METHOD_7') issues.push({ field: 'assessmentMethod', message: 'Hồ sơ thép không gỉ phải dùng Phương thức 7.' });
     if (Array.isArray(input.standards) && input.standards.length > 0 && !input.standards.some((standard) => /QCVN\s*20:2019|Sửa đổi 1:2021/i.test(String(standard)))) {
       issues.push({ field: 'standards', message: 'Tiêu chuẩn hồ sơ thép không gỉ phải có QCVN 20:2019/BKHCN và Sửa đổi 1:2021.' });
+    }
+  }
+  if (catalogItem?.productGroup === 'MACHINERY_LINE') {
+    const machinery = input.productDetails?.machinery || {};
+    const requiredMachineryFields: Array<[keyof PgdMachineryDetails, string]> = [
+      ['machineType', 'loại máy/thiết bị'],
+      ['model', 'model'],
+      ['serialNumber', 'số serial'],
+      ['manufacturingYear', 'năm sản xuất'],
+      ['condition', 'tình trạng máy'],
+      ['technicalParameters', 'thông số kỹ thuật'],
+    ];
+    for (const [key, label] of requiredMachineryFields) {
+      const value = machinery[key];
+      if (key === 'manufacturingYear' ? !Number.isInteger(value) || Number(value) < 1900 || Number(value) > new Date().getFullYear() + 1 : !String(value || '').trim()) {
+        issues.push({ field: `productDetails.machinery.${key}`, message: `Cần nhập ${label} cho hồ sơ máy móc/dây chuyền.` });
+      }
+    }
+    if (String(input.method || '').trim().toUpperCase() === 'QT-GĐ-12' && !String(machinery.synchronization || '').trim()) {
+      issues.push({ field: 'productDetails.machinery.synchronization', message: 'Cần ghi nhận tính đồng bộ dây chuyền/máy móc theo QT-GĐ-12.' });
+    }
+  }
+  if (catalogItem?.productGroup === 'COAL') {
+    const coal = input.productDetails?.coal || {};
+    const requiredCoalFields: Array<[keyof PgdCoalDetails, string]> = [
+      ['coalType', 'loại than'],
+      ['source', 'nguồn/mỏ than'],
+    ];
+    for (const [key, label] of requiredCoalFields) {
+      if (!String(coal[key] || '').trim()) issues.push({ field: `productDetails.coal.${key}`, message: `Cần nhập ${label} cho hồ sơ than.` });
+    }
+    if (String(input.method || '').trim().toUpperCase() === 'QT-GĐ-08') {
+      if (!String(coal.qualityStandard || '').trim()) issues.push({ field: 'productDetails.coal.qualityStandard', message: 'Cần nhập tiêu chuẩn chất lượng than theo QT-GĐ-08.' });
+      if (!String(coal.samplingBasis || '').trim()) issues.push({ field: 'productDetails.coal.samplingBasis', message: 'Cần nhập căn cứ lấy mẫu than theo QT-GĐ-08.' });
     }
   }
   if (input.assessmentMethod !== undefined && !PGD_ASSESSMENT_METHOD_OPTIONS.some((option) => option.code === input.assessmentMethod)) {

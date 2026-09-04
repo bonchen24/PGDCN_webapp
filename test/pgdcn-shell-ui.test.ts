@@ -19,10 +19,10 @@ test('shared sidebar renders both domain groups from department scopes', () => {
   assert.doesNotMatch(source, /Cài đặt PCN|Cài đặt PGD/);
 });
 
-test('domain settings navigation resolves to the shared system settings surface', () => {
+test('shared system settings remains available without a PGD settings route', () => {
   const source = read('../components/PgdcnAppShell.tsx');
-  assert.match(source, /section === 'settings'/);
   assert.match(source, /domain: 'department', section: 'system-settings'/);
+  assert.doesNotMatch(source, /if \(section === 'settings'\)/);
 });
 
 test('department dashboard exposes six KPIs, domain cards and a shared activity entrypoint', () => {

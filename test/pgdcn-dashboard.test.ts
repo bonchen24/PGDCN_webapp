@@ -73,7 +73,7 @@ test('shared dashboard exposes the action-first layout contract without AI or ac
   assert.match(source, /data-testid="pgdcn-dashboard-domain-cards"/);
   assert.match(source, /data-testid="pgdcn-dashboard-upcoming"/);
   assert.match(source, /Tạo Đề nghị/);
-  assert.match(source, /Tiếp nhận PYC/);
+  assert.match(source, /Tạo PYC/);
   assert.doesNotMatch(source, />\s*Trợ lý AI\s*</);
   assert.doesNotMatch(source, />\s*Nhật ký hoạt động\s*</);
   assert.match(source, /onOpenPcnWorkspace/);
@@ -84,7 +84,7 @@ test('shared shell wires business dashboard actions to canonical workspaces', ()
   assert.match(shellSource, /onOpenPcnWorkspace=\{openPcnWorkspace\}/);
   assert.match(shellSource, /onOpenPgdWorkspace=\{openPgdWorkspace\}/);
   assert.match(shellSource, /setActiveTarget\(\{ domain: 'PCN', section: 'proposals' \}\)/);
-  assert.match(shellSource, /setActiveTarget\(\{ domain: 'PGD', section: 'intake' \}\)/);
+  assert.match(shellSource, /setActiveTarget\(\{ domain: 'PGD', section: 'requests' \}\)/);
   assert.doesNotMatch(shellSource, /onOpenAssistant=\{\(\) => navigate/);
   assert.doesNotMatch(shellSource, /onOpenActivity=\{\(\) => navigate/);
 });

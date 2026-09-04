@@ -34,15 +34,12 @@ const getScopes = (value: readonly DepartmentScope[] | undefined): DepartmentSco
 const getSharedTargetForPcnSection = (section: PcnSection): PgdcnNavigationTarget | undefined => {
   if (section === 'dashboard') return { domain: 'department', section: 'department-dashboard' };
   if (section === 'customers') return { domain: 'department', section: 'customers' };
-  if (section === 'users') return { domain: 'department', section: 'system-settings' };
-  if (section === 'settings') return { domain: 'department', section: 'system-settings' };
+  if (section === 'users' || section === 'settings') return { domain: 'department', section: 'system-settings' };
   return undefined;
 };
 
 const getSharedTargetForPgdSection = (section: PgdSection): PgdcnNavigationTarget | undefined => {
   if (section === 'dashboard') return { domain: 'department', section: 'department-dashboard' };
-  if (section === 'customers' || section === 'users') return { domain: 'department', section: section === 'customers' ? 'customers' : 'system-settings' };
-  if (section === 'settings') return { domain: 'department', section: 'system-settings' };
   return undefined;
 };
 
@@ -55,7 +52,7 @@ export default function PgdcnAppShell({ initialDomain = 'department' }: PgdcnApp
   const [sessionChecked, setSessionChecked] = useState(false);
   const [activeTarget, setActiveTarget] = useState<PgdcnNavigationTarget>(() => initialDomain === 'PCN'
     ? { domain: 'PCN', section: 'proposals' }
-    : initialDomain === 'PGD' ? { domain: 'PGD', section: 'intake' } : { domain: 'department', section: 'department-dashboard' });
+    : initialDomain === 'PGD' ? { domain: 'PGD', section: 'requests' } : { domain: 'department', section: 'department-dashboard' });
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [personalSettingsOpen, setPersonalSettingsOpen] = useState(false);
@@ -64,7 +61,7 @@ export default function PgdcnAppShell({ initialDomain = 'department' }: PgdcnApp
 
   useEffect(() => {
     if (initialDomain === 'PCN') setActiveTarget({ domain: 'PCN', section: 'proposals' });
-    else if (initialDomain === 'PGD') setActiveTarget({ domain: 'PGD', section: 'intake' });
+    else if (initialDomain === 'PGD') setActiveTarget({ domain: 'PGD', section: 'requests' });
   }, [initialDomain]);
 
   useEffect(() => {
@@ -198,7 +195,7 @@ export default function PgdcnAppShell({ initialDomain = 'department' }: PgdcnApp
     setMobileOpen(false);
   };
   const openPgdWorkspace = () => {
-    setActiveTarget({ domain: 'PGD', section: 'intake' });
+    setActiveTarget({ domain: 'PGD', section: 'requests' });
     setMobileOpen(false);
   };
 
@@ -215,7 +212,7 @@ export default function PgdcnAppShell({ initialDomain = 'department' }: PgdcnApp
   ) : activeTarget.domain === 'department' && activeTarget.section === 'customers' ? (
     <PgdcnCustomersView scopes={scopes} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'system-settings' ? (
-    <PgdcnSystemSettingsView currentUser={currentUser} users={systemUsers} roles={pcn.departmentRoles} fields={pcn.fields} pcnTemplates={pcn.templates} onUploadPcnTemplate={pcn.uploadPcnTemplate} onReviewPcnTemplate={pcn.reviewPcnTemplate} pgdTemplates={pgd.documentTemplates} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
+    <PgdcnSystemSettingsView currentUser={currentUser} users={systemUsers} roles={pcn.departmentRoles} fields={pcn.fields} pcnTemplates={pcn.templates} onUploadPcnTemplate={pcn.uploadPcnTemplate} onReviewPcnTemplate={pcn.reviewPcnTemplate} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'activityLogs' ? (
     <ActivityLogView currentUser={currentUser} systemUsers={systemUsers} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'assistant' ? (

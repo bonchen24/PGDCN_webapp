@@ -18,23 +18,29 @@ test('PGD document creation header exposes a DOCX settings action for the PGD wo
   assert.match(source, /onOpenSettings/);
 });
 
-test('shared system settings owns PCN and PGD DOCX configuration', () => {
+test('DOCX settings is a local modal and not shared system settings', () => {
+  const generation = read('components/PgdDocumentGenerationPanel.tsx');
+  const workspace = read('components/PgdWorkspace.tsx');
   const source = read('components/PgdcnSystemSettingsView.tsx');
+  const shell = read('components/PgdcnAppShell.tsx');
+  assert.match(generation, /onOpenSettings/);
+  assert.match(workspace, /PgdDocxSettingsModal/);
   assert.match(source, /PcnSettingsView/);
-  assert.match(source, /PgdTemplateSettingsWorkspace/);
   assert.match(source, /Template DOCX PCN/);
-  assert.match(source, /Template DOCX PGD/);
+  assert.doesNotMatch(source, /PgdTemplateSettingsWorkspace|Template DOCX PGD/);
+  assert.doesNotMatch(shell, /pgdTemplates=\{pgd\.documentTemplates\}/);
 });
 
-test('domain DOCX actions route to shared system settings without per-domain settings entries', () => {
+test('domain DOCX actions open locally without per-domain settings entries', () => {
   const sidebar = read('components/PgdSidebar.tsx');
   const shell = read('components/PgdcnAppShell.tsx');
   const workspace = read('components/PgdWorkspace.tsx');
   const sharedSidebar = read('components/PgdcnSidebar.tsx');
-  assert.match(sidebar, /settings/);
-  assert.match(workspace, /activeSection === 'settings'/);
+  assert.match(workspace, /docxSettingsOpen/);
+  assert.match(workspace, /setDocxSettingsOpen\(true\)/);
+  assert.doesNotMatch(sidebar, /settings:|users:|customers:/);
+  assert.doesNotMatch(workspace, /activeSection === 'settings'/);
   assert.doesNotMatch(sidebar, /Cài đặt PCN|Cài đặt PGD/);
   assert.doesNotMatch(sharedSidebar, /Cài đặt PCN|Cài đặt PGD/);
-  assert.match(shell, /if \(section === 'settings'\) return \{ domain: 'department', section: 'system-settings' \}/);
-  assert.match(shell, /system-settings/);
+  assert.doesNotMatch(shell, /if \(section === 'settings'\)/);
 });

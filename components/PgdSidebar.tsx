@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect, useState, type ElementType } from 'react';
+import { type ElementType } from 'react';
 import {
-  Activity,
-  Building2,
   ClipboardCheck,
   ClipboardList,
   FilePlus2,
@@ -12,40 +10,33 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Settings2,
   ShieldCheck,
-  Users,
   X,
 } from 'lucide-react';
 
 import type { PcnUserAccount } from '../types';
 
-export type PgdSection = 'dashboard' | 'intake' | 'requests' | 'field' | 'labs' | 'results' | 'customers' | 'templates' | 'users' | 'settings';
+export type PgdSection = 'dashboard' | 'requests' | 'preparation' | 'field' | 'labs' | 'results' | 'templates';
+export type PgdEntrySection = PgdSection | 'intake';
 
 export const PGD_SECTION_LABELS: Record<PgdSection, string> = {
   dashboard: 'Tổng quan PGD',
-  intake: 'Tiếp nhận PYC',
-  requests: 'Hồ sơ đang xử lý',
+  requests: 'Hồ sơ PYC',
+  preparation: 'Chuẩn bị & Phân công',
   field: 'Hiện trường & Lấy mẫu',
-  labs: 'PTN & Bàn giao mẫu',
-  results: 'Báo cáo & Chứng thư',
-  customers: 'Khách hàng dùng chung',
-  users: 'Nhân sự PGD',
-  templates: 'Tạo tài liệu PGD',
-  settings: 'Template DOCX',
+  labs: 'PTN & Kết quả',
+  results: 'Báo cáo, Chứng thư & Lưu trữ',
+  templates: 'Soạn thảo tài liệu',
 };
 
 export const PGD_SECTION_ICONS: Record<PgdSection, ElementType> = {
   dashboard: LayoutDashboard,
-  intake: FilePlus2,
   requests: ClipboardList,
+  preparation: FilePlus2,
   field: ClipboardCheck,
   labs: FlaskConical,
   results: FileText,
-  customers: Building2,
-  users: Users,
   templates: FileText,
-  settings: Settings2,
 };
 
 type PgdSidebarProps = {
@@ -53,7 +44,6 @@ type PgdSidebarProps = {
   activeSection: PgdSection;
   collapsed: boolean;
   mobileOpen: boolean;
-  isAdmin: boolean;
   onToggle: () => void;
   onNavigate: (section: PgdSection) => void;
   onCloseMobile: () => void;
@@ -65,18 +55,13 @@ export default function PgdSidebar({
   activeSection,
   collapsed,
   mobileOpen,
-  isAdmin,
   onToggle,
   onNavigate,
   onCloseMobile,
   onLogout,
 }: PgdSidebarProps) {
-  const [showAdmin, setShowAdmin] = useState(false);
   const expanded = !collapsed || mobileOpen;
-
-  useEffect(() => setShowAdmin(false), [activeSection]);
-
-  const mainSections: PgdSection[] = ['dashboard', 'intake', 'requests', 'field', 'labs', 'results', 'customers', 'templates'];
+  const mainSections: PgdSection[] = ['dashboard', 'requests', 'preparation', 'field', 'labs', 'results', 'templates'];
   const renderButton = (section: PgdSection) => {
     const Icon = PGD_SECTION_ICONS[section];
     const isActive = activeSection === section;
@@ -88,7 +73,7 @@ export default function PgdSidebar({
         aria-label={PGD_SECTION_LABELS[section]}
         aria-current={isActive ? 'page' : undefined}
         title={PGD_SECTION_LABELS[section]}
-        className={`group flex min-h-11 w-full items-center rounded-xl text-left transition-colors ${expanded ? 'gap-3 px-3.5' : 'justify-center px-1'} ${isActive ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-100'}`}
+        className={`group flex min-h-9 w-full items-center rounded-lg text-left transition-colors ${expanded ? 'gap-2 px-2.5' : 'justify-center px-1'} ${isActive ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-100'}`}
       >
         <Icon size={16} className={isActive ? 'text-white' : 'text-slate-400'} />
         {expanded && <span className="min-w-0 flex-1 truncate text-[11px] font-bold">{PGD_SECTION_LABELS[section]}</span>}
@@ -104,14 +89,8 @@ export default function PgdSidebar({
         <button type="button" onClick={onCloseMobile} aria-label="Đóng menu PGD" className="ml-auto text-slate-400 lg:hidden"><X size={18} /></button>
       </div>
 
-      <nav className="mobile-scroll-y flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Menu Phòng Giám định">
+      <nav className="mobile-scroll-y flex-1 space-y-0.5 overflow-y-auto px-2 py-3" aria-label="Menu Phòng Giám định">
         {mainSections.map(renderButton)}
-        {isAdmin && <div className="pt-1">
-          <button type="button" onClick={() => { if (collapsed && !mobileOpen) onToggle(); setShowAdmin((open) => !open); }} aria-expanded={expanded ? showAdmin : undefined} className={`flex min-h-11 w-full items-center rounded-xl text-left text-slate-400 hover:bg-slate-800/80 hover:text-slate-100 ${expanded ? 'gap-3 px-3.5' : 'justify-center px-1'}`} title="Quản trị PGD">
-            <Settings2 size={16} />{expanded && <><span className="flex-1 text-[11px] font-black">Quản trị PGD</span><span className={showAdmin ? 'rotate-90 text-blue-300' : ''}>›</span></>}
-          </button>
-          {expanded && showAdmin && <div className="mt-1 space-y-1 rounded-xl border border-slate-800 bg-slate-900/70 p-1.5">{renderButton('users')}</div>}
-        </div>}
       </nav>
 
       <div className={`shrink-0 border-t border-slate-800 p-3 ${expanded ? 'space-y-2' : ''}`}>

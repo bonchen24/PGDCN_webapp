@@ -52,12 +52,12 @@ const PCN_ITEMS: Array<{ section: PcnSection; label: string; icon: ElementType }
 ];
 
 const PGD_ITEMS: Array<{ section: PgdSection; label: string; icon: ElementType }> = [
-  { section: 'intake', label: 'Tiếp nhận PYC', icon: FilePlus2 },
-  { section: 'requests', label: 'Hồ sơ đang xử lý', icon: ClipboardList },
+  { section: 'requests', label: 'Hồ sơ PYC', icon: ClipboardList },
+  { section: 'preparation', label: 'Chuẩn bị & Phân công', icon: ClipboardCheck },
   { section: 'field', label: 'Hiện trường & Lấy mẫu', icon: ClipboardCheck },
-  { section: 'labs', label: 'PTN & Bàn giao mẫu', icon: FlaskConical },
-  { section: 'results', label: 'Báo cáo & Chứng thư', icon: FileCheck2 },
-  { section: 'templates', label: 'Tạo tài liệu PGD', icon: FilePenLine },
+  { section: 'labs', label: 'PTN & Kết quả', icon: FlaskConical },
+  { section: 'results', label: 'Báo cáo, Chứng thư & Lưu trữ', icon: FileCheck2 },
+  { section: 'templates', label: 'Soạn thảo tài liệu', icon: FilePenLine },
 ];
 
 const isTargetActive = (active: PgdcnNavigationTarget, target: PgdcnNavigationTarget): boolean => (

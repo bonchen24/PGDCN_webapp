@@ -6,6 +6,29 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-04 — PGD dossier cockpit, trạm nghiệp vụ và soạn thảo cell
+
+- PGD hiện vận hành theo mô hình một PYC = một bộ hồ sơ: `Hồ sơ PYC`, `Chuẩn bị & Phân công`, `Hiện trường & Lấy mẫu`, `PTN & Kết quả`, `Báo cáo, Chứng thư & Lưu trữ` và `Soạn thảo tài liệu`. Các trạm dùng chung bộ chọn hồ sơ và mở lại cùng dossier đầy đủ, không tạo projection dữ liệu độc lập.
+- Bốn trạm đã có form lưu nghiệp vụ thật: phân công/kế hoạch; biên bản hiện trường, đo kiểm, dòng lấy mẫu LAB/mẫu lưu và checklist chứng từ; phiếu giao nhận/yêu cầu PTN, kết quả và cảnh báo thiếu KQTN; review KQTN, báo cáo, chứng thư, duyệt kỹ thuật/lãnh đạo, mục lục và đóng gói.
+- Các bảng lặp được nhập bằng `PgdTableFieldEditor` (đo kiểm, dòng lấy mẫu, hạng mục/phương pháp thử, kết quả PTN) với cột, nhãn, thêm/xóa dòng và khóa read-only theo quyền/lifecycle. `PgdCellManager` được đặt trong modal cục bộ `Cài đặt DOCX PGD`; không đưa template PGD vào `Cài đặt hệ thống`.
+- Soạn thảo tài liệu luôn chọn một PYC, lọc template đang hoạt động theo nhóm sản phẩm, bind placeholder/cell có kiểu dữ liệu và khóa form khi dossier/template không còn được sửa. DOCX source là asset đóng gói của ứng dụng; không đọc Desktop/UNC lúc runtime.
+- Ranh giới nghiệp vụ giữ nguyên: thép không gỉ PGD dùng mã `GĐ-THEP-KG`; `QC20` không xuất hiện trong catalog/menu PGD. Không có báo giá, thanh toán, phí thử nghiệm hoặc trường công nợ trong bề mặt PGD. Dữ liệu PGD vẫn đi qua collection/API/RBAC `pgd` riêng và dùng chung khách hàng, nhân sự, cài đặt hệ thống theo scope phòng.
+- Nguồn nghiệp vụ được rà soát từ folder PGD theo quyền cho phép copy phục vụ phân tích; file nguồn gốc không bị sửa/xóa và không có hồ sơ lịch sử được import vào app.
+- Kiểm chứng sau lượt này: `npm run test:pcn` **665/665 pass**, nhóm test PGD focused **26/26 pass**, `npm run lint` pass, `npm run build` pass và `git diff --check` pass. Build production đã tạo thành công các route `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd`.
+
+## Cập nhật 2026-09-04 — Hoàn thiện PGD theo nhóm sản phẩm và bộ biểu mẫu 15 mẫu
+
+- PGD tiếp tục được triển khai như phần mềm tiếp nhận PYC và hình thành từng bộ hồ sơ mới: một PYC tương ứng một dossier, nhân viên phụ trách xuyên suốt các trạm tiếp nhận → phân công/kế hoạch → hiện trường/lấy mẫu → PTN/KQTN → báo cáo/quyết định/chứng thư → duyệt/ký/trả/lưu trữ. Không dùng app để kiểm tra hoặc đồng bộ folder hồ sơ.
+- Catalog PGD hiện tách các nhóm thép/kim loại `GĐ-THEP-KG`, máy móc/dây chuyền `GĐ-MAY-01`, than `GĐ-THAN-01` và nhóm khác; QC20 không thuộc PGD và không xuất hiện trong catalog/route PGD.
+- Form intake/workspace đã có trường riêng theo nhóm: thép có mác, cỡ lô, nhiều sản phẩm cùng mác và kế hoạch lấy mẫu; máy/dây chuyền có model, serial, năm sản xuất, thông số, tình trạng, phụ kiện, đồng bộ, lắp đặt và tiêu chuẩn an toàn; than có loại, nguồn, cỡ hạt, tiêu chuẩn, căn cứ lấy mẫu và chỉ tiêu độ ẩm/độ tro/nhiệt trị/lưu huỳnh. Cell được scope theo product group và validate typed ở domain/server.
+- Module soạn thảo dùng cell/placeholder PGD có binding canonical, form theo kiểu dữ liệu, bảng dòng/cột, snapshot/version và guard không cho cell hoặc template PGD chứa QC20/UNC/Desktop. Generator không bind sang PCN hay đường dẫn nguồn.
+- Gói DOCX `templates/pgd` hiện có `PGD-BM-01` đến `PGD-BM-15`, manifest version `1.3`: tiếp nhận, phân công, kế hoạch, hiện trường, lấy mẫu, giao nhận/yêu cầu PTN, báo cáo, chứng thư, quyết định, bìa hồ sơ, diễn biến vụ, nhật ký hiện trường, review KQTN, biên bản vụ giám định và biên bản giao mẫu PTN. BM-14/BM-15 giữ các trường lô, chứng từ, đại diện, mã PTN, bên giao/nhận và bảng mẫu/chỉ tiêu.
+- Đã render/kiểm tra trực quan toàn bộ 15 DOCX (23 trang) và các mẫu đại diện hiển thị sạch, có placeholder; không sửa, xóa, copy hoặc import file trong folder PGD/NAS.
+- Verification hiện hành sau phần mở rộng: `npm test` **665/665 pass**, `npm run lint` pass, `npm run build` pass; focused source/layout/template tests **7/7 pass**; `git diff --check` không có lỗi whitespace. Repo không có script `typecheck` riêng; typecheck được thực hiện qua lint/build.
+- Docker Desktop production đã build/recreate bằng `docker compose --env-file .env -f docker-compose.pcn.yml up --build -d`. Image `pcn_webapp-webapp:latest` có digest `sha256:9f7042e0a07c16707f518ccad7dd171a0dd08a287a27a5f751ff80173c0d874b`; container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`. Smoke `/api/health`, `/pgdcn/`, `/pgdcn/pcn/`, `/pgdcn/pgd/` đều HTTP 200; log xác nhận PostgreSQL connected và schema initialized.
+- Cảnh báo vận hành không đổi: automatic backup chưa chạy vì Supabase Storage chưa được cấu hình trong env triển khai. Không sửa `.env`, không ghi secret/credential hoặc dữ liệu hồ sơ thật vào Memory/OBS.
+- Các thay đổi mở rộng PGD/template trong lượt này đang là thay đổi workspace chưa commit; các file `dist`, attachment, backup, `tmp`, kế hoạch nội bộ và nguồn PGD vẫn giữ ngoài phạm vi commit.
+
 ## Cập nhật 2026-09-04 — Đồng bộ projection phiên bản hiện hành và cảnh báo đóng gói PGD
 
 - Bổ sung `getCurrentPgdDossierDocuments()` để projection trên card PGD chỉ chọn một tài liệu mới nhất cho từng `requirementCode` theo version, thời điểm tải lên và id ổn định. Lịch sử phiên bản vẫn được giữ nguyên trong API/bootstrap; phiên bản đã `supersede` không còn bị đếm hoặc báo đã gắn checklist thay cho phiên bản mới.

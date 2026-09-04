@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const workspaceSource = fs.readFileSync(new URL('../components/PgdWorkspace.tsx', import.meta.url), 'utf8');
+const productGroupFieldsSource = fs.readFileSync(new URL('../components/PgdProductGroupFields.tsx', import.meta.url), 'utf8');
 
 test('PGD intake and register projection expose source-derived registry references', () => {
   assert.match(workspaceSource, /Sổ đăng ký PGD/);
@@ -23,7 +24,14 @@ test('PGD intake and register projection expose source-derived registry referenc
   assert.match(workspaceSource, /Phương thức ĐGSPH/);
     assert.match(workspaceSource, /Cỡ lô \(bó\/kiện\/cuộn\)/);
     assert.match(workspaceSource, /Kế hoạch lấy mẫu/);
-    assert.match(workspaceSource, /Kế hoạch thủ công \/ căn cứ/);
+  assert.match(workspaceSource, /Kế hoạch thủ công \/ căn cứ/);
+  assert.match(workspaceSource, /PgdProductGroupFields/);
+  assert.match(productGroupFieldsSource, /Thông tin máy móc \/ dây chuyền/);
+  assert.match(productGroupFieldsSource, /machineType/);
+  assert.match(productGroupFieldsSource, /synchronization/);
+  assert.match(productGroupFieldsSource, /Thông tin lô than/);
+  assert.match(productGroupFieldsSource, /coalType/);
+  assert.match(productGroupFieldsSource, /qualityStandard/);
   assert.match(workspaceSource, /aria-label="Sổ đăng ký PGD"/);
 });
 

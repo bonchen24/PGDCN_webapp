@@ -160,8 +160,8 @@ export function getPgdDossierRequirementStationKey(requirementCode: string): Pgd
   if (['REQUEST_PYC', 'REQUEST_SUPPORTING', 'ASSIGNMENT_FORM', 'COMMERCIAL_CONTRACT', 'COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_OF_LADING', 'CUSTOMS_DECLARATION', 'CERTIFICATE_OF_ORIGIN'].includes(code)) {
     return 'INTAKE_CAPABILITY';
   }
-  if (code === 'INSPECTION_PLAN' || code.startsWith('TECHNICAL_')) return 'PREPARATION';
-  if (['FIELD_INSPECTION_MINUTES', 'FIELD_SAMPLE_TAKING', 'FIELD_ACTIVITY_LOG'].includes(code)) return 'FIELD_SAMPLING';
+  if (code === 'INSPECTION_PLAN' || code.startsWith('TECHNICAL_') || ['MACHINERY_TECHNICAL_DOSSIER', 'COAL_TECHNICAL_OVERVIEW', 'COAL_QUALITY_SPECIFICATION'].includes(code)) return 'PREPARATION';
+  if (['FIELD_INSPECTION_MINUTES', 'FIELD_SAMPLE_TAKING', 'FIELD_ACTIVITY_LOG', 'MACHINERY_CONDITION_ASSESSMENT', 'MACHINERY_SYNCHRONIZATION_ASSESSMENT'].includes(code)) return 'FIELD_SAMPLING';
   if (['SAMPLE_HANDOVER_LAB', 'LAB_RESULT', 'LAB_RESULT_REVIEW'].includes(code)) return 'LAB_RESULTS';
   return 'REPORT_APPROVAL_RETURN';
 }
@@ -202,6 +202,16 @@ export function getPgdDossierRequirements(productGroup: PgdProductGroup): PgdDos
     return [
       ...base,
       requirement('MACHINERY_TECHNICAL_DOSSIER', 'TECHNICAL', 'Hồ sơ kỹ thuật máy móc / dây chuyền'),
+      requirement('MACHINERY_CONDITION_ASSESSMENT', 'FIELD', 'Biên bản đánh giá tình trạng máy', true),
+      requirement('MACHINERY_SYNCHRONIZATION_ASSESSMENT', 'FIELD', 'Biên bản đánh giá tính đồng bộ dây chuyền', false, 'Bổ sung khi áp dụng QT-GĐ-12 hoặc phạm vi có đánh giá đồng bộ.'),
+    ];
+  }
+
+  if (productGroup === 'COAL') {
+    return [
+      ...base,
+      requirement('COAL_TECHNICAL_OVERVIEW', 'TECHNICAL', 'Hồ sơ kỹ thuật / mô tả lô than'),
+      requirement('COAL_QUALITY_SPECIFICATION', 'TECHNICAL', 'Tiêu chuẩn và chỉ tiêu chất lượng than', true),
     ];
   }
 
