@@ -37,4 +37,8 @@ test('restore requires archive preflight before any destructive restore operatio
   assert.match(designSource, /Preflight trước restore archive máy chủ/);
 });
 
+test('backup storage accepts the deployment service-role fallback used by Docker', () => {
+  assert.match(managerSource, /SUPABASE_SERVICE_ROLE_KEY\s*\|\|\s*process\.env\.SERVICE_ROLE_KEY/);
+});
+
 // --- End of pcn-backup-integrity.test.ts ---

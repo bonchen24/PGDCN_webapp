@@ -190,7 +190,9 @@ function assertSafeFilename(filename: string): void {
 
 function getStorageClient() {
   const baseUrl = String(process.env.SUPABASE_STORAGE_URL || '').trim();
-  const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  const serviceRoleKey = String(
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY || '',
+  ).trim();
   if (!baseUrl || !serviceRoleKey) {
     throw new Error('Không thể sao lưu file: Supabase Storage chưa được cấu hình.');
   }
