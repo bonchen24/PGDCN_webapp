@@ -147,6 +147,7 @@ test('approval assistant exposes read-only review boundaries and PaddleOCR prima
   assert.match(serverSource, /app\.post\('\/api\/pcn\/approval-assistant\/export'/);
   assert.match(serverSource, /tvci_ocr_service|OCR_SERVICE_URL/);
   assert.match(serverSource, /ocr\/pdf\/page/);
+  assert.match(serverSource, /extractPcnDocxEmbeddedImages/);
   const route = serverSource.slice(serverSource.indexOf("app.post('/api/pcn/approval-assistant/review'"));
   const reviewRoute = route.slice(0, route.indexOf("app.post('/api/pcn/approval-assistant/export'"));
   assert.doesNotMatch(reviewRoute, /applyPcnApprovalDecision|approvalSteps|issuancePackages/);

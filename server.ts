@@ -238,6 +238,7 @@ import {
   normalizePcnPaddleOcrPage,
   PcnPaddleOcrUnavailableError,
 } from './utils/pcnApprovalReviewOcr.ts';
+import { extractPcnDocxEmbeddedImages } from './utils/pcnDocxOcr.ts';
 import { buildPcnApprovalReviewDocx, buildPcnApprovalReviewPdf } from './utils/pcnApprovalReviewReport.ts';
 import { buildPcnDraftManualSource, validatePcnDraftAction } from './utils/pcnDrafting.ts';
 import { validatePcnDraftSourceSelection } from './utils/pcnDraftSourcePolicy.ts';
@@ -12305,8 +12306,23 @@ async function startServer() {
       if (isDocx) {
         const docxResult = await mammoth.extractRawText({ buffer: downloaded.body });
         const text = String(docxResult.value || '').trim();
-        if (!text) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `Tài liệu ${reference.fileName} không có nội dung để kiểm tra.`);
-        evidence.push({ assetId: reference.assetId, fileName: reference.fileName, text, confidence: 0.95, tab: reference.tab });
+        if (text) {
+          evidence.push({ assetId: reference.assetId, fileName: reference.fileName, text, confidence: 0.95, tab: reference.tab });
+          continue;
+        }
+        const embeddedImages = extractPcnDocxEmbeddedImages(downloaded.body);
+        if (embeddedImages.length === 0) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `Tài liệu ${reference.fileName} không có text layer hoặc ảnh nhúng để PaddleOCR đọc.`);
+        const evidenceBeforeDocx = evidence.length;
+        for (const [index, image] of embeddedImages.entries()) {
+          const imageReference = { ...reference, fileName: `${reference.fileName} · ${image.fileName}` };
+          try {
+            evidence.push(await fetchApprovalAssistantPaddlePage(imageReference, image.bytes, image.mimeType, index + 1));
+          } catch (error) {
+            if (error instanceof PcnPaddleOcrUnavailableError && (error.code === 'PADDLE_OCR_EMPTY' || error.code === 'PADDLE_OCR_LOW_CONFIDENCE')) continue;
+            throw error;
+          }
+        }
+        if (evidence.length === evidenceBeforeDocx) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `PaddleOCR không đọc được ảnh nhúng trong ${reference.fileName}.`);
         continue;
       }
       if (isPdf) {
@@ -12526,6 +12542,36 @@ async function startServer() {
         const docxResult = await mammoth.extractRawText({ buffer: fileBuffer });
         extractedText = docxResult.value || '';
         confidence = 0.95;
+        if (!extractedText.trim()) {
+          const embeddedImages = extractPcnDocxEmbeddedImages(fileBuffer);
+          const imageTexts: string[] = [];
+          const imageConfidences: number[] = [];
+          for (const image of embeddedImages) {
+            const ocrUrl = new URL(`${getKqtnOcrServiceUrl()}/ocr/image`);
+            ocrUrl.searchParams.set('page', '1');
+            ocrUrl.searchParams.set('dpi', '150');
+            const formData = new FormData();
+            formData.append('file', new Blob([new Uint8Array(image.bytes)], { type: image.mimeType }), image.fileName);
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), KQTN_OCR_TIMEOUT_MS);
+            try {
+              const response = await fetch(ocrUrl, { method: 'POST', body: formData, signal: controller.signal });
+              const payload = await response.json().catch(() => ({}));
+              if (!response.ok) throw Object.assign(new Error(payload.detail || payload.error || `PaddleOCR request failed (${response.status}).`), { statusCode: 503 });
+              const text = getPcnOcrText(payload).trim();
+              if (text) imageTexts.push(text);
+              const imageConfidence = Number(payload.confidence);
+              if (Number.isFinite(imageConfidence) && imageConfidence > 0) imageConfidences.push(imageConfidence);
+            } catch (error: any) {
+              if (error?.statusCode === 503) throw error;
+              throw Object.assign(new Error('PaddleOCR không sẵn sàng để đọc ảnh nhúng trong DOCX.'), { statusCode: 503, cause: error });
+            } finally {
+              clearTimeout(timeout);
+            }
+          }
+          extractedText = imageTexts.join('\n\n');
+          if (imageConfidences.length > 0) confidence = imageConfidences.reduce((sum, value) => sum + value, 0) / imageConfidences.length;
+        }
       } else {
         const sourcePage = Math.max(1, Math.floor(Number(req.body?.pageNumber) || 1));
         const serviceUrl = getKqtnOcrServiceUrl();

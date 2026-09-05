@@ -40,6 +40,7 @@ test('settings is an Admin surface, not a new workflow page', () => {
   assert.match(server, /app\.get\('\/api\/pcn\/settings'/);
   assert.match(server, /app\.put\('\/api\/pcn\/settings'/);
   assert.match(server, /requirePcnAdmin/);
+  assert.match(server, /extractPcnDocxEmbeddedImages/);
   assert.match(workspace, /PcnPersonalSettingsPanel/);
   assert.match(read('components/PcnSidebar.tsx'), /Mở thiết lập cá nhân/);
   assert.doesNotMatch(workspace, /UserSettingsModal/);
@@ -50,6 +51,9 @@ test('OCR accepts supported dossier files and requires confirmation before mutat
   assert.equal(isPcnOcrFileSupported('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'de-nghi.docx'), true);
   assert.equal(isPcnOcrFileSupported('image/jpeg', 'camera.jpg'), true);
   assert.equal(isPcnOcrFileSupported('text/plain', 'notes.txt'), false);
+  const ocrRoute = read('server.ts').slice(read('server.ts').indexOf("app.post('/api/pcn/ocr'"));
+  assert.match(ocrRoute, /\/ocr\/image/);
+  assert.match(ocrRoute, /wordprocessingml/);
   const draft = normalizePcnOcrDraft({ fields: { proposalCode: 'DN-01' }, confidence: 0.82, sourcePage: 2 });
   assert.equal(draft.fields.proposalCode, 'DN-01');
   assert.equal(draft.sourcePage, 2);
