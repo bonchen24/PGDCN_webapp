@@ -1507,6 +1507,12 @@ export function isPgdSystemManager(user: PgdMutationUser = {}): boolean {
   return position.includes('quản lý') || position.includes('trưởng phòng');
 }
 
+/** PGD operational managers may see the action surface, but mutation guards remain authoritative. */
+export function isPgdDossierActionViewer(user: PgdMutationUser = {}): boolean {
+  if (isPgdSystemManager(user)) return true;
+  return ['PGD_ADMIN', 'PGD_MANAGER'].includes(String(user.pgdRole || '').trim().toUpperCase());
+}
+
 export function getPgdDossierEditDenial(
   request: Pick<PgdInspectionRequest, 'status'>,
   user: PgdMutationUser = {},

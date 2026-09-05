@@ -6,6 +6,14 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-05 — Entry Tổng quan sau đăng nhập và nhóm thao tác hồ sơ
+
+- Route gốc `/` dùng shared `PgdcnAppShell` với `initialDomain="department"`; sau khi đăng nhập, người dùng mở **Tổng quan phòng** (`department-dashboard`) thay vì vào thẳng **Đề nghị**. Các route tương thích `/pgdcn/pcn` và `/pgdcn/pgd` vẫn giữ entry theo miền.
+- Chi tiết hồ sơ PCN có nhóm thao tác header cho Admin/Quản lý toàn hệ thống, gồm hiệu chỉnh hồ sơ và xóa hồ sơ theo đúng status gate; hiệu chỉnh mở modal compact theo grid, giữ nguyên mã hồ sơ/Đề nghị/Lĩnh vực và cho phép cập nhật các trường dossier được allowlist.
+- Chi tiết hồ sơ PGD hiển thị nhóm thao tác cho Admin/Quản lý hệ thống và vai trò nghiệp vụ `PGD_ADMIN`/`PGD_MANAGER`; quyền mutation vẫn được kiểm tra riêng, `PGD_MANAGER` không được nâng quyền hard-delete.
+- `design.md` đã ghi rõ contract nhóm thao tác hồ sơ; test `dossier-action-controls` bao phủ action group PCN/PGD và phân tách quyền xóa. Không thay đổi schema, không trộn boundary PCN/PGD, không đọc hoặc sửa nguồn Desktop/UNC lúc runtime.
+- Verification lượt này: `npm test` **689/689 pass**, test navigation/login **4/4 pass**, `npm run lint`, `npm run build` và `git diff --check` pass.
+
 ## Cập nhật 2026-09-05 — Chốt mã PYC, commit và production Docker
 
 - Mã PYC PGD đã chốt là `PGD-YYMMDD-TT` (ví dụ `PGD-260905-01`), không gắn literal `PYC`; `TT` là số thứ tự hai chữ số và reset về `01` theo ngày Việt Nam.
