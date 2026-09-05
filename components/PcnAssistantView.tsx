@@ -1,11 +1,12 @@
 'use client';
 
-import { AlertCircle, CheckCircle2, ExternalLink, FileDown, Loader2, Play, Search, ShieldCheck } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ExternalLink, FileDown, FileWarning, Loader2, Play, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { CertificationDossier, CertificationProposal, OutboundLabRequest, PcnDocumentRequirement, PcnDossierDocument, PcnSampleLot, PcnSampleRoute, ReturnedTestResult } from '../types';
 import type { PcnApprovalCriterionResult, PcnApprovalReviewCandidate } from '../utils/pcnApprovalReview';
 import { getPcnFileUrl } from '../utils/pcnFileApi';
+import { classifyPcnAssistantError, type PcnAssistantErrorView } from '../utils/pcnAssistantUi';
 
 type Props = {
   dossiers: CertificationDossier[];
@@ -44,6 +45,7 @@ function reviewTab(tab: string): 'documents' | 'lab' | 'results' | 'issuance' {
 }
 
 export default function PcnAssistantView(props: Props) {
+  const [viewState, setViewState] = useState<'loading' | 'ready' | 'running' | 'completed' | 'error'>('loading');
   const [fieldCode, setFieldCode] = useState<(typeof fields)[number]>('QC4');
   const [candidates, setCandidates] = useState<PcnApprovalReviewCandidate[]>([]);
   const [selectedDossierId, setSelectedDossierId] = useState('');
@@ -52,14 +54,19 @@ export default function PcnAssistantView(props: Props) {
   const [starting, setStarting] = useState(false);
   const [runId, setRunId] = useState('');
   const [runMessage, setRunMessage] = useState('');
-  const [runError, setRunError] = useState('');
+  const [runErrorView, setRunErrorView] = useState<PcnAssistantErrorView>();
+  const [runErrorDetail, setRunErrorDetail] = useState('');
   const [criteria, setCriteria] = useState<PcnApprovalCriterionResult[]>([]);
   const [summary, setSummary] = useState<ReviewEvent['summary']>();
+  const [currentCriterion, setCurrentCriterion] = useState({ index: -1, title: '' });
+  const [completedCriterionCount, setCompletedCriterionCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoadingCandidates(true);
-    setRunError('');
+    setViewState('loading');
+    setRunErrorView(undefined);
+    setRunErrorDetail('');
     setSelectedDossierId('');
     setCandidates([]);
     setCriteria([]);
@@ -72,8 +79,15 @@ export default function PcnAssistantView(props: Props) {
         if (!response.ok) throw new Error(payload?.error || 'Không thể tải danh sách hồ sơ cần kiểm duyệt.');
         return Array.isArray(payload?.items) ? payload.items as PcnApprovalReviewCandidate[] : [];
       })
-      .then((items) => { if (!cancelled) setCandidates(items); })
-      .catch((error: any) => { if (!cancelled) setRunError(error?.message || 'Không thể tải danh sách hồ sơ cần kiểm duyệt.'); })
+      .then((items) => { if (!cancelled) { setCandidates(items); setViewState('ready'); } })
+      .catch((error: any) => {
+        if (!cancelled) {
+          const mapped = classifyPcnAssistantError({ message: error?.message || 'Không thể tải danh sách hồ sơ cần kiểm duyệt.' });
+          setRunErrorView(mapped);
+          setRunErrorDetail(mapped.detail || '');
+          setViewState('error');
+        }
+      })
       .finally(() => { if (!cancelled) setLoadingCandidates(false); });
     return () => { cancelled = true; };
   }, [fieldCode]);
@@ -84,18 +98,49 @@ export default function PcnAssistantView(props: Props) {
     return candidates.filter((candidate) => [candidate.dossierCode, candidate.customerName, candidate.productName, candidate.ownerUsername, candidate.status].filter(Boolean).join(' ').toLocaleLowerCase('vi-VN').includes(query));
   }, [candidateQuery, candidates]);
   const selectedCandidate = candidates.find((candidate) => candidate.dossierId === selectedDossierId);
+  const selectedFile = useMemo(() => {
+    const document = props.documents.find((item) => item.dossierId === selectedDossierId && item.status === 'PRESENT');
+    if (!document) return undefined;
+    const version = document.versions.find((item) => item.assetId === document.currentVersionId) || document.versions[document.versions.length - 1];
+    return version ? { assetId: version.assetId, fileName: version.fileName } : undefined;
+  }, [props.documents, selectedDossierId]);
+  const runError = '';
+
+  const setAssistantError = (input: { code?: unknown; message?: unknown }) => {
+    const mapped = classifyPcnAssistantError(input);
+    setRunErrorView(mapped);
+    setRunErrorDetail(mapped.detail || '');
+    setViewState('error');
+  };
 
   const consumeReviewEvent = (event: ReviewEvent) => {
-    if (event.type === 'run_started') { setRunId(event.runId || ''); setRunMessage(event.message || 'Đã mở phiên hỗ trợ.'); }
-    if (event.type === 'criterion_started') setRunMessage(`Đang đánh giá tiêu chí ${Number(event.index || 0) + 1}/11...`);
-    if (event.type === 'criterion_result' && event.criterion) setCriteria((current) => [...current.filter((item) => item.id !== event.criterion?.id), event.criterion!].sort((left, right) => criterionOrder.indexOf(left.id) - criterionOrder.indexOf(right.id)));
-    if (event.type === 'run_completed') { setRunId(event.runId || runId); setSummary(event.summary); setRunMessage(event.message || 'Đã hoàn tất phiên hỗ trợ.'); }
-    if (event.type === 'run_error') setRunError(event.message || event.error || 'Phiên hỗ trợ đã dừng.');
+    if (event.type === 'run_started') {
+      setViewState('running');
+      setRunId(event.runId || '');
+      setRunMessage(event.message || 'Đã mở phiên hỗ trợ.');
+    }
+    if (event.type === 'criterion_started') {
+      const index = Number(event.index || 0);
+      setCurrentCriterion({ index, title: event.criterion?.title || `Tiêu chí ${index + 1}` });
+      setRunMessage(`Đang đánh giá tiêu chí ${index + 1}/11...`);
+    }
+    if (event.type === 'criterion_result' && event.criterion) {
+      setCriteria((current) => [...current.filter((item) => item.id !== event.criterion?.id), event.criterion!].sort((left, right) => criterionOrder.indexOf(left.id) - criterionOrder.indexOf(right.id)));
+      setCompletedCriterionCount((current) => Math.max(current, Number(event.index || 0) + 1));
+    }
+    if (event.type === 'run_completed') {
+      setViewState('completed');
+      setRunId(event.runId || runId);
+      setSummary(event.summary);
+      setCompletedCriterionCount(11);
+      setRunMessage(event.message || 'Đã hoàn tất phiên hỗ trợ.');
+    }
+    if (event.type === 'run_error') setAssistantError({ code: event.code, message: event.message || event.error || 'Phiên hỗ trợ đã dừng.' });
   };
 
   const startReview = async () => {
     if (!selectedDossierId || starting) return;
-    setStarting(true); setCriteria([]); setSummary(undefined); setRunId(''); setRunError(''); setRunMessage('Đang chuẩn bị đọc các tệp private...');
+    setStarting(true); setViewState('running'); setCriteria([]); setSummary(undefined); setRunId(''); setRunErrorView(undefined); setRunErrorDetail(''); setCurrentCriterion({ index: -1, title: '' }); setCompletedCriterionCount(0); setRunMessage('Đang chuẩn bị đọc các tệp private...');
     try {
       const response = await fetch('/api/pcn/approval-assistant/review', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fieldCode, dossierId: selectedDossierId }) });
       if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload?.error || 'Không thể bắt đầu phiên hỗ trợ.'); }
@@ -112,7 +157,7 @@ export default function PcnAssistantView(props: Props) {
         if (chunk.done) break;
       }
       if (buffer.trim()) { try { consumeReviewEvent(JSON.parse(buffer) as ReviewEvent); } catch { /* ignore trailing heartbeat */ } }
-    } catch (error: any) { setRunError(error?.message || 'Không thể chạy trợ lý kiểm duyệt.'); } finally { setStarting(false); }
+    } catch (error: any) { setAssistantError({ message: error?.message || 'Không thể chạy trợ lý kiểm duyệt.' }); } finally { setStarting(false); }
   };
 
   const openEvidence = (assetId: string, tab: string, page?: number) => {
@@ -121,22 +166,33 @@ export default function PcnAssistantView(props: Props) {
     if (assetId) window.open(`${getPcnFileUrl(assetId)}${page ? `#page=${page}` : ''}`, '_blank', 'noopener,noreferrer');
   };
 
+  const openSelectedDossier = () => {
+    const dossier = props.dossiers.find((item) => item.id === selectedDossierId);
+    if (dossier) props.onOpenDossier(dossier, 'documents');
+  };
+
+  const openSelectedFile = () => {
+    if (selectedFile) window.open(getPcnFileUrl(selectedFile.assetId), '_blank', 'noopener,noreferrer');
+  };
+
   const exportReport = async (format: 'PDF' | 'DOCX') => {
     if (!runId || !selectedCandidate) return;
     try {
       const response = await fetch('/api/pcn/approval-assistant/export', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ runId, format }) });
-      if (!response.ok) { const payload = await response.json().catch(() => ({})); setRunError(payload?.error || 'Không thể xuất báo cáo.'); return; }
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); setAssistantError({ message: payload?.error || 'Không thể xuất báo cáo.' }); return; }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a'); link.href = url; link.download = `bao-cao-ho-tro-${selectedCandidate.dossierCode}.${format.toLowerCase()}`; link.click(); URL.revokeObjectURL(url);
-    } catch (error: any) { setRunError(error?.message || 'Không thể xuất báo cáo.'); }
+    } catch (error: any) { setAssistantError({ message: error?.message || 'Không thể xuất báo cáo.' }); }
   };
 
   return (
-    <div className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5">
+    <div className="pcn-page-surface ddt-compact min-w-0 space-y-4 bg-slate-50/60 p-3 pb-5 md:p-5 mobile-safe-bottom">
       <header className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm"><ShieldCheck size={21} /></span><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">Trợ lý phê duyệt</p><h1 className="mt-1 text-xl font-black text-slate-900">Hỗ trợ kiểm duyệt hồ sơ</h1><p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">Chọn Lĩnh vực, chọn đúng một bộ hồ sơ, rồi bấm Xác nhận để AI đọc lần lượt từng tiêu chí. Đây chỉ là phiên hỗ trợ phán đoán; không phê duyệt, không đổi trạng thái và không khóa tiến trình hồ sơ.</p></div></header>
       <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><div className="flex flex-wrap items-center gap-2"><span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Lĩnh vực hồ sơ</span>{fields.map((field) => <button key={field} type="button" onClick={() => setFieldCode(field)} className={`rounded-md px-3 py-1.5 text-[10px] font-black ${fieldCode === field ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-slate-50 text-slate-600'}`}>{field}</button>)}<span className="ml-auto rounded-full bg-indigo-50 px-2 py-1 text-[9px] font-bold text-indigo-700">Chỉ đọc • QC4/QC9 v1</span></div><div className="relative mt-3"><Search size={14} className="absolute left-2.5 top-2 text-slate-400" /><input aria-label="Tìm hồ sơ kiểm duyệt" value={candidateQuery} onChange={(event) => setCandidateQuery(event.target.value)} placeholder="Tìm mã hồ sơ, khách hàng, sản phẩm..." className="w-full rounded-lg border border-slate-200 py-2 pl-8 pr-2 text-[11px] outline-none focus:border-indigo-400" /></div><div className="mt-3 space-y-2">{loadingCandidates && <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-3 text-[10px] text-slate-500"><Loader2 size={14} className="animate-spin" /> Đang tải danh sách hồ sơ...</div>}{!loadingCandidates && filteredCandidates.map((candidate) => <label key={candidate.dossierId} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition ${selectedDossierId === candidate.dossierId ? 'border-indigo-400 bg-indigo-50/60' : 'border-slate-200 bg-white hover:border-indigo-200'}`}><input type="radio" name="approval-assistant-dossier" checked={selectedDossierId === candidate.dossierId} onChange={() => setSelectedDossierId(candidate.dossierId)} className="mt-1 h-4 w-4 accent-indigo-600" /><span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><span className="text-xs font-black text-slate-800">{candidate.dossierCode}</span><span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-bold text-indigo-700">{candidate.status === 'WAITING_APPROVAL' ? 'Chờ phê duyệt' : 'Soát xét kỹ thuật'}</span><span className="text-[9px] text-slate-500">Đủ hồ sơ {candidate.completenessScore}%</span></span><span className="mt-1 block text-[10px] text-slate-600">{candidate.customerName || 'Chưa có khách hàng'}{candidate.productName ? ` • ${candidate.productName}` : ''}</span>{candidate.missingDocuments.length > 0 && <span className="mt-1 block text-[9px] text-rose-700">Còn thiếu: {candidate.missingDocuments.join(', ')}</span>}</span></label>)}{!loadingCandidates && filteredCandidates.length === 0 && <div className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-[10px] text-slate-500">Không có bộ hồ sơ QC đang thuộc phạm vi trợ lý.</div>}</div><div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" onClick={() => void startReview()} disabled={!selectedDossierId || starting} className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-2 text-[10px] font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"><Play size={13} /> {starting ? 'Đang đánh giá...' : 'Xác nhận hồ sơ'}</button>{selectedCandidate && <span className="text-[10px] text-slate-500">Đã chọn: <strong>{selectedCandidate.dossierCode}</strong>. Nút này chỉ bắt đầu phiên hỗ trợ.</span>}</div></section>
-      {(runMessage || runError || criteria.length > 0) && <section className="space-y-3">{runMessage && <div className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[10px] text-indigo-800" role="status">{starting && <Loader2 size={13} className="animate-spin" />}{runMessage}</div>}{runError && <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[10px] leading-4 text-rose-800" role="alert"><AlertCircle size={14} className="mt-0.5 shrink-0" /><span>{runError}</span></div>}{summary && <div className="grid grid-cols-2 gap-2 md:grid-cols-5"><Metric label="Đạt" value={summary.pass} tone="text-emerald-700 bg-emerald-50" /><Metric label="Cảnh báo" value={summary.warning} tone="text-amber-700 bg-amber-50" /><Metric label="Lỗi" value={summary.error} tone="text-rose-700 bg-rose-50" /><Metric label="Chưa đủ căn cứ" value={summary.notEvaluable} tone="text-slate-700 bg-slate-100" /><div className="rounded-lg border border-indigo-200 bg-indigo-50 p-2"><div className="text-[9px] font-bold text-indigo-600">Kết luận hỗ trợ</div><div className="mt-1 text-[10px] font-black text-indigo-900">{summary.conclusion}</div></div></div>}<div className="space-y-2">{criteria.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} onOpenEvidence={openEvidence} />)}</div>{summary && runId && <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-3"><FileDown size={14} className="text-indigo-600" /><span className="mr-2 text-[10px] font-bold text-slate-600">Xuất bản chụp phiên hỗ trợ</span><button type="button" onClick={() => void exportReport('PDF')} className="rounded-md border border-slate-200 px-2.5 py-1.5 text-[10px] font-black text-slate-700 hover:bg-slate-50">PDF</button><button type="button" onClick={() => void exportReport('DOCX')} className="rounded-md border border-slate-200 px-2.5 py-1.5 text-[10px] font-black text-slate-700 hover:bg-slate-50">DOCX</button><span className="text-[9px] text-slate-400">Báo cáo tạm thời, không ghi vào hồ sơ.</span></div>}</section>}
+      {viewState === 'running' && <div className="rounded-lg border border-indigo-200 bg-white p-3" role="status" aria-live="polite"><div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-bold text-indigo-800"><span>{currentCriterion.title ? `Đang đánh giá tiêu chí ${currentCriterion.index + 1}/11: ${currentCriterion.title}` : 'Đang chuẩn bị đọc bằng chứng...'}</span><span>Tiêu chí đã hoàn tất: {completedCriterionCount}/11</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-indigo-100"><div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${Math.min(100, (completedCriterionCount / 11) * 100)}%` }} /></div></div>}
+      {runErrorView && <div className="flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-[10px] leading-4 text-rose-900" role="alert" aria-live="assertive"><FileWarning size={17} className="mt-0.5 shrink-0 text-rose-600" /><div className="min-w-0 flex-1"><h2 className="font-black">{runErrorView.title}</h2><p className="mt-1 font-bold text-rose-800">{runErrorView.action}</p>{runErrorDetail && <details className="mt-2 text-[9px] text-rose-700"><summary className="cursor-pointer font-bold">Chi tiết phiên</summary><p className="mt-1 break-words">{runErrorDetail}</p></details>}<div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={openSelectedDossier} disabled={!selectedCandidate} className="mobile-touch-target inline-flex min-h-9 items-center rounded-md border border-rose-200 bg-white px-2.5 py-1.5 font-black text-rose-800 disabled:cursor-not-allowed disabled:opacity-50">Mở hồ sơ</button><button type="button" onClick={openSelectedFile} disabled={!selectedFile} className="mobile-touch-target inline-flex min-h-9 items-center rounded-md border border-rose-200 bg-white px-2.5 py-1.5 font-black text-rose-800 disabled:cursor-not-allowed disabled:opacity-50">Mở file</button><button type="button" onClick={() => void startReview()} disabled={!selectedCandidate || starting} className="mobile-touch-target inline-flex min-h-9 items-center gap-1 rounded-md bg-rose-600 px-2.5 py-1.5 font-black text-white disabled:cursor-not-allowed disabled:opacity-50"><RefreshCw size={12} /> Thử lại</button></div></div></div>}
+      {(runMessage || runError || criteria.length > 0) && <section className="space-y-3">{runMessage && <div className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[10px] text-indigo-800" role="status" aria-live="polite">{starting && <Loader2 size={13} className="animate-spin" />}{runMessage}</div>}{runError && <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[10px] leading-4 text-rose-800" role="alert"><AlertCircle size={14} className="mt-0.5 shrink-0" /><span>{runError}</span></div>}{summary && viewState === 'completed' && <div className="grid grid-cols-2 gap-2 md:grid-cols-5"><Metric label="Đạt" value={summary.pass} tone="text-emerald-700 bg-emerald-50" /><Metric label="Cảnh báo" value={summary.warning} tone="text-amber-700 bg-amber-50" /><Metric label="Lỗi" value={summary.error} tone="text-rose-700 bg-rose-50" /><Metric label="Chưa đủ căn cứ" value={summary.notEvaluable} tone="text-slate-700 bg-slate-100" /><div className="rounded-lg border border-indigo-200 bg-indigo-50 p-2"><div className="text-[9px] font-bold text-indigo-600">Kết luận hỗ trợ</div><div className="mt-1 text-[10px] font-black text-indigo-900">{summary.conclusion}</div></div></div>}<div className="space-y-2">{criteria.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} onOpenEvidence={openEvidence} />)}</div>{summary && runId && viewState === 'completed' && <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-3"><FileDown size={14} className="text-indigo-600" /><span className="mr-2 text-[10px] font-bold text-slate-600">Xuất bản chụp phiên hỗ trợ</span><button type="button" onClick={() => void exportReport('PDF')} className="mobile-touch-target rounded-md border border-slate-200 px-2.5 py-1.5 text-[10px] font-black text-slate-700 hover:bg-slate-50">PDF</button><button type="button" onClick={() => void exportReport('DOCX')} className="mobile-touch-target rounded-md border border-slate-200 px-2.5 py-1.5 text-[10px] font-black text-slate-700 hover:bg-slate-50">DOCX</button><span className="text-[9px] text-slate-400">Báo cáo tạm thời, không ghi vào hồ sơ.</span></div>}</section>}
     </div>
   );
 }

@@ -31,6 +31,25 @@ type PgdcnAppShellProps = {
 
 const getScopes = (value: readonly DepartmentScope[] | undefined): DepartmentScope[] => Array.from(new Set((value || []).filter((scope): scope is DepartmentScope => scope === 'PCN' || scope === 'PGD')));
 
+const getActiveContextLabel = (target: PgdcnNavigationTarget): string => {
+  if (target.domain === 'department') {
+    if (target.section === 'department-dashboard') return 'Tổng quan phòng';
+    if (target.section === 'customers') return 'Khách hàng';
+    if (target.section === 'assistant') return 'Trợ lý AI';
+    if (target.section === 'activityLogs') return 'Nhật ký hoạt động';
+    return 'Cài đặt hệ thống';
+  }
+  if (target.domain === 'PCN') {
+    if (target.section === 'proposals') return 'Đề nghị';
+    if (target.section === 'operations') return 'Sổ điều hành';
+    if (target.section === 'lab-operations') return 'PYC & luân chuyển mẫu';
+    return 'Soạn thảo tài liệu';
+  }
+  if (target.section === 'requests') return 'Hồ sơ PYC';
+  if (target.section === 'operations') return 'Sổ điều hành PGD';
+  return 'Soạn thảo tài liệu';
+};
+
 const getSharedTargetForPcnSection = (section: PcnSection): PgdcnNavigationTarget | undefined => {
   if (section === 'dashboard') return { domain: 'department', section: 'department-dashboard' };
   if (section === 'customers') return { domain: 'department', section: 'customers' };
@@ -230,7 +249,7 @@ export default function PgdcnAppShell({ initialDomain = 'department' }: PgdcnApp
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5">
         <div className="flex min-w-0 items-center gap-2">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Mở menu phòng" className="mobile-touch-target rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden">☰</button>
-          <div className="min-w-0"><div className="truncate text-[10px] font-black uppercase tracking-wider text-slate-700">IEMM • TVCI · {activeTarget.domain === 'department' ? 'Tổng quan phòng' : activeTarget.domain}</div><div className="truncate text-xs font-bold text-slate-500">Phòng Giám định - Chứng nhận · một phiên, hai lĩnh vực</div></div>
+          <div className="min-w-0"><div className="truncate text-[10px] font-black uppercase tracking-wider text-slate-700">IEMM • TVCI · {getActiveContextLabel(activeTarget)}</div><div className="truncate text-xs font-bold text-slate-500">Phòng Giám định - Chứng nhận · một phiên, hai lĩnh vực</div></div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <PgdcnNotificationDropdown isOpen={notificationOpen} onToggle={handleToggleNotifications} onClose={() => setNotificationOpen(false)} notifications={notifications} currentUser={currentUser} onMarkRead={handleMarkNotificationRead} onMarkAllRead={handleMarkAllNotificationsRead} onClear={handleClearNotifications} onSelect={handleNotificationSelect} />

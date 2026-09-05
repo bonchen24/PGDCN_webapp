@@ -15,6 +15,9 @@ test('approval assistant UI selects one dossier and streams an advisory review',
   assert.match(assistant, /Mở hồ sơ|Mở bằng chứng/);
   assert.match(assistant, /PDF/);
   assert.match(assistant, /DOCX/);
+  for (const marker of ['classifyPcnAssistantError', 'Tiêu chí đã hoàn tất', 'Mở file', 'role="status"', 'role="alert"']) {
+    assert.ok(assistant.includes(marker), `Missing assistant UX marker: ${marker}`);
+  }
   assert.doesNotMatch(assistant, /PcnApprovalModal|\/api\/pcn\/issuance|applyPcnApprovalDecision|onApprove|onReturn/);
 });
 
@@ -22,4 +25,3 @@ test('PCN workspace exposes the assistant as an independent sidebar surface', ()
   assert.match(workspace, /assistant:\s*'Trợ lý phê duyệt'/);
   assert.match(workspace, /activeSection === 'assistant'/);
 });
-

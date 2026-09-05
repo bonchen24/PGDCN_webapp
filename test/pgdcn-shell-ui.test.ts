@@ -33,6 +33,15 @@ test('department dashboard exposes six KPIs, domain cards and a shared activity 
   assert.doesNotMatch(source, /Nhật ký hoạt động/);
   assert.match(source, /min-w-0/);
   assert.match(source, /grid-cols-2/);
+  assert.match(source, /mobile-scroll-y|mobile-scroll-x/);
+  assert.match(source, /Mở workspace|Mở danh sách|Tạo Đề nghị|Tạo PYC/);
+});
+
+test('shared shell exposes a readable active context for the current target', () => {
+  const source = read('../components/PgdcnAppShell.tsx');
+  assert.match(source, /activeTarget\.section/);
+  assert.match(source, /Tổng quan phòng/);
+  assert.match(source, /aria-label/);
 });
 
 test('domain workspaces support embedded mode and shared-shell section control', () => {

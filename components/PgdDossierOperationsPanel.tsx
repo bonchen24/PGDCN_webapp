@@ -12,6 +12,7 @@ import { getCurrentPgdDossierDocuments, getPgdDossierRequirementForTemplate } fr
 import type { PgdDossierDocument, PgdDossierRequirement } from '../utils/pgdDossier';
 import { getPgdPostSignatureMutationDenial } from '../utils/pgdWorkflow';
 import PgdDocumentGenerationPanel from './PgdDocumentGenerationPanel';
+import { PgdcnPageHeader } from './PgdcnUiPrimitives';
 
 type Props = {
   request: PgdInspectionRequest;
@@ -103,13 +104,7 @@ export default function PgdDossierOperationsPanel({ request, requirements, dossi
 
   return (
     <section className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/40 p-3 shadow-sm" aria-label="Bộ hồ sơ và thao tác PGD">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h3 className="flex items-center gap-2 text-xs font-black text-blue-950"><ClipboardList size={15} className="text-blue-600" /> Bộ hồ sơ & đóng gói</h3>
-          <p className="mt-1 text-[10px] leading-4 text-blue-900/70">Làm việc trực tiếp trên hồ sơ trong app: chọn chủ hồ sơ, điền cell, sinh DOCX/PDF, đưa biểu mẫu vào checklist và đóng gói bản phát hành.</p>
-        </div>
-        <button type="button" onClick={() => void downloadPackage()} disabled={packageBusy} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-2.5 text-[9px] font-black text-blue-700 hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60"><PackageOpen size={13} /> {packageBusy ? 'Đang đóng gói...' : 'Tải gói hồ sơ'}</button>
-      </div>
+      <PgdcnPageHeader eyebrow="PGD · Hồ sơ" title="Bộ hồ sơ & đóng gói" description="Làm việc trực tiếp trên hồ sơ: chọn chủ hồ sơ, điền cell, sinh DOCX/PDF, đưa biểu mẫu vào checklist và đóng gói bản phát hành." actions={<button type="button" onClick={() => void downloadPackage()} disabled={packageBusy} className="mobile-touch-target inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-2.5 text-[9px] font-black text-blue-700 hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60"><PackageOpen size={13} /> {packageBusy ? 'Đang đóng gói...' : 'Tải gói hồ sơ'}</button>} />
 
       {packageManifest && !packageManifest.complete && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[9px] text-amber-900"><div className="font-black">Bộ hồ sơ chưa sẵn sàng để trình phê duyệt hai cấp.</div>{packageManifest.missingRequirementCodes.length > 0 && <div className="mt-1">Thiếu checklist: <span className="font-mono">{packageManifest.missingRequirementCodes.join(', ')}</span></div>}{packageManifest.missingAssetIds.length > 0 && <div className="mt-1">Thiếu file private: <span className="font-mono">{packageManifest.missingAssetIds.join(', ')}</span></div>}</div>}
 

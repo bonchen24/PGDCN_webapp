@@ -162,7 +162,7 @@ function DomainPipelineCard({ summary, onOpen }: { summary: PgdcnDashboardDomain
 
 function DomainPipeline({ summaries, onOpenPcnWorkspace, onOpenPgdWorkspace }: Pick<PgdcnDashboardViewProps, 'onOpenPcnWorkspace' | 'onOpenPgdWorkspace'> & { summaries: PgdcnDashboardDomainSummary[] }) {
   return (
-    <section data-testid="pgdcn-dashboard-domain-cards" className="min-w-0 space-y-3">
+    <section data-testid="pgdcn-dashboard-domain-cards" className="mobile-scroll-x min-w-0 space-y-3 lg:overflow-x-visible">
       <div className="flex items-center justify-between gap-2"><div><h2 className="text-base font-black text-slate-900">Pipeline theo miền</h2><p className="mt-1 text-[11px] text-slate-500">Tách biệt dữ liệu nhưng nhìn chung một nhịp vận hành.</p></div><FolderOpen size={17} className="text-slate-400" /></div>
       {summaries.map((summary) => <DomainPipelineCard key={summary.domain} summary={summary} onOpen={summary.domain === 'PCN' ? onOpenPcnWorkspace : onOpenPgdWorkspace} />)}
       {summaries.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-[11px] text-slate-400">Chưa có miền dữ liệu được cấp quyền.</div>}
