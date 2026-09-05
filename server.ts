@@ -180,10 +180,21 @@ import {
   markPgdDossierChecklistPresent,
   markPgdSampleDestroyed,
   reconcilePgdDossierChecklist,
+  getCurrentPgdDossierDocuments,
   type PgdDossierDocument,
 } from "./utils/pgdDossier.ts";
 import { buildPgdDossierPackageDownloadName, buildPgdDossierPackageManifest, type PgdDossierPackageManifest, type PgdDossierPackagePointer } from './utils/pgdDossierPackage.ts';
 import { buildPgdDocumentContext, buildPgdDocumentOutput } from "./utils/pgdDocumentGeneration.ts";
+import {
+  buildPgdAssistantReview,
+  getPgdAssistantCandidates,
+  type PgdAssistantCriterion,
+  type PgdAssistantEvidence,
+  type PgdAssistantReview,
+  type PgdAssistantReviewInput,
+  type PgdAssistantTextEvidence,
+  type PgdAssistantUnreadableFile,
+} from "./utils/pgdAssistant.ts";
 import { inspectPgdTemplateSource, resolvePgdTemplateSourcePath } from "./utils/pgdTemplatePack.ts";
 import { getPgdAssignmentApprovalDenial, getPgdOperationalStepAccess, getPgdOperationalStepGateDenial, getPgdPostSignatureMutationDenial, validatePgdResultValues, type PgdOperationalStationKey } from "./utils/pgdWorkflow.ts";
 import { buildKqtnPdfContentDisposition } from "./utils/kqtnPdfHeaders.js";
@@ -232,6 +243,7 @@ import {
   type PcnApprovalReviewFinding,
   type PcnApprovalReviewInput,
   type PcnApprovalReviewTextEvidence,
+  type PcnApprovalReviewUnreadableFile,
 } from './utils/pcnApprovalReview.ts';
 import {
   buildPcnPaddleOcrRequest,
@@ -3024,6 +3036,326 @@ async function startServer() {
       });
     } catch (error: any) {
       res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  type PgdAssistantAssetReference = {
+    assetId: string;
+    documentId: string;
+    documentType: 'DOSSIER' | 'GENERATED';
+    fileName: string;
+    sourceCollection: string;
+    sourceDocumentId: string;
+    sourceJsonPath: string;
+    checksum: string;
+    criterionId: PgdAssistantCriterion['id'];
+    tab: PgdAssistantEvidence['tab'];
+  };
+
+  type PgdAssistantLoadedInput = {
+    input: PgdAssistantReviewInput;
+    dossierDocuments: PgdDossierDocument[];
+  };
+
+  const pgdAssistantTabByCriterion: Record<PgdAssistantCriterion['id'], PgdAssistantEvidence['tab']> = {
+    INTAKE_CAPABILITY: 'overview',
+    PREPARATION: 'overview',
+    FIELD_SAMPLING: 'sampling',
+    LAB_RESULTS: 'results',
+    REPORT_APPROVAL_RETURN: 'approval',
+  };
+
+  const readPgdAssistantRows = async (collectionName: string, requestId: string) => {
+    const result = await pool.query(
+      `SELECT document_id, data FROM app_documents
+       WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd'
+       ORDER BY updated_at DESC, document_id ASC`,
+      [collectionName, requestId],
+    );
+    return result.rows.map(mapDocumentRow);
+  };
+
+  const loadPgdAssistantInput = async (requestId: string): Promise<PgdAssistantLoadedInput> => {
+    const requestResult = await pool.query(
+      `SELECT document_id, data FROM app_documents
+       WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`,
+      [PGD_COLLECTIONS.requests, requestId],
+    );
+    const request = requestResult.rows[0] ? mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest : undefined;
+    if (!request) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD.'), { statusCode: 404 });
+
+    const [assignments, fieldInspections, samples, labRequests, labResults, reports, certificates, approvals, dossierDocuments] = await Promise.all([
+      readPgdAssistantRows(PGD_COLLECTIONS.assignments, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.fieldInspections, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.samples, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.labRequests, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.labResults, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.reports, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.certificates, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.approvals, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.dossierDocuments, request.id),
+    ]);
+
+    return {
+      input: {
+        request,
+        assignments: assignments as PgdInspectionAssignment[],
+        fieldInspections: fieldInspections as PgdFieldInspection[],
+        samples: samples as PgdSample[],
+        labRequests: labRequests as PgdLabRequest[],
+        labResults: labResults as PgdLabResult[],
+        reports: reports as PgdInspectionReport[],
+        certificates: certificates as PgdInspectionCertificate[],
+        approvals: approvals as PgdApprovalStep[],
+      },
+      dossierDocuments: dossierDocuments as PgdDossierDocument[],
+    };
+  };
+
+  const getPgdAssistantAssetReferences = (input: PgdAssistantReviewInput, documents: PgdDossierDocument[]): PgdAssistantAssetReference[] => {
+    const references: PgdAssistantAssetReference[] = [];
+    const seenAssetIds = new Set<string>();
+    const append = (reference: PgdAssistantAssetReference) => {
+      if (seenAssetIds.has(reference.assetId)) return;
+      seenAssetIds.add(reference.assetId);
+      references.push(reference);
+    };
+    for (const document of getCurrentPgdDossierDocuments(documents).filter((item) => Boolean(item.fileAssetId))) {
+      const criterionId = getPgdDossierRequirementStationKey(document.requirementCode) as PgdAssistantCriterion['id'];
+      const generated = document.originCollection === PGD_COLLECTIONS.documents && Boolean(document.originDocumentId);
+      append({
+        assetId: document.fileAssetId!,
+        documentId: generated ? document.originDocumentId! : document.id,
+        documentType: generated ? 'GENERATED' : 'DOSSIER',
+        fileName: document.fileName,
+        sourceCollection: generated ? PGD_COLLECTIONS.documents : PGD_COLLECTIONS.dossierDocuments,
+        sourceDocumentId: generated ? document.originDocumentId! : document.id,
+        sourceJsonPath: generated ? 'output' : 'fileAssetId',
+        checksum: document.checksum,
+        criterionId,
+        tab: pgdAssistantTabByCriterion[criterionId],
+      });
+    }
+    for (const pointer of input.request.documentPointers || []) {
+      if (!pointer.assetId || !pointer.sourceCollection || !pointer.sourceDocumentId) continue;
+      if (pointer.sourceCollection !== PGD_COLLECTIONS.documents) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Pointer tài liệu ${pointer.fileName} không thuộc collection PGD được phép.`);
+      const criterionId = getPgdDossierRequirementStationKey(pointer.requirementCode || 'REQUEST_PYC') as PgdAssistantCriterion['id'];
+      const generated = pointer.sourceCollection === PGD_COLLECTIONS.documents;
+      append({
+        assetId: pointer.assetId,
+        documentId: pointer.sourceDocumentId,
+        documentType: generated ? 'GENERATED' : 'DOSSIER',
+        fileName: pointer.fileName,
+        sourceCollection: pointer.sourceCollection,
+        sourceDocumentId: pointer.sourceDocumentId,
+        sourceJsonPath: generated ? 'output' : 'fileAssetId',
+        checksum: pointer.checksum,
+        criterionId,
+        tab: pgdAssistantTabByCriterion[criterionId],
+      });
+    }
+    for (const inspection of input.fieldInspections || []) {
+      for (const assetId of inspection.evidenceAssetIds || []) {
+        append({
+          assetId,
+          documentId: inspection.id,
+          documentType: 'DOSSIER',
+          fileName: assetId,
+          sourceCollection: PGD_COLLECTIONS.fieldInspections,
+          sourceDocumentId: inspection.id,
+          sourceJsonPath: 'evidenceAssetIds',
+          checksum: '',
+          criterionId: 'FIELD_SAMPLING',
+          tab: 'sampling',
+        });
+      }
+    }
+    return references;
+  };
+
+  const fetchPgdAssistantPaddlePage = async (reference: PgdAssistantAssetReference, bytes: Buffer, mimeType: string, page: number): Promise<PgdAssistantTextEvidence> => {
+    const normalized = await fetchApprovalAssistantPaddlePage({
+      assetId: reference.assetId,
+      fileName: reference.fileName,
+      sourceCollection: 'dossierDocuments',
+      sourceDocumentId: reference.documentId,
+      sourceJsonPath: 'fileAssetId',
+      tab: reference.tab,
+    }, bytes, mimeType, page);
+    return { ...normalized, documentId: reference.documentId, documentType: reference.documentType, tab: reference.tab };
+  };
+
+  const fetchPgdAssistantOcrPage = async (reference: PgdAssistantAssetReference, bytes: Buffer, mimeType: string, page: number): Promise<PgdAssistantTextEvidence> => fetchPgdAssistantPaddlePage(reference, bytes, mimeType, page);
+
+  const extractPgdAssistantTexts = async (input: PgdAssistantReviewInput, documents: PgdDossierDocument[]): Promise<{ documentTexts: PgdAssistantTextEvidence[]; unreadableFiles: PgdAssistantUnreadableFile[] }> => {
+    const references = getPgdAssistantAssetReferences(input, documents);
+    if (references.length === 0) return { documentTexts: [], unreadableFiles: [] };
+    const assetResult = await pool.query(
+      `SELECT id, bucket_name, object_path, source_collection, source_document_id, source_json_path, mime_type, sha256
+       FROM file_assets WHERE id = ANY($1::text[])`,
+      [references.map((reference) => reference.assetId)],
+    );
+    const assetById = new Map(assetResult.rows.map((asset: any) => [String(asset.id), asset]));
+    const storage = getPgdStorageClient();
+    const documentTexts: PgdAssistantTextEvidence[] = [];
+    const unreadableFiles: PgdAssistantUnreadableFile[] = [];
+    for (const reference of references) {
+      const asset = assetById.get(reference.assetId);
+      if (!asset) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Không tìm thấy private asset ${reference.assetId} để đọc hồ sơ PGD.`);
+      if (String(asset.bucket_name) !== getPgdStorageBucket()
+        || String(asset.source_collection) !== reference.sourceCollection
+        || String(asset.source_document_id) !== reference.sourceDocumentId
+        || String(asset.source_json_path) !== reference.sourceJsonPath
+        || (reference.checksum && String(asset.sha256 || '').toLowerCase() !== reference.checksum.toLowerCase())) {
+        throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Private asset ${reference.assetId} không trỏ đúng về hồ sơ PGD đang kiểm tra.`);
+      }
+      const downloaded = await storage.downloadObject({ bucketName: String(asset.bucket_name), objectPath: String(asset.object_path) });
+      const mimeType = String(asset.mime_type || downloaded.contentType || 'application/octet-stream').toLowerCase();
+      const extension = reference.fileName.toLowerCase().split('.').pop() || '';
+      const isDocx = extension === 'docx' || mimeType.includes('wordprocessingml.document');
+      const isPdf = extension === 'pdf' || mimeType.includes('pdf');
+      const isImage = mimeType.startsWith('image/') || /^(png|jpe?g|webp|tiff?)$/.test(extension);
+      const isSpreadsheet = ['xls', 'xlsx'].includes(extension) || mimeType.includes('spreadsheetml') || mimeType.includes('ms-excel');
+      if (isDocx) {
+        const docxResult = await mammoth.extractRawText({ buffer: downloaded.body });
+        const text = String(docxResult.value || '').trim();
+        if (text) {
+          documentTexts.push({ assetId: reference.assetId, fileName: reference.fileName, documentId: reference.documentId, documentType: reference.documentType, text, confidence: 0.95, tab: reference.tab });
+          continue;
+        }
+        const embeddedImages = extractPcnDocxEmbeddedImages(downloaded.body);
+        if (embeddedImages.length === 0) {
+          documentTexts.push(await fetchPgdAssistantOcrPage(reference, downloaded.body, mimeType, 1));
+          continue;
+        }
+        const evidenceBeforeDocx = documentTexts.length;
+        for (const [index, image] of embeddedImages.entries()) {
+          const imageReference = { ...reference, fileName: `${reference.fileName} · ${image.fileName}` };
+          try {
+            documentTexts.push(await fetchPgdAssistantOcrPage(imageReference, image.bytes, image.mimeType, index + 1));
+          } catch (error) {
+            if (error instanceof PcnPaddleOcrUnavailableError && (error.code === 'PADDLE_OCR_EMPTY' || error.code === 'PADDLE_OCR_LOW_CONFIDENCE')) continue;
+            throw error;
+          }
+        }
+        if (documentTexts.length === evidenceBeforeDocx) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `PaddleOCR không đọc được ảnh nhúng trong ${reference.fileName}.`);
+        continue;
+      }
+      if (isPdf) {
+        let pdf: PDFDocument;
+        try { pdf = await PDFDocument.load(downloaded.body, { ignoreEncryption: true }); } catch {
+          throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Không mở được PDF ${reference.fileName} để chạy PaddleOCR.`);
+        }
+        const pageCount = pdf.getPageCount();
+        if (pageCount < 1) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `PDF ${reference.fileName} không có trang để đọc.`);
+        for (let page = 1; page <= pageCount; page += 1) documentTexts.push(await fetchPgdAssistantOcrPage(reference, downloaded.body, 'application/pdf', page));
+        continue;
+      }
+      if (isImage) {
+        documentTexts.push(await fetchPgdAssistantOcrPage(reference, downloaded.body, mimeType, 1));
+        continue;
+      }
+      if (isSpreadsheet) {
+        const workbook = xlsx.read(downloaded.body, { type: 'buffer', cellDates: true });
+        const text = workbook.SheetNames.map((sheetName) => {
+          const sheet = workbook.Sheets[sheetName];
+          return `[${sheetName}]\n${xlsx.utils.sheet_to_csv(sheet)}`;
+        }).join('\n\n').replace(/\s+/g, ' ').trim();
+        if (text) {
+          documentTexts.push({ assetId: reference.assetId, fileName: reference.fileName, documentId: reference.documentId, documentType: reference.documentType, text, confidence: 0.9, tab: reference.tab });
+          continue;
+        }
+        unreadableFiles.push({ assetId: reference.assetId, fileName: reference.fileName, reason: 'Bảng tính không có nội dung đọc được.', criterionId: reference.criterionId, tab: reference.tab, documentId: reference.documentId, documentType: reference.documentType });
+        continue;
+      }
+      if (extension === 'doc' || mimeType.includes('application/msword')) {
+        unreadableFiles.push({ assetId: reference.assetId, fileName: reference.fileName, reason: 'Định dạng Word cũ .doc chưa có bộ chuyển đổi an toàn trong phiên này.', criterionId: reference.criterionId, tab: reference.tab, documentId: reference.documentId, documentType: reference.documentType });
+        continue;
+      }
+      throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Định dạng ${reference.fileName} chưa được hỗ trợ trong phiên kiểm tra PGD.`);
+    }
+    return { documentTexts, unreadableFiles };
+  };
+
+  const semanticReviewPgdCriterion = async (req: express.Request, criterion: PgdAssistantCriterion, texts: PgdAssistantTextEvidence[]): Promise<PgdAssistantCriterion> => {
+    if (texts.length === 0) return criterion;
+    try {
+      const ai = await getPersonalGeminiClient(req, 30000);
+      const context = texts.map((entry) => `[${entry.assetId}|${entry.fileName}${entry.page ? `|trang ${entry.page}` : ''}]\n${entry.text.slice(0, 6000)}`).join('\n\n').slice(0, 24000);
+      const response = await generateContentWithRetryAndFallback(ai, {
+        contents: [{ role: 'user', parts: [{ text: `Bạn là lớp phân tích ngữ nghĩa hỗ trợ kiểm tra hồ sơ PGD. Chỉ kiểm tra trạm "${criterion.title}" từ các trích đoạn có mã bằng chứng bên dưới. Không quyết định phê duyệt, không đề xuất chuyển trạng thái, không bịa thông tin. Chỉ trả JSON: {"hasIssue": boolean, "severity": "ATTENTION" hoặc "CRITICAL", "message": string, "assetIds": string[]}. Nếu không đủ căn cứ, hasIssue=false. assetIds chỉ được chọn từ mã đã cung cấp.\n\n${context}` }] }],
+      }, await getPersonalGeminiModel(req), { attemptsPerModel: 1 });
+      const parsed = JSON.parse(String(response.text || '{}').replace(/```json|```/g, '').trim()) as Record<string, unknown>;
+      if (parsed.hasIssue !== true || typeof parsed.message !== 'string') return criterion;
+      const assetIds = Array.isArray(parsed.assetIds) ? parsed.assetIds.map(String) : [];
+      const selected = texts.filter((entry) => assetIds.includes(entry.assetId));
+      if (selected.length === 0) return criterion;
+      const severity = parsed.severity === 'CRITICAL' ? 'CRITICAL' : 'ATTENTION';
+      criterion.findings = [...criterion.findings, {
+        id: `${criterion.id}:AI_SEMANTIC_REVIEW`,
+        message: String(parsed.message).slice(0, 1000),
+        detail: 'Điểm này do lớp AI ngữ nghĩa gợi ý; người phụ trách phải đối chiếu file gốc.',
+        suggestedAction: 'Mở bằng chứng được nêu và đối chiếu với hồ sơ PGD chuẩn.',
+        evidence: selected.slice(0, 6).map((entry) => ({ assetId: entry.assetId, fileName: entry.fileName, ...(entry.documentId ? { documentId: entry.documentId } : {}), ...(entry.documentType ? { documentType: entry.documentType } : {}), ...(entry.page ? { page: entry.page } : {}), excerpt: entry.text.slice(0, 300), tab: entry.tab })),
+      }];
+      criterion.source = criterion.findings.length > 1 ? 'RULES_AND_AI' : 'AI';
+      if (severity === 'CRITICAL' || criterion.status === 'PASS') {
+        criterion.status = severity === 'CRITICAL' ? 'ERROR' : 'WARNING';
+        criterion.summary = 'Lớp ngữ nghĩa AI phát hiện điểm cần người dùng đối chiếu với bằng chứng.';
+      }
+      return criterion;
+    } catch {
+      return criterion;
+    }
+  };
+
+  app.post('/api/pgd/assistant/review', async (req, res) => {
+    if (!requirePgdSession(req, res)) return;
+    const requestId = decodeURIComponent(String(req.body?.requestId || '')).trim();
+    if (!requestId || requestId.length > 240 || /[\\/]/.test(requestId)) { res.status(400).json({ error: 'Mã hồ sơ PGD không hợp lệ.' }); return; }
+    try {
+      const loaded = await loadPgdAssistantInput(requestId);
+      if (getPgdAssistantCandidates([loaded.input.request]).length === 0) {
+        res.status(409).json({ error: 'Hồ sơ PGD không thuộc danh sách đang cần trợ lý kiểm tra.' });
+        return;
+      }
+      const actor = getPgdSessionUser(req)!;
+      const startedAt = new Date().toISOString();
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders?.();
+      const runId = randomUUID();
+      const writeEvent = (event: Record<string, unknown>) => { if (!res.writableEnded) res.write(`${JSON.stringify(event)}\n`); };
+      writeEvent({ type: 'run_started', runId, requestId, startedAt, actorUsername: actor.username, message: 'Đã mở phiên đọc hồ sơ PGD. Kết quả sẽ hiện lần lượt theo 5 trạm.' });
+      const extracted = await extractPgdAssistantTexts(loaded.input, loaded.dossierDocuments);
+      const baseReview = buildPgdAssistantReview({ ...loaded.input, documentTexts: extracted.documentTexts, unreadableFiles: extracted.unreadableFiles });
+      const criteria: PgdAssistantCriterion[] = [];
+      for (let index = 0; index < baseReview.criteria.length; index += 1) {
+        const criterion = baseReview.criteria[index];
+        writeEvent({ type: 'criterion_started', index, total: baseReview.criteria.length, criterion: { id: criterion.id, title: criterion.title } });
+        const reviewed = await semanticReviewPgdCriterion(req, criterion, extracted.documentTexts.filter((entry) => entry.tab === pgdAssistantTabByCriterion[criterion.id]));
+        criteria.push(reviewed);
+        writeEvent({ type: 'criterion_result', index, total: baseReview.criteria.length, criterion: reviewed });
+        writeEvent({ type: 'criterion_completed', index, total: baseReview.criteria.length, criterionId: reviewed.id });
+      }
+      const summary = {
+        pass: criteria.filter((criterion) => criterion.status === 'PASS').length,
+        warning: criteria.filter((criterion) => criterion.status === 'WARNING').length,
+        error: criteria.filter((criterion) => criterion.status === 'ERROR').length,
+        notEvaluable: criteria.filter((criterion) => criterion.status === 'NOT_EVALUABLE').length,
+        conclusion: criteria.some((criterion) => criterion.status === 'ERROR') ? 'Cần xử lý lỗi trước khi xem xét tiếp.' : criteria.some((criterion) => criterion.status === 'NOT_EVALUABLE') ? 'Chưa đủ căn cứ cho toàn bộ trạm nghiệp vụ.' : criteria.some((criterion) => criterion.status === 'WARNING') ? 'Có cảnh báo cần người phụ trách đối chiếu.' : 'Bằng chứng hiện có phù hợp với các trạm PGD.',
+      } as PgdAssistantReview['summary'];
+      writeEvent({ type: 'run_completed', runId, requestId, finishedAt: new Date().toISOString(), summary, review: { domain: 'PGD', requestId, readOnly: true, criteria, summary }, message: 'Đã hoàn tất phiên hỗ trợ PGD. Kết quả không làm thay đổi hồ sơ.' });
+      res.end();
+    } catch (error: any) {
+      const missingKey = error?.message === GEMINI_API_KEY_MISSING_MESSAGE;
+      const storageMissing = error?.message === 'PGD private file storage is not configured.';
+      const message = missingKey ? GEMINI_API_KEY_MISSING_MESSAGE : String(error?.message || error);
+      const status = missingKey || storageMissing || error instanceof PcnPaddleOcrUnavailableError ? 503 : Number(error?.statusCode) || 500;
+      const code = missingKey ? 'GEMINI_API_KEY_MISSING' : storageMissing ? 'PGD_STORAGE_NOT_CONFIGURED' : error?.code || 'PGD_ASSISTANT_FAILED';
+      if (res.headersSent) { if (!res.writableEnded) { res.write(`${JSON.stringify({ type: 'run_error', code, message })}\n`); res.end(); } } else res.status(status).json({ code, error: message });
     }
   });
 
@@ -12380,9 +12712,9 @@ async function startServer() {
     }
   };
 
-  const extractApprovalAssistantTexts = async (req: express.Request, input: PcnApprovalReviewInput): Promise<PcnApprovalReviewTextEvidence[]> => {
+  const extractApprovalAssistantTexts = async (req: express.Request, input: PcnApprovalReviewInput): Promise<{ documentTexts: PcnApprovalReviewTextEvidence[]; unreadableFiles: PcnApprovalReviewUnreadableFile[] }> => {
     const references = getCurrentApprovalAssistantAssets(input);
-    if (references.length === 0) return [];
+    if (references.length === 0) return { documentTexts: [], unreadableFiles: [] };
     const assetResult = await pool.query(
       `SELECT id, bucket_name, object_path, source_collection, source_document_id, source_json_path, mime_type
        FROM file_assets WHERE id = ANY($1::text[])`,
@@ -12391,6 +12723,7 @@ async function startServer() {
     const assetById = new Map(assetResult.rows.map((asset: any) => [String(asset.id), asset]));
     const storage = getPcnStorageClient();
     const evidence: PcnApprovalReviewTextEvidence[] = [];
+    const unreadableFiles: PcnApprovalReviewUnreadableFile[] = [];
     for (const reference of references) {
       const asset = assetById.get(reference.assetId);
       if (!asset) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Không tìm thấy private asset ${reference.assetId} để đọc hồ sơ.`);
@@ -12445,9 +12778,18 @@ async function startServer() {
         evidence.push(await fetchApprovalAssistantOcrPage(req, reference, downloaded.body, mimeType, 1));
         continue;
       }
+      if (extension === 'doc' || mimeType.includes('application/msword')) {
+        unreadableFiles.push({
+          assetId: reference.assetId,
+          fileName: reference.fileName,
+          reason: 'Định dạng Word cũ .doc chưa có bộ chuyển đổi an toàn trong phiên này.',
+          tab: reference.tab,
+        });
+        continue;
+      }
       throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Định dạng ${reference.fileName} chưa được hỗ trợ trong phiên kiểm duyệt.`);
     }
-    return evidence;
+    return { documentTexts: evidence, unreadableFiles };
   };
 
   const semanticReviewCriterion = async (req: express.Request, criterion: PcnApprovalCriterionResult, texts: PcnApprovalReviewTextEvidence[]): Promise<PcnApprovalCriterionResult> => {
@@ -12532,8 +12874,9 @@ async function startServer() {
       res.flushHeaders?.();
       const writeEvent = (event: Record<string, unknown>) => { if (!res.writableEnded) res.write(`${JSON.stringify(event)}\n`); };
       writeEvent({ type: 'run_started', runId, dossierId, fieldCode, startedAt, message: 'Đã mở phiên đọc hồ sơ. Kết quả sẽ hiện lần lượt theo tiêu chí.' });
-      const documentTexts = await extractApprovalAssistantTexts(req, input);
-      const baseReport = buildPcnApprovalReview({ ...input, documentTexts });
+      const extracted = await extractApprovalAssistantTexts(req, input);
+      const { documentTexts } = extracted;
+      const baseReport = buildPcnApprovalReview({ ...input, documentTexts, unreadableFiles: extracted.unreadableFiles });
       const criteria: PcnApprovalCriterionResult[] = [];
       for (let index = 0; index < PCN_APPROVAL_REVIEW_CRITERIA.length; index += 1) {
         const criterion = baseReport.criteria[index];

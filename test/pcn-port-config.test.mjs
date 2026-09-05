@@ -39,16 +39,20 @@ test('PCN uses native Windows development port 1357 and Docker production port 2
   assert.match(design, /PORT=2357/);
   assert.equal(packageJson.scripts?.['dev:pcn'], 'node ./scripts/native-dev-pcn.cjs');
   const nativePcn = read('scripts/native-dev-pcn.cjs');
-  assert.match(nativePcn, /APP_PROFILE\s*:\s*['"]pcn['"]/);
-  assert.match(nativePcn, /PORT:\s*['"]1357['"]/);
-  assert.match(nativePcn, /PCN_STORAGE_BUCKET/);
+  const nativeEnv = read('scripts/native-dev-env.cjs');
+  assert.match(nativePcn, /buildPcnChildEnv/);
+  assert.match(nativeEnv, /APP_PROFILE\s*=\s*['"]pcn['"]/);
+  assert.match(nativeEnv, /PORT\s*=\s*['"]1357['"]/);
+  assert.match(nativeEnv, /PCN_STORAGE_BUCKET/);
+  assert.match(nativeEnv, /SUPABASE_STORAGE_URL/);
+  assert.match(nativeEnv, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.doesNotMatch(nativePcn, /TVCI_APP|supabase-docker|Desktop/);
   assert.match(design, /npm run dev:pcn/);
 
   assert.equal(packageJson.scripts?.['dev'], 'node ./scripts/native-dev-pcn.cjs');
   assert.equal(packageJson.scripts?.['dev:pcn'], 'node ./scripts/native-dev-pcn.cjs');
   assert.equal(packageJson.scripts?.['build'], 'next build');
-  assert.match(nativePcn, /PORT\s*:\s*['"]1357['"]/);
+  assert.match(nativeEnv, /PORT\s*=\s*['"]1357['"]/);
   assert.match(read('scripts/run-pcn-tsx.cjs'), /APP_PROFILE\s*=\s*['"]pcn['"]/);
 
   // The active PCN example intentionally documents the internal DDT target

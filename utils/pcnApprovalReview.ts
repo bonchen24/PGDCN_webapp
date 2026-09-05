@@ -53,6 +53,13 @@ export interface PcnApprovalReviewTextEvidence {
   tab?: PcnApprovalReviewEvidence['tab'];
 }
 
+export interface PcnApprovalReviewUnreadableFile {
+  assetId: string;
+  fileName: string;
+  reason: string;
+  tab: PcnApprovalReviewEvidence['tab'];
+}
+
 export interface PcnApprovalReviewEvidence {
   assetId: string;
   fileName: string;
@@ -118,6 +125,7 @@ export interface PcnApprovalReviewInput {
   sampleRoutes: PcnSampleRoute[];
   returnedResults: ReturnedTestResult[];
   documentTexts?: PcnApprovalReviewTextEvidence[];
+  unreadableFiles?: PcnApprovalReviewUnreadableFile[];
 }
 
 export interface PcnApprovalReviewCandidateInput {
@@ -333,6 +341,21 @@ export function buildPcnApprovalReview(input: PcnApprovalReviewInput): { criteri
   const lowConfidence = (input.documentTexts || []).find((entry) => typeof entry.confidence === 'number' && entry.confidence < 0.7);
   if (lowConfidence) {
     applyFinding(documentQuality, createFinding('DOCUMENT_QUALITY', 'OCR_CONFIDENCE_LOW', `Nội dung OCR của ${lowConfidence.fileName} có độ tin cậy thấp.`, [textEvidence(lowConfidence, 'documents')], { confidence: lowConfidence.confidence, suggestedAction: 'Mở file gốc để kiểm tra thủ công.' }), 'WARNING', 'ATTENTION', 'Một phần nội dung OCR cần được kiểm tra thủ công.');
+  }
+  for (const file of input.unreadableFiles || []) {
+    applyFinding(
+      documentQuality,
+      createFinding(
+        'DOCUMENT_QUALITY',
+        'FILE_NOT_READABLE',
+        `Chưa đọc được ${file.fileName}; cần đối chiếu thủ công.`,
+        [{ assetId: file.assetId, fileName: file.fileName, tab: file.tab }],
+        { detail: file.reason, suggestedAction: 'Mở file gốc trong Tài liệu hồ sơ để kiểm tra nội dung và bổ sung bản PDF/DOCX nếu cần.' },
+      ),
+      'NOT_EVALUABLE',
+      'ATTENTION',
+      'Một số tệp chưa đọc được; kết quả chỉ là hỗ trợ và chưa đủ căn cứ cho các tệp này.',
+    );
   }
 
   const system = byId.get('SYSTEM_LOGIC')!;

@@ -8,7 +8,7 @@ test('shared assistant exposes PCN and PGD domain workbenches', () => {
     assert.ok(source.includes(marker), `Missing assistant marker: ${marker}`);
   }
   assert.match(source, /read-only|readOnly|chỉ đọc/i);
-  for (const marker of ['mobile-touch-target', 'aria-live', 'Mở hồ sơ chuẩn', 'Không có PYC PGD']) {
+  for (const marker of ['mobile-touch-target', 'aria-live', 'Mở hồ sơ chuẩn', 'Không có PYC PGD', 'Bắt đầu soát xét hồ sơ', '/api/pgd/assistant/review', 'run_completed', 'Mở bằng chứng', 'Luật + AI ngữ nghĩa']) {
     assert.ok(source.includes(marker), `Missing shared assistant UX marker: ${marker}`);
   }
 });

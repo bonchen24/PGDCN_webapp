@@ -130,6 +130,23 @@ test('approval review flags basic document typography issues with source evidenc
   assert.equal(quality?.status, 'WARNING');
 });
 
+test('approval review remains usable when a legacy Word file needs manual checking', () => {
+  const report = buildPcnApprovalReview(input({
+    unreadableFiles: [{
+      assetId: 'asset-legacy-doc',
+      fileName: 'Đề nghị CNSP theo PT7 QC4.doc',
+      reason: 'Định dạng Word cũ cần mở đối chiếu thủ công.',
+      tab: 'documents',
+    }],
+  } as any));
+  const quality = report.criteria.find((criterion) => criterion.id === 'DOCUMENT_QUALITY');
+  const finding = quality?.findings.find((item) => item.code === 'FILE_NOT_READABLE');
+  assert.ok(finding);
+  assert.equal(finding?.evidence[0]?.assetId, 'asset-legacy-doc');
+  assert.equal(quality?.status, 'NOT_EVALUABLE');
+  assert.equal(report.summary.conclusion, 'CHƯA ĐỦ CĂN CỨ');
+});
+
 test('review criteria stay advisory and never expose an approval action', () => {
   assert.deepEqual(PCN_APPROVAL_REVIEW_CRITERIA.map((criterion) => criterion.id), [
     'ENTRY_GATE', 'COMPLETENESS', 'IDENTITY', 'COMMERCIAL', 'FIELD_EVALUATION',
@@ -153,6 +170,7 @@ test('approval assistant exposes read-only review boundaries and PaddleOCR prima
   assert.match(serverSource, /getPersonalGeminiClient/);
   assert.match(serverSource, /GEMINI_API_KEY_MISSING/);
   assert.match(serverSource, /extractPcnDocxEmbeddedImages/);
+  assert.match(serverSource, /unreadableFiles/);
   const route = serverSource.slice(serverSource.indexOf("app.post('/api/pcn/approval-assistant/review'"));
   const reviewRoute = route.slice(0, route.indexOf("app.post('/api/pcn/approval-assistant/export'"));
   assert.doesNotMatch(reviewRoute, /applyPcnApprovalDecision|approvalSteps|issuancePackages/);

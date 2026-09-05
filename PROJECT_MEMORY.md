@@ -6,6 +6,24 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-05 — Trợ lý AI PGD và production Docker Desktop
+
+- Đã bật phiên soát xét read-only cho hồ sơ PGD: người dùng chọn một PYC đang hoạt động rồi bấm **Bắt đầu soát xét hồ sơ**; kết quả stream theo 5 trạm `Tiếp nhận & năng lực`, `Chuẩn bị & phân công`, `Hiện trường & lấy mẫu`, `PTN & xem xét kết quả`, `Báo cáo, phê duyệt & trả kết quả`.
+- Server đọc đúng scope PGD gồm request, phân công, hiện trường, mẫu, PTN, kết quả, báo cáo, chứng thư, chain `pgdApprovalSteps`, pointer tài liệu và `evidenceAssetIds`; provenance/bucket/checksum được kiểm tra trước khi đọc. Không gọi mutation phê duyệt, không đổi lifecycle, không lưu raw OCR/prompt.
+- PaddleOCR là engine OCR duy nhất cho PDF/ảnh/DOCX scan; Gemini cá nhân chỉ là lớp phân tích ngữ nghĩa tùy chọn sau khi đã có text. `.doc` cũ được đánh dấu `NOT_EVALUABLE` để đối chiếu thủ công.
+- UI PGD có tiến độ, trạng thái lỗi/thử lại, nguồn `Luật + AI ngữ nghĩa`, nút mở hồ sơ chuẩn và mở đúng file bằng chứng private.
+- Verification fresh: `npm test` **691/691 pass**, `npm run lint` pass, test PGD assistant **8/8 pass**, `git diff --check` pass. Docker build chạy `npm run build` pass.
+- Production Docker Desktop đã build/recreate bằng `docker compose --env-file .env -f docker-compose.pcn.yml up --build -d`. Image `pcn_webapp-webapp:latest` digest `sha256:88ac729e038f66e6ec08edf9963c828dc6c980f39fc1391bbb3b767fa52079c8`; container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`, network `supabase_default` giữ nguyên.
+- Log container xác nhận PostgreSQL connected, schema initialized và server chạy port `2357`; `/api/health` và `/pgdcn/` trả HTTP 200. Runtime smoke native của endpoint PGD trả 17 event, 5 tiêu chí, `readOnly=true` và request không đổi. Không ghi secret hoặc đường dẫn Desktop/UNC vào memory/note.
+
+## Cập nhật 2026-09-05 — Tổng kết và production Docker Desktop sau nhóm thao tác hồ sơ
+
+- Đã hoàn tất nhóm thao tác hồ sơ PCN/PGD: PCN có hiệu chỉnh metadata dossier và xóa hard-delete theo guard; PGD hiển thị vùng thao tác cho Admin/Quản lý hệ thống cùng `PGD_ADMIN`/`PGD_MANAGER`, nhưng quyền mutation vẫn tách biệt và `PGD_MANAGER` không được hard-delete.
+- SSoT `design.md` và test `test/dossier-action-controls.test.ts` đã được cập nhật; không thay đổi schema, không trộn boundary PCN/PGD, không ghi secret hoặc dữ liệu hồ sơ thật vào memory/note.
+- Verification trước deploy: `npm test` **689/689 pass**, `npm run lint` pass (`tsc --noEmit`), `npm run build` pass và `git diff --check` pass. Repo không có script `typecheck` riêng.
+- Production Docker Desktop đã chạy bằng `docker compose --env-file .env -f docker-compose.pcn.yml up --build -d`. Image `pcn_webapp-webapp:latest` được build với image id `sha256:56fd8a0248d47d55144c0cd09212f9663f4d1b99b595195dd49ca6031b18e61d`; container `pcn_webapp-webapp` đang `running`, publish `0.0.0.0:2357->2357/tcp`, volume backup `pcn_webapp_backups` và network `supabase_default` giữ nguyên.
+- Runtime smoke: `/api/health`, `/pgdcn/`, `/pgdcn/pcn/`, `/pgdcn/pgd/` trả HTTP 200 sau redirect; log xác nhận PostgreSQL connected, schema initialized và server running. `/api/db/health` gọi không có phiên trả HTTP 401 theo auth boundary, không coi là lỗi deploy.
+
 ## Cập nhật 2026-09-05 — Entry Tổng quan sau đăng nhập và nhóm thao tác hồ sơ
 
 - Route gốc `/` dùng shared `PgdcnAppShell` với `initialDomain="department"`; sau khi đăng nhập, người dùng mở **Tổng quan phòng** (`department-dashboard`) thay vì vào thẳng **Đề nghị**. Các route tương thích `/pgdcn/pcn` và `/pgdcn/pgd` vẫn giữ entry theo miền.

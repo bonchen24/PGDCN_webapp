@@ -86,12 +86,15 @@ test('dashboard create action opens the new-proposal form directly', () => {
 test('the default runtime entrypoint cannot accidentally launch the legacy DDT surface', () => {
   const packageJson = read('package.json');
   const nativePcnLauncher = read('scripts/native-dev-pcn.cjs');
+  const nativePcnEnv = read('scripts/native-dev-env.cjs');
   const dockerfile = read('Dockerfile');
   const compose = read('docker-compose.yml');
 
   assert.match(packageJson, /"dev":\s*"node \.\/scripts\/native-dev-pcn\.cjs"/);
   assert.match(packageJson, /"dev:ddt":\s*"node \.\/scripts\/native-dev\.cjs"/);
-  assert.match(nativePcnLauncher, /PORT:\s*'1357'/);
+  assert.match(nativePcnLauncher, /buildPcnChildEnv/);
+  assert.match(nativePcnEnv, /APP_PROFILE\s*=\s*'pcn'/);
+  assert.match(nativePcnEnv, /PORT\s*=\s*'1357'/);
   assert.doesNotMatch(packageJson, /"build:vite"/);
   assert.match(dockerfile, /ENV APP_PROFILE=pcn/);
   assert.match(compose, /APP_PROFILE:\s*pcn/);

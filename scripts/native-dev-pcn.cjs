@@ -3,19 +3,12 @@
 
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { buildPcnChildEnv } = require('./native-dev-env.cjs');
 
 const projectRoot = path.resolve(__dirname, '..');
 const preloadPath = path.resolve(__dirname, 'native-dev-preload.cjs');
 const tsxCliPath = path.resolve(projectRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
-const childEnv = {
-  ...process.env,
-  APP_PROFILE: 'pcn',
-  // PCN native development has a dedicated port; do not inherit the legacy
-  // DDT port from a developer's environment.
-  PORT: '1357',
-  OCR_SERVICE_URL: process.env.OCR_SERVICE_URL || 'http://127.0.0.1:8100',
-  PCN_STORAGE_BUCKET: process.env.PCN_STORAGE_BUCKET || 'pcn-files',
-};
+const childEnv = buildPcnChildEnv({ projectRoot, env: process.env });
 
 const nodeOptions = childEnv.NODE_OPTIONS || '';
 childEnv.NODE_OPTIONS = nodeOptions.includes(preloadPath)

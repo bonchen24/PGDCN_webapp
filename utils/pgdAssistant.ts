@@ -1,4 +1,5 @@
 import type {
+  PgdApprovalStep,
   PgdFieldInspection,
   PgdInspectionAssignment,
   PgdInspectionCertificate,
@@ -11,11 +12,37 @@ import type {
 
 export type PgdAssistantCriterionStatus = 'PASS' | 'WARNING' | 'ERROR' | 'NOT_EVALUABLE';
 
+export interface PgdAssistantEvidence {
+  assetId: string;
+  fileName: string;
+  documentId?: string;
+  documentType?: 'DOSSIER' | 'GENERATED';
+  page?: number;
+  excerpt?: string;
+  tab: 'overview' | 'documents' | 'sampling' | 'results' | 'approval';
+}
+
+export interface PgdAssistantTextEvidence extends PgdAssistantEvidence {
+  text: string;
+  confidence?: number;
+}
+
+export interface PgdAssistantUnreadableFile {
+  assetId: string;
+  fileName: string;
+  reason: string;
+  criterionId: PgdAssistantCriterion['id'];
+  tab: PgdAssistantEvidence['tab'];
+  documentId?: string;
+  documentType?: PgdAssistantEvidence['documentType'];
+}
+
 export interface PgdAssistantFinding {
   id: string;
   message: string;
   detail?: string;
   suggestedAction?: string;
+  evidence?: PgdAssistantEvidence[];
 }
 
 export interface PgdAssistantCriterion {
@@ -23,7 +50,7 @@ export interface PgdAssistantCriterion {
   title: string;
   status: PgdAssistantCriterionStatus;
   summary: string;
-  source: 'RULES';
+  source: 'RULES' | 'AI' | 'RULES_AND_AI';
   provenance: string[];
   findings: PgdAssistantFinding[];
 }
@@ -51,7 +78,7 @@ export interface PgdAssistantCandidate {
   updatedAt: string;
 }
 
-type ReviewInput = {
+export type PgdAssistantReviewInput = {
   request: PgdInspectionRequest;
   assignments?: PgdInspectionAssignment[];
   fieldInspections?: PgdFieldInspection[];
@@ -60,6 +87,9 @@ type ReviewInput = {
   labResults?: PgdLabResult[];
   reports?: PgdInspectionReport[];
   certificates?: PgdInspectionCertificate[];
+  approvals?: PgdApprovalStep[];
+  documentTexts?: PgdAssistantTextEvidence[];
+  unreadableFiles?: PgdAssistantUnreadableFile[];
 };
 
 const terminalStatuses = new Set<PgdInspectionRequest['status']>(['SIGNED', 'RESULT_RETURNED', 'ARCHIVED', 'CANCELLED']);
@@ -98,7 +128,7 @@ export function getPgdAssistantCandidates(requests: PgdInspectionRequest[]): Pgd
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.requestCode.localeCompare(right.requestCode));
 }
 
-export function buildPgdAssistantReview(input: ReviewInput): PgdAssistantReview {
+export function buildPgdAssistantReview(input: PgdAssistantReviewInput): PgdAssistantReview {
   const { request } = input;
   const assignments = (input.assignments || []).filter((item) => item.requestId === request.id);
   const inspections = (input.fieldInspections || []).filter((item) => item.requestId === request.id);
@@ -107,6 +137,11 @@ export function buildPgdAssistantReview(input: ReviewInput): PgdAssistantReview 
   const labResults = (input.labResults || []).filter((item) => item.requestId === request.id);
   const reports = (input.reports || []).filter((item) => item.requestId === request.id);
   const certificates = (input.certificates || []).filter((item) => item.requestId === request.id);
+  const approvals = (input.approvals || []).filter((item) => item.requestId === request.id);
+  const hasTechnicalApproval = approvals.some((item) => item.role === 'TECHNICAL_REVIEW' && item.status === 'APPROVED');
+  const hasLeadershipApproval = approvals.some((item) => item.role === 'LEADERSHIP_APPROVAL' && item.status === 'APPROVED');
+  const reportReady = reports.length > 0 && certificates.length > 0;
+  const approvalReady = hasTechnicalApproval && hasLeadershipApproval;
 
   const intakeMissing = [
     !request.customerSnapshot.name && 'CUSTOMER',
@@ -155,12 +190,32 @@ export function buildPgdAssistantReview(input: ReviewInput): PgdAssistantReview 
     criterion(
       'REPORT_APPROVAL_RETURN',
       'Báo cáo, phê duyệt & trả kết quả',
-      reports.length === 0 || certificates.length === 0 ? 'NOT_EVALUABLE' : reports.some((item) => !item.conclusion) ? 'WARNING' : 'PASS',
-      reports.length === 0 ? 'Chưa có báo cáo giám định.' : certificates.length === 0 ? 'Chưa có dự thảo chứng thư để đối chiếu.' : reports.some((item) => !item.conclusion) ? 'Báo cáo còn thiếu kết luận.' : 'Đã có báo cáo và dự thảo chứng thư để xem xét.',
-      [...(reports.length > 0 ? reports.map((item) => `reports:${item.id}`) : []), ...(certificates.length > 0 ? certificates.map((item) => `certificates:${item.id}`) : [`requests:${request.id}`])],
-      reports.length === 0 || certificates.length === 0 ? [{ id: 'report-evidence-missing', message: 'Chưa thể kết luận trạm phát hành/trả kết quả.', suggestedAction: 'Hoàn tất báo cáo, phê duyệt và dự thảo chứng thư trước khi ký.' }] : reports.some((item) => !item.conclusion) ? [{ id: 'report-conclusion-missing', message: 'Báo cáo chưa có kết luận kỹ thuật.', suggestedAction: 'Bổ sung kết luận dựa trên bằng chứng và kết quả PTN.' }] : [],
+      !reportReady ? 'NOT_EVALUABLE' : !approvalReady || reports.some((item) => !item.conclusion) ? 'WARNING' : 'PASS',
+      !reportReady ? 'Chưa đủ báo cáo và chứng thư để xem xét.' : !approvalReady ? 'Đã có báo cáo/chứng thư nhưng chưa đủ chain phê duyệt PGD.' : reports.some((item) => !item.conclusion) ? 'Báo cáo còn thiếu kết luận.' : 'Đã có báo cáo, chứng thư và chain phê duyệt để đối chiếu.',
+      [...(reports.length > 0 ? reports.map((item) => `reports:${item.id}`) : []), ...(certificates.length > 0 ? certificates.map((item) => `certificates:${item.id}`) : []), ...(approvals.length > 0 ? approvals.map((item) => `approvals:${item.id}`) : [`requests:${request.id}`])],
+      !reportReady ? [{ id: 'report-evidence-missing', message: 'Chưa thể kết luận trạm phát hành/trả kết quả.', suggestedAction: 'Hoàn tất báo cáo, phê duyệt và dự thảo chứng thư trước khi ký.' }] : !approvalReady ? [{ id: 'approval-chain-pending', message: 'Chain phê duyệt PGD chưa đầy đủ.', suggestedAction: 'Đối chiếu đủ phê duyệt chuyên môn và phê duyệt lãnh đạo trước khi ký/trả kết quả.' }] : reports.some((item) => !item.conclusion) ? [{ id: 'report-conclusion-missing', message: 'Báo cáo chưa có kết luận kỹ thuật.', suggestedAction: 'Bổ sung kết luận dựa trên bằng chứng và kết quả PTN.' }] : [],
     ),
   ];
+
+  for (const file of input.unreadableFiles || []) {
+    const target = criteria.find((item) => item.id === file.criterionId);
+    if (!target) continue;
+    target.findings.push({
+      id: `${file.criterionId}:file-not-readable:${file.assetId}`,
+      message: `Chưa đọc được ${file.fileName}; cần đối chiếu thủ công.`,
+      detail: file.reason,
+      suggestedAction: 'Mở hồ sơ PGD và bổ sung bản PDF/DOCX nếu cần.',
+      evidence: [{
+        assetId: file.assetId,
+        fileName: file.fileName,
+        ...(file.documentId ? { documentId: file.documentId } : {}),
+        ...(file.documentType ? { documentType: file.documentType } : {}),
+        tab: file.tab,
+      }],
+    });
+    target.status = 'NOT_EVALUABLE';
+    target.summary = 'Một phần tài liệu chưa đọc được; cần người phụ trách đối chiếu file gốc.';
+  }
 
   return { domain: 'PGD', requestId: request.id, readOnly: true, criteria, summary: summarize(criteria) };
 }
