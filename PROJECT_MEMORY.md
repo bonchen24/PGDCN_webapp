@@ -6,6 +6,15 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-05 — Khắc phục trợ lý PCN không đọc file private
+
+- Root cause: production container trước đó được recreate chỉ với `.env` của repo; file này không chứa service-role secret Supabase nên log server báo `PCN file storage is not configured`, dù webapp/PostgreSQL vẫn healthy.
+- Đã recreate đúng bằng `docker compose --env-file .env --env-file 'E:\CODING\TVCI_APP\supabase-docker\.env' -f docker-compose.pcn.yml up -d --force-recreate webapp`. Không ghi giá trị secret vào source, Memory hoặc Obsidian.
+- Đã thêm Compose guard: `SUPABASE_SERVICE_ROLE_KEY` hoặc alias `SERVICE_ROLE_KEY` là biến bắt buộc; deploy thiếu env sẽ fail ngay ở bước interpolation thay vì chạy app rồi hỏng lúc đọc file.
+- Verification runtime: container `pcn_webapp-webapp` Up trên `2357`, `SUPABASE_SERVICE_ROLE_KEY=SET`, `SUPABASE_STORAGE_URL=SET`, `PCN_STORAGE_BUCKET=SET`, kết nối webapp → PaddleOCR HTTP 200; private PDF PCN tải HTTP 200 và PaddleOCR trả phản hồi text. DB có 2 hồ sơ ứng viên PCN cùng 24 file private có provenance khớp.
+- Verification source: `npm test` **691/691 pass**, `npm run lint` pass, `npm run build` pass, focused Compose contract pass; Compose thiếu service-role env bị chặn với thông báo rõ ràng.
+- Tab `https://pcn.tvci.id.vn/` đang giữ phiên PCN hết hạn nên hiện `Phiên PCN không hợp lệ hoặc đã hết hạn`; cần đăng nhập lại trên đúng môi trường đang sử dụng sau khi refresh.
+
 ## Cập nhật 2026-09-05 — Trợ lý AI PGD và production Docker Desktop
 
 - Đã bật phiên soát xét read-only cho hồ sơ PGD: người dùng chọn một PYC đang hoạt động rồi bấm **Bắt đầu soát xét hồ sơ**; kết quả stream theo 5 trạm `Tiếp nhận & năng lực`, `Chuẩn bị & phân công`, `Hiện trường & lấy mẫu`, `PTN & xem xét kết quả`, `Báo cáo, phê duyệt & trả kết quả`.
