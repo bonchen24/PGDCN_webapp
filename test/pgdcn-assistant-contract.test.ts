@@ -20,6 +20,8 @@ test('PGD assistant review stays server-owned, scoped and read-only', () => {
   assert.match(serverSource, /evidenceAssetIds/);
   assert.match(serverSource, /getPgdStorageClient/);
   assert.match(serverSource, /fetchPgdAssistantPaddlePage/);
+  assert.match(serverSource, /fetchPgdAssistantGeminiPage/);
+  assert.match(serverSource, /fetchPgdAssistantOcrPage\(req/);
   assert.match(serverSource, /semanticReviewPgdCriterion/);
   const routeStart = serverSource.indexOf("app.post('/api/pgd/assistant/review'");
   const routeEnd = serverSource.indexOf("\n\n  app.post('/api/pgd/calibration-instruments'", routeStart);

@@ -3185,9 +3185,33 @@ async function startServer() {
     return { ...normalized, documentId: reference.documentId, documentType: reference.documentType, tab: reference.tab };
   };
 
-  const fetchPgdAssistantOcrPage = async (reference: PgdAssistantAssetReference, bytes: Buffer, mimeType: string, page: number): Promise<PgdAssistantTextEvidence> => fetchPgdAssistantPaddlePage(reference, bytes, mimeType, page);
+  const fetchPgdAssistantGeminiPage = async (req: express.Request, reference: PgdAssistantAssetReference, bytes: Buffer, mimeType: string, page: number): Promise<PgdAssistantTextEvidence> => {
+    const ai = await getPersonalGeminiClient(req);
+    const response = await generateContentWithRetryAndFallback(ai, {
+      contents: {
+        parts: [
+          { inlineData: { mimeType: mimeType || 'application/pdf', data: bytes.toString('base64') } },
+          { text: `Đọc riêng trang ${page} của tài liệu ${reference.fileName}. Chỉ chép lại chữ nhìn thấy, không suy đoán. Trả JSON có trường text chứa toàn bộ nội dung đọc được theo dòng.` },
+        ],
+      },
+      config: { responseMimeType: 'application/json', responseSchema: { type: Type.OBJECT, properties: { text: { type: Type.STRING } } } },
+    }, await getPersonalGeminiModel(req));
+    const raw = String(response.text || '').replace(/```json|```/g, '').trim();
+    const text = String(JSON.parse(raw)?.text || '').replace(/\u0000/g, '').trim();
+    if (!text) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `Gemini không đọc được ${reference.fileName}, trang ${page}.`);
+    return { assetId: reference.assetId, fileName: reference.fileName, text, page, confidence: 0.78, documentId: reference.documentId, documentType: reference.documentType, tab: reference.tab };
+  };
 
-  const extractPgdAssistantTexts = async (input: PgdAssistantReviewInput, documents: PgdDossierDocument[]): Promise<{ documentTexts: PgdAssistantTextEvidence[]; unreadableFiles: PgdAssistantUnreadableFile[] }> => {
+  const fetchPgdAssistantOcrPage = async (req: express.Request, reference: PgdAssistantAssetReference, bytes: Buffer, mimeType: string, page: number): Promise<PgdAssistantTextEvidence> => {
+    try {
+      return await fetchPgdAssistantPaddlePage(reference, bytes, mimeType, page);
+    } catch (error) {
+      if (!(error instanceof PcnPaddleOcrUnavailableError)) throw error;
+      return fetchPgdAssistantGeminiPage(req, reference, bytes, mimeType, page);
+    }
+  };
+
+  const extractPgdAssistantTexts = async (req: express.Request, input: PgdAssistantReviewInput, documents: PgdDossierDocument[]): Promise<{ documentTexts: PgdAssistantTextEvidence[]; unreadableFiles: PgdAssistantUnreadableFile[] }> => {
     const references = getPgdAssistantAssetReferences(input, documents);
     if (references.length === 0) return { documentTexts: [], unreadableFiles: [] };
     const assetResult = await pool.query(
@@ -3225,14 +3249,14 @@ async function startServer() {
         }
         const embeddedImages = extractPcnDocxEmbeddedImages(downloaded.body);
         if (embeddedImages.length === 0) {
-          documentTexts.push(await fetchPgdAssistantOcrPage(reference, downloaded.body, mimeType, 1));
+          documentTexts.push(await fetchPgdAssistantOcrPage(req, reference, downloaded.body, mimeType, 1));
           continue;
         }
         const evidenceBeforeDocx = documentTexts.length;
         for (const [index, image] of embeddedImages.entries()) {
           const imageReference = { ...reference, fileName: `${reference.fileName} · ${image.fileName}` };
           try {
-            documentTexts.push(await fetchPgdAssistantOcrPage(imageReference, image.bytes, image.mimeType, index + 1));
+            documentTexts.push(await fetchPgdAssistantOcrPage(req, imageReference, image.bytes, image.mimeType, index + 1));
           } catch (error) {
             if (error instanceof PcnPaddleOcrUnavailableError && (error.code === 'PADDLE_OCR_EMPTY' || error.code === 'PADDLE_OCR_LOW_CONFIDENCE')) continue;
             throw error;
@@ -3248,11 +3272,11 @@ async function startServer() {
         }
         const pageCount = pdf.getPageCount();
         if (pageCount < 1) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `PDF ${reference.fileName} không có trang để đọc.`);
-        for (let page = 1; page <= pageCount; page += 1) documentTexts.push(await fetchPgdAssistantOcrPage(reference, downloaded.body, 'application/pdf', page));
+        for (let page = 1; page <= pageCount; page += 1) documentTexts.push(await fetchPgdAssistantOcrPage(req, reference, downloaded.body, 'application/pdf', page));
         continue;
       }
       if (isImage) {
-        documentTexts.push(await fetchPgdAssistantOcrPage(reference, downloaded.body, mimeType, 1));
+        documentTexts.push(await fetchPgdAssistantOcrPage(req, reference, downloaded.body, mimeType, 1));
         continue;
       }
       if (isSpreadsheet) {
@@ -3329,7 +3353,7 @@ async function startServer() {
       const runId = randomUUID();
       const writeEvent = (event: Record<string, unknown>) => { if (!res.writableEnded) res.write(`${JSON.stringify(event)}\n`); };
       writeEvent({ type: 'run_started', runId, requestId, startedAt, actorUsername: actor.username, message: 'Đã mở phiên đọc hồ sơ PGD. Kết quả sẽ hiện lần lượt theo 5 trạm.' });
-      const extracted = await extractPgdAssistantTexts(loaded.input, loaded.dossierDocuments);
+      const extracted = await extractPgdAssistantTexts(req, loaded.input, loaded.dossierDocuments);
       const baseReview = buildPgdAssistantReview({ ...loaded.input, documentTexts: extracted.documentTexts, unreadableFiles: extracted.unreadableFiles });
       const criteria: PgdAssistantCriterion[] = [];
       for (let index = 0; index < baseReview.criteria.length; index += 1) {

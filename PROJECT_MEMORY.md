@@ -6,6 +6,14 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-06 — Hoàn thiện Trợ lý AI PGD theo UI/UX PCN
+
+- Trợ lý PGD đã đồng nhất với nhịp thao tác của PCN: chọn một bộ hồ sơ → đọc private file → stream tiến độ theo 5 tiêu chí/trạm → hiển thị summary → nêu **Điểm cần sửa / đối chiếu** và mở đúng bằng chứng.
+- UI PGD có state loading/ready/running/completed/error, hồ sơ đang chọn, progress `Trạm đã hoàn tất: X/5`, thông báo lỗi nghiệp vụ an toàn, nút mở hồ sơ/file và thử lại; vẫn read-only, không phê duyệt/đổi trạng thái/ghi ngược.
+- Server PGD đọc tài liệu hiện hành theo provenance PGD, dùng PaddleOCR làm primary và Gemini cá nhân làm fallback khi PaddleOCR không đọc được PDF/ảnh/DOCX scan; semantic review gửi text đúng tab cho từng tiêu chí để gắn finding và evidence.
+- TDD/verification: test focused PGD assistant **3/3 pass**, full suite **691/691 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass. Repo không có script `typecheck` riêng.
+- Docker Desktop đã build/recreate bằng đúng hai env file; container `pcn_webapp-webapp` Up trên `0.0.0.0:2357->2357/tcp`, `SUPABASE_SERVICE_ROLE_KEY`, Storage/OCR env đều SET, OCR health HTTP 200, app `/api/health` HTTP 200. Không ghi secret hoặc raw hồ sơ vào Memory/Obsidian.
+
 ## Cập nhật 2026-09-05 — Khắc phục trợ lý PCN không đọc file private
 
 - Root cause: production container trước đó được recreate chỉ với `.env` của repo; file này không chứa service-role secret Supabase nên log server báo `PCN file storage is not configured`, dù webapp/PostgreSQL vẫn healthy.
