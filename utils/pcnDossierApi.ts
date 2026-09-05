@@ -26,6 +26,13 @@ export interface PcnDossierMutationResponse {
   idempotent?: boolean;
 }
 
+export interface PcnDossierDeleteResponse {
+  deleted: true;
+  dossierId: string;
+  proposalId?: string;
+  activityLog?: ActivityLog;
+}
+
 async function parseResponse(response: Response): Promise<any> {
   const contentType = response.headers.get('content-type') || '';
   const payload = contentType.includes('application/json') ? await response.json() : await response.text();
@@ -52,6 +59,20 @@ export async function updatePcnDossier(
     body: JSON.stringify({ updates, idempotencyKey }),
   });
   return parseResponse(response) as Promise<PcnDossierMutationResponse>;
+}
+
+export async function deletePcnDossier(
+  dossierId: string,
+  reason: string,
+  confirmationCode: string,
+): Promise<PcnDossierDeleteResponse> {
+  const response = await fetch(`/api/pcn/dossiers/${encodeURIComponent(dossierId)}`, {
+    method: 'DELETE',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ reason, confirmationCode }),
+  });
+  return parseResponse(response) as Promise<PcnDossierDeleteResponse>;
 }
 
 // --- End of pcnDossierApi.ts ---

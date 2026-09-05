@@ -189,7 +189,7 @@ import { getPgdAssignmentApprovalDenial, getPgdOperationalStepAccess, getPgdOper
 import { buildKqtnPdfContentDisposition } from "./utils/kqtnPdfHeaders.js";
 import { normalizeSystemUserRole } from "./utils/systemUserRole.js";
 import { isKqtnPaymentManager, isKqtnPaymentStateChanged } from "./utils/kqtnPaymentPolicy.js";
-import { extractKqtnFooterKey, extractKqtnFooterPageNumber } from "./utils/kqtnOcrMetadata.js";
+import { extractKqtnFooterKey, extractKqtnFooterPageNumber, parseKqtnOcrMetadata } from "./utils/kqtnOcrMetadata.js";
 import { buildPcnRetentionMetadata, updatePcnLegalHold } from "./utils/pcnRetention.ts";
 import { buildPcnOfficialContextHash, buildPcnOfficialGenerationContextHash, buildPcnOfficialTemplateData, getPcnOfficialGenerationReadiness, renderPcnOfficialDocx } from "./utils/pcnOfficialTemplateGeneration.ts";
 import { buildPcnOfficialDocumentId, buildPcnOfficialFileAssetId, buildPcnOfficialFileName, getPcnOfficialSourceUpdatedAt, selectPcnOfficialTemplate } from "./utils/pcnOfficialDocumentPolicy.ts";
@@ -239,6 +239,8 @@ import {
   PcnPaddleOcrUnavailableError,
 } from './utils/pcnApprovalReviewOcr.ts';
 import { extractPcnDocxEmbeddedImages } from './utils/pcnDocxOcr.ts';
+import { isUsableOcrCandidate, runPaddleFirstWithGeminiFallback, type OcrCandidate } from './utils/ocrPipeline.ts';
+import { parseNameplateOcrText, parseRequestOcrText, parseTestResultsOcrText } from './utils/ocrTextParsers.ts';
 import { buildPcnApprovalReviewDocx, buildPcnApprovalReviewPdf } from './utils/pcnApprovalReviewReport.ts';
 import { buildPcnDraftManualSource, validatePcnDraftAction } from './utils/pcnDrafting.ts';
 import { validatePcnDraftSourceSelection } from './utils/pcnDraftSourcePolicy.ts';
@@ -12138,13 +12140,15 @@ async function startServer() {
   });
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-  const getGeminiClient = async (req: express.Request, options: { timeout?: number } = {}) => {
-    const requestApiKey = req.headers['x-gemini-api-key'];
+  const getGeminiClient = async (req: express.Request, options: { timeout?: number; personalOnly?: boolean } = {}) => {
+    const requestApiKey = options.personalOnly ? undefined : req.headers['x-gemini-api-key'];
     const personalApiKey = await getPcnStoredGeminiApiKey(req);
-    const resolvedApiKey = resolveGeminiApiKey(
-      apiKey,
-      typeof requestApiKey === 'string' && requestApiKey.trim() ? requestApiKey : personalApiKey,
-    );
+    const resolvedApiKey = options.personalOnly
+      ? personalApiKey
+      : resolveGeminiApiKey(
+        apiKey,
+        typeof requestApiKey === 'string' && requestApiKey.trim() ? requestApiKey : personalApiKey,
+      );
     if (!resolvedApiKey) {
       throw new Error(GEMINI_API_KEY_MISSING_MESSAGE);
     }
@@ -12157,6 +12161,79 @@ async function startServer() {
         ...(options.timeout !== undefined ? { timeout: options.timeout } : {}),
       }
     });
+  };
+
+  type ServerOcrCandidate = OcrCandidate & { source?: 'paddle' | 'text-layer'; pages?: ServerOcrCandidate[] };
+
+  const requestPaddleOcr = async (
+    fileBuffer: Buffer,
+    fileName: string,
+    mimeType: string,
+    page: number,
+  ): Promise<ServerOcrCandidate> => {
+    const request = buildPcnPaddleOcrRequest(getKqtnOcrServiceUrl(), { fileName, mimeType, page, dpi: 150 });
+    const formData = new FormData();
+    formData.append('file', new Blob([new Uint8Array(fileBuffer)], { type: mimeType }), fileName);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), KQTN_OCR_TIMEOUT_MS);
+    try {
+      const response = await fetch(request.url, { method: request.method, body: formData, signal: controller.signal });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw Object.assign(new Error(payload.detail || payload.error || `PaddleOCR request failed (${response.status}).`), { statusCode: 503 });
+      }
+      const text = getPcnOcrText(payload).replace(/\u0000/g, '').trim();
+      const confidenceValue = Number(payload.confidence ?? payload.score ?? payload.meanConfidence);
+      return {
+        text,
+        confidence: Number.isFinite(confidenceValue) ? confidenceValue : text ? 0.82 : 0,
+        source: 'paddle',
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  };
+
+  const collectPaddleOcr = async (fileBuffer: Buffer, fileName: string, mimeType: string, pageNumber?: number): Promise<ServerOcrCandidate> => {
+    const extension = fileName.toLowerCase().split('.').pop() || '';
+    const isDocx = extension === 'docx' || mimeType.includes('wordprocessingml.document');
+    if (isDocx) {
+      const docxResult = await mammoth.extractRawText({ buffer: fileBuffer });
+      if (docxResult.value.trim()) return { text: docxResult.value.trim(), confidence: 0.95, source: 'text-layer' };
+      const embeddedImages = extractPcnDocxEmbeddedImages(fileBuffer);
+      const pages: ServerOcrCandidate[] = [];
+      for (const image of embeddedImages) pages.push(await requestPaddleOcr(image.bytes, image.fileName, image.mimeType, 1));
+      return {
+        text: pages.map((page) => page.text).filter(Boolean).join('\n\n'),
+        confidence: pages.length > 0 ? pages.reduce((sum, page) => sum + page.confidence, 0) / pages.length : 0,
+        source: 'paddle',
+        pages,
+      };
+    }
+
+    const isPdf = extension === 'pdf' || mimeType === 'application/pdf';
+    if (!isPdf) return requestPaddleOcr(fileBuffer, fileName, mimeType || 'image/jpeg', 1);
+
+    const pdf = await PDFDocument.load(fileBuffer, { ignoreEncryption: true });
+    const firstPage = Math.max(1, Math.floor(Number(pageNumber) || 1));
+    const lastPage = pageNumber ? firstPage : Math.min(pdf.getPageCount(), 40);
+    const pages: ServerOcrCandidate[] = [];
+    for (let page = firstPage; page <= lastPage; page += 1) pages.push(await requestPaddleOcr(fileBuffer, fileName, 'application/pdf', page));
+    return {
+      text: pages.map((page) => page.text).filter(Boolean).join('\n\n'),
+      confidence: pages.length > 0 ? pages.reduce((sum, page) => sum + page.confidence, 0) / pages.length : 0,
+      source: 'paddle',
+      pages,
+    };
+  };
+
+  const getPersonalGeminiClient = (req: express.Request, timeout = KQTN_OCR_TIMEOUT_MS) => getGeminiClient(req, { timeout, personalOnly: true });
+  const getPersonalGeminiModel = (req: express.Request) => getPcnStoredGeminiModel(req);
+
+  const getOcrErrorStatus = (error: any): number => {
+    if (error?.message === GEMINI_API_KEY_MISSING_MESSAGE) return 503;
+    if (Number(error?.statusCode) === 503 || error?.name === 'AbortError') return 503;
+    return Number(error?.statusCode) || 500;
   };
 
   const approvalAssistantFields = new Set(['QC4', 'QC9']);
@@ -12277,7 +12354,33 @@ async function startServer() {
     }
   };
 
-  const extractApprovalAssistantTexts = async (input: PcnApprovalReviewInput): Promise<PcnApprovalReviewTextEvidence[]> => {
+  const fetchApprovalAssistantGeminiPage = async (req: express.Request, reference: ApprovalAssistantAssetReference, bytes: Buffer, mimeType: string, page: number): Promise<PcnApprovalReviewTextEvidence> => {
+    const ai = await getPersonalGeminiClient(req);
+    const response = await generateContentWithRetryAndFallback(ai, {
+      contents: {
+        parts: [
+          { inlineData: { mimeType: mimeType || 'application/pdf', data: bytes.toString('base64') } },
+          { text: `Đọc riêng trang ${page} của tài liệu ${reference.fileName}. Chỉ chép lại chữ nhìn thấy, không suy đoán. Trả JSON có trường text chứa toàn bộ nội dung đọc được theo dòng.` },
+        ],
+      },
+      config: { responseMimeType: 'application/json', responseSchema: { type: Type.OBJECT, properties: { text: { type: Type.STRING } } } },
+    }, await getPersonalGeminiModel(req));
+    const raw = String(response.text || '').replace(/```json|```/g, '').trim();
+    const text = String(JSON.parse(raw)?.text || '').replace(/\u0000/g, '').trim();
+    if (!text) throw Object.assign(new Error(`Gemini không đọc được ${reference.fileName}, trang ${page}.`), { statusCode: 422 });
+    return { assetId: reference.assetId, fileName: reference.fileName, text, page, confidence: 0.78, tab: reference.tab };
+  };
+
+  const fetchApprovalAssistantOcrPage = async (req: express.Request, reference: ApprovalAssistantAssetReference, bytes: Buffer, mimeType: string, page: number): Promise<PcnApprovalReviewTextEvidence> => {
+    try {
+      return await fetchApprovalAssistantPaddlePage(reference, bytes, mimeType, page);
+    } catch (error) {
+      if (!(error instanceof PcnPaddleOcrUnavailableError)) throw error;
+      return fetchApprovalAssistantGeminiPage(req, reference, bytes, mimeType, page);
+    }
+  };
+
+  const extractApprovalAssistantTexts = async (req: express.Request, input: PcnApprovalReviewInput): Promise<PcnApprovalReviewTextEvidence[]> => {
     const references = getCurrentApprovalAssistantAssets(input);
     if (references.length === 0) return [];
     const assetResult = await pool.query(
@@ -12311,18 +12414,21 @@ async function startServer() {
           continue;
         }
         const embeddedImages = extractPcnDocxEmbeddedImages(downloaded.body);
-        if (embeddedImages.length === 0) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `Tài liệu ${reference.fileName} không có text layer hoặc ảnh nhúng để PaddleOCR đọc.`);
+        if (embeddedImages.length === 0) {
+          evidence.push(await fetchApprovalAssistantOcrPage(req, reference, downloaded.body, mimeType, 1));
+          continue;
+        }
         const evidenceBeforeDocx = evidence.length;
         for (const [index, image] of embeddedImages.entries()) {
           const imageReference = { ...reference, fileName: `${reference.fileName} · ${image.fileName}` };
           try {
-            evidence.push(await fetchApprovalAssistantPaddlePage(imageReference, image.bytes, image.mimeType, index + 1));
+            evidence.push(await fetchApprovalAssistantOcrPage(req, imageReference, image.bytes, image.mimeType, index + 1));
           } catch (error) {
             if (error instanceof PcnPaddleOcrUnavailableError && (error.code === 'PADDLE_OCR_EMPTY' || error.code === 'PADDLE_OCR_LOW_CONFIDENCE')) continue;
             throw error;
           }
         }
-        if (evidence.length === evidenceBeforeDocx) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `PaddleOCR không đọc được ảnh nhúng trong ${reference.fileName}.`);
+        if (evidence.length === evidenceBeforeDocx) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `PaddleOCR và Gemini không đọc được ảnh nhúng trong ${reference.fileName}.`);
         continue;
       }
       if (isPdf) {
@@ -12332,11 +12438,11 @@ async function startServer() {
         }
         const pageCount = pdf.getPageCount();
         if (pageCount < 1) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_EMPTY', `PDF ${reference.fileName} không có trang để đọc.`);
-        for (let page = 1; page <= pageCount; page += 1) evidence.push(await fetchApprovalAssistantPaddlePage(reference, downloaded.body, 'application/pdf', page));
+        for (let page = 1; page <= pageCount; page += 1) evidence.push(await fetchApprovalAssistantOcrPage(req, reference, downloaded.body, 'application/pdf', page));
         continue;
       }
       if (isImage) {
-        evidence.push(await fetchApprovalAssistantPaddlePage(reference, downloaded.body, mimeType, 1));
+        evidence.push(await fetchApprovalAssistantOcrPage(req, reference, downloaded.body, mimeType, 1));
         continue;
       }
       throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Định dạng ${reference.fileName} chưa được hỗ trợ trong phiên kiểm duyệt.`);
@@ -12347,12 +12453,12 @@ async function startServer() {
   const semanticReviewCriterion = async (req: express.Request, criterion: PcnApprovalCriterionResult, texts: PcnApprovalReviewTextEvidence[]): Promise<PcnApprovalCriterionResult> => {
     if (texts.length === 0 || ['ENTRY_GATE', 'COMPLETENESS', 'SAMPLE_PYC', 'LAB_RESULTS'].includes(criterion.id)) return criterion;
     try {
-      const ai = await getGeminiClient(req, { timeout: 30000 });
+      const ai = await getPersonalGeminiClient(req, 30000);
       const context = texts.map((entry) => `[${entry.assetId}|${entry.fileName}${entry.page ? `|trang ${entry.page}` : ''}]\n${entry.text.slice(0, 6000)}`).join('\n\n').slice(0, 24000);
       const response = await generateContentWithRetryAndFallback(ai, {
         contents: [{ role: 'user', parts: [{ text: `Bạn là lớp phân tích ngữ nghĩa hỗ trợ kiểm duyệt hồ sơ PCN. Chỉ kiểm tra tiêu chí "${criterion.title}" từ các trích đoạn có mã bằng chứng bên dưới. Không quyết định phê duyệt, không đề xuất chuyển trạng thái, không bịa thông tin. Chỉ trả JSON: {"hasIssue": boolean, "severity": "ATTENTION" hoặc "CRITICAL", "message": string, "assetIds": string[]}. Nếu không đủ căn cứ, hasIssue=false. assetIds chỉ được chọn từ mã đã cung cấp.\n\n${context}` }] }],
         config: { responseMimeType: 'application/json', temperature: 0.1 },
-      }, req.headers['x-gemini-model'] as string | undefined || await getPcnStoredGeminiModel(req), { attemptsPerModel: 1 });
+      }, await getPersonalGeminiModel(req), { attemptsPerModel: 1 });
       const parsed = JSON.parse(String(response.text || '{}').replace(/```json|```/g, '').trim()) as Record<string, unknown>;
       if (parsed.hasIssue !== true || typeof parsed.message !== 'string') return criterion;
       const assetIds = Array.isArray(parsed.assetIds) ? parsed.assetIds.map(String) : [];
@@ -12426,7 +12532,7 @@ async function startServer() {
       res.flushHeaders?.();
       const writeEvent = (event: Record<string, unknown>) => { if (!res.writableEnded) res.write(`${JSON.stringify(event)}\n`); };
       writeEvent({ type: 'run_started', runId, dossierId, fieldCode, startedAt, message: 'Đã mở phiên đọc hồ sơ. Kết quả sẽ hiện lần lượt theo tiêu chí.' });
-      const documentTexts = await extractApprovalAssistantTexts(input);
+      const documentTexts = await extractApprovalAssistantTexts(req, input);
       const baseReport = buildPcnApprovalReview({ ...input, documentTexts });
       const criteria: PcnApprovalCriterionResult[] = [];
       for (let index = 0; index < PCN_APPROVAL_REVIEW_CRITERIA.length; index += 1) {
@@ -12451,9 +12557,13 @@ async function startServer() {
       writeEvent({ type: 'run_completed', runId, finishedAt: new Date().toISOString(), summary, exportToken: runId, message: 'Đã hoàn tất phiên hỗ trợ. Kết quả không làm thay đổi hồ sơ.' });
       res.end();
     } catch (error: any) {
-      const message = error instanceof PcnPaddleOcrUnavailableError ? `Dừng phiên AI: ${error.message}` : String(error?.message || error);
-      const status = error instanceof PcnPaddleOcrUnavailableError ? 503 : Number(error?.statusCode) || 500;
-      if (res.headersSent) { if (!res.writableEnded) { res.write(`${JSON.stringify({ type: 'run_error', code: error?.code || 'PCN_APPROVAL_ASSISTANT_FAILED', message })}\n`); res.end(); } } else res.status(status).json({ code: error?.code || 'PCN_APPROVAL_ASSISTANT_FAILED', error: message });
+      const missingKey = error?.message === GEMINI_API_KEY_MISSING_MESSAGE;
+      const message = missingKey
+        ? GEMINI_API_KEY_MISSING_MESSAGE
+        : error instanceof PcnPaddleOcrUnavailableError ? `Dừng phiên AI: ${error.message}` : String(error?.message || error);
+      const status = missingKey || error instanceof PcnPaddleOcrUnavailableError ? 503 : Number(error?.statusCode) || 500;
+      const code = missingKey ? 'GEMINI_API_KEY_MISSING' : error?.code || 'PCN_APPROVAL_ASSISTANT_FAILED';
+      if (res.headersSent) { if (!res.writableEnded) { res.write(`${JSON.stringify({ type: 'run_error', code, message })}\n`); res.end(); } } else res.status(status).json({ code, error: message });
     }
   });
 
@@ -12522,87 +12632,33 @@ async function startServer() {
         return;
       }
 
-      let extractedText = '';
-      let confidence = 0.82;
-      const extension = fileName.toLowerCase().split('.').pop() || '';
-      const isDocx = extension === 'docx' || mimeType.includes('wordprocessingml.document');
-      if (settings.ocr.provider === 'GEMINI') {
-        const ai = await getGeminiClient(req, { timeout: KQTN_OCR_TIMEOUT_MS });
-        const prompt = context === 'proposal'
-          ? 'Đọc tài liệu Đề nghị chứng nhận PCN. Chỉ chép lại chữ nhìn thấy, không suy đoán. Trả JSON có trường text chứa toàn bộ nội dung đọc được theo dòng.'
-          : 'Đọc báo cáo KQTN của PCN. Chỉ chép lại chữ nhìn thấy, không suy đoán. Trả JSON có trường text chứa toàn bộ nội dung đọc được theo dòng.';
-        const response = await generateContentWithRetryAndFallback(ai, {
-          contents: { parts: [{ inlineData: { mimeType: mimeType === 'application/octet-stream' ? 'application/pdf' : mimeType, data: base64Data } }, { text: prompt }] },
-          config: { responseMimeType: 'application/json', responseSchema: { type: Type.OBJECT, properties: { text: { type: Type.STRING } } } },
-        }, req.headers['x-gemini-model'] as string | undefined || await getPcnStoredGeminiModel(req));
-        const raw = String(response.text || '').replace(/```json|```/g, '').trim();
-        extractedText = String(JSON.parse(raw)?.text || '');
-        confidence = 0.78;
-      } else if (isDocx) {
-        const docxResult = await mammoth.extractRawText({ buffer: fileBuffer });
-        extractedText = docxResult.value || '';
-        confidence = 0.95;
-        if (!extractedText.trim()) {
-          const embeddedImages = extractPcnDocxEmbeddedImages(fileBuffer);
-          const imageTexts: string[] = [];
-          const imageConfidences: number[] = [];
-          for (const image of embeddedImages) {
-            const ocrUrl = new URL(`${getKqtnOcrServiceUrl()}/ocr/image`);
-            ocrUrl.searchParams.set('page', '1');
-            ocrUrl.searchParams.set('dpi', '150');
-            const formData = new FormData();
-            formData.append('file', new Blob([new Uint8Array(image.bytes)], { type: image.mimeType }), image.fileName);
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), KQTN_OCR_TIMEOUT_MS);
-            try {
-              const response = await fetch(ocrUrl, { method: 'POST', body: formData, signal: controller.signal });
-              const payload = await response.json().catch(() => ({}));
-              if (!response.ok) throw Object.assign(new Error(payload.detail || payload.error || `PaddleOCR request failed (${response.status}).`), { statusCode: 503 });
-              const text = getPcnOcrText(payload).trim();
-              if (text) imageTexts.push(text);
-              const imageConfidence = Number(payload.confidence);
-              if (Number.isFinite(imageConfidence) && imageConfidence > 0) imageConfidences.push(imageConfidence);
-            } catch (error: any) {
-              if (error?.statusCode === 503) throw error;
-              throw Object.assign(new Error('PaddleOCR không sẵn sàng để đọc ảnh nhúng trong DOCX.'), { statusCode: 503, cause: error });
-            } finally {
-              clearTimeout(timeout);
-            }
-          }
-          extractedText = imageTexts.join('\n\n');
-          if (imageConfidences.length > 0) confidence = imageConfidences.reduce((sum, value) => sum + value, 0) / imageConfidences.length;
-        }
-      } else {
-        const sourcePage = Math.max(1, Math.floor(Number(req.body?.pageNumber) || 1));
-        const serviceUrl = getKqtnOcrServiceUrl();
-        const isPdf = extension === 'pdf' || mimeType === 'application/pdf';
-        const ocrUrl = new URL(isPdf ? `${serviceUrl}/ocr/pdf/page` : `${serviceUrl}/ocr/image`);
-        ocrUrl.searchParams.set('page', String(sourcePage));
-        ocrUrl.searchParams.set('dpi', '150');
-        const formData = new FormData();
-        formData.append('file', new Blob([new Uint8Array(fileBuffer)], { type: isPdf ? 'application/pdf' : mimeType }), fileName);
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), KQTN_OCR_TIMEOUT_MS);
-        try {
-          const response = await fetch(ocrUrl, { method: 'POST', body: formData, signal: controller.signal });
-          const payload = await response.json().catch(() => ({}));
-          if (!response.ok) {
-            res.status(response.status >= 500 ? 503 : response.status).json({ code: 'PCN_OCR_UNAVAILABLE', error: payload.detail || payload.error || `PaddleOCR request failed (${response.status}).` });
-            return;
-          }
-          extractedText = getPcnOcrText(payload);
-          confidence = Number(payload.confidence) || 0.82;
-        } finally {
-          clearTimeout(timeout);
-        }
-      }
-      if (!extractedText.trim()) throw Object.assign(new Error('OCR không nhận diện được nội dung rõ ràng.'), { statusCode: 422 });
       const sourcePage = Math.max(1, Math.floor(Number(req.body?.pageNumber) || 1));
-      res.json({ provider: settings.ocr.provider, draft: buildPcnOcrDraftFromText(extractedText, context, fileName, sourcePage, confidence) });
+      const ocrResult = await runPaddleFirstWithGeminiFallback<ServerOcrCandidate>({
+        confidenceThreshold: settings.ocr.confidenceThreshold,
+        paddle: () => collectPaddleOcr(fileBuffer, fileName, mimeType, req.body?.pageNumber ? sourcePage : undefined),
+        gemini: async () => {
+          const ai = await getPersonalGeminiClient(req);
+          const prompt = context === 'proposal'
+            ? 'Đọc tài liệu Đề nghị chứng nhận PCN. Chỉ chép lại chữ nhìn thấy, không suy đoán. Trả JSON có trường text chứa toàn bộ nội dung đọc được theo dòng.'
+            : 'Đọc báo cáo KQTN của PCN. Chỉ chép lại chữ nhìn thấy, không suy đoán. Trả JSON có trường text chứa toàn bộ nội dung đọc được theo dòng.';
+          const response = await generateContentWithRetryAndFallback(ai, {
+            contents: { parts: [{ inlineData: { mimeType: mimeType === 'application/octet-stream' ? 'application/pdf' : mimeType, data: base64Data } }, { text: prompt }] },
+            config: { responseMimeType: 'application/json', responseSchema: { type: Type.OBJECT, properties: { text: { type: Type.STRING } } } },
+          }, await getPersonalGeminiModel(req));
+          const raw = String(response.text || '').replace(/```json|```/g, '').trim();
+          return { text: String(JSON.parse(raw)?.text || ''), confidence: 0.78 };
+        },
+        isUsable: (candidate, threshold) => isUsableOcrCandidate(candidate, threshold),
+      });
+      const extractedText = ocrResult.value.text;
+      const confidence = ocrResult.value.confidence;
+      if (!extractedText.trim()) throw Object.assign(new Error('OCR không nhận diện được nội dung rõ ràng.'), { statusCode: 422 });
+      res.json({ provider: ocrResult.provider, draft: buildPcnOcrDraftFromText(extractedText, context, fileName, sourcePage, confidence) });
     } catch (error: any) {
       console.error('PCN OCR error:', error?.message || String(error));
-      const statusCode = Number(error?.statusCode) || (error?.name === 'AbortError' ? 503 : 500);
-      res.status(statusCode).json({ code: statusCode === 503 ? 'PCN_OCR_UNAVAILABLE' : 'PCN_OCR_FAILED', error: statusCode === 503 ? 'Dịch vụ OCR PCN hiện không sẵn sàng.' : String(error?.message || error) });
+      const statusCode = getOcrErrorStatus(error);
+      const missingKey = error?.message === GEMINI_API_KEY_MISSING_MESSAGE;
+      res.status(statusCode).json({ code: missingKey ? 'GEMINI_API_KEY_MISSING' : statusCode === 503 ? 'PCN_OCR_UNAVAILABLE' : 'PCN_OCR_FAILED', error: missingKey ? GEMINI_API_KEY_MISSING_MESSAGE : statusCode === 503 ? 'Dịch vụ OCR PCN hiện không sẵn sàng.' : String(error?.message || error) });
     }
   });
 
@@ -14750,6 +14806,32 @@ async function startServer() {
         return res.status(400).json({ error: "Không tìm thấy file gửi lên" });
       }
 
+      const paddleCandidates: ServerOcrCandidate[] = [];
+      for (const file of files as Array<{ data?: string; fileName?: string; name?: string; mimeType?: string }>) {
+        try {
+          if (!file?.data) continue;
+          paddleCandidates.push(await collectPaddleOcr(
+            Buffer.from(file.data, 'base64'),
+            String(file.fileName || file.name || 'ocr-input.bin'),
+            String(file.mimeType || 'application/octet-stream'),
+          ));
+        } catch (error: any) {
+          console.warn('PaddleOCR request extraction unavailable; falling back to Gemini:', error?.message || String(error));
+        }
+      }
+      const paddleRequestText = paddleCandidates.map((candidate) => candidate.text).filter(Boolean).join('\n\n');
+      const paddleRequestConfidence = paddleCandidates.length > 0
+        ? paddleCandidates.reduce((sum, candidate) => sum + candidate.confidence, 0) / paddleCandidates.length
+        : 0;
+      const parsedPaddleRequest = parseRequestOcrText(paddleRequestText);
+      const hasParsedPaddleRequest = Boolean(
+        parsedPaddleRequest.customerInfo.name
+        || parsedPaddleRequest.samples.some((sample) => sample.modelName || sample.brand || sample.type),
+      );
+      if (isUsableOcrCandidate({ text: paddleRequestText, confidence: paddleRequestConfidence }, 0.75) && hasParsedPaddleRequest) {
+        return res.json({ ...parsedPaddleRequest, provider: 'PADDLEOCR' });
+      }
+
       const brandsList = (refBrands || []).join(", "); 
       const customersList = (refCustomers || []).map((c: any) => `"${c.name}"`).join(",\n");
       const productsList = (refProducts || []).length > 0 
@@ -14854,8 +14936,8 @@ async function startServer() {
         }
       }
 
-      const activeAi = await getGeminiClient(req);
-      const preferredModel = req.headers["x-gemini-model"] as string | undefined;
+      const activeAi = await getPersonalGeminiClient(req);
+      const preferredModel = await getPersonalGeminiModel(req);
       const response = await generateContentWithRetryAndFallback(activeAi, {
         contents: { parts: parts },
         config: { 
@@ -14935,14 +15017,15 @@ async function startServer() {
         parsed.sealStamp = detectedSealStamp;
       }
 
-      res.json(parsed);
+      res.json({ ...parsed, provider: 'GEMINI' });
     } catch (error: any) {
       console.error("Gemini Extraction Error:", error);
       let errMsg = error.message || "Lỗi trích xuất AI";
       if (typeof errMsg === "string" && (errMsg.includes("503") || errMsg.includes("high demand") || errMsg.includes("UNAVAILABLE"))) {
         errMsg = "Máy chủ AI hiện đang quá tải. Hệ thống đã tự động thử lại nhưng chưa thành công. Vui lòng thử lại sau giây lát.";
       }
-      res.status(500).json({ error: errMsg });
+      const status = getOcrErrorStatus(error);
+      res.status(status).json({ code: status === 503 && error?.message === GEMINI_API_KEY_MISSING_MESSAGE ? 'GEMINI_API_KEY_MISSING' : undefined, error: errMsg });
     }
   });
 
@@ -14951,6 +15034,20 @@ async function startServer() {
       const { base64Data, mimeType } = req.body;
       if (!base64Data) {
         return res.status(400).json({ error: "Thiếu dữ liệu file" });
+      }
+
+      const fileMimeType = String(mimeType || 'application/pdf');
+      const paddleResult = await collectPaddleOcr(
+        Buffer.from(String(base64Data).replace(/^data:[^;]+;base64,/i, ''), 'base64'),
+        fileMimeType.includes('pdf') ? 'kqtn-result.pdf' : 'kqtn-result-image',
+        fileMimeType,
+      ).catch((error: any) => {
+        console.warn('PaddleOCR result extraction unavailable; falling back to Gemini:', error?.message || String(error));
+        return { text: '', confidence: 0 } satisfies ServerOcrCandidate;
+      });
+      const parsedPaddleResults = parseTestResultsOcrText(paddleResult.text);
+      if (isUsableOcrCandidate(paddleResult, 0.75) && Object.keys(parsedPaddleResults).length > 0) {
+        return res.json({ ...parsedPaddleResults, provider: 'PADDLEOCR' });
       }
 
       const prompt = `
@@ -14963,8 +15060,8 @@ async function startServer() {
           Trả về kết quả dưới định dạng JSON khớp chính xác các trường trên.
       `;
 
-      const activeAi = await getGeminiClient(req);
-      const preferredModel = req.headers["x-gemini-model"] as string | undefined;
+      const activeAi = await getPersonalGeminiClient(req);
+      const preferredModel = await getPersonalGeminiModel(req);
       const response = await generateContentWithRetryAndFallback(activeAi, {
         contents: {
           parts: [
@@ -14993,14 +15090,15 @@ async function startServer() {
       const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
       console.log('AI Output:', cleanedText);
       const parsed = JSON.parse(cleanedText);
-      res.json(parsed);
+      res.json({ ...parsed, provider: 'GEMINI' });
     } catch (error: any) {
       console.error("Gemini Result Extraction Error:", error);
       let errMsg = error.message || "Lỗi trích xuất kết quả";
       if (typeof errMsg === "string" && (errMsg.includes("503") || errMsg.includes("high demand") || errMsg.includes("UNAVAILABLE"))) {
         errMsg = "Máy chủ AI hiện đang quá tải. Hệ thống đã tự động thử lại nhưng chưa thành công. Vui lòng thử lại sau giây lát.";
       }
-      res.status(500).json({ error: errMsg });
+      const status = getOcrErrorStatus(error);
+      res.status(status).json({ code: status === 503 && error?.message === GEMINI_API_KEY_MISSING_MESSAGE ? 'GEMINI_API_KEY_MISSING' : undefined, error: errMsg });
     }
   });
 
@@ -15012,8 +15110,22 @@ async function startServer() {
         res.status(400).json({ error: "Missing PDF data." });
         return;
       }
-      const activeAi = await getGeminiClient(req);
-      const preferredModel = req.headers["x-gemini-model"] as string | undefined;
+      const metadataBase64 = String(base64Data).replace(/^data:[^;]+;base64,/i, '');
+      const paddleMetadata = await collectPaddleOcr(
+        Buffer.from(metadataBase64, 'base64'),
+        String(mimeType || '').includes('pdf') ? 'kqtn-metadata.pdf' : 'kqtn-metadata-image',
+        String(mimeType || 'application/pdf'),
+        1,
+      ).catch((error: any) => {
+        console.warn('PaddleOCR KQTN metadata unavailable; falling back to Gemini:', error?.message || String(error));
+        return { text: '', confidence: 0 } satisfies ServerOcrCandidate;
+      });
+      const parsedPaddleMetadata = parseKqtnOcrMetadata(paddleMetadata.text);
+      if (isUsableOcrCandidate(paddleMetadata, 0.75) && Object.values(parsedPaddleMetadata).some(Boolean)) {
+        return res.json({ ...parsedPaddleMetadata, provider: 'PADDLEOCR' });
+      }
+      const activeAi = await getPersonalGeminiClient(req);
+      const preferredModel = await getPersonalGeminiModel(req);
       const prompt = `
 Bạn đang xem trang bìa (trang 1) của một báo cáo/phiếu kết quả thử nghiệm thuộc phòng Điện - Điện tử, có thể là bản scan chất lượng thấp, có dấu mộc, chữ viết tay hoặc bảng biểu chồng lên nhau.
 
@@ -15053,10 +15165,11 @@ Trả về đúng định dạng JSON khớp schema đã cung cấp.
       const text = response.text;
       if (!text) throw new Error("AI returned no metadata.");
       const cleanedText = text.split(String.fromCharCode(96)).join("").trim();
-      res.json(JSON.parse(cleanedText));
+      res.json({ ...JSON.parse(cleanedText), provider: 'GEMINI' });
     } catch (error: any) {
       console.error("KQTN metadata extraction error:", error);
-      res.status(500).json({ error: error?.message || String(error) });
+      const status = getOcrErrorStatus(error);
+      res.status(status).json({ code: status === 503 && error?.message === GEMINI_API_KEY_MISSING_MESSAGE ? 'GEMINI_API_KEY_MISSING' : undefined, error: error?.message || String(error) });
     }
   });
 
@@ -15072,10 +15185,42 @@ Trả về đúng định dạng JSON khớp schema đã cung cấp.
       const safeOffset = Number.isFinite(parsedOffset) ? Math.max(0, Math.floor(parsedOffset)) : 0;
       const payloadBytes = Math.floor((String(base64Data).length * 3) / 4);
       console.log(`KQTN ${analysisMode} request: pageOffset=${safeOffset}, payloadBytes=${payloadBytes}`);
-      const activeAi = await getGeminiClient(req, {
-        timeout: KQTN_BULK_STRUCTURE_TIMEOUT_MS,
+      const paddleBulk = await collectPaddleOcr(
+        Buffer.from(String(base64Data).replace(/^data:[^;]+;base64,/i, ''), 'base64'),
+        'kqtn-bulk.pdf',
+        'application/pdf',
+      ).catch((error: any) => {
+        console.warn(`KQTN ${analysisMode} PaddleOCR unavailable; falling back to Gemini:`, error?.message || String(error));
+        return { text: '', confidence: 0, pages: [] } satisfies ServerOcrCandidate;
       });
-      const preferredModel = req.headers["x-gemini-model"] as string | undefined;
+      if (isUsableOcrCandidate(paddleBulk, 0.75) && paddleBulk.pages && paddleBulk.pages.length > 0) {
+        const pages = paddleBulk.pages.map((page, index) => {
+          const metadata = parseKqtnOcrMetadata(page.text);
+          const pageNumber = safeOffset + index + 1;
+          if (analysisMode === 'footer') {
+            return {
+              pageNumber,
+              isReportCover: false,
+              isBlank: !page.text.trim(),
+              footerKey: extractKqtnFooterKey(page.text),
+            };
+          }
+          return {
+            pageNumber,
+            isReportCover: Boolean(metadata.sampleCode || metadata.model || metadata.brand),
+            isBlank: !page.text.trim(),
+            reportNo: extractKqtnFooterKey(page.text),
+            sampleCode: metadata.sampleCode,
+            model: metadata.model,
+            brand: metadata.brand,
+            sealStamp: '',
+            sampleName: '',
+          };
+        });
+        return res.json({ pages, provider: 'PADDLEOCR' });
+      }
+      const activeAi = await getPersonalGeminiClient(req, KQTN_BULK_STRUCTURE_TIMEOUT_MS);
+      const preferredModel = await getPersonalGeminiModel(req);
       const prompt = analysisMode === "footer" ? `
 Bạn đang xem một batch PDF gồm nhiều trang liên tiếp của một hoặc nhiều báo cáo kết quả thử nghiệm Điện - Điện tử.
 Lưu ý: PDF có thể là bản scan ảnh, trang có thể bị xoay 90 độ; hãy đọc nội dung sau khi xoay đúng hướng.
@@ -15185,7 +15330,7 @@ Trả về JSON theo schema đã cung cấp, không thêm markdown.
         sealStamp: String(page?.sealStamp || "").trim(),
         sampleName: String(page?.sampleName || "").trim(),
       })) : [];
-      res.json({ pages });
+      res.json({ pages, provider: 'GEMINI' });
     } catch (error: any) {
       console.error(`KQTN ${analysisMode} extraction error:`, error);
       if (isGeminiRequestTimeout(error)) {
@@ -15195,7 +15340,8 @@ Trả về JSON theo schema đã cung cấp, không thêm markdown.
         });
         return;
       }
-      res.status(500).json({ error: error?.message || String(error) });
+      const status = getOcrErrorStatus(error);
+      res.status(status).json({ code: status === 503 && error?.message === GEMINI_API_KEY_MISSING_MESSAGE ? 'GEMINI_API_KEY_MISSING' : undefined, error: error?.message || String(error) });
     }
   });
 
@@ -16392,11 +16538,11 @@ ${appContext || "Chưa có thông tin hoặc hệ thống đang trống."}
 
   app.post("/api/gemini/generate", async (req, res) => {
     try {
-      const activeAi = await getGeminiClient(req);
-      const preferredModel = req.headers["x-gemini-model"] as string | undefined;
       const { action, viName, base64, base64s } = req.body;
 
       if (action === "translate") {
+        const activeAi = await getGeminiClient(req);
+        const preferredModel = req.headers["x-gemini-model"] as string | undefined;
         const response = await generateContentWithRetryAndFallback(activeAi, {
           contents: `Dịch tên thiết bị sau sang tiếng Anh: "${viName}". Chỉ trả về tên tiếng Anh.`
         }, preferredModel);
@@ -16410,6 +16556,28 @@ ${appContext || "Chưa có thông tin hoặc hệ thống đang trống."}
 
         if (imagesList.length === 0) {
           return res.status(400).json({ error: "Không có hình ảnh để thực hiện OCR" });
+        }
+
+        const paddleCandidates: ServerOcrCandidate[] = [];
+        for (const [index, image] of imagesList.entries()) {
+          try {
+            const cleanB64 = image.includes(",") ? image.split(",")[1] : image;
+            paddleCandidates.push(await collectPaddleOcr(
+              Buffer.from(cleanB64, 'base64'),
+              `nameplate-${index + 1}.jpg`,
+              'image/jpeg',
+            ));
+          } catch (error: any) {
+            console.warn('PaddleOCR nameplate extraction unavailable; falling back to Gemini:', error?.message || String(error));
+          }
+        }
+        const paddleNameplateText = paddleCandidates.map((candidate) => candidate.text).filter(Boolean).join('\n\n');
+        const paddleNameplateConfidence = paddleCandidates.length > 0
+          ? paddleCandidates.reduce((sum, candidate) => sum + candidate.confidence, 0) / paddleCandidates.length
+          : 0;
+        const parsedPaddleNameplate = parseNameplateOcrText(paddleNameplateText);
+        if (isUsableOcrCandidate({ text: paddleNameplateText, confidence: paddleNameplateConfidence }, 0.75) && Object.values(parsedPaddleNameplate).some(Boolean)) {
+          return res.json({ text: JSON.stringify(parsedPaddleNameplate), provider: 'PADDLEOCR' });
         }
 
         const promptText = `Trích xuất toàn bộ thông tin kỹ thuật từ hình ảnh tem mác/nhãn sản phẩm này của thiết bị điện.
@@ -16431,6 +16599,8 @@ HƯỚNG DẪN QUAN TRỌNG:
           });
         }
 
+        const activeAi = await getPersonalGeminiClient(req);
+        const preferredModel = await getPersonalGeminiModel(req);
         const response = await generateContentWithRetryAndFallback(activeAi, {
           contents: [{ parts }],
           config: {
@@ -16458,13 +16628,14 @@ HƯỚNG DẪN QUAN TRỌNG:
             }
           }
         }, preferredModel);
-        return res.json({ text: response.text });
+        return res.json({ text: response.text, provider: 'GEMINI' });
       }
 
       return res.status(400).json({ error: "Invalid action" });
     } catch (error: any) {
       console.error("Gemini API Error:", error);
-      return res.status(500).json({ error: String(error.message || error) });
+      const status = getOcrErrorStatus(error);
+      res.status(status).json({ code: status === 503 && error?.message === GEMINI_API_KEY_MISSING_MESSAGE ? 'GEMINI_API_KEY_MISSING' : undefined, error: String(error.message || error) });
     }
   });
 

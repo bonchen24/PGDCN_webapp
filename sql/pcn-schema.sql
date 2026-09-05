@@ -262,6 +262,12 @@ CREATE INDEX IF NOT EXISTS idx_pcn_agent_tasks_assignee_status
 ON app_documents (LOWER(data->>'assigneeUsername'), (data->>'status'))
 WHERE collection_name = 'pcnTasks';
 
+-- Proposal codes are server-owned business identifiers. Keep retries and
+-- concurrent intake requests from creating duplicates that differ by case.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pcn_certification_proposals_proposal_code_ci
+ON app_documents (LOWER(data->>'proposalCode'))
+WHERE collection_name = 'certificationProposals' AND NULLIF(data->>'proposalCode', '') IS NOT NULL;
+
 -- A lot code is a business identifier, not just a UI label. Keep retries and
 -- concurrent requests from creating two lots that differ only by casing.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pcn_sample_lots_lot_code_ci

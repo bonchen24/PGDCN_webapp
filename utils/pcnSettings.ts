@@ -57,7 +57,7 @@ function cleanLabRoutes(value: unknown): Record<PcnCertificationFieldCode, PcnSa
 
 function cleanProvider(value: unknown): PcnOcrProvider {
   const normalized = String(value || '').trim().toUpperCase();
-  return normalized === 'GEMINI' || normalized === 'DISABLED' ? normalized : 'PADDLEOCR';
+  return normalized === 'DISABLED' ? normalized : 'PADDLEOCR';
 }
 
 export function normalizePcnSettings(value: unknown): PcnSettings {

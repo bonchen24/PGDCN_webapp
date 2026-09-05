@@ -41,6 +41,7 @@ test('PCN workspace exposes field filters and the preserved customer list', () =
   assert.doesNotMatch(workflow, /Quy chuẩn 20/);
   assert.match(source, /field\.name/);
   assert.match(source, /PcnDossierDetailView/);
+  assert.match(source, /onDeleteDossier/);
   assert.match(source, /PcnPipelineBoard/);
   assert.match(source, /PcnWorkQueueView/);
   assert.match(source, /PcnCustomersManagementView/);
@@ -129,13 +130,13 @@ test('PCN intake form restores server validation issues beside the affected fiel
   assert.match(source, /setValidationErrors\(indexPcnIntakeValidationIssues\(error\.issues\)\)/);
 });
 
-test('PCN intake surfaces source-code review hints without blocking the proposal form', () => {
+test('PCN intake displays server-owned proposal-code allocation without a manual code field', () => {
   const source = fs.readFileSync(workspacePath, 'utf8');
 
-  assert.match(source, /reviewPcnCode/);
-  assert.match(source, /Mã Đề nghị \/ mã đăng ký/);
-  assert.match(source, /codeReview\.needsReview/);
-  assert.match(source, /codeReview\.message/);
+  assert.match(source, /server|máy chủ/i);
+  assert.match(source, /PCN-YYMMDD-TT/);
+  assert.doesNotMatch(source, /reviewPcnCodes\(form\.fieldCodes, form\.proposalCode\)/);
+  assert.doesNotMatch(source, /placeholder="Ví dụ: 0665/);
 });
 
 test('PCN visual inspection resolves uploader usernames to display names', () => {

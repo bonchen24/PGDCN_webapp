@@ -318,12 +318,11 @@ test('sample lot field choices are limited to the selected dossier fields in the
   assert.match(sampleFlowSource, /form\.fieldCodes\.length === 0/);
 });
 
-test('sample lot input exposes the PCN code review projection without rewriting the source value', () => {
-  assert.match(sampleFlowSource, /reviewPcnCodes/);
-  assert.match(sampleFlowSource, /Mã chuẩn hóa/);
-  assert.match(sampleFlowSource, /Cần đối chiếu mã nguồn PCN/);
-  assert.match(sampleFlowSource, /codeReview\.normalized/);
-  assert.match(sampleFlowSource, /codeReview\.source/);
+test('sample lot input displays server-owned yearly lot-code allocation', () => {
+  assert.match(sampleFlowSource, /Server tự cấp/);
+  assert.match(sampleFlowSource, /CN TTTT-YY/);
+  assert.doesNotMatch(sampleFlowSource, /value=\{form\.lotCode\}/);
+  assert.doesNotMatch(sampleFlowSource, /reviewPcnCodes/);
 });
 
 test('sample flow events carry a traceable route transition', () => {

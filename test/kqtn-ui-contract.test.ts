@@ -60,7 +60,7 @@ test('bulk modal exposes PaddleOCR matching and manual candidate selection', () 
   assert.match(comboboxSource, /Tìm và chọn đầu mẫu/);
   assert.match(source, /uploadKqtnPdf/);
   assert.match(source, /extractKqtnPageTextWithPaddle/);
-  assert.doesNotMatch(source, /extractKqtnPdfMetadata/);
+  assert.match(source, /extractKqtnPdfMetadata/);
 });
 
 test('bulk modal supports combined PDF review, page ranges, preview, and retry', () => {
@@ -186,12 +186,14 @@ test('combined scan submits one asynchronous footer job before manual fallback',
   assert.doesNotMatch(analyzeSection, /extractKqtnBulkStructure/);
 });
 
-test('combined footer job failure switches directly to manual split', () => {
+test('combined footer job failure tries Gemini fallback before manual split', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
   const analyzeSection = source.slice(source.indexOf('const analyzeCombinedFile'), source.indexOf('const handleCombinedFile'));
   assert.match(analyzeSection, /getKqtnFooterJob/);
   assert.match(analyzeSection, /status === 'failed'/);
   assert.match(analyzeSection, /structureFailed = true/);
+  assert.match(analyzeSection, /extractKqtnBulkFooter/);
+  assert.match(analyzeSection, /Gemini footer fallback/);
 });
 
 test('combined scan maps footer OCR pages without full-page candidate classification', () => {
@@ -206,7 +208,7 @@ test('combined scan maps footer OCR pages without full-page candidate classifica
   assert.match(fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8'), /Footer OCR/);
 });
 
-test('combined mapping uses footer identifiers and probes only group-leading pages for model', () => {
+test('combined mapping uses footer identifiers and probes Paddle before Gemini for model', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
   const analyzeSection = source.slice(source.indexOf('const analyzeCombinedFile'), source.indexOf('const handleCombinedFile'));
   assert.match(analyzeSection, /footerKey/);
@@ -214,7 +216,7 @@ test('combined mapping uses footer identifiers and probes only group-leading pag
   assert.match(analyzeSection, /extractKqtnPageTextWithPaddle/);
   assert.match(analyzeSection, /extractKqtnModelFromProbeTexts/);
   assert.match(analyzeSection, /createPdfSegmentFile/);
-  assert.doesNotMatch(analyzeSection, /extractKqtnPdfMetadata/);
+  assert.match(analyzeSection, /extractKqtnPdfMetadata/);
 
   const combinedBuilderSection = source.slice(source.indexOf('function buildCombinedSegment'), source.indexOf('function statusLabel'));
   assert.match(combinedBuilderSection, /sampleCode: metadata\.sampleCode/);
@@ -223,23 +225,25 @@ test('combined mapping uses footer identifiers and probes only group-leading pag
   assert.doesNotMatch(combinedBuilderSection, /model: metadata\.footerKey/);
 });
 
-test('single-file mapping uses first-page PaddleOCR without Gemini fallback', () => {
+test('single-file mapping uses first-page PaddleOCR with Gemini fallback', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
   const analyzeSection = source.slice(source.indexOf('const analyzeSingleFiles'), source.indexOf('const analyzeCombinedFile'));
   assert.match(analyzeSection, /extractKqtnPageTextWithPaddle/);
   assert.match(analyzeSection, /parseKqtnOcrMetadata/);
-  assert.doesNotMatch(analyzeSection, /extractKqtnPdfMetadata/);
+  assert.match(analyzeSection, /extractKqtnPdfMetadata/);
+  assert.match(analyzeSection, /isUsableOcrCandidate/);
+  assert.match(analyzeSection, /trying Gemini fallback|fallback Gemini/i);
   assert.match(analyzeSection, /PaddleOCR[\s\S]*?(manual mapping|mapping thủ công|chọn mẫu thủ công)/i);
 });
 
-test('missing PaddleOCR metadata keeps bulk mapping manual instead of blocking on Gemini', () => {
+test('missing PaddleOCR metadata falls back to Gemini before keeping bulk mapping manual', () => {
   const source = fs.readFileSync(new URL('../components/KqtnBulkPdfUploadModal.tsx', import.meta.url), 'utf8');
   const singleSection = source.slice(source.indexOf('const analyzeSingleFiles'), source.indexOf('const analyzeCombinedFile'));
   const combinedSection = source.slice(source.indexOf('const analyzeCombinedFile'), source.indexOf('const handleCombinedFile'));
-  for (const section of [singleSection, combinedSection]) {
-    assert.doesNotMatch(section, /extractKqtnPdfMetadata/);
-    assert.match(section, /(manual mapping|mapping thủ công|chọn mẫu thủ công)/i);
-  }
+  assert.match(singleSection, /extractKqtnPdfMetadata/);
+  assert.match(singleSection, /(manual mapping|mapping thủ công|chọn mẫu thủ công)/i);
+  assert.match(combinedSection, /extractKqtnBulkFooter/);
+  assert.match(combinedSection, /(manual mapping|mapping thủ công|chọn mẫu thủ công)/i);
 });
 
 test('bulk file selection waits for explicit confirmation before AI analysis', () => {

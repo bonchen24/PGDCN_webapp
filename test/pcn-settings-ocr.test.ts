@@ -52,11 +52,20 @@ test('OCR accepts supported dossier files and requires confirmation before mutat
   assert.equal(isPcnOcrFileSupported('image/jpeg', 'camera.jpg'), true);
   assert.equal(isPcnOcrFileSupported('text/plain', 'notes.txt'), false);
   const ocrRoute = read('server.ts').slice(read('server.ts').indexOf("app.post('/api/pcn/ocr'"));
-  assert.match(ocrRoute, /\/ocr\/image/);
-  assert.match(ocrRoute, /wordprocessingml/);
+  assert.match(ocrRoute, /runPaddleFirstWithGeminiFallback/);
+  assert.match(read('server.ts'), /collectPaddleOcr/);
+  assert.match(read('server.ts'), /wordprocessingml/);
   const draft = normalizePcnOcrDraft({ fields: { proposalCode: 'DN-01' }, confidence: 0.82, sourcePage: 2 });
   assert.equal(draft.fields.proposalCode, 'DN-01');
   assert.equal(draft.sourcePage, 2);
   assert.equal(requiresPcnOcrConfirmation(draft), true);
   assert.equal(requiresPcnOcrConfirmation({ ...draft, confirmed: true }), false);
+});
+
+test('PCN OCR settings keep PaddleOCR as the only primary provider and describe Gemini fallback', () => {
+  assert.equal(normalizePcnSettings({ ocr: { provider: 'GEMINI' } }).ocr.provider, 'PADDLEOCR');
+  const view = read('components/PcnSettingsView.tsx');
+  assert.match(view, /PaddleOCR/);
+  assert.match(view, /fallback|dự phòng/i);
+  assert.doesNotMatch(view, /option value="GEMINI"/);
 });

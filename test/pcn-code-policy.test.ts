@@ -17,6 +17,13 @@ test('recognizes observed QC4/QC9 registration, IEMM and PYC code families', () 
   assert.equal(classifyPcnCode('QC9', 'PYC 1655_R0').family, 'PYC_REFERENCE');
 });
 
+test('recognizes the active server-owned PCN proposal and sample-lot formats', () => {
+  assert.equal(classifyPcnCode('QC4', 'PCN-260905-01').family, 'FIELD_REGISTRATION');
+  assert.equal(classifyPcnCode('QC9', 'CN 0001-26').family, 'FIELD_REGISTRATION');
+  assert.equal(reviewPcnCode('QC4', 'PCN-260905-01').needsReview, false);
+  assert.equal(reviewPcnCode('QC9', 'CN 0001-26').needsReview, false);
+});
+
 test('flags unknown or missing proposal codes for source review without blocking intake', () => {
   assert.equal(reviewPcnCode('QC4', '').needsReview, true);
   assert.match(reviewPcnCode('QC4', '').message, /chưa có mã nguồn/i);

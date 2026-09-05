@@ -821,11 +821,9 @@ export default function EmcBepDien1VungNauForm({ data, setData, title, standardI
     try {
       const state = useStore.getState();
       const currentUser = state.currentUser;
-      const userApiKey = currentUser ? state.userPreferences[currentUser.username]?.geminiApiKey : undefined;
       const geminiModel = resolveGeminiModel(state);
 
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (userApiKey) headers["X-Gemini-API-Key"] = userApiKey;
       if (geminiModel) headers["x-gemini-model"] = geminiModel;
 
       const cleanList = list.map(img => img.includes(',') ? img.split(',')[1] : img);

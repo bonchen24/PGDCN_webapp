@@ -35,6 +35,9 @@ backups/
 
 # Local extraction and agent scratch; never part of the application source.
 tmp/
+.tmp-docx-review/
+_qa_original/
+revised_templates/
 .superpowers/
 .codex-remote-attachments/
 dist/*.bak

@@ -34,13 +34,17 @@ import {
 } from '../utils/kqtnBulkSplit';
 import { buildKqtnBulkUploadPlan } from '../utils/kqtnBulkWorkflow';
 import {
+  extractKqtnBulkFooter,
+  extractKqtnPdfMetadata,
   extractKqtnPageTextWithPaddle,
   getKqtnFooterJob,
   startKqtnFooterJob,
+  type KqtnPdfAiMetadata,
   uploadKqtnPdf,
 } from '../utils/kqtnPdfClient';
 import { extractKqtnModelFromProbeTexts, getKqtnModelProbePageNumbers } from '../utils/kqtnBulkModelProbe';
 import { parseKqtnOcrMetadata } from '../utils/kqtnOcrMetadata';
+import { isUsableOcrCandidate } from '../utils/ocrPipeline';
 
 const KQTN_PDF_MAX_BYTES = 25 * 1024 * 1024;
 
@@ -281,15 +285,24 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
         const firstPageDoc = await PDFDocument.load(await file.arrayBuffer());
         const firstPageOnly = firstPageDoc.getPageCount() > 1 ? await createPdfSegmentFile(firstPageDoc, 1, 1, `${fileStem(file.name)}-cover.pdf`) : file;
         const firstPageBase64 = await fileToBase64(firstPageOnly);
-        let metadata = parseKqtnOcrMetadata('');
+        let metadata: KqtnPdfAiMetadata = parseKqtnOcrMetadata('');
+        let metadataProvider: 'PADDLEOCR' | 'GEMINI' = 'PADDLEOCR';
         try {
           const paddlePage = await extractKqtnPageTextWithPaddle(firstPageBase64, 1);
+          if (!isUsableOcrCandidate(paddlePage, 0.75)) throw new Error('PaddleOCR first page is empty or below the confidence threshold.');
           metadata = parseKqtnOcrMetadata(paddlePage.text);
           if (!metadata.sampleCode && !metadata.model && !metadata.brand) {
-            console.warn('KQTN first-page PaddleOCR returned no structured metadata; keeping manual mapping.');
+            metadata = await extractKqtnPdfMetadata(firstPageBase64, 'application/pdf');
+            metadataProvider = 'GEMINI';
           }
         } catch (paddleError) {
-          console.warn('KQTN first-page PaddleOCR failed; keeping manual mapping without Gemini fallback.', paddleError);
+          console.warn('KQTN first-page PaddleOCR failed; trying Gemini fallback.', paddleError);
+          try {
+            metadata = await extractKqtnPdfMetadata(firstPageBase64, 'application/pdf');
+            metadataProvider = 'GEMINI';
+          } catch (geminiError) {
+            console.warn('KQTN first-page Gemini fallback failed; keeping manual mapping.', geminiError);
+          }
         }
         const hasOcrMetadata = Boolean(metadata.sampleCode || metadata.model || metadata.brand);
         const match = matchKqtnBulkFile({ fileName: file.name, ...metadata }, candidates);
@@ -297,7 +310,7 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
           ? {
             ...item,
             candidateId: hasOcrMetadata ? match.candidateId : undefined,
-            reason: hasOcrMetadata ? `OCR Paddle: ${match.reason}` : `OCR Paddle chưa đủ metadata; cần chọn mẫu thủ công. ${match.reason}`,
+            reason: hasOcrMetadata ? `OCR ${metadataProvider}: ${match.reason}` : `OCR ${metadataProvider} chưa đủ metadata; cần chọn mẫu thủ công. ${match.reason}`,
             confidence: hasOcrMetadata ? match.confidence : 'none',
             needsManualSelection: hasOcrMetadata ? match.needsManualSelection : true,
             aiSource: false,
@@ -309,7 +322,7 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
       }
     }
     setIsInspectingAi(false);
-    toast.success('Đã quét OCR Paddle trang đầu; hãy rà soát mapping.');
+    toast.success('Đã quét OCR Paddle trang đầu, fallback Gemini khi cần; hãy rà soát mapping.');
   };
 
   const analyzeCombinedFile = async (file: File) => {
@@ -327,6 +340,7 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
       const detectedFooterPages: KqtnBulkFooterPage[] = [];
       let footerStrategy: 'footer-batch' | undefined;
       let structureFailed = false;
+      let sourceBase64: string | undefined;
 
       try {
         let footerJobStatus = await startKqtnFooterJob(file, totalPages);
@@ -350,6 +364,22 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
         structureFailed = true;
       }
 
+      const paddleFooterUsable = detectedFooterPages.length > 0 && detectedFooterPages.some((page) => Boolean(page.footerKey) && !(page.confidence > 0 && page.confidence < 0.75));
+      if (structureFailed || !paddleFooterUsable) {
+        try {
+          sourceBase64 ||= await fileToBase64(file);
+          const fallbackPages = await extractKqtnBulkFooter(sourceBase64, 0);
+          if (fallbackPages.length > 0 && fallbackPages.some((page) => Boolean(page.footerKey))) {
+            detectedFooterPages.splice(0, detectedFooterPages.length, ...fallbackPages);
+            footerStrategy = 'footer-batch';
+            structureFailed = false;
+            setCombinedProgress('PaddleOCR chưa đủ dữ liệu; đã dùng Gemini fallback cho footer, đang rà soát...');
+          }
+        } catch (error) {
+          console.warn('KQTN Gemini footer fallback failed; switching to manual split.', error);
+        }
+      }
+
       const footerKeys = detectedFooterPages.map((page) => page.footerKey).filter(Boolean);
       const hasFooterPages = !structureFailed
         && footerStrategy === 'footer-batch'
@@ -369,10 +399,18 @@ export default function KqtnBulkPdfUploadModal({ isOpen, candidates, onClose, on
             try {
               const probeFile = await createPdfSegmentFile(sourceDoc, pageNumber, pageNumber, `${fileStem(file.name)}-probe-p${pageNumber}.pdf`);
               const paddlePage = await extractKqtnPageTextWithPaddle(await fileToBase64(probeFile), 1);
+              if (!isUsableOcrCandidate(paddlePage, 0.75)) throw new Error('PaddleOCR model probe is empty or below the confidence threshold.');
               probeTexts.push(paddlePage.text);
               if (extractKqtnModelFromProbeTexts([paddlePage.text])) break;
             } catch (error) {
-              console.warn(`KQTN model probe failed on source page ${pageNumber}; trying the next page.`, error);
+              try {
+                const probeFile = await createPdfSegmentFile(sourceDoc, pageNumber, pageNumber, `${fileStem(file.name)}-gemini-probe-p${pageNumber}.pdf`);
+                const fallback = await extractKqtnPdfMetadata(await fileToBase64(probeFile), 'application/pdf');
+                probeTexts.push(`Model: ${fallback.model || ''}`);
+                if (fallback.model) break;
+              } catch (geminiError) {
+                console.warn(`KQTN model probe failed on source page ${pageNumber}; trying the next page.`, error, geminiError);
+              }
             }
           }
           const model = extractKqtnModelFromProbeTexts(probeTexts);

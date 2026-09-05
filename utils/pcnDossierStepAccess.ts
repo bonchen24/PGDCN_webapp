@@ -50,6 +50,7 @@ export function getPcnDossierStepAccess(input: {
   dossier: Pick<CertificationDossier, 'status' | 'ownerUsername'>;
   targetStageKey: PcnPipelineStationKey;
   actorUsername?: string;
+  actorIsSystemManager?: boolean;
 }): PcnDossierStepAccess {
   if (input.targetStageKey === 'EXCEPTIONS') {
     return { editable: true, locked: false, requiresWithdrawal: false };
@@ -82,7 +83,7 @@ export function getPcnDossierStepAccess(input: {
 
   const ownerUsername = normalizeUsername(input.dossier.ownerUsername);
   const actorUsername = normalizeUsername(input.actorUsername);
-  if (ownerUsername && ownerUsername !== actorUsername) {
+  if (ownerUsername && ownerUsername !== actorUsername && !input.actorIsSystemManager) {
     return {
       editable: false,
       locked: true,

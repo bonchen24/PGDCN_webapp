@@ -27,7 +27,8 @@ export function getPcnSampleLabCodesForFields(fieldCodes: readonly string[]): Pc
 export interface PcnSampleLotDraft {
   id: string;
   dossierId: string;
-  lotCode: string;
+  /** Server-owned business identifier; omitted by new UI callers. */
+  lotCode?: string;
   /** Legacy single-item input; new callers should use sampleItems. */
   sampleName?: string;
   model?: string;

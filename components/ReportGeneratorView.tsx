@@ -365,11 +365,9 @@ export default function ReportGeneratorView() {
     try {
       const state = useStore.getState();
       const currentUser = state.currentUser;
-      const userApiKey = currentUser ? state.userPreferences[currentUser.username]?.geminiApiKey : undefined;
       const geminiModel = resolveGeminiModel(state);
 
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (userApiKey) headers["X-Gemini-API-Key"] = userApiKey;
       if (geminiModel) headers["x-gemini-model"] = geminiModel;
 
       const res = await fetch("/api/gemini/generate", {
@@ -829,12 +827,9 @@ export default function ReportGeneratorView() {
     setIsOcrProcessing(true);
     try {
       const state = useStore.getState();
-      const currentUser = state.currentUser;
-      const userApiKey = currentUser ? state.userPreferences[currentUser.username]?.geminiApiKey : undefined;
       const geminiModel = resolveGeminiModel(state);
 
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (userApiKey) headers["X-Gemini-API-Key"] = userApiKey;
       if (geminiModel) headers["x-gemini-model"] = geminiModel;
 
       const base64Str = base64.split(',')[1] || base64;

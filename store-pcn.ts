@@ -49,7 +49,7 @@ import { uploadPcnFile } from './utils/pcnFileApi';
 import { ensurePcnDossierCustomerSnapshot } from './utils/pcnDossierPolicy';
 import { createPcnIntake } from './utils/pcnIntakeApi';
 import { updatePcnProposal, type PcnProposalUpdateInput } from './utils/pcnProposalApi';
-import { updatePcnDossier, type PcnDossierUpdateInput } from './utils/pcnDossierApi';
+import { deletePcnDossier, updatePcnDossier, type PcnDossierUpdateInput } from './utils/pcnDossierApi';
 import { confirmPcnGeneratedDocumentIntoChecklist, uploadPcnDossierDocument } from './utils/pcnDossierDocumentApi';
 import { generatePcnDossierDocuments, preflightPcnDossierDocuments } from './utils/pcnDocumentGenerationApi';
 import type { PcnDossierDocumentContext } from './utils/pcnDocumentGeneration';
@@ -112,6 +112,7 @@ interface PcnStoreState {
   uploadDossierDocument: (dossierId: string, requirementId: string, file: File) => Promise<void>;
   confirmGeneratedDocument: (dossierId: string, generated: PcnGeneratedDocument, requirement: PcnDocumentRequirement) => Promise<void>;
   updateDossier: (dossierId: string, updates: PcnDossierUpdateInput) => Promise<void>;
+  deleteDossier: (dossierId: string, reason: string, confirmationCode: string) => Promise<void>;
   preflightDossierDocuments: (dossierId: string, kind?: PcnGeneratedDocumentKind, sampleRouteId?: string, labRequestId?: string) => Promise<PcnDossierDocumentContext>;
   generateDossierDocuments: (dossierId: string, kind?: PcnGeneratedDocumentKind, formats?: PcnGeneratedDocumentFormat[], sampleRouteId?: string, expectedContextHash?: string, labRequestId?: string) => Promise<PcnGeneratedDocument[]>;
   preflightOfficialDocuments: (issuanceId: string, formats?: PcnGeneratedDocumentFormat[]) => Promise<PcnOfficialPreflightResponse>;
@@ -884,6 +885,32 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
       dossiers: state.dossiers.map((item) => item.id === result.dossier.id ? result.dossier : item),
       ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs.filter((item) => item.id !== result.activityLog?.id)] } : {}),
     }));
+  },
+
+  deleteDossier: async (dossierId, reason, confirmationCode) => {
+    assertPcnStoreMutationAllowed();
+    const result = await deletePcnDossier(dossierId, reason, confirmationCode);
+    set((state) => {
+      const deletedLotIds = new Set(state.sampleLots.filter((item) => item.dossierId === dossierId).map((item) => item.id));
+      const deletedRouteIds = new Set(state.sampleRoutes.filter((item) => deletedLotIds.has(item.sampleLotId)).map((item) => item.id));
+      return {
+        dossiers: state.dossiers.filter((item) => item.id !== dossierId),
+        proposals: state.proposals.filter((item) => item.id !== result.proposalId && item.dossierId !== dossierId),
+        dossierDocuments: state.dossierDocuments.filter((item) => item.dossierId !== dossierId),
+        dossierAttachments: state.dossierAttachments.filter((item) => item.dossierId !== dossierId),
+        generatedDocuments: state.generatedDocuments.filter((item) => item.dossierId !== dossierId),
+        officialDocuments: state.officialDocuments.filter((item) => item.dossierId !== dossierId),
+        labRequests: state.labRequests.filter((item) => item.dossierId !== dossierId),
+        returnedResults: state.returnedResults.filter((item) => item.dossierId !== dossierId),
+        sampleLots: state.sampleLots.filter((item) => item.dossierId !== dossierId),
+        sampleItems: state.sampleItems.filter((item) => !deletedLotIds.has(item.sampleLotId)),
+        sampleRoutes: state.sampleRoutes.filter((item) => !deletedLotIds.has(item.sampleLotId)),
+        sampleFlowEvents: state.sampleFlowEvents.filter((item) => !deletedLotIds.has(item.sampleLotId) && !deletedRouteIds.has(item.routeId || '')),
+        approvalSteps: state.approvalSteps.filter((item) => item.dossierId !== dossierId),
+        issuancePackages: state.issuancePackages.filter((item) => item.dossierId !== dossierId),
+        activityLogs: result.activityLog ? [result.activityLog, ...state.activityLogs] : state.activityLogs,
+      };
+    });
   },
 
   withdrawPackage: async (issuanceId, reason, idempotencyKey) => {

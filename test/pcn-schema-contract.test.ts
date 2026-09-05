@@ -30,6 +30,8 @@ test('PCN schema contains only the shared JSON document and file metadata primit
   assert.match(schema, /stationKeys/);
   assert.match(schema, /idx_pcn_sample_lots_lot_code_ci/);
   assert.match(schema, /LOWER\(data->>'lotCode'\)/);
+  assert.match(schema, /idx_pcn_certification_proposals_proposal_code_ci/);
+  assert.match(schema, /LOWER\(data->>'proposalCode'\)/);
   assert.match(schema, /idx_pcn_lab_requests_pyc_number_ci/);
   assert.match(schema, /idx_pcn_lab_requests_sample_route/);
 });

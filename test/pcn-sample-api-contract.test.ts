@@ -46,7 +46,6 @@ test('sample API client sends the draft and route transition to their dedicated 
     await createPcnSampleLot({
       id: 'sample-lot-1',
       dossierId: 'dossier-1',
-      lotCode: 'PCN-QC4-001-M01',
       sampleName: 'Bếp điện',
       quantity: 2,
       fieldCodes: ['QC4'],
@@ -66,7 +65,6 @@ test('sample API client sends the draft and route transition to their dedicated 
     draft: {
       id: 'sample-lot-1',
       dossierId: 'dossier-1',
-      lotCode: 'PCN-QC4-001-M01',
       sampleName: 'Bếp điện',
       quantity: 2,
       fieldCodes: ['QC4'],

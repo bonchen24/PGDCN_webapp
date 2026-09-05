@@ -7,10 +7,7 @@ import { resolveGeminiModel } from './geminiSettings';
 
 export function getGeminiHeaders(): Record<string, string> {
   const state = useStore.getState();
-  const currentUser = state.currentUser;
-  const userApiKey = currentUser ? state.userPreferences[currentUser.username]?.geminiApiKey : undefined;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (userApiKey) headers['X-Gemini-API-Key'] = userApiKey;
   const geminiModel = resolveGeminiModel(state);
   if (geminiModel) headers['x-gemini-model'] = geminiModel;
   return headers;

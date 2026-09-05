@@ -49,7 +49,9 @@ export function normalizePcnCode(value: unknown): string {
 }
 
 function isFieldRegistrationCode(value: string): boolean {
-  return /^\d{4}(?:-\d{2})?$/.test(value)
+  return /^PCN-\d{6}-\d{2}$/.test(value)
+    || /^CN \d{4}-\d{2}$/.test(value)
+    || /^\d{4}(?:-\d{2})?$/.test(value)
     || /^(?:DN|HS)-QC(?:4|9)-\d{4}-\d{4}(?:-\d{2})?$/.test(value);
 }
 

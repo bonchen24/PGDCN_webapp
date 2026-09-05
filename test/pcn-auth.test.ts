@@ -63,6 +63,13 @@ test('PCN login uses a server session and PCN data/file APIs require that sessio
   assert.doesNotMatch(loginSource, /fetchCollection<any>\('systemUsers'/);
 });
 
+test('PCN login resolves common identities with a targeted system-user lookup before legacy fallback', () => {
+  assert.match(serverSource, /collection_name = 'systemUsers'[\s\S]{0,700}lower\(document_id\) = ANY\(\$1::text\[\]\)/);
+  assert.match(serverSource, /data->>'username'/);
+  assert.match(serverSource, /data->>'Tên đăng nhập'/);
+  assert.match(serverSource, /findPcnUser/);
+});
+
 test('PCN login exposes the IEMM identity instead of the generic shield mark', () => {
   assert.match(loginSource, /mode === 'pcn' \? <div[\s\S]*?<img/);
   assert.match(loginSource, /\/icons\/iemm-logo-32\.png/);
