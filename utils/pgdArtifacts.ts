@@ -117,6 +117,11 @@ export interface PgdLabResultReviewInput {
   nonconformities?: string[];
   recommendation?: string;
   conclusion: string;
+  retestRequired?: boolean;
+  retestReason?: string;
+  retestSampleId?: string;
+  retestRequestedAt?: string;
+  retestRequestedByUsername?: string;
   reviewerUsername?: string;
   reviewedAt?: string;
   status?: 'DRAFT' | 'FINAL';
@@ -345,6 +350,8 @@ export function validatePgdLabResultReview(input: Partial<PgdLabResultReviewInpu
   if (input.completeness !== 'COMPLETE') issues.push(issue('completeness', 'Chưa đủ kết quả PTN để đánh giá.'));
   if (!['CONFORMING', 'NON_CONFORMING'].includes(String(input.conformity || ''))) issues.push(issue('conformity', 'Cần kết luận tình trạng phù hợp của kết quả PTN.'));
   if (!clean(input.conclusion)) issues.push(issue('conclusion', 'Bản đánh giá KQTN cần có kết luận.'));
+  if (input.conformity === 'NON_CONFORMING' && input.retestRequired !== true) issues.push(issue('retestRequired', 'Kết quả không phù hợp phải yêu cầu kiểm tra/thử lại mẫu.'));
+  if (input.retestRequired === true && !clean(input.retestReason)) issues.push(issue('retestReason', 'Yêu cầu kiểm tra/thử lại phải ghi rõ lý do.'));
   if (input.reviewedAt && !isIsoDate(input.reviewedAt)) issues.push(issue('reviewedAt', 'Thời điểm đánh giá KQTN không hợp lệ.'));
   return issues;
 }
@@ -361,12 +368,17 @@ export function createPgdLabResultReview(input: PgdLabResultReviewInput, now = n
     nonconformities: [...new Set((input.nonconformities || []).map(clean).filter(Boolean))],
     ...(optionalText(input.recommendation) ? { recommendation: optionalText(input.recommendation) } : {}),
     conclusion: clean(input.conclusion),
+    ...(input.retestRequired === true ? { retestRequired: true } : {}),
+    ...(optionalText(input.retestReason) ? { retestReason: optionalText(input.retestReason) } : {}),
+    ...(optionalText(input.retestSampleId) ? { retestSampleId: optionalText(input.retestSampleId) } : {}),
+    ...(optionalText(input.retestRequestedAt) ? { retestRequestedAt: optionalText(input.retestRequestedAt) } : {}),
+    ...(optionalText(input.retestRequestedByUsername) ? { retestRequestedByUsername: optionalText(input.retestRequestedByUsername) } : {}),
     ...(optionalText(input.reviewerUsername) ? { reviewerUsername: optionalText(input.reviewerUsername) } : {}),
     ...(optionalText(input.reviewedAt) ? { reviewedAt: optionalText(input.reviewedAt) } : {}),
     status: input.status || 'FINAL',
   };
   const issues = validatePgdLabResultReview(normalized);
-  if (issues.length > 0) throw new Error(`Đánh giá KQTN PGD chưa đủ: ${issues.map((item) => item.field).join(', ')}`);
+  if (issues.length > 0) throw new Error(`Đánh giá KQTN PGD chưa đủ: ${issues.map((item) => `${item.field}: ${item.message}`).join('; ')}`);
   return { ...clone(normalized), domain: PGD_DOMAIN, status: normalized.status || 'FINAL', createdAt: now, updatedAt: now };
 }
 

@@ -14,7 +14,7 @@ import type {
 import { buildPgdAssistantReview, getPgdAssistantCandidates } from '../utils/pgdAssistant.ts';
 
 const request: PgdInspectionRequest = {
-  id: 'request-1', domain: 'pgd', status: 'RESULTS_REVIEW', requestCode: 'PYC-GD-001',
+  id: 'request-1', domain: 'pgd', status: 'RESULTS_REVIEW', requestCode: 'PGD-260905-01',
   intakeChannel: 'DIRECT', requester: { name: 'Nguyen Van A' },
   customerSnapshot: { name: 'Công ty thép A', address: 'Hà Nội' },
   productGroup: 'STEEL_METAL', catalogItemId: 'steel-1', productName: 'Thép cuộn',
@@ -49,5 +49,5 @@ test('PGD assistant marks unavailable evidence as NOT_EVALUABLE and never mutate
 test('PGD assistant candidates exclude terminal and cancelled requests', () => {
   const items = getPgdAssistantCandidates([{ ...request, status: 'RESULTS_REVIEW' }, { ...request, id: 'signed', status: 'SIGNED' }, { ...request, id: 'cancelled', status: 'CANCELLED' }]);
   assert.deepEqual(items.map((item) => item.requestId), ['request-1']);
-  assert.equal(items[0]?.requestCode, 'PYC-GD-001');
+  assert.equal(items[0]?.requestCode, 'PGD-260905-01');
 });

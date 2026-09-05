@@ -1,4 +1,6 @@
-# Kế hoạch triển khai: chuyển giám định thép không gỉ sang PGD
+# Kế hoạch lịch sử: chuyển giám định thép không gỉ sang PGD
+
+> Đây là kế hoạch của giai đoạn đầu, không giới hạn catalog runtime hiện hành. PGD hiện đã bao phủ toàn bộ loại hình trong folder nguồn.
 
 ## Mục tiêu
 
@@ -54,4 +56,3 @@
 - Chạy `npm test`, `npm run typecheck`, `npm run build`, `git diff --check`.
 - Quét source/runtime để xác nhận không còn active PCN QC20 và không có code đọc Desktop/UNC/import lịch sử.
 - Kiểm tra production build/container sau khi code pass; chỉ commit source thay đổi thuộc task.
-

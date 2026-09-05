@@ -14,6 +14,7 @@ import type {
   PgdTransitionContext,
   PgdCatalogItem,
   PgdGeneratedDocument,
+  PgdCalibrationInstrument,
 } from './pgdDomain.ts';
 import type { CustomerRef, PcnUserAccount } from '../types.ts';
 import type { PgdCaseEvent, PgdDossierIndex, PgdFieldActivityLog, PgdInspectionPlan, PgdLabResultReview } from './pgdArtifacts.ts';
@@ -47,6 +48,7 @@ export interface PgdBootstrapSnapshot {
   fieldActivityLogs: PgdFieldActivityLog[];
   labResultReviews: PgdLabResultReview[];
   dossierIndexes: PgdDossierIndex[];
+  calibrationInstruments: PgdCalibrationInstrument[];
 }
 
 export interface PgdDocumentGenerationResponse {
@@ -153,7 +155,13 @@ export async function fetchPgdBootstrap(): Promise<PgdBootstrapSnapshot> {
     fieldActivityLogs: Array.isArray(payload?.fieldActivityLogs) ? payload.fieldActivityLogs as PgdFieldActivityLog[] : [],
     labResultReviews: Array.isArray(payload?.labResultReviews) ? payload.labResultReviews as PgdLabResultReview[] : [],
     dossierIndexes: Array.isArray(payload?.dossierIndexes) ? payload.dossierIndexes as PgdDossierIndex[] : [],
+    calibrationInstruments: Array.isArray(payload?.calibrationInstruments) ? payload.calibrationInstruments as PgdCalibrationInstrument[] : [],
   };
+}
+
+export async function savePgdCalibrationInstrument(instrument: PgdCalibrationInstrument): Promise<PgdCalibrationInstrument> {
+  const payload = await request('/api/pgd/calibration-instruments', json(instrument));
+  return payload.instrument as PgdCalibrationInstrument;
 }
 
 export async function fetchPgdDocumentTemplates(): Promise<PgdDocumentTemplate[]> {
@@ -224,8 +232,18 @@ export async function assignPgdDossierOwner(requestId: string, ownerUsername: st
   return payload.request as PgdInspectionRequest;
 }
 
+export async function deletePgdInspection(requestId: string, reason: string, confirmationCode: string): Promise<{ deleted: true; requestId: string; requestCode: string }> {
+  const payload = await request(`/api/pgd/requests/${encodeURIComponent(requestId)}`, { method: 'DELETE', body: JSON.stringify({ reason, confirmationCode }) });
+  return payload as { deleted: true; requestId: string; requestCode: string };
+}
+
 export async function createPgdInspection(input: PgdInspectionRequestInput): Promise<PgdInspectionRequest> {
   const payload = await request('/api/pgd/requests', json(input));
+  return payload.request as PgdInspectionRequest;
+}
+
+export async function updatePgdInspectionRequest(requestId: string, patch: Partial<PgdInspectionRequestInput>): Promise<PgdInspectionRequest> {
+  const payload = await request(`/api/pgd/requests/${encodeURIComponent(requestId)}`, { method: 'PUT', body: JSON.stringify(patch) });
   return payload.request as PgdInspectionRequest;
 }
 

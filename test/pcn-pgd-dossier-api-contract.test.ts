@@ -34,6 +34,55 @@ test('PGD server keeps dossier evidence separate from generated documents and ne
   assert.doesNotMatch(server, /DELETE FROM app_documents[\s\S]{0,200}pgdSamples/);
 });
 
+test('PGD dossier delete is a confirmed hard-delete boundary with minimal audit traceability', () => {
+  const server = read('server.ts');
+  const domain = read('utils/pgdDomain.ts');
+  const api = read('utils/pgdApi.ts');
+  assert.match(server, /app\.delete\('\/api\/pgd\/requests\/:requestId'/);
+  assert.match(server, /getPgdDossierDeletionDenial/);
+  assert.match(server, /confirmationCode/);
+  assert.match(server, /DELETE FROM app_documents/);
+  assert.match(server, /file_assets/);
+  assert.match(server, /writePgdActivity/);
+  assert.match(domain, /getPgdDossierDeletionDenial/);
+  assert.match(api, /deletePgdInspection/);
+  assert.match(api, /confirmationCode/);
+});
+
+test('PCN dossier delete has a specialized confirmed hard-delete boundary', () => {
+  const server = read('server.ts');
+  const rbac = read('utils/pcnRbac.ts');
+  const api = read('utils/pcnDossierApi.ts');
+  const store = read('store-pcn.ts');
+  const detail = read('components/PcnDossierDetailView.tsx');
+  assert.match(server, /app\.delete\('\/api\/pcn\/dossiers\/:dossierId'/);
+  assert.match(server, /confirmationCode/);
+  assert.match(server, /getPcnDossierDeletionDenial/);
+  assert.match(server, /DELETE FROM app_documents/);
+  assert.match(server, /file_assets/);
+  assert.match(rbac, /getPcnDossierDeletionDenial/);
+  assert.match(api, /deletePcnDossier/);
+  assert.match(api, /confirmationCode/);
+  assert.match(store, /deleteDossier/);
+  assert.match(detail, /Xóa vĩnh viễn hồ sơ/);
+});
+
+test('PGD dossier edit is a scoped allowlist mutation with audit traceability', () => {
+  const server = read('server.ts');
+  const domain = read('utils/pgdDomain.ts');
+  const api = read('utils/pgdApi.ts');
+  const store = read('store-pgd.ts');
+  const workspace = read('components/PgdWorkspace.tsx');
+  assert.match(server, /app\.put\('\/api\/pgd\/requests\/:requestId'/);
+  assert.match(server, /getPgdDossierEditDenial/);
+  assert.match(server, /diffActivityFields\(current, next/);
+  assert.match(server, /writePgdActivity/);
+  assert.match(domain, /getPgdDossierEditDenial/);
+  assert.match(api, /updatePgdInspectionRequest/);
+  assert.match(store, /updateRequest/);
+  assert.match(workspace, /Sửa thông tin hồ sơ/);
+});
+
 test('PGD dossier upload tracks the private object for rollback after a later transaction failure', () => {
   const server = read('server.ts');
   assert.match(server, /uploadedObjectPath/);

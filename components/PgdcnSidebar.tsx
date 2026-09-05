@@ -9,10 +9,9 @@ import {
   ChevronRight,
   ClipboardCheck,
   ClipboardList,
-  FileCheck2,
-  FilePenLine,
   FilePlus2,
   FlaskConical,
+  FilePenLine,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -53,10 +52,7 @@ const PCN_ITEMS: Array<{ section: PcnSection; label: string; icon: ElementType }
 
 const PGD_ITEMS: Array<{ section: PgdSection; label: string; icon: ElementType }> = [
   { section: 'requests', label: 'Hồ sơ PYC', icon: ClipboardList },
-  { section: 'preparation', label: 'Chuẩn bị & Phân công', icon: ClipboardCheck },
-  { section: 'field', label: 'Hiện trường & Lấy mẫu', icon: ClipboardCheck },
-  { section: 'labs', label: 'PTN & Kết quả', icon: FlaskConical },
-  { section: 'results', label: 'Báo cáo, Chứng thư & Lưu trữ', icon: FileCheck2 },
+  { section: 'operations', label: 'Sổ điều hành PGD', icon: ClipboardCheck },
   { section: 'templates', label: 'Soạn thảo tài liệu', icon: FilePenLine },
 ];
 

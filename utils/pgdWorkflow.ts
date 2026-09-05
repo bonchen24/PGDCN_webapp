@@ -61,7 +61,7 @@ export const PGD_OPERATIONAL_STATIONS: readonly PgdOperationalStation[] = [
     key: 'REPORT_APPROVAL_RETURN',
     number: 5,
     title: 'Báo cáo, phê duyệt & trả kết quả',
-    description: 'Lập báo cáo, duyệt kỹ thuật, ký và trả chứng thư.',
+    description: 'Lập báo cáo, phê duyệt chuyên môn, phê duyệt lãnh đạo, ký và trả chứng thư.',
     statuses: ['TECHNICAL_REVIEW', 'LEADERSHIP_APPROVAL', 'SIGNED', 'RESULT_RETURNED', 'ARCHIVED'],
   },
 ] as const;
@@ -82,7 +82,7 @@ export function getPgdAssignmentApprovalDenial(
   const systemRole = String(user.systemRole || user.role || '').trim().toLowerCase();
   const pgdRole = String(user.pgdRole || '').trim().toUpperCase();
   if (systemRole === 'admin' || ['PGD_ADMIN', 'PGD_MANAGER'].includes(pgdRole)) return null;
-  return 'Chỉ quản lý PGD hoặc Admin mới được phê duyệt phân công PGD.';
+  return 'Chỉ Admin hoặc Quản lý có scope PGD mới được phê duyệt phân công PGD.';
 }
 
 export function getPgdOperationalStation(status: PgdInspectionStatus): PgdOperationalStation {

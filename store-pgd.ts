@@ -16,6 +16,7 @@ import type {
   PgdTransitionContext,
   PgdCatalogItem,
   PgdGeneratedDocument,
+  PgdCalibrationInstrument,
 } from './utils/pgdDomain.ts';
 import type { PgdCaseEvent, PgdDossierIndex, PgdFieldActivityLog, PgdInspectionPlan, PgdLabResultReview } from './utils/pgdArtifacts.ts';
 import type { PgdDocumentTemplate } from './utils/pgdDocumentTemplates.ts';
@@ -26,6 +27,8 @@ import {
   assignPgdDossierOwner,
   attachPgdGeneratedDocument,
   createPgdInspection,
+  updatePgdInspectionRequest,
+  deletePgdInspection,
   destroyPgdSample as destroyPgdSampleApi,
   fetchPgdBootstrap,
   getPgdDossierDocuments,
@@ -40,6 +43,7 @@ import {
   savePgdDossierIndex,
   savePgdLabRequest,
   savePgdLabResult,
+  savePgdCalibrationInstrument,
   savePgdReport,
   splitPgdSample as splitPgdSampleApi,
   transitionPgdInspection,
@@ -69,12 +73,15 @@ interface PgdStoreState {
   fieldActivityLogs: PgdFieldActivityLog[];
   labResultReviews: PgdLabResultReview[];
   dossierIndexes: PgdDossierIndex[];
+  calibrationInstruments: PgdCalibrationInstrument[];
   isLoading: boolean;
   isLoaded: boolean;
   error?: string;
   reset: () => void;
   load: (force?: boolean) => Promise<void>;
   createRequest: (input: PgdInspectionRequestInput) => Promise<PgdInspectionRequest>;
+  updateRequest: (requestId: string, patch: Partial<PgdInspectionRequestInput>) => Promise<PgdInspectionRequest>;
+  deleteRequest: (requestId: string, reason: string, confirmationCode: string) => Promise<Awaited<ReturnType<typeof deletePgdInspection>>>;
   transitionRequest: (requestId: string, status: PgdInspectionStatus, context?: PgdTransitionContext) => Promise<PgdInspectionRequest>;
   saveAssignment: (assignment: PgdInspectionAssignment) => Promise<PgdInspectionAssignment>;
   saveFieldInspection: (inspection: PgdFieldInspection) => Promise<PgdFieldInspection>;
@@ -93,6 +100,7 @@ interface PgdStoreState {
   saveLabResult: (result: PgdLabResult) => Promise<PgdLabResult>;
   saveReport: (report: PgdInspectionReport) => Promise<PgdInspectionReport>;
   saveCertificate: (certificate: PgdInspectionCertificate) => Promise<PgdInspectionCertificate>;
+  saveCalibrationInstrument: (instrument: PgdCalibrationInstrument) => Promise<PgdCalibrationInstrument>;
   approveStep: (step: PgdApprovalStep) => Promise<void>;
   saveDocumentTemplate: (template: PgdDocumentTemplate) => Promise<PgdDocumentTemplate>;
   generateDocument: (input: Parameters<typeof generatePgdDocument>[0]) => Promise<Awaited<ReturnType<typeof generatePgdDocument>>>;
@@ -104,6 +112,7 @@ const emptyState = {
   labRequests: [], labResults: [], reports: [], certificates: [], approvals: [], isLoading: false, isLoaded: false,
   documentTemplates: [], dossierDocuments: [], documents: [],
   inspectionPlans: [], caseEvents: [], fieldActivityLogs: [], labResultReviews: [], dossierIndexes: [],
+  calibrationInstruments: [],
 };
 
 function replaceOne<T extends { id: string }>(items: T[], next: T): T[] {
@@ -133,6 +142,34 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
     const request = await createPgdInspection(input);
     mergeRequest(set, request);
     return request;
+  },
+  updateRequest: async (requestId, patch) => {
+    const request = await updatePgdInspectionRequest(requestId, patch);
+    mergeRequest(set, request);
+    return request;
+  },
+  deleteRequest: async (requestId, reason, confirmationCode) => {
+    const deleted = await deletePgdInspection(requestId, reason, confirmationCode);
+    const removeRelated = <T,>(items: T[]) => items.filter((item) => String((item as { requestId?: string }).requestId || '') !== requestId);
+    set((state) => ({
+      requests: state.requests.filter((request) => request.id !== requestId),
+      assignments: removeRelated(state.assignments),
+      fieldInspections: removeRelated(state.fieldInspections),
+      samples: removeRelated(state.samples),
+      labRequests: removeRelated(state.labRequests),
+      labResults: removeRelated(state.labResults),
+      reports: removeRelated(state.reports),
+      certificates: removeRelated(state.certificates),
+      approvals: removeRelated(state.approvals),
+      dossierDocuments: removeRelated(state.dossierDocuments),
+      documents: removeRelated(state.documents),
+      inspectionPlans: removeRelated(state.inspectionPlans),
+      caseEvents: removeRelated(state.caseEvents),
+      fieldActivityLogs: removeRelated(state.fieldActivityLogs),
+      labResultReviews: removeRelated(state.labResultReviews),
+      dossierIndexes: removeRelated(state.dossierIndexes),
+    }));
+    return deleted;
   },
   transitionRequest: async (requestId, status, context) => {
     const request = await transitionPgdInspection(requestId, status, context);
@@ -173,6 +210,11 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
   saveLabResultReview: async (review) => {
     const next = await savePgdLabResultReview(review);
     set((state) => ({ labResultReviews: replaceOne(state.labResultReviews, next), requests: state.requests.map((request) => request.id === next.requestId ? { ...request, labResultReviewId: next.id } : request) }));
+    return next;
+  },
+  saveCalibrationInstrument: async (instrument) => {
+    const next = await savePgdCalibrationInstrument(instrument);
+    set((state) => ({ calibrationInstruments: replaceOne(state.calibrationInstruments, next) }));
     return next;
   },
   saveDossierIndex: async (index) => {

@@ -4,14 +4,14 @@
 
 PGD là miền Giám định của Phòng Giám định - Chứng nhận. Nguồn biểu mẫu PGD được đọc read-only từ các bộ biểu mẫu trong Desktop, tập trung vào nhóm `BM Giám định thép` và bộ TT58 trong `Giám định/Mẫu biên bản/TT58`. Nguồn cho thấy một hồ sơ thực tế được hình thành theo chuỗi: PYC/chứng từ → phân công/kế hoạch → hiện trường/diễn biến/lấy mẫu → PTN/bàn giao → KQTN/đánh giá → báo cáo/chứng thư → duyệt/ký/lưu.
 
-Nguồn Desktop có cả nhóm biểu mẫu mang nội dung chứng nhận/CNSP và các hồ sơ lịch sử. Những nội dung này chỉ dùng để rút trích cấu trúc nghiệp vụ. Không import khách hàng, số liệu, chữ ký, file lịch sử hoặc đường dẫn Desktop/UNC vào runtime. `QC20` không phải mã catalog PGD; PGD sử dụng lĩnh vực trung tính `GĐ-THEP-KG`. Các trường phí, thanh toán và báo giá bị loại khỏi phạm vi.
+Nguồn Desktop có các nhánh thép/kim loại, máy/dây chuyền, than, giám định ngoài và hàng hóa khác, cùng nhóm biểu mẫu chứng nhận/CNSP và hồ sơ lịch sử. Những nội dung này chỉ dùng để rút trích cấu trúc nghiệp vụ. Không import khách hàng, số liệu, chữ ký, file lịch sử hoặc đường dẫn Desktop/UNC vào runtime. `QC20` không phải mã catalog PGD; runtime dùng các profile `GĐ-THEP-KG`, `GĐ-THEP-TT58`, `GĐ-MAY-01`, `GĐ-THAN-01`, `GĐ-NGOAI-01` và `GĐ-HH-01`. Các trường phí, thanh toán và báo giá bị loại khỏi phạm vi.
 
 ## Mục tiêu
 
 - Mỗi PYC là một bộ hồ sơ PGD duy nhất.
 - Người phụ trách theo hồ sơ có thể thực hiện xuyên suốt từ tiếp nhận đến đóng gói và trình lãnh đạo.
 - Các trang PGD là các trạm thao tác trên cùng hồ sơ, không phải các bảng kiểm tra folder và không tạo projection data riêng.
-- Bốn bề mặt từng bị rỗng phải có bộ chọn hồ sơ, form nghiệp vụ, trạng thái bằng chứng và hành động lưu rõ ràng.
+- Bốn bề mặt từng bị rỗng phải có bộ chọn hồ sơ, form nghiệp vụ, trạng thái bằng chứng và hành động lưu rõ ràng; bộ chọn phải bao phủ mọi nhóm PGD đang có trong nguồn.
 - Soạn thảo tài liệu sử dụng DOCX thật, placeholder/cell có cấu trúc và giữ snapshot khi phát hành.
 
 ## Kiến trúc điều hướng
@@ -63,7 +63,7 @@ Form phải hỗ trợ:
 - bảng dòng mẫu gồm mô tả, cỡ lô, số lượng, kích thước, mã mẫu, chỉ tiêu và phương pháp;
 - tách rõ phần `LAB` và `RETAINED`, niêm phong, người nhận, thời hạn lưu và trạng thái mẫu.
 
-Với `GĐ-THEP-KG` và `TT58`, form có các field riêng cho phương thức đánh giá (`METHOD_7`/Phương thức 7), tiêu chuẩn công bố và căn cứ lấy mẫu. Không hiển thị các field thép như bắt buộc cho nhóm máy/dây chuyền hoặc than.
+Với nhóm thép/kim loại, profile `GĐ-THEP-KG` có các field riêng cho phương thức đánh giá (`METHOD_7`/Phương thức 7), tiêu chuẩn công bố và căn cứ lấy mẫu; `GĐ-THEP-TT58` dùng bộ field thép/kim loại chung nhưng không bị ép các ràng buộc riêng của thép không gỉ. Nhóm máy/dây chuyền, than, giám định ngoài và hàng hóa khác dùng field đặc thù tương ứng, không hiển thị các field thép như bắt buộc.
 
 ### PTN & kết quả
 
@@ -101,7 +101,7 @@ Nút **Cài đặt DOCX** mở modal tại chỗ. Modal không điều hướng,
 - Mỗi trạm đọc/ghi `PgdInspectionRequest` và collection PGD liên kết; không tạo collection cho riêng projection trạm.
 - Server kiểm tra scope PGD, lifecycle, assignment và quyền chủ hồ sơ/quản lý; UI chỉ phản ánh quyền.
 - PCN và PGD dùng chung tài khoản/khách hàng nhưng không đọc collection hoặc template của nhau.
-- `QC20` không xuất hiện trong catalog, bộ lọc hay form PGD. Thép không gỉ PGD dùng `GĐ-THEP-KG`.
+- `QC20` không xuất hiện trong catalog, bộ lọc hay form PGD. Catalog PGD phải có đủ sáu profile đang hoạt động theo nguồn; thép không gỉ dùng `GĐ-THEP-KG`, còn “giám định ngoài” là loại hình `GĐ-NGOAI-01` trong nhóm dữ liệu `OTHER`, độc lập với địa điểm thực hiện.
 - Không có runtime watcher/import/scan folder; chỉ dùng definition/asset đã duyệt trong repo hoặc Storage PGD.
 
 ## Tiêu chí nghiệm thu

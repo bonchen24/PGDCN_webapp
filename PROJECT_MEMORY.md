@@ -6,10 +6,44 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-05 — Chốt mã PYC, commit và production Docker
+
+- Mã PYC PGD đã chốt là `PGD-YYMMDD-TT` (ví dụ `PGD-260905-01`), không gắn literal `PYC`; `TT` là số thứ tự hai chữ số và reset về `01` theo ngày Việt Nam.
+- Nhãn và luồng PGD đã đồng bộ phê duyệt hai cấp: hoàn thiện/duyệt chuyên môn trước, sau đó phê duyệt lãnh đạo và ký; các nhãn cũ mô tả một cấp “quản lý PGD” đã được loại bỏ khỏi runtime.
+- `PROJECT_MEMORY.md` và ghi chú Obsidian PGD được cập nhật cùng kết quả kiểm chứng. Folder nguồn `C:\Users\HungX\Desktop\PGD` vẫn chỉ được đọc, không bị sửa, xóa, đổi tên, watcher hoặc import runtime.
+- Verification: `npm test` **684/684 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass. Docker Desktop đã rebuild/recreate image `pcn_webapp-webapp:latest`; container `pcn_webapp-webapp` đang chạy `0.0.0.0:2357->2357/tcp`; `/api/health` và `/pgdcn/pgd` trả HTTP 200.
+
+## Cập nhật 2026-09-05 — Mở đủ nhóm PGD theo folder nguồn và boundary Cài đặt DOCX
+
+- Rà soát read-only lại folder `C:\Users\HungX\Desktop\PGD`, gồm các nhánh thép/kim loại, máy/dây chuyền, than và giám định ngoài/hàng hóa khác. Không có thao tác ghi, xóa, đổi tên, watcher hoặc import vào thư mục nguồn.
+- Đồng bộ SSoT: template PGD được quản lý trong modal **Cài đặt DOCX** của workspace **Soạn thảo tài liệu**, không thuộc **Cài đặt hệ thống**.
+- Bộ chọn và catalog runtime PGD mở đủ `GĐ-THEP-KG`, `GĐ-THEP-TT58`, `GĐ-MAY-01`, `GĐ-THAN-01`, `GĐ-NGOAI-01` và `GĐ-HH-01`. `Giám định ngoài` là loại hình riêng trong nhóm dữ liệu `OTHER`; địa điểm/kênh thực hiện vẫn lưu độc lập.
+- Nếu database còn catalog cũ, runtime hợp nhất theo `id` và tự bổ sung profile chuẩn còn thiếu. Kiểm chứng route `/pgdcn/pgd` vẫn hiển thị đúng lớp đăng nhập bảo vệ; chưa kiểm tra được các trạm sau đăng nhập vì không có phiên test xác thực và không tự nhập mật khẩu.
+- Verification lượt này: toàn bộ bộ test có phạm vi PGD/PGDCN được lọc theo tên file **151/151 pass**, toàn bộ `npm test` **669/669 pass**, `npm run lint`, `npm run build` và `git diff --check` pass.
+
+## Cập nhật 2026-09-04 — PGD v1: mã hồ sơ reset theo ngày và phạm vi nhóm nguồn
+
+- PGD v1 đã chốt runtime cho toàn bộ loại hình nguồn: thép không gỉ `GĐ-THEP-KG`, thép/kim loại theo TT58 `GĐ-THEP-TT58`, máy/dây chuyền `GĐ-MAY-01`, than `GĐ-THAN-01`, giám định ngoài `GĐ-NGOAI-01` và hàng hóa/đối tượng khác `GĐ-HH-01`.
+- Số hồ sơ chính do server cấp theo giờ Việt Nam, định dạng `PGD-YYMMDD-TT` (ví dụ `PGD-260905-01`), serial hai chữ số tăng dần và reset về `01` mỗi ngày; mã không gắn literal `PYC` vì PYC là tên loại phiếu. Cấp số dùng advisory transaction lock và kiểm tra idempotency theo `request.id`; client không còn tự đặt mã.
+- Sổ đăng ký và card PGD luôn hiển thị `requestCode` làm mã chính; số đăng ký bên ngoài chỉ là tham chiếu phụ. Một PYC tiếp tục là một dossier duy nhất, hỗ trợ nhiều dòng sản phẩm/lô/mẫu qua các bảng nghiệp vụ.
+- Soát xét kỹ thuật là bước hoàn thiện bằng chứng/báo cáo; hệ thống đi qua hai bước phê duyệt `TECHNICAL_REVIEW` và `LEADERSHIP_APPROVAL`, sau đó lãnh đạo ký chứng thư. Server không cho bỏ qua cổng chuyên môn.
+- Đã kiểm chứng: `npm run test:pcn` **667/667 pass**, nhóm kiểm thử PGD/PGDCN trọng tâm **39/39 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass. Full suite **1167/1172 pass**; 5 lỗi còn lại thuộc các kiểm thử historical PCN reconcile/discovery/manual mapping ngoài phạm vi PGD và trái với chính sách không import/watcher.
+- Folder `C:\Users\HungX\Desktop\PGD` chỉ được đọc metadata phục vụ kiểm tra; không có thao tác ghi, xóa, đổi tên, watcher hoặc import dữ liệu lịch sử vào runtime. Template vận hành dùng asset đã đóng gói trong repo/Storage PGD.
+
+## Cập nhật 2026-09-04 — Backup thủ công-only, retention và Docker volume
+
+- Chính sách backup PCN đã chuyển sang **chỉ backup thủ công**: server không khởi tạo scheduler/timer và không còn tạo archive `auto`. Chỉ Admin gọi được endpoint tạo backup hiện hành.
+- Sau mỗi backup thủ công, retention theo profile giữ tối đa 3 archive mới nhất và tổng dung lượng tối đa 2 GiB (`BACKUP_RETENTION_COUNT=3`, `BACKUP_MAX_TOTAL_BYTES=2147483648`); chỉ dọn archive kỹ thuật cũ, không xóa hồ sơ nghiệp vụ.
+- Archive được mount trên Docker named volume `pcn_webapp_backups` tại `/app/backups`, nên không mất khi restart/recreate container. Archive kiểm chứng hiện tại `pcn_certification_manual_20260904-083718.zip` vẫn tồn tại sau rebuild/restart, dung lượng khoảng 586,4 MB.
+- Lỗi Storage trước đó được xử lý bằng fallback `SUPABASE_SERVICE_ROLE_KEY`/`SERVICE_ROLE_KEY`; production hiện nhận service-role key ở dạng runtime, không ghi secret vào source, Memory hoặc Obsidian. File `.env` không bị sửa.
+- Docker production đã build/recreate lại: image `pcn_webapp-webapp:latest` digest `sha256:4b2e5b8ad3e9b6bfe914c8e1ce8464df09b015977c53ddcca0b4b938c814946f`; container `pcn_webapp-webapp` đang `running`, publish port `2357`, mount volume backup đúng; HTTP `/` trả `200`, PostgreSQL connected/schema initialized.
+- Kiểm chứng gần nhất: `npm test` **667/667 pass**, `npm run lint` pass, Docker `npm run build` pass, `git diff --check` pass. Commit policy backup: `f6a5da9` (`fix: make backups manual and bounded`).
+- Không sửa/xóa nguồn PGD/Desktop/UNC; các file `dist`, attachment, `tmp` và kế hoạch nội bộ đang dirty vẫn được giữ nguyên ngoài phạm vi thay đổi.
+
 ## Cập nhật 2026-09-04 — PGD dossier cockpit, trạm nghiệp vụ và soạn thảo cell
 
 - PGD hiện vận hành theo mô hình một PYC = một bộ hồ sơ: `Hồ sơ PYC`, `Chuẩn bị & Phân công`, `Hiện trường & Lấy mẫu`, `PTN & Kết quả`, `Báo cáo, Chứng thư & Lưu trữ` và `Soạn thảo tài liệu`. Các trạm dùng chung bộ chọn hồ sơ và mở lại cùng dossier đầy đủ, không tạo projection dữ liệu độc lập.
-- Bốn trạm đã có form lưu nghiệp vụ thật: phân công/kế hoạch; biên bản hiện trường, đo kiểm, dòng lấy mẫu LAB/mẫu lưu và checklist chứng từ; phiếu giao nhận/yêu cầu PTN, kết quả và cảnh báo thiếu KQTN; review KQTN, báo cáo, chứng thư, duyệt kỹ thuật/lãnh đạo, mục lục và đóng gói.
+- Bốn trạm đã có form lưu nghiệp vụ thật: phân công/kế hoạch; biên bản hiện trường, đo kiểm, dòng lấy mẫu LAB/mẫu lưu và checklist chứng từ; phiếu giao nhận/yêu cầu PTN, kết quả và cảnh báo thiếu KQTN; review KQTN, báo cáo, chứng thư, hoàn thiện soát xét, phê duyệt chuyên môn/lãnh đạo, mục lục và đóng gói.
 - Các bảng lặp được nhập bằng `PgdTableFieldEditor` (đo kiểm, dòng lấy mẫu, hạng mục/phương pháp thử, kết quả PTN) với cột, nhãn, thêm/xóa dòng và khóa read-only theo quyền/lifecycle. `PgdCellManager` được đặt trong modal cục bộ `Cài đặt DOCX PGD`; không đưa template PGD vào `Cài đặt hệ thống`.
 - Soạn thảo tài liệu luôn chọn một PYC, lọc template đang hoạt động theo nhóm sản phẩm, bind placeholder/cell có kiểu dữ liệu và khóa form khi dossier/template không còn được sửa. DOCX source là asset đóng gói của ứng dụng; không đọc Desktop/UNC lúc runtime.
 - Ranh giới nghiệp vụ giữ nguyên: thép không gỉ PGD dùng mã `GĐ-THEP-KG`; `QC20` không xuất hiện trong catalog/menu PGD. Không có báo giá, thanh toán, phí thử nghiệm hoặc trường công nợ trong bề mặt PGD. Dữ liệu PGD vẫn đi qua collection/API/RBAC `pgd` riêng và dùng chung khách hàng, nhân sự, cài đặt hệ thống theo scope phòng.
@@ -19,7 +53,7 @@ Description: Persistent project memory and verified deployment observations for 
 ## Cập nhật 2026-09-04 — Hoàn thiện PGD theo nhóm sản phẩm và bộ biểu mẫu 15 mẫu
 
 - PGD tiếp tục được triển khai như phần mềm tiếp nhận PYC và hình thành từng bộ hồ sơ mới: một PYC tương ứng một dossier, nhân viên phụ trách xuyên suốt các trạm tiếp nhận → phân công/kế hoạch → hiện trường/lấy mẫu → PTN/KQTN → báo cáo/quyết định/chứng thư → duyệt/ký/trả/lưu trữ. Không dùng app để kiểm tra hoặc đồng bộ folder hồ sơ.
-- Catalog PGD hiện tách các nhóm thép/kim loại `GĐ-THEP-KG`, máy móc/dây chuyền `GĐ-MAY-01`, than `GĐ-THAN-01` và nhóm khác; QC20 không thuộc PGD và không xuất hiện trong catalog/route PGD.
+- Domain và catalog PGD mở các nhóm/lĩnh vực thép/kim loại `GĐ-THEP-KG`, `GĐ-THEP-TT58`, máy móc/dây chuyền `GĐ-MAY-01`, than `GĐ-THAN-01`, giám định ngoài `GĐ-NGOAI-01` và nhóm khác `GĐ-HH-01`. QC20 không thuộc PGD và không xuất hiện trong catalog/route PGD.
 - Form intake/workspace đã có trường riêng theo nhóm: thép có mác, cỡ lô, nhiều sản phẩm cùng mác và kế hoạch lấy mẫu; máy/dây chuyền có model, serial, năm sản xuất, thông số, tình trạng, phụ kiện, đồng bộ, lắp đặt và tiêu chuẩn an toàn; than có loại, nguồn, cỡ hạt, tiêu chuẩn, căn cứ lấy mẫu và chỉ tiêu độ ẩm/độ tro/nhiệt trị/lưu huỳnh. Cell được scope theo product group và validate typed ở domain/server.
 - Module soạn thảo dùng cell/placeholder PGD có binding canonical, form theo kiểu dữ liệu, bảng dòng/cột, snapshot/version và guard không cho cell hoặc template PGD chứa QC20/UNC/Desktop. Generator không bind sang PCN hay đường dẫn nguồn.
 - Gói DOCX `templates/pgd` hiện có `PGD-BM-01` đến `PGD-BM-15`, manifest version `1.3`: tiếp nhận, phân công, kế hoạch, hiện trường, lấy mẫu, giao nhận/yêu cầu PTN, báo cáo, chứng thư, quyết định, bìa hồ sơ, diễn biến vụ, nhật ký hiện trường, review KQTN, biên bản vụ giám định và biên bản giao mẫu PTN. BM-14/BM-15 giữ các trường lô, chứng từ, đại diện, mã PTN, bên giao/nhận và bảng mẫu/chỉ tiêu.
@@ -125,7 +159,7 @@ Description: Persistent project memory and verified deployment observations for 
 ## Chốt hiện trạng 2026-09-03 — Cài đặt DOCX PCN/PGD và bộ template thật
 
 - Header `Soạn thảo tài liệu PCN` và `Tạo tài liệu PGD` đã có nút `Cài đặt DOCX`; nút PCN mở `Cài đặt PCN`, nút PGD mở `Cài đặt PGD`.
-- `Cài đặt hệ thống` dùng chung chỉ còn phạm vi Nhân sự & tài khoản. Cấu hình template DOCX, placeholder và sinh tài liệu thuộc từng phòng tương ứng.
+- `Cài đặt hệ thống` dùng chung chỉ còn phạm vi Nhân sự & tài khoản và cấu hình dùng chung. Cấu hình template DOCX/cell và sinh tài liệu thuộc modal cục bộ của workspace từng phòng tương ứng.
 - PGD quản lý 8 biểu mẫu DOCX thật (`PGD-BM-01` đến `PGD-BM-08`) cùng `fileName`, `placeholderKeys`, `requiredPlaceholderKeys`; form nhập liệu được suy ra từ metadata placeholder.
 - `utils/pgdDocumentGeneration.ts` đọc DOCX đóng gói trong `templates/pgd/*.docx` và render bằng Docxtemplater với delimiter `[[key]]`. Bảng DOCX giả kiểu `Cell/Giá trị` đã được loại khỏi luồng sinh tài liệu; hydration vẫn tương thích các bản ghi template cũ đã lưu.
 - `utils/pgdTemplatePack.ts` kiểm tra trực tiếp file nguồn, kích thước và độ khớp placeholder; server trả `sourceInspection` cho bootstrap/API, còn `GET /api/pgd/document-templates/:templateId/source` cho phép tải đúng DOCX trong folder PGD. PUT và generation đều chặn source thiếu hoặc metadata lệch.
@@ -586,9 +620,9 @@ Description: Persistent project memory and verified deployment observations for 
 
 ## Cập nhật 2026-09-04 — Hợp nhất Cài đặt hệ thống PGDCN
 
-- Đã cập nhật `design.md`: chỉ dùng một bề mặt **Cài đặt hệ thống** cho nhân sự, cấu hình PCN/PGD và quản trị template DOCX; không có mục/route sidebar riêng tên Cài đặt PCN hoặc Cài đặt PGD.
+- Ghi chú lịch sử: trước đây từng hợp nhất quản trị template DOCX vào **Cài đặt hệ thống**. Quyết định hiện hành ngày 2026-09-05 đã thay thế cách này: template/cell PGD và PCN được quản lý trong modal **Cài đặt DOCX** cục bộ của workspace; không có mục/route sidebar riêng tên Cài đặt PCN hoặc Cài đặt PGD.
 - Sidebar dùng chung giữ các nhánh Tổng quan phòng, Khách hàng, Trợ lý AI, Nhật ký hoạt động và Cài đặt hệ thống; các nhóm PCN/PGD chỉ còn nghiệp vụ vận hành. Nút Cài đặt DOCX trong workspace vẫn mở đúng khu vực dùng chung.
-- `PgdcnSystemSettingsView` hiện gom quản lý nhân sự, cấu hình PCN + template DOCX PCN và template DOCX PGD. Ranh giới API/collection PCN và PGD vẫn độc lập; chỉ hợp nhất lớp điều hướng/UI.
+- `PgdcnSystemSettingsView` hiện chỉ gom quản lý nhân sự và cấu hình dùng chung; template DOCX PCN/PGD đã tách về modal cục bộ của từng workspace. Ranh giới API/collection PCN và PGD vẫn độc lập.
 - Điều hướng tương thích `settings` từ workspace PCN/PGD được ánh xạ về `{ domain: 'department', section: 'system-settings' }`; không thay đổi dữ liệu lịch sử, không đọc Desktop/UNC lúc runtime.
 - Commit: `e402ed3` — `feat: consolidate PGDCN system settings`.
 - Verification: focused settings/navigation **15/15 pass**, `npm test` **665/665 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass.

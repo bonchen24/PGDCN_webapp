@@ -62,7 +62,7 @@ test('PGD DOCX output fills the real form and does not emit the legacy Cell/Giá
   const request = {
     id: 'request-docx-template',
     domain: 'pgd' as const,
-    requestCode: 'PYC-GD-DOCX-001',
+    requestCode: 'PGD-260905-01',
     intakeChannel: 'DIRECT' as const,
     requester: { name: 'Người yêu cầu', phone: '0900000000' },
     productGroup: 'STEEL_METAL' as const,
@@ -130,7 +130,7 @@ test('PGD intake template binds registry metadata into DOCX cells', () => {
   const request = {
     id: 'request-intake-registry',
     domain: 'pgd' as const,
-    requestCode: 'PYC-GD-001',
+    requestCode: 'PGD-260905-02',
     intakeChannel: 'EMAIL' as const,
     requester: { name: 'Người yêu cầu' },
     productGroup: 'STEEL_METAL' as const,

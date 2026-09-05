@@ -8,6 +8,9 @@ import {
   PGD_WORKFLOW_STATES,
   createPgdInspectionRequest,
   getPgdCollectionMutationDenial,
+  getPgdDossierDeletionDenial,
+  getPgdDossierEditDenial,
+  getPgdActiveCatalog,
   isPgdCatalogItemAllowed,
   getPgdApprovalDenial,
   getPgdTransitionDenial,
@@ -20,6 +23,7 @@ import {
   buildPgdLabResult,
   validatePgdIntake,
   validatePgdRegistryMetadata,
+  mergePgdCatalogDefaults,
   type PgdInspectionRequest,
   type PgdLabRequest,
   type PgdResultTemplate,
@@ -29,7 +33,7 @@ const intake = {
   id: 'pgd-request-1',
   requestCode: 'PGD-2026-0001',
   intakeChannel: 'EMAIL' as const,
-  requester: { name: 'Công ty A', contactPerson: 'Nguyễn Văn A', phone: '0900000000', email: 'a@example.test' },
+  requester: { name: 'Công ty A', address: 'Hà Nội', contactPerson: 'Nguyễn Văn A', phone: '0900000000', email: 'a@example.test' },
   customerSnapshot: { name: 'Công ty A', address: 'Hà Nội' },
   productGroup: 'STEEL_METAL' as const,
   catalogItemId: 'STEEL_LOT_INSPECTION',
@@ -70,12 +74,38 @@ test('PGD catalog owns the stainless-steel inspection scope without a PCN field 
   assert.ok(DEFAULT_PGD_CATALOG.some((item) => item.productGroup === 'STEEL_METAL'));
   assert.ok(DEFAULT_PGD_CATALOG.some((item) => item.productGroup === 'MACHINERY_LINE'));
   assert.ok(DEFAULT_PGD_CATALOG.some((item) => item.productGroup === 'COAL'));
+  assert.ok(DEFAULT_PGD_CATALOG.some((item) => item.productGroup === 'OTHER'));
   assert.equal(DEFAULT_PGD_CATALOG.some((item) => JSON.stringify(item).toUpperCase().includes('QC20')), false);
   assert.equal(PGD_COLLECTIONS.requests, 'pgdInspectionRequests');
   assert.equal(PGD_COLLECTIONS.certificates, 'pgdInspectionCertificates');
   assert.equal(DEFAULT_PGD_CATALOG.find((item) => item.id === 'STEEL_LOT_INSPECTION')?.code, 'GĐ-THEP-KG');
   assert.equal(isPgdCatalogItemAllowed('STEEL_LOT_INSPECTION'), true);
   assert.equal(isPgdCatalogItemAllowed('QC20'), false);
+});
+
+test('PGD catalog supplements a legacy persisted catalog with missing source-derived profiles', () => {
+  const legacyCatalog = DEFAULT_PGD_CATALOG.filter((item) => item.code === 'GĐ-THEP-KG');
+  const merged = mergePgdCatalogDefaults(legacyCatalog);
+  assert.deepEqual(
+    getPgdActiveCatalog(merged).map((item) => item.code),
+    ['GĐ-THEP-KG', 'GĐ-THEP-TT58', 'GĐ-MAY-01', 'GĐ-THAN-01', 'GĐ-NGOAI-01', 'GĐ-HH-01', 'GĐ-SL-KL-01', 'GĐ-TTXX-01', 'GĐ-THEP-CB', 'GĐ-MAY-TN', 'GĐ-NGOAI-CT'],
+  );
+});
+
+test('PGD accepts non-stainless steel/metal requests through the general TT58 profile', () => {
+  const issues = validatePgdIntake({
+    ...intake,
+    catalogItemId: 'STEEL_TT58_INSPECTION',
+    method: 'QT-GĐ-10',
+    standards: ['ASTM A36', 'Tiêu chuẩn hợp đồng'],
+    productDetails: {
+      ...intake.productDetails,
+      productForm: 'Phôi thép',
+      grade: 'Q235',
+      productStandard: 'GB/T 700',
+    },
+  });
+  assert.deepEqual(issues, []);
 });
 
 test('PGD method metadata is derived from the researched inspection procedures and rejects free text', () => {
@@ -178,7 +208,7 @@ test('PGD intake validates the request identity and rejects cross-domain documen
       checksum: 'a'.repeat(64),
     }],
   });
-  assert.deepEqual(issues.map((issue) => issue.field), ['id', 'requestCode', 'requester.name', 'intakeChannel', 'productGroup', 'documentPointers']);
+  assert.deepEqual(issues.map((issue) => issue.field), ['id', 'requestCode', 'requester.name', 'requester.address', 'requester.contactPerson', 'requester.phone', 'intakeChannel', 'productGroup', 'documentPointers']);
   assert.match(validatePgdIntake({ ...intake, catalogItemId: 'QC20' })[0]?.field || '', /catalogItemId/);
 });
 
@@ -242,6 +272,44 @@ test('PGD mutation boundary rejects PCN collections and PCN-only users', () => {
   assert.match(getPgdCollectionMutationDenial(PGD_COLLECTIONS.requests, 'staff', 'write', { departmentScopes: ['PCN'] }) || '', /phạm vi PGD/);
 });
 
+test('PGD dossier deletion is system-manager-only, status-gated and no longer soft-delete', () => {
+  const requestWith = (status: PgdInspectionRequest['status']) => ({
+    ...createPgdInspectionRequest({
+      ...intake,
+      requestCode: 'PGD-260905-01',
+      catalogItemId: 'STEEL_TT58_INSPECTION',
+      method: 'QT-GĐ-10',
+      standards: ['ASTM A36'],
+    }),
+    status,
+  });
+  assert.equal(getPgdDossierDeletionDenial(requestWith('DRAFT'), { systemRole: 'admin', departmentScopes: ['PGD'] }), null);
+  assert.equal(getPgdDossierDeletionDenial(requestWith('DRAFT'), { role: 'admin', departmentScopes: ['PGD'] }), null);
+  assert.equal(getPgdDossierDeletionDenial(requestWith('DRAFT'), { systemRole: 'staff', departmentRoleCode: 'LEADERSHIP', departmentScopes: ['PCN'] }), null);
+  assert.match(getPgdDossierDeletionDenial(requestWith('DRAFT'), { systemRole: 'staff', departmentScopes: ['PGD'] }) || '', /Admin hoặc Quản lý/);
+  assert.match(getPgdDossierDeletionDenial(requestWith('DRAFT'), { systemRole: 'staff', pgdRole: 'PGD_MANAGER', departmentScopes: ['PGD'] }) || '', /Admin hoặc Quản lý/);
+  assert.match(getPgdDossierDeletionDenial(requestWith('ARCHIVED'), { systemRole: 'admin', departmentScopes: ['PGD'] }) || '', /không thể xóa|lưu trữ/);
+});
+
+test('PGD dossier editing is available to system Admin or leadership manager before signature', () => {
+  const requestWith = (status: PgdInspectionRequest['status']) => ({
+    ...createPgdInspectionRequest({
+      ...intake,
+      requestCode: 'PGD-260905-02',
+      catalogItemId: 'STEEL_TT58_INSPECTION',
+      method: 'QT-GĐ-10',
+      standards: ['ASTM A36'],
+    }),
+    status,
+  });
+
+  assert.equal(getPgdDossierEditDenial(requestWith('DRAFT'), { systemRole: 'admin', departmentScopes: ['PGD'] }), null);
+  assert.equal(getPgdDossierEditDenial(requestWith('CAPABILITY_REVIEW'), { systemRole: 'staff', departmentRoleCode: 'LEADERSHIP', departmentScopes: ['PGD'] }), null);
+  assert.match(getPgdDossierEditDenial(requestWith('DRAFT'), { systemRole: 'staff', pgdRole: 'PGD_MANAGER', departmentScopes: ['PGD'] }) || '', /toàn hệ thống/);
+  assert.match(getPgdDossierEditDenial(requestWith('DRAFT'), { systemRole: 'staff', departmentScopes: ['PGD'] }) || '', /Admin hoặc Quản lý/);
+  assert.match(getPgdDossierEditDenial(requestWith('SIGNED'), { systemRole: 'admin', departmentScopes: ['PGD'] }) || '', /ký|khóa/);
+});
+
 test('PGD assignment validation requires active PGD-scoped personnel and a technical reviewer', () => {
   const users = [
     { username: 'inspector', active: true, departmentScopes: ['PGD'], pgdRole: 'PGD_FIELD_INSPECTOR' },
@@ -272,11 +340,11 @@ test('PGD document pointers carry domain and immutable provenance metadata', () 
   assert.equal(pointer.checksum.length, 64);
 });
 
-test('PGD approval gates enforce technical and leadership scopes independently', () => {
+test('PGD approval chain accepts technical review before manager approval', () => {
   assert.equal(getPgdApprovalDenial('TECHNICAL_REVIEW', 'TECHNICAL_REVIEW', { role: 'staff', pgdRole: 'PGD_TECHNICAL' }), null);
-  assert.match(getPgdApprovalDenial('TECHNICAL_REVIEW', 'TECHNICAL_REVIEW', { role: 'staff', pgdRole: 'PGD_DOCUMENT_CLERK' }) || '', /kỹ thuật/);
+  assert.match(getPgdApprovalDenial('TECHNICAL_REVIEW', 'TECHNICAL_REVIEW', { role: 'staff', pgdRole: 'PGD_DOCUMENT_CLERK' }) || '', /phê duyệt chuyên môn/);
   assert.equal(getPgdApprovalDenial('LEADERSHIP_APPROVAL', 'LEADERSHIP_APPROVAL', { role: 'staff', pgdRole: 'PGD_MANAGER' }), null);
-  assert.match(getPgdApprovalDenial('LEADERSHIP_APPROVAL', 'LEADERSHIP_APPROVAL', { role: 'staff', pgdRole: 'PGD_TECHNICAL' }) || '', /lãnh đạo/);
+  assert.match(getPgdApprovalDenial('LEADERSHIP_APPROVAL', 'LEADERSHIP_APPROVAL', { role: 'staff', pgdRole: 'PGD_TECHNICAL' }) || '', /lãnh đạo PGD/);
   assert.match(getPgdApprovalDenial('TECHNICAL_REVIEW', 'LEADERSHIP_APPROVAL', { role: 'admin' }) || '', /trạng thái/);
 });
 

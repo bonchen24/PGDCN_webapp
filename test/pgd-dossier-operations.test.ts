@@ -19,7 +19,7 @@ const intake = {
   id: 'pgd-request-operations-1',
   requestCode: 'PGD-2026-OPS-001',
   intakeChannel: 'EMAIL' as const,
-  requester: { name: 'Công ty A', contactPerson: 'Nguyễn Văn A', phone: '0900000000' },
+  requester: { name: 'Công ty A', address: 'Hà Nội', contactPerson: 'Nguyễn Văn A', phone: '0900000000' },
   customerSnapshot: { name: 'Công ty A', address: 'Hà Nội' },
   productGroup: 'STEEL_METAL' as const,
   catalogItemId: 'STEEL_LOT_INSPECTION',

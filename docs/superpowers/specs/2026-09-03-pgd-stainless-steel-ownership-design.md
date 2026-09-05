@@ -1,4 +1,6 @@
-# Đặc tả: PGD sở hữu nghiệp vụ giám định thép không gỉ
+# Đặc tả lịch sử: PGD sở hữu nghiệp vụ giám định thép không gỉ
+
+> Tài liệu này mô tả phạm vi khởi đầu của PGD. Runtime hiện hành đã mở rộng catalog cho toàn bộ loại hình khảo sát trong folder PGD; xem `docs/superpowers/specs/2026-09-04-pgd-dossier-cockpit-design.md` và `design.md` để dùng làm SSoT.
 
 ## Trạng thái
 
@@ -121,4 +123,3 @@ Module cell phải:
 4. Cell table thêm/xóa dòng và bind đúng dữ liệu vào DOCX; thiếu required field bị chặn tại preflight.
 5. PGD không đọc/sửa hồ sơ PCN và PCN không đọc/sửa hồ sơ PGD; template snapshot không bị thay đổi sau phát hành.
 6. Không có code runtime đọc Desktop/UNC, watcher hoặc import hồ sơ lịch sử; thư mục nguồn không bị sửa/xóa.
-

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import type { PgdGeneratedDocument, PgdInspectionRequest } from '../utils/pgdDomain';
 import {
   getPgdTemplateCellsForProductGroup,
+  getPgdDocumentTemplates,
   normalizePgdCellValues,
   validatePgdCellValues,
   type PgdDocumentTemplate,
@@ -18,7 +19,6 @@ import { getPgdDocumentDownloadUrl, getPgdTemplateSourceUrl } from '../utils/pgd
 import { usePgdStore } from '../store-pgd';
 import type { PgdCaseEvent, PgdDossierIndex, PgdFieldActivityLog, PgdInspectionPlan, PgdLabResultReview } from '../utils/pgdArtifacts';
 import PgdTableFieldEditor from './PgdTableFieldEditor';
-import PgdCellManager from './PgdCellManager';
 
 type PgdDocumentGenerationPanelProps = {
   request: PgdInspectionRequest;
@@ -187,7 +187,11 @@ export default function PgdDocumentGenerationPanel({ request, templates, documen
   const [cellValues, setCellValues] = useState<Record<string, unknown>>({});
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState('');
-  const availableTemplates = useMemo(() => templates.filter((template) => template.active && template.status !== 'RETIRED' && template.productGroups.includes(request.productGroup)), [templates, request.productGroup]);
+  const catalogTemplates = useMemo(() => {
+    const source = templates.length > 0 ? templates : getPgdDocumentTemplates();
+    return source.filter((template) => template.active && template.status !== 'RETIRED');
+  }, [templates]);
+  const availableTemplates = useMemo(() => catalogTemplates.filter((template) => template.productGroups.includes(request.productGroup)), [catalogTemplates, request.productGroup]);
   const selectedTemplate = availableTemplates.find((item) => item.id === templateId) || availableTemplates[0];
   const template = useMemo(() => {
     if (!selectedTemplate) return undefined;
@@ -217,6 +221,12 @@ export default function PgdDocumentGenerationPanel({ request, templates, documen
       return next;
     });
   }, [formCells, template?.id, request.id, inspectionPlan?.updatedAt, caseEvents.length, fieldActivityLogs.length, labResults.length, labResultReview?.updatedAt, dossierIndex?.updatedAt]);
+
+  const selectTemplate = (nextTemplateId: string) => {
+    setTemplateId(nextTemplateId);
+    setCellValues({});
+    setIssue('');
+  };
 
   const updateCell = (cell: PgdTemplateCell, value: unknown) => {
     setCellValues((current) => ({ ...current, [cell.key]: value }));
@@ -249,7 +259,8 @@ export default function PgdDocumentGenerationPanel({ request, templates, documen
 
   return <section className="rounded-xl border border-blue-100 bg-blue-50/50 p-3" aria-label="Sinh tài liệu PGD">
     <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="flex items-center gap-2 text-xs font-black text-blue-950"><FileOutput size={15} className="text-blue-600" /> Sinh tài liệu PGD</h3><p className="mt-1 text-[10px] text-blue-800/70">Nhập dữ liệu theo form, sau đó sinh tài liệu từ template DOCX của phòng.</p></div><div className="flex flex-wrap items-center gap-1.5"><span className="rounded-full border border-blue-200 bg-white px-2 py-1 text-[9px] font-black text-blue-700">PGD · {request.productGroup}</span>{onOpenSettings && <button type="button" onClick={onOpenSettings} className="inline-flex min-h-8 items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 text-[9px] font-black text-blue-700 hover:bg-blue-100"><Settings2 size={12} /> Cài đặt DOCX</button>}</div></div>
-    <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_8rem_auto]"><label><span className="mb-1 block text-[9px] font-black text-slate-500">Loại biểu mẫu</span><select aria-label="Loại template tài liệu PGD" value={template?.id || ''} onChange={(event) => { setTemplateId(event.target.value); setCellValues({}); }} className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-bold outline-none focus:border-blue-400">{availableTemplates.map((item) => <option key={item.id} value={item.id}>{TEMPLATE_KIND_LABELS[item.kind]} · {item.code} · v{item.version}</option>)}</select></label><label><span className="mb-1 block text-[9px] font-black text-slate-500">Định dạng</span><select aria-label="Định dạng tài liệu PGD" value={format} onChange={(event) => setFormat(event.target.value as PgdDocumentTemplateFormat)} className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-bold outline-none focus:border-blue-400">{(template?.formats || ['DOCX', 'PDF']).map((item) => <option key={item} value={item}>{item}</option>)}</select></label><div className="flex items-end"><button type="button" disabled={!canMutate || busy || !template} onClick={() => void generate()} className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"><Sparkles size={14} />{busy ? 'Đang sinh...' : 'Sinh DOCX/PDF & tải file'}</button></div></div>
+    <section className="mt-3 rounded-xl border border-blue-200 bg-white p-2.5" aria-label="Danh mục loại tài liệu PGD"><div className="flex flex-wrap items-center justify-between gap-2"><div><h4 className="text-[10px] font-black text-blue-950">Danh mục loại tài liệu PGD</h4><p className="mt-0.5 text-[9px] text-slate-500">Chọn trực tiếp loại tài liệu cần tạo cho nhóm {request.productGroup}.</p></div><span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-[9px] font-black text-blue-700">{availableTemplates.length} đầu mục</span></div>{availableTemplates.length > 0 ? <div className="mt-2 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">{availableTemplates.map((item) => <button type="button" key={item.id} aria-pressed={item.id === selectedTemplate?.id} onClick={() => selectTemplate(item.id)} className={`rounded-lg border px-2.5 py-2 text-left transition ${item.id === selectedTemplate?.id ? 'border-blue-400 bg-blue-50 text-blue-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/50'}`}><span className="block text-[10px] font-black">{TEMPLATE_KIND_LABELS[item.kind]}</span><span className="mt-0.5 block font-mono text-[9px] text-slate-500">{item.code} · v{item.version}</span></button>)}</div> : <p className="mt-2 rounded-lg border border-dashed border-amber-200 bg-amber-50 p-2 text-[10px] font-bold text-amber-800">Chưa có template phù hợp với nhóm sản phẩm của hồ sơ này.</p>}</section>
+    <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_8rem_auto]"><label><span className="mb-1 block text-[9px] font-black text-slate-500">Loại biểu mẫu</span><select aria-label="Loại template tài liệu PGD" value={template?.id || ''} onChange={(event) => selectTemplate(event.target.value)} className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-bold outline-none focus:border-blue-400">{availableTemplates.map((item) => <option key={item.id} value={item.id}>{TEMPLATE_KIND_LABELS[item.kind]} · {item.code} · v{item.version}</option>)}</select></label><label><span className="mb-1 block text-[9px] font-black text-slate-500">Định dạng</span><select aria-label="Định dạng tài liệu PGD" value={format} onChange={(event) => setFormat(event.target.value as PgdDocumentTemplateFormat)} className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-bold outline-none focus:border-blue-400">{(template?.formats || ['DOCX', 'PDF']).map((item) => <option key={item} value={item}>{item}</option>)}</select></label><div className="flex items-end"><button type="button" disabled={!canMutate || busy || !template} onClick={() => void generate()} className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"><Sparkles size={14} />{busy ? 'Đang sinh...' : 'Sinh DOCX/PDF & tải file'}</button></div></div>
     {template && <div className="mt-3 grid gap-2 md:grid-cols-2">{formCells.map((cell) => <label key={cell.key} className={cell.type === 'TABLE' ? 'block md:col-span-2' : 'block'}><span className="mb-1 block text-[9px] font-black text-slate-600">{cell.label}{cell.required ? ' *' : ''}{cell.unit ? ` · ${cell.unit}` : ''}<span className="ml-1 font-mono font-normal text-slate-400">[[{cell.key}]]</span></span>{cell.type === 'TABLE' ? <PgdTableFieldEditor cell={cell} value={cellValues[cell.key]} readOnly={!canMutate || busy} onChange={(value) => { setIssue(''); updateCell(cell, value); }} /> : cell.type === 'BOOLEAN' ? <select aria-label={`Giá trị ${cell.key}`} disabled={!canMutate || busy} value={scalarInputValue(cellValues[cell.key])} onChange={(event) => updateCell(cell, event.target.value)} className="min-h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400 disabled:bg-slate-100"><option value="">Chọn...</option><option value="true">Có</option><option value="false">Không</option></select> : cell.validation?.options?.length ? <select aria-label={`Giá trị ${cell.key}`} disabled={!canMutate || busy} value={scalarInputValue(cellValues[cell.key])} onChange={(event) => updateCell(cell, event.target.value)} className="min-h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400 disabled:bg-slate-100"><option value="">Chọn...</option>{cell.validation.options.map((option) => <option key={option} value={option}>{option === 'METHOD_7' ? 'Phương thức 7' : option}</option>)}</select> : <input aria-label={`Giá trị ${cell.key}`} disabled={!canMutate || busy} type={cell.type === 'NUMBER' ? 'number' : cell.type === 'DATE' ? 'date' : 'text'} value={scalarInputValue(cellValues[cell.key])} onChange={(event) => updateCell(cell, event.target.value)} className="min-h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-[10px] outline-none focus:border-blue-400 disabled:bg-slate-100" />}</label>)}</div>}
     {issue && <p role="alert" className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[10px] font-bold text-amber-800">{issue}</p>}
     <div className="mt-3 border-t border-blue-100 pt-2"><div className="mb-1 text-[9px] font-black uppercase tracking-wide text-blue-800/60">Lịch sử file đã sinh</div>{requestDocuments.length === 0 ? <p className="text-[10px] text-slate-400">Chưa có tài liệu được sinh từ hồ sơ này.</p> : <div className="space-y-1">{requestDocuments.slice(0, 5).map((document) => <div key={document.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-2 py-1.5 text-[10px]"><div className="min-w-0"><div className="break-all font-bold text-slate-700">{document.fileName}</div><div className="font-mono text-[9px] text-slate-400">{document.contextHash.slice(0, 12)} · {document.status}</div></div>{document.fileAssetId ? <a href={getPgdDocumentDownloadUrl(document.id)} download={document.fileName} className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-lg border border-blue-200 px-2 text-[10px] font-black text-blue-700 hover:bg-blue-50"><Download size={12} /> Tải lại</a> : <span className="shrink-0 text-[9px] text-slate-400" title="Môi trường chưa cấu hình PGD Storage">File trực tiếp ở lần sinh</span>}</div>)}</div>}</div>
@@ -288,16 +299,6 @@ export default function PgdDocumentGenerationPanel({ request, templates, documen
    const sourceStatusClass = sourceInspection?.status === 'READY'
      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
      : 'border-amber-200 bg-amber-50 text-amber-800';
-   const canEditCells = canMutate && draft?.status !== 'PUBLISHED' && draft?.status !== 'RETIRED';
-   const updateCells = (cells: PgdDocumentTemplate['cells']) => setDraft((current) => current
-     ? {
-       ...current,
-       cells,
-       placeholderKeys: cells.map((cell) => cell.key),
-       requiredPlaceholderKeys: cells.filter((cell) => cell.required).map((cell) => cell.key),
-     }
-     : current);
-
    return (
      <div className="space-y-3 p-3 md:p-5">
        <header>
@@ -337,7 +338,6 @@ export default function PgdDocumentGenerationPanel({ request, templates, documen
            <div className="flex flex-wrap gap-1.5">
              {draft.cells.filter((cell) => placeholderKeys.includes(cell.key)).map((cell) => <span key={cell.key} className="rounded-md border border-blue-200 bg-white px-2 py-1 font-mono text-[9px] text-blue-800">{'[[' + cell.key + ']]'}</span>)}
            </div>
-           <PgdCellManager cells={draft.cells} onChange={updateCells} readOnly={!canEditCells} title="Quản lý cell và placeholder PGD" />
          </section>
        )}
      </div>

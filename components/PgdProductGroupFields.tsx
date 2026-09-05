@@ -19,6 +19,7 @@ function ProductField({
   label,
   value,
   type = 'text',
+  step,
   required = false,
   placeholder,
   onChange,
@@ -26,11 +27,12 @@ function ProductField({
   label: string;
   value: string | number | undefined;
   type?: 'text' | 'number';
+  step?: number | 'any';
   required?: boolean;
   placeholder?: string;
   onChange: (value: string) => void;
 }) {
-  return <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">{label}{required ? ' *' : ''}</span><input required={required} type={type} min={type === 'number' ? 0 : undefined} value={value ?? ''} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={inputClassName} /></label>;
+  return <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">{label}{required ? ' *' : ''}</span><input required={required} type={type} min={type === 'number' ? 0 : undefined} step={type === 'number' ? (step ?? 1) : undefined} value={value ?? ''} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={inputClassName} /></label>;
 }
 
 function ProductTextArea({
@@ -84,10 +86,10 @@ export default function PgdProductGroupFields({
         <ProductField label="Cỡ hạt" value={coal.sizeRange} onChange={(value) => onCoalChange('sizeRange', value)} placeholder="Ví dụ: 6–25 mm" />
         <ProductField label={`Tiêu chuẩn chất lượng than${method === 'QT-GĐ-08' ? ' *' : ''}`} required={method === 'QT-GĐ-08'} value={coal.qualityStandard} onChange={(value) => onCoalChange('qualityStandard', value)} placeholder="Ví dụ: TCVN 8910:2015" />
         <ProductField label={`Căn cứ lấy mẫu than${method === 'QT-GĐ-08' ? ' *' : ''}`} required={method === 'QT-GĐ-08'} value={coal.samplingBasis} onChange={(value) => onCoalChange('samplingBasis', value)} />
-        <ProductField label="Độ ẩm (%)" type="number" value={coal.moisture} onChange={(value) => onCoalChange('moisture', value ? Number(value) : undefined)} />
-        <ProductField label="Độ tro (%)" type="number" value={coal.ash} onChange={(value) => onCoalChange('ash', value ? Number(value) : undefined)} />
+        <ProductField label="Độ ẩm (%)" type="number" step="any" value={coal.moisture} onChange={(value) => onCoalChange('moisture', value ? Number(value) : undefined)} />
+        <ProductField label="Độ tro (%)" type="number" step="any" value={coal.ash} onChange={(value) => onCoalChange('ash', value ? Number(value) : undefined)} />
         <ProductField label="Nhiệt trị (kcal/kg)" type="number" value={coal.calorificValue} onChange={(value) => onCoalChange('calorificValue', value ? Number(value) : undefined)} />
-        <ProductField label="Lưu huỳnh (%)" type="number" value={coal.sulfur} onChange={(value) => onCoalChange('sulfur', value ? Number(value) : undefined)} />
+        <ProductField label="Lưu huỳnh (%)" type="number" step="any" value={coal.sulfur} onChange={(value) => onCoalChange('sulfur', value ? Number(value) : undefined)} />
       </div>
     </section>;
   }

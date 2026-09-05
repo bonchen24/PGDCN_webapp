@@ -38,16 +38,26 @@ test('PGD exposes the preparation station and keeps DOCX settings in the workspa
   assert.doesNotMatch(legacySidebar, /settings:|users:|customers:/);
 });
 
-test('PGD drafting keeps structured cells in the local DOCX settings flow', () => {
+test('PGD drafting keeps structured placeholders in the local DOCX settings flow', () => {
   const generation = read('components/PgdDocumentGenerationPanel.tsx');
+  const modal = read('components/PgdDocxSettingsModal.tsx');
   const tableEditor = read('components/PgdTableFieldEditor.tsx');
   const cellManager = read('components/PgdCellManager.tsx');
   assert.match(generation, /PgdTableFieldEditor/);
-  assert.match(generation, /PgdCellManager/);
-  assert.match(generation, /Quản lý cell và placeholder PGD/);
+  assert.doesNotMatch(generation, /PgdCellManager/);
+  assert.match(generation, /placeholder/);
+  assert.match(modal, /PgdCellManager/);
+  assert.match(modal, /Lưu cấu hình cell/);
   assert.match(tableEditor, /tableColumns/);
   assert.match(tableEditor, /Thêm dòng/);
   assert.match(cellManager, /Danh sách cell PGD/);
+});
+
+test('PGD drafting exposes an explicit document-type catalog with a built-in fallback', () => {
+  const generation = read('components/PgdDocumentGenerationPanel.tsx');
+  assert.match(generation, /Danh mục loại tài liệu PGD/);
+  assert.match(generation, /getPgdDocumentTemplates/);
+  assert.match(generation, /catalogTemplates/);
 });
 
 // --- End of pgd-drafting-navigation.test.ts ---

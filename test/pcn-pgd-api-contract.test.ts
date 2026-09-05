@@ -44,7 +44,8 @@ test('PGD server boundary is domain-scoped and has no PCN collection fallback', 
   assert.match(source, /pgdActivityLogs/);
   assert.match(source, /pgdInspectionReports/);
   assert.match(source, /status: 'DRAFT'/);
-  assert.match(source, /const approvedReport[\s\S]{0,180}status: 'APPROVED'/);
+  assert.match(source, /!\['TECHNICAL_REVIEW', 'LEADERSHIP_APPROVAL'\]\.includes\(step\.role\)/);
+  assert.match(source, /Hồ sơ PGD phải được phê duyệt chuyên môn trước khi trình lãnh đạo/);
   assert.match(source, /Mã PYC PGD \$\{request\.requestCode\} đã tồn tại/);
   assert.match(source, /pgdInspectionRequests/);
   assert.match(source, /const pgdUsers[\s\S]{0,180}departmentScopes/);

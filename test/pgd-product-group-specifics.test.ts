@@ -14,7 +14,7 @@ const baseInput: PgdInspectionRequestInput = {
   id: 'pgd-specific-1',
   requestCode: 'PGD-2026-SPECIFIC-1',
   intakeChannel: 'EMAIL',
-  requester: { name: 'Công ty mẫu' },
+  requester: { name: 'Công ty mẫu', address: 'Hà Nội', contactPerson: 'Nguyễn Văn A', phone: '0900000000' },
   customerSnapshot: { name: 'Công ty mẫu', address: 'Hà Nội' },
   productGroup: 'MACHINERY_LINE',
   catalogItemId: 'MACHINERY_LINE_INSPECTION',

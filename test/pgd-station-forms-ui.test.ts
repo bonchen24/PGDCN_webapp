@@ -13,11 +13,11 @@ test('PGD station pages expose source-derived forms and dossier operations', () 
   assert.doesNotMatch(source, /báo giá|thanh toán|tạm ứng|còn lại/i);
 });
 
-test('PGD station pages wire the real forms to the four operational branches', () => {
+test('PGD dossier workspace wires the shared source forms to the operational branches', () => {
   const workspace = read('components/PgdWorkspace.tsx');
-  for (const marker of ['PgdPreparationStationPanel', 'PgdFieldStationPanel', 'PgdLabStationPanel', 'PgdResultsStationPanel']) {
+  for (const marker of ['PgdSourceFormsPanel', 'PgdOperationalStationKey', 'PgdCaseEvidencePanel']) {
     assert.match(workspace, new RegExp(marker));
   }
   assert.match(workspace, /selectedRequestId/);
-  assert.match(workspace, /getEvidence/);
+  assert.match(workspace, /dossierRequirements/);
 });

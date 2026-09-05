@@ -14,9 +14,9 @@ import type { PgdCaseEvent, PgdInspectionPlan } from '../utils/pgdArtifacts.ts';
 const request: PgdInspectionRequest = {
   id: 'request-1',
   domain: 'pgd',
-  requestCode: 'PYC-GD-2026-001',
+  requestCode: 'PGD-260902-01',
   intakeChannel: 'DIRECT',
-  requester: { name: 'Nguyễn Văn A' },
+  requester: { name: 'Nguyễn Văn A', address: 'Hà Nội', contactPerson: 'Nguyễn Văn A', phone: '0900000000' },
   customerSnapshot: { name: 'Công ty Thép A', address: 'Hà Nội' },
   productGroup: 'STEEL_METAL',
   catalogItemId: 'STEEL_LOT_INSPECTION',
@@ -61,7 +61,17 @@ test('PGD document output produces downloadable DOCX and PDF with the same conte
   const context: PgdDocumentContext = buildPgdDocumentContext({
     template,
     request,
-    cellValues: { documentNumber: 'CT-GD-001', conclusion: 'Phù hợp' },
+    cellValues: {
+      registrationNumber: 'REG-001',
+      inspectionScope: request.inspectionScope,
+      inspectionDate: '2026-09-02',
+      inspectionLocation: request.inspectionLocation,
+      assessmentMethod: 'METHOD_7',
+      sampleCondition: 'Nguyên vẹn, phù hợp lấy mẫu',
+      labResults: [{ item: 'Ngoại quan', value: 'Phù hợp', unit: '-', method: 'JIS G 3141' }],
+      inspectionConclusion: 'Phù hợp',
+      outputVersion: 'FINAL',
+    },
     now: '2026-09-02T05:00:00.000Z',
   });
   const docx = await buildPgdDocumentOutput(context, 'DOCX');
@@ -72,8 +82,8 @@ test('PGD document output produces downloadable DOCX and PDF with the same conte
   assert.ok(pdf.bytes.length > 200);
   assert.equal(docx.contextHash, context.contextHash);
   assert.equal(pdf.contextHash, context.contextHash);
-  assert.match(docx.fileName, /CT-GD-001.*\.docx$/);
-  assert.match(pdf.fileName, /CT-GD-001.*\.pdf$/);
+  assert.match(docx.fileName, /PGD-260902-01.*\.docx$/);
+  assert.match(pdf.fileName, /PGD-260902-01.*\.pdf$/);
 });
 
 test('PGD source artifacts bind into matching document cells', () => {
@@ -103,8 +113,8 @@ test('source-derived inspection minutes and sample handover templates bind curre
   assert.ok(handoverTemplate.cells.some((cell) => cell.key === 'laboratoryCode'));
 
   const samples: PgdSample[] = [
-    { id: 'sample-1', domain: 'pgd', requestId: request.id, sampleCode: 'PYC-GD-2026-001-M01', description: 'Thép cuộn M01', quantity: 1, disposition: 'LAB' },
-    { id: 'sample-2', domain: 'pgd', requestId: request.id, sampleCode: 'PYC-GD-2026-001-M02', description: 'Thép cuộn M02', quantity: 1, disposition: 'LAB' },
+    { id: 'sample-1', domain: 'pgd', requestId: request.id, sampleCode: 'PGD-260902-01-M01', description: 'Thép cuộn M01', quantity: 1, disposition: 'LAB' },
+    { id: 'sample-2', domain: 'pgd', requestId: request.id, sampleCode: 'PGD-260902-01-M02', description: 'Thép cuộn M02', quantity: 1, disposition: 'LAB' },
   ];
   const labRequests: PgdLabRequest[] = [
     { id: 'lab-1', domain: 'pgd', requestId: request.id, sampleId: 'sample-1', status: 'SENT', laboratoryName: 'PTN Vật liệu – NDT', laboratoryCode: 'VILAS182', senderUnit: 'Phòng Giám định - Chứng nhận', testItems: ['Kích thước', 'Hóa học'], testMethods: ['QCVN 7:2019/BKHCN'], handover: { sentAt: '2026-09-03T08:00:00.000Z', senderUsername: 'nam', receiverName: 'PTN Vật liệu – NDT', quantity: 1 } },
@@ -113,8 +123,8 @@ test('source-derived inspection minutes and sample handover templates bind curre
   const context = buildPgdDocumentContext({ template: handoverTemplate, request, samples, labRequests, cellValues: {}, now: '2026-09-03T09:00:00.000Z' });
   assert.equal(context.cellValues.laboratoryCode, 'VILAS182');
   assert.deepEqual(context.cellValues.handoverRows, [
-    { sampleCode: 'PYC-GD-2026-001-M01', description: 'Thép cuộn M01', quantity: 1, unit: null, testItems: 'Kích thước; Hóa học', methods: 'QCVN 7:2019/BKHCN' },
-    { sampleCode: 'PYC-GD-2026-001-M02', description: 'Thép cuộn M02', quantity: 1, unit: null, testItems: 'Cơ tính', methods: 'GB/T 24238-2017' },
+    { sampleCode: 'PGD-260902-01-M01', description: 'Thép cuộn M01', quantity: 1, unit: null, testItems: 'Kích thước; Hóa học', methods: 'QCVN 7:2019/BKHCN' },
+    { sampleCode: 'PGD-260902-01-M02', description: 'Thép cuộn M02', quantity: 1, unit: null, testItems: 'Cơ tính', methods: 'GB/T 24238-2017' },
   ]);
 });
 
@@ -127,7 +137,22 @@ test('inactive PGD cells remain in the snapshot but are excluded from generated 
       { key: 'internalNote', label: 'Ghi chú nội bộ không xuất', sectionCode: 'internal', row: 99, column: 1, type: 'TEXT' as const, required: true, active: false },
     ],
   };
-  const context = buildPgdDocumentContext({ template, request, cellValues: { documentNumber: 'CT-GD-002', conclusion: 'Phù hợp' }, now: '2026-09-02T05:00:00.000Z' });
+  const context = buildPgdDocumentContext({
+    template,
+    request,
+    cellValues: {
+      registrationNumber: 'REG-002',
+      inspectionScope: request.inspectionScope,
+      inspectionDate: '2026-09-02',
+      inspectionLocation: request.inspectionLocation,
+      assessmentMethod: 'METHOD_7',
+      sampleCondition: 'Nguyên vẹn, phù hợp lấy mẫu',
+      labResults: [{ item: 'Ngoại quan', value: 'Phù hợp', unit: '-', method: 'JIS G 3141' }],
+      inspectionConclusion: 'Phù hợp',
+      outputVersion: 'DRAFT',
+    },
+    now: '2026-09-02T05:00:00.000Z',
+  });
   const docx = await buildPgdDocumentOutput(context, 'DOCX');
   const documentXml = new PizZip(docx.bytes).file('word/document.xml')?.asText() || '';
   assert.equal(context.templateSnapshot.cells.find((cell) => cell.key === 'internalNote')?.active, false);

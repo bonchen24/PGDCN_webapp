@@ -13,7 +13,7 @@ import {
 } from '../utils/pgdDocumentTemplates.ts';
 
 test('PGD catalog contains the operational document set derived from department forms', () => {
-  assert.equal(DEFAULT_PGD_DOCUMENT_TEMPLATES.length, 15);
+  assert.equal(DEFAULT_PGD_DOCUMENT_TEMPLATES.length, 16);
   assert.deepEqual(DEFAULT_PGD_DOCUMENT_TEMPLATES.map((template) => template.kind), [
     'INTAKE_REQUEST',
     'ASSIGNMENT',
@@ -23,6 +23,7 @@ test('PGD catalog contains the operational document set derived from department 
     'LAB_REQUEST',
     'INSPECTION_REPORT',
     'DECISION',
+    'INSPECTION_CERTIFICATE',
     'INSPECTION_CERTIFICATE',
     'DOSSIER_COVER',
     'CASE_TIMELINE',
@@ -106,7 +107,7 @@ test('PGD cell definitions are normalized and duplicate or unsafe cells are reje
 test('PGD cell values are coerced to their schema types and required values are checked', () => {
   const template = getPgdDocumentTemplate('FIELD_INSPECTION', 'STEEL_METAL')!;
  const values = normalizePgdCellValues(template.cells, {
-    requestCode: 'PYC-GD-001',
+    requestCode: 'PGD-260905-01',
     customerName: 'Công ty A',
     customerAddress: 'Hà Nội',
     productName: 'Thép cuộn',
