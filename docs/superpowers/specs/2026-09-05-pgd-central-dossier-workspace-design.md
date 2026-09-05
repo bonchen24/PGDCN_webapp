@@ -2,13 +2,13 @@
 
 Ngày: 2026-09-05  
 Phạm vi: miền PGD trong shell PGDCN chung  
-Trạng thái: đề xuất để review
+Trạng thái: đề xuất để review — đã điều chỉnh theo feedback về trang Soạn thảo tài liệu
 
 > `design.md` là nguồn chuẩn duy nhất của nghiệp vụ, schema, lifecycle, RBAC và design token. Tài liệu này chỉ chuyển các hợp đồng đó thành phạm vi UX/component để triển khai; nếu có khác biệt, `design.md` được ưu tiên.
 
 ## 1. Mục tiêu
 
-PGD cần một workspace duy nhất cho một `PgdInspectionRequest`. Một nhân viên được giao làm chủ hồ sơ và có thể theo dõi, nhập, tạo, bổ sung, kiểm tra và đóng gói toàn bộ hồ sơ từ PYC đến trình lãnh đạo. Các trạm nghiệp vụ vẫn giữ đúng lifecycle PGD hiện tại nhưng không được làm người dùng rời khỏi ngữ cảnh hồ sơ hoặc chọn lại PYC.
+PGD cần một workspace hồ sơ trung tâm cho mỗi `PgdInspectionRequest`. Một nhân viên được giao làm chủ hồ sơ và có thể theo dõi, nhập, tạo, bổ sung, kiểm tra và đóng gói toàn bộ hồ sơ từ PYC đến trình lãnh đạo. Song song, trang Soạn thảo tài liệu PGD vẫn là entry độc lập để người dùng tự chọn PYC/hồ sơ và tạo đúng tài liệu cần thiết. Các trạm nghiệp vụ vẫn giữ đúng lifecycle PGD hiện tại nhưng không được làm người dùng rời khỏi ngữ cảnh hồ sơ hoặc chọn lại PYC trong workspace trung tâm.
 
 Phạm vi đợt này:
 
@@ -43,6 +43,18 @@ Workspace trung tâm dùng `requestId` làm context bất biến trong phiên m�
 Desktop rộng dùng grid ba vùng với cột điều hướng có độ rộng ổn định, cột tác vụ co giãn `minmax(0, 1fr)` và cột checklist/package có độ rộng đọc được. Khi màn hình hẹp hơn, checklist/package được chuyển xuống dưới vùng tác vụ thay vì ép toàn trang scroll ngang.
 
 Mobile dùng một cột, header và footer luôn nằm trong viewport của workspace, body có scroll dọc độc lập. Stepper có thể cuộn ngang cục bộ; các nhóm form dùng accordion; nút chính giữ touch target tối thiểu theo token mobile. Mã hồ sơ, tên khách hàng, tên file và lỗi dài phải wrap; không dùng `truncate` cho dữ liệu cần đọc để quyết định.
+
+### 2.3. Trang Soạn thảo tài liệu PGD
+
+Trang này vẫn tồn tại như một workspace độc lập để người dùng chủ động chọn hồ sơ muốn tạo biên bản/tài liệu, tương tự `PcnDraftingWorkspaceView`. Nó không thay thế workspace hồ sơ trung tâm và không tự đổi lifecycle.
+
+Desktop dùng cùng nhịp ba vùng của PCN:
+
+1. `Bản đã lưu`: danh sách bản soạn theo hồ sơ, loại tài liệu và trạng thái file.
+2. `Form chính`: một bộ chọn nguồn PYC/hồ sơ, một bộ chọn loại tài liệu, sau đó là các field/table còn cần nhập.
+3. `Kết quả sinh file`: các DOCX/PDF đã sinh, tải lại và trạng thái lưu.
+
+Mobile xếp ba vùng thành một cột theo thứ tự `chọn hồ sơ → chọn tài liệu → nhập form → tạo file → kết quả`. Nguồn hồ sơ không lặp lại ở `PgdDocumentGenerationPanel`; loại tài liệu không lặp catalog tile với select. Template, placeholder, mapping, cell, source inspection và version kỹ thuật được resolve/kiểm tra ngầm hoặc xem trong modal Cài đặt DOCX dành cho Admin/Quản lý, không xuất hiện trong form thường.
 
 ## 3. Năm trạm PGD
 
@@ -88,11 +100,13 @@ Package summary phải hiển thị số dòng đủ/thiếu/đã bỏ qua, owne
 - `PgdDossierChecklistPanel`: checklist, version, upload/generate/confirm/history.
 - `PgdDossierPackagePanel`: manifest summary, preflight, download và submit gate.
 
-Các panel trạm hiện tại (`PgdPreparationStationPanel`, `PgdFieldStationPanel`, `PgdLabStationPanel`, `PgdResultsStationPanel` và intake trong `PgdWorkspace`) được đưa vào vùng tác vụ của workspace. Không để mỗi panel tự dựng một selector PYC độc lập.
+Các panel trạm hiện tại (`PgdPreparationStationPanel`, `PgdFieldStationPanel`, `PgdLabStationPanel`, `PgdResultsStationPanel` và intake trong `PgdWorkspace`) được đưa vào vùng tác vụ của workspace. Không để mỗi panel trạm tự dựng một selector PYC độc lập; riêng `PgdTemplateWorkspace` được phép có đúng một selector nguồn hồ sơ theo pattern Soạn thảo PCN.
 
 ## 7. Acceptance criteria
 
 - Từ danh sách PGD, mở một PYC một lần và chuyển qua cả 5 trạm mà không mất `requestId` hoặc phải chọn lại PYC.
+- Từ trang Soạn thảo tài liệu PGD, người dùng vẫn tự chọn được PYC/hồ sơ và tạo tài liệu mà chỉ phải chọn nguồn một lần.
+- Trang Soạn thảo không lặp catalog loại tài liệu với select template, không lặp tóm tắt hồ sơ và không hiển thị mapping/placeholder kỹ thuật trong form thường.
 - Header luôn thể hiện owner; danh sách, package và activity dùng cùng owner snapshot.
 - Owner có thể đi từ intake đến package; trạm sau bị khóa khi thiếu evidence, không dựa vào cờ hoàn tất từ browser.
 - Có thể tạo/đính kèm các biên bản và tài liệu liên quan theo requirement; file sinh chưa xác nhận không được tính đủ.
@@ -106,5 +120,6 @@ Các panel trạm hiện tại (`PgdPreparationStationPanel`, `PgdFieldStationPa
 1. Cập nhật shell/context và mở workspace trung tâm từ danh sách/sổ/notification.
 2. Gom stepper/header/next action/checklist/package vào workspace, giữ callback/server boundary hiện có.
 3. Đưa form 5 trạm vào vùng tác vụ, bắt đầu từ intake + preparation rồi field/sample, lab/result và report/approval.
-4. Chuẩn hóa grid desktop/mobile và các state loading/error/locked/empty.
-5. Bổ sung test contract và smoke test các viewport; chạy full test, lint, build và Docker smoke.
+4. Tái cấu trúc `PgdTemplateWorkspace` theo pattern Soạn thảo PCN: một nguồn hồ sơ, một loại tài liệu, form nghiệp vụ và vùng kết quả file; bỏ catalog/control trùng lặp và ẩn chi tiết kỹ thuật khỏi runtime.
+5. Chuẩn hóa grid desktop/mobile và các state loading/error/locked/empty.
+6. Bổ sung test contract và smoke test các viewport; chạy full test, lint, build và Docker smoke.
