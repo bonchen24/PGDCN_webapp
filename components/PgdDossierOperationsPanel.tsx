@@ -117,7 +117,7 @@ export default function PgdDossierOperationsPanel({ request, requirements, dossi
 
       <div className="grid gap-2 sm:grid-cols-3"><div className="rounded-lg border border-white bg-white p-2"><div className="text-[9px] font-black uppercase text-slate-400">Bắt buộc hiện hành</div><div className="mt-1 text-lg font-black text-blue-700">{requiredPresent}/{requiredTotal}</div></div><div className="rounded-lg border border-white bg-white p-2"><div className="text-[9px] font-black uppercase text-slate-400">Biểu mẫu đã sinh</div><div className="mt-1 text-lg font-black text-slate-800">{generatedDocuments.length}</div></div><div className="rounded-lg border border-white bg-white p-2"><div className="text-[9px] font-black uppercase text-slate-400">Đã đưa vào checklist</div><div className="mt-1 text-lg font-black text-emerald-700">{currentDossierDocuments.length}</div></div></div>
 
-      <PgdDocumentGenerationPanel request={request} templates={pgd.documentTemplates} documents={generatedDocuments} canMutate={dossierEditable} />
+      <PgdDocumentGenerationPanel request={request} templates={pgd.documentTemplates} canMutate={dossierEditable} />
 
       <div className="rounded-lg border border-white bg-white p-2.5">
         <div className="flex items-center justify-between gap-2"><div><div className="text-[10px] font-black text-slate-700">Biểu mẫu liên quan</div><p className="mt-0.5 text-[9px] text-slate-500">Gắn bản DOCX/PDF vừa sinh vào đúng mục checklist để khi trình phê duyệt hai cấp không bỏ sót hồ sơ.</p></div><span className="font-mono text-[9px] text-slate-400">{generatedDocuments.length} file</span></div>

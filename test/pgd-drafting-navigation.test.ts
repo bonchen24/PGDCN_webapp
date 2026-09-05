@@ -52,11 +52,20 @@ test('PGD drafting keeps DOCX mapping read-only in the local settings flow', () 
   assert.match(tableEditor, /Thêm dòng/);
 });
 
-test('PGD drafting exposes an explicit document-type catalog with a built-in fallback', () => {
+test('PGD drafting follows the compact PCN workspace without duplicate selectors', () => {
+  const drafting = read('components/PgdDraftingWorkspaceView.tsx');
   const generation = read('components/PgdDocumentGenerationPanel.tsx');
-  assert.match(generation, /Danh mục loại tài liệu PGD/);
-  assert.match(generation, /getPgdDocumentTemplates/);
-  assert.match(generation, /catalogTemplates/);
+  assert.match(workspace, /PgdDraftingWorkspaceView/);
+  assert.match(drafting, /PcnCatalogCombobox/);
+  assert.match(drafting, /xl:grid-cols-\[250px_minmax\(0,1fr\)_270px\]/);
+  assert.match(drafting, /Bản đã lưu/);
+  assert.match(drafting, /Kết quả sinh file/);
+  assert.equal((drafting.match(/<PcnCatalogCombobox/g) || []).length, 1);
+  assert.doesNotMatch(drafting, /Hồ sơ PGD cần soạn tài liệu/);
+  assert.doesNotMatch(generation, /Danh mục loại tài liệu PGD/);
+  assert.equal((generation.match(/Loại template tài liệu PGD/g) || []).length, 1);
+  assert.doesNotMatch(generation, /placeholder=/);
+  assert.match(generation, /onSaveDraft/);
 });
 
 // --- End of pgd-drafting-navigation.test.ts ---
