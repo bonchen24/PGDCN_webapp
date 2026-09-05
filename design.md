@@ -892,6 +892,19 @@ Nhật ký đồng bộ và chẩn đoán PostgreSQL không hiển thị thành 
 - Dashboard phải lọc dữ liệu theo `departmentScopes` trước khi tính KPI, pipeline, queue và milestones; người dùng đơn scope không được thấy số liệu miền còn lại. Mọi CTA điều hướng về workspace chuẩn và không mutation trực tiếp.
 - Tuân thủ `ddt-compact`, `pcn-page-surface`, `mobile-scroll-y`, `mobile-safe-bottom`, `mobile-touch-target`, `min-w-0` và nguyên tắc không dùng màu làm tín hiệu duy nhất.
 
+#### 5.2.1.3. Đợt hoàn thiện UI/UX PGDCN
+
+- Đợt hoàn thiện được triển khai theo ba lớp có thể kiểm thử độc lập: **shell và Tổng quan**, **Trợ lý AI**, sau đó **workspace PCN/PGD và trang hồ sơ**. Mỗi lớp chỉ thay đổi cách trình bày, điều hướng và trạng thái giao diện; không hợp nhất collection, không thêm schema và không thay đổi lifecycle nghiệp vụ.
+- Shell dùng một header ngữ cảnh, một sidebar tác vụ và một vùng `main` cuộn dọc. Khi mở ứng dụng sau đăng nhập, target mặc định là `department-dashboard`/`Tổng quan phòng`; item đang chọn phải có `aria-current="page"`, trạng thái mở/đóng nhóm PCN/PGD phải dùng `aria-expanded`, và thao tác trên mobile không được phụ thuộc hover.
+- Mọi trang nghiệp vụ phải dùng toolbar nhiều cột theo thứ tự: tiêu đề/ngữ cảnh → bộ lọc/tìm kiếm → CTA chính → tác vụ phụ. Desktop ưu tiên grid `minmax(0,1fr)` và các cột cố định cho enum/ngày/trạng thái; mobile xếp thành một cột, giữ touch target khoảng 44px và không tạo tràn ngang toàn trang.
+- Trợ lý AI phải có bốn trạng thái rõ ràng: đang tải danh sách, sẵn sàng chọn hồ sơ, đang đọc theo tiến trình tiêu chí và hoàn tất/lỗi. Lỗi từ stream phải được trình bày bằng thông điệp nghiệp vụ tiếng Việt, mã lỗi kỹ thuật chỉ nằm trong vùng chi tiết dành cho người quản trị; không để raw error làm vỡ layout.
+- Khi file private không cấu hình, UI phải hướng dẫn kiểm tra cấu hình Storage; khi file không có text đọc được hoặc PaddleOCR không sẵn sàng, UI phải nêu đúng file/tiêu chí, cho phép mở hồ sơ hoặc file bằng chứng và giữ lại kết quả đã nhận trước đó. Không coi phiên lỗi là phiên hoàn tất và không âm thầm bỏ qua lỗi.
+- Kết quả Trợ lý AI hiển thị dạng timeline/card theo tiêu chí, có badge chữ Đạt/Cảnh báo/Lỗi/Chưa đủ căn cứ, nguồn bằng chứng và hành động mở bằng chứng. Màu chỉ là tín hiệu phụ; mọi trạng thái phải đọc được bằng chữ và accessibility tree.
+- Trang hồ sơ PCN và PGD dùng cùng nhịp thị giác: header hồ sơ, badge mã/trạng thái, dải bước chạy ngang có thể cuộn, vùng tác vụ chính theo grid và audit/hoạt động ở panel phụ. Các bước vẫn lấy từ lifecycle riêng của từng miền; chỉ đồng nhất layout, spacing và affordance.
+- Form hồ sơ dùng native select cho enum có catalog, combobox cho danh mục dài, textarea cho ghi chú; các field liên quan xếp cùng một grid row trên desktop và tự xếp dọc trên mobile. Trường không áp dụng phải ẩn, không disable để thay thế cho điều kiện nghiệp vụ.
+- Empty/loading/error/success state phải có cùng anatomy: icon hoặc nhãn trạng thái, câu giải thích ngắn, hành động tiếp theo và vùng chi tiết khi cần. Không dùng spinner vô hạn không có thông điệp; các thao tác đang chạy phải khóa nút đúng phạm vi và giữ footer/modal có thể thao tác.
+- Acceptance UI/UX tối thiểu: không có tràn ngang tại 320/375/390/430px; các page chính đạt keyboard focus rõ ràng; shell mặc định mở Tổng quan; PCN/PGD vẫn tách badge/màu/callback; Trợ lý AI không hiển thị raw Supabase error trong layout chính; build production và smoke test Docker `2357` đều thành công.
+
 ---
 
 ## 6. MÔ HÌNH DỮ LIỆU & SCHEMA (DATA MODELS & TYPES)
