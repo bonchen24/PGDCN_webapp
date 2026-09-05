@@ -32,3 +32,9 @@ backups/
 *.njsproj
 *.sln
 *.sw?
+
+# Local extraction and agent scratch; never part of the application source.
+tmp/
+.superpowers/
+.codex-remote-attachments/
+dist/*.bak
