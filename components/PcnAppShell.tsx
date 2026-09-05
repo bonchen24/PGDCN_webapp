@@ -14,5 +14,5 @@ export default function PcnAppShell() {
     });
   }, []);
 
-  return <PgdcnAppShell initialDomain="PCN" />;
+  return <PgdcnAppShell initialDomain="department" />;
 }

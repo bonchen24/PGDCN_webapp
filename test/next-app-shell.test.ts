@@ -17,7 +17,8 @@ test('Next App Router exposes the shared PGDCN shell at the root route', () => {
   assert.match(shell, /^['"]use client['"]/m);
   assert.match(shell, /navigator\.serviceWorker\.register\(['"]\/sw\.js['"]\)/);
   assert.match(shell, /PgdcnAppShell/);
-  assert.match(shell, /initialDomain="PCN"/);
+  assert.match(shell, /initialDomain="department"/);
+  assert.doesNotMatch(shell, /initialDomain="PCN"/);
   assert.doesNotMatch(shell, /from ['"]\.\.\/App['"]/);
   assert.match(nextConfig, /reactStrictMode/);
 });
