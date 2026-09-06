@@ -37,6 +37,7 @@ test('server renderer uses the vendored Archify compiler and complete reader tem
   });
 
   const html = await renderArchifyWorkflowDocument(workflowDocument, { domain: 'pcn', recordId: 'dossier-render' });
+  assert.match(html, /<html lang="en" data-theme="light" data-preset="signal-flow">/);
   assert.match(html, /ARCHIFY:SVG_SLOT|archify-guided-views-data/);
   assert.match(html, /data-node-id="start"/);
   assert.match(html, /data-edge-id="start-end"/);

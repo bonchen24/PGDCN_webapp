@@ -14,6 +14,13 @@
 - Archify reader cung cấp các capability upstream; host chỉ nối focus node/edge với action task PCN hiện hành. Deep-link node dùng hash `#focus=<nodeId>`.
 - Verification: `npm test` 760/760, focused Archify 5/5, lint/build/diff-check pass; Docker Desktop `pcn_webapp-webapp` Up cổng 2357, health 200, route chưa đăng nhập 401. Public deployment `pcn.tvci.id.vn` không tự đổi bởi Docker local.
 
+## Cập nhật 2026-09-06 — Sửa scroll mobile và first paint của reader
+
+- Standalone dossier đã nối lại flex-height chain `h-full`/`min-h-0` từ workspace tới `pcn-dossier-focus-scroll`, nên phần workflow, checklist và lịch sử có thể cuộn dọc trên mobile.
+- Host Archify chuyển sang surface sáng responsive; iframe có `theme=light`, còn renderer server đổi root HTML sang `data-theme="light"` để không xuất hiện khung đen trước khi script theme chạy.
+- Đã thêm regression tests cho mobile height/scroll contract và server root theme.
+- Verification: full suite **763/763**, focused renderer **2/2**, lint/build/diff-check pass; Docker image `sha256:f616a8a251a63397bde768d92eb4347424a851149ca85af7b4a6c855e25695e9` đang chạy và `/api/health` trả HTTP 200.
+
 ## Quy tắc nghiệp vụ đã chốt
 
 - Mỗi hồ sơ có thể chọn một workflow template khác nhau theo lĩnh vực, phương thức và loại hồ sơ.

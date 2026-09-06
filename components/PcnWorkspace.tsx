@@ -768,7 +768,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
   const departmentRoleLabel = currentUser.departmentRoleCode || 'Chưa phân công';
   return (
     <>
-      <div className={embedded ? 'min-w-0' : 'pcn-compact flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800'}>
+      <div className={embedded ? 'flex h-full min-h-0 w-full min-w-0 flex-col' : 'pcn-compact flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800'}>
         <Toaster position="top-right" richColors />
         {!embedded && <PcnSidebar
           currentUser={currentUser}
@@ -786,7 +786,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
           onOpenPersonalSettings={() => setPersonalSettingsOpen(true)}
           onLogout={handleLogout}
         />}
-        <div className={embedded ? 'min-w-0' : 'flex min-w-0 flex-1 flex-col'}>
+        <div className={embedded ? 'flex h-full min-h-0 min-w-0 flex-1 flex-col' : 'flex min-w-0 flex-1 flex-col'}>
           {!embedded && <header className="ddt-compact-header flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5">
             <div className="flex min-w-0 items-center gap-2">
               <button
@@ -818,7 +818,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
             </div>
           </header>}
           {/* Standalone contract: <main className="min-h-0 min-w-0 flex-1 mobile-scroll-y overflow-x-hidden overflow-y-auto"> */}
-          <main className={embedded ? 'min-w-0' : 'min-h-0 min-w-0 flex-1 mobile-scroll-y overflow-x-hidden overflow-y-auto'}>{content}</main>
+          <main className={embedded ? (standaloneDossier ? 'min-h-0 min-w-0 flex-1 overflow-hidden' : 'min-w-0 flex-1') : 'min-h-0 min-w-0 flex-1 mobile-scroll-y overflow-x-hidden overflow-y-auto'}>{content}</main>
           {!embedded && <nav className="pcn-mobile-nav mobile-scroll-x flex shrink-0 items-center justify-start gap-1 border-t border-slate-200 bg-white p-1.5 lg:hidden" aria-label="Menu di động">
             {mobileNavItems.map(({ key, icon: Icon }) => {
               const isActive = activeSection === key;

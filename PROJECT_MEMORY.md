@@ -15,6 +15,12 @@ Description: Persistent project memory and verified deployment observations for 
 - Verification lượt này: `npm test` **760/760 pass**, focused Archify **5/5 pass**, `npm run lint` pass sau production build, `npm run build` pass, `git diff --check` pass. Docker Desktop đã build/recreate; `pcn_webapp-webapp` Up trên `0.0.0.0:2357->2357/tcp`, `/api/health` HTTP 200, hai route Archify không có phiên trả HTTP 401. Browser smoke local tới đúng login boundary; không tự động nhập credential.
 - Không ghi secret hoặc dữ liệu hồ sơ thật vào Memory/Obsidian. Deployment public `https://pcn.tvci.id.vn/` vẫn là môi trường riêng; bản đã cập nhật được kiểm tra tại `http://localhost:2357/pgdcn/pcn`.
 
+## Cập nhật 2026-09-06 — Sửa scroll mobile và khung đen của Archify
+
+- Nguyên nhân trang chi tiết hồ sơ standalone trên mobile bị cắt nội dung là chuỗi flex-height bị đứt tại `PcnWorkspace`/`PcnDossierDetailView`; đã khôi phục `h-full`/`min-h-0` tới vùng `.pcn-dossier-focus-scroll` để nội dung cuộn dọc đúng.
+- Reader Archify dùng surface sáng mặc định, chiều cao co giãn theo viewport (`min-h` thấp hơn trên mobile), query `theme=light`, và server renderer chuẩn hóa root HTML sang `data-theme="light"` để tránh first paint đen.
+- Đã bổ sung regression contract cho mobile và root theme. Verification cuối lượt: `npm test` **763/763 pass**, focused renderer **2/2 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass; Docker image `sha256:f616a8a251a63397bde768d92eb4347424a851149ca85af7b4a6c855e25695e9`, container `pcn_webapp-webapp` running trên cổng `2357`, `/api/health` HTTP 200.
+
 ## Cập nhật 2026-09-06 — Hoàn thiện Trợ lý AI PGD theo UI/UX PCN
 
 - Trợ lý PGD đã đồng nhất với nhịp thao tác của PCN: chọn một bộ hồ sơ → đọc private file → stream tiến độ theo 5 tiêu chí/trạm → hiển thị summary → nêu **Điểm cần sửa / đối chiếu** và mở đúng bằng chứng.

@@ -84,5 +84,9 @@ export async function renderArchifyWorkflowDocument(
     guidedViews: workflow.meta.views,
     sourceEvidence: null,
   });
-  return injectFocusBridge(html, input.domain, input.recordId);
+  const lightHtml = html.replace(
+    /<html lang="([^"]+)" data-theme="dark" data-preset="([^"]+)">/,
+    '<html lang="$1" data-theme="light" data-preset="$2">',
+  );
+  return injectFocusBridge(lightHtml, input.domain, input.recordId);
 }

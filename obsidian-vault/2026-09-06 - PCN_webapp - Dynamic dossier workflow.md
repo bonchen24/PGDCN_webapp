@@ -13,6 +13,13 @@ Visibility/backfill fix: `86caa2b` — `fix: surface dynamic workflow nodes in d
 - Reader upstream sở hữu Finder, Passport, reach, route probe, lens, radar, guided views/story, presentation, theme/preset, keyboard và export. Host React chỉ nhận stable node/edge message cùng record id để nối action PCN hiện hành; topology không nhận từ browser, private bytes/token không nhúng vào HTML.
 - Deep-link node được truyền thành `#focus=<nodeId>`; route viewer fail closed qua auth/compiler. Verification: full suite `760/760`, focused Archify `5/5`, lint/build/diff-check pass; Docker `pcn_webapp-webapp` Up cổng `2357`, health 200, unauthenticated PCN/PGD Archify route 401. Browser local dừng ở login boundary vì không tự động nhập credential.
 
+## Sửa mobile scroll và khung đen reader
+
+- Standalone dossier khôi phục flex-height chain `h-full`/`min-h-0` tới `.pcn-dossier-focus-scroll`, để nội dung hồ sơ cuộn dọc đúng trên mobile.
+- Host và server renderer Archify dùng theme sáng mặc định; iframe co giãn theo viewport và root HTML được chuẩn hóa `data-theme="light"`, tránh first paint đen.
+- Regression contracts đã bao phủ mobile height/scroll và server root theme.
+- Verification cuối: full suite **763/763**, focused renderer **2/2**, lint/build/diff-check pass; Docker image `sha256:f616a8a251a63397bde768d92eb4347424a851149ca85af7b4a6c855e25695e9` running, `/api/health` HTTP 200.
+
 ## Kết quả
 
 - Hồ sơ chọn workflow riêng theo lĩnh vực/phương thức/loại hồ sơ.

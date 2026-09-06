@@ -67,7 +67,7 @@ test('keeps the PCN shell and overlays inside a mobile scroll surface', () => {
 
 test('gives the focused dossier workspace a definite mobile scroll boundary', () => {
   assert.match(dossierDetail, /data-testid="pcn-dossier-focus-shell"/);
-  assert.match(dossierDetail, /standalone \? 'flex min-h-0 w-full flex-col overflow-hidden/);
+  assert.match(dossierDetail, /standalone \? 'flex h-full min-h-0 w-full flex-col overflow-hidden/);
   assert.match(dossierDetail, /: 'flex h-\[100dvh\] min-h-0 w-full flex-col overflow-hidden/);
   assert.match(dossierDetail, /<main className="h-0 min-h-0 flex-1 pcn-dossier-focus-scroll/);
   assert.match(stylesheet, /\.pcn-dossier-focus-scroll\s*\{[\s\S]*height:\s*0[\s\S]*min-height:\s*0[\s\S]*overflow-y:\s*auto/);
