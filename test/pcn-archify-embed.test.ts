@@ -51,3 +51,14 @@ test('parent messages never invoke mutation callbacks and retain authorization g
   assert.match(source, /nodes\.some\(\(node\) => node\.id === message\.nodeId\)/);
   assert.doesNotMatch(source.slice(source.indexOf('const onMessage'), source.indexOf('const runTaskAction')), /on(Start|Complete|Return)Task\(/);
 });
+
+test('edge focus messages require an explicit authorized edge allowlist', () => {
+  assert.match(source, /edgeIds\.includes\(message\.edgeId\)/);
+  assert.doesNotMatch(source, /edgeIds\.length === 0 \|\| edgeIds\.includes\(message\.edgeId\)/);
+});
+
+test('diagram query validation is applied after a hydration-safe workflow default', () => {
+  assert.match(source, /useState<ArchifyDiagramType>\('workflow'\)/);
+  assert.match(source, /useEffect\(\(\) => \{[\s\S]*URLSearchParams\(window\.location\.search\)[\s\S]*setDiagramType/s);
+  assert.doesNotMatch(source, /useState<ArchifyDiagramType>\(initialDiagramType\)/);
+});

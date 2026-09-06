@@ -36,18 +36,12 @@ function isArchifyDiagramType(value: string | null): value is ArchifyDiagramType
   return Boolean(value && ARCHIFY_DIAGRAM_TYPES.includes(value as ArchifyDiagramType));
 }
 
-function initialDiagramType(): ArchifyDiagramType {
-  if (typeof window === 'undefined') return 'workflow';
-  const requested = new URLSearchParams(window.location.search).get('diagram');
-  return isArchifyDiagramType(requested) ? requested : 'workflow';
-}
-
 function boundedText(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.trim() ? value.trim().slice(0, 240) : fallback;
 }
 
 export default function PcnArchifyWorkflowEmbed({ domain, recordId, recordCode, initialNodeId, nodes = [], edgeIds = [], workflowTasks = [], canEdit = false, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments }: PcnArchifyWorkflowEmbedProps) {
-  const [diagramType, setDiagramType] = useState<ArchifyDiagramType>(initialDiagramType);
+  const [diagramType, setDiagramType] = useState<ArchifyDiagramType>('workflow');
   const [retryNonce, setRetryNonce] = useState(0);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const [frameState, setFrameState] = useState<FrameState>('loading');
@@ -66,6 +60,11 @@ export default function PcnArchifyWorkflowEmbed({ domain, recordId, recordCode, 
   const selectedTask = selectedNodeId ? taskByNodeId.get(selectedNodeId) : undefined;
   const selectedStatus = taskStatus(selectedTask);
   const canRenderMutationDock = diagramType === 'workflow' && domain === 'pcn' && selectedTask && canEdit;
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get('diagram');
+    if (isArchifyDiagramType(requested)) setDiagramType(requested);
+  }, []);
 
   const buildReaderUrl = useCallback((type: ArchifyDiagramType) => {
     const routePrefix = `/api/${domain === 'pcn' ? 'pcn/dossiers' : 'pgd/requests'}`;
@@ -119,7 +118,7 @@ export default function PcnArchifyWorkflowEmbed({ domain, recordId, recordCode, 
       const message = event.data;
       if (!message || message.source !== 'pcn-archify' || message.domain !== domain || message.recordId !== recordId) return;
       if (message.nodeId && nodes.some((node) => node.id === message.nodeId)) { setSelectedNodeId(message.nodeId); setReturnOpen(false); }
-      if (message.edgeId && (edgeIds.length === 0 || edgeIds.includes(message.edgeId))) setSelectedEdgeId(message.edgeId);
+      if (message.edgeId && edgeIds.includes(message.edgeId)) setSelectedEdgeId(message.edgeId);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
