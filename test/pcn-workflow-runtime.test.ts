@@ -7,6 +7,7 @@ import {
   buildPcnWorkflowTaskSeed,
   buildPcnWorkflowConditionContext,
   evaluatePcnWorkflowCondition,
+  getPcnWorkflowFocusNode,
   isPcnWorkflowTransitionAllowed,
   projectPcnWorkflowRuntime,
 } from '../utils/pcnWorkflowRuntime.ts';
@@ -61,6 +62,18 @@ test('seeds only entry tasks as READY and locks the rest', () => {
   assert.equal(tasks.find((item) => item.nodeId === 'start')?.status, 'READY');
   assert.equal(tasks.find((item) => item.nodeId === 'doc-a')?.status, 'LOCKED');
   assert.equal(new Set(tasks.map((item) => item.id)).size, tasks.length);
+});
+
+test('projects the active dynamic node for dossier cards instead of a fixed station', () => {
+  const focus = getPcnWorkflowFocusNode(snap(), [
+    task('start', 'COMPLETED'),
+    task('split', 'COMPLETED'),
+    task('doc-a', 'IN_PROGRESS'),
+    task('doc-b', 'READY'),
+  ]);
+  assert.equal(focus?.nodeId, 'doc-a');
+  assert.equal(focus?.label, 'Tài liệu A');
+  assert.equal(focus?.status, 'IN_PROGRESS');
 });
 
 test('evaluates only allowlisted workflow predicates', () => {

@@ -1,6 +1,7 @@
-import type { CertificationDossier, CertificationProposal, PcnDossierDocument, PcnDocumentRequirement, PcnDossierStatus } from '../types.ts';
+import type { CertificationDossier, CertificationProposal, PcnDossierDocument, PcnDossierWorkflowTask, PcnDocumentRequirement, PcnDossierStatus } from '../types.ts';
 import { getPcnDossierDateDenial, getPcnTimestampDenial } from './pcnDossierDate.ts';
 import { buildPcnDossierCompleteness, type PcnDossierMissingDocumentGroup, type PcnPipelineStationKey } from './pcnDossierPipeline.ts';
+import { getPcnWorkflowFocusNode } from './pcnWorkflowRuntime.ts';
 
 export const PCN_WORK_QUEUE_DUE_SOON_DAYS = 3;
 
@@ -39,6 +40,10 @@ export interface PcnWorkQueueRow {
   coreFieldTotal: number;
   coreFieldPresent: number;
   missingCoreLabels: string[];
+  workflowNodeId?: string;
+  workflowNodeLabel?: string;
+  workflowNodeStatus?: PcnDossierWorkflowTask['status'];
+  workflowTemplateCode?: string;
 }
 
 interface WorkQueueInput {
@@ -48,6 +53,7 @@ interface WorkQueueInput {
   now?: string;
   documentRequirements?: PcnDocumentRequirement[];
   dossierDocuments?: PcnDossierDocument[];
+  workflowTasks?: PcnDossierWorkflowTask[];
 }
 
 interface WorkQueueStep {
@@ -138,7 +144,7 @@ function priorityRank(priority: PcnWorkQueuePriority): number {
   return priority === 'OVERDUE' ? 0 : priority === 'DUE_SOON' ? 1 : 2;
 }
 
-export function buildPcnWorkQueueRows({ dossiers, proposals = [], currentUsername, now = new Date().toISOString(), documentRequirements, dossierDocuments = [] }: WorkQueueInput): PcnWorkQueueRow[] {
+export function buildPcnWorkQueueRows({ dossiers, proposals = [], currentUsername, now = new Date().toISOString(), documentRequirements, dossierDocuments = [], workflowTasks = [] }: WorkQueueInput): PcnWorkQueueRow[] {
   const proposalsById = new Map(proposals.map((proposal) => [proposal.id, proposal]));
   const nowTimestamp = validTimestamp(now) ?? Date.now();
   const normalizedCurrentUsername = normalizeUsername(currentUsername);
@@ -148,6 +154,7 @@ export function buildPcnWorkQueueRows({ dossiers, proposals = [], currentUsernam
     const proposal = proposalsById.get(dossier.proposalId);
     const step = getWorkQueueStep(dossier);
     if (!step) return [];
+    const workflowFocus = getPcnWorkflowFocusNode(dossier.workflowSnapshot, workflowTasks.filter((task) => task.dossierId === dossier.id));
     const targetDate = getCalendarDate(dossier.targetDate);
     const targetTimestamp = targetDate === undefined ? undefined : calendarDateTimestamp(targetDate);
     const assigneeUsername = getAssignee(dossier, dossier.status);
@@ -184,6 +191,12 @@ export function buildPcnWorkQueueRows({ dossiers, proposals = [], currentUsernam
       coreFieldTotal: completeness.coreFieldTotal,
       coreFieldPresent: completeness.coreFieldPresent,
       missingCoreLabels: completeness.missingCoreLabels,
+      ...(workflowFocus ? {
+        workflowNodeId: workflowFocus.nodeId,
+        workflowNodeLabel: workflowFocus.label,
+        workflowNodeStatus: workflowFocus.status,
+        workflowTemplateCode: dossier.workflowSnapshot?.templateCode,
+      } : {}),
     } satisfies PcnWorkQueueRow];
   }).sort((left, right) => {
     const priorityCompare = priorityRank(left.priority) - priorityRank(right.priority);

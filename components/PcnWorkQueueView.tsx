@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Clock3, ExternalLink, ListTodo } from 'lucide-react';
 
-import type { CertificationDossier, CertificationProposal, PcnDossierDocument, PcnDocumentRequirement, PcnUserAccount, UserAccount } from '../types';
+import type { CertificationDossier, CertificationProposal, PcnDossierDocument, PcnDossierWorkflowTask, PcnDocumentRequirement, PcnUserAccount, UserAccount } from '../types';
 import { getPcnDossierAssignmentDenial, getPcnOwnerAssignmentAuthorityDenial } from '../utils/pcnDossierAssignment';
 import { getPcnDossierStationTab } from '../utils/pcnDossierNavigation';
 import { buildPcnWorkQueueRows, filterPcnWorkQueueRows, type PcnWorkQueuePriority, type PcnWorkQueueRow, type PcnWorkQueueScope } from '../utils/pcnWorkQueue';
@@ -49,6 +49,7 @@ export function PcnWorkQueueView({
   proposals,
   documentRequirements,
   dossierDocuments,
+  workflowTasks = [],
   users = [],
   currentUser,
   onOpenDossier,
@@ -59,6 +60,7 @@ export function PcnWorkQueueView({
   proposals: CertificationProposal[];
   documentRequirements?: PcnDocumentRequirement[];
   dossierDocuments?: PcnDossierDocument[];
+  workflowTasks?: PcnDossierWorkflowTask[];
   users?: PcnUserAccount[];
   currentUser: UserAccount | null;
   onOpenDossier: (dossier: CertificationDossier, initialTab?: import('../utils/pcnDossierNavigation').PcnDossierDetailTab) => void;
@@ -69,7 +71,7 @@ export function PcnWorkQueueView({
   const [showAll, setShowAll] = useState(false);
   const [claimingDossierId, setClaimingDossierId] = useState<string | null>(null);
   const [assigningDossierId, setAssigningDossierId] = useState<string | null>(null);
-  const rows = useMemo(() => buildPcnWorkQueueRows({ dossiers, proposals, currentUsername: currentUser?.username, documentRequirements, dossierDocuments }), [currentUser?.username, dossierDocuments, documentRequirements, dossiers, proposals]);
+  const rows = useMemo(() => buildPcnWorkQueueRows({ dossiers, proposals, currentUsername: currentUser?.username, documentRequirements, dossierDocuments, workflowTasks }), [currentUser?.username, dossierDocuments, documentRequirements, dossiers, proposals, workflowTasks]);
   const filteredRows = useMemo(() => filterPcnWorkQueueRows(rows, { scope }), [rows, scope]);
   const visibleRows = showAll ? filteredRows : filteredRows.slice(0, 8);
   const overdueCount = rows.filter((row) => row.priority === 'OVERDUE').length;
@@ -132,13 +134,13 @@ export function PcnWorkQueueView({
             return (
               <article key={row.dossierId} data-testid="pcn-work-queue-row" data-missing-core={row.missingCoreLabels.join(', ')} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5 transition-colors hover:border-emerald-200 hover:bg-emerald-50/20">
                 <button type="button" aria-label={`Mở hồ sơ ${row.dossierCode}`} onClick={() => onOpenDossier(dossier)} className="min-w-0 flex-1 text-left">
-                  <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-[10px] font-black text-slate-700">{row.dossierCode}</span><span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-black ${priority.className}`}>{priority.label}</span><span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700">Bước {row.stationNumber ? `${row.stationNumber} · ` : ''}{row.stationTitle}</span>{row.assignedToCurrentUser && <span className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 text-[9px] font-black">Của tôi</span>}</div>
+                  <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-[10px] font-black text-slate-700">{row.dossierCode}</span><span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-black ${priority.className}`}>{priority.label}</span><span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700">{row.workflowNodeLabel ? `Node · ${row.workflowNodeLabel}` : `Bước ${row.stationNumber ? `${row.stationNumber} · ` : ''}${row.stationTitle}`}</span>{row.assignedToCurrentUser && <span className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 text-[9px] font-black">Của tôi</span>}</div>
                   <p className="mt-1 text-[11px] font-black text-slate-800">{row.stepLabel}</p>
                   <p className="truncate text-[10px] text-slate-500">{row.customerName} · {row.productName}</p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[9px] font-bold"><span className={`rounded-full px-1.5 py-0.5 ${row.completenessScore < 70 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>Mức hoàn thiện {row.completenessScore}%</span><span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-indigo-700">Điểm bước {row.stationScore === null || row.stationScore === undefined ? 'Không áp dụng' : `${row.stationScore}%`}</span><span className={row.missingRequiredCount > 0 ? 'text-rose-700' : 'text-emerald-700'}>{row.requiredDocumentPresent}/{row.requiredDocumentTotal} bắt buộc</span><span className={row.missingRequiredCount > 0 ? 'max-w-[340px] truncate text-rose-700' : 'text-emerald-700'} title={row.missingRequiredCount > 0 ? `Tài liệu bắt buộc còn thiếu: ${missingDocumentSummary(row)}` : undefined}>{compactMissingSummary(row)}</span></div>
                 </button>
                 <div className="flex min-w-[180px] shrink-0 flex-col items-end gap-1 text-[10px] text-slate-500" data-owner-username={row.ownerUsername || ''} aria-label={!dossier.ownerUsername ? 'Nhận hồ sơ' : 'Người thực hiện hồ sơ'}><span className="inline-flex items-center gap-1" title="Hạn xử lý"><Clock3 size={12} />{formatTargetDate(row.targetDate)}</span><PcnDossierAssignmentControl dossier={dossier} users={users} currentUser={currentUser} onClaim={onClaimDossier ? () => claimDossier(dossier) : undefined} onAssign={onAssignDossier ? (ownerUsername) => assignDossier(dossier.id, ownerUsername) : undefined} claimDenial={getClaimDenial(dossier)} disabled={Boolean(assigningDossierId && assigningDossierId !== dossier.id) || claimingDossierId === dossier.id} compact />{!dossier.ownerUsername && <span className="sr-only">{claimingDossierId === dossier.id ? 'Đang nhận…' : 'Nhận hồ sơ'}</span>}<span title="Nhóm và trạng thái phân công">Phụ trách: {assignmentLabel(row)}</span></div>
-                <button type="button" aria-label={`Mở hồ sơ tại bước · ${row.stationActionLabel}`} onClick={() => onOpenDossier(dossier, getPcnDossierStationTab(row.stationKey))} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-600 hover:border-emerald-300 hover:text-emerald-700" title={`Mở ${row.stationActionLabel}`}><ExternalLink size={12} /> Mở bước này</button>
+                <button type="button" aria-label={`Mở hồ sơ${row.workflowNodeLabel ? ` tại node · ${row.workflowNodeLabel}` : ` tại bước · ${row.stationActionLabel}`}`} onClick={() => onOpenDossier(dossier, row.workflowNodeLabel ? undefined : getPcnDossierStationTab(row.stationKey))} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-600 hover:border-emerald-300 hover:text-emerald-700" title={row.workflowNodeLabel ? `Mở node ${row.workflowNodeLabel}` : `Mở ${row.stationActionLabel}`}><ExternalLink size={12} /> {row.workflowNodeLabel ? 'Mở node' : 'Mở bước này'}</button>
               </article>
             );
           })}

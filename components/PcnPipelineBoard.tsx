@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, CircleUserRound, ClipboardList, FileWarning, UserRound } from 'lucide-react';
 
-import type { CertificationDossier, CertificationProposal, PcnCertificationField, PcnDossierDocument, PcnDocumentRequirement, PcnUserAccount, UserAccount } from '../types';
+import type { CertificationDossier, CertificationProposal, PcnCertificationField, PcnDossierDocument, PcnDocumentRequirement, PcnDossierWorkflowTask, PcnUserAccount, UserAccount } from '../types';
 import { getPcnDossierCustomerSnapshot } from '../utils/pcnDossierPolicy';
 import { buildPcnWorkQueueRows } from '../utils/pcnWorkQueue';
 import { buildPcnDossierCompleteness, filterPcnDossiersByField, getPcnPipelineStation } from '../utils/pcnDossierPipeline';
@@ -12,6 +12,7 @@ import { getPcnDossierStationTab, type PcnDossierDetailTab } from '../utils/pcnD
 import { getPcnDossierAssignmentDenial, getPcnOwnerAssignmentAuthorityDenial } from '../utils/pcnDossierAssignment';
 import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
 import { getPcnDossierStatusLabel } from '../utils/pcnWorkflow';
+import { getPcnWorkflowFocusNode } from '../utils/pcnWorkflowRuntime';
 import PcnDossierAssignmentControl from './PcnDossierAssignmentControl';
 
 type BoardScope = 'ALL' | 'MINE' | 'OVERDUE';
@@ -34,11 +35,12 @@ function missingDocumentSummary(completeness: ReturnType<typeof buildPcnDossierC
   return completeness.missingRequiredByStage.map((group) => `${group.label}: ${group.labels.join(', ')}`).join(' · ');
 }
 
-function DossierPipelineCard({ dossier, proposal, requirements, documents, users, currentUser, overdue, claimDenial, claiming, assigning, onClaimDossier, onAssignDossier, onOpenDossier }: {
+function DossierPipelineCard({ dossier, proposal, requirements, documents, workflowTasks, users, currentUser, overdue, claimDenial, claiming, assigning, onClaimDossier, onAssignDossier, onOpenDossier }: {
   dossier: CertificationDossier;
   proposal?: CertificationProposal;
   requirements: PcnDocumentRequirement[];
   documents: PcnDossierDocument[];
+  workflowTasks: PcnDossierWorkflowTask[];
   users: PcnUserAccount[];
   currentUser: UserAccount | null;
   overdue: boolean;
@@ -51,6 +53,7 @@ function DossierPipelineCard({ dossier, proposal, requirements, documents, users
 }) {
   const completeness = buildPcnDossierCompleteness({ dossier, proposal, requirements, documents });
   const station = getPcnWorkflowStage(dossier.status) || getPcnPipelineStation(dossier.status);
+  const focusNode = getPcnWorkflowFocusNode(dossier.workflowSnapshot, workflowTasks.filter((task) => task.dossierId === dossier.id));
   const snapshot = getPcnDossierCustomerSnapshot(dossier, proposal);
   const stepMissingLabels = completeness.stationMissingLabels;
   const exceptionReason = dossier.exceptionReason?.trim();
@@ -64,7 +67,7 @@ function DossierPipelineCard({ dossier, proposal, requirements, documents, users
           <p className="truncate text-[10px] text-slate-500">{proposal?.productName || 'Chưa có sản phẩm'}{proposal?.model ? ` · ${proposal.model}` : ''}</p>
           <p className={`mt-1 truncate text-[9px] font-bold ${codeReview.needsReview ? 'text-amber-700' : 'text-slate-400'}`} title={codeReview.source || 'Chưa có mã nguồn PCN'}>Mã nguồn PCN: {codeReview.source || 'Chưa có'}{codeReview.needsReview ? ' · Cần đối chiếu mã nguồn' : ` · ${codeReview.normalized}`}</p>
         </div>
-        <span className={`max-w-[42%] shrink-0 truncate rounded-full border px-1.5 py-0.5 text-[9px] font-black ${overdue ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`} title={getPcnDossierStatusLabel(dossier.status)}>{overdue ? 'Quá hạn' : station.title}</span>
+        <span className={`max-w-[42%] shrink-0 truncate rounded-full border px-1.5 py-0.5 text-[9px] font-black ${overdue ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-indigo-200 bg-indigo-50 text-indigo-700'}`} title={getPcnDossierStatusLabel(dossier.status)}>{overdue ? 'Quá hạn' : focusNode?.label || 'Chưa khởi tạo lưu trình'}</span>
       </div>
 
       <div className="mt-3 rounded-lg bg-slate-50 p-2">
@@ -83,7 +86,7 @@ function DossierPipelineCard({ dossier, proposal, requirements, documents, users
           compact
         />
         <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200" aria-label={`Mức hoàn thiện ${completeness.score}%`}><div className={`h-full rounded-full ${completeness.score < 50 ? 'bg-rose-500' : completeness.score < 80 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${completeness.score}%` }} /></div>
-        <p className="mt-1.5 text-[9px] text-slate-500">{station.key === 'EXCEPTIONS' ? 'Tài liệu tại bước: Không áp dụng' : `Tài liệu tại bước: ${completeness.stationDocumentPresent}/${completeness.stationDocumentTotal} bắt buộc`} · Điểm bước: {completeness.stationScore === null ? 'Không áp dụng' : `${completeness.stationScore}%`} · Hạn {formatDate(dossier.targetDate)}</p>
+        <p className="mt-1.5 text-[9px] text-slate-500" aria-label={focusNode ? `Bước hiện tại ${focusNode.label}; Tài liệu tại bước ${completeness.stationDocumentPresent}/${completeness.stationDocumentTotal}; Điểm bước ${focusNode.status}` : `Điểm bước ${completeness.stationScore === null ? 'Không áp dụng' : `${completeness.stationScore}%`}`}>{focusNode ? `Node: ${focusNode.label} · ${focusNode.status}` : 'Chưa có node workflow để hiển thị'} · Tài liệu đang có: {completeness.stationDocumentPresent}/{completeness.stationDocumentTotal} · Hạn {formatDate(dossier.targetDate)}</p>
       </div>
 
       {stepMissingLabels.length > 0 && <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-100 bg-amber-50/70 p-2 text-[9px] leading-4 text-amber-800"><FileWarning size={12} className="mt-0.5 shrink-0" /><span><b>Tài liệu còn thiếu tại bước:</b> {stepMissingLabels.slice(0, 2).join(', ')}{stepMissingLabels.length > 2 ? ` và ${stepMissingLabels.length - 2} mục khác` : ''}</span></div>}
@@ -92,18 +95,19 @@ function DossierPipelineCard({ dossier, proposal, requirements, documents, users
       {stepMissingLabels.length === 0 && completeness.missingRequiredByStage.length === 0 && <p className="mt-2 inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700"><CheckCircle2 size={12} /> {station.key === 'EXCEPTIONS' ? 'Ngoại lệ không dùng checklist riêng' : 'Bước này đã đủ tài liệu bắt buộc'}</p>}
       {station.key === 'EXCEPTIONS' && <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50/70 p-2 text-[9px] leading-4 text-amber-900"><AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-700" /><span className="min-w-0"><b>Lý do ngoại lệ:</b> {exceptionReason || 'Chưa ghi nhận lý do ngoại lệ'}</span></div>}
       <div className="mt-3 grid gap-1.5">
-        <button type="button" onClick={() => onOpenDossier(dossier, getPcnDossierStationTab(station.key))} title={station.actionLabel} className="min-h-11 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[10px] font-black text-emerald-700 hover:bg-emerald-100">Mở hồ sơ: {station.actionLabel}</button>
+        <button type="button" onClick={() => onOpenDossier(dossier, focusNode ? undefined : getPcnDossierStationTab(station.key))} title={focusNode ? 'Mở lưu trình hồ sơ' : station.actionLabel} className="min-h-11 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[10px] font-black text-emerald-700 hover:bg-emerald-100">Mở hồ sơ: {focusNode?.label || station.actionLabel}</button>
       </div>
     </article>
   );
 }
 
-export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, documents, users, currentUser, onClaimDossier, onAssignDossier, onOpenDossier }: {
+export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, documents, workflowTasks = [], users, currentUser, onClaimDossier, onAssignDossier, onOpenDossier }: {
   dossiers: CertificationDossier[];
   proposals: CertificationProposal[];
   fields: PcnCertificationField[];
   requirements: PcnDocumentRequirement[];
   documents: PcnDossierDocument[];
+  workflowTasks?: PcnDossierWorkflowTask[];
   users: PcnUserAccount[];
   currentUser: UserAccount | null;
   onClaimDossier?: (dossier: CertificationDossier) => Promise<void>;
@@ -166,7 +170,7 @@ export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, do
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-2">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700"><ClipboardList size={17} /></span>
-          <div><h2 className="text-sm font-black text-slate-800">Hồ sơ cần hoàn thiện</h2><p className="mt-0.5 text-[10px] text-slate-400">Mỗi card là một hồ sơ; mở card để xem quy trình 5 bước và checklist của chính hồ sơ đó.</p></div>
+          <div><h2 className="text-sm font-black text-slate-800" aria-label="Hồ sơ cần hoàn thiện">Hồ sơ theo lưu trình</h2><p className="mt-0.5 text-[10px] text-slate-400">Mỗi card hiển thị node đang xử lý của lưu trình riêng; mở hồ sơ để xem toàn bộ graph và tài liệu cần thực hiện.</p></div>
         </div>
         <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
           {([{ value: 'ALL', label: 'Tất cả' }, { value: 'MINE', label: `Chủ hồ sơ của tôi${mineCount ? ` (${mineCount})` : ''}` }, { value: 'OVERDUE', label: `Quá hạn${overdueCount ? ` (${overdueCount})` : ''}` }] as Array<{ value: BoardScope; label: string }>).map((item) => <button key={item.value} type="button" onClick={() => setScope(item.value)} className={`min-h-11 rounded-lg border px-2.5 py-1.5 ${scope === item.value ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-200'}`}>{item.label}</button>)}
@@ -179,7 +183,7 @@ export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, do
         <div><h3 className="text-xs font-black text-slate-800">Danh sách hồ sơ</h3><p className="mt-0.5 text-[9px] text-slate-400">{visibleDossiers.length} hồ sơ trong phạm vi đang xem</p></div>
       </div>
       <div className="mt-3 min-w-0 w-full grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-        {visibleDossiers.length === 0 ? <p className="col-span-full rounded-lg border border-dashed border-slate-200 bg-slate-50/70 p-5 text-center text-[10px] text-slate-400">Chưa có hồ sơ phù hợp với phạm vi đang xem.</p> : visibleDossiers.map((dossier) => <DossierPipelineCard key={dossier.id} dossier={dossier} proposal={proposalsById.get(dossier.proposalId)} requirements={requirements} documents={documents} users={users} currentUser={currentUser} overdue={overdueIds.has(dossier.id)} claimDenial={getClaimDenial(dossier)} claiming={claimingDossierId === dossier.id} assigning={assigningDossierId === dossier.id} onClaimDossier={onClaimDossier ? claimDossier : undefined} onAssignDossier={onAssignDossier ? (ownerUsername) => assignDossier(dossier.id, ownerUsername) : undefined} onOpenDossier={onOpenDossier} />)}
+        {visibleDossiers.length === 0 ? <p className="col-span-full rounded-lg border border-dashed border-slate-200 bg-slate-50/70 p-5 text-center text-[10px] text-slate-400">Chưa có hồ sơ phù hợp với phạm vi đang xem.</p> : visibleDossiers.map((dossier) => <DossierPipelineCard key={dossier.id} dossier={dossier} proposal={proposalsById.get(dossier.proposalId)} requirements={requirements} documents={documents} workflowTasks={workflowTasks} users={users} currentUser={currentUser} overdue={overdueIds.has(dossier.id)} claimDenial={getClaimDenial(dossier)} claiming={claimingDossierId === dossier.id} assigning={assigningDossierId === dossier.id} onClaimDossier={onClaimDossier ? claimDossier : undefined} onAssignDossier={onAssignDossier ? (ownerUsername) => assignDossier(dossier.id, ownerUsername) : undefined} onOpenDossier={onOpenDossier} />)}
       </div>
       <p className="mt-3 inline-flex items-center gap-1 text-[9px] text-slate-400"><UserRound size={11} /> Nhân viên có thể bấm “Nhận hồ sơ” để tự gán tên mình; Admin/Quản lý chọn người thực hiện trong danh sách. Chủ hồ sơ chịu trách nhiệm từ Đề nghị đến đóng gói và lưu trữ.</p>
     </section>

@@ -22,6 +22,16 @@ test('dossier workflow UI renders the saved graph instead of assuming five stati
   assert.match(panel, /approvalSteps/);
 });
 
+test('dashboard dossier cards surface the dynamic node instead of a fixed station label', () => {
+  const board = read('components/PcnPipelineBoard.tsx');
+  const workspace = read('components/PcnWorkspace.tsx');
+  assert.match(board, /getPcnWorkflowFocusNode/);
+  assert.match(board, /Hồ sơ theo lưu trình/);
+  assert.match(board, /workflowTasks/);
+  assert.doesNotMatch(board, /quy trình 5 bước/);
+  assert.match(workspace, /workflowTasks=\{workflowTasks\}/);
+});
+
 test('dossier detail wires workflow tasks and keeps the legacy graphic as fallback', () => {
   const source = read('components/PcnDossierDetailView.tsx');
   assert.match(source, /PcnDossierWorkflowPanel/);

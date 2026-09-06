@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import type { CertificationDossier, CertificationProposal, PcnDossierDocument, PcnDocumentRequirement } from '../types.ts';
+import type { CertificationDossier, CertificationProposal, PcnDossierDocument, PcnDossierWorkflowTask, PcnDocumentRequirement, PcnWorkflowSnapshot } from '../types.ts';
 import { buildPcnWorkQueueRows, filterPcnWorkQueueRows } from '../utils/pcnWorkQueue.ts';
 
 const workQueueView = fs.readFileSync(new URL('../components/PcnWorkQueueView.tsx', import.meta.url), 'utf8');
@@ -66,6 +66,33 @@ test('work queue maps lifecycle steps, urgency, assignment and excludes closed d
   assert.equal(rows[1].assignedToCurrentUser, false);
   assert.equal(rows[2].priority, 'NORMAL');
   assert.equal(rows[2].targetDate, undefined);
+});
+
+test('work queue surfaces the active node from each dossier workflow snapshot', () => {
+  const workflowSnapshot: PcnWorkflowSnapshot = {
+    templateCode: 'QC4-DYNAMIC',
+    templateVersion: 2,
+    nodes: [
+      { id: 'intake', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận', requirementIds: [], active: true, sortOrder: 1 },
+      { id: 'review', kind: 'DOCUMENT_TASK', label: 'Soát xét riêng', requirementIds: [], active: true, sortOrder: 2 },
+    ],
+    transitions: [{ id: 'intake-review', fromNodeId: 'intake', toNodeId: 'review', condition: 'ALWAYS' }],
+    capturedAt: '2026-09-06T00:00:00.000Z',
+    capturedBy: 'admin',
+  };
+  const workflowTask: PcnDossierWorkflowTask = {
+    id: 'dossier-1--review', dossierId: 'dossier-1', nodeId: 'review', status: 'IN_PROGRESS', cycleNo: 1,
+    updatedAt: '2026-09-06T00:00:00.000Z', updatedBy: 'admin',
+  };
+  const row = buildPcnWorkQueueRows({
+    dossiers: [{ ...dossiers[0], workflowSnapshot }],
+    proposals,
+    workflowTasks: [workflowTask],
+  })[0];
+
+  assert.equal(row.workflowNodeLabel, 'Soát xét riêng');
+  assert.equal(row.workflowNodeStatus, 'IN_PROGRESS');
+  assert.match(workQueueView, /workflowNodeLabel/);
 });
 
 test('work queue projects the same dossier completeness and station missing labels', () => {

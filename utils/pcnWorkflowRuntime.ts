@@ -189,6 +189,52 @@ export function buildPcnWorkflowTaskSeed(
     }));
 }
 
+export interface PcnWorkflowFocusNode {
+  nodeId: string;
+  label: string;
+  kind: PcnWorkflowNodeDefinition['kind'];
+  status: PcnDossierWorkflowTask['status'];
+  cycleNo: number;
+  assignedUsername?: string;
+}
+
+const WORKFLOW_FOCUS_STATUS_ORDER: readonly PcnDossierWorkflowTask['status'][] = [
+  'RETURNED',
+  'IN_PROGRESS',
+  'WAITING',
+  'READY',
+];
+
+/** Selects the node a compact dossier card should surface without collapsing the graph into stations. */
+export function getPcnWorkflowFocusNode(
+  workflow: PcnWorkflowSnapshot | undefined,
+  tasks: readonly PcnDossierWorkflowTask[] = [],
+): PcnWorkflowFocusNode | undefined {
+  if (!workflow?.nodes?.length) return undefined;
+  const nodesById = new Map(workflow.nodes.filter((node) => node.active !== false).map((node) => [node.id, node]));
+  const validTasks = tasks.filter((task) => nodesById.has(task.nodeId));
+  const activeTask = [...validTasks]
+    .filter((task) => WORKFLOW_FOCUS_STATUS_ORDER.includes(task.status))
+    .sort((left, right) => WORKFLOW_FOCUS_STATUS_ORDER.indexOf(left.status) - WORKFLOW_FOCUS_STATUS_ORDER.indexOf(right.status)
+      || (nodesById.get(left.nodeId)?.sortOrder || 0) - (nodesById.get(right.nodeId)?.sortOrder || 0)
+      || left.nodeId.localeCompare(right.nodeId))[0];
+  const completedTask = [...validTasks]
+    .filter((task) => task.status === 'COMPLETED' || task.status === 'SKIPPED')
+    .sort((left, right) => (nodesById.get(right.nodeId)?.sortOrder || 0) - (nodesById.get(left.nodeId)?.sortOrder || 0)
+      || right.nodeId.localeCompare(left.nodeId))[0];
+  const selectedTask = activeTask || completedTask;
+  const selectedNode = selectedTask ? nodesById.get(selectedTask.nodeId) : [...nodesById.values()].sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id))[0];
+  if (!selectedNode) return undefined;
+  return {
+    nodeId: selectedNode.id,
+    label: selectedNode.label,
+    kind: selectedNode.kind,
+    status: selectedTask?.status || 'LOCKED',
+    cycleNo: selectedTask?.cycleNo || 1,
+    ...(selectedTask?.assignedUsername ? { assignedUsername: selectedTask.assignedUsername } : {}),
+  };
+}
+
 export function projectPcnWorkflowRuntime(input: {
   workflow: PcnWorkflowSnapshot;
   tasks: readonly PcnDossierWorkflowTask[];

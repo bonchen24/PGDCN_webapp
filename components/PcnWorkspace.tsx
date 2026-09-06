@@ -136,6 +136,7 @@ function PcnDashboard({
   users,
   labRequests,
   results,
+  workflowTasks,
   currentUser,
   canEdit,
   onCreateProposal,
@@ -152,6 +153,7 @@ function PcnDashboard({
   users?: import('../types').PcnUserAccount[];
   labRequests: import('../types').OutboundLabRequest[];
   results: import('../types').ReturnedTestResult[];
+  workflowTasks: import('../types').PcnDossierWorkflowTask[];
   currentUser: import('../types').UserAccount | null;
   canEdit: boolean;
   onCreateProposal: () => void;
@@ -232,9 +234,9 @@ function PcnDashboard({
         </div>
         <div className="mt-2 min-w-0 w-full">
           {dashboardWorkSurface === 'WORKFLOW' ? (
-            <PcnPipelineBoard dossiers={dossiers} proposals={proposals} fields={fields} requirements={boardRequirements} documents={dossierDocuments} users={boardUsers} currentUser={currentUser} onClaimDossier={onClaimDossier} onAssignDossier={onAssignDossier} onOpenDossier={onOpenDossier} />
+            <PcnPipelineBoard dossiers={dossiers} proposals={proposals} fields={fields} requirements={boardRequirements} documents={dossierDocuments} workflowTasks={workflowTasks} users={boardUsers} currentUser={currentUser} onClaimDossier={onClaimDossier} onAssignDossier={onAssignDossier} onOpenDossier={onOpenDossier} />
           ) : (
-            <PcnWorkQueueView dossiers={dossiers} proposals={proposals} documentRequirements={boardRequirements} dossierDocuments={dossierDocuments} users={boardUsers} currentUser={currentUser} onOpenDossier={onOpenDossier} onClaimDossier={onClaimDossier} onAssignDossier={onAssignDossier} />
+            <PcnWorkQueueView dossiers={dossiers} proposals={proposals} documentRequirements={boardRequirements} dossierDocuments={dossierDocuments} workflowTasks={workflowTasks} users={boardUsers} currentUser={currentUser} onOpenDossier={onOpenDossier} onClaimDossier={onClaimDossier} onAssignDossier={onAssignDossier} />
           )}
         </div>
       </section>
@@ -734,6 +736,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
       users={pcn.users}
       labRequests={pcn.labRequests}
       results={pcn.returnedResults}
+      workflowTasks={pcn.workflowTasks}
       currentUser={currentUser}
       canEdit={canMutatePcn}
       onCreateProposal={openNewProposal}
