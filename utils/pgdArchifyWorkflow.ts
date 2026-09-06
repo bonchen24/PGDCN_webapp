@@ -12,6 +12,7 @@ import type {
 import { PGD_WORKFLOW_STATES, getPgdStatusLabel } from './pgdDomain.ts';
 import type { PgdDossierDocument } from './pgdDossier.ts';
 import type { ArchifyWorkflowDocument } from './pcnArchifyWorkflow.ts';
+import { unavailableDiagram, type ArchifyDiagramSuite } from './archifyDiagram.ts';
 
 export interface PgdArchifyWorkflowInput {
   request: PgdInspectionRequest;
@@ -27,6 +28,8 @@ export interface PgdArchifyWorkflowInput {
   approvals: readonly PgdApprovalStep[];
   activityLogs: readonly Record<string, unknown>[];
 }
+
+export type PgdArchifyDiagramSuite = ArchifyDiagramSuite<ArchifyWorkflowDocument>;
 
 type ArchifyNode = ArchifyWorkflowDocument['nodes'][number];
 
@@ -208,5 +211,15 @@ export function buildPgdArchifyWorkflow(input: PgdArchifyWorkflowInput): Archify
       { dot: checklist.missing > 0 ? 'amber' : 'emerald', title: 'Bộ hồ sơ', items: [`${checklist.present}/${checklist.total || 0} tài liệu hiện có`, `${checklist.missing} thiếu · ${checklist.waived} miễn có lý do`] },
       { dot: input.labResults.length < input.labRequests.length ? 'orange' : 'violet', title: 'Bằng chứng vận hành', items: [`${input.samples.length} mẫu · ${input.labRequests.length} PYC PTN`, `${input.labResults.length} KQTN · ${input.approvals.length} bước phê duyệt`] },
     ],
+  };
+}
+
+export function buildPgdArchifyDiagramSuite(input: PgdArchifyWorkflowInput): PgdArchifyDiagramSuite {
+  return {
+    workflow: buildPgdArchifyWorkflow(input),
+    lifecycle: unavailableDiagram('lifecycle', 'Chưa có bộ dựng lịch sử trạng thái trong Task 1.'),
+    dataflow: unavailableDiagram('dataflow', 'Chưa có bộ dựng đường đi tài liệu trong Task 1.'),
+    sequence: unavailableDiagram('sequence', 'Chưa có dữ liệu hoạt động để dựng chuỗi actor/task/audit.'),
+    architecture: unavailableDiagram('architecture', 'Chưa có bộ dựng boundary kiến trúc trong Task 1.'),
   };
 }

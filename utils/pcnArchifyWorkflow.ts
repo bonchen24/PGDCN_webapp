@@ -10,6 +10,7 @@ import type {
   ReturnedTestResult,
 } from '../types.ts';
 import { buildPcnWorkflowConditionContext, projectPcnWorkflowRuntime } from './pcnWorkflowRuntime.ts';
+import { unavailableDiagram, type ArchifyDiagramSuite } from './archifyDiagram.ts';
 
 export type ArchifyWorkflowDocument = {
   schema_version: 2;
@@ -65,6 +66,8 @@ export interface PcnArchifyWorkflowInput {
   approvalSteps?: readonly PcnApprovalStep[];
   activityLogs?: readonly ActivityLog[];
 }
+
+export type PcnArchifyDiagramSuite = ArchifyDiagramSuite<ArchifyWorkflowDocument>;
 
 const TYPE_BY_KIND: Record<PcnWorkflowNodeDefinition['kind'], ArchifyWorkflowDocument['nodes'][number]['type']> = {
   DOCUMENT_TASK: 'backend',
@@ -304,5 +307,15 @@ export function buildPcnArchifyWorkflow(input: PcnArchifyWorkflowInput): Archify
       { dot: 'cyan', title: 'PCN dossier', items: [`${archifyNodes.length} node · ${archifyEdges.length} transition`, `Template ${workflow.templateCode} v${workflow.templateVersion}`] },
       { dot: returnedCount > 0 ? 'orange' : 'emerald', title: 'Runtime evidence', items: [returnedCount > 0 ? `${returnedCount} node có vòng trả lại` : 'Không có node đang trả lại', `${documentCount} tài liệu được chiếu từ hồ sơ`] },
     ],
+  };
+}
+
+export function buildPcnArchifyDiagramSuite(input: PcnArchifyWorkflowInput): PcnArchifyDiagramSuite {
+  return {
+    workflow: buildPcnArchifyWorkflow(input),
+    lifecycle: unavailableDiagram('lifecycle', 'Chưa có bộ dựng lịch sử trạng thái trong Task 1.'),
+    dataflow: unavailableDiagram('dataflow', 'Chưa có bộ dựng đường đi tài liệu trong Task 1.'),
+    sequence: unavailableDiagram('sequence', 'Chưa có dữ liệu hoạt động để dựng chuỗi actor/task/audit.'),
+    architecture: unavailableDiagram('architecture', 'Chưa có bộ dựng boundary kiến trúc trong Task 1.'),
   };
 }
