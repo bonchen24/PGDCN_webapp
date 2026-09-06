@@ -12,6 +12,7 @@ import { getPcnDossierStationTab, type PcnDossierDetailTab } from '../utils/pcnD
 import { getPcnDossierAssignmentDenial, getPcnOwnerAssignmentAuthorityDenial } from '../utils/pcnDossierAssignment';
 import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
 import { getPcnDossierStatusLabel } from '../utils/pcnWorkflow';
+import PcnDossierAssignmentControl from './PcnDossierAssignmentControl';
 
 type BoardScope = 'ALL' | 'MINE' | 'OVERDUE';
 
@@ -20,8 +21,7 @@ function normalizeUsername(value: unknown): string {
 }
 
 function userLabel(username: string | undefined, users: PcnUserAccount[]): string {
-  if (!username) return 'Chưa giao chủ hồ sơ';
-  return getPcnUserDisplayName(username, users);
+  return username ? getPcnUserDisplayName(username, users) : 'Chưa gán người thực hiện';
 }
 
 function formatDate(value?: string): string {
@@ -34,16 +34,19 @@ function missingDocumentSummary(completeness: ReturnType<typeof buildPcnDossierC
   return completeness.missingRequiredByStage.map((group) => `${group.label}: ${group.labels.join(', ')}`).join(' · ');
 }
 
-function DossierPipelineCard({ dossier, proposal, requirements, documents, users, overdue, claimDenial, claiming, onClaimDossier, onOpenDossier }: {
+function DossierPipelineCard({ dossier, proposal, requirements, documents, users, currentUser, overdue, claimDenial, claiming, assigning, onClaimDossier, onAssignDossier, onOpenDossier }: {
   dossier: CertificationDossier;
   proposal?: CertificationProposal;
   requirements: PcnDocumentRequirement[];
   documents: PcnDossierDocument[];
   users: PcnUserAccount[];
+  currentUser: UserAccount | null;
   overdue: boolean;
   claimDenial: string | null;
   claiming: boolean;
+  assigning: boolean;
   onClaimDossier?: (dossier: CertificationDossier) => Promise<void>;
+  onAssignDossier?: (ownerUsername: string) => Promise<void>;
   onOpenDossier: (dossier: CertificationDossier, initialTab?: PcnDossierDetailTab) => void;
 }) {
   const completeness = buildPcnDossierCompleteness({ dossier, proposal, requirements, documents });
@@ -66,9 +69,19 @@ function DossierPipelineCard({ dossier, proposal, requirements, documents, users
 
       <div className="mt-3 rounded-lg bg-slate-50 p-2">
         <div className="flex items-center justify-between gap-2 text-[10px]">
-          <span className="inline-flex min-w-0 items-center gap-1 font-bold text-slate-600"><CircleUserRound size={12} className="shrink-0 text-emerald-600" /> <span className="truncate" title={userLabel(dossier.ownerUsername, users)}>Chủ hồ sơ: {userLabel(dossier.ownerUsername, users)}</span></span>
+          <span className="inline-flex min-w-0 items-center gap-1 font-bold text-slate-600" title={userLabel(dossier.ownerUsername, users)}><CircleUserRound size={12} className="shrink-0 text-emerald-600" /> <span className="truncate">Chủ hồ sơ</span></span>
           <span className={`font-black ${completeness.score < 70 ? 'text-amber-700' : 'text-emerald-700'}`}>{completeness.score}%</span>
         </div>
+        <PcnDossierAssignmentControl
+          dossier={dossier}
+          users={users}
+          currentUser={currentUser}
+          onClaim={onClaimDossier ? () => onClaimDossier(dossier) : undefined}
+          onAssign={onAssignDossier}
+          claimDenial={claimDenial}
+          disabled={assigning || claiming}
+          compact
+        />
         <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200" aria-label={`Mức hoàn thiện ${completeness.score}%`}><div className={`h-full rounded-full ${completeness.score < 50 ? 'bg-rose-500' : completeness.score < 80 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${completeness.score}%` }} /></div>
         <p className="mt-1.5 text-[9px] text-slate-500">{station.key === 'EXCEPTIONS' ? 'Tài liệu tại bước: Không áp dụng' : `Tài liệu tại bước: ${completeness.stationDocumentPresent}/${completeness.stationDocumentTotal} bắt buộc`} · Điểm bước: {completeness.stationScore === null ? 'Không áp dụng' : `${completeness.stationScore}%`} · Hạn {formatDate(dossier.targetDate)}</p>
       </div>
@@ -78,15 +91,14 @@ function DossierPipelineCard({ dossier, proposal, requirements, documents, users
       {completeness.missingRequiredByStage.length > 0 && <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-rose-100 bg-rose-50/60 p-2 text-[9px] leading-4 text-rose-800"><FileWarning size={12} className="mt-0.5 shrink-0" /><span className="min-w-0"><b>Tài liệu bắt buộc còn thiếu:</b> <span className="break-words">{missingDocumentSummary(completeness)}</span></span></div>}
       {stepMissingLabels.length === 0 && completeness.missingRequiredByStage.length === 0 && <p className="mt-2 inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700"><CheckCircle2 size={12} /> {station.key === 'EXCEPTIONS' ? 'Ngoại lệ không dùng checklist riêng' : 'Bước này đã đủ tài liệu bắt buộc'}</p>}
       {station.key === 'EXCEPTIONS' && <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50/70 p-2 text-[9px] leading-4 text-amber-900"><AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-700" /><span className="min-w-0"><b>Lý do ngoại lệ:</b> {exceptionReason || 'Chưa ghi nhận lý do ngoại lệ'}</span></div>}
-      <div className={`mt-3 grid gap-1.5 ${!dossier.ownerUsername && !claimDenial && onClaimDossier ? 'sm:grid-cols-[0.8fr_1.2fr]' : ''}`}>
-        {!dossier.ownerUsername && !claimDenial && onClaimDossier && <button type="button" disabled={claiming} onClick={() => void onClaimDossier(dossier)} className="min-h-11 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-[10px] font-black text-indigo-700 hover:bg-indigo-100 disabled:cursor-wait disabled:opacity-60">{claiming ? 'Đang nhận…' : 'Nhận hồ sơ'}</button>}
+      <div className="mt-3 grid gap-1.5">
         <button type="button" onClick={() => onOpenDossier(dossier, getPcnDossierStationTab(station.key))} title={station.actionLabel} className="min-h-11 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[10px] font-black text-emerald-700 hover:bg-emerald-100">Mở hồ sơ: {station.actionLabel}</button>
       </div>
     </article>
   );
 }
 
-export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, documents, users, currentUser, onClaimDossier, onOpenDossier }: {
+export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, documents, users, currentUser, onClaimDossier, onAssignDossier, onOpenDossier }: {
   dossiers: CertificationDossier[];
   proposals: CertificationProposal[];
   fields: PcnCertificationField[];
@@ -95,11 +107,13 @@ export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, do
   users: PcnUserAccount[];
   currentUser: UserAccount | null;
   onClaimDossier?: (dossier: CertificationDossier) => Promise<void>;
+  onAssignDossier?: (dossierId: string, ownerUsername: string) => Promise<void>;
   onOpenDossier: (dossier: CertificationDossier, initialTab?: PcnDossierDetailTab) => void;
 }) {
   const [scope, setScope] = useState<BoardScope>('ALL');
   const [fieldFilter, setFieldFilter] = useState('');
   const [claimingDossierId, setClaimingDossierId] = useState<string | null>(null);
+  const [assigningDossierId, setAssigningDossierId] = useState<string | null>(null);
   const proposalsById = useMemo(() => new Map(proposals.map((proposal) => [proposal.id, proposal])), [proposals]);
   const overdueIds = useMemo(() => new Set(buildPcnWorkQueueRows({ dossiers, proposals }).filter((row) => row.priority === 'OVERDUE').map((row) => row.dossierId)), [dossiers, proposals]);
   const boardFieldCodes = useMemo(() => [...new Set([...fields.filter((field) => field.active).map((field) => field.code), ...dossiers.flatMap((dossier) => dossier.fieldCodes)])], [dossiers, fields]);
@@ -137,6 +151,15 @@ export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, do
       setClaimingDossierId(null);
     }
   };
+  const assignDossier = async (dossierId: string, ownerUsername: string) => {
+    if (!onAssignDossier || assigningDossierId) return;
+    setAssigningDossierId(dossierId);
+    try {
+      await onAssignDossier(dossierId, ownerUsername);
+    } finally {
+      setAssigningDossierId(null);
+    }
+  };
 
   return (
     <section className="pcn-page-surface min-w-0 w-full rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4">
@@ -156,9 +179,9 @@ export function PcnPipelineBoard({ dossiers, proposals, fields, requirements, do
         <div><h3 className="text-xs font-black text-slate-800">Danh sách hồ sơ</h3><p className="mt-0.5 text-[9px] text-slate-400">{visibleDossiers.length} hồ sơ trong phạm vi đang xem</p></div>
       </div>
       <div className="mt-3 min-w-0 w-full grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-        {visibleDossiers.length === 0 ? <p className="col-span-full rounded-lg border border-dashed border-slate-200 bg-slate-50/70 p-5 text-center text-[10px] text-slate-400">Chưa có hồ sơ phù hợp với phạm vi đang xem.</p> : visibleDossiers.map((dossier) => <DossierPipelineCard key={dossier.id} dossier={dossier} proposal={proposalsById.get(dossier.proposalId)} requirements={requirements} documents={documents} users={users} overdue={overdueIds.has(dossier.id)} claimDenial={getClaimDenial(dossier)} claiming={claimingDossierId === dossier.id} onClaimDossier={onClaimDossier ? claimDossier : undefined} onOpenDossier={onOpenDossier} />)}
+        {visibleDossiers.length === 0 ? <p className="col-span-full rounded-lg border border-dashed border-slate-200 bg-slate-50/70 p-5 text-center text-[10px] text-slate-400">Chưa có hồ sơ phù hợp với phạm vi đang xem.</p> : visibleDossiers.map((dossier) => <DossierPipelineCard key={dossier.id} dossier={dossier} proposal={proposalsById.get(dossier.proposalId)} requirements={requirements} documents={documents} users={users} currentUser={currentUser} overdue={overdueIds.has(dossier.id)} claimDenial={getClaimDenial(dossier)} claiming={claimingDossierId === dossier.id} assigning={assigningDossierId === dossier.id} onClaimDossier={onClaimDossier ? claimDossier : undefined} onAssignDossier={onAssignDossier ? (ownerUsername) => assignDossier(dossier.id, ownerUsername) : undefined} onOpenDossier={onOpenDossier} />)}
       </div>
-      <p className="mt-3 inline-flex items-center gap-1 text-[9px] text-slate-400"><UserRound size={11} /> Chủ hồ sơ chịu trách nhiệm từ Đề nghị đến đóng gói và lưu trữ. Tài liệu thiếu chỉ được xác nhận qua checklist và phiên bản đã tải lên.</p>
+      <p className="mt-3 inline-flex items-center gap-1 text-[9px] text-slate-400"><UserRound size={11} /> Nhân viên có thể bấm “Nhận hồ sơ” để tự gán tên mình; Admin/Quản lý chọn người thực hiện trong danh sách. Chủ hồ sơ chịu trách nhiệm từ Đề nghị đến đóng gói và lưu trữ.</p>
     </section>
   );
 }

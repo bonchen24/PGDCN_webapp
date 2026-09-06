@@ -61,6 +61,25 @@ export function getPcnDossierStepAccess(input: {
     return { editable: false, locked: true, requiresWithdrawal: false, reason: 'Bước hồ sơ chưa có cấu hình thao tác.' };
   }
 
+  const ownerUsername = normalizeUsername(input.dossier.ownerUsername);
+  const actorUsername = normalizeUsername(input.actorUsername);
+  if (!input.actorIsSystemManager && !ownerUsername) {
+    return {
+      editable: false,
+      locked: true,
+      requiresWithdrawal: false,
+      reason: 'Hồ sơ chưa gán người thực hiện; hãy bấm Nhận hồ sơ để tự nhận.',
+    };
+  }
+  if (ownerUsername && ownerUsername !== actorUsername && !input.actorIsSystemManager) {
+    return {
+      editable: false,
+      locked: true,
+      requiresWithdrawal: false,
+      reason: 'Chỉ chủ hồ sơ được chỉnh sửa dữ liệu và checklist của bước 1–4.',
+    };
+  }
+
   if (isPcnDossierPostApprovalLocked(input.dossier.status)) {
     return {
       editable: false,
@@ -78,17 +97,6 @@ export function getPcnDossierStepAccess(input: {
       locked: true,
       requiresWithdrawal: false,
       reason: 'Bước sau đang bị khóa; hãy hoàn tất bước hiện tại trước.',
-    };
-  }
-
-  const ownerUsername = normalizeUsername(input.dossier.ownerUsername);
-  const actorUsername = normalizeUsername(input.actorUsername);
-  if (ownerUsername && ownerUsername !== actorUsername && !input.actorIsSystemManager) {
-    return {
-      editable: false,
-      locked: true,
-      requiresWithdrawal: false,
-      reason: 'Chỉ chủ hồ sơ được chỉnh sửa dữ liệu và checklist của bước 1–4.',
     };
   }
 

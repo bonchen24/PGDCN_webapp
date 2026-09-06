@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from 'react';
 
-import type { CertificationDossier, CertificationProposal, IssuancePackage, PcnCertificationField, PcnDocumentRequirement, PcnDossierDocument, PcnSampleLot, PcnSampleRoute, PcnUserAccount, OutboundLabRequest, ReturnedTestResult } from '../types';
+import type { CertificationDossier, CertificationProposal, IssuancePackage, PcnCertificationField, PcnDocumentRequirement, PcnDossierDocument, PcnSampleLot, PcnSampleRoute, PcnUserAccount, OutboundLabRequest, ReturnedTestResult, UserAccount } from '../types';
+import { getPcnDossierOperatorDenial } from '../utils/pcnDossierAssignment';
+import { isPcnSystemManager } from '../utils/pcnRbac';
 import { buildPcnOperationsRegisterRows, getPcnSummaryCellUpdate } from '../utils/pcnOperationsRegister';
 import type { SummaryGridColumn, SummaryGridRow } from '../utils/summaryRegister';
 import PgdcnDossierSummaryGrid from './PgdcnDossierSummaryGrid';
@@ -20,6 +22,7 @@ type Props = {
   documentRequirements: PcnDocumentRequirement[];
   dossierDocuments: PcnDossierDocument[];
   users: PcnUserAccount[];
+  currentUser?: UserAccount | null;
   currentUsername?: string | null;
   canEdit: boolean;
   onOpenDossier: (dossier: CertificationDossier, initialTab?: 'documents' | 'lab' | 'results' | 'issuance') => void;
@@ -155,6 +158,16 @@ export default function PcnOperationsRegisterView(props: Props) {
     if (update.target === 'proposal') await props.onUpdateProposal(proposal.id, update.updates as Partial<CertificationProposal>);
     else await props.onUpdateDossier(dossier.id, update.updates as Partial<CertificationDossier>);
   };
+  const canEditRow = (rowId: string) => {
+    const dossier = dossierById.get(rowId);
+    const actor = props.currentUser;
+    if (!dossier || !actor) return false;
+    return getPcnDossierOperatorDenial({
+      ownerUsername: dossier.ownerUsername,
+      actorUsername: actor.username,
+      actorIsSystemManager: isPcnSystemManager(actor),
+    }) === null;
+  };
 
   const filterControls = <>
     <select aria-label="Lọc hoàn thiện Sổ tổng hợp PCN" value={completeness} onChange={(event) => setCompleteness(event.target.value as typeof completeness)} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="ALL">Tất cả hoàn thiện</option><option value="INCOMPLETE">Còn thiếu tài liệu</option><option value="COMPLETE">Đủ tài liệu bắt buộc</option></select>
@@ -164,5 +177,5 @@ export default function PcnOperationsRegisterView(props: Props) {
     <select aria-label="Lọc năm Sổ tổng hợp PCN" value={year} onChange={(event) => setYear(event.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="ALL">Tất cả năm</option>{Array.from(new Set(registerRows.map((row) => row.receivedAt?.slice(0, 4)).filter(Boolean))).sort().reverse().map((value) => <option key={value} value={value}>{value}</option>)}</select>
   </>;
 
-  return <div className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5"><PgdcnPageHeader eyebrow="Quản lý PCN" title="Sổ tổng hợp PCN" description="Mỗi dòng là một bộ hồ sơ PCN, mỗi cột là một trường dữ liệu. Cell được phép chỉnh sửa trực tiếp theo đúng ranh giới Đề nghị hoặc Hồ sơ." /><PgdcnDossierSummaryGrid domain="PCN" columns={configuredColumns} rows={rows} currentUsername={props.currentUsername} canEdit={props.canEdit} filterRows={filterRows} filterControls={filterControls} onOpenRow={(rowId) => { const dossier = dossierById.get(rowId); if (dossier) props.onOpenDossier(dossier, 'documents'); }} onCommitCell={commitCell} searchPlaceholder="Tìm mã đề nghị, mã hồ sơ, khách hàng, sản phẩm, lĩnh vực..." emptyTitle="Không có hồ sơ PCN phù hợp" emptyDescription="Hãy điều chỉnh từ khóa hoặc các bộ lọc Sổ tổng hợp." /></div>;
+  return <div className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5"><PgdcnPageHeader eyebrow="Quản lý PCN" title="Sổ tổng hợp PCN" description="Mỗi dòng là một bộ hồ sơ PCN, mỗi cột là một trường dữ liệu. Cell được phép chỉnh sửa trực tiếp theo đúng ranh giới Đề nghị hoặc Hồ sơ." /><PgdcnDossierSummaryGrid domain="PCN" columns={configuredColumns} rows={rows} currentUsername={props.currentUsername} canEdit={props.canEdit} canEditRow={canEditRow} filterRows={filterRows} filterControls={filterControls} onOpenRow={(rowId) => { const dossier = dossierById.get(rowId); if (dossier) props.onOpenDossier(dossier, 'documents'); }} onCommitCell={commitCell} searchPlaceholder="Tìm mã đề nghị, mã hồ sơ, khách hàng, sản phẩm, lĩnh vực..." emptyTitle="Không có hồ sơ PCN phù hợp" emptyDescription="Hãy điều chỉnh từ khóa hoặc các bộ lọc Sổ tổng hợp." /></div>;
 }

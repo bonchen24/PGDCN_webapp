@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { getPcnDossierAssignmentDenial, getPcnOwnerAssignmentAuthorityDenial } from '../utils/pcnDossierAssignment.ts';
+import { getPcnAssignableDossierUsers, getPcnDossierAssignmentDenial, getPcnDossierOperatorDenial, getPcnOwnerAssignmentAuthorityDenial } from '../utils/pcnDossierAssignment.ts';
 
 const users = [
   { username: 'evaluator-qc4', active: true, systemRole: 'staff', fieldCodes: ['QC4'] },
@@ -86,6 +86,25 @@ test('owner transfer authority belongs to Admin or Leadership while staff may se
     actorSystemRole: 'staff',
     actorDepartmentRoleCode: 'CERTIFICATION_EXPERT',
   }) || '', /Admin hoặc Lãnh đạo|chủ hồ sơ/i);
+});
+
+test('filters assignment choices to active PCN users with dossier field overlap', () => {
+  const assignmentUsers = [
+    { username: 'qc4', name: 'QC4', active: true, systemRole: 'staff', departmentScopes: ['PCN'], fieldCodes: ['QC4'] },
+    { username: 'qc9', name: 'QC9', active: true, systemRole: 'staff', departmentScopes: ['PCN'], fieldCodes: ['QC9'] },
+    { username: 'pgd', name: 'PGD', active: true, systemRole: 'staff', departmentScopes: ['PGD'], fieldCodes: ['QC4'] },
+    { username: 'viewer', name: 'Viewer', active: true, systemRole: 'viewer', departmentScopes: ['PCN'], fieldCodes: ['QC4'] },
+  ];
+  assert.deepEqual(getPcnAssignableDossierUsers(['QC4'], assignmentUsers).map((user) => user.username), ['qc4']);
+});
+
+test('denies staff operation on an unassigned dossier', () => {
+  assert.match(getPcnDossierOperatorDenial({ ownerUsername: '', actorUsername: 'staff', actorIsSystemManager: false }) || '', /chưa gán/i);
+});
+
+test('allows the assigned staff owner and managers to operate', () => {
+  assert.equal(getPcnDossierOperatorDenial({ ownerUsername: 'staff', actorUsername: 'staff', actorIsSystemManager: false }), null);
+  assert.equal(getPcnDossierOperatorDenial({ ownerUsername: 'staff', actorUsername: 'manager', actorIsSystemManager: true }), null);
 });
 
 // --- End of pcn-dossier-assignment.test.ts ---

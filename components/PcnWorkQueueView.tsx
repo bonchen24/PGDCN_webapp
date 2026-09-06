@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Clock3, ExternalLink, ListTodo, UserRound } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock3, ExternalLink, ListTodo } from 'lucide-react';
 
 import type { CertificationDossier, CertificationProposal, PcnDossierDocument, PcnDocumentRequirement, PcnUserAccount, UserAccount } from '../types';
 import { getPcnDossierAssignmentDenial, getPcnOwnerAssignmentAuthorityDenial } from '../utils/pcnDossierAssignment';
 import { getPcnDossierStationTab } from '../utils/pcnDossierNavigation';
 import { buildPcnWorkQueueRows, filterPcnWorkQueueRows, type PcnWorkQueuePriority, type PcnWorkQueueRow, type PcnWorkQueueScope } from '../utils/pcnWorkQueue';
-import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
+import PcnDossierAssignmentControl from './PcnDossierAssignmentControl';
 
 const scopeLabels: Array<{ value: PcnWorkQueueScope; label: string }> = [
   { value: 'ALL', label: 'Tất cả' },
@@ -29,10 +29,6 @@ function formatTargetDate(value?: string): string {
 
 function assignmentLabel(row: PcnWorkQueueRow): string {
   return row.assigneeUsername ? 'Đã phân công cá nhân' : 'Chưa phân công cá nhân';
-}
-
-function dossierOwnerLabel(row: PcnWorkQueueRow, users: PcnUserAccount[]): string {
-  return row.ownerUsername ? getPcnUserDisplayName(row.ownerUsername, users) : 'Chưa phân công';
 }
 
 function missingDocumentSummary(row: PcnWorkQueueRow): string {
@@ -57,6 +53,7 @@ export function PcnWorkQueueView({
   currentUser,
   onOpenDossier,
   onClaimDossier,
+  onAssignDossier,
 }: {
   dossiers: CertificationDossier[];
   proposals: CertificationProposal[];
@@ -66,10 +63,12 @@ export function PcnWorkQueueView({
   currentUser: UserAccount | null;
   onOpenDossier: (dossier: CertificationDossier, initialTab?: import('../utils/pcnDossierNavigation').PcnDossierDetailTab) => void;
   onClaimDossier?: (dossier: CertificationDossier) => Promise<void>;
+  onAssignDossier?: (dossierId: string, ownerUsername: string) => Promise<void>;
 }) {
   const [scope, setScope] = useState<PcnWorkQueueScope>('ALL');
   const [showAll, setShowAll] = useState(false);
   const [claimingDossierId, setClaimingDossierId] = useState<string | null>(null);
+  const [assigningDossierId, setAssigningDossierId] = useState<string | null>(null);
   const rows = useMemo(() => buildPcnWorkQueueRows({ dossiers, proposals, currentUsername: currentUser?.username, documentRequirements, dossierDocuments }), [currentUser?.username, dossierDocuments, documentRequirements, dossiers, proposals]);
   const filteredRows = useMemo(() => filterPcnWorkQueueRows(rows, { scope }), [rows, scope]);
   const visibleRows = showAll ? filteredRows : filteredRows.slice(0, 8);
@@ -98,6 +97,15 @@ export function PcnWorkQueueView({
       await onClaimDossier(dossier);
     } finally {
       setClaimingDossierId(null);
+    }
+  };
+  const assignDossier = async (dossierId: string, ownerUsername: string) => {
+    if (!onAssignDossier || assigningDossierId) return;
+    setAssigningDossierId(dossierId);
+    try {
+      await onAssignDossier(dossierId, ownerUsername);
+    } finally {
+      setAssigningDossierId(null);
     }
   };
 
@@ -129,8 +137,7 @@ export function PcnWorkQueueView({
                   <p className="truncate text-[10px] text-slate-500">{row.customerName} · {row.productName}</p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[9px] font-bold"><span className={`rounded-full px-1.5 py-0.5 ${row.completenessScore < 70 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>Mức hoàn thiện {row.completenessScore}%</span><span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-indigo-700">Điểm bước {row.stationScore === null || row.stationScore === undefined ? 'Không áp dụng' : `${row.stationScore}%`}</span><span className={row.missingRequiredCount > 0 ? 'text-rose-700' : 'text-emerald-700'}>{row.requiredDocumentPresent}/{row.requiredDocumentTotal} bắt buộc</span><span className={row.missingRequiredCount > 0 ? 'max-w-[340px] truncate text-rose-700' : 'text-emerald-700'} title={row.missingRequiredCount > 0 ? `Tài liệu bắt buộc còn thiếu: ${missingDocumentSummary(row)}` : undefined}>{compactMissingSummary(row)}</span></div>
                 </button>
-                <div className="flex shrink-0 flex-col items-end gap-1 text-[10px] text-slate-500"><span className="inline-flex items-center gap-1" title="Hạn xử lý"><Clock3 size={12} />{formatTargetDate(row.targetDate)}</span><span className="max-w-[220px] truncate" title="Chủ hồ sơ chịu trách nhiệm xuyên suốt">Chủ hồ sơ: {dossierOwnerLabel(row, users)}</span><span title="Nhóm và trạng thái phân công">Phụ trách: {assignmentLabel(row)}</span></div>
-                {onClaimDossier && !dossier.ownerUsername && !getClaimDenial(dossier) && <button type="button" aria-label={`Nhận hồ sơ ${row.dossierCode}`} onClick={() => { void claimDossier(dossier).catch(() => undefined); }} disabled={claimingDossierId === dossier.id} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[10px] font-black text-emerald-700 hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-60"><UserRound size={12} /> {claimingDossierId === dossier.id ? 'Đang nhận…' : 'Nhận hồ sơ'}</button>}
+                <div className="flex min-w-[180px] shrink-0 flex-col items-end gap-1 text-[10px] text-slate-500" data-owner-username={row.ownerUsername || ''} aria-label={!dossier.ownerUsername ? 'Nhận hồ sơ' : 'Người thực hiện hồ sơ'}><span className="inline-flex items-center gap-1" title="Hạn xử lý"><Clock3 size={12} />{formatTargetDate(row.targetDate)}</span><PcnDossierAssignmentControl dossier={dossier} users={users} currentUser={currentUser} onClaim={onClaimDossier ? () => claimDossier(dossier) : undefined} onAssign={onAssignDossier ? (ownerUsername) => assignDossier(dossier.id, ownerUsername) : undefined} claimDenial={getClaimDenial(dossier)} disabled={Boolean(assigningDossierId && assigningDossierId !== dossier.id) || claimingDossierId === dossier.id} compact />{!dossier.ownerUsername && <span className="sr-only">{claimingDossierId === dossier.id ? 'Đang nhận…' : 'Nhận hồ sơ'}</span>}<span title="Nhóm và trạng thái phân công">Phụ trách: {assignmentLabel(row)}</span></div>
                 <button type="button" aria-label={`Mở hồ sơ tại bước · ${row.stationActionLabel}`} onClick={() => onOpenDossier(dossier, getPcnDossierStationTab(row.stationKey))} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-600 hover:border-emerald-300 hover:text-emerald-700" title={`Mở ${row.stationActionLabel}`}><ExternalLink size={12} /> Mở bước này</button>
               </article>
             );

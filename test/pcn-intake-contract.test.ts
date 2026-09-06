@@ -23,7 +23,7 @@ test('PCN intake creates one proposal and one dossier atomically and is idempote
   assert.match(intake, /idempotent/);
   assert.match(intake, /status: 'CONVERTED'/);
   assert.match(intake, /status: 'INTAKE_REVIEW'/);
-  assert.match(intake, /ownerUsername/);
+  assert.doesNotMatch(intake, /ownerUsername:\s*String\(getPcnSessionUser\(req\)\?\.username/);
   assert.match(intake, /getPcnSessionUser/);
   assert.match(intake, /pcnDocumentRequirements/);
   assert.match(intake, /dossierDocuments/);
@@ -35,13 +35,13 @@ test('PCN intake creates one proposal and one dossier atomically and is idempote
   assert.doesNotMatch(store.slice(addProposalStart, addProposalEnd), /saveDoc\('dossierDocuments'/);
 });
 
-test('PCN dossier ownership is assigned by the session actor and survives proposal synchronization', () => {
+test('PCN dossier starts unassigned and survives proposal synchronization', () => {
   const intake = server.slice(server.indexOf("app.post('/api/pcn/intake'"), server.indexOf("app.get('/api/pcn/document-requirements'"));
   const storedDossierStart = intake.indexOf('const storedDossier = {');
   const storedDossierEnd = intake.indexOf('const proposalWrite =', storedDossierStart);
   const storedDossier = intake.slice(storedDossierStart, storedDossierEnd);
   assert.match(storedDossier, /\.\.\.dossier/);
-  assert.match(storedDossier, /ownerUsername:\s*String\(getPcnSessionUser\(req\)\?\.username/);
+  assert.doesNotMatch(storedDossier, /ownerUsername:\s*String\(getPcnSessionUser\(req\)\?\.username/);
 
   const addProposalStart = store.indexOf('addProposal: async');
   const addProposalEnd = store.indexOf('\n  },', addProposalStart);

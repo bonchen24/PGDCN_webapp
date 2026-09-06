@@ -88,6 +88,7 @@ import type {
   PcnDraftFormKind,
   PcnDraftOutput,
   PcnDraftWorkspace,
+  PcnUserAccount,
   ReturnedTestResult,
   ActivityLogAction,
   ActivityLogChange,
@@ -228,7 +229,7 @@ import { buildPcnLabRequest, transitionPcnLabRequest, type PcnLabRequestDraft } 
 import { buildPcnSampleHandoverDetails } from './utils/pcnHandoverPolicy.ts';
 import { buildPcnReturnedResult, markOfficialPcnResults } from './utils/pcnResultPolicy.ts';
 import { buildPcnDossierChecklist, buildPcnDossierDocumentId, buildPcnGeneratedDossierAttachment, buildPcnUploadedDossierAttachment, getPcnDocumentRequirements, getPcnGeneratedDocumentRequirementCode, mergePcnDocumentRequirements } from './utils/pcnDossierDocuments.ts';
-import { getPcnDossierAssignmentDenial, getPcnOwnerAssignmentAuthorityDenial } from './utils/pcnDossierAssignment.ts';
+import { getPcnDossierAssignmentDenial, getPcnDossierOperatorDenial, getPcnOwnerAssignmentAuthorityDenial } from './utils/pcnDossierAssignment.ts';
 import { getPcnDossierDateDenial, getPcnTimestampDenial, normalizePcnIssuanceTimestamp, normalizePcnUtcTimestamp } from './utils/pcnDossierDate.ts';
 import type { PcnDossierUpdateInput } from './utils/pcnDossierApi.ts';
 import type { PcnProposalUpdateInput } from './utils/pcnProposalApi.ts';
@@ -1193,6 +1194,18 @@ function requirePcnMutation(req: express.Request, res: express.Response): boolea
   if (role === 'admin' || role === 'staff') return true;
   res.status(403).json({ error: 'Tài khoản viewer PCN chỉ được đọc dữ liệu.' });
   return false;
+}
+
+function assertPcnDossierOperator(
+  dossier: Pick<CertificationDossier, 'ownerUsername'>,
+  actor: PcnUserAccount,
+): void {
+  const denial = getPcnDossierOperatorDenial({
+    ownerUsername: dossier.ownerUsername,
+    actorUsername: actor.username,
+    actorIsSystemManager: isPcnSystemManager(actor),
+  });
+  if (denial) throw Object.assign(new Error(denial), { statusCode: 403 });
 }
 
 type PcnNotificationAudienceUser = NonNullable<ReturnType<typeof getPcnSessionUser>>;
@@ -7003,11 +7016,7 @@ async function startServer() {
         );
         if (dossierResult.rows.length === 0) throw Object.assign(new Error('Không tìm thấy hồ sơ để lập bộ phát hành.'), { statusCode: 404 });
         const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
-        if (dossier.status === 'TECHNICAL_REVIEW'
-          && dossier.ownerUsername
-          && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
-          throw Object.assign(new Error('Chỉ chủ hồ sơ được hoàn thiện bước 4 và trình bước 5.'), { statusCode: 403 });
-        }
+        assertPcnDossierOperator(dossier, actor);
         if (existingIssuanceResult.rows.length > 0) {
           const issuance = mapDocumentRow(existingIssuanceResult.rows[0]) as IssuancePackage;
           if (issuance.dossierId !== dossier.id) throw Object.assign(new Error('Bộ phát hành không thuộc hồ sơ đang yêu cầu.'), { statusCode: 409 });
@@ -8050,7 +8059,6 @@ async function startServer() {
           id: dossierId,
           proposalId,
           status: 'INTAKE_REVIEW',
-          ownerUsername: String(getPcnSessionUser(req)?.username || '').trim().toLowerCase() || undefined,
           fieldCodes: storedProposal.fieldCodes,
           labRequestIds: Array.isArray(dossier.labRequestIds) ? dossier.labRequestIds : [],
           returnedResultIds: Array.isArray(dossier.returnedResultIds) ? dossier.returnedResultIds : [],
@@ -8210,6 +8218,7 @@ async function startServer() {
         if (String(dossier.proposalId || '').trim() !== proposal.id) {
           throw Object.assign(new Error('Liên kết hai chiều giữa Đề nghị và hồ sơ không hợp lệ.'), { statusCode: 409 });
         }
+        assertPcnDossierOperator(dossier, actor);
 
         const proposalActivityId = stablePcnMutationId('activity-pcn-proposal-update', `${proposalId}:${idempotencyKey}`);
         const existingActivityResult = await client.query(
@@ -8531,12 +8540,8 @@ async function startServer() {
         if (isPcnDossierPostApprovalLocked(dossier.status) && (hasOwnerControlledUpdate || hasWaiverPatch)) {
           throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi chỉnh sửa.'), { statusCode: 409 });
         }
-        if (hasOwnerControlledUpdate
-          && dossier.ownerUsername
-          && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()
-          && !isPcnSystemManager(actor)) {
-          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu các bước 1–4.'), { statusCode: 403 });
-        }
+        const assignmentOnlyUpdate = Object.keys(rawUpdates).every((field) => field === 'ownerUsername');
+        if (!assignmentOnlyUpdate) assertPcnDossierOperator(dossier, actor);
         if (hasWaiverPatch && actor.departmentRoleCode !== 'LEADERSHIP') {
           throw Object.assign(new Error('Chỉ Lãnh đạo được duyệt waiver tài liệu.'), { statusCode: 403 });
         }
@@ -8998,9 +9003,7 @@ async function startServer() {
         if (isPcnDossierPostApprovalLocked(dossier.status)) {
           throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi ghi nhận KQTN.'), { statusCode: 409 });
         }
-        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
-          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu KQTN.'), { statusCode: 403 });
-        }
+        assertPcnDossierOperator(dossier, actor);
         if (!(dossier.labRequestIds || []).includes(labRequestId)) throw Object.assign(new Error('Hồ sơ chưa có backlink tới PYC nhận KQTN.'), { statusCode: 409 });
 
         const requestResult = await client.query(
@@ -9394,7 +9397,7 @@ async function startServer() {
           if (!dossierResult.rows[0]) throw Object.assign(new Error(`Không tìm thấy hồ sơ PCN ${dossierId}.`), { statusCode: 404 });
           const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
           if (isPcnDossierPostApprovalLocked(dossier.status)) throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi tạo PYC tổng.'), { statusCode: 409 });
-          if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu bước lấy mẫu.'), { statusCode: 403 });
+          assertPcnDossierOperator(dossier, actor);
           if (!canCreatePcnLabRequest(dossier)) throw Object.assign(new Error('Hồ sơ chưa đến bước lấy mẫu & gửi PTN để tạo PYC tổng.'), { statusCode: 409 });
           const dossierCustomerKey = customerKey(dossier.customerSnapshot || rawCustomer);
           if (dossierCustomerKey !== bundleCustomerKey) throw Object.assign(new Error('Các mẫu trong PYC tổng phải thuộc cùng một khách hàng.'), { statusCode: 400 });
@@ -9759,9 +9762,7 @@ async function startServer() {
         if (isPcnDossierPostApprovalLocked(dossier.status)) {
           throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi tạo PYC.'), { statusCode: 409 });
         }
-        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
-          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu bước 2.'), { statusCode: 403 });
-        }
+        assertPcnDossierOperator(dossier, actor);
         const dossierFieldCodes = normalizePcnSampleList(dossier.fieldCodes);
         if (!dossierFieldCodes.includes(fieldCode)) throw Object.assign(new Error('Lĩnh vực PYC phải thuộc hồ sơ PCN.'), { statusCode: 400 });
         if (!canCreatePcnLabRequest(dossier)) {
@@ -9990,9 +9991,7 @@ async function startServer() {
         if (isPcnDossierPostApprovalLocked(dossier.status)) {
           throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi cập nhật PYC.'), { statusCode: 409 });
         }
-        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
-          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu bước 2.'), { statusCode: 403 });
-        }
+        assertPcnDossierOperator(dossier, actor);
         const requestResult = await client.query(
           `SELECT document_id, data FROM app_documents
            WHERE collection_name = 'labRequests' AND document_id = $1
@@ -10240,9 +10239,7 @@ async function startServer() {
         if (isPcnDossierPostApprovalLocked(dossier.status)) {
           throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi tạo lô mẫu.'), { statusCode: 409 });
         }
-        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
-          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu bước 2.'), { statusCode: 403 });
-        }
+        assertPcnDossierOperator(dossier, actor);
         const dossierFieldCodes = normalizePcnSampleList(dossier.fieldCodes);
         if (dossierFieldCodes.length === 0) throw Object.assign(new Error('Hồ sơ PCN chưa có Lĩnh vực để kiểm tra lô mẫu.'), { statusCode: 409 });
         const requestedFieldCodes = normalizePcnSampleList(draft.fieldCodes);
@@ -10509,9 +10506,7 @@ async function startServer() {
         if (isPcnDossierPostApprovalLocked(dossier.status)) {
           throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi cập nhật tuyến mẫu.'), { statusCode: 409 });
         }
-        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
-          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu bước 2.'), { statusCode: 403 });
-        }
+        assertPcnDossierOperator(dossier, actor);
         if (!canProcessPcnSampleFlow(dossier)) {
           throw Object.assign(new Error('Hồ sơ chưa đến bước lấy mẫu & gửi PTN để xử lý luồng mẫu.'), { statusCode: 409 });
         }
@@ -12356,9 +12351,7 @@ async function startServer() {
         if (isPcnDossierPostApprovalLocked(dossier.status)) {
           throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi tải phiên tài liệu mới.'), { statusCode: 409 });
         }
-        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
-          throw Object.assign(new Error('Chỉ chủ hồ sơ được tải hoặc cập nhật phiên tài liệu.'), { statusCode: 403 });
-        }
+        assertPcnDossierOperator(dossier, actor);
         const dossierFieldCodes = Array.isArray(dossier.fieldCodes)
           ? dossier.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean)
           : [];
@@ -12597,9 +12590,7 @@ async function startServer() {
         if (isPcnDossierPostApprovalLocked(dossier.status)) {
           throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi xác nhận tài liệu.'), { statusCode: 409 });
         }
-        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
-          throw Object.assign(new Error('Chỉ chủ hồ sơ được xác nhận tài liệu vào checklist.'), { statusCode: 403 });
-        }
+        assertPcnDossierOperator(dossier, actor);
         const dossierFieldCodes = Array.isArray(dossier.fieldCodes)
           ? dossier.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean)
           : [];
@@ -14338,9 +14329,7 @@ async function startServer() {
         if (isPcnDossierPostApprovalLocked(dossier.status)) {
           throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi gắn file KQTN.'), { statusCode: 409 });
         }
-        if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) {
-          throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa file KQTN.'), { statusCode: 403 });
-        }
+        assertPcnDossierOperator(dossier, actor);
         if (currentResult.fileAssetId) {
           if (currentResult.fileAssetId === assetId) return { result: currentResult, idempotent: true as const };
           throw Object.assign(new Error('KQTN này đã có file đính kèm khác.'), { statusCode: 409 });

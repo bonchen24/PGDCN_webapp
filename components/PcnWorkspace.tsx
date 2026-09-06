@@ -141,6 +141,7 @@ function PcnDashboard({
   onOpenSection,
   onOpenDossier,
   onClaimDossier,
+  onAssignDossier,
 }: {
   proposals: CertificationProposal[];
   dossiers: CertificationDossier[];
@@ -156,6 +157,7 @@ function PcnDashboard({
   onOpenSection: (section: PcnSection, fieldCode?: string) => void;
   onOpenDossier: (dossier: CertificationDossier, initialTab?: import('../utils/pcnDossierNavigation').PcnDossierDetailTab) => void;
   onClaimDossier: (dossier: CertificationDossier) => Promise<void>;
+  onAssignDossier: (dossierId: string, ownerUsername: string) => Promise<void>;
 }) {
   const storedDocumentRequirements = usePcnStore((state) => state.documentRequirements);
   const storedUsers = usePcnStore((state) => state.users);
@@ -229,9 +231,9 @@ function PcnDashboard({
         </div>
         <div className="mt-2 min-w-0 w-full">
           {dashboardWorkSurface === 'WORKFLOW' ? (
-            <PcnPipelineBoard dossiers={dossiers} proposals={proposals} fields={fields} requirements={boardRequirements} documents={dossierDocuments} users={boardUsers} currentUser={currentUser} onClaimDossier={onClaimDossier} onOpenDossier={onOpenDossier} />
+            <PcnPipelineBoard dossiers={dossiers} proposals={proposals} fields={fields} requirements={boardRequirements} documents={dossierDocuments} users={boardUsers} currentUser={currentUser} onClaimDossier={onClaimDossier} onAssignDossier={onAssignDossier} onOpenDossier={onOpenDossier} />
           ) : (
-            <PcnWorkQueueView dossiers={dossiers} proposals={proposals} documentRequirements={boardRequirements} dossierDocuments={dossierDocuments} users={boardUsers} currentUser={currentUser} onOpenDossier={onOpenDossier} onClaimDossier={onClaimDossier} />
+            <PcnWorkQueueView dossiers={dossiers} proposals={proposals} documentRequirements={boardRequirements} dossierDocuments={dossierDocuments} users={boardUsers} currentUser={currentUser} onOpenDossier={onOpenDossier} onClaimDossier={onClaimDossier} onAssignDossier={onAssignDossier} />
           )}
         </div>
       </section>
@@ -668,6 +670,15 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', o
       throw error;
     }
   };
+  const assignPcnDossier = async (dossierId: string, ownerUsername: string) => {
+    try {
+      await pcn.updateDossier(dossierId, { ownerUsername });
+      toast.success(ownerUsername.trim() ? 'Đã gán người thực hiện cho hồ sơ.' : 'Đã bỏ gán người thực hiện.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể gán người thực hiện.');
+      throw error;
+    }
+  };
   const prepareIssuance = async (dossier: CertificationDossier) => {
     const existingIssuance = pcn.issuancePackages.find((item) => item.dossierId === dossier.id);
     if (existingIssuance && existingIssuance.status !== 'RETURNED') { toast.info('Hồ sơ này đã có bộ phát hành.'); return; }
@@ -709,11 +720,12 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', o
       onOpenSection={openSection}
       onOpenDossier={openDossierAtCurrentStation}
       onClaimDossier={claimPcnDossier}
+      onAssignDossier={assignPcnDossier}
     />
   ) : activeSection === 'proposals' ? (
     <ProposalView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} customers={pcn.customers} canEdit={canMutatePcn} initialDossierId={focusedDossierId} initialFieldCode={selectedField} openFormRequest={proposalFormRequest} onSave={(proposal) => pcn.addProposal(proposal)} onUpdateProposal={(proposalId, updates) => pcn.updateProposal(proposalId, updates)} onOpenDossier={(dossier) => { setSelectedDossierTab(undefined); setSelectedDossierId(dossier.id); }} />
   ) : activeSection === 'operations' ? (
-    <PcnOperationsRegisterView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} issuancePackages={pcn.issuancePackages} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} users={pcn.users} currentUsername={currentUser.username} canEdit={canMutatePcn} onUpdateProposal={pcn.updateProposal} onUpdateDossier={pcn.updateDossier} onOpenDossier={openDossierAtCurrentStation} />
+    <PcnOperationsRegisterView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} issuancePackages={pcn.issuancePackages} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} users={pcn.users} currentUser={currentUser} currentUsername={currentUser.username} canEdit={canMutatePcn} onUpdateProposal={pcn.updateProposal} onUpdateDossier={pcn.updateDossier} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'lab-operations' ? (
     <PcnLabOperationsView dossiers={pcn.dossiers} proposals={pcn.proposals} sampleLots={pcn.sampleLots} sampleItems={pcn.sampleItems} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} sampleRequestBundles={pcn.sampleRequestBundles} returnedResults={pcn.returnedResults} canEdit={canMutatePcn} onSaveBundle={pcn.saveSampleRequestBundle} onSendBundle={pcn.sendSampleRequestBundle} onRetryBundleDispatch={pcn.retrySampleRequestBundleDispatch} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'drafting' ? (

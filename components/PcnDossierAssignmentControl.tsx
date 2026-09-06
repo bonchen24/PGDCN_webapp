@@ -1,0 +1,138 @@
+'use client';
+
+import { useState } from 'react';
+
+import type { CertificationDossier, PcnUserAccount, UserAccount } from '../types';
+import {
+  getPcnAssignableDossierUsers,
+  getPcnDossierAssignmentDenial,
+  getPcnOwnerAssignmentAuthorityDenial,
+} from '../utils/pcnDossierAssignment';
+import { isPcnSystemManager } from '../utils/pcnRbac';
+import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
+import PcnCatalogCombobox, { type PcnCatalogOption } from './PcnCatalogCombobox';
+
+export type PcnDossierAssignmentControlProps = {
+  dossier: Pick<CertificationDossier, 'id' | 'dossierCode' | 'fieldCodes' | 'ownerUsername'>;
+  users: PcnUserAccount[];
+  currentUser: UserAccount | null;
+  onAssign?: (ownerUsername: string) => Promise<void>;
+  onClaim?: () => Promise<void>;
+  claimDenial?: string | null;
+  disabled?: boolean;
+  compact?: boolean;
+};
+
+function assignmentOption(user: PcnUserAccount, users: PcnUserAccount[]): PcnCatalogOption {
+  return {
+    value: user.username,
+    label: getPcnUserDisplayName(user.username, users),
+    searchText: [user.username, user.name, user.position, user.departmentRoleCode, user.systemRole].filter(Boolean).join(' '),
+    description: [user.position, user.username].filter(Boolean).join(' · '),
+  };
+}
+
+export function PcnDossierAssignmentControl({
+  dossier,
+  users,
+  currentUser,
+  onAssign,
+  onClaim,
+  claimDenial,
+  disabled = false,
+  compact = false,
+}: PcnDossierAssignmentControlProps) {
+  const [saving, setSaving] = useState(false);
+  const ownerUsername = String(dossier.ownerUsername || '').trim();
+  const canManageAssignment = isPcnSystemManager(currentUser) && Boolean(onAssign);
+  const assignableUsers = getPcnAssignableDossierUsers(dossier.fieldCodes, users);
+  const assignmentOptions = assignableUsers.map((user) => assignmentOption(user, users));
+  const unmatchedOwnerOption: PcnCatalogOption | undefined = ownerUsername && !assignmentOptions.some((option) => option.value === ownerUsername)
+    ? {
+      value: ownerUsername,
+      label: `${getPcnUserDisplayName(ownerUsername, users)} (cần rà soát)`,
+      searchText: ownerUsername,
+      description: ownerUsername,
+      disabled: true,
+    }
+    : undefined;
+
+  const resolvedClaimDenial = claimDenial ?? (!currentUser
+    ? 'Chưa xác định người dùng hiện tại.'
+    : getPcnOwnerAssignmentAuthorityDenial({
+      currentUsername: ownerUsername,
+      nextUsername: currentUser.username,
+      actorUsername: currentUser.username,
+      actorSystemRole: currentUser.systemRole || currentUser.role,
+      actorDepartmentRoleCode: currentUser.departmentRoleCode,
+    }) || getPcnDossierAssignmentDenial({
+      assignmentLabel: 'Người thực hiện',
+      currentUsername: ownerUsername,
+      nextUsername: currentUser.username,
+      dossierFieldCodes: dossier.fieldCodes,
+      users,
+    }));
+
+  const saveAssignment = async (nextUsername: string) => {
+    if (!onAssign || saving || disabled) return;
+    setSaving(true);
+    try {
+      await onAssign(nextUsername);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const claim = async () => {
+    if (!onClaim || saving || disabled || ownerUsername || resolvedClaimDenial) return;
+    setSaving(true);
+    try {
+      await onClaim();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (canManageAssignment) {
+    return (
+      <div data-testid="pcn-dossier-assignment-control" className={compact ? 'min-w-0 flex-1' : 'mt-3'}>
+        <PcnCatalogCombobox
+          id={`pcn-dossier-owner-${dossier.id}`}
+          label="Người thực hiện hồ sơ"
+          value={ownerUsername}
+          onChange={(value) => { void saveAssignment(value).catch(() => undefined); }}
+          options={assignmentOptions}
+          unmatchedOption={unmatchedOwnerOption}
+          disabled={disabled || saving}
+          placeholder={assignmentOptions.length > 0 ? 'Chưa gán người thực hiện · chọn nhân viên' : 'Chưa có nhân viên phù hợp'}
+        />
+        <p className="mt-1 text-[9px] text-emerald-700">Admin/Quản lý chọn nhân viên đang hoạt động trong phòng và đúng phạm vi Lĩnh vực.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div data-testid="pcn-dossier-assignment-control" className={compact ? 'min-w-0 flex-1' : 'mt-3'}>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className={`inline-flex min-h-8 items-center rounded-full border px-2 py-1 text-[10px] font-black ${ownerUsername ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`} title={ownerUsername ? 'Chỉ người được gắn tên hoặc Admin/Quản lý được thao tác hồ sơ.' : 'Hồ sơ đang chờ nhân viên trong phòng tự nhận hoặc được Admin/Quản lý phân công.'}>
+          {ownerUsername ? `Người thực hiện: ${getPcnUserDisplayName(ownerUsername, users)}` : 'Chưa gán người thực hiện'}
+        </span>
+        {!ownerUsername && onClaim && (
+          <button
+            type="button"
+            onClick={() => { void claim().catch(() => undefined); }}
+            disabled={disabled || saving || Boolean(resolvedClaimDenial)}
+            title={resolvedClaimDenial || 'Tự gán tên mình vào hồ sơ'}
+            className="min-h-10 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[10px] font-black text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? 'Đang nhận…' : 'Nhận hồ sơ'}
+          </button>
+        )}
+      </div>
+      {!ownerUsername && !onClaim && <p className="mt-1 text-[9px] text-slate-500">Chờ Admin/Quản lý phân công hoặc nhân viên trong phòng nhận hồ sơ.</p>}
+      {ownerUsername && currentUser && ownerUsername.toLowerCase() !== currentUser.username.trim().toLowerCase() && <p className="mt-1 text-[9px] text-slate-500">Hồ sơ đã gắn người khác; bạn chỉ được thao tác hồ sơ đã gắn tên mình.</p>}
+    </div>
+  );
+}
+
+export default PcnDossierAssignmentControl;

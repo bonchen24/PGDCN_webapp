@@ -14,6 +14,7 @@ type Props = {
   rows: SummaryGridRow[];
   currentUsername?: string | null;
   canEdit: boolean;
+  canEditRow?: (rowId: string) => boolean;
   filterRows?: (rows: SummaryGridRow[]) => SummaryGridRow[];
   filterControls?: React.ReactNode;
   onOpenRow: (rowId: string) => void;
@@ -44,6 +45,7 @@ export default function PgdcnDossierSummaryGrid({
   rows,
   currentUsername,
   canEdit,
+  canEditRow,
   filterRows,
   filterControls,
   onOpenRow,
@@ -140,23 +142,24 @@ export default function PgdcnDossierSummaryGrid({
   }, [resizingColumnId]);
 
   const rowById = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
+  const isRowEditable = (rowId: string) => canEdit && (canEditRow ? canEditRow(rowId) : true);
 
   const findNextEditableCell = (rowId: string, columnId: string) => {
     const rowIndex = pageRows.findIndex((row) => row.id === rowId);
     const columnIndex = visibleColumns.findIndex((column) => column.id === columnId);
     if (rowIndex < 0 || columnIndex < 0) return null;
     for (let index = columnIndex + 1; index < visibleColumns.length; index += 1) {
-      if (visibleColumns[index].editable && canEdit) return { rowId, columnId: visibleColumns[index].id };
+      if (visibleColumns[index].editable && isRowEditable(rowId)) return { rowId, columnId: visibleColumns[index].id };
     }
     for (let nextRowIndex = rowIndex + 1; nextRowIndex < pageRows.length; nextRowIndex += 1) {
-      const nextColumn = visibleColumns.find((column) => column.editable && canEdit);
+      const nextColumn = visibleColumns.find((column) => column.editable && isRowEditable(pageRows[nextRowIndex].id));
       if (nextColumn) return { rowId: pageRows[nextRowIndex].id, columnId: nextColumn.id };
     }
     return null;
   };
 
   const startEdit = (row: SummaryGridRow, column: StoredColumn) => {
-    if (!canEdit || !column.editable || savingRowId) return;
+    if (!isRowEditable(row.id) || !column.editable || savingRowId) return;
     setCellError(null);
     setEditingCell({ rowId: row.id, columnId: column.id });
     const rawValue = summaryCellText(row.cells[column.id]);
@@ -287,7 +290,7 @@ export default function PgdcnDossierSummaryGrid({
               {pageRows.map((row) => <tr key={row.id} className="hover:bg-emerald-50/30">
                 {visibleColumns.map((column, index) => {
                   const isEditing = editingCell?.rowId === row.id && editingCell.columnId === column.id;
-                  return <td key={column.id} onClick={() => !isEditing && startEdit(row, column)} className={`max-w-[280px] border-slate-100 px-3 py-2 align-top ${column.sticky || index === 0 ? 'sticky left-0 z-[1] bg-white' : ''} ${column.editable && canEdit ? 'cursor-text' : ''}`}>
+                  return <td key={column.id} onClick={() => !isEditing && startEdit(row, column)} className={`max-w-[280px] border-slate-100 px-3 py-2 align-top ${column.sticky || index === 0 ? 'sticky left-0 z-[1] bg-white' : ''} ${column.editable && isRowEditable(row.id) ? 'cursor-text' : ''}`}>
                     {isEditing ? renderEditor(row, column) : <div title={summaryCellText(row.displayCells?.[column.id] ?? row.cells[column.id])} className={`${column.id === 'requestCode' || column.id === 'dossierCode' ? 'font-mono font-black text-slate-800' : 'font-medium text-slate-700'} max-w-[260px] whitespace-pre-wrap break-words`}>{summaryCellText(row.displayCells?.[column.id] ?? row.cells[column.id]) || <span className="text-slate-300">—</span>}</div>}
                   </td>;
                 })}
@@ -309,7 +312,7 @@ export default function PgdcnDossierSummaryGrid({
           </div>
         </div>
       </div>
-      {canEdit && <div className="text-[10px] text-slate-500">Cell cho phép sửa: bấm vào ô, Enter/Tab để lưu, Esc để hủy. Máy chủ sẽ trả lại bản ghi sau khi lưu.</div>}
+      {canEdit && pageRows.some((row) => isRowEditable(row.id)) && <div className="text-[10px] text-slate-500">Cell cho phép sửa: bấm vào ô, Enter/Tab để lưu, Esc để hủy. Máy chủ sẽ trả lại bản ghi sau khi lưu.</div>}
     </div>
   );
 }

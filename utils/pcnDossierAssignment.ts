@@ -4,9 +4,11 @@
 
 export interface PcnDossierAssignmentUser {
   username: string;
+  name?: string;
   active: boolean;
   systemRole?: string;
   role?: string;
+  departmentScopes?: string[];
   fieldCodes?: string[];
 }
 
@@ -34,6 +36,59 @@ function normalizeFieldCodes(values: unknown): string[] {
   return Array.from(new Set((Array.isArray(values) ? values : []).map((value) => String(value || '').trim().toUpperCase()).filter(Boolean)));
 }
 
+function hasPcnScope(user: PcnDossierAssignmentUser): boolean {
+  const scopes = Array.isArray(user.departmentScopes)
+    ? user.departmentScopes.map((scope) => String(scope || '').trim().toUpperCase()).filter(Boolean)
+    : [];
+  return scopes.length === 0 || scopes.includes('PCN');
+}
+
+function matchesDossierFields(dossierFieldCodes: string[], userFieldCodes: string[]): boolean {
+  return dossierFieldCodes.length === 0 || dossierFieldCodes.every((code) => userFieldCodes.includes(code));
+}
+
+/**
+ * Return the active PCN personnel that a manager may assign to a dossier.
+ * Empty department scopes remain compatible with legacy PCN accounts whose
+ * scope predates the explicit PCN/PGD split.
+ */
+export function getPcnAssignableDossierUsers<T extends PcnDossierAssignmentUser>(
+  dossierFieldCodes: string[],
+  users: readonly T[],
+): T[] {
+  const normalizedDossierFields = normalizeFieldCodes(dossierFieldCodes);
+  return users
+    .filter((user) => {
+      const role = String(user.systemRole || user.role || '').trim().toLowerCase();
+      return user.active === true
+        && role !== 'viewer'
+        && hasPcnScope(user)
+        && matchesDossierFields(normalizedDossierFields, normalizeFieldCodes(user.fieldCodes));
+    })
+    .slice()
+    .sort((left, right) => String(left.name || left.username).localeCompare(String(right.name || right.username), 'vi')
+      || normalizeUsername(left.username).localeCompare(normalizeUsername(right.username)));
+}
+
+export interface PcnDossierOperatorAuthorityInput {
+  ownerUsername?: string;
+  actorUsername?: string;
+  actorIsSystemManager?: boolean;
+}
+
+/**
+ * Staff can only mutate a dossier after it has been claimed by their account.
+ * System managers retain the existing manager-level operational authority.
+ */
+export function getPcnDossierOperatorDenial(input: PcnDossierOperatorAuthorityInput): string | null {
+  if (input.actorIsSystemManager === true) return null;
+  const ownerUsername = normalizeUsername(input.ownerUsername);
+  const actorUsername = normalizeUsername(input.actorUsername);
+  if (!ownerUsername) return 'Hồ sơ chưa gán người thực hiện; hãy bấm Nhận hồ sơ để tự nhận.';
+  if (!actorUsername || ownerUsername !== actorUsername) return 'Bạn chỉ được thao tác hồ sơ đã gắn tên mình.';
+  return null;
+}
+
 /**
  * Return a user-facing denial when a dossier assignment would introduce an
  * invalid operator. An unchanged legacy value is deliberately allowed so an
@@ -53,7 +108,8 @@ export function getPcnDossierAssignmentDenial(input: PcnDossierAssignmentInput):
 
   const dossierFields = normalizeFieldCodes(input.dossierFieldCodes);
   const userFields = normalizeFieldCodes(user.fieldCodes);
-  if (dossierFields.length > 0 && !userFields.some((code) => dossierFields.includes(code))) {
+  if (!hasPcnScope(user)) return `${input.assignmentLabel} phải thuộc phòng PCN.`;
+  if (dossierFields.length > 0 && !dossierFields.every((code) => userFields.includes(code))) {
     return `${input.assignmentLabel} phải thuộc phạm vi Lĩnh vực của hồ sơ.`;
   }
   return null;
