@@ -290,6 +290,35 @@ test('both dossier domains serve Archify from authenticated server routes', () =
   assert.match(serverSource, /buildPgdArchifyWorkflow/);
 });
 
+test('authenticated Archify routes select an allowlisted diagram suite member', () => {
+  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+
+  assert.match(serverSource, /ARCHIFY_DIAGRAM_TYPES/);
+  assert.match(serverSource, /parseArchifyDiagramType/);
+  assert.match(serverSource, /String\(value \|\| 'workflow'\)\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(serverSource, /buildPcnArchifyDiagramSuite/);
+  assert.match(serverSource, /buildPgdArchifyDiagramSuite/);
+  assert.match(serverSource, /suite\[diagramType\]/);
+  assert.match(serverSource, /renderArchifyDiagram\(diagramType/);
+  assert.match(serverSource, /res\.type\('html'\)\.set\('Cache-Control', 'private, no-store'\)/);
+});
+
+test('Archify route errors are bounded and unavailable diagrams skip rendering', () => {
+  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const routeSources = [
+    serverSource.slice(serverSource.indexOf("app.get('/api/pcn/dossiers/:dossierId/archify'"), serverSource.indexOf("\n  });", serverSource.indexOf("app.get('/api/pcn/dossiers/:dossierId/archify'")) + 5),
+    serverSource.slice(serverSource.indexOf("app.get('/api/pgd/requests/:requestId/archify'"), serverSource.indexOf("\n  });", serverSource.indexOf("app.get('/api/pgd/requests/:requestId/archify'")) + 5),
+  ];
+
+  for (const routeSource of routeSources) {
+    assert.match(routeSource, /status\(409\)\.json\(\{ error, diagram: diagramType, reason \}\)/);
+    assert.match(routeSource, /const unavailable = suite\[diagramType\];/);
+    assert.match(routeSource, /if \(unavailable\.available === false\)/);
+    assert.doesNotMatch(routeSource, /diagnostics: error\?\.diagnostics/);
+    assert.doesNotMatch(routeSource, /error: error\?\.message \|\| String\(error\)/);
+  }
+});
+
 test('Archify routes order activity logs by the JSON activity timestamp', () => {
   const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 

@@ -47,3 +47,24 @@ test('PCN user administration exposes the shared PCN/PGD scope and PGD role', ()
   assert.match(source, /pgdRole/);
   assert.match(source, /PGD_ADMIN|PGD_MANAGER/);
 });
+
+test('PCN and PGD Archify routes preserve auth-before-query validation and all diagram types', () => {
+  const server = read('server.ts');
+  assert.match(server, /ARCHIFY_DIAGRAM_TYPES/);
+  assert.match(server, /from ['"]\.\/utils\/archifyDiagram\.ts['"]/);
+
+  for (const [route, guard, idCheck] of [
+    ['/api/pcn/dossiers/:dossierId/archify', 'requirePcnSession', 'isSafePcnSampleKey'],
+    ['/api/pgd/requests/:requestId/archify', 'requirePgdSession', 'requestId.length > 240'],
+  ]) {
+    const start = server.indexOf(`app.get('${route}'`);
+    assert.ok(start >= 0, route);
+    const body = server.slice(start, server.indexOf("\n  });", start) + 5);
+    assert.ok(body.indexOf(guard) < body.indexOf('parseArchifyDiagramType'), `${route} parses only after auth`);
+    assert.match(body, new RegExp(idCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.match(body, /build(?:Pcn|Pgd)ArchifyDiagramSuite/);
+    assert.match(body, /suite\[diagramType\]/);
+    assert.match(body, /private, no-store/);
+    assert.match(body, /status\(409\)\.json\(\{ error, diagram: diagramType, reason \}\)/);
+  }
+});
