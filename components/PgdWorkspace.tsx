@@ -687,6 +687,7 @@ function PgdRequestDetail({ request, currentUser, onClose }: { request: import('
     signed: certificate?.status === 'SIGNED',
     labResultReview: labResultReview ? { status: labResultReview.status, conformity: labResultReview.conformity, retestRequired: labResultReview.retestRequired === true } : undefined,
   };
+  Object.assign(context, { requestId: request.id, requestCode: request.requestCode });
   const stepAccess = (targetStationKey: PgdOperationalStationKey) => getPgdOperationalStepAccess({ status: request.status, targetStationKey });
   const assignmentAccess = stepAccess(request.status === 'CAPABILITY_REVIEW' ? 'INTAKE_CAPABILITY' : 'PREPARATION');
   const fieldAccess = stepAccess('FIELD_SAMPLING');

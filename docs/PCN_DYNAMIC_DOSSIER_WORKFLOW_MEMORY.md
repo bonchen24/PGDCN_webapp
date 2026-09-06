@@ -6,6 +6,14 @@
 > Commit visibility/backfill: `86caa2b` — `fix: surface dynamic workflow nodes in dossier queues`
 > Đây là nhật ký tra cứu nhanh; `design.md` vẫn là nguồn chuẩn duy nhất.
 
+## Cập nhật 2026-09-06 — Reader Archify literal cho cả PCN và PGD
+
+- Tích hợp nguyên upstream Archify tại `vendor/archify/archify`, revision `ed7f4d4b48d4424d36edfed8043de3de8dea6b45`; không chỉ mô phỏng UI. Compiler/schema/template của upstream được gọi server-side và license MIT được giữ nguyên.
+- PCN dùng `utils/pcnArchifyWorkflow.ts`; PGD dùng `utils/pgdArchifyWorkflow.ts`; cả hai vào reader chung `components/PcnArchifyWorkflowEmbed.tsx`. Mỗi hồ sơ có graph riêng theo snapshot/lifecycle thật, hỗ trợ nhiều node, tài liệu, nhánh, song song, join và return, không khóa ở 5 trạm.
+- Endpoint được bảo vệ bằng session và tự lấy dữ liệu server: `/api/pcn/dossiers/:dossierId/archify`, `/api/pgd/requests/:requestId/archify`. Reader HTML chỉ chứa graph metadata cần thiết, không chứa file private bytes, token hoặc topology do client gửi.
+- Archify reader cung cấp các capability upstream; host chỉ nối focus node/edge với action task PCN hiện hành. Deep-link node dùng hash `#focus=<nodeId>`.
+- Verification: `npm test` 760/760, focused Archify 5/5, lint/build/diff-check pass; Docker Desktop `pcn_webapp-webapp` Up cổng 2357, health 200, route chưa đăng nhập 401. Public deployment `pcn.tvci.id.vn` không tự đổi bởi Docker local.
+
 ## Quy tắc nghiệp vụ đã chốt
 
 - Mỗi hồ sơ có thể chọn một workflow template khác nhau theo lĩnh vực, phương thức và loại hồ sơ.

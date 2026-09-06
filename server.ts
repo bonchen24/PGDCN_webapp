@@ -94,6 +94,7 @@ import type {
   PcnWorkflowSnapshot,
   ReturnedTestResult,
   ActivityLogAction,
+  ActivityLog,
   ActivityLogChange,
   ActivityLogEntityType,
 } from "./types.ts";
@@ -235,6 +236,9 @@ import { buildPcnSampleHandoverDetails } from './utils/pcnHandoverPolicy.ts';
 import { buildPcnReturnedResult, markOfficialPcnResults } from './utils/pcnResultPolicy.ts';
 import { buildPcnDossierChecklist, buildPcnDossierDocumentId, buildPcnGeneratedDossierAttachment, buildPcnUploadedDossierAttachment, getPcnDocumentRequirements, getPcnGeneratedDocumentRequirementCode, mergePcnDocumentRequirements } from './utils/pcnDossierDocuments.ts';
 import { getPcnDossierAssignmentDenial, getPcnDossierOperatorDenial, getPcnOwnerAssignmentAuthorityDenial } from './utils/pcnDossierAssignment.ts';
+import { buildPcnArchifyWorkflow } from './utils/pcnArchifyWorkflow.ts';
+import { buildPgdArchifyWorkflow } from './utils/pgdArchifyWorkflow.ts';
+import { renderArchifyWorkflowDocument } from './utils/pcnArchifyRenderer.ts';
 import { getPcnDossierDateDenial, getPcnTimestampDenial, normalizePcnIssuanceTimestamp, normalizePcnUtcTimestamp } from './utils/pcnDossierDate.ts';
 import type { PcnDossierUpdateInput } from './utils/pcnDossierApi.ts';
 import type { PcnProposalUpdateInput } from './utils/pcnProposalApi.ts';
@@ -3596,6 +3600,52 @@ async function startServer() {
       res.json({ instrument });
     } catch (error: any) {
       res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.get('/api/pgd/requests/:requestId/archify', async (req, res) => {
+    if (!requirePgdSession(req, res)) return;
+    const requestId = decodeURIComponent(String(req.params.requestId || '')).trim();
+    if (!requestId || requestId.length > 240 || /[\\/]/.test(requestId)) { res.status(400).json({ error: 'Mã hồ sơ PGD không hợp lệ.' }); return; }
+    try {
+      const readRows = (collectionName: string, order = 'updated_at DESC, document_id ASC') => pool.query(
+        `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY ${order}`,
+        [collectionName, requestId],
+      );
+      const [requestResult, assignmentResult, fieldResult, sampleResult, labRequestResult, labResultResult, reportResult, certificateResult, labReviewResult, documentResult, approvalResult, activityResult] = await Promise.all([
+        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`, [PGD_COLLECTIONS.requests, requestId]),
+        readRows(PGD_COLLECTIONS.assignments),
+        readRows(PGD_COLLECTIONS.fieldInspections),
+        readRows(PGD_COLLECTIONS.samples, 'document_id ASC'),
+        readRows(PGD_COLLECTIONS.labRequests, 'document_id ASC'),
+        readRows(PGD_COLLECTIONS.labResults, 'document_id ASC'),
+        readRows(PGD_COLLECTIONS.reports),
+        readRows(PGD_COLLECTIONS.certificates),
+        readRows(PGD_COLLECTIONS.labResultReviews),
+        readRows(PGD_COLLECTIONS.dossierDocuments, 'COALESCE((data->>\'version\')::int, 0) DESC, updated_at DESC, document_id DESC'),
+        readRows(PGD_COLLECTIONS.approvals, 'COALESCE((data->>\'sequence\')::int, 0), document_id ASC'),
+        readRows(PGD_COLLECTIONS.activityLogs, 'created_at ASC, document_id ASC'),
+      ]);
+      const request = requestResult.rows[0] ? mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest : undefined;
+      if (!request) { res.status(404).json({ error: 'Không tìm thấy hồ sơ PGD.' }); return; }
+      const workflow = buildPgdArchifyWorkflow({
+        request,
+        assignment: assignmentResult.rows[0] ? mapDocumentRow(assignmentResult.rows[0]) as PgdInspectionAssignment : undefined,
+        fieldInspection: fieldResult.rows[0] ? mapDocumentRow(fieldResult.rows[0]) as PgdFieldInspection : undefined,
+        samples: sampleResult.rows.map((row: any) => mapDocumentRow(row)) as PgdSample[],
+        labRequests: labRequestResult.rows.map((row: any) => mapDocumentRow(row)) as PgdLabRequest[],
+        labResults: labResultResult.rows.map((row: any) => mapDocumentRow(row)) as PgdLabResult[],
+        report: reportResult.rows[0] ? mapDocumentRow(reportResult.rows[0]) as PgdInspectionReport : undefined,
+        certificate: certificateResult.rows[0] ? mapDocumentRow(certificateResult.rows[0]) as PgdInspectionCertificate : undefined,
+        labResultReview: labReviewResult.rows[0] ? mapDocumentRow(labReviewResult.rows[0]) as PgdLabResultReview : undefined,
+        dossierDocuments: documentResult.rows.map((row: any) => mapDocumentRow(row)) as PgdDossierDocument[],
+        approvals: approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PgdApprovalStep[],
+        activityLogs: activityResult.rows.map((row: any) => mapDocumentRow(row)) as Array<Record<string, unknown>>,
+      });
+      const html = await renderArchifyWorkflowDocument(workflow, { domain: 'pgd', recordId: request.id });
+      res.type('html').set('Cache-Control', 'private, no-store').send(html);
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 500).json({ error: error?.message || String(error), diagnostics: error?.diagnostics || undefined });
     }
   });
 
@@ -8349,6 +8399,39 @@ async function startServer() {
       res.json({ items: result.rows.map(mapDocumentRow) });
     } catch (error: any) {
       res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.get('/api/pcn/dossiers/:dossierId/archify', async (req, res) => {
+    if (!requirePcnSession(req, res)) return;
+    const dossierId = String(req.params.dossierId || '').trim();
+    if (!isSafePcnSampleKey(dossierId)) { res.status(400).json({ error: 'Mã hồ sơ không hợp lệ.' }); return; }
+    try {
+      const [dossierResult, documentResult, resultResult, approvalResult, taskResult, activityResult] = await Promise.all([
+        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'certificationDossiers' AND document_id = $1 LIMIT 1`, [dossierId]),
+        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'dossierDocuments' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossierId]),
+        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'returnedResults' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossierId]),
+        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'approvalSteps' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossierId]),
+        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnDossierWorkflowTasks' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossierId]),
+        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'activityLogs' AND (data->>'entityId' = $1 OR data->>'requestCode' = $1) ORDER BY created_at, document_id`, [dossierId]),
+      ]);
+      const dossier = dossierResult.rows[0] ? mapDocumentRow(dossierResult.rows[0]) as CertificationDossier : undefined;
+      if (!dossier) { res.status(404).json({ error: 'Không tìm thấy hồ sơ PCN.' }); return; }
+      const workflow = getPcnWorkflowForDossier(dossier);
+      const document = buildPcnArchifyWorkflow({
+        dossier,
+        workflow,
+        tasks: taskResult.rows.map((row: any) => mapDocumentRow(row)) as PcnDossierWorkflowTask[],
+        documents: documentResult.rows.map((row: any) => mapDocumentRow(row)) as PcnDossierDocument[],
+        documentWaivers: dossier.documentWaivers,
+        results: resultResult.rows.map((row: any) => mapDocumentRow(row)) as ReturnedTestResult[],
+        approvalSteps: approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[],
+        activityLogs: activityResult.rows.map((row: any) => mapDocumentRow(row)) as ActivityLog[],
+      });
+      const html = await renderArchifyWorkflowDocument(document, { domain: 'pcn', recordId: dossier.id });
+      res.type('html').set('Cache-Control', 'private, no-store').send(html);
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 500).json({ error: error?.message || String(error), diagnostics: error?.diagnostics || undefined });
     }
   });
 

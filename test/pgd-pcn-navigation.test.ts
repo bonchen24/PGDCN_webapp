@@ -25,7 +25,7 @@ test('PGD dossier detail uses a PCN-style full-screen focus workspace', () => {
   assert.match(workspace, /data-testid="pgd-dossier-focus-shell"/);
   assert.match(workspace, /aria-label={`Không gian làm việc hồ sơ PGD/);
   assert.match(workspace, /PgdWorkflowMap/);
-  assert.match(read('components/PgdWorkflowMap.tsx'), /PGD_OPERATIONAL_STATIONS/);
+  assert.match(read('components/PgdWorkflowMap.tsx'), /PcnArchifyWorkflowEmbed/);
   assert.doesNotMatch(workspace, /role="dialog" aria-modal="true" aria-label={`Chi tiết hồ sơ/);
   assert.match(workspace, /max-h-\[100dvh\]|h-\[100dvh\]/);
 });

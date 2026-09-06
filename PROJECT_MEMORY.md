@@ -6,6 +6,15 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-06 — Tích hợp literal Archify cho cả PCN và PGD
+
+- Đã vendor nguyên upstream Archify vào `vendor/archify/archify` theo revision `ed7f4d4b48d4424d36edfed8043de3de8dea6b45`; giữ `LICENSE` MIT và ghi nguồn tại `vendor/archify/SOURCE_REVISION.md`.
+- PCN và PGD dùng chung `PcnArchifyWorkflowEmbed`, nhưng adapter dữ liệu vẫn tách boundary: PCN đọc snapshot/task/tài liệu/phê duyệt; PGD đọc lifecycle/checklist/hiện trường/mẫu/PTN/báo cáo/phê duyệt. Không còn sơ đồ 5 trạm làm bản đồ chính.
+- Server gọi trực tiếp compiler `workflow-compiler.mjs`, `applyTemplate` và reader `assets/template.html` của Archify qua route có session: `/api/pcn/dossiers/:dossierId/archify` và `/api/pgd/requests/:requestId/archify`. Reader giữ các khả năng upstream như Finder, Passport, reach, route probe, lens, radar, guided views/story, presentation, theme/preset, keyboard và export; host chỉ giữ action bridge PCN.
+- Node/edge topology chỉ sinh từ dữ liệu server của hồ sơ; HTML không chứa private file bytes, token hoặc topology từ browser. Deep-link node dùng `#focus=<nodeId>` và được Archify validate.
+- Verification lượt này: `npm test` **760/760 pass**, focused Archify **5/5 pass**, `npm run lint` pass sau production build, `npm run build` pass, `git diff --check` pass. Docker Desktop đã build/recreate; `pcn_webapp-webapp` Up trên `0.0.0.0:2357->2357/tcp`, `/api/health` HTTP 200, hai route Archify không có phiên trả HTTP 401. Browser smoke local tới đúng login boundary; không tự động nhập credential.
+- Không ghi secret hoặc dữ liệu hồ sơ thật vào Memory/Obsidian. Deployment public `https://pcn.tvci.id.vn/` vẫn là môi trường riêng; bản đã cập nhật được kiểm tra tại `http://localhost:2357/pgdcn/pcn`.
+
 ## Cập nhật 2026-09-06 — Hoàn thiện Trợ lý AI PGD theo UI/UX PCN
 
 - Trợ lý PGD đã đồng nhất với nhịp thao tác của PCN: chọn một bộ hồ sơ → đọc private file → stream tiến độ theo 5 tiêu chí/trạm → hiển thị summary → nêu **Điểm cần sửa / đối chiếu** và mở đúng bằng chứng.

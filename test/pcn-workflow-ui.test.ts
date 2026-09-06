@@ -9,17 +9,10 @@ function read(relativePath: string): string {
 test('dossier workflow UI renders the saved graph instead of assuming five stations', () => {
   const panel = read('components/PcnDossierWorkflowPanel.tsx');
   assert.match(panel, /getPcnWorkflowForDossier/);
-  assert.match(panel, /projectPcnWorkflowRuntime/);
-  assert.match(panel, /workflow\.nodes\.map/);
-  assert.match(panel, /aria-expanded/);
-  assert.match(panel, /onToggle/);
-  assert.match(panel, /openNodeIds/);
-  assert.match(panel, /requirementIds/);
-  assert.match(panel, /PARALLEL_SPLIT|PARALLEL_JOIN/);
-  assert.match(panel, /RETURNED|returnReason/);
-  assert.match(panel, /buildPcnWorkflowConditionContext/);
-  assert.match(panel, /results/);
-  assert.match(panel, /approvalSteps/);
+  assert.match(panel, /PcnArchifyWorkflowEmbed/);
+  assert.match(panel, /workflow\.nodes\.filter/);
+  assert.match(panel, /workflowTasks/);
+  assert.doesNotMatch(panel, /ArrowDown/);
 });
 
 test('dashboard dossier cards surface the dynamic node instead of a fixed station label', () => {
@@ -43,11 +36,11 @@ test('dossier detail wires workflow tasks and keeps the legacy graphic as fallba
 });
 
 test('workflow panel offers document-aware action controls and return-to-node handling', () => {
-  const panel = read('components/PcnDossierWorkflowPanel.tsx');
+  const panel = read('components/PcnArchifyWorkflowEmbed.tsx');
   assert.match(panel, /onStartTask/);
   assert.match(panel, /onCompleteTask/);
   assert.match(panel, /onReturnTask/);
-  assert.match(panel, /targetNodeId/);
-  assert.match(panel, /Tài liệu cần thực hiện/);
-  assert.match(panel, /effectiveTaskStatus/);
+  assert.match(panel, /returnTargetNodeId/);
+  assert.match(panel, /Tài liệu node/);
+  assert.match(panel, /selectedStatus/);
 });

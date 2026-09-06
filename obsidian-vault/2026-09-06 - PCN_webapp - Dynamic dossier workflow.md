@@ -5,6 +5,14 @@ Branch: `codex/pcn-dynamic-dossier-workflow`
 Commit: `3e94d6a` — `feat: add dynamic PCN dossier workflows`
 Visibility/backfill fix: `86caa2b` — `fix: surface dynamic workflow nodes in dossier queues`
 
+## Tích hợp literal Archify — PCN và PGD
+
+- Upstream Archify được vendor nguyên repo tại `vendor/archify/archify`, revision `ed7f4d4b48d4424d36edfed8043de3de8dea6b45`; license MIT giữ trong vendor và nguồn được ghi ở `vendor/archify/SOURCE_REVISION.md`.
+- `PcnArchifyWorkflowEmbed` dùng chung cho cả hai phòng/miền. PCN adapter chiếu snapshot, task, tài liệu, kết quả và phê duyệt; PGD adapter chiếu lifecycle, checklist, hiện trường, mẫu, PTN, báo cáo và phê duyệt. Mỗi hồ sơ vẫn có graph riêng, nhiều node, song song, rẽ nhánh và return.
+- Server dùng compiler và reader chính thức của Archify (`workflow-compiler.mjs`, `applyTemplate`, `assets/template.html`) qua endpoint session-only `/api/pcn/dossiers/:dossierId/archify` và `/api/pgd/requests/:requestId/archify`. Trang chi tiết hồ sơ riêng giữ nguyên; sơ đồ Archify là vùng chính, không còn bản đồ dọc 5 trạm.
+- Reader upstream sở hữu Finder, Passport, reach, route probe, lens, radar, guided views/story, presentation, theme/preset, keyboard và export. Host React chỉ nhận stable node/edge message cùng record id để nối action PCN hiện hành; topology không nhận từ browser, private bytes/token không nhúng vào HTML.
+- Deep-link node được truyền thành `#focus=<nodeId>`; route viewer fail closed qua auth/compiler. Verification: full suite `760/760`, focused Archify `5/5`, lint/build/diff-check pass; Docker `pcn_webapp-webapp` Up cổng `2357`, health 200, unauthenticated PCN/PGD Archify route 401. Browser local dừng ở login boundary vì không tự động nhập credential.
+
 ## Kết quả
 
 - Hồ sơ chọn workflow riêng theo lĩnh vực/phương thức/loại hồ sơ.
