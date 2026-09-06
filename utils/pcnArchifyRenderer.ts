@@ -3,53 +3,37 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import type { ArchifyWorkflowDocument } from './pcnArchifyWorkflow.ts';
+import { ARCHIFY_RENDERER_ENTRYPOINTS, runArchifyRenderer, resetArchifyRuntimeTestHooks, setArchifyRuntimeTestHooks, validateArchifyDocument } from './archifyRuntime.ts';
+import type { ArchifyDiagramType, ArchifyDiagramResult } from './archifyDiagram.ts';
 
+export { ARCHIFY_RENDERER_ENTRYPOINTS, resetArchifyRuntimeTestHooks, setArchifyRuntimeTestHooks } from './archifyRuntime.ts';
 export type ArchifyRenderDomain = 'pcn' | 'pgd';
+export type ArchifyRenderResult =
+  | { available: false; diagramType: ArchifyDiagramType; reason: string }
+  | { available: true; diagramType: ArchifyDiagramType; html: string };
 
 export const ARCHIFY_VENDOR_ROOT = path.resolve(process.cwd(), 'vendor', 'archify', 'archify');
 
 type ArchifyCompilerModule = {
-  compileWorkflow: (input: { workflow: ArchifyWorkflowDocument; qualityProfile?: 'standard' | 'showcase' }) => {
-    ok: boolean;
-    svg: string;
-    diagnostics?: unknown[];
-    error?: string;
-  };
+  compileWorkflow: (input: { workflow: ArchifyWorkflowDocument; qualityProfile?: 'standard' | 'showcase' }) => { ok: boolean; svg: string; diagnostics?: unknown[]; error?: string };
 };
-
 type ArchifyUtilsModule = {
-  applyTemplate: (template: string, input: {
-    title: string;
-    subtitle?: string;
-    svg: string;
-    cards?: string;
-    locale?: string;
-    visualPreset?: string;
-    guidedViews?: unknown[];
-    sourceEvidence?: null;
-  }) => string;
+  applyTemplate: (template: string, input: { title: string; subtitle?: string; svg: string; cards?: string; locale?: string; visualPreset?: string; guidedViews?: unknown[]; sourceEvidence?: null }) => string;
   renderCards: (cards: ArchifyWorkflowDocument['cards']) => string;
 };
-
 let archifyRuntimePromise: Promise<{ compiler: ArchifyCompilerModule; utils: ArchifyUtilsModule }> | undefined;
 
-async function loadArchifyRuntime(): Promise<{ compiler: ArchifyCompilerModule; utils: ArchifyUtilsModule }> {
+async function loadWorkflowRuntime(): Promise<{ compiler: ArchifyCompilerModule; utils: ArchifyUtilsModule }> {
   if (!archifyRuntimePromise) {
     const compilerUrl = pathToFileURL(path.join(ARCHIFY_VENDOR_ROOT, 'renderers', 'workflow', 'workflow-compiler.mjs')).href;
     const utilsUrl = pathToFileURL(path.join(ARCHIFY_VENDOR_ROOT, 'renderers', 'shared', 'utils.mjs')).href;
-    archifyRuntimePromise = Promise.all([import(compilerUrl), import(utilsUrl)]).then(([compiler, utils]) => ({
-      compiler: compiler as ArchifyCompilerModule,
-      utils: utils as ArchifyUtilsModule,
-    }));
+    archifyRuntimePromise = Promise.all([import(compilerUrl), import(utilsUrl)]).then(([compiler, utils]) => ({ compiler: compiler as ArchifyCompilerModule, utils: utils as ArchifyUtilsModule }));
   }
   return archifyRuntimePromise;
 }
 
 function scriptJson(value: unknown): string {
-  return JSON.stringify(value)
-    .replaceAll('<', '\\u003c')
-    .replaceAll('>', '\\u003e')
-    .replaceAll('&', '\\u0026');
+  return JSON.stringify(value).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e').replaceAll('&', '\\u0026');
 }
 
 function injectFocusBridge(html: string, domain: ArchifyRenderDomain, recordId: string): string {
@@ -58,35 +42,46 @@ function injectFocusBridge(html: string, domain: ArchifyRenderDomain, recordId: 
   return html.includes('</body>') ? html.replace('</body>', `${bridge}</body>`) : `${html}${bridge}`;
 }
 
-export async function renderArchifyWorkflowDocument(
-  workflow: ArchifyWorkflowDocument,
-  input: { domain: ArchifyRenderDomain; recordId: string },
-): Promise<string> {
-  if (!workflow || workflow.diagram_type !== 'workflow' || workflow.schema_version !== 2) {
-    throw Object.assign(new Error('Archify workflow phải dùng schema_version 2 và diagram_type workflow.'), { statusCode: 422 });
-  }
-  const { compiler, utils } = await loadArchifyRuntime();
-  const compiled = compiler.compileWorkflow({ workflow, qualityProfile: workflow.meta.quality_profile });
-  if (!compiled.ok || !compiled.svg) {
-    const error = new Error(compiled.error || 'Archify không thể biên dịch lưu trình hồ sơ.');
-    Object.assign(error, { statusCode: 422, diagnostics: compiled.diagnostics || [] });
-    throw error;
-  }
-  const templatePath = path.join(ARCHIFY_VENDOR_ROOT, 'assets', 'template.html');
-  const template = fs.readFileSync(templatePath, 'utf8');
-  const html = utils.applyTemplate(template, {
-    title: workflow.meta.title,
-    subtitle: workflow.meta.subtitle,
-    svg: compiled.svg,
-    cards: utils.renderCards(workflow.cards),
-    locale: workflow.meta.locale,
-    visualPreset: workflow.meta.visual_preset,
-    guidedViews: workflow.meta.views,
-    sourceEvidence: null,
-  });
-  const lightHtml = html.replace(
-    /<html lang="([^"]+)" data-theme="dark" data-preset="([^"]+)">/,
-    '<html lang="$1" data-theme="light" data-preset="$2">',
-  );
-  return injectFocusBridge(lightHtml, input.domain, input.recordId);
+function normalizeLightRoot(html: string): string {
+  return html.replace(/<html\b([^>]*?)\sdata-theme="(?:dark|light)"([^>]*)>/i, '<html$1 data-theme="light"$2>');
 }
+
+function safeRenderError(message: string): Error {
+  return Object.assign(new Error(message), { statusCode: 422 });
+}
+
+async function renderWorkflow(workflow: unknown, input: { domain: ArchifyRenderDomain; recordId: string }): Promise<string> {
+  if (!workflow || typeof workflow !== 'object' || (workflow as any).diagram_type !== 'workflow' || (workflow as any).schema_version !== 2) throw safeRenderError('Archify workflow phải dùng schema_version 2 và diagram_type workflow.');
+  const { compiler, utils } = await loadWorkflowRuntime();
+  const typedWorkflow = workflow as ArchifyWorkflowDocument;
+  const compiled = compiler.compileWorkflow({ workflow: typedWorkflow, qualityProfile: typedWorkflow.meta.quality_profile });
+  if (!compiled.ok || !compiled.svg) throw safeRenderError(compiled.error || 'Archify không thể biên dịch lưu trình hồ sơ.');
+  const template = fs.readFileSync(path.join(ARCHIFY_VENDOR_ROOT, 'assets', 'template.html'), 'utf8');
+  const html = utils.applyTemplate(template, { title: typedWorkflow.meta.title, subtitle: typedWorkflow.meta.subtitle, svg: compiled.svg, cards: utils.renderCards(typedWorkflow.cards), locale: typedWorkflow.meta.locale, visualPreset: typedWorkflow.meta.visual_preset, guidedViews: typedWorkflow.meta.views, sourceEvidence: null });
+  return injectFocusBridge(normalizeLightRoot(html), input.domain, input.recordId);
+}
+
+function unavailableResult(diagramType: ArchifyDiagramType, document: unknown): ArchifyRenderResult | undefined {
+  if (!document || typeof document !== 'object' || (document as any).available !== false) return undefined;
+  if ((document as any).diagramType !== diagramType) throw safeRenderError('Dữ liệu Archify không hợp lệ.');
+  return { available: false, diagramType, reason: String((document as any).reason || 'Biểu đồ hiện chưa khả dụng.') };
+}
+
+export async function renderArchifyDiagram(diagramType: ArchifyDiagramType, document: unknown, input: { domain: ArchifyRenderDomain; recordId: string }): Promise<ArchifyRenderResult> {
+  if (!['workflow', 'lifecycle', 'dataflow', 'sequence', 'architecture'].includes(diagramType)) throw safeRenderError('Loại biểu đồ Archify không hỗ trợ.');
+  const unavailable = unavailableResult(diagramType, document);
+  if (unavailable) return unavailable;
+  if (diagramType === 'workflow') return { available: true, diagramType, html: await renderWorkflow(document, input) };
+  validateArchifyDocument(diagramType, document);
+  const rendered = await runArchifyRenderer({ vendorRoot: ARCHIFY_VENDOR_ROOT, diagramType, document });
+  if (!rendered.includes('archify-guided-views-data')) throw safeRenderError('Archify trả về HTML không hợp lệ.');
+  return { available: true, diagramType, html: injectFocusBridge(normalizeLightRoot(rendered), input.domain, input.recordId) };
+}
+
+export async function renderArchifyWorkflowDocument(workflow: ArchifyWorkflowDocument, input: { domain: ArchifyRenderDomain; recordId: string }): Promise<string> {
+  const result = await renderArchifyDiagram('workflow', workflow, input);
+  if (result.available === false) throw safeRenderError(result.reason);
+  return result.html;
+}
+
+export type { ArchifyDiagramResult };
