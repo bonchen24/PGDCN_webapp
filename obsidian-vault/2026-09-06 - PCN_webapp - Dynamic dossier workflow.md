@@ -5,6 +5,11 @@ Branch: `codex/pcn-dynamic-dossier-workflow`
 Commit: `3e94d6a` — `feat: add dynamic PCN dossier workflows`
 Visibility/backfill fix: `86caa2b` — `fix: surface dynamic workflow nodes in dossier queues`
 
+## Sửa lỗi SQL activity của Archify — 2026-09-06
+
+- Lỗi mở hồ sơ `column "created_at" does not exist` xuất phát từ hai route Archify sắp xếp `app_documents` theo cột không tồn tại; thời gian activity thực tế nằm trong `data.createdAt`.
+- Đã sửa cả PCN và PGD sang `ORDER BY data->>'createdAt'` và thêm regression contract bảo vệ truy vấn. Verification hiện tại: focused route **3/3**, full suite **765/765**, lint/build/diff-check pass; Docker image `sha256:42fdb167a2c2400283f1f6c728bc31f2e49cbef230f3fa4dadd28252314cd30d` đang chạy và `/api/health` trả HTTP 200.
+
 ## Tích hợp literal Archify — PCN và PGD
 
 - Upstream Archify được vendor nguyên repo tại `vendor/archify/archify`, revision `ed7f4d4b48d4424d36edfed8043de3de8dea6b45`; license MIT giữ trong vendor và nguồn được ghi ở `vendor/archify/SOURCE_REVISION.md`.

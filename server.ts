@@ -3624,7 +3624,7 @@ async function startServer() {
         readRows(PGD_COLLECTIONS.labResultReviews),
         readRows(PGD_COLLECTIONS.dossierDocuments, 'COALESCE((data->>\'version\')::int, 0) DESC, updated_at DESC, document_id DESC'),
         readRows(PGD_COLLECTIONS.approvals, 'COALESCE((data->>\'sequence\')::int, 0), document_id ASC'),
-        readRows(PGD_COLLECTIONS.activityLogs, 'created_at ASC, document_id ASC'),
+        readRows(PGD_COLLECTIONS.activityLogs, "data->>'createdAt' ASC, document_id ASC"),
       ]);
       const request = requestResult.rows[0] ? mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest : undefined;
       if (!request) { res.status(404).json({ error: 'Không tìm thấy hồ sơ PGD.' }); return; }
@@ -8413,7 +8413,7 @@ async function startServer() {
         pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'returnedResults' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossierId]),
         pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'approvalSteps' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossierId]),
         pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnDossierWorkflowTasks' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossierId]),
-        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'activityLogs' AND (data->>'entityId' = $1 OR data->>'requestCode' = $1) ORDER BY created_at, document_id`, [dossierId]),
+        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'activityLogs' AND (data->>'entityId' = $1 OR data->>'requestCode' = $1) ORDER BY data->>'createdAt', document_id`, [dossierId]),
       ]);
       const dossier = dossierResult.rows[0] ? mapDocumentRow(dossierResult.rows[0]) as CertificationDossier : undefined;
       if (!dossier) { res.status(404).json({ error: 'Không tìm thấy hồ sơ PCN.' }); return; }

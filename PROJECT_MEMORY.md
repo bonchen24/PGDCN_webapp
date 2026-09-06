@@ -6,6 +6,12 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-06 — Sửa lỗi SQL khi mở Archify dossier
+
+- Nguyên nhân lỗi `{"error":"column \\"created_at\\" does not exist"}`: `app_documents` chỉ có timestamp hệ thống `updated_at`; activity log lưu thời gian nghiệp vụ trong `data.createdAt`, nên `ORDER BY created_at` trong route Archify là cột không tồn tại.
+- Đã sửa cả hai route `/api/pgd/requests/:requestId/archify` và `/api/pcn/dossiers/:dossierId/archify` dùng `ORDER BY data->>'createdAt'` (kèm `document_id` để ổn định thứ tự), đồng thời thêm regression contract để không tái xuất hiện truy vấn cũ.
+- Verification: focused Archify route **3/3 pass**, full suite **765/765 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass. Docker image `sha256:42fdb167a2c2400283f1f6c728bc31f2e49cbef230f3fa4dadd28252314cd30d` đang chạy; container `pcn_webapp-webapp` healthy qua `/api/health` HTTP 200.
+
 ## Cập nhật 2026-09-06 — Tích hợp literal Archify cho cả PCN và PGD
 
 - Đã vendor nguyên upstream Archify vào `vendor/archify/archify` theo revision `ed7f4d4b48d4424d36edfed8043de3de8dea6b45`; giữ `LICENSE` MIT và ghi nguồn tại `vendor/archify/SOURCE_REVISION.md`.

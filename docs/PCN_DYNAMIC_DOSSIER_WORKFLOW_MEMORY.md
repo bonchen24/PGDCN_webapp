@@ -6,6 +6,12 @@
 > Commit visibility/backfill: `86caa2b` — `fix: surface dynamic workflow nodes in dossier queues`
 > Đây là nhật ký tra cứu nhanh; `design.md` vẫn là nguồn chuẩn duy nhất.
 
+## Cập nhật 2026-09-06 — Sửa lỗi SQL khi mở Archify dossier
+
+- `app_documents` không có cột SQL `created_at`; timestamp activity nằm trong JSON `data.createdAt`. Hai route Archify đã đổi thứ tự đọc activity sang `data->>'createdAt' ASC, document_id` để tránh lỗi PostgreSQL và giữ thứ tự ổn định.
+- Regression contract kiểm tra đồng thời route PGD và PCN không còn `ORDER BY created_at`.
+- Verification: focused route **3/3 pass**, full suite **765/765 pass**, lint/build/diff-check pass; Docker image `sha256:42fdb167a2c2400283f1f6c728bc31f2e49cbef230f3fa4dadd28252314cd30d` đang chạy và `/api/health` trả HTTP 200.
+
 ## Cập nhật 2026-09-06 — Reader Archify literal cho cả PCN và PGD
 
 - Tích hợp nguyên upstream Archify tại `vendor/archify/archify`, revision `ed7f4d4b48d4424d36edfed8043de3de8dea6b45`; không chỉ mô phỏng UI. Compiler/schema/template của upstream được gọi server-side và license MIT được giữ nguyên.

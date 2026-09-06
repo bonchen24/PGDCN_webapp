@@ -54,3 +54,12 @@ test('both dossier domains serve Archify from authenticated server routes', () =
   assert.match(serverSource, /buildPcnArchifyWorkflow/);
   assert.match(serverSource, /buildPgdArchifyWorkflow/);
 });
+
+test('Archify routes order activity logs by the JSON activity timestamp', () => {
+  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+
+  assert.match(serverSource, /readRows\(PGD_COLLECTIONS\.activityLogs, "data->>'createdAt' ASC, document_id ASC"\)/);
+  assert.match(serverSource, /activityLogs' AND \(data->>'entityId' = \$1 OR data->>'requestCode' = \$1\) ORDER BY data->>'createdAt', document_id/);
+  assert.doesNotMatch(serverSource, /readRows\(PGD_COLLECTIONS\.activityLogs, ['"]created_at ASC/);
+  assert.doesNotMatch(serverSource, /activityLogs' AND \(data->>'entityId' = \$1 OR data->>'requestCode' = \$1\) ORDER BY created_at/);
+});
