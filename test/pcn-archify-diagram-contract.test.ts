@@ -216,6 +216,8 @@ test('PCN fact-backed projections expose current lifecycle, linked dataflow, ord
   assert.equal(suite.sequence.available, true);
   if (!suite.sequence.available) return;
   assert.ok(suite.sequence.document.messages.every((message) => message.id));
+  assert.ok(suite.sequence.document.participants.every((participant) => !participant.label.includes('@')));
+  assert.ok(suite.sequence.document.messages.every((message) => !message.label.includes('Cập nhật hồ sơ')));
   assert.deepEqual(suite.sequence.document.messages.slice(0, 2).map((message) => message.id), ['message-activity-a', 'message-activity-z']);
   assertSemanticReferences(suite.sequence.document, 'participants');
   assert.equal(suite.architecture.available, true);
@@ -240,4 +242,30 @@ test('available projections retain the pinned Archify v1 schema envelope and req
     assert.equal(result.available, true);
     if (result.available) for (const key of requiredByType[type]) assert.ok(key in result.document, `${type} missing ${key}`);
   }
+});
+
+test('PCN projections do not infer current state or result-to-approval edges', () => {
+  const rich = {
+    ...fixture,
+    dossier: { ...fixture.dossier, labRequestIds: ['lab-dangling'] },
+    tasks: fixture.tasks.map((task) => ({ ...task, status: 'READY' })),
+    results: [
+      { id: 'result-a', dossierId: 'dossier-contract', labRequestId: 'lab-1', round: 1, outcome: 'PASS', receivedAt: '2026-09-06T03:00:00.000Z' },
+      { id: 'result-b', dossierId: 'dossier-contract', labRequestId: 'lab-1', round: 2, outcome: 'PASS', receivedAt: '2026-09-06T03:01:00.000Z' },
+    ],
+    approvalSteps: [
+      { id: 'approval-a', dossierId: 'dossier-contract', sequence: 1, role: 'TECHNICAL_REVIEW', status: 'APPROVED', actedAt: '2026-09-06T04:00:00.000Z' },
+      { id: 'approval-b', dossierId: 'dossier-contract', sequence: 2, role: 'LEADERSHIP_APPROVAL', status: 'PENDING' },
+    ],
+  } as unknown as PcnArchifyWorkflowInput;
+  const suite = buildPcnArchifyDiagramSuite(rich);
+  assert.equal(suite.lifecycle.available, true);
+  if (!suite.lifecycle.available) return;
+  assert.equal(suite.lifecycle.document.states.some((state) => state.tag === 'Hiện tại'), false);
+  assert.equal(suite.architecture.available, true);
+  if (!suite.architecture.available) return;
+  assert.equal(suite.architecture.document.components.some((component) => component.id === 'ptn'), false);
+  assert.equal(suite.dataflow.available, true);
+  if (!suite.dataflow.available) return;
+  assert.equal(suite.dataflow.document.flows.some((flow) => flow.from.startsWith('result-') && flow.to.startsWith('approval-')), false);
 });

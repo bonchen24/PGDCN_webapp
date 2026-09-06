@@ -15,9 +15,7 @@ const view = (focus: string[]) => [{ id: 'overview', label: 'Tổng quan', focus
 
 function currentNode(input: PcnArchifyWorkflowInput) {
   const tasks = input.tasks.filter((task) => task.dossierId === input.dossier.id);
-  return input.workflow.nodes.find((node) => tasks.some((task) => task.nodeId === node.id && task.status === 'IN_PROGRESS'))
-    || input.workflow.nodes.find((node) => node.id.includes('technical-review'))
-    || input.workflow.nodes.find((node) => tasks.some((task) => task.nodeId === node.id && task.status === 'READY'));
+  return input.workflow.nodes.find((node) => tasks.some((task) => task.nodeId === node.id && task.status === 'IN_PROGRESS'));
 }
 
 export function buildPcnLifecycleDiagram(input: PcnArchifyWorkflowInput): ArchifyLifecycleDocument {
@@ -35,18 +33,17 @@ export function buildPcnDataflowDiagram(input: PcnArchifyWorkflowInput): Archify
   const nodes = [{ id: 'pcn-dossier', type: 'backend' as const, label: 'Hồ sơ PCN', stage: 0, row: 0 }, ...documents.map((doc, row) => ({ id: id('document', doc.id), type: 'external' as const, label: `Tài liệu ${doc.requirementId}`, stage: 1, row })), ...results.map((result, row) => ({ id: id('result', result.id), type: 'cloud' as const, label: `KQTN ${result.id}`, stage: 2, row })), ...approvals.map((approval, row) => ({ id: id('approval', approval.id), type: 'security' as const, label: `Phê duyệt ${approval.role}`, stage: 3, row }))];
   const flows: ArchifyDataflowDocument['flows'] = documents.map((doc) => ({ id: id('flow', `dossier-${doc.id}`), from: 'pcn-dossier', to: id('document', doc.id), label: `tài liệu ${doc.id}`, variant: 'emphasis' as const }));
   for (const result of results) flows.push({ id: id('flow', `result-${result.id}`), from: 'pcn-dossier', to: id('result', result.id), label: `Kết quả ${result.outcome}`, variant: 'default' });
-  for (const approval of approvals) for (const result of results) flows.push({ id: id('flow', `${result.id}-${approval.id}`), from: id('result', result.id), to: id('approval', approval.id), label: approval.status === 'APPROVED' ? 'Đã phê duyệt' : 'Chờ phê duyệt', variant: approval.status === 'APPROVED' ? 'emphasis' : 'dashed' });
   return { available: true, diagramType: 'dataflow', document: { schema_version: 1, diagram_type: 'dataflow', meta: { title: `${input.dossier.dossierCode} · Dataflow PCN`, locale: 'en', views: view(nodes.map((node) => node.id)) }, stages: [{ label: 'Nguồn hồ sơ' }, { label: 'Tài liệu' }, { label: 'Kết quả' }, { label: 'Phê duyệt' }], nodes, flows } };
 }
 
 function pcnEvents(input: PcnArchifyWorkflowInput) {
   const events: Array<{ id: string; at: string; actor: string; label: string }> = [];
-  for (const task of input.tasks.filter((task) => task.dossierId === input.dossier.id)) if (task.startedAt || task.completedAt) events.push({ id: task.id, at: task.completedAt || task.startedAt || task.updatedAt, actor: task.updatedBy, label: `Task ${task.nodeId}: ${task.status}` });
-  for (const doc of input.documents.filter((doc) => doc.dossierId === input.dossier.id)) if (doc.updatedAt) events.push({ id: doc.id, at: doc.updatedAt, actor: 'pcn-operator', label: `Cập nhật tài liệu ${doc.requirementId}` });
-  for (const result of (input.results || []).filter((result) => result.dossierId === input.dossier.id)) events.push({ id: result.id, at: result.receivedAt, actor: 'pcn-lab', label: `Nhận kết quả ${result.outcome}` });
-  for (const approval of (input.approvalSteps || []).filter((step) => step.dossierId === input.dossier.id)) if (approval.actedAt) events.push({ id: approval.id, at: approval.actedAt, actor: approval.assigneeUsername || 'pcn-reviewer', label: `Phê duyệt ${approval.status}` });
-  for (const log of (input.activityLogs || []).filter((log) => log.entityId === input.dossier.id || log.entityId === input.dossier.dossierCode)) events.push({ id: log.id, at: log.createdAt, actor: log.actorUsername || log.actorName, label: log.summary });
-  return events.filter((event) => Number.isFinite(Date.parse(event.at))).sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || a.id.localeCompare(b.id));
+  for (const task of input.tasks.filter((task) => task.dossierId === input.dossier.id)) if ((task.startedAt || task.completedAt) && task.updatedBy.trim()) events.push({ id: task.id, at: task.completedAt || task.startedAt || task.updatedAt, actor: 'PCN operator', label: `Task ${task.nodeId}: ${task.status}` });
+  for (const result of (input.results || []).filter((result) => result.dossierId === input.dossier.id)) events.push({ id: result.id, at: result.receivedAt, actor: 'PCN result service', label: `Nhận kết quả ${result.outcome}` });
+  for (const approval of (input.approvalSteps || []).filter((step) => step.dossierId === input.dossier.id)) if (approval.actedAt && approval.assigneeUsername?.trim()) events.push({ id: approval.id, at: approval.actedAt, actor: 'PCN reviewer', label: `Phê duyệt ${approval.status}` });
+  for (const log of (input.activityLogs || []).filter((log) => (log.entityId === input.dossier.id || log.entityId === input.dossier.dossierCode) && (log.actorUsername?.trim() || log.actorName.trim()))) events.push({ id: log.id, at: log.createdAt, actor: 'PCN audit service', label: `Audit ${log.action}` });
+  const messageId = (event: { id: string }) => id('message', event.id);
+  return events.filter((event) => Number.isFinite(Date.parse(event.at))).sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || messageId(a).localeCompare(messageId(b)));
 }
 
 export function buildPcnSequenceDiagram(input: PcnArchifyWorkflowInput): ArchifyDiagramResult<ArchifySequenceDocument> {
@@ -61,7 +58,8 @@ export function buildPcnSequenceDiagram(input: PcnArchifyWorkflowInput): Archify
 
 export function buildPcnArchitectureDiagram(input: PcnArchifyWorkflowInput): ArchifyArchitectureDocument {
   const components: ArchifyArchitectureDocument['components'] = [{ id: 'pcn', type: 'backend', label: 'PCN', sublabel: input.dossier.dossierCode, row: 0, col: 0 }, { id: 'postgres', type: 'database', label: 'PostgreSQL', sublabel: 'Dữ liệu hồ sơ', row: 0, col: 1 }, { id: 'private-storage', type: 'cloud', label: 'Private Storage', sublabel: 'Tài sản riêng tư', row: 1, col: 1 }];
-  const hasLab = input.dossier.labRequestIds.length > 0; if (hasLab) components.push({ id: 'ptn', type: 'external', label: 'PTN liên kết', sublabel: 'Bản ghi PYC/KQTN đã liên kết', row: 0, col: 2 });
+  const linkedLabIds = new Set(input.dossier.labRequestIds);
+  const hasLab = (input.results || []).some((result) => result.dossierId === input.dossier.id && linkedLabIds.has(result.labRequestId)); if (hasLab) components.push({ id: 'ptn', type: 'external', label: 'PTN liên kết', sublabel: 'Bản ghi PYC/KQTN đã liên kết', row: 0, col: 2 });
   const connections = [{ from: 'pcn', to: 'postgres', label: 'hồ sơ' }, { from: 'pcn', to: 'private-storage', label: 'tài liệu' }, ...(hasLab ? [{ from: 'pcn', to: 'ptn', label: 'PYC/KQTN' }] : [])].map((connection, index) => ({ ...connection, id: `pcn-connection-${index}` }));
   return { schema_version: 1, diagram_type: 'architecture', meta: { title: `${input.dossier.dossierCode} · Architecture PCN`, locale: 'en', views: view(components.map((component) => component.id)) }, components, connections };
 }

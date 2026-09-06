@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { buildPcnArchifyWorkflow } from '../utils/pcnArchifyWorkflow.ts';
 import { buildPgdArchifyWorkflow } from '../utils/pgdArchifyWorkflow.ts';
@@ -155,4 +157,53 @@ test('PGD projections stay PGD-only and add a PTN component only for linked lab 
   if (!suite.dataflow.available) return;
   assert.equal(suite.dataflow.document.nodes.some((node) => node.label.includes('PCN')), false);
   assert.ok(suite.dataflow.document.nodes.some((node) => node.label.includes('PGD')));
+});
+
+test('PGD projections isolate request facts, avoid catalog topology fabrication, and redact actors', () => {
+  const request = { id: 'request-safe', domain: 'pgd', requestCode: 'PGD-260906-03', status: 'WAITING_LAB_RESULTS', productGroup: 'STEEL_METAL', catalogItemId: 'STEEL_LOT_INSPECTION', productName: 'Thép', quantity: 1, unit: 'tấn', inspectionScope: 'Mẫu', inspectionLocation: 'Kho', standards: [], sampleIds: ['sample-safe'], labRequestIds: ['lab-safe'], documentPointers: [], dossierChecklist: [], createdAt: '2026-09-06T00:00:00.000Z', updatedAt: '2026-09-06T00:00:00.000Z' } as any;
+  const input = {
+    request,
+    samples: [
+      { id: 'sample-safe', domain: 'pgd', requestId: request.id, sampleCode: 'S-1', description: 'Mẫu', quantity: 1, disposition: 'LAB', sampledAt: 'bad-date', sampledByUsername: 'alice@example.com' },
+      { id: 'sample-other', domain: 'pgd', requestId: 'other-request', sampleCode: 'OTHER', description: 'Không thuộc hồ sơ', quantity: 1, disposition: 'LAB', sampledAt: '2026-09-06T01:00:00.000Z', sampledByUsername: 'other@example.com' },
+    ],
+    labRequests: [
+      { id: 'lab-safe', domain: 'pgd', requestId: request.id, sampleId: 'missing-sample', status: 'SENT', laboratoryName: 'PTN an toàn', handover: { sentAt: '2026-09-06T02:00:00.000Z', senderUsername: 'bob@example.com', quantity: 1 }, testItems: ['x'] },
+      { id: 'lab-other', domain: 'pgd', requestId: 'other-request', sampleId: 'sample-other', status: 'SENT', laboratoryName: 'PTN khác', testItems: ['x'] },
+    ],
+    labResults: [{ id: 'result-other', domain: 'pgd', requestId: 'other-request', labRequestId: 'lab-other', receivedAt: '2026-09-06T03:00:00.000Z', values: [] }],
+    dossierDocuments: [], approvals: [{ id: 'approval-other', domain: 'pgd', requestId: 'other-request', sequence: 1, role: 'TECHNICAL_REVIEW', status: 'APPROVED', actedAt: '2026-09-06T04:00:00.000Z', actedByUsername: 'other@example.com' }],
+    activityLogs: [{ id: 'log-other', entityId: 'other-request', createdAt: '2026-09-06T05:00:00.000Z', actorUsername: 'other@example.com', actorName: 'Other', summary: 'secret other request' }],
+  } as any;
+  const suite = buildPgdArchifyDiagramSuite(input);
+  assert.equal(suite.lifecycle.available, true);
+  if (!suite.lifecycle.available) return;
+  assert.equal(suite.lifecycle.document.transitions.length, 0);
+  assert.equal(suite.sequence.available, true);
+  if (!suite.sequence.available) return;
+  assert.ok(suite.sequence.document.participants.every((participant) => !participant.label.includes('@')));
+  assert.ok(suite.sequence.document.messages.every((message) => !message.label.includes('secret other')));
+  assert.equal(suite.dataflow.available, false);
+  assert.equal(suite.architecture.available, true);
+  if (!suite.architecture.available) return;
+  assert.equal(suite.architecture.document.components.some((component) => component.label.includes('PTN')), false);
+});
+
+test('PGD sequence remains unavailable when only invalid timestamps or missing actors exist', () => {
+  const input = { request: { id: 'request-invalid', requestCode: 'PGD-260906-04', status: 'DRAFT' }, samples: [{ id: 'sample-invalid', requestId: 'request-invalid', sampleCode: 'S', disposition: 'LAB', sampledAt: 'not-a-date' }], labRequests: [], labResults: [], dossierDocuments: [], approvals: [], activityLogs: [{ id: 'log-invalid', entityId: 'request-invalid', createdAt: 'also-invalid', summary: 'x' }] } as any;
+  const suite = buildPgdArchifyDiagramSuite(input);
+  assert.equal(suite.sequence.available, false);
+});
+
+test('PGD available lifecycle and sequence documents match pinned schema envelopes', () => {
+  const request = { id: 'request-schema-pgd', requestCode: 'PGD-260906-05', status: 'WAITING_LAB_RESULTS', productGroup: 'STEEL_METAL', catalogItemId: 'STEEL_LOT_INSPECTION', productName: 'Thép', quantity: 1, unit: 'tấn', inspectionScope: 'Mẫu', inspectionLocation: 'Kho', standards: [], sampleIds: [], labRequestIds: [], documentPointers: [], dossierChecklist: [], createdAt: '2026-09-06T00:00:00.000Z', updatedAt: '2026-09-06T00:00:00.000Z' } as any;
+  const suite = buildPgdArchifyDiagramSuite({ request, samples: [], labRequests: [], labResults: [], dossierDocuments: [], approvals: [], activityLogs: [{ id: 'pgd-schema-log', entityId: request.id, createdAt: '2026-09-06T01:00:00.000Z', actorUsername: 'safe', actorName: 'Safe', action: 'UPDATED', summary: 'private summary' }] } as any);
+  for (const type of ['lifecycle', 'sequence']) {
+    const schema = JSON.parse(readFileSync(resolve('vendor/archify/archify/schemas', `${type}.schema.json`), 'utf8')) as { required: string[] };
+    const result = type === 'lifecycle' ? suite.lifecycle : suite.sequence;
+    assert.equal(result.available, true);
+    if (result.available) for (const key of schema.required) assert.ok(key in result.document, `${type} missing ${key}`);
+  }
+  assert.equal(suite.sequence.available, true);
+  if (suite.sequence.available) assert.ok(suite.sequence.document.participants.every((participant) => !participant.label.includes('safe')));
 });
