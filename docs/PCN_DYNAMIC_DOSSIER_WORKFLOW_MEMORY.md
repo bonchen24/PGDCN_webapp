@@ -6,6 +6,14 @@
 > Commit visibility/backfill: `86caa2b` — `fix: surface dynamic workflow nodes in dossier queues`
 > Đây là nhật ký tra cứu nhanh; `design.md` vẫn là nguồn chuẩn duy nhất.
 
+## Cập nhật 2026-09-06 — Đóng tích hợp full-reader Archify và baseline triển khai
+
+- PCN và PGD đã có đủ năm view Archify (`workflow`, `lifecycle`, `dataflow`, `sequence`, `architecture`) với boundary dữ liệu tách biệt theo domain; runtime upstream pin và chạy server-only, reader theo từng dossier, graph hỗ trợ nhánh/parallel/join/return. Các view read-only không đủ dữ kiện trả unavailable rõ ràng.
+- Auth + `private, no-store`, error/unavailable bounded; mobile/reader surface sáng và `data-theme="light"`; renderer allowlist input/output, không truyền `ARCHIFY_REPO_ROOT` hoặc user executable path. Host giữ iframe/focus/action bridge cần thiết, không duplicate upstream toolbar/control hay tạo station-arrow graph; fixture/source payload không chứa private bytes, password, token hoặc absolute source path.
+- Verification: focused Archify/page/navigation **69/69**, full `npm test` **812/812**, lint (`tsc --noEmit`) pass, build pass với route `/pgdcn/pcn/dossiers/[dossierId]`, `git diff --check` pass. Upstream revision `ed7f4d4b48d4424d36edfed8043de3de8dea6b45`.
+- Docker: `pcn_webapp-webapp` `Up`, port `0.0.0.0:2357->2357/tcp`, image `sha256:855a3a133ee562650b18736ab511891e33f8860200b57c4955745a9a3f65cfa8`; health `HTTP 200` với `{"status":"ok"}`; logs xác nhận PostgreSQL connected, schema initialized, server port 2357.
+- Code integration baseline `9b18e4c`; docs commit SHA `<DOCS_COMMIT_SHA_PENDING_PARENT_REPLACEMENT>` để parent thay sau commit. `design.md` vẫn là nguồn chuẩn duy nhất, không ghi secret/dữ liệu hồ sơ thật và không tuyên bố public deployment đã đổi.
+
 ## Cập nhật 2026-09-06 — Sửa lỗi SQL khi mở Archify dossier
 
 - `app_documents` không có cột SQL `created_at`; timestamp activity nằm trong JSON `data.createdAt`. Hai route Archify đã đổi thứ tự đọc activity sang `data->>'createdAt' ASC, document_id` để tránh lỗi PostgreSQL và giữ thứ tự ổn định.

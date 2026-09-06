@@ -5,6 +5,13 @@ Branch: `codex/pcn-dynamic-dossier-workflow`
 Commit: `3e94d6a` — `feat: add dynamic PCN dossier workflows`
 Visibility/backfill fix: `86caa2b` — `fix: surface dynamic workflow nodes in dossier queues`
 
+## Đóng tích hợp full-reader Archify — 2026-09-06
+
+- Full five-view Archify (`workflow`, `lifecycle`, `dataflow`, `sequence`, `architecture`) đã được nối cho cả PCN và PGD với boundary dữ liệu riêng; runtime upstream pin/server-only, reader theo dossier, hỗ trợ branches, parallel, join và return. View non-workflow là read-only và unavailable khi không có facts.
+- Auth/no-store và lỗi bounded; input/output allowlist không nhận `ARCHIFY_REPO_ROOT` hoặc executable path người dùng; host dùng reader/template upstream, không duplicate toolbar/control và không có station-arrow graph. Reader/mobile sáng; fixture/source payload không có private bytes, password, token hay absolute source paths.
+- Verification: focused **69/69**, full `npm test` **812/812**, lint/build/diff-check pass; build có route `/pgdcn/pcn/dossiers/[dossierId]`. Upstream `ed7f4d4b48d4424d36edfed8043de3de8dea6b45`.
+- Docker evidence: `pcn_webapp-webapp` Up, `0.0.0.0:2357->2357/tcp`, digest `sha256:855a3a133ee562650b18736ab511891e33f8860200b57c4955745a9a3f65cfa8`; health HTTP 200 `{"status":"ok"}`; logs xác nhận PostgreSQL/schema/server. Code integration baseline `9b18e4c`; docs SHA `<DOCS_COMMIT_SHA_PENDING_PARENT_REPLACEMENT>` để parent thay sau commit. `design.md` là nguồn chuẩn duy nhất; không ghi secret và không ám chỉ public deployment thay đổi.
+
 ## Sửa lỗi SQL activity của Archify — 2026-09-06
 
 - Lỗi mở hồ sơ `column "created_at" does not exist` xuất phát từ hai route Archify sắp xếp `app_documents` theo cột không tồn tại; thời gian activity thực tế nằm trong `data.createdAt`.

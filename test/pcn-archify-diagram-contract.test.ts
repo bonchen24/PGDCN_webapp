@@ -156,6 +156,21 @@ test('PCN diagram suite exposes the workflow and explicit unavailable five-view 
   }
 });
 
+test('final Archify capability contract keeps all five views explicit for both domains', () => {
+  assert.deepEqual(Object.keys(buildPcnArchifyDiagramSuite(fixture)), [...ARCHIFY_DIAGRAM_TYPES]);
+
+  const request = {
+    id: 'request-final-contract', domain: 'pgd', requestCode: 'PGD-260906-FINAL', status: 'DRAFT',
+    productGroup: 'STEEL_METAL', catalogItemId: 'STEEL_LOT_INSPECTION', productName: 'Thép', quantity: 1,
+    unit: 'tấn', inspectionScope: 'Mẫu', inspectionLocation: 'Kho', standards: [], sampleIds: [],
+    labRequestIds: [], documentPointers: [], dossierChecklist: [], createdAt: '2026-09-06T00:00:00.000Z',
+    updatedAt: '2026-09-06T00:00:00.000Z',
+  } as any;
+  const pgdSuite = buildPgdArchifyDiagramSuite({ request, samples: [], labRequests: [], labResults: [], dossierDocuments: [], approvals: [], activityLogs: [] } as any);
+  assert.deepEqual(Object.keys(pgdSuite), [...ARCHIFY_DIAGRAM_TYPES]);
+  for (const type of ARCHIFY_DIAGRAM_TYPES) assert.equal(type === 'workflow' ? pgdSuite[type].diagram_type : pgdSuite[type].diagramType, type);
+});
+
 test('PGD diagram suite exposes the same five-view contract without mixing PCN fields', () => {
   const request = {
     id: 'request-contract',

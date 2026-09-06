@@ -6,6 +6,14 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-06 — Đóng tích hợp full-reader Archify và baseline triển khai
+
+- Tích hợp đủ năm view Archify (`workflow`, `lifecycle`, `dataflow`, `sequence`, `architecture`) cho cả PCN và PGD; mỗi hồ sơ giữ boundary dữ liệu riêng. Runtime Archify được pin và chạy server-only, route/reader gắn theo từng dossier; graph giữ nhánh, parallel, join và return; các view không phải workflow chỉ đọc và trả trạng thái unavailable khi thiếu dữ kiện.
+- Boundary bảo mật: route có auth, HTML dùng `private, no-store`, lỗi/unavailable được giới hạn an toàn; host dùng reader/template upstream qua iframe, không nhân bản toolbar/control hoặc dựng graph station-arrow. Renderer dùng input/output allowlist, không truyền `ARCHIFY_REPO_ROOT` hay executable path từ người dùng; HTML/fixture không chứa private bytes, password, token hoặc absolute source path. Mobile/reader dùng surface sáng và `data-theme="light"`.
+- Verification đã xác nhận: focused Archify/page/navigation **69/69**, full `npm test` **812/812**, `npm run lint` pass (`tsc --noEmit`), `npm run build` pass với route động `/pgdcn/pcn/dossiers/[dossierId]`, `git diff --check` pass. Upstream Archify pin `ed7f4d4b48d4424d36edfed8043de3de8dea6b45`.
+- Docker Desktop: lệnh compose build/up hoàn tất; `pcn_webapp-webapp` đang `Up`, `0.0.0.0:2357->2357/tcp`, image digest `sha256:855a3a133ee562650b18736ab511891e33f8860200b57c4955745a9a3f65cfa8`; `GET http://localhost:2357/api/health` trả HTTP 200 và `{"status":"ok"}`; log xác nhận PostgreSQL connected, schema initialized, server port 2357.
+- Code integration baseline: `9b18e4c`. Docs commit SHA: `<DOCS_COMMIT_SHA_PENDING_PARENT_REPLACEMENT>` (sẽ thay bằng SHA docs commit sau khi commit này được tạo; không khẳng định đây là final SHA). `design.md` vẫn là nguồn chuẩn duy nhất; Memory/Obsidian chỉ là nhật ký tra cứu. Không ghi dữ liệu hồ sơ thật, secret hoặc triển khai public.
+
 ## Cập nhật 2026-09-06 — Sửa lỗi SQL khi mở Archify dossier
 
 - Nguyên nhân lỗi `{"error":"column \\"created_at\\" does not exist"}`: `app_documents` chỉ có timestamp hệ thống `updated_at`; activity log lưu thời gian nghiệp vụ trong `data.createdAt`, nên `ORDER BY created_at` trong route Archify là cột không tồn tại.

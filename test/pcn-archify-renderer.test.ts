@@ -336,3 +336,17 @@ test('Archify routes order activity logs by the JSON activity timestamp', () => 
   assert.doesNotMatch(serverSource, /readRows\(PGD_COLLECTIONS\.activityLogs, ['"]created_at ASC/);
   assert.doesNotMatch(serverSource, /activityLogs' AND \(data->>'entityId' = \$1 OR data->>'requestCode' = \$1\) ORDER BY created_at/);
 });
+
+test('final Archify host contract delegates reader controls to upstream HTML', () => {
+  const hostSource = fs.readFileSync(new URL('../components/PcnArchifyWorkflowEmbed.tsx', import.meta.url), 'utf8');
+  const runtimeSource = fs.readFileSync(new URL('../utils/archifyRuntime.ts', import.meta.url), 'utf8');
+
+  for (const entrypoint of Object.values(ARCHIFY_RENDERER_ENTRYPOINTS)) {
+    assert.equal(fs.existsSync(new URL(`../vendor/archify/archify/${entrypoint}`, import.meta.url)), true, entrypoint);
+  }
+  assert.equal(fs.existsSync(new URL('../vendor/archify/archify/assets/template.html', import.meta.url)), true);
+  assert.match(hostSource, /<iframe/);
+  assert.doesNotMatch(hostSource, /<svg|<canvas|station-arrow|archify-toolbar|toolbar|zoom-control/i);
+  assert.match(runtimeSource, /ARCHIFY_TEMPLATE_ENTRYPOINT/);
+  assert.doesNotMatch(runtimeSource, /ARCHIFY_REPO_ROOT|ARCHIFY_EXECUTABLE|process\.env\.(?:ARCHIFY_REPO_ROOT|ARCHIFY_EXECUTABLE)/);
+});

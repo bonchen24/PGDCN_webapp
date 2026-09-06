@@ -220,3 +220,14 @@ test('PGD actor pseudonyms remain stable while excluding persisted identity valu
   assert.ok(first.document.participants.every((participant) => !participant.label.includes('bob@example.com')));
   assert.ok(first.document.participants.some((participant) => participant.label.startsWith('pgd-actor-')));
 });
+
+test('final Archify server and fixture boundaries exclude private bytes, credentials and absolute paths', () => {
+  const serverSource = readFileSync(resolve('server.ts'), 'utf8');
+  const fixtureSource = JSON.stringify({ pcnWorkflow, pcnDossier });
+
+  assert.match(serverSource, /ARCHIFY_DIAGRAM_TYPES/);
+  assert.match(serverSource, /parseArchifyDiagramType/);
+  assert.doesNotMatch(serverSource, /ARCHIFY_REPO_ROOT|ARCHIFY_EXECUTABLE|process\.env\.(?:ARCHIFY_REPO_ROOT|ARCHIFY_EXECUTABLE)/);
+  assert.doesNotMatch(fixtureSource, /privateBytes|password|secret|token|credential|authorization|cookie/i);
+  assert.doesNotMatch(fixtureSource, /(?:[A-Za-z]:[\\/]|\\\\|\/)(?:[^\n"]+)[\\/][^\n"]+/);
+});
