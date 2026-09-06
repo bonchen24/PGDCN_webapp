@@ -84,6 +84,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   const [personalSettingsOpen, setPersonalSettingsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [focusedPgdRequestId, setFocusedPgdRequestId] = useState<string>();
 
   useEffect(() => {
     if (initialDomain === 'PCN') setActiveTarget({ domain: 'PCN', section: 'proposals' });
@@ -236,6 +237,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     setActiveTarget({ domain: 'PGD', section: 'requests' });
     setMobileOpen(false);
     if (!requestId) return;
+    setFocusedPgdRequestId(requestId);
   };
   const openPcnWorkspace = () => {
     setActiveTarget({ domain: 'PCN', section: 'proposals' });
@@ -267,7 +269,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   ) : activeTarget.domain === 'PCN' ? (
     <PcnWorkspace embedded initialSection={activeTarget.section as PcnSection} initialDossierId={initialPcnDossierId} initialDossierTab={initialPcnDossierTab} initialDossierNodeId={initialPcnDossierNodeId} standaloneDossier={Boolean(initialPcnDossierId)} onActiveSectionChange={openPcnSection} />
   ) : (
-    <PgdWorkspace embedded initialSection={activeTarget.section as PgdSection} onActiveSectionChange={openPgdSection} />
+    <PgdWorkspace embedded initialSection={activeTarget.section as PgdSection} initialRequestId={focusedPgdRequestId} onRequestClose={() => setFocusedPgdRequestId(undefined)} onActiveSectionChange={openPgdSection} />
   );
 
   return <div className="flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800">

@@ -796,10 +796,12 @@ function PgdRequestDetail({ request, currentUser, onClose }: { request: import('
 export type PgdWorkspaceProps = {
   embedded?: boolean;
   initialSection?: PgdEntrySection;
+  initialRequestId?: string;
+  onRequestClose?: () => void;
   onActiveSectionChange?: (section: PgdSection) => void;
 };
 
-export default function PgdWorkspace({ embedded = false, initialSection = 'dashboard', onActiveSectionChange }: PgdWorkspaceProps = {}) {
+export default function PgdWorkspace({ embedded = false, initialSection = 'dashboard', initialRequestId, onRequestClose, onActiveSectionChange }: PgdWorkspaceProps = {}) {
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const setCurrentUser = usePcnSessionStore((state) => state.setCurrentUser);
   const clearCurrentUser = usePcnSessionStore((state) => state.clearCurrentUser);
@@ -828,6 +830,13 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
     setActiveSection(initialSection === 'intake' ? 'requests' : initialSection);
     setIntakeOpen(initialSection === 'intake');
   }, [initialSection]);
+
+  useEffect(() => {
+    if (!initialRequestId) return;
+    setSelectedRequestId(initialRequestId);
+    setActiveSection('requests');
+    setIntakeOpen(false);
+  }, [initialRequestId]);
 
   const openSection = (section: PgdEntrySection) => {
     const nextSection = section === 'intake' ? 'requests' : section;
@@ -883,7 +892,7 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
         {!embedded && <nav className="flex shrink-0 items-center gap-1 overflow-x-auto border-t border-slate-200 bg-white p-1.5 lg:hidden" aria-label="Menu PGD di động">{(['dashboard', 'requests', 'operations', 'templates'] as PgdSection[]).map((section) => <button type="button" key={section} onClick={() => openSection(section)} className={`min-h-11 min-w-[4.75rem] rounded-lg px-2 text-[9px] font-black ${activeSection === section ? 'bg-blue-50 text-blue-700' : 'text-slate-400'}`}>{PGD_SECTION_LABELS[section]}</button>)}</nav>}
       </div>
     </div>
-    {selectedRequest && <PgdRequestDetail request={selectedRequest} currentUser={currentUser} onClose={() => setSelectedRequestId(undefined)} />}
+    {selectedRequest && <PgdRequestDetail request={selectedRequest} currentUser={currentUser} onClose={() => { setSelectedRequestId(undefined); onRequestClose?.(); }} />}
     {docxSettingsOpen && <PgdDocxSettingsModal templates={pgd.documentTemplates} canMutate={canMutate && isAdmin} onClose={() => setDocxSettingsOpen(false)} />}
     {intakeOpen && <div className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-2 md:p-6" role="dialog" aria-modal="true" aria-label="Tạo PYC PGD"><section className="relative my-2 w-full max-w-6xl overflow-hidden rounded-2xl bg-slate-50 shadow-2xl md:my-4"><div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3"><div><div className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">PGD · Hồ sơ PYC mới</div><h2 className="mt-0.5 text-sm font-black text-slate-900">Tạo PYC và bắt đầu bộ hồ sơ</h2></div><button type="button" onClick={() => setIntakeOpen(false)} aria-label="Đóng modal tạo PYC" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={18} /></button></div><div className="max-h-[calc(100dvh-7rem)] overflow-y-auto"><PgdIntakeForm catalog={pgd.catalog} customers={pgd.customers} currentUser={currentUser} canMutate={canMutate} onCreated={createDone} /></div></section></div>}
   </>;

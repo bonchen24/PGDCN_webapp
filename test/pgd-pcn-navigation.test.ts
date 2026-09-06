@@ -33,6 +33,20 @@ test('PGD dossier detail uses a PCN-style full-screen focus workspace', () => {
 test('PGD operations page remains a read-only projection that opens the dossier', () => {
   const workspace = read('components/PgdWorkspace.tsx');
   assert.match(workspace, /const operationProjection/);
-  assert.match(workspace, /onOpen=\{\(\) => openRequest/);
-  assert.match(workspace, /Sổ điều hành PGD/);
+  assert.match(workspace, /onOpenRequest=\{openRequest\}/);
+  assert.match(workspace, /PgdSummaryRegisterView/);
+});
+
+test('shared PGD navigation focuses the requested record and clears that focus on close', () => {
+  const workspace = read('components/PgdWorkspace.tsx');
+  const shell = read('components/PgdcnAppShell.tsx');
+  assert.match(workspace, /initialRequestId\?: string/);
+  assert.match(workspace, /onRequestClose\?: \(\) => void/);
+  assert.match(workspace, /setSelectedRequestId\(initialRequestId\)/);
+  assert.match(workspace, /onRequestClose\?\.\(\)/);
+  assert.match(workspace, /<PgdRequestDetail request=\{selectedRequest\}/);
+  assert.match(shell, /focusedPgdRequestId/);
+  assert.match(shell, /setFocusedPgdRequestId\(requestId\)/);
+  assert.match(shell, /initialRequestId=\{focusedPgdRequestId\}/);
+  assert.match(shell, /onRequestClose=\{\(\) => setFocusedPgdRequestId\(undefined\)\}/);
 });

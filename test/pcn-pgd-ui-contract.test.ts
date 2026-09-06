@@ -41,6 +41,14 @@ test('PGD and PCN navigation are visible as distinct department workspaces', () 
   assert.match(read('components/PgdSidebar.tsx'), /PHÒNG GIÁM ĐỊNH/);
 });
 
+test('PGD keeps the shared reader read-only while preserving native evidence and document regions', () => {
+  const workspace = read('components/PgdWorkspace.tsx');
+  assert.match(workspace, /<PgdWorkflowMap status=\{request\.status\} evidence=\{context\} \/>/);
+  assert.doesNotMatch(workspace, /onStartTask|onCompleteTask|onReturnTask/);
+  assert.match(workspace, /PgdCaseEvidencePanel/);
+  assert.match(workspace, /PgdSourceFormsPanel/);
+});
+
 test('PCN user administration exposes the shared PCN/PGD scope and PGD role', () => {
   const source = read('components/PcnUserManagementView.tsx');
   assert.match(source, /departmentScopes/);

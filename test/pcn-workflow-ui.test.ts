@@ -35,6 +35,16 @@ test('dossier detail wires workflow tasks and keeps the legacy graphic as fallba
   assert.match(source, /PcnWorkflowMap/);
 });
 
+test('dossier detail passes record context, task callbacks, and the native document opener to Archify', () => {
+  const source = read('components/PcnDossierDetailView.tsx');
+  assert.match(source, /dossier=\{dossier\}/);
+  assert.match(source, /onStartTask=\{onStartWorkflowTask\}/);
+  assert.match(source, /onCompleteTask=\{onCompleteWorkflowTask\}/);
+  assert.match(source, /onReturnTask=\{onReturnWorkflowTask\}/);
+  assert.match(source, /onOpenDocuments=\{\(\) => setActiveTab\('documents'\)\}/);
+  assert.match(source, /dossier\.workflowSnapshot \? <PcnDossierWorkflowPanel/);
+});
+
 test('workflow panel offers document-aware action controls and return-to-node handling', () => {
   const panel = read('components/PcnArchifyWorkflowEmbed.tsx');
   assert.match(panel, /onStartTask/);
