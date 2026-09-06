@@ -3172,12 +3172,19 @@ async function startServer() {
     dossierDocuments: PgdDossierDocument[];
   };
 
-  const pgdAssistantTabByCriterion: Record<PgdAssistantCriterion['id'], PgdAssistantEvidence['tab']> = {
+  const pgdAssistantTabByStation: Record<PgdOperationalStationKey, PgdAssistantEvidence['tab']> = {
     INTAKE_CAPABILITY: 'overview',
     PREPARATION: 'overview',
     FIELD_SAMPLING: 'sampling',
     LAB_RESULTS: 'results',
     REPORT_APPROVAL_RETURN: 'approval',
+  };
+  const pgdAssistantCriterionByStation: Record<PgdOperationalStationKey, PgdAssistantCriterion['id']> = {
+    INTAKE_CAPABILITY: 'DOSSIER_DOCUMENTS',
+    PREPARATION: 'INSPECTION_PLAN',
+    FIELD_SAMPLING: 'FIELD_EVIDENCE',
+    LAB_RESULTS: 'LAB_RESULTS_REVIEW',
+    REPORT_APPROVAL_RETURN: 'REPORT_APPROVAL_RETURN',
   };
 
   const readPgdAssistantRows = async (collectionName: string, requestId: string) => {
@@ -3199,15 +3206,20 @@ async function startServer() {
     const request = requestResult.rows[0] ? mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest : undefined;
     if (!request) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD.'), { statusCode: 404 });
 
-    const [assignments, fieldInspections, samples, labRequests, labResults, reports, certificates, approvals, dossierDocuments] = await Promise.all([
+    const [assignments, inspectionPlans, caseEvents, fieldActivityLogs, fieldInspections, samples, labRequests, labResults, labResultReviews, reports, certificates, approvals, dossierIndexes, dossierDocuments] = await Promise.all([
       readPgdAssistantRows(PGD_COLLECTIONS.assignments, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.inspectionPlans, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.caseEvents, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.fieldActivityLogs, request.id),
       readPgdAssistantRows(PGD_COLLECTIONS.fieldInspections, request.id),
       readPgdAssistantRows(PGD_COLLECTIONS.samples, request.id),
       readPgdAssistantRows(PGD_COLLECTIONS.labRequests, request.id),
       readPgdAssistantRows(PGD_COLLECTIONS.labResults, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.labResultReviews, request.id),
       readPgdAssistantRows(PGD_COLLECTIONS.reports, request.id),
       readPgdAssistantRows(PGD_COLLECTIONS.certificates, request.id),
       readPgdAssistantRows(PGD_COLLECTIONS.approvals, request.id),
+      readPgdAssistantRows(PGD_COLLECTIONS.dossierIndexes, request.id),
       readPgdAssistantRows(PGD_COLLECTIONS.dossierDocuments, request.id),
     ]);
 
@@ -3215,13 +3227,18 @@ async function startServer() {
       input: {
         request,
         assignments: assignments as PgdInspectionAssignment[],
+        inspectionPlans: inspectionPlans as PgdInspectionPlan[],
+        caseEvents: caseEvents as PgdCaseEvent[],
+        fieldActivityLogs: fieldActivityLogs as PgdFieldActivityLog[],
         fieldInspections: fieldInspections as PgdFieldInspection[],
         samples: samples as PgdSample[],
         labRequests: labRequests as PgdLabRequest[],
         labResults: labResults as PgdLabResult[],
+        labResultReviews: labResultReviews as PgdLabResultReview[],
         reports: reports as PgdInspectionReport[],
         certificates: certificates as PgdInspectionCertificate[],
         approvals: approvals as PgdApprovalStep[],
+        dossierIndexes: dossierIndexes as PgdDossierIndex[],
       },
       dossierDocuments: dossierDocuments as PgdDossierDocument[],
     };
@@ -3236,7 +3253,8 @@ async function startServer() {
       references.push(reference);
     };
     for (const document of getCurrentPgdDossierDocuments(documents).filter((item) => Boolean(item.fileAssetId))) {
-      const criterionId = getPgdDossierRequirementStationKey(document.requirementCode) as PgdAssistantCriterion['id'];
+      const station = getPgdDossierRequirementStationKey(document.requirementCode);
+      const criterionId = pgdAssistantCriterionByStation[station];
       const generated = document.originCollection === PGD_COLLECTIONS.documents && Boolean(document.originDocumentId);
       append({
         assetId: document.fileAssetId!,
@@ -3248,13 +3266,14 @@ async function startServer() {
         sourceJsonPath: generated ? 'output' : 'fileAssetId',
         checksum: document.checksum,
         criterionId,
-        tab: pgdAssistantTabByCriterion[criterionId],
+        tab: pgdAssistantTabByStation[station],
       });
     }
     for (const pointer of input.request.documentPointers || []) {
       if (!pointer.assetId || !pointer.sourceCollection || !pointer.sourceDocumentId) continue;
       if (pointer.sourceCollection !== PGD_COLLECTIONS.documents) throw new PcnPaddleOcrUnavailableError('PADDLE_OCR_UNAVAILABLE', `Pointer tài liệu ${pointer.fileName} không thuộc collection PGD được phép.`);
-      const criterionId = getPgdDossierRequirementStationKey(pointer.requirementCode || 'REQUEST_PYC') as PgdAssistantCriterion['id'];
+      const station = getPgdDossierRequirementStationKey(pointer.requirementCode || 'REQUEST_PYC');
+      const criterionId = pgdAssistantCriterionByStation[station];
       const generated = pointer.sourceCollection === PGD_COLLECTIONS.documents;
       append({
         assetId: pointer.assetId,
@@ -3266,7 +3285,7 @@ async function startServer() {
         sourceJsonPath: generated ? 'output' : 'fileAssetId',
         checksum: pointer.checksum,
         criterionId,
-        tab: pgdAssistantTabByCriterion[criterionId],
+        tab: pgdAssistantTabByStation[station],
       });
     }
     for (const inspection of input.fieldInspections || []) {
@@ -3280,7 +3299,7 @@ async function startServer() {
           sourceDocumentId: inspection.id,
           sourceJsonPath: 'evidenceAssetIds',
           checksum: '',
-          criterionId: 'FIELD_SAMPLING',
+          criterionId: 'FIELD_EVIDENCE',
           tab: 'sampling',
         });
       }
@@ -3422,9 +3441,10 @@ async function startServer() {
       const ai = await getPersonalGeminiClient(req, 30000);
       const context = texts.map((entry) => `[${entry.assetId}|${entry.fileName}${entry.page ? `|trang ${entry.page}` : ''}]\n${entry.text.slice(0, 6000)}`).join('\n\n').slice(0, 24000);
       const response = await generateContentWithRetryAndFallback(ai, {
-        contents: [{ role: 'user', parts: [{ text: `Bạn là lớp phân tích ngữ nghĩa hỗ trợ kiểm tra hồ sơ PGD. Chỉ kiểm tra trạm "${criterion.title}" từ các trích đoạn có mã bằng chứng bên dưới. Không quyết định phê duyệt, không đề xuất chuyển trạng thái, không bịa thông tin. Chỉ trả JSON: {"hasIssue": boolean, "severity": "ATTENTION" hoặc "CRITICAL", "message": string, "assetIds": string[]}. Nếu không đủ căn cứ, hasIssue=false. assetIds chỉ được chọn từ mã đã cung cấp.\n\n${context}` }] }],
+        contents: [{ role: 'user', parts: [{ text: `Bạn là lớp phân tích ngữ nghĩa hỗ trợ kiểm tra hồ sơ PGD. Chỉ kiểm tra tiêu chí "${criterion.title}" từ toàn bộ các trích đoạn có mã bằng chứng bên dưới. Không quyết định phê duyệt, không đề xuất chuyển trạng thái, không bịa thông tin. Nếu phát hiện thiếu/sai/mâu thuẫn, phải nêu rõ điểm cần sửa và chọn ít nhất một assetId làm dẫn chứng. Chỉ trả JSON: {"hasIssue": boolean, "severity": "ATTENTION" hoặc "CRITICAL", "message": string, "detail": string, "suggestedAction": string, "assetIds": string[]}. Nếu không đủ căn cứ, hasIssue=false. assetIds chỉ được chọn từ mã đã cung cấp.\n\n${context}` }] }],
       }, await getPersonalGeminiModel(req), { attemptsPerModel: 1 });
       const parsed = JSON.parse(String(response.text || '{}').replace(/```json|```/g, '').trim()) as Record<string, unknown>;
+      criterion.source = 'RULES_AND_AI';
       if (parsed.hasIssue !== true || typeof parsed.message !== 'string') return criterion;
       const assetIds = Array.isArray(parsed.assetIds) ? parsed.assetIds.map(String) : [];
       const selected = texts.filter((entry) => assetIds.includes(entry.assetId));
@@ -3433,18 +3453,17 @@ async function startServer() {
       criterion.findings = [...criterion.findings, {
         id: `${criterion.id}:AI_SEMANTIC_REVIEW`,
         message: String(parsed.message).slice(0, 1000),
-        detail: 'Điểm này do lớp AI ngữ nghĩa gợi ý; người phụ trách phải đối chiếu file gốc.',
-        suggestedAction: 'Mở bằng chứng được nêu và đối chiếu với hồ sơ PGD chuẩn.',
+        detail: typeof parsed.detail === 'string' ? parsed.detail.slice(0, 1200) : 'Điểm này do lớp AI ngữ nghĩa gợi ý; người phụ trách phải đối chiếu file gốc.',
+        suggestedAction: typeof parsed.suggestedAction === 'string' ? parsed.suggestedAction.slice(0, 1000) : 'Mở bằng chứng được nêu và đối chiếu với hồ sơ PGD chuẩn.',
         evidence: selected.slice(0, 6).map((entry) => ({ assetId: entry.assetId, fileName: entry.fileName, ...(entry.documentId ? { documentId: entry.documentId } : {}), ...(entry.documentType ? { documentType: entry.documentType } : {}), ...(entry.page ? { page: entry.page } : {}), excerpt: entry.text.slice(0, 300), tab: entry.tab })),
       }];
-      criterion.source = criterion.findings.length > 1 ? 'RULES_AND_AI' : 'AI';
       if (severity === 'CRITICAL' || criterion.status === 'PASS') {
         criterion.status = severity === 'CRITICAL' ? 'ERROR' : 'WARNING';
         criterion.summary = 'Lớp ngữ nghĩa AI phát hiện điểm cần người dùng đối chiếu với bằng chứng.';
       }
       return criterion;
-    } catch {
-      return criterion;
+    } catch (error) {
+      throw error;
     }
   };
 
@@ -3467,14 +3486,14 @@ async function startServer() {
       res.flushHeaders?.();
       const runId = randomUUID();
       const writeEvent = (event: Record<string, unknown>) => { if (!res.writableEnded) res.write(`${JSON.stringify(event)}\n`); };
-      writeEvent({ type: 'run_started', runId, requestId, startedAt, actorUsername: actor.username, message: 'Đã mở phiên đọc hồ sơ PGD. Kết quả sẽ hiện lần lượt theo 5 trạm.' });
+      writeEvent({ type: 'run_started', runId, requestId, startedAt, actorUsername: actor.username, message: 'Đã mở phiên đọc hồ sơ PGD. Kết quả sẽ hiện lần lượt theo 11 tiêu chí.' });
       const extracted = await extractPgdAssistantTexts(req, loaded.input, loaded.dossierDocuments);
       const baseReview = buildPgdAssistantReview({ ...loaded.input, documentTexts: extracted.documentTexts, unreadableFiles: extracted.unreadableFiles });
       const criteria: PgdAssistantCriterion[] = [];
       for (let index = 0; index < baseReview.criteria.length; index += 1) {
         const criterion = baseReview.criteria[index];
         writeEvent({ type: 'criterion_started', index, total: baseReview.criteria.length, criterion: { id: criterion.id, title: criterion.title } });
-        const reviewed = await semanticReviewPgdCriterion(req, criterion, extracted.documentTexts.filter((entry) => entry.tab === pgdAssistantTabByCriterion[criterion.id]));
+        const reviewed = await semanticReviewPgdCriterion(req, criterion, extracted.documentTexts);
         criteria.push(reviewed);
         writeEvent({ type: 'criterion_result', index, total: baseReview.criteria.length, criterion: reviewed });
         writeEvent({ type: 'criterion_completed', index, total: baseReview.criteria.length, criterionId: reviewed.id });
@@ -3484,7 +3503,7 @@ async function startServer() {
         warning: criteria.filter((criterion) => criterion.status === 'WARNING').length,
         error: criteria.filter((criterion) => criterion.status === 'ERROR').length,
         notEvaluable: criteria.filter((criterion) => criterion.status === 'NOT_EVALUABLE').length,
-        conclusion: criteria.some((criterion) => criterion.status === 'ERROR') ? 'Cần xử lý lỗi trước khi xem xét tiếp.' : criteria.some((criterion) => criterion.status === 'NOT_EVALUABLE') ? 'Chưa đủ căn cứ cho toàn bộ trạm nghiệp vụ.' : criteria.some((criterion) => criterion.status === 'WARNING') ? 'Có cảnh báo cần người phụ trách đối chiếu.' : 'Bằng chứng hiện có phù hợp với các trạm PGD.',
+        conclusion: criteria.some((criterion) => criterion.status === 'ERROR') ? 'Cần xử lý lỗi trước khi xem xét tiếp.' : criteria.some((criterion) => criterion.status === 'NOT_EVALUABLE') ? 'Chưa đủ căn cứ cho một hoặc nhiều tiêu chí.' : criteria.some((criterion) => criterion.status === 'WARNING') ? 'Có cảnh báo cần người phụ trách đối chiếu.' : 'Bằng chứng hiện có phù hợp với 11 tiêu chí PGD.',
       } as PgdAssistantReview['summary'];
       writeEvent({ type: 'run_completed', runId, requestId, finishedAt: new Date().toISOString(), summary, review: { domain: 'PGD', requestId, readOnly: true, criteria, summary }, message: 'Đã hoàn tất phiên hỗ trợ PGD. Kết quả không làm thay đổi hồ sơ.' });
       res.end();

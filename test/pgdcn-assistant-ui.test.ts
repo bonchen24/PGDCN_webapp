@@ -4,11 +4,11 @@ import test from 'node:test';
 
 test('shared assistant exposes PCN and PGD domain workbenches', () => {
   const source = fs.readFileSync(new URL('../components/PgdcnAssistantView.tsx', import.meta.url), 'utf8');
-  for (const marker of ['Chứng nhận (PCN)', 'Giám định (PGD)', 'thép/kim loại', 'máy móc/dây chuyền', 'than', 'giám định ngoài', 'hàng hóa khác', 'Tiếp nhận & năng lực', 'Chuẩn bị & phân công', 'Hiện trường & lấy mẫu', 'PTN & xem xét kết quả', 'Báo cáo, phê duyệt & trả kết quả', 'NOT_EVALUABLE']) {
+  for (const marker of ['Chứng nhận (PCN)', 'Giám định (PGD)', 'thép/kim loại', 'máy móc/dây chuyền', 'than', 'giám định ngoài', 'hàng hóa khác', 'PGD_ASSISTANT_CRITERION_DEFINITIONS', 'PGD_ASSISTANT_CRITERION_ORDER', 'NOT_EVALUABLE']) {
     assert.ok(source.includes(marker), `Missing assistant marker: ${marker}`);
   }
   assert.match(source, /read-only|readOnly|chỉ đọc/i);
-  for (const marker of ['mobile-touch-target', 'aria-live', 'Mở hồ sơ chuẩn', 'Không có PYC PGD', 'Bắt đầu soát xét hồ sơ', '/api/pgd/assistant/review', 'run_completed', 'Mở bằng chứng', 'Luật + AI ngữ nghĩa', 'Đang tải danh sách hồ sơ PGD', 'Hồ sơ đang chọn', 'Đang soát xét trạm', 'Trạm đã hoàn tất', 'classifyPcnAssistantError', 'Mở file', 'Điểm cần sửa / đối chiếu']) {
+  for (const marker of ['mobile-touch-target', 'aria-live', 'Mở hồ sơ chuẩn', 'Không có PYC PGD', 'Bắt đầu soát xét hồ sơ', '/api/pgd/assistant/review', 'run_completed', 'Mở bằng chứng', 'Luật + AI ngữ nghĩa', 'Đang tải danh sách hồ sơ PGD', 'Hồ sơ đang chọn', 'Đang soát xét tiêu chí', 'Tiêu chí đã hoàn tất', '11 tiêu chí', 'classifyPcnAssistantError', 'Mở file', 'Dẫn chứng', 'Điểm cần sửa / đối chiếu']) {
     assert.ok(source.includes(marker), `Missing shared assistant UX marker: ${marker}`);
   }
 });

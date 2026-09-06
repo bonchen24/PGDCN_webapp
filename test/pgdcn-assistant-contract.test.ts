@@ -23,8 +23,12 @@ test('PGD assistant review stays server-owned, scoped and read-only', () => {
   assert.match(serverSource, /fetchPgdAssistantGeminiPage/);
   assert.match(serverSource, /fetchPgdAssistantOcrPage\(req/);
   assert.match(serverSource, /semanticReviewPgdCriterion/);
+  assert.match(serverSource, /documentTexts\)/);
+  assert.match(serverSource, /total: baseReview\.criteria\.length/);
+  assert.match(serverSource, /Kết quả sẽ hiện lần lượt theo 11 tiêu chí/);
   const routeStart = serverSource.indexOf("app.post('/api/pgd/assistant/review'");
-  const routeEnd = serverSource.indexOf("\n\n  app.post('/api/pgd/calibration-instruments'", routeStart);
+  const routeEndOffset = serverSource.slice(routeStart).search(/\r?\n\s+app\.post\('\/api\/pgd\/calibration-instruments'/);
+  const routeEnd = routeEndOffset < 0 ? serverSource.length : routeStart + routeEndOffset;
   const route = serverSource.slice(routeStart, routeEnd);
   assert.doesNotMatch(route, /applyPgdApproval|approvePgdStep|transitionPgdInspection|INSERT INTO app_documents|UPDATE app_documents/);
 });

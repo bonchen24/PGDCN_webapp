@@ -671,6 +671,14 @@ Description: Persistent project memory and verified deployment observations for 
 - Verification: focused settings/navigation **15/15 pass**, `npm test` **665/665 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass.
 - Docker Desktop production đã rebuild/recreate; image `pcn_webapp-webapp:latest` digest `sha256:8ee281a121d0919b386ddf60bd2487614eb994b9678a9d7b7fb6e4562e1c89c1`, container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`. Smoke `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200.
 
+## Cập nhật 2026-09-06 — PGD AI rà soát 11 tiêu chí độc lập
+
+- Trợ lý AI PGD đã chuyển sang đọc toàn bộ bộ hồ sơ và đánh giá tuần tự 11 tiêu chí độc lập, không grouping theo 5 trạm nghiệp vụ. Mỗi tiêu chí có rules baseline, lớp AI semantic, trạng thái, điểm cần sửa, kiến nghị hành động và dẫn chứng có thể mở lại về file/hồ sơ đúng miền.
+- Backend stream tiến độ `x/11` qua từng tiêu chí; AI semantic nhận toàn bộ text đã trích xuất cho mỗi tiêu chí. Lỗi Gemini/OCR/Storage được trả thành `run_error`, không âm thầm coi phiên là đạt hoặc hoàn tất.
+- UI PGD dùng cùng pattern card/timeline với PCN: tiêu chí trực tiếp, badge Đạt/Cảnh báo/Lỗi/Chưa đủ căn cứ, nút mở dẫn chứng và kết quả read-only.
+- Verification: focused PGD assistant **8/8 pass**, full suite **746/746 pass**, lint/build pass, Docker Desktop production container `pcn_webapp-webapp` chạy port `2357`, `/api/health` trả HTTP 200.
+- Không tạo bản sao Obsidian/obs vì `design.md` vẫn là nguồn chuẩn duy nhất; Memory được lưu tại file này.
+
 ## Files quan trọng
 
 - `server.ts`: Express API, PostgreSQL routes, HMR integration và Gemini endpoints.
