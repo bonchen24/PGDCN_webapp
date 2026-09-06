@@ -17,6 +17,7 @@
     "migrate:pcn-customers": "node ./scripts/run-pcn-tsx.cjs scripts/migratePcnCustomers.ts",
     "import:pcn-template": "node ./scripts/run-pcn-tsx.cjs scripts/importPcnTemplate.ts",
     "smoke:pcn-runtime": "node ./scripts/run-pcn-tsx.cjs scripts/smokePcnRuntime.ts",
+    "migrate:pcn-workflow": "node ./scripts/run-pcn-tsx.cjs scripts/migratePcnWorkflowSnapshots.ts",
     "test:pcn-docx-sources": "node ./scripts/run-pcn-tsx.cjs scripts/testPcnOperationalDocxAgainstSources.ts",
     "verify:pcn-standard-flow": "node ./scripts/run-pcn-tsx.cjs scripts/verifyPcnStandardDossierFlow.ts",
     "seed:pcn-standard-flow": "node ./scripts/run-pcn-tsx.cjs scripts/seedPcnStandardDossiers.ts",
