@@ -3,6 +3,7 @@
 > Ngày: 2026-09-06
 > Branch: `codex/pcn-dynamic-dossier-workflow`
 > Commit code: `3e94d6a` — `feat: add dynamic PCN dossier workflows`
+> Commit visibility/backfill: `86caa2b` — `fix: surface dynamic workflow nodes in dossier queues`
 > Đây là nhật ký tra cứu nhanh; `design.md` vẫn là nguồn chuẩn duy nhất.
 
 ## Quy tắc nghiệp vụ đã chốt
@@ -23,10 +24,12 @@
 - Store actions cho template/task; server transaction, row lock, audit và RBAC manager/admin.
 - Trang quản lý template trong System Settings và dossier detail page riêng.
 - Test contract/runtime/store/UI/route/RBAC cho workflow động.
+- Dashboard và work queue hiển thị node đang xử lý của từng workflow snapshot; không còn dùng nhãn trạm cố định khi hồ sơ đã có workflow động.
+- Đã backfill dữ liệu local hiện có: `15/15` hồ sơ có `workflowSnapshot`, tổng `150` workflow tasks.
 
 ## Kiểm chứng và production
 
-- `npm test`: 752/752 đạt.
+- `npm test`: 756/756 đạt.
 - `npm run lint`: đạt.
 - `npm run build`: đạt; route động `/pgdcn/pcn/dossiers/[dossierId]` được build.
 - `git diff --check`: đạt trước commit.
@@ -35,6 +38,7 @@
 - `GET http://localhost:2357/api/health`: HTTP 200, `{"status":"ok"}`.
 - `GET http://localhost:2357/pgdcn/pcn`: HTTP 200.
 - Compose production: `docker-compose.pcn.yml`; env được nạp từ các file cục bộ, không ghi giá trị secret vào note.
+- Lưu ý: `https://pcn.tvci.id.vn/` là deployment public riêng, không tự thay đổi khi build Docker local; bản đã cập nhật được kiểm tra tại `http://localhost:2357/pgdcn/pcn`.
 
 ## Tệp chính
 
