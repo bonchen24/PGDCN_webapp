@@ -34,6 +34,12 @@ test('template cards expose their application scope without opening the editor',
   assert.match(management, /data-testid=\{`pgdcn-dossier-template-scope-/);
 });
 
+test('management workspace guards unsaved visual-editor changes', () => {
+  assert.match(management, /editorDirty/);
+  assert.match(management, /Thay đổi chưa lưu/);
+  assert.match(management, /window\.confirm/);
+});
+
 test('settings no longer renders raw JSON workflow editor as the primary surface', () => {
   assert.doesNotMatch(settings, /PcnWorkflowTemplateManagementView/);
   assert.doesNotMatch(settings, /topologyJson|Nodes và transitions \(JSON\)/);

@@ -9,6 +9,7 @@ Ngày: 2026-09-07
 - Panel node hỗ trợ xem/thay phiên bản/sửa form/xóa current, upload, sinh biểu mẫu và tự gắn, waiver có lý do, mở đúng module nghiệp vụ và Continue qua server gate.
 - Document mutation trên node hoàn tất tạo rework cycle tối thiểu, downstream stale và rollback status tổng; lịch sử version/audit được giữ lại.
 - Workspace **Hồ sơ mẫu** dùng chung cho PCN/PGD, gồm normalized editor model, canvas palette + lane/cột, inspector requirement theo đúng miền, version/revision/publish/retire và preview Archify read-only.
+- Card danh mục hiển thị trực tiếp phạm vi áp dụng bằng badge chữ (QC4/QC9 hoặc nhóm sản phẩm/phương pháp PGD). Editor hiển thị cảnh báo thay đổi chưa lưu và hỏi xác nhận trước khi rời mẫu đang sửa; bấm lại đúng tab hiện tại không làm mất editor.
 
 ## Boundary và dữ liệu
 
@@ -19,7 +20,7 @@ Ngày: 2026-09-07
 ## Kiểm chứng
 
 - `npm test`: 840/840 pass.
-- `npm run typecheck`: pass.
+- Template-management UI contract: 5/5 pass.
 - `npm run lint`: pass.
 - `npm run build`: pass.
 - `git diff --check`: pass; còn cảnh báo line-ending LF/CRLF của Git.

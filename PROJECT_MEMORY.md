@@ -13,8 +13,9 @@ Description: Persistent project memory and verified deployment observations for 
 - Boundary server đã bổ sung waiver, remove-current và generate-and-attach; waiver có RBAC/audit, remove-current chỉ gỡ `currentVersionId` và giữ file/version/lịch sử. Sửa tài liệu ở node hoàn tất tạo cycle rework, đánh dấu downstream `STALE`, rollback status tổng và giữ lịch sử cũ; complete task có `expectedCycleNo` chống stale write.
 - Đã thêm workflow template revision 2 theo lĩnh vực QC4/QC9 với các node chi tiết hơn; snapshot cũ vẫn tương thích và template mới chỉ áp dụng cho hồ sơ tạo sau khi phát hành.
 - Đã triển khai workspace **Hồ sơ mẫu** chung cho PCN/PGD: contract PGD riêng, normalized editor model, palette/canvas lane-cột/inspector, quản lý draft/revision/publish/retire theo scope, adapter requirement tách miền và preview Archify không chứa dữ liệu hồ sơ/private asset. `PUBLISHED` bất biến; chỉnh sửa phải tạo revision mới.
+- Card danh mục hiện hiển thị trực tiếp badge **Phạm vi áp dụng** (QC4/QC9 hoặc nhóm sản phẩm/phương pháp PGD); editor hiển thị cảnh báo thay đổi chưa lưu và hỏi xác nhận trước khi đóng, mở mẫu khác, tạo mẫu mới hoặc chuyển domain.
 - SSoT vẫn là `design.md`; `PROJECT_MEMORY.md` và ghi chú Obsidian chỉ là nhật ký tra cứu, không ghi secret, raw hồ sơ hoặc đường dẫn nguồn riêng tư.
-- Verification hiện tại: `npm test` **840/840 pass**, `npm run typecheck` **pass**, `npm run lint` **pass**, `npm run build` **pass**, `git diff --check` **pass** (chỉ có cảnh báo chuyển LF/CRLF của Git).
+- Verification hiện tại: template-management UI **5/5 pass**, `npm test` **840/840 pass**, `npm run lint` **pass**, `npm run build` **pass**, `git diff --check` **pass** (chỉ có cảnh báo chuyển LF/CRLF của Git).
 
 ## Cập nhật 2026-09-06 — Đóng tích hợp full-reader Archify và baseline triển khai
 
