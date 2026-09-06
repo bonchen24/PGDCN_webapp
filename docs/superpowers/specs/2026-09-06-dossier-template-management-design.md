@@ -42,6 +42,16 @@ Checklist tài liệu dùng ô tìm kiếm và checkbox từ requirement catalog
 
 Preview Archify mở ở panel hoặc modal cạnh editor, do builder domain chuyển draft thành `ArchifyWorkflowDocument`. Preview là reader chỉ đọc; chọn node trong reader đồng bộ node đang chọn trong editor nếu khả dụng.
 
+### Hợp nhất với UX xử lý hồ sơ runtime
+
+Trang quản trị mẫu dùng cùng mental model với UX runtime đã được xây dựng ở `PcnDossierNodeWorkPanel` và `pcnDossierNodeWork`:
+
+- Mở bộ mẫu theo kiểu workflow-first: ban đầu ưu tiên header/thông tin cơ bản và bản đồ; chưa mở danh sách chi tiết nếu chưa chọn node.
+- Chọn một node mở đúng vùng **Tài liệu kèm node**, chỉ liệt kê requirement đã gán cho node đó. Mỗi dòng cho biết tên, mã, bắt buộc/tùy chọn và nguồn catalog; không hiển thị tài liệu của node khác.
+- Các nút `Upload`, `Tạo theo biểu mẫu`, `Xóa tài liệu`, `Bỏ qua` và `Tiếp tục` thuộc panel xử lý hồ sơ runtime, không xuất hiện như mutation file trên trang quản trị template. Trang template chỉ cấu hình requirement và preview trạng thái/đầu mục mà hồ sơ phát sinh sẽ nhận.
+- Tên trạng thái, cách đếm mục đã xử lý, cách hiển thị gợi ý và cách chọn node phải nhất quán với panel runtime. Khi thêm node nhỏ hơn, đó là tạo node độc lập trong revision template; không tách topology của hồ sơ đang chạy.
+- Preview Archify và editor cùng dùng stable node/edge IDs để có thể chuyển từ preview sang node đang chọn mà không tạo một topology khác.
+
 ### Versioning
 
 Tạo mới bắt đầu từ mẫu rỗng hoặc clone revision. Sửa bản đã publish tạo bản nháp revision mới. Publish chỉ khi validation pass; retire bắt buộc nhập lý do. Hồ sơ runtime đã snapshot không bị ảnh hưởng bởi revision sau đó.
@@ -65,6 +75,7 @@ Lỗi lưu giữ nguyên draft trên màn hình và hiển thị toast + vùng l
 - `components/PgdcnSidebar.tsx`, `components/PgdcnAppShell.tsx`: entry và target điều hướng chung.
 - `components/PgdcnDossierTemplateManagementView.tsx`: danh sách, domain tabs và state editor.
 - `components/PgdcnDossierTemplateCanvas.tsx`, `components/PgdcnDossierTemplateInspector.tsx`: canvas/palette/inspector tách trách nhiệm.
+- `components/PcnDossierNodeWorkPanel.tsx`, `utils/pcnDossierNodeWork.ts`: contract UX runtime cần giữ tương thích khi chiếu requirement của node.
 - `utils/pgdcnDossierTemplate.ts`: view model/adapters và thao tác draft dùng chung.
 - `utils/pgdWorkflowTemplate.ts`, `utils/pgdWorkflowTemplateApi.ts`: contract, validation, API PGD.
 - `utils/pgdArchifyWorkflowTemplate.ts`, `utils/pcnArchifyWorkflowTemplate.ts`: builder preview từ template, giữ stable IDs.
@@ -79,4 +90,5 @@ Lỗi lưu giữ nguyên draft trên màn hình và hiển thị toast + vùng l
 - Validation chặn topology sai và cho publish topology hợp lệ.
 - Publish/retire tạo audit và không sửa snapshot hồ sơ runtime.
 - Preview Archify phản ánh node/cạnh/lane/requirement label của draft mà không chứa file private.
+- Mở template ban đầu không hiển thị phần tài liệu chi tiết; chọn node chỉ hiện requirement của node đó và không lộ thao tác file runtime.
 - Mobile editor vẫn thao tác được qua scroll/inspector; lựa chọn node không dựa riêng vào màu.
