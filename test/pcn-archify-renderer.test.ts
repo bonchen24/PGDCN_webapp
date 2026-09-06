@@ -295,12 +295,18 @@ test('authenticated Archify routes select an allowlisted diagram suite member', 
 
   assert.match(serverSource, /ARCHIFY_DIAGRAM_TYPES/);
   assert.match(serverSource, /parseArchifyDiagramType/);
-  assert.match(serverSource, /String\(value \|\| 'workflow'\)\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(serverSource, /String\(value\)\.trim\(\)\.toLowerCase\(\) \|\| 'workflow'/);
   assert.match(serverSource, /buildPcnArchifyDiagramSuite/);
   assert.match(serverSource, /buildPgdArchifyDiagramSuite/);
   assert.match(serverSource, /suite\[diagramType\]/);
   assert.match(serverSource, /renderArchifyDiagram\(diagramType/);
   assert.match(serverSource, /res\.type\('html'\)\.set\('Cache-Control', 'private, no-store'\)/);
+});
+
+test('Archify diagram parsing defaults empty and whitespace-only values to workflow', () => {
+  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+
+  assert.match(serverSource, /const diagram = String\(value\)\.trim\(\)\.toLowerCase\(\) \|\| 'workflow';/);
 });
 
 test('Archify route errors are bounded and unavailable diagrams skip rendering', () => {
