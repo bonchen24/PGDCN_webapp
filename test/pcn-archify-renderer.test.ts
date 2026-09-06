@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 import { buildPcnArchifyWorkflow } from '../utils/pcnArchifyWorkflow.ts';
+import { buildPgdArchifyWorkflow } from '../utils/pgdArchifyWorkflow.ts';
 import { ARCHIFY_RENDERER_ENTRYPOINTS, ARCHIFY_TEMPLATE_ENTRYPOINT, renderArchifyDiagram, resetArchifyRuntimeTestHooks, setArchifyRuntimeTestHooks } from '../utils/pcnArchifyRenderer.ts';
 import { renderArchifyWorkflowDocument } from '../utils/pcnArchifyRenderer.ts';
 import { ARCHIFY_PINNED_VENDOR_ROOT, runArchifyRenderer } from '../utils/archifyRuntime.ts';
@@ -97,6 +98,41 @@ test('workflow trace animates only the route reached by the dossier and dashes f
   assert.match(futureA, /class="a-dashed"/);
   assert.match(futureB, /class="a-dashed"/);
   assert.match(futureA, /marker-end="url\(#arrowhead-dashed\)"/);
+});
+
+test('PGD trace animates active parallel lab branches and a recorded return edge', async () => {
+  const workflow = buildPgdArchifyWorkflow({
+    request: { id: 'request-motion', domain: 'pgd', requestCode: 'PGD-MOTION-01', status: 'WAITING_LAB_RESULTS', productGroup: 'STEEL_METAL', productName: 'Thép', dossierChecklist: [] } as any,
+    samples: [],
+    labRequests: [
+      { id: 'lab-1', requestId: 'request-motion', status: 'SENT', laboratoryName: 'PTN A', testItems: ['A'] },
+      { id: 'lab-2', requestId: 'request-motion', status: 'SENT', laboratoryName: 'PTN B', testItems: ['B'] },
+    ] as any,
+    labResults: [{ id: 'result-1', requestId: 'request-motion', labRequestId: 'lab-1', receivedAt: '2026-09-06T01:00:00.000Z', values: [] }] as any,
+    dossierDocuments: [], approvals: [], activityLogs: [],
+  } as any);
+  const { compileWorkflow } = await import('../vendor/archify/archify/renderers/workflow/workflow-compiler.mjs');
+  const compiled = compileWorkflow({ workflow, qualityProfile: workflow.meta.quality_profile });
+  assert.equal(compiled.ok, true, JSON.stringify(compiled));
+  const parallelResult = await renderArchifyDiagram('workflow', workflow, { domain: 'pgd', recordId: 'request-motion' });
+  assert.equal(parallelResult.available, true);
+  const pathFor = (html: string, edgeId: string) => html.match(new RegExp(`<path\\b[^>]*data-edge-id="${edgeId}"[^>]*>`))?.[0] || '';
+  assert.match(pathFor(parallelResult.html, 'pgd-lab-branch-0'), /data-animate="edge"/);
+  assert.match(pathFor(parallelResult.html, 'pgd-lab-branch-1'), /data-animate="edge"/);
+  assert.doesNotMatch(pathFor(parallelResult.html, 'pgd-lab-join-review'), /data-animate="edge"/);
+  assert.match(pathFor(parallelResult.html, 'pgd-lab-join-review'), /class="a-dashed"/);
+
+  const returnedWorkflow = buildPgdArchifyWorkflow({
+    request: { id: 'request-return-motion', domain: 'pgd', requestCode: 'PGD-MOTION-02', status: 'TECHNICAL_REVIEW', productGroup: 'STEEL_METAL', productName: 'Thép', dossierChecklist: [] } as any,
+    samples: [], labRequests: [], labResults: [], dossierDocuments: [],
+    approvals: [{ id: 'approval-return', requestId: 'request-return-motion', status: 'RETURNED', sequence: 1, role: 'LEADERSHIP_APPROVAL' }] as any,
+    activityLogs: [],
+  } as any);
+  const returnedCompiled = compileWorkflow({ workflow: returnedWorkflow, qualityProfile: returnedWorkflow.meta.quality_profile });
+  assert.equal(returnedCompiled.ok, true, JSON.stringify(returnedCompiled));
+  const returnResult = await renderArchifyDiagram('workflow', returnedWorkflow, { domain: 'pgd', recordId: 'request-return-motion' });
+  assert.equal(returnResult.available, true);
+  assert.match(pathFor(returnResult.html, 'pgd-return-to-technical'), /data-animate="edge"/);
 });
 
 test('renderArchifyDiagram returns unavailable diagrams without invoking the runner', async () => {

@@ -103,6 +103,8 @@ export function buildPgdArchifyWorkflow(input: PgdArchifyWorkflowInput): Archify
   ];
   const edges: ArchifyWorkflowDocument['edges'] = [];
   const lifecycleIds: string[] = [];
+  const requestOrder = PGD_WORKFLOW_STATES.find((state) => state.code === request.status)?.order ?? -1;
+  const labOrder = PGD_WORKFLOW_STATES.find((state) => state.code === 'WAITING_LAB_RESULTS')?.order ?? 5;
 
   const checklistItems = Array.isArray(request.dossierChecklist) ? request.dossierChecklist : [];
   if (checklistItems.length > 0) {
@@ -145,18 +147,22 @@ export function buildPgdArchifyWorkflow(input: PgdArchifyWorkflowInput): Archify
   if (hasLab) {
     const splitId = archifyId('pgd-lab-split');
     const joinId = archifyId('pgd-lab-join');
-    nodes.push(makeNode({ id: 'pgd-lab-split', lane: 'pgd-lab', col: 4, type: 'messagebus', label: 'Điều phối PTN', sublabel: `${input.labRequests.length} PYC PTN · xử lý song song`, tag: 'Tách nhánh' }));
+    const splitTag = requestOrder < labOrder ? 'Đang khóa' : 'Hoàn tất';
+    nodes.push(makeNode({ id: 'pgd-lab-split', lane: 'pgd-lab', col: 4, type: 'messagebus', label: 'Điều phối PTN', sublabel: `${input.labRequests.length} PYC PTN · xử lý song song · ${splitTag}`, tag: splitTag }));
     edges.push({ id: 'pgd-field-to-lab-split', from: fieldId, to: splitId, label: 'Bàn giao mẫu', role: 'branch', variant: 'emphasis' });
     input.labRequests.forEach((labRequest, index) => {
       const labId = `pgd-lab-${labRequest.id}`;
       const result = input.labResults.find((item) => item.id === labRequest.resultId || item.labRequestId === labRequest.id);
       const labLane = `pgd-lab-${index + 1}`;
       lanes.push({ id: labLane, label: `PTN nhánh ${index + 1}` });
-      nodes.push(makeNode({ id: labId, lane: labLane, col: 5, type: 'cloud', label: labRequest.laboratoryName || `PYC PTN ${index + 1}`, sublabel: `${labRequest.status} · ${(labRequest.testItems || []).join(', ') || 'Chưa có chỉ tiêu'} · ${result ? 'đã có KQ' : 'chưa có KQ'}`, tag: result ? 'KQ đã nhận' : 'Chờ KQ', yOffset: index === 0 ? undefined : index * 78 }));
+      const labTag = result ? 'Hoàn tất' : requestOrder === labOrder ? 'Đang xử lý' : 'Đang khóa';
+      nodes.push(makeNode({ id: labId, lane: labLane, col: 5, type: 'cloud', label: labRequest.laboratoryName || `PYC PTN ${index + 1}`, sublabel: `${labRequest.status} · ${(labRequest.testItems || []).join(', ') || 'Chưa có chỉ tiêu'} · ${result ? 'đã có KQ' : 'chưa có KQ'}`, tag: labTag, yOffset: index === 0 ? undefined : index * 78 }));
       edges.push({ id: `pgd-lab-branch-${index}`, from: splitId, to: archifyId(labId), label: labRequest.laboratoryCode || 'PYC PTN', role: 'branch', variant: 'emphasis' });
       edges.push({ id: `pgd-lab-join-${index}`, from: archifyId(labId), to: joinId, label: result ? 'KQTN' : 'Đang chờ', role: 'async', variant: 'dashed' });
     });
-    nodes.push(makeNode({ id: 'pgd-lab-join', lane: 'pgd-lab', col: 5, type: 'messagebus', label: 'Gom kết quả PTN', sublabel: `${input.labResults.length}/${input.labRequests.length} kết quả đã nhận`, tag: input.labResults.length === input.labRequests.length ? 'Đủ nhánh' : 'Chưa đủ nhánh', yOffset: 110 }));
+    const allLabResultsReceived = input.labResults.length >= input.labRequests.length;
+    const joinTag = requestOrder < labOrder ? 'Đang khóa' : requestOrder === labOrder ? (allLabResultsReceived ? 'Đang xử lý' : 'Đang chờ') : 'Hoàn tất';
+    nodes.push(makeNode({ id: 'pgd-lab-join', lane: 'pgd-lab', col: 5, type: 'messagebus', label: 'Gom kết quả PTN', sublabel: `${input.labResults.length}/${input.labRequests.length} kết quả đã nhận · ${joinTag}`, tag: joinTag, yOffset: 110 }));
     edges.push({ id: 'pgd-lab-join-review', from: joinId, to: archifyId('pgd-results_review'), label: 'Kết quả đã tiếp nhận', role: 'main', variant: 'emphasis' });
   } else {
     edges.push({ id: 'pgd-field-review', from: fieldId, to: archifyId('pgd-results_review'), label: 'Không phát sinh PYC PTN', role: 'main', variant: 'default' });
@@ -164,7 +170,9 @@ export function buildPgdArchifyWorkflow(input: PgdArchifyWorkflowInput): Archify
 
   const returnSource = input.approvals.find((approval) => approval.status === 'RETURNED') || (input.report?.status === 'RETURNED' ? input.report : undefined);
   if (returnSource) {
-    edges.push({ id: 'pgd-return-to-technical', from: archifyId('pgd-leadership_approval'), to: archifyId('pgd-technical_review'), label: 'Trả lại xử lý', role: 'return', variant: 'dashed', route: 'return-left', fromSide: 'left', toSide: 'left' });
+    const leadershipNodeIndex = nodes.findIndex((node) => node.id === archifyId('pgd-leadership_approval'));
+    if (leadershipNodeIndex >= 0) nodes[leadershipNodeIndex] = { ...nodes[leadershipNodeIndex], tag: 'Cần xử lý lại' };
+    edges.push({ id: 'pgd-return-to-technical', from: archifyId('pgd-leadership_approval'), to: archifyId('pgd-technical_review'), label: 'Trả lại xử lý', role: 'return', variant: 'dashed' });
   }
 
   const archiveId = archifyId('pgd-archived');
