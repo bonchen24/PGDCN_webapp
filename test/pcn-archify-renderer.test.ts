@@ -46,6 +46,59 @@ test('renderArchifyDiagram renders every available Archify reader type', async (
   }
 });
 
+test('workflow trace animates only the route reached by the dossier and dashes future branches', async () => {
+  const workflow = buildPcnArchifyWorkflow({
+    dossier: {
+      id: 'dossier-motion', dossierCode: 'PCN-MOTION-01', proposalId: 'proposal-motion',
+      fieldCodes: ['QC4'], method: 'METHOD_1', status: 'INTAKE_REVIEW', documentWaivers: {},
+      labRequestIds: [], returnedResultIds: [],
+    } as any,
+    workflow: {
+      templateCode: 'PCN-MOTION', templateVersion: 1, capturedAt: '2026-09-06T00:00:00.000Z', capturedBy: 'admin',
+      nodes: [
+        { id: 'start', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận', requirementIds: [], active: true, sortOrder: 0 },
+        { id: 'current', kind: 'DOCUMENT_TASK', label: 'Đang xử lý', requirementIds: [], active: true, sortOrder: 1 },
+        { id: 'split', kind: 'PARALLEL_SPLIT', label: 'Tách nhánh', requirementIds: [], active: true, sortOrder: 2 },
+        { id: 'future-a', kind: 'DOCUMENT_TASK', label: 'Nhánh A', requirementIds: [], active: true, sortOrder: 3 },
+        { id: 'future-b', kind: 'DOCUMENT_TASK', label: 'Nhánh B', requirementIds: [], active: true, sortOrder: 3 },
+        { id: 'join', kind: 'PARALLEL_JOIN', label: 'Gom nhánh', requirementIds: [], joinPolicy: 'ALL', active: true, sortOrder: 4 },
+        { id: 'end', kind: 'END', label: 'Kết thúc', requirementIds: [], active: true, sortOrder: 5 },
+      ],
+      transitions: [
+        { id: 'start-current', fromNodeId: 'start', toNodeId: 'current', label: 'Chuyển xử lý' },
+        { id: 'current-split', fromNodeId: 'current', toNodeId: 'split', label: 'Tách song song' },
+        { id: 'split-future-a', fromNodeId: 'split', toNodeId: 'future-a', label: 'Nhánh A' },
+        { id: 'split-future-b', fromNodeId: 'split', toNodeId: 'future-b', label: 'Nhánh B' },
+        { id: 'future-a-join', fromNodeId: 'future-a', toNodeId: 'join', label: 'A hoàn tất' },
+        { id: 'future-b-join', fromNodeId: 'future-b', toNodeId: 'join', label: 'B hoàn tất' },
+        { id: 'join-end', fromNodeId: 'join', toNodeId: 'end', label: 'Hoàn tất' },
+      ],
+    } as any,
+    tasks: [
+      { id: 'task-start', dossierId: 'dossier-motion', nodeId: 'start', status: 'COMPLETED', cycleNo: 1 },
+      { id: 'task-current', dossierId: 'dossier-motion', nodeId: 'current', status: 'IN_PROGRESS', cycleNo: 1 },
+      { id: 'task-split', dossierId: 'dossier-motion', nodeId: 'split', status: 'LOCKED', cycleNo: 1 },
+      { id: 'task-future-a', dossierId: 'dossier-motion', nodeId: 'future-a', status: 'LOCKED', cycleNo: 1 },
+      { id: 'task-future-b', dossierId: 'dossier-motion', nodeId: 'future-b', status: 'LOCKED', cycleNo: 1 },
+      { id: 'task-join', dossierId: 'dossier-motion', nodeId: 'join', status: 'LOCKED', cycleNo: 1 },
+      { id: 'task-end', dossierId: 'dossier-motion', nodeId: 'end', status: 'LOCKED', cycleNo: 1 },
+    ] as any,
+    documents: [], results: [], approvalSteps: [], activityLogs: [],
+  });
+  const result = await renderArchifyDiagram('workflow', workflow, { domain: 'pcn', recordId: 'dossier-motion' });
+  assert.equal(result.available, true);
+  const pathFor = (edgeId: string) => result.html.match(new RegExp(`<path\\b[^>]*data-edge-id="${edgeId}"[^>]*>`))?.[0] || '';
+  const reached = pathFor('start-current');
+  const futureA = pathFor('split-future-a');
+  const futureB = pathFor('split-future-b');
+  assert.match(reached, /data-animate="edge"/);
+  assert.doesNotMatch(futureA, /data-animate="edge"/);
+  assert.doesNotMatch(futureB, /data-animate="edge"/);
+  assert.match(futureA, /class="a-dashed"/);
+  assert.match(futureB, /class="a-dashed"/);
+  assert.match(futureA, /marker-end="url\(#arrowhead-dashed\)"/);
+});
+
 test('renderArchifyDiagram returns unavailable diagrams without invoking the runner', async () => {
   let spawned = false;
   setArchifyRuntimeTestHooks({ spawn: () => { spawned = true; throw new Error('must not spawn'); } });

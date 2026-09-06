@@ -53,6 +53,40 @@ function safeRenderError(message: string): Error {
   return Object.assign(new Error(message), { statusCode: 422 });
 }
 
+type WorkflowMotionState = 'reached' | 'active' | 'future';
+
+function workflowMotionState(node: ArchifyWorkflowDocument['nodes'][number]): WorkflowMotionState | undefined {
+  const tag = String(node.tag || '').trim().toLocaleLowerCase('vi-VN');
+  if (!tag) return undefined;
+  if (/hoàn tất|đã có|kq đã nhận|đã miễn|đã ký|bỏ qua/.test(tag)) return 'reached';
+  if (/hiện tại|đang xử lý|đang chờ|sẵn sàng|chờ kq|cần xử lý lại/.test(tag)) return 'active';
+  if (/đang khóa|chưa đến bước|cần bổ sung|chưa có trạng thái|đã hủy/.test(tag)) return 'future';
+  return undefined;
+}
+
+function applyWorkflowTraceScope(html: string, workflow: ArchifyWorkflowDocument): string {
+  const stateByNodeId = new Map(workflow.nodes.map((node) => [node.id, workflowMotionState(node)]));
+  if (![...stateByNodeId.values()].some(Boolean)) return html;
+
+  const animatedEdgeIds = new Set(workflow.edges.filter((edge) => {
+    const from = stateByNodeId.get(edge.from);
+    const to = stateByNodeId.get(edge.to);
+    return from !== undefined && to !== undefined && from !== 'future' && to !== 'future';
+  }).map((edge) => edge.id));
+  let animationStep = 0;
+  const scoped = html.replace(/<path\b(?=[^>]*\bdata-edge-id="([^"]+)"\s)[^>]*>/g, (tag, edgeId: string) => {
+    if (animatedEdgeIds.has(edgeId)) {
+      return tag.replace(/style="--step:\d+"/, `style="--step:${animationStep++}"`);
+    }
+    return tag
+      .replace(/\sdata-animate="edge"/, '')
+      .replace(/\sstyle="--step:\d+"/, '')
+      .replace(/\sclass="a-(?:default|emphasis|security)"/, ' class="a-dashed"')
+      .replace(/\smarker-end="url\(#arrowhead(?:-emphasis|-security)?\)"/, ' marker-end="url(#arrowhead-dashed)"');
+  });
+  return scoped.replace(/\sdata-animate="node"\sstyle="--step:\d+"/g, '');
+}
+
 async function renderWorkflow(workflow: unknown, input: { domain: ArchifyRenderDomain; recordId: string }): Promise<string> {
   if (!workflow || typeof workflow !== 'object' || (workflow as any).diagram_type !== 'workflow' || (workflow as any).schema_version !== 2) throw safeRenderError('Archify workflow phải dùng schema_version 2 và diagram_type workflow.');
   try {
@@ -62,7 +96,7 @@ async function renderWorkflow(workflow: unknown, input: { domain: ArchifyRenderD
     if (!compiled.ok || !compiled.svg) throw safeRenderError('Archify không thể biên dịch lưu trình hồ sơ.');
     const template = fs.readFileSync(path.join(ARCHIFY_VENDOR_ROOT, ARCHIFY_TEMPLATE_ENTRYPOINT), 'utf8');
     const html = utils.applyTemplate(template, { title: typedWorkflow.meta.title, subtitle: typedWorkflow.meta.subtitle, svg: compiled.svg, cards: utils.renderCards(typedWorkflow.cards), locale: typedWorkflow.meta.locale, visualPreset: typedWorkflow.meta.visual_preset, guidedViews: typedWorkflow.meta.views, sourceEvidence: null });
-    return validateRenderedHtml(injectFocusBridge(normalizeLightRoot(html), input.domain, input.recordId));
+    return validateRenderedHtml(injectFocusBridge(normalizeLightRoot(applyWorkflowTraceScope(html, typedWorkflow)), input.domain, input.recordId));
   } catch {
     throw safeRenderError('Archify không thể biên dịch lưu trình hồ sơ.');
   }
