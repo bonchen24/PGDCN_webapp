@@ -6,6 +6,14 @@
 > Commit visibility/backfill: `86caa2b` — `fix: surface dynamic workflow nodes in dossier queues`
 > Đây là nhật ký tra cứu nhanh; `design.md` vẫn là nguồn chuẩn duy nhất.
 
+## Cập nhật 2026-09-06 — Khắc phục Archify dossier 401/422
+
+- Lỗi `422` xuất phát từ adapter coi mọi transition có `returnPolicy: REWORK` là cạnh trả về. Quy tắc đúng: cạnh đi tiến theo topology (`to.sortOrder > from.sortOrder`) vẫn là `main/default`; chỉ cạnh đi lùi mới dùng corridor return. Vì vậy workflow snapshot cũ vẫn tương thích, còn seed forward `t-join-approval` không gắn `returnPolicy` mặc định.
+- Lỗi `401` trong Docker production chạy HTTP xuất phát từ cookie session luôn có cờ `Secure`. `shouldUseSecurePcnSessionCookie` chỉ bật `Secure` khi production thực sự chạy HTTPS hoặc request có `x-forwarded-proto: https`; HTTPS production vẫn được bảo vệ.
+- Regression tests kiểm tra forward rework edge và chính sách cookie. Commit: `2318b0d` — `fix: restore dossier Archify rendering and PCN session`.
+- Verification: focused tests **44/44**, full `npm test` **821/821**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass. Docker smoke: login `200`, session `200`, Archify `200`, `/api/health` `200`; container `pcn_webapp-webapp` chạy cổng `2357`.
+- Domain public `https://pcn.tvci.id.vn` là deployment riêng; Docker local không tự deploy commit này lên domain. Sau khi deploy public cần hard refresh và đăng nhập lại để kiểm tra.
+
 ## Cập nhật 2026-09-06 — Đóng tích hợp full-reader Archify và baseline triển khai
 
 - PCN và PGD đã có đủ năm view Archify (`workflow`, `lifecycle`, `dataflow`, `sequence`, `architecture`) với boundary dữ liệu tách biệt theo domain; runtime upstream pin và chạy server-only, reader theo từng dossier, graph hỗ trợ nhánh/parallel/join/return. Các view read-only không đủ dữ kiện trả unavailable rõ ràng.
