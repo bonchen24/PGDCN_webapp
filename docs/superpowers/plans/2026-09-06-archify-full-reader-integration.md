@@ -42,10 +42,10 @@ Create a fixture with sequential, decision, parallel split/join and return nodes
 ```ts
 const suite = buildPcnArchifyDiagramSuite(fixture);
 assert.equal(suite.workflow.diagram_type, 'workflow');
-assert.equal(suite.lifecycle.diagram_type, 'lifecycle');
-assert.equal(suite.architecture.diagram_type, 'architecture');
-assert.equal(suite.dataflow.available, true);
-assert.equal(suite.sequence.available, true);
+assert.equal(suite.lifecycle.available, false);
+assert.equal(suite.architecture.available, false);
+assert.equal(suite.dataflow.available, false);
+assert.equal(suite.sequence.available, false);
 ```
 
 Also assert a fixture without activity events returns `sequence.available === false` with a Vietnamese reason and no fabricated message.
@@ -65,7 +65,7 @@ Implement:
 ```ts
 export const ARCHIFY_DIAGRAM_TYPES = ['workflow', 'lifecycle', 'dataflow', 'sequence', 'architecture'] as const;
 export type ArchifyDiagramType = typeof ARCHIFY_DIAGRAM_TYPES[number];
-export type ArchifyDiagramUnavailable = { available: false; diagramType: Exclude<ArchifyDiagramType, 'workflow' | 'lifecycle' | 'architecture'>; reason: string };
+export type ArchifyDiagramUnavailable = { available: false; diagramType: ArchifyDiagramType; reason: string };
 export type ArchifyDiagramAvailable<T> = { available: true; diagramType: ArchifyDiagramType; document: T };
 export function archifyStableId(prefix: string, value: string): string;
 export function unavailableDiagram(diagramType: ArchifyDiagramUnavailable['diagramType'], reason: string): ArchifyDiagramUnavailable;
@@ -319,7 +319,7 @@ Initialize from validated `URLSearchParams(window.location.search)` or `workflow
 
 - [ ] **Step 4: Implement loading, unavailable, error and retry states**
 
-Display a light unavailable card with server reason for HTTP 409/422, preserve loading/error state for network failures and offer retry. Use text plus status badges, not color alone.
+Before assigning the iframe `src`, preflight the same authenticated URL with `fetch(url, { credentials: 'include', cache: 'no-store' })`. On `409/422`, parse `{ error, diagram, reason }` and display a light unavailable card in the host; on another non-2xx response display the retryable error state; on a 2xx response assign the URL to the iframe. This avoids rendering raw JSON inside the iframe while retaining the authenticated server boundary. Use text plus status badges, not color alone.
 
 - [ ] **Step 5: Keep action semantics narrow**
 
