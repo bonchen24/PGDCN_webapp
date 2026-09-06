@@ -9,7 +9,10 @@ import {
   buildPcnArchifyDiagramSuite,
   type PcnArchifyWorkflowInput,
 } from '../utils/pcnArchifyWorkflow.ts';
-import { buildPgdArchifyDiagramSuite } from '../utils/pgdArchifyWorkflow.ts';
+import {
+  buildPgdArchifyDiagramSuite,
+  type PgdArchifyWorkflowInput,
+} from '../utils/pgdArchifyWorkflow.ts';
 
 const workflow = {
   templateCode: 'PCN-CUSTOM',
@@ -94,8 +97,8 @@ test('PGD diagram suite exposes the same five-view contract without mixing PCN f
     id: 'request-contract',
     domain: 'pgd',
     requestCode: 'PGD-260906-CONTRACT',
-    status: 'INTAKE_REVIEW',
-    productGroup: 'STEEL_METAL',
+    status: 'CAPABILITY_REVIEW' as const,
+    productGroup: 'STEEL_METAL' as const,
     catalogItemId: 'STEEL_LOT_INSPECTION',
     productName: 'Thép cuộn',
     quantity: 1,
@@ -110,22 +113,33 @@ test('PGD diagram suite exposes the same five-view contract without mixing PCN f
     createdAt: '2026-09-06T00:00:00.000Z',
     updatedAt: '2026-09-06T00:00:00.000Z',
   };
-  const suite = buildPgdArchifyDiagramSuite({
-    request,
+  const pgdInput: PgdArchifyWorkflowInput = {
+    request: {
+      ...request,
+      intakeChannel: 'DIRECT',
+      requester: { name: 'Người yêu cầu' },
+      customerSnapshot: { name: 'Công ty mẫu', address: 'Hà Nội' },
+      domain: 'pgd',
+      documentPointers: [],
+    },
     samples: [],
     labRequests: [],
     labResults: [],
     dossierDocuments: [],
     approvals: [],
     activityLogs: [],
-  } as any);
+  };
+  const suite = buildPgdArchifyDiagramSuite(pgdInput);
 
   assert.equal(suite.workflow.diagram_type, 'workflow');
   assert.deepEqual(
     [suite.lifecycle.diagramType, suite.dataflow.diagramType, suite.sequence.diagramType, suite.architecture.diagramType],
     ['lifecycle', 'dataflow', 'sequence', 'architecture'],
   );
+  assert.equal(suite.lifecycle.available, false);
+  assert.equal(suite.dataflow.available, false);
   assert.equal(suite.sequence.available, false);
+  assert.equal(suite.architecture.available, false);
 });
 
 test('sequence stays unavailable without activity events and does not fabricate a message', () => {
@@ -151,4 +165,11 @@ test('stable IDs disambiguate distinct Unicode source IDs', () => {
   assert.notEqual(first, second);
   assert.equal(first, archifyStableId('node', '申請'));
   assert.equal(second, archifyStableId('node', '審査'));
+});
+
+test('stable IDs disambiguate Unicode IDs from crafted ASCII encodings', () => {
+  const unicode = archifyStableId('node', '申請');
+  const craftedAscii = archifyStableId('node', 'unknown-u7533x8acb');
+
+  assert.notEqual(unicode, craftedAscii);
 });

@@ -34,7 +34,7 @@ function normalizeIdentifierPart(value: string): string {
 
 function unicodeDisambiguator(value: string): string {
   const codePoints = Array.from(value, (character) => character.codePointAt(0)!.toString(16));
-  return codePoints.length > 0 ? `-u${codePoints.join('x')}` : '';
+  return codePoints.length > 0 ? `~u${codePoints.join('x')}` : '';
 }
 
 export function archifyStableId(prefix: string, value: string): string {
