@@ -50,3 +50,10 @@ test('shared PGD navigation focuses the requested record and clears that focus o
   assert.match(shell, /initialRequestId=\{focusedPgdRequestId\}/);
   assert.match(shell, /onRequestClose=\{\(\) => setFocusedPgdRequestId\(undefined\)\}/);
 });
+
+test('PGD notifications forward the target record and generic navigation clears stale PGD focus', () => {
+  const shell = read('components/PgdcnAppShell.tsx');
+  assert.match(shell, /target\.domain === 'PGD'[\s\S]*openPgdRequest\(target\.recordId\)/);
+  assert.match(shell, /const navigate = \(target: PgdcnNavigationTarget\) => \{[\s\S]*setFocusedPgdRequestId\(undefined\)/);
+  assert.match(shell, /const openPcnDossier = \(dossierId: string, initialTab\?: PcnDossierDetailTab\) => \{[\s\S]*setFocusedPgdRequestId\(undefined\)/);
+});

@@ -150,6 +150,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   if (!currentUser) return <PcnLoginScreen />;
 
   const navigate = (target: PgdcnNavigationTarget) => {
+    if (target.domain !== 'PGD') setFocusedPgdRequestId(undefined);
     setActiveTarget(target);
     setMobileOpen(false);
   };
@@ -209,9 +210,10 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
         openPcnDossier(dossier.id, getPcnNotificationDossierTab(notification.entityType));
         return;
       }
+      setFocusedPgdRequestId(undefined);
       setActiveTarget({ domain: 'PCN', section: target.section });
     } else if (target.domain === 'PGD') {
-      setActiveTarget({ domain: 'PGD', section: target.section });
+      openPgdRequest(target.recordId);
     }
     setMobileOpen(false);
   };
@@ -228,6 +230,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     setNotificationOpen(true);
   };
   const openPcnDossier = (dossierId: string, initialTab?: PcnDossierDetailTab) => {
+    setFocusedPgdRequestId(undefined);
     setMobileOpen(false);
     if (!dossierId) return;
     const query = initialTab ? `?tab=${encodeURIComponent(initialTab)}` : '';
@@ -240,6 +243,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     setFocusedPgdRequestId(requestId);
   };
   const openPcnWorkspace = () => {
+    setFocusedPgdRequestId(undefined);
     setActiveTarget({ domain: 'PCN', section: 'proposals' });
     setMobileOpen(false);
   };
