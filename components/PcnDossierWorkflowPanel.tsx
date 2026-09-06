@@ -20,12 +20,13 @@ export interface PcnDossierWorkflowPanelProps {
   onStartTask?: (taskId: string) => Promise<void>;
   onCompleteTask?: (taskId: string) => Promise<void>;
   onReturnTask?: (taskId: string, input: { targetNodeId: string; reason: string }) => Promise<void>;
+  onOpenDocuments?: (nodeId: string) => void;
 }
 
-export function PcnDossierWorkflowPanel({ dossier, workflowTasks, canEdit, onStartTask, onCompleteTask, onReturnTask, initialNodeId }: PcnDossierWorkflowPanelProps) {
+export function PcnDossierWorkflowPanel({ dossier, workflowTasks, canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, initialNodeId }: PcnDossierWorkflowPanelProps) {
   const workflow = useMemo(() => getPcnWorkflowForDossier(dossier), [dossier]);
   const nodes = useMemo(() => workflow.nodes.filter((node) => node.active !== false).map((node) => ({ id: node.id, label: node.label, kind: node.kind })), [workflow.nodes]);
-  return <PcnArchifyWorkflowEmbed domain="pcn" recordId={dossier.id} recordCode={dossier.dossierCode} initialNodeId={initialNodeId} nodes={nodes} workflowTasks={workflowTasks} canEdit={canEdit} onStartTask={onStartTask} onCompleteTask={onCompleteTask} onReturnTask={onReturnTask} />;
+  return <PcnArchifyWorkflowEmbed domain="pcn" recordId={dossier.id} recordCode={dossier.dossierCode} initialNodeId={initialNodeId} nodes={nodes} workflowTasks={workflowTasks} canEdit={canEdit} onStartTask={onStartTask} onCompleteTask={onCompleteTask} onReturnTask={onReturnTask} onOpenDocuments={onOpenDocuments} />;
 }
 
 export default PcnDossierWorkflowPanel;
