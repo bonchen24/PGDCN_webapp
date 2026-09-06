@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import {
   ARCHIFY_DIAGRAM_TYPES,
@@ -13,6 +15,15 @@ import {
   buildPgdArchifyDiagramSuite,
   type PgdArchifyWorkflowInput,
 } from '../utils/pgdArchifyWorkflow.ts';
+
+function assertSemanticReferences(document: any, nodeKey: 'nodes' | 'states' | 'participants' | 'components') {
+  const ids = new Set((document[nodeKey] || []).map((node: any) => node.id));
+  for (const relation of [...(document.edges || []), ...(document.flows || []), ...(document.connections || []), ...(document.transitions || []), ...(document.messages || [])]) {
+    if (relation.from) assert.ok(ids.has(relation.from), `missing source ${relation.from}`);
+    if (relation.to) assert.ok(ids.has(relation.to), `missing target ${relation.to}`);
+  }
+  for (const view of document.meta.views || []) for (const id of view.focus) assert.ok(ids.has(id), `missing focus ${id}`);
+}
 
 const workflow = {
   templateCode: 'PCN-CUSTOM',
@@ -79,8 +90,8 @@ test('PCN diagram suite exposes the workflow and explicit unavailable five-view 
 
   assert.deepEqual(ARCHIFY_DIAGRAM_TYPES, ['workflow', 'lifecycle', 'dataflow', 'sequence', 'architecture']);
   assert.equal(suite.workflow.diagram_type, 'workflow');
-  assert.equal(suite.lifecycle.available, false);
-  assert.equal(suite.architecture.available, false);
+  assert.equal(suite.lifecycle.available, true);
+  assert.equal(suite.architecture.available, true);
   assert.equal(suite.dataflow.available, false);
   assert.equal(suite.sequence.available, false);
   assert.deepEqual(
@@ -88,7 +99,7 @@ test('PCN diagram suite exposes the workflow and explicit unavailable five-view 
     ['lifecycle', 'dataflow', 'sequence', 'architecture'],
   );
   for (const view of [suite.lifecycle, suite.dataflow, suite.sequence, suite.architecture]) {
-    assert.doesNotMatch(view.reason, /Task 1/);
+    if (!view.available) assert.doesNotMatch((view as { reason: string }).reason, /Task 1/);
   }
 });
 
@@ -136,10 +147,10 @@ test('PGD diagram suite exposes the same five-view contract without mixing PCN f
     [suite.lifecycle.diagramType, suite.dataflow.diagramType, suite.sequence.diagramType, suite.architecture.diagramType],
     ['lifecycle', 'dataflow', 'sequence', 'architecture'],
   );
-  assert.equal(suite.lifecycle.available, false);
+  assert.equal(suite.lifecycle.available, true);
   assert.equal(suite.dataflow.available, false);
   assert.equal(suite.sequence.available, false);
-  assert.equal(suite.architecture.available, false);
+  assert.equal(suite.architecture.available, true);
 });
 
 test('sequence stays unavailable without activity events and does not fabricate a message', () => {
@@ -172,4 +183,61 @@ test('stable IDs disambiguate Unicode IDs from crafted ASCII encodings', () => {
   const craftedAscii = archifyStableId('node', 'unknown-u7533x8acb');
 
   assert.notEqual(unicode, craftedAscii);
+});
+
+test('PCN fact-backed projections expose current lifecycle, linked dataflow, ordered sequence, and architecture', () => {
+  const rich = {
+    ...fixture,
+    dossier: { ...fixture.dossier, status: 'TECHNICAL_REVIEW' },
+    workflow: {
+      ...workflow,
+      nodes: [...workflow.nodes, { id: 'technical-review', kind: 'APPROVAL_TASK', label: 'Soát xét kỹ thuật', requirementIds: ['req-intake'], active: true, sortOrder: 5 }],
+    },
+    tasks: [
+      ...fixture.tasks,
+      { id: 'task-technical-review', dossierId: 'dossier-contract', nodeId: 'technical-review', status: 'IN_PROGRESS', cycleNo: 1, updatedAt: '2026-09-06T01:00:00.000Z', updatedBy: 'reviewer' },
+    ],
+    documents: [{ ...fixture.documents[0], status: 'PRESENT' }, { ...fixture.documents[1], status: 'PRESENT', updatedAt: '2026-09-06T02:00:00.000Z' }],
+    results: [{ id: 'result-1', dossierId: 'dossier-contract', labRequestId: 'lab-request-1', round: 1, outcome: 'PASS', receivedAt: '2026-09-06T03:00:00.000Z' }],
+    approvalSteps: [{ id: 'approval-1', dossierId: 'dossier-contract', sequence: 1, role: 'TECHNICAL_REVIEW', status: 'APPROVED', actedAt: '2026-09-06T04:00:00.000Z' }],
+    activityLogs: [
+      { id: 'activity-z', createdAt: '2026-09-06T00:30:00.000Z', actorName: 'Operator', actorUsername: 'operator', action: 'UPDATED', entityType: 'PCN_DOSSIER', entityId: 'dossier-contract', summary: 'Cập nhật hồ sơ', source: 'UI' },
+      { id: 'activity-a', createdAt: '2026-09-06T00:30:00.000Z', actorName: 'Reviewer', actorUsername: 'reviewer', action: 'UPDATED', entityType: 'PCN_DOSSIER', entityId: 'dossier-contract', summary: 'Soát xét hồ sơ', source: 'UI' },
+    ],
+  } as unknown as PcnArchifyWorkflowInput;
+  const suite = buildPcnArchifyDiagramSuite(rich);
+  assert.equal(suite.lifecycle.available, true);
+  if (!suite.lifecycle.available) return;
+  assert.equal(suite.lifecycle.document.states.find((state) => state.tag === 'Hiện tại')?.id, 'pcn-technical-review');
+  assert.equal(suite.dataflow.available, true);
+  if (!suite.dataflow.available) return;
+  assert.ok(suite.dataflow.document.flows.some((flow) => flow.label.includes('tài liệu')));
+  assertSemanticReferences(suite.dataflow.document, 'nodes');
+  assert.equal(suite.sequence.available, true);
+  if (!suite.sequence.available) return;
+  assert.ok(suite.sequence.document.messages.every((message) => message.id));
+  assert.deepEqual(suite.sequence.document.messages.slice(0, 2).map((message) => message.id), ['message-activity-a', 'message-activity-z']);
+  assertSemanticReferences(suite.sequence.document, 'participants');
+  assert.equal(suite.architecture.available, true);
+  if (!suite.architecture.available) return;
+  assert.ok(suite.architecture.document.components.some((component) => component.id === 'pcn'));
+  assert.equal(suite.architecture.document.components.some((component) => component.label.includes('PTN')), false);
+  assertSemanticReferences(suite.architecture.document, 'components');
+});
+
+test('available projections retain the pinned Archify v1 schema envelope and required collections', () => {
+  const schemaRoot = resolve('vendor/archify/archify/schemas');
+  const requiredByType: Record<string, string[]> = {};
+  for (const type of ['lifecycle', 'dataflow', 'sequence', 'architecture']) {
+    const schema = JSON.parse(readFileSync(resolve(schemaRoot, `${type}.schema.json`), 'utf8')) as { required: string[]; properties: Record<string, { const?: unknown }> };
+    requiredByType[type] = schema.required;
+    assert.equal(schema.properties.schema_version.const, 1);
+    assert.equal(schema.properties.diagram_type.const, type);
+  }
+  const rich = { ...fixture, results: [{ id: 'result-schema', dossierId: 'dossier-contract', labRequestId: 'lab-1', round: 1, outcome: 'PASS', receivedAt: '2026-09-06T03:00:00.000Z' }] } as unknown as PcnArchifyWorkflowInput;
+  const suite = buildPcnArchifyDiagramSuite(rich);
+  for (const [type, result] of Object.entries({ lifecycle: suite.lifecycle, dataflow: suite.dataflow, sequence: suite.sequence, architecture: suite.architecture })) {
+    assert.equal(result.available, true);
+    if (result.available) for (const key of requiredByType[type]) assert.ok(key in result.document, `${type} missing ${key}`);
+  }
 });

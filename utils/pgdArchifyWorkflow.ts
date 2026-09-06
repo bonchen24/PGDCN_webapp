@@ -13,6 +13,7 @@ import { PGD_WORKFLOW_STATES, getPgdStatusLabel } from './pgdDomain.ts';
 import type { PgdDossierDocument } from './pgdDossier.ts';
 import type { ArchifyWorkflowDocument } from './pcnArchifyWorkflow.ts';
 import { unavailableDiagram, type ArchifyDiagramSuite } from './archifyDiagram.ts';
+import { buildPgdArchitectureDiagram, buildPgdDataflowDiagram, buildPgdLifecycleDiagram, buildPgdSequenceDiagram, type ArchifyArchitectureDocument, type ArchifyDataflowDocument, type ArchifyLifecycleDocument, type ArchifySequenceDocument } from './pgdArchifyOtherDiagrams.ts';
 
 export interface PgdArchifyWorkflowInput {
   request: PgdInspectionRequest;
@@ -29,7 +30,7 @@ export interface PgdArchifyWorkflowInput {
   activityLogs: readonly Record<string, unknown>[];
 }
 
-export type PgdArchifyDiagramSuite = ArchifyDiagramSuite<ArchifyWorkflowDocument>;
+export type PgdArchifyDiagramSuite = ArchifyDiagramSuite<ArchifyWorkflowDocument, ArchifyLifecycleDocument, ArchifyDataflowDocument, ArchifySequenceDocument, ArchifyArchitectureDocument>;
 
 type ArchifyNode = ArchifyWorkflowDocument['nodes'][number];
 
@@ -217,9 +218,9 @@ export function buildPgdArchifyWorkflow(input: PgdArchifyWorkflowInput): Archify
 export function buildPgdArchifyDiagramSuite(input: PgdArchifyWorkflowInput): PgdArchifyDiagramSuite {
   return {
     workflow: buildPgdArchifyWorkflow(input),
-    lifecycle: unavailableDiagram('lifecycle', 'Chưa có đủ dữ liệu lịch sử trạng thái để dựng biểu đồ.'),
-    dataflow: unavailableDiagram('dataflow', 'Chưa có đủ dữ liệu liên kết tài liệu để dựng biểu đồ.'),
-    sequence: unavailableDiagram('sequence', 'Chưa có dữ liệu hoạt động để dựng chuỗi actor/task/audit.'),
-    architecture: unavailableDiagram('architecture', 'Chưa có đủ dữ liệu boundary liên quan để dựng biểu đồ.'),
+    lifecycle: { available: true, diagramType: 'lifecycle', document: buildPgdLifecycleDiagram(input) },
+    dataflow: buildPgdDataflowDiagram(input),
+    sequence: buildPgdSequenceDiagram(input),
+    architecture: { available: true, diagramType: 'architecture', document: buildPgdArchitectureDiagram(input) },
   };
 }

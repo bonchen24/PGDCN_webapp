@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { buildPcnArchifyWorkflow } from '../utils/pcnArchifyWorkflow.ts';
 import { buildPgdArchifyWorkflow } from '../utils/pgdArchifyWorkflow.ts';
+import { buildPgdArchifyDiagramSuite } from '../utils/pgdArchifyWorkflow.ts';
 
 const pcnWorkflow = {
   templateCode: 'PCN-CUSTOM',
@@ -134,4 +135,24 @@ test('PGD adapter projects the same Archify runtime for the second domain', asyn
   const { compileWorkflow } = await import('../vendor/archify/archify/renderers/workflow/workflow-compiler.mjs');
   const compiled = compileWorkflow({ workflow: workflowDocument, qualityProfile: workflowDocument.meta.quality_profile });
   assert.equal(compiled.ok, true, JSON.stringify(compiled.diagnostics));
+});
+
+test('PGD projections stay PGD-only and add a PTN component only for linked lab facts', () => {
+  const request = {
+    id: 'request-projection', domain: 'pgd', requestCode: 'PGD-260906-02', status: 'WAITING_LAB_RESULTS', productGroup: 'STEEL_METAL', catalogItemId: 'STEEL_LOT_INSPECTION', productName: 'Thép cuộn', quantity: 1, unit: 'tấn', inspectionScope: 'Số lượng', inspectionLocation: 'Kho khách hàng', standards: [], sampleIds: ['sample-1'], labRequestIds: ['lab-1'], documentPointers: [], dossierChecklist: [], createdAt: '2026-09-06T00:00:00.000Z', updatedAt: '2026-09-06T00:00:00.000Z',
+  } as any;
+  const input = {
+    request, samples: [{ id: 'sample-1', domain: 'pgd', requestId: request.id, sampleCode: 'M-1', description: 'Mẫu', quantity: 1, disposition: 'LAB' }],
+    labRequests: [{ id: 'lab-1', domain: 'pgd', requestId: request.id, sampleId: 'sample-1', status: 'SENT', laboratoryName: 'PTN A', testItems: ['Chỉ tiêu'] }],
+    labResults: [], dossierDocuments: [{ id: 'pgd-doc-1', domain: 'pgd', requestId: request.id, requirementCode: 'REQUEST_PYC', title: 'PYC', fileName: 'pyc.pdf', sourceCollection: 'pgd_dossier_documents', sourceDocumentId: 'src-1', version: 1, checksum: 'x', uploadedByUsername: 'u', uploadedAt: '2026-09-06T00:00:00.000Z' }], approvals: [], activityLogs: [],
+  } as any;
+  const suite = buildPgdArchifyDiagramSuite(input);
+  assert.equal(suite.architecture.available, true);
+  if (!suite.architecture.available) return;
+  assert.ok(suite.architecture.document.components.some((component) => component.id === 'pgd'));
+  assert.ok(suite.architecture.document.components.some((component) => component.label.includes('PTN')));
+  assert.equal(suite.dataflow.available, true);
+  if (!suite.dataflow.available) return;
+  assert.equal(suite.dataflow.document.nodes.some((node) => node.label.includes('PCN')), false);
+  assert.ok(suite.dataflow.document.nodes.some((node) => node.label.includes('PGD')));
 });

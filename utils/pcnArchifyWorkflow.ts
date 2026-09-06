@@ -11,6 +11,7 @@ import type {
 } from '../types.ts';
 import { buildPcnWorkflowConditionContext, projectPcnWorkflowRuntime } from './pcnWorkflowRuntime.ts';
 import { unavailableDiagram, type ArchifyDiagramSuite } from './archifyDiagram.ts';
+import { buildPcnArchitectureDiagram, buildPcnDataflowDiagram, buildPcnLifecycleDiagram, buildPcnSequenceDiagram, type ArchifyArchitectureDocument, type ArchifyDataflowDocument, type ArchifyLifecycleDocument, type ArchifySequenceDocument } from './pcnArchifyOtherDiagrams.ts';
 
 export type ArchifyWorkflowDocument = {
   schema_version: 2;
@@ -67,7 +68,7 @@ export interface PcnArchifyWorkflowInput {
   activityLogs?: readonly ActivityLog[];
 }
 
-export type PcnArchifyDiagramSuite = ArchifyDiagramSuite<ArchifyWorkflowDocument>;
+export type PcnArchifyDiagramSuite = ArchifyDiagramSuite<ArchifyWorkflowDocument, ArchifyLifecycleDocument, ArchifyDataflowDocument, ArchifySequenceDocument, ArchifyArchitectureDocument>;
 
 const TYPE_BY_KIND: Record<PcnWorkflowNodeDefinition['kind'], ArchifyWorkflowDocument['nodes'][number]['type']> = {
   DOCUMENT_TASK: 'backend',
@@ -313,9 +314,9 @@ export function buildPcnArchifyWorkflow(input: PcnArchifyWorkflowInput): Archify
 export function buildPcnArchifyDiagramSuite(input: PcnArchifyWorkflowInput): PcnArchifyDiagramSuite {
   return {
     workflow: buildPcnArchifyWorkflow(input),
-    lifecycle: unavailableDiagram('lifecycle', 'Chưa có đủ dữ liệu lịch sử trạng thái để dựng biểu đồ.'),
-    dataflow: unavailableDiagram('dataflow', 'Chưa có đủ dữ liệu liên kết tài liệu để dựng biểu đồ.'),
-    sequence: unavailableDiagram('sequence', 'Chưa có dữ liệu hoạt động để dựng chuỗi actor/task/audit.'),
-    architecture: unavailableDiagram('architecture', 'Chưa có đủ dữ liệu boundary liên quan để dựng biểu đồ.'),
+    lifecycle: { available: true, diagramType: 'lifecycle', document: buildPcnLifecycleDiagram(input) },
+    dataflow: buildPcnDataflowDiagram(input),
+    sequence: buildPcnSequenceDiagram(input),
+    architecture: { available: true, diagramType: 'architecture', document: buildPcnArchitectureDiagram(input) },
   };
 }
