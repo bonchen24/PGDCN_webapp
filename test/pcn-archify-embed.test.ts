@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const source = fs.readFileSync(new URL('../components/PcnArchifyWorkflowEmbed.tsx', import.meta.url), 'utf8');
+const panelSource = fs.readFileSync(new URL('../components/PcnDossierWorkflowPanel.tsx', import.meta.url), 'utf8');
 
 test('both domains embed the upstream Archify reader and keep the PCN action bridge compact', () => {
   assert.match(source, /\/api\/\$\{domain === 'pcn' \? 'pcn\/dossiers' : 'pgd\/requests'\}/);
@@ -61,4 +62,10 @@ test('diagram query validation is applied after a hydration-safe workflow defaul
   assert.match(source, /useState<ArchifyDiagramType>\('workflow'\)/);
   assert.match(source, /useEffect\(\(\) => \{[\s\S]*URLSearchParams\(window\.location\.search\)[\s\S]*setDiagramType/s);
   assert.doesNotMatch(source, /useState<ArchifyDiagramType>\(initialDiagramType\)/);
+});
+
+test('PCN workflow panel authorizes Archify edges from active transition IDs', () => {
+  assert.match(panelSource, /workflow\.transitions\.filter\(\(transition\) => activeNodeIds\.has\(transition\.fromNodeId\) && activeNodeIds\.has\(transition\.toNodeId\)\)/);
+  assert.match(panelSource, /transition\.id/);
+  assert.match(panelSource, /edgeIds=\{edgeIds\}/);
 });
