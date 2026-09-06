@@ -1,5 +1,6 @@
-import { spawn as nodeSpawn, type ChildProcess } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { spawn as nodeSpawn } from 'node:child_process';
+import { createReadStream } from 'node:fs';
+import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export const ARCHIFY_RENDERER_ENTRYPOINTS = {
@@ -13,11 +14,14 @@ export const ARCHIFY_TEMPLATE_ENTRYPOINT = 'assets/template.html';
 export const ARCHIFY_RENDER_TIMEOUT_MS = 15_000;
 export const ARCHIFY_MAX_OUTPUT_BYTES = 12 * 1024 * 1024;
 
-type Spawn = typeof nodeSpawn;
+type SpawnChild = { once: (event: string, handler: (...values: any[]) => void) => SpawnChild; kill: () => void };
+type Spawn = (command: string, args: string[], options: { cwd: string; env: NodeJS.ProcessEnv; windowsHide: boolean; stdio: ['ignore', 'ignore', 'ignore'] }) => SpawnChild;
 type RuntimeHooks = {
   spawn?: Spawn;
-  remove?: (target: string, options: { recursive: true; force: true }) => Promise<void>;
+  writeInput?: (target: string, data: string, encoding: 'utf8') => Promise<void>;
+  statOutput?: (target: string) => Promise<{ size: number }>;
   readOutput?: (target: string, encoding: 'utf8') => Promise<string>;
+  remove?: (target: string, options: { recursive: true; force: true }) => Promise<void>;
   timeoutMs?: number;
 };
 
@@ -61,23 +65,24 @@ function qualityProfile(document: unknown): 'standard' | 'showcase' {
 }
 
 function runtimeEnvironment(profile: 'standard' | 'showcase'): NodeJS.ProcessEnv {
-  const environment = { ...process.env };
-  delete environment.ARCHIFY_REPO_ROOT;
-  delete environment.ARCHIFY_QUALITY_PROFILE;
+  const environment = {} as NodeJS.ProcessEnv;
+  for (const key of ['PATH', 'Path', 'SystemRoot', 'TEMP', 'TMP', 'LANG']) {
+    if (process.env[key] !== undefined) environment[key] = process.env[key];
+  }
   environment.ARCHIFY_QUALITY_PROFILE = profile;
   return environment;
 }
 
-function runChild(entrypoint: string, inputPath: string, outputPath: string, profile: 'standard' | 'showcase'): Promise<void> {
-  const spawn = hooks.spawn || nodeSpawn;
+function runChild(entrypoint: string, inputPath: string, outputPath: string, profile: 'standard' | 'showcase', vendorRoot: string): Promise<void> {
+  const spawn: Spawn = hooks.spawn || (nodeSpawn as unknown as Spawn);
   return new Promise((resolve, reject) => {
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const child = spawn(process.execPath, [entrypoint, inputPath, outputPath], {
-      cwd: path.dirname(path.dirname(entrypoint)),
+      cwd: vendorRoot,
       env: runtimeEnvironment(profile),
       windowsHide: true,
-      stdio: ['ignore', 'ignore', 'pipe'],
+      stdio: ['ignore', 'ignore', 'ignore'],
     });
     const finish = (error?: Error) => {
       if (settled) return;
@@ -94,6 +99,25 @@ function runChild(entrypoint: string, inputPath: string, outputPath: string, pro
   });
 }
 
+async function readCappedOutput(outputPath: string): Promise<string> {
+  const outputStat = await (hooks.statOutput || stat)(outputPath);
+  if (outputStat.size > ARCHIFY_MAX_OUTPUT_BYTES) throw safeError('Archify trả về nội dung quá lớn.');
+  if (hooks.readOutput) {
+    const output = await hooks.readOutput(outputPath, 'utf8');
+    if (Buffer.byteLength(output) > ARCHIFY_MAX_OUTPUT_BYTES) throw safeError('Archify trả về nội dung quá lớn.');
+    return output;
+  }
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of createReadStream(outputPath, { encoding: undefined, highWaterMark: 64 * 1024 })) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buffer.length;
+    if (total > ARCHIFY_MAX_OUTPUT_BYTES) throw safeError('Archify trả về nội dung quá lớn.');
+    chunks.push(buffer);
+  }
+  return Buffer.concat(chunks, total).toString('utf8');
+}
+
 export async function runArchifyRenderer(input: {
   vendorRoot: string;
   diagramType: keyof typeof ARCHIFY_RENDERER_ENTRYPOINTS;
@@ -104,16 +128,20 @@ export async function runArchifyRenderer(input: {
   const inputPath = path.join(tempDir, 'diagram.json');
   const outputPath = path.join(tempDir, 'diagram.html');
   const entrypoint = path.resolve(input.vendorRoot, ARCHIFY_RENDERER_ENTRYPOINTS[input.diagramType]);
+  let operationFailed = false;
   try {
-    await writeFile(inputPath, JSON.stringify(input.document), 'utf8');
-    await runChild(entrypoint, inputPath, outputPath, qualityProfile(input.document));
-    const output = await (hooks.readOutput || readFile)(outputPath, 'utf8');
-    if (Buffer.byteLength(output) > ARCHIFY_MAX_OUTPUT_BYTES) throw safeError('Archify trả về nội dung quá lớn.');
-    return output;
+    await (hooks.writeInput || writeFile)(inputPath, JSON.stringify(input.document), 'utf8');
+    await runChild(entrypoint, inputPath, outputPath, qualityProfile(input.document), input.vendorRoot);
+    return await readCappedOutput(outputPath);
   } catch (error) {
+    operationFailed = true;
     if (error instanceof Error && error.message.startsWith('Archify')) throw error;
     throw safeError('Archify không thể render biểu đồ.', error);
   } finally {
-    await (hooks.remove || rm)(tempDir, { recursive: true, force: true });
+    try {
+      await (hooks.remove || rm)(tempDir, { recursive: true, force: true });
+    } catch {
+      if (!operationFailed) throw safeError('Archify không thể dọn dẹp phiên render.');
+    }
   }
 }

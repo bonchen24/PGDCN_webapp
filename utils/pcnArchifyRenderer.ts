@@ -3,10 +3,10 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import type { ArchifyWorkflowDocument } from './pcnArchifyWorkflow.ts';
-import { ARCHIFY_RENDERER_ENTRYPOINTS, runArchifyRenderer, resetArchifyRuntimeTestHooks, setArchifyRuntimeTestHooks, validateArchifyDocument } from './archifyRuntime.ts';
+import { ARCHIFY_MAX_OUTPUT_BYTES, ARCHIFY_RENDERER_ENTRYPOINTS, ARCHIFY_TEMPLATE_ENTRYPOINT, runArchifyRenderer, resetArchifyRuntimeTestHooks, setArchifyRuntimeTestHooks, validateArchifyDocument } from './archifyRuntime.ts';
 import type { ArchifyDiagramType, ArchifyDiagramResult } from './archifyDiagram.ts';
 
-export { ARCHIFY_RENDERER_ENTRYPOINTS, resetArchifyRuntimeTestHooks, setArchifyRuntimeTestHooks } from './archifyRuntime.ts';
+export { ARCHIFY_RENDERER_ENTRYPOINTS, ARCHIFY_TEMPLATE_ENTRYPOINT, resetArchifyRuntimeTestHooks, setArchifyRuntimeTestHooks } from './archifyRuntime.ts';
 export type ArchifyRenderDomain = 'pcn' | 'pgd';
 export type ArchifyRenderResult =
   | { available: false; diagramType: ArchifyDiagramType; reason: string }
@@ -43,7 +43,10 @@ function injectFocusBridge(html: string, domain: ArchifyRenderDomain, recordId: 
 }
 
 function normalizeLightRoot(html: string): string {
-  return html.replace(/<html\b([^>]*?)\sdata-theme="(?:dark|light)"([^>]*)>/i, '<html$1 data-theme="light"$2>');
+  return html.replace(/<html\b([^>]*)>/i, (_match, attributes: string) => {
+    const withoutTheme = attributes.replace(/\sdata-theme\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+    return `<html${withoutTheme} data-theme="light">`;
+  });
 }
 
 function safeRenderError(message: string): Error {
@@ -52,19 +55,28 @@ function safeRenderError(message: string): Error {
 
 async function renderWorkflow(workflow: unknown, input: { domain: ArchifyRenderDomain; recordId: string }): Promise<string> {
   if (!workflow || typeof workflow !== 'object' || (workflow as any).diagram_type !== 'workflow' || (workflow as any).schema_version !== 2) throw safeRenderError('Archify workflow phải dùng schema_version 2 và diagram_type workflow.');
-  const { compiler, utils } = await loadWorkflowRuntime();
-  const typedWorkflow = workflow as ArchifyWorkflowDocument;
-  const compiled = compiler.compileWorkflow({ workflow: typedWorkflow, qualityProfile: typedWorkflow.meta.quality_profile });
-  if (!compiled.ok || !compiled.svg) throw safeRenderError(compiled.error || 'Archify không thể biên dịch lưu trình hồ sơ.');
-  const template = fs.readFileSync(path.join(ARCHIFY_VENDOR_ROOT, 'assets', 'template.html'), 'utf8');
-  const html = utils.applyTemplate(template, { title: typedWorkflow.meta.title, subtitle: typedWorkflow.meta.subtitle, svg: compiled.svg, cards: utils.renderCards(typedWorkflow.cards), locale: typedWorkflow.meta.locale, visualPreset: typedWorkflow.meta.visual_preset, guidedViews: typedWorkflow.meta.views, sourceEvidence: null });
-  return injectFocusBridge(normalizeLightRoot(html), input.domain, input.recordId);
+  try {
+    const { compiler, utils } = await loadWorkflowRuntime();
+    const typedWorkflow = workflow as ArchifyWorkflowDocument;
+    const compiled = compiler.compileWorkflow({ workflow: typedWorkflow, qualityProfile: typedWorkflow.meta?.quality_profile });
+    if (!compiled.ok || !compiled.svg) throw safeRenderError('Archify không thể biên dịch lưu trình hồ sơ.');
+    const template = fs.readFileSync(path.join(ARCHIFY_VENDOR_ROOT, ARCHIFY_TEMPLATE_ENTRYPOINT), 'utf8');
+    const html = utils.applyTemplate(template, { title: typedWorkflow.meta.title, subtitle: typedWorkflow.meta.subtitle, svg: compiled.svg, cards: utils.renderCards(typedWorkflow.cards), locale: typedWorkflow.meta.locale, visualPreset: typedWorkflow.meta.visual_preset, guidedViews: typedWorkflow.meta.views, sourceEvidence: null });
+    return validateRenderedHtml(injectFocusBridge(normalizeLightRoot(html), input.domain, input.recordId));
+  } catch {
+    throw safeRenderError('Archify không thể biên dịch lưu trình hồ sơ.');
+  }
+}
+
+function validateRenderedHtml(html: string): string {
+  if (Buffer.byteLength(html) > ARCHIFY_MAX_OUTPUT_BYTES || !/^\s*<!doctype html>/i.test(html) || !/<html\b[^>]*>/i.test(html) || !/<\/html>\s*$/i.test(html) || !/<body\b[^>]*>/i.test(html) || !/<\/body>/i.test(html) || !/<svg\b[^>]*>/i.test(html) || !/archify-guided-views-data/.test(html)) throw safeRenderError('Archify trả về HTML không hợp lệ.');
+  return html;
 }
 
 function unavailableResult(diagramType: ArchifyDiagramType, document: unknown): ArchifyRenderResult | undefined {
   if (!document || typeof document !== 'object' || (document as any).available !== false) return undefined;
   if ((document as any).diagramType !== diagramType) throw safeRenderError('Dữ liệu Archify không hợp lệ.');
-  return { available: false, diagramType, reason: String((document as any).reason || 'Biểu đồ hiện chưa khả dụng.') };
+  return { available: false, diagramType, reason: `Biểu đồ ${diagramType} hiện chưa khả dụng.` };
 }
 
 export async function renderArchifyDiagram(diagramType: ArchifyDiagramType, document: unknown, input: { domain: ArchifyRenderDomain; recordId: string }): Promise<ArchifyRenderResult> {
@@ -74,8 +86,7 @@ export async function renderArchifyDiagram(diagramType: ArchifyDiagramType, docu
   if (diagramType === 'workflow') return { available: true, diagramType, html: await renderWorkflow(document, input) };
   validateArchifyDocument(diagramType, document);
   const rendered = await runArchifyRenderer({ vendorRoot: ARCHIFY_VENDOR_ROOT, diagramType, document });
-  if (!rendered.includes('archify-guided-views-data')) throw safeRenderError('Archify trả về HTML không hợp lệ.');
-  return { available: true, diagramType, html: injectFocusBridge(normalizeLightRoot(rendered), input.domain, input.recordId) };
+  return { available: true, diagramType, html: validateRenderedHtml(injectFocusBridge(normalizeLightRoot(rendered), input.domain, input.recordId)) };
 }
 
 export async function renderArchifyWorkflowDocument(workflow: ArchifyWorkflowDocument, input: { domain: ArchifyRenderDomain; recordId: string }): Promise<string> {
