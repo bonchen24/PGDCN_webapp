@@ -1111,7 +1111,7 @@ function setPcnSessionCookie(res: express.Response, token: string, maxAgeSeconds
 }
 
 function parseArchifyDiagramType(value: unknown): ArchifyDiagramType {
-  const diagram = String(value).trim().toLowerCase() || 'workflow';
+  const diagram = String(value ?? '').trim().toLowerCase() || 'workflow';
   if (!ARCHIFY_DIAGRAM_TYPES.includes(diagram as ArchifyDiagramType)) {
     throw Object.assign(new Error('Loại sơ đồ Archify không hợp lệ.'), { statusCode: 400 });
   }
