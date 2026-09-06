@@ -12,7 +12,7 @@
 - Auth + `private, no-store`, error/unavailable bounded; mobile/reader surface sáng và `data-theme="light"`; renderer allowlist input/output, không truyền `ARCHIFY_REPO_ROOT` hoặc user executable path. Host giữ iframe/focus/action bridge cần thiết, không duplicate upstream toolbar/control hay tạo station-arrow graph; fixture/source payload không chứa private bytes, password, token hoặc absolute source path.
 - Verification: focused Archify/page/navigation **69/69**, full `npm test` **812/812**, lint (`tsc --noEmit`) pass, build pass với route `/pgdcn/pcn/dossiers/[dossierId]`, `git diff --check` pass. Upstream revision `ed7f4d4b48d4424d36edfed8043de3de8dea6b45`.
 - Docker: `pcn_webapp-webapp` `Up`, port `0.0.0.0:2357->2357/tcp`, image `sha256:855a3a133ee562650b18736ab511891e33f8860200b57c4955745a9a3f65cfa8`; health `HTTP 200` với `{"status":"ok"}`; logs xác nhận PostgreSQL connected, schema initialized, server port 2357.
-- Code integration baseline `9b18e4c`; docs commit SHA `<DOCS_COMMIT_SHA_PENDING_PARENT_REPLACEMENT>` để parent thay sau commit. `design.md` vẫn là nguồn chuẩn duy nhất, không ghi secret/dữ liệu hồ sơ thật và không tuyên bố public deployment đã đổi.
+- Code integration baseline `9b18e4c`; docs commit SHA `409a1e3b850eddee6b9ea48884cbbb58aab292b5`. `design.md` vẫn là nguồn chuẩn duy nhất, không ghi secret/dữ liệu hồ sơ thật và không tuyên bố public deployment đã đổi.
 
 ## Cập nhật 2026-09-06 — Sửa lỗi SQL khi mở Archify dossier
 
