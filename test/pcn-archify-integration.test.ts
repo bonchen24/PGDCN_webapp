@@ -207,3 +207,16 @@ test('PGD available lifecycle and sequence documents match pinned schema envelop
   assert.equal(suite.sequence.available, true);
   if (suite.sequence.available) assert.ok(suite.sequence.document.participants.every((participant) => !participant.label.includes('safe')));
 });
+
+test('PGD actor pseudonyms remain stable while excluding persisted identity values', () => {
+  const request = { id: 'request-actor', requestCode: 'PGD-260906-06', status: 'WAITING_LAB_RESULTS', productGroup: 'STEEL_METAL' } as any;
+  const input = { request, samples: [{ id: 'sample-actor', requestId: request.id, sampleCode: 'S', disposition: 'LAB', sampledAt: '2026-09-06T01:00:00.000Z', sampledByUsername: 'bob@example.com' }], labRequests: [], labResults: [], dossierDocuments: [], approvals: [], activityLogs: [] } as any;
+  const first = buildPgdArchifyDiagramSuite(input).sequence;
+  const second = buildPgdArchifyDiagramSuite(input).sequence;
+  assert.equal(first.available, true);
+  assert.equal(second.available, true);
+  if (!first.available || !second.available) return;
+  assert.deepEqual(first.document.participants, second.document.participants);
+  assert.ok(first.document.participants.every((participant) => !participant.label.includes('bob@example.com')));
+  assert.ok(first.document.participants.some((participant) => participant.label.startsWith('pgd-actor-')));
+});

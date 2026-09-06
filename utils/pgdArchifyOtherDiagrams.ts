@@ -12,6 +12,16 @@ export type ArchifyArchitectureDocument = { schema_version: 1; diagram_type: 'ar
 
 const id = (prefix: string, value: string) => archifyStableId(prefix, value).replace(/~/g, '-');
 const views = (focus: string[]) => [{ id: 'overview', label: 'Tổng quan', focus, note: 'Chỉ tập trung vào dữ liệu PGD đã liên kết.' }];
+function actorPseudonym(evidence: string): string | undefined {
+  const source = evidence.trim();
+  if (!source) return undefined;
+  let hash = 2166136261;
+  for (const character of source) {
+    hash ^= character.codePointAt(0)!;
+    hash = Math.imul(hash, 16777619);
+  }
+  return `pgd-actor-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+}
 
 export function buildPgdLifecycleDiagram(input: PgdArchifyWorkflowInput): ArchifyLifecycleDocument {
   const states = PGD_WORKFLOW_STATES.map((state, index) => ({ id: id('pgd', state.code), type: index === 0 ? 'start' as const : state.code === input.request.status ? 'active' as const : state.code === 'ARCHIVED' ? 'success' as const : 'neutral' as const, label: state.label, lane: 'main', col: Math.min(4, index), ...(state.code === input.request.status ? { tag: 'Hiện tại' } : {}) }));
@@ -43,11 +53,11 @@ function pgdEvents(input: PgdArchifyWorkflowInput): PgdEvent[] {
   const requestId = input.request.id;
   const events: PgdEvent[] = [];
   const add = (eventId: string, at: unknown, actor: string | undefined, label: string) => { if (typeof at === 'string' && Number.isFinite(Date.parse(at)) && actor?.trim()) events.push({ id: eventId, at, actor, label }); };
-  for (const sample of input.samples.filter((sample) => sample.requestId === requestId)) add(sample.id, sample.sampledAt, sample.sampledByUsername ? 'PGD field inspector' : undefined, `Mẫu ${sample.sampleCode}: ${sample.disposition}`);
-  for (const lab of input.labRequests.filter((lab) => lab.requestId === requestId)) add(lab.id, lab.handover?.sentAt, lab.handover?.senderUsername ? 'PGD operator' : undefined, `Gửi PYC PTN ${lab.laboratoryName}`);
-  for (const result of input.labResults.filter((result) => result.requestId === requestId)) add(result.id, result.receivedAt, 'PGD result service', `Nhận KQTN ${result.reportNumber || 'đã nhận'}`);
-  for (const approval of input.approvals.filter((approval) => approval.requestId === requestId)) add(approval.id, approval.actedAt, approval.actedByUsername ? 'PGD approver' : undefined, `Phê duyệt ${approval.role}: ${approval.status}`);
-  for (const log of input.activityLogs.filter((log) => (log.entityId === requestId || log.entityId === input.request.requestCode) && String(log.actorUsername || log.actorName || '').trim())) add(String(log.id || ''), log.createdAt, 'PGD audit service', `Audit ${String(log.action || 'activity')}`);
+  for (const sample of input.samples.filter((sample) => sample.requestId === requestId)) add(sample.id, sample.sampledAt, actorPseudonym(sample.sampledByUsername || ''), `Mẫu ${sample.sampleCode}: ${sample.disposition}`);
+  for (const lab of input.labRequests.filter((lab) => lab.requestId === requestId)) add(lab.id, lab.handover?.sentAt, actorPseudonym(lab.handover?.senderUsername || ''), `Gửi PYC PTN ${lab.laboratoryName}`);
+  for (const result of input.labResults.filter((result) => result.requestId === requestId)) add(result.id, result.receivedAt, undefined, `Nhận KQTN ${result.reportNumber || 'đã nhận'}`);
+  for (const approval of input.approvals.filter((approval) => approval.requestId === requestId)) add(approval.id, approval.actedAt, actorPseudonym(approval.actedByUsername || ''), `Phê duyệt ${approval.role}: ${approval.status}`);
+  for (const log of input.activityLogs.filter((log) => log.entityId === requestId || log.entityId === input.request.requestCode)) add(String(log.id || ''), log.createdAt, actorPseudonym(String(log.actorUsername || log.actorName || '')), `Audit ${String(log.action || 'activity')}`);
   return events.sort((left, right) => Date.parse(left.at) - Date.parse(right.at) || id('message', left.id).localeCompare(id('message', right.id)));
 }
 

@@ -25,6 +25,59 @@ function assertSemanticReferences(document: any, nodeKey: 'nodes' | 'states' | '
   for (const view of document.meta.views || []) for (const id of view.focus) assert.ok(ids.has(id), `missing focus ${id}`);
 }
 
+type JsonSchema = Record<string, any>;
+function assertStrictSchema(type: string, document: unknown): void {
+  const schemaRoot = resolve('vendor/archify/archify/schemas');
+  const schema = JSON.parse(readFileSync(resolve(schemaRoot, `${type}.schema.json`), 'utf8')) as JsonSchema;
+  const common = JSON.parse(readFileSync(resolve(schemaRoot, 'common.schema.json'), 'utf8')) as JsonSchema;
+  const errors: string[] = [];
+  const check = (value: any, rawSchema: JsonSchema | false, path: string) => {
+    if (rawSchema === false) { errors.push(`${path}: value is not allowed`); return; }
+    if (rawSchema.$ref) {
+      const ref = String(rawSchema.$ref);
+      check(value, ref.includes('common.schema.json') || ref.startsWith('#/$defs/') ? common.$defs[ref.split('/').pop()!] : schema, path);
+      return;
+    }
+    if (rawSchema.const !== undefined && value !== rawSchema.const) errors.push(`${path}: expected constant ${String(rawSchema.const)}`);
+    if (rawSchema.enum && !rawSchema.enum.includes(value)) errors.push(`${path}: unexpected enum value`);
+    if (rawSchema.oneOf || rawSchema.anyOf) {
+      const choices = rawSchema.oneOf || rawSchema.anyOf;
+      const matches = choices.filter((choice: JsonSchema) => { const before = errors.length; check(value, choice, path); const matched = errors.length === before; errors.splice(before); return matched; });
+      if (matches.length !== 1 && rawSchema.oneOf || matches.length === 0 && rawSchema.anyOf) errors.push(`${path}: schema union did not match`);
+      return;
+    }
+    if (rawSchema.type === 'object') {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) { errors.push(`${path}: expected object`); return; }
+      for (const required of rawSchema.required || []) if (!(required in value)) errors.push(`${path}.${required}: required`);
+      if (rawSchema.additionalProperties === false) for (const key of Object.keys(value)) if (!rawSchema.properties?.[key]) errors.push(`${path}.${key}: additional property`);
+      for (const [key, child] of Object.entries(rawSchema.properties || {})) if (key in value) check(value[key], child as JsonSchema, `${path}.${key}`);
+      if (rawSchema.minProperties !== undefined && Object.keys(value).length < rawSchema.minProperties) errors.push(`${path}: too few properties`);
+      return;
+    }
+    if (rawSchema.type === 'array') {
+      if (!Array.isArray(value)) { errors.push(`${path}: expected array`); return; }
+      if (rawSchema.minItems !== undefined && value.length < rawSchema.minItems) errors.push(`${path}: too few items`);
+      if (rawSchema.maxItems !== undefined && value.length > rawSchema.maxItems) errors.push(`${path}: too many items`);
+      for (const [index, child] of (rawSchema.prefixItems || []).entries()) if (index < value.length) check(value[index], child, `${path}[${index}]`);
+      if (rawSchema.items && rawSchema.items !== false) for (let index = rawSchema.prefixItems?.length || 0; index < value.length; index += 1) check(value[index], rawSchema.items, `${path}[${index}]`);
+      return;
+    }
+    if (rawSchema.type === 'string') {
+      if (typeof value !== 'string') { errors.push(`${path}: expected string`); return; }
+      if (rawSchema.minLength !== undefined && value.length < rawSchema.minLength) errors.push(`${path}: too short`);
+      if (rawSchema.maxLength !== undefined && value.length > rawSchema.maxLength) errors.push(`${path}: too long`);
+      if (rawSchema.pattern && !(new RegExp(rawSchema.pattern).test(value))) errors.push(`${path}: pattern mismatch`);
+      return;
+    }
+    if (rawSchema.type === 'number' && (typeof value !== 'number' || !Number.isFinite(value))) errors.push(`${path}: expected finite number`);
+    if (rawSchema.type === 'integer' && !Number.isInteger(value)) errors.push(`${path}: expected integer`);
+    if (rawSchema.minimum !== undefined && value < rawSchema.minimum) errors.push(`${path}: below minimum`);
+    if (rawSchema.exclusiveMinimum !== undefined && value <= rawSchema.exclusiveMinimum) errors.push(`${path}: below exclusive minimum`);
+  };
+  check(document, schema, '$');
+  assert.deepEqual(errors, [], `${type} strict schema errors: ${errors.join('; ')}`);
+}
+
 const workflow = {
   templateCode: 'PCN-CUSTOM',
   templateVersion: 4,
@@ -92,7 +145,7 @@ test('PCN diagram suite exposes the workflow and explicit unavailable five-view 
   assert.equal(suite.workflow.diagram_type, 'workflow');
   assert.equal(suite.lifecycle.available, true);
   assert.equal(suite.architecture.available, true);
-  assert.equal(suite.dataflow.available, false);
+  assert.equal(suite.dataflow.available, true);
   assert.equal(suite.sequence.available, false);
   assert.deepEqual(
     [suite.lifecycle, suite.dataflow, suite.sequence, suite.architecture].map((view) => view.diagramType),
@@ -188,7 +241,7 @@ test('stable IDs disambiguate Unicode IDs from crafted ASCII encodings', () => {
 test('PCN fact-backed projections expose current lifecycle, linked dataflow, ordered sequence, and architecture', () => {
   const rich = {
     ...fixture,
-    dossier: { ...fixture.dossier, status: 'TECHNICAL_REVIEW' },
+    dossier: { ...fixture.dossier, status: 'TECHNICAL_REVIEW', returnedResultIds: ['result-1'] },
     workflow: {
       ...workflow,
       nodes: [...workflow.nodes, { id: 'technical-review', kind: 'APPROVAL_TASK', label: 'Soát xét kỹ thuật', requirementIds: ['req-intake'], active: true, sortOrder: 5 }],
@@ -236,11 +289,21 @@ test('available projections retain the pinned Archify v1 schema envelope and req
     assert.equal(schema.properties.schema_version.const, 1);
     assert.equal(schema.properties.diagram_type.const, type);
   }
-  const rich = { ...fixture, results: [{ id: 'result-schema', dossierId: 'dossier-contract', labRequestId: 'lab-1', round: 1, outcome: 'PASS', receivedAt: '2026-09-06T03:00:00.000Z' }] } as unknown as PcnArchifyWorkflowInput;
+  const rich = { ...fixture, dossier: { ...fixture.dossier, returnedResultIds: ['result-schema'] }, results: [{ id: 'result-schema', dossierId: 'dossier-contract', labRequestId: 'lab-1', round: 1, outcome: 'PASS', receivedAt: '2026-09-06T03:00:00.000Z' }], activityLogs: [{ id: 'schema-activity', createdAt: '2026-09-06T04:00:00.000Z', actorName: 'Actor', actorUsername: 'actor', action: 'UPDATED', entityType: 'PCN_DOSSIER', entityId: 'dossier-contract', summary: 'private', source: 'UI' }] } as unknown as PcnArchifyWorkflowInput;
   const suite = buildPcnArchifyDiagramSuite(rich);
   for (const [type, result] of Object.entries({ lifecycle: suite.lifecycle, dataflow: suite.dataflow, sequence: suite.sequence, architecture: suite.architecture })) {
     assert.equal(result.available, true);
     if (result.available) for (const key of requiredByType[type]) assert.ok(key in result.document, `${type} missing ${key}`);
+    if (result.available) assertStrictSchema(type, result.document);
+  }
+});
+
+test('PGD lifecycle, dataflow, sequence, and architecture pass strict pinned-schema validation', () => {
+  const request = { id: 'request-strict-pgd', domain: 'pgd', requestCode: 'PGD-260906-07', status: 'WAITING_LAB_RESULTS', productGroup: 'STEEL_METAL', catalogItemId: 'STEEL_LOT_INSPECTION', productName: 'Thép', quantity: 1, unit: 'tấn', inspectionScope: 'Mẫu', inspectionLocation: 'Kho', standards: [], sampleIds: ['sample-strict'], labRequestIds: ['lab-strict'], documentPointers: [], dossierChecklist: [], createdAt: '2026-09-06T00:00:00.000Z', updatedAt: '2026-09-06T00:00:00.000Z' } as any;
+  const suite = buildPgdArchifyDiagramSuite({ request, samples: [{ id: 'sample-strict', domain: 'pgd', requestId: request.id, sampleCode: 'S', description: 'Mẫu', quantity: 1, disposition: 'LAB' }], labRequests: [{ id: 'lab-strict', domain: 'pgd', requestId: request.id, sampleId: 'sample-strict', status: 'SENT', laboratoryName: 'PTN', testItems: ['x'] }], labResults: [{ id: 'result-strict', domain: 'pgd', requestId: request.id, labRequestId: 'lab-strict', receivedAt: '2026-09-06T02:00:00.000Z', values: [] }], dossierDocuments: [{ id: 'doc-strict', domain: 'pgd', requestId: request.id, requirementCode: 'REQUEST_PYC', title: 'PYC', fileName: 'pyc.pdf', sourceCollection: 'pgd_dossier_documents', sourceDocumentId: 'src', version: 1, checksum: 'x', uploadedByUsername: 'u', uploadedAt: '2026-09-06T00:00:00.000Z' }], approvals: [], activityLogs: [{ id: 'log-strict', entityId: request.id, createdAt: '2026-09-06T03:00:00.000Z', actorUsername: 'actor', actorName: 'Actor', action: 'UPDATED', summary: 'private' }] } as any);
+  for (const [type, result] of Object.entries({ lifecycle: suite.lifecycle, dataflow: suite.dataflow, sequence: suite.sequence, architecture: suite.architecture })) {
+    assert.equal(result.available, true);
+    if (result.available) assertStrictSchema(type, result.document);
   }
 });
 
@@ -268,4 +331,44 @@ test('PCN projections do not infer current state or result-to-approval edges', (
   assert.equal(suite.dataflow.available, true);
   if (!suite.dataflow.available) return;
   assert.equal(suite.dataflow.document.flows.some((flow) => flow.from.startsWith('result-') && flow.to.startsWith('approval-')), false);
+});
+
+test('PCN dataflow excludes results absent from persisted returnedResultIds', () => {
+  const input = {
+    ...fixture,
+    dossier: { ...fixture.dossier, returnedResultIds: [] },
+    results: [{ id: 'result-unpointed', dossierId: 'dossier-contract', labRequestId: 'lab-1', round: 1, outcome: 'PASS', receivedAt: '2026-09-06T03:00:00.000Z' }],
+    approvalSteps: [],
+  } as unknown as PcnArchifyWorkflowInput;
+  const suite = buildPcnArchifyDiagramSuite(input);
+  assert.equal(suite.dataflow.available, true);
+  if (!suite.dataflow.available) return;
+  assert.equal(suite.dataflow.document.nodes.some((node) => node.id === 'result-result-unpointed'), false);
+});
+
+test('PCN approval-only dataflow is unavailable instead of exposing disconnected approvals', () => {
+  const input = {
+    ...fixture,
+    documents: [],
+    results: [],
+    approvalSteps: [{ id: 'approval-only', dossierId: 'dossier-contract', sequence: 1, role: 'TECHNICAL_REVIEW', status: 'APPROVED', actedAt: '2026-09-06T04:00:00.000Z' }],
+  } as unknown as PcnArchifyWorkflowInput;
+  const suite = buildPcnArchifyDiagramSuite(input);
+  assert.equal(suite.dataflow.available, false);
+});
+
+test('PCN sequence pseudonyms are non-PII and deterministically tied to actor evidence', () => {
+  const input = {
+    ...fixture,
+    tasks: [{ id: 'task-actor', dossierId: 'dossier-contract', nodeId: 'intake', status: 'COMPLETED', cycleNo: 1, startedAt: '2026-09-06T01:00:00.000Z', updatedAt: '2026-09-06T01:00:00.000Z', updatedBy: 'alice@example.com' }],
+    activityLogs: [],
+  } as unknown as PcnArchifyWorkflowInput;
+  const first = buildPcnArchifyDiagramSuite(input).sequence;
+  const second = buildPcnArchifyDiagramSuite(input).sequence;
+  assert.equal(first.available, true);
+  assert.equal(second.available, true);
+  if (!first.available || !second.available) return;
+  assert.deepEqual(first.document.participants, second.document.participants);
+  assert.ok(first.document.participants.every((participant) => !participant.label.includes('alice@example.com')));
+  assert.ok(first.document.participants.some((participant) => participant.label.startsWith('pcn-actor-')));
 });
