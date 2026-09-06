@@ -20,12 +20,17 @@ test('canonical PYC card exposes dispatch and reconcile actions through the serv
   assert.match(labRequestSource, /onDispatchLabRequest/);
   assert.match(modalSource, /integration/);
   assert.match(modalSource, /Đồng bộ lại/);
-  assert.match(operationsSource, /Mở card hồ sơ/);
+  assert.match(operationsSource, /sample-register-grid/);
+  assert.match(operationsSource, /Tạo Phiếu yêu cầu thử nghiệm/);
+  assert.match(operationsSource, /PcnSampleRequestBundleModal/);
 });
 
-test('management projection remains read-only while canonical dossier card owns mutations', () => {
+test('sample register keeps mutations behind the bundle callbacks and does not fetch from the grid', () => {
   assert.doesNotMatch(operationsSource, /fetch\(/);
-  assert.doesNotMatch(operationsSource, /onDispatch|onReconcile|onSave|onUpdate/);
+  assert.match(operationsSource, /onSaveBundle/);
+  assert.match(operationsSource, /onSendBundle/);
+  assert.match(operationsSource, /onRetryBundleDispatch/);
+  assert.match(operationsSource, /onOpenDossier/);
   assert.match(dossierSource, /onSaveLabRequest/);
   assert.match(dossierSource, /onUpdateLabRequest/);
 });

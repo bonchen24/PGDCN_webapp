@@ -917,6 +917,77 @@ export interface PcnSampleFlowEvent {
   occurredAt: string;
 }
 
+export type PcnSampleRequestBundleStatus = 'DRAFT' | 'SENDING' | 'PARTIALLY_SENT' | 'SENT' | 'RECONCILE_REQUIRED' | 'RESULT_RETURNED' | 'CANCELLED';
+export type PcnSampleRequestBundleDispatchStatus = 'DRAFT' | 'SENDING' | 'SENT' | 'ACKNOWLEDGED' | 'ERROR' | 'RECONCILE_REQUIRED';
+
+export interface PcnSampleRequestBundleSourceRef {
+  kind: 'PROPOSAL' | 'OPERATIONAL_FORM' | 'HANDOVER';
+  id: string;
+  label?: string;
+}
+
+export interface PcnSampleRequestBundleLineDraft {
+  sampleItemId?: string;
+  sampleLotId?: string;
+  dossierId: string;
+  lotCode: string;
+  sampleCode: string;
+  sampleType: string;
+  model: string;
+  brand?: string;
+  quantity: number;
+  unit?: string;
+  labCodes: PcnSampleLabCode[];
+  routeIdsByLab?: Partial<Record<PcnSampleLabCode, string[]>>;
+  customerSnapshot?: Pick<CustomerRef, 'name' | 'address' | 'taxId' | 'phone' | 'email' | 'contactPerson'>;
+  notes?: string;
+}
+
+export interface PcnSampleRequestBundleDraft {
+  id: string;
+  parentPycNumber: string;
+  customerSnapshot: Pick<CustomerRef, 'name' | 'address' | 'taxId' | 'phone' | 'email' | 'contactPerson'>;
+  sourceRefs: PcnSampleRequestBundleSourceRef[];
+  fieldCodes: PcnCertificationFieldCode[];
+  lines: PcnSampleRequestBundleLineDraft[];
+  targetDate?: string;
+  criteria?: string;
+}
+
+export interface PcnSampleRequestBundleDispatch {
+  id: string;
+  bundleId: string;
+  targetSystemCode: string;
+  labCode: PcnSampleLabCode;
+  routeIds: string[];
+  labRequestIds: string[];
+  status: PcnSampleRequestBundleDispatchStatus;
+  mappingVersion: string;
+  externalRequestIds?: string[];
+  externalRequestCodes?: string[];
+  lastErrorCode?: string;
+  lastErrorMessage?: string;
+  lastAttemptAt?: string;
+  acknowledgedAt?: string;
+}
+
+export interface PcnSampleRequestBundle {
+  id: string;
+  parentPycNumber: string;
+  customerSnapshot: Pick<CustomerRef, 'name' | 'address' | 'taxId' | 'phone' | 'email' | 'contactPerson'>;
+  sourceRefs: PcnSampleRequestBundleSourceRef[];
+  sampleItemIds: string[];
+  sampleLotIds: string[];
+  fieldCodes: PcnCertificationFieldCode[];
+  targetDate?: string;
+  criteria?: string;
+  status: PcnSampleRequestBundleStatus;
+  dispatches: PcnSampleRequestBundleDispatch[];
+  mappingVersion: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type PcnLabRequestStatus = 'DRAFT' | 'SENT' | 'RECEIVED' | 'RESULT_RETURNED' | 'CANCELLED';
 
 export type PcnSampleIssueType = 'MISMATCH' | 'DAMAGED' | 'INSUFFICIENT' | 'MISSING_DOCUMENT' | 'OTHER';
@@ -938,6 +1009,10 @@ export interface OutboundLabRequest {
   /** Optional link to the tracked PCN lot/route that this outbound PYC serves. */
   sampleLotId?: string;
   sampleRouteId?: string;
+  bundleId?: string;
+  parentPycNumber?: string;
+  sampleItemIds?: string[];
+  mappingVersion?: string;
   integration?: PcnLabRequestIntegrationLink;
   status: PcnLabRequestStatus;
   requestedAt: string;

@@ -21,6 +21,8 @@ import type {
   PcnSampleItem,
   PcnSampleLot,
   PcnSampleRoute,
+  PcnSampleRequestBundle,
+  PcnSampleRequestBundleDraft,
   PcnTemplateDefinition,
   PcnOfficialGeneratedDocument,
   PcnTemplateReviewAction,
@@ -55,6 +57,7 @@ import { generatePcnDossierDocuments, preflightPcnDossierDocuments } from './uti
 import type { PcnDossierDocumentContext } from './utils/pcnDocumentGeneration';
 import { createPcnSampleLot as createPcnSampleLotApi, updatePcnSampleRoute as updatePcnSampleRouteApi } from './utils/pcnSampleApi';
 import { createPcnLabRequest as createPcnLabRequestApi, dispatchPcnLabRequest, reconcilePcnLabRequest, updatePcnLabRequest as updatePcnLabRequestApi, type PcnLabRequestMutationResponse } from './utils/pcnLabRequestApi';
+import { retryPcnSampleRequestBundleDispatch, savePcnSampleRequestBundle, sendPcnSampleRequestBundle, type PcnSampleRequestBundleMutationResponse } from './utils/pcnSampleRequestBundleApi';
 import { createPcnSignerDelegation, fetchPcnSignerDelegations, issuePcnIssuance, revokePcnSignerDelegation, type PcnSignerDelegationInput } from './utils/pcnSignerDelegationApi';
 import { assertPcnSignerAuthorized } from './utils/pcnSignerAuthorization';
 import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, mergePcnDocumentRequirements } from './utils/pcnDossierDocuments';
@@ -94,6 +97,7 @@ interface PcnStoreState {
   sampleItems: PcnSampleItem[];
   sampleRoutes: PcnSampleRoute[];
   sampleFlowEvents: PcnSampleFlowEvent[];
+  sampleRequestBundles: PcnSampleRequestBundle[];
   users: PcnUserAccount[];
   departmentRoles: PcnDepartmentRole[];
   signerDelegations: PcnSignerDelegation[];
@@ -149,6 +153,9 @@ interface PcnStoreState {
   clearPcnNotifications: () => Promise<void>;
   addSampleLot: (draft: PcnSampleLotDraft) => Promise<void>;
   updateSampleRoute: (routeId: string, status: PcnSampleRoute['status'], update?: PcnSampleRouteUpdate) => Promise<void>;
+  saveSampleRequestBundle: (draft: PcnSampleRequestBundleDraft) => Promise<PcnSampleRequestBundle>;
+  sendSampleRequestBundle: (bundleId: string) => Promise<PcnSampleRequestBundle>;
+  retrySampleRequestBundleDispatch: (bundleId: string, dispatchId: string) => Promise<PcnSampleRequestBundle>;
 }
 
 function mergePcnLabMutationState(state: PcnStoreState, result: PcnLabRequestMutationResponse): Partial<PcnStoreState> {
@@ -165,8 +172,28 @@ function mergePcnLabMutationState(state: PcnStoreState, result: PcnLabRequestMut
   };
 }
 
+function mergePcnSampleRequestBundleMutationState(state: PcnStoreState, result: PcnSampleRequestBundleMutationResponse): Partial<PcnStoreState> {
+  const mergeMany = <T extends { id: string }>(current: T[], incoming: T[] = []): T[] => [
+    ...incoming,
+    ...current.filter((item) => !incoming.some((next) => next.id === item.id)),
+  ];
+  return {
+    sampleRequestBundles: mergeMany(state.sampleRequestBundles, result.bundle ? [result.bundle] : []),
+    sampleLots: mergeMany(state.sampleLots, result.lots),
+    sampleItems: mergeMany(state.sampleItems, result.items),
+    sampleRoutes: mergeMany(state.sampleRoutes, result.routes),
+    sampleFlowEvents: mergeMany(state.sampleFlowEvents, result.events),
+    labRequests: mergeMany(state.labRequests, result.labRequests),
+    activityLogs: mergeMany(state.activityLogs, result.activityLogs),
+  };
+}
+
 function byUpdatedAt<T extends { updatedAt?: string }>(left: T, right: T): number {
   return String(right.updatedAt || '').localeCompare(String(left.updatedAt || ''));
+}
+
+function mergeManyById<T extends { id: string }>(current: T[], incoming: T[]): T[] {
+  return [...incoming, ...current.filter((item) => !incoming.some((next) => next.id === item.id))];
 }
 
 function assertPcnStoreMutationAllowed(): void {
@@ -201,6 +228,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
   sampleItems: [],
   sampleRoutes: [],
   sampleFlowEvents: [],
+  sampleRequestBundles: [],
   users: [],
   departmentRoles: [],
   signerDelegations: [],
@@ -229,6 +257,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     sampleItems: [],
     sampleRoutes: [],
     sampleFlowEvents: [],
+    sampleRequestBundles: [],
     users: [],
     departmentRoles: [],
     signerDelegations: [],
@@ -242,7 +271,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     if (get().isLoading || (get().isLoaded && !force)) return;
     set({ isLoading: true });
     try {
-      const [fields, templates, documentRequirements, dossierDocuments, dossierAttachments, generatedDocuments, officialDocuments, customers, proposals, dossiers, sampleLots, sampleItems, sampleRoutes, sampleFlowEvents, labRequests, returnedResults, approvalSteps, issuancePackages, activityLogs, users, departmentRoles, signerDelegations, qualityDocuments, notifications] = await Promise.all([
+      const [fields, templates, documentRequirements, dossierDocuments, dossierAttachments, generatedDocuments, officialDocuments, customers, proposals, dossiers, sampleLots, sampleItems, sampleRoutes, sampleFlowEvents, sampleRequestBundles, labRequests, returnedResults, approvalSteps, issuancePackages, activityLogs, users, departmentRoles, signerDelegations, qualityDocuments, notifications] = await Promise.all([
         fetchCollection<PcnCertificationField>('pcnCertificationFields'),
         fetchCollection<PcnTemplateDefinition>('pcnTemplateDefinitions'),
         fetchCollection<PcnDocumentRequirement>('pcnDocumentRequirements'),
@@ -257,6 +286,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
         fetchCollection<PcnSampleItem>('pcnSampleItems'),
         fetchCollection<PcnSampleRoute>('pcnSampleRoutes'),
         fetchCollection<PcnSampleFlowEvent>('pcnSampleFlowEvents'),
+        fetchCollection<PcnSampleRequestBundle>('pcnSampleRequestBundles'),
         fetchCollection<OutboundLabRequest>('labRequests'),
         fetchCollection<ReturnedTestResult>('returnedResults'),
         fetchCollection<PcnApprovalStep>('approvalSteps'),
@@ -285,6 +315,8 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
         activityLogs,
         notifications,
       }, activeSnapshot.dossiers);
+      const activeLotIds = new Set(activeRelations.sampleLots.map((lot) => lot.id));
+      const activeSampleRequestBundles = sampleRequestBundles.filter((bundle) => bundle.sampleLotIds.some((lotId) => activeLotIds.has(lotId)));
       set({
         fields: mergePcnCertificationFields(fields),
         templates: mergePcnTemplateCatalog(templates),
@@ -300,6 +332,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
         sampleItems: activeRelations.sampleItems.sort(byUpdatedAt),
         sampleRoutes: activeRelations.sampleRoutes.sort(byUpdatedAt),
         sampleFlowEvents: activeRelations.sampleFlowEvents.sort((left, right) => String(right.occurredAt || '').localeCompare(String(left.occurredAt || ''))),
+        sampleRequestBundles: activeSampleRequestBundles.sort(byUpdatedAt),
         labRequests: activeRelations.labRequests.sort(byUpdatedAt),
         returnedResults: activeRelations.returnedResults.sort(byUpdatedAt),
         approvalSteps: activeRelations.approvalSteps.sort((left, right) => left.sequence - right.sequence),
@@ -471,6 +504,64 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
         : state.sampleFlowEvents,
       activityLogs: [...result.activityLogs, ...state.activityLogs.filter((item) => !result.activityLogs.some((next) => next.id === item.id))],
     }));
+  },
+
+  saveSampleRequestBundle: async (draft) => {
+    assertPcnStoreMutationAllowed();
+    const result = await savePcnSampleRequestBundle(draft);
+    set((state) => mergePcnSampleRequestBundleMutationState(state, result));
+    return result.bundle;
+  },
+
+  sendSampleRequestBundle: async (bundleId) => {
+    assertPcnStoreMutationAllowed();
+    const initial = await sendPcnSampleRequestBundle(bundleId);
+    set((state) => mergePcnSampleRequestBundleMutationState(state, initial));
+    let failedDispatches = 0;
+    for (const dispatch of initial.bundle.dispatches) {
+      if (dispatch.status === 'ACKNOWLEDGED') continue;
+      for (const requestId of dispatch.labRequestIds) {
+        try {
+          const result = await dispatchPcnLabRequest(requestId);
+          set((state) => mergePcnLabMutationState(state, result));
+        } catch {
+          // The server records ERROR for this child dispatch. Continue so an
+          // acknowledged laboratory is never rolled back by another failure.
+          failedDispatches += 1;
+        }
+      }
+    }
+    const [bundles, labRequests] = await Promise.all([
+      fetchCollection<PcnSampleRequestBundle>('pcnSampleRequestBundles'),
+      fetchCollection<OutboundLabRequest>('labRequests'),
+    ]);
+    const latest = bundles.find((bundle) => bundle.id === bundleId)
+      || (failedDispatches > 0 ? { ...initial.bundle, status: 'PARTIALLY_SENT' as const } : initial.bundle);
+    set((state) => ({
+      sampleRequestBundles: [latest, ...state.sampleRequestBundles.filter((item) => item.id !== latest.id)],
+      labRequests: mergeManyById(state.labRequests, labRequests.filter((request) => request.bundleId === bundleId)),
+    }));
+    return latest;
+  },
+
+  retrySampleRequestBundleDispatch: async (bundleId, dispatchId) => {
+    assertPcnStoreMutationAllowed();
+    const initial = await retryPcnSampleRequestBundleDispatch(bundleId, dispatchId);
+    set((state) => mergePcnSampleRequestBundleMutationState(state, initial));
+    const dispatch = initial.bundle.dispatches.find((item) => item.id === dispatchId);
+    if (!dispatch) return initial.bundle;
+    for (const requestId of dispatch.labRequestIds) {
+      try {
+        const result = await dispatchPcnLabRequest(requestId);
+        set((state) => mergePcnLabMutationState(state, result));
+      } catch {
+        // Preserve the server-side ERROR state and return the partial outcome.
+      }
+    }
+    const bundles = await fetchCollection<PcnSampleRequestBundle>('pcnSampleRequestBundles');
+    const latest = bundles.find((bundle) => bundle.id === bundleId) || initial.bundle;
+    set((state) => ({ sampleRequestBundles: [latest, ...state.sampleRequestBundles.filter((item) => item.id !== latest.id)] }));
+    return latest;
   },
 
   addCustomer: async (customer) => {
@@ -906,6 +997,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
         sampleItems: state.sampleItems.filter((item) => !deletedLotIds.has(item.sampleLotId)),
         sampleRoutes: state.sampleRoutes.filter((item) => !deletedLotIds.has(item.sampleLotId)),
         sampleFlowEvents: state.sampleFlowEvents.filter((item) => !deletedLotIds.has(item.sampleLotId) && !deletedRouteIds.has(item.routeId || '')),
+        sampleRequestBundles: state.sampleRequestBundles.filter((item) => !item.sampleLotIds.some((lotId) => deletedLotIds.has(lotId))),
         approvalSteps: state.approvalSteps.filter((item) => item.dossierId !== dossierId),
         issuancePackages: state.issuancePackages.filter((item) => item.dossierId !== dossierId),
         activityLogs: result.activityLog ? [result.activityLog, ...state.activityLogs] : state.activityLogs,

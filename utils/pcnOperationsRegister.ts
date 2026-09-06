@@ -12,6 +12,47 @@ import type {
 } from '../types.ts';
 import { buildPcnDossierCompleteness, type PcnDossierMissingDocumentGroup, type PcnPipelineStationKey } from './pcnDossierPipeline.ts';
 import { isPcnInternalSampleRequest } from './pcnLabOperations.ts';
+export type { SummaryCellValue, SummaryGridColumn, SummaryGridRow } from './summaryRegister';
+
+export type PcnSummaryCellUpdate =
+  | { target: 'proposal'; updates: Record<string, unknown> }
+  | { target: 'dossier'; updates: Record<string, unknown> };
+
+export function getPcnSummaryCellUpdate(
+  _proposal: CertificationProposal,
+  _dossier: CertificationDossier,
+  columnId: string,
+  rawValue: string,
+): PcnSummaryCellUpdate {
+  const value = rawValue.trim();
+  const proposalFields = new Set([
+    'channel', 'productName', 'productType', 'model', 'brand', 'specifications',
+    'manufacturer', 'manufacturerAddress', 'warehouseAddress', 'quantity',
+  ]);
+  const dossierFields = new Set([
+    'ownerUsername', 'evaluatorUsername', 'reviewerUsername', 'targetDate',
+    'evaluationAt', 'effectiveAt', 'exceptionReason',
+  ]);
+  if (proposalFields.has(columnId)) {
+    if (columnId === 'quantity') {
+      const quantity = Number(value.replace(',', '.'));
+      if (!Number.isFinite(quantity)) throw new Error('Số lượng phải là số hợp lệ.');
+      return { target: 'proposal', updates: { quantity } };
+    }
+    return { target: 'proposal', updates: { [columnId]: value || undefined } };
+  }
+  if (dossierFields.has(columnId)) return { target: 'dossier', updates: { [columnId]: value || undefined } };
+  const customerField = ({
+    customerName: 'name',
+    customerAddress: 'address',
+    customerTaxId: 'taxId',
+    customerPhone: 'phone',
+    customerEmail: 'email',
+    customerContact: 'contactPerson',
+  } as const)[columnId as 'customerName' | 'customerAddress' | 'customerTaxId' | 'customerPhone' | 'customerEmail' | 'customerContact'];
+  if (customerField) return { target: 'proposal', updates: { customerSnapshot: { [customerField]: value || undefined } } };
+  throw new Error(`Cell ${columnId} không được phép chỉnh sửa trong Sổ tổng hợp PCN.`);
+}
 
 export interface PcnOperationsRegisterInput {
   proposals: CertificationProposal[];

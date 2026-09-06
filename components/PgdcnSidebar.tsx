@@ -45,14 +45,14 @@ type PgdcnSidebarProps = {
 
 const PCN_ITEMS: Array<{ section: PcnSection; label: string; icon: ElementType }> = [
   { section: 'proposals', label: 'Đề nghị', icon: FilePlus2 },
-  { section: 'operations', label: 'Sổ điều hành', icon: ClipboardList },
-  { section: 'lab-operations', label: 'PYC & luân chuyển mẫu', icon: FlaskConical },
+  { section: 'operations', label: 'Sổ tổng hợp', icon: ClipboardList },
+  { section: 'lab-operations', label: 'Sổ quản lý mẫu', icon: FlaskConical },
   { section: 'drafting', label: 'Soạn thảo tài liệu', icon: FilePenLine },
 ];
 
 const PGD_ITEMS: Array<{ section: PgdSection; label: string; icon: ElementType }> = [
   { section: 'requests', label: 'Hồ sơ PYC', icon: ClipboardList },
-  { section: 'operations', label: 'Sổ điều hành PGD', icon: ClipboardCheck },
+  { section: 'operations', label: 'Sổ tổng hợp', icon: ClipboardCheck },
   { section: 'templates', label: 'Soạn thảo tài liệu', icon: FilePenLine },
 ];
 

@@ -164,30 +164,31 @@ test('does not project PYC records outside the internal sample-lot and route sco
   assert.equal(filterPcnSampleFlowProjections(projections, 'PYC-OUTSIDE-01').length, 0);
 });
 
-test('management screen uses the sample-centered projection and renders remote execution facts', () => {
-  assert.match(operationsSource, /buildPcnSampleFlowProjections/);
-  assert.match(operationsSource, /filterPcnSampleFlowProjections/);
-  assert.match(operationsSource, /Phiếu yêu cầu & Luân chuyển mẫu nội bộ/);
-  assert.match(operationsSource, /Chưa có PYC/);
-  assert.match(operationsSource, /getPcnSampleExecutionStatusLabel/);
-  assert.match(operationsSource, /getPcnSampleExecutionOutcomeLabel/);
+test('sample register uses one row per sample and renders remote execution facts', () => {
+  assert.match(operationsSource, /buildSampleRegisterRows/);
+  assert.match(operationsSource, /Sổ quản lý mẫu/);
+  assert.match(operationsSource, /Tạo Phiếu yêu cầu thử nghiệm/);
+  assert.match(operationsSource, /sample-register-grid/);
   assert.match(operationsSource, /overflow-x-auto/);
   assert.match(operationsSource, /currentLocation/);
-  assert.match(operationsSource, /pycSyncStatus/);
-  assert.match(operationsSource, /sampleItemId/);
+  assert.match(operationsSource, /syncStatus/);
+  assert.match(operationsSource, /sampleCode/);
   assert.match(operationsSource, /sampleType/);
-  assert.match(operationsSource, /Song song/);
-  assert.match(operationsSource, /Tuần tự/);
+  assert.match(operationsSource, /onRetryBundleDispatch/);
+  assert.match(operationsSource, /PcnSampleRequestBundleModal/);
+  assert.match(operationsSource, /bg-sky-100/);
+  assert.match(operationsSource, /bg-violet-100/);
+  assert.match(operationsSource, /bg-amber-100/);
+  assert.match(operationsSource, /bg-emerald-100/);
   assert.doesNotMatch(operationsSource, /fetch\(/);
 });
 
-test('management screen keeps sample cards collapsed until the user opens their assigned flow', () => {
-  assert.match(operationsSource, /expandedSampleIds/);
-  assert.match(operationsSource, /Mở tất cả/);
-  assert.match(operationsSource, /Thu gọn tất cả/);
-  assert.match(operationsSource, /aria-expanded=\{isExpanded\}/);
-  assert.match(operationsSource, /aria-controls=\{`sample-flow-\$\{projection\.id\}`\}/);
-  assert.match(operationsSource, /id=\{`sample-flow-\$\{projection\.id\}`\}/);
+test('sample register exposes searchable lab filters and a separate bundle modal', () => {
+  assert.match(operationsSource, /sampleRequestBundles/);
+  assert.match(operationsSource, /aria-label="Tìm trong Sổ quản lý mẫu"/);
+  assert.match(operationsSource, /aria-label="Lọc theo phòng thử nghiệm"/);
+  assert.match(operationsSource, /onSaveBundle/);
+  assert.match(operationsSource, /onSendBundle/);
 });
 
 // --- End of pcn-lab-operations.test.ts ---

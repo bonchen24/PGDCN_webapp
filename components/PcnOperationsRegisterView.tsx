@@ -1,12 +1,12 @@
 'use client';
 
-import { Download, ExternalLink, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-import type { CertificationDossier, CertificationProposal, PcnCertificationField, PcnDocumentRequirement, PcnDossierDocument, PcnUserAccount, PcnSampleLot, PcnSampleRoute, OutboundLabRequest, ReturnedTestResult, IssuancePackage } from '../types';
-import { buildPcnOperationsRegisterRows, filterPcnOperationsRegisterRows, toPcnOperationsRegisterCsv } from '../utils/pcnOperationsRegister';
-import { getPcnWorkflowStage } from '../utils/pcnWorkflowStages';
-import { PgdcnPageHeader, PgdcnStatePanel, PgdcnToolbar } from './PgdcnUiPrimitives';
+import type { CertificationDossier, CertificationProposal, IssuancePackage, PcnCertificationField, PcnDocumentRequirement, PcnDossierDocument, PcnSampleLot, PcnSampleRoute, PcnUserAccount, OutboundLabRequest, ReturnedTestResult } from '../types';
+import { buildPcnOperationsRegisterRows, getPcnSummaryCellUpdate } from '../utils/pcnOperationsRegister';
+import type { SummaryGridColumn, SummaryGridRow } from '../utils/summaryRegister';
+import PgdcnDossierSummaryGrid from './PgdcnDossierSummaryGrid';
+import { PgdcnPageHeader } from './PgdcnUiPrimitives';
 
 type Props = {
   fields: PcnCertificationField[];
@@ -20,47 +20,149 @@ type Props = {
   documentRequirements: PcnDocumentRequirement[];
   dossierDocuments: PcnDossierDocument[];
   users: PcnUserAccount[];
+  currentUsername?: string | null;
+  canEdit: boolean;
   onOpenDossier: (dossier: CertificationDossier, initialTab?: 'documents' | 'lab' | 'results' | 'issuance') => void;
+  onUpdateProposal: (proposalId: string, updates: Partial<CertificationProposal>) => Promise<unknown>;
+  onUpdateDossier: (dossierId: string, updates: Partial<CertificationDossier>) => Promise<unknown>;
 };
 
-function date(value?: string): string {
-  if (!value) return '—';
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString('vi-VN');
+const columns: SummaryGridColumn[] = [
+  { id: 'registrationCode', label: 'Mã Đề nghị', width: 130, sticky: true },
+  { id: 'dossierCode', label: 'Mã hồ sơ', width: 130 },
+  { id: 'receivedAt', label: 'Ngày tiếp nhận', width: 145 },
+  { id: 'customerName', label: 'Khách hàng', width: 190, editable: true },
+  { id: 'customerAddress', label: 'Địa chỉ KH', width: 220, editable: true },
+  { id: 'customerTaxId', label: 'MST', width: 125, editable: true },
+  { id: 'customerContact', label: 'Đầu mối KH', width: 150, editable: true },
+  { id: 'customerPhone', label: 'ĐT KH', width: 125, editable: true },
+  { id: 'customerEmail', label: 'Email KH', width: 180, editable: true },
+  { id: 'productName', label: 'Tên sản phẩm', width: 190, editable: true },
+  { id: 'productType', label: 'Loại sản phẩm', width: 145, editable: true },
+  { id: 'model', label: 'Model', width: 130, editable: true },
+  { id: 'brand', label: 'Nhãn hiệu', width: 140, editable: true },
+  { id: 'specifications', label: 'Thông số', width: 220, inputType: 'textarea', editable: true },
+  { id: 'manufacturer', label: 'Nhà SX', width: 170, editable: true },
+  { id: 'manufacturerAddress', label: 'Địa chỉ NSX', width: 220, editable: true },
+  { id: 'warehouseAddress', label: 'Địa chỉ kho', width: 220, editable: true },
+  { id: 'quantity', label: 'Số lượng', width: 95, inputType: 'number', editable: true },
+  { id: 'fieldCodes', label: 'Lĩnh vực', width: 150 },
+  { id: 'standardRefs', label: 'Tiêu chuẩn', width: 190 },
+  { id: 'dossierStatus', label: 'Trạng thái HS', width: 155 },
+  { id: 'ownerUsername', label: 'Chủ hồ sơ', width: 150, inputType: 'select', editable: true },
+  { id: 'evaluatorUsername', label: 'Đánh giá viên', width: 150, inputType: 'select', editable: true },
+  { id: 'reviewerUsername', label: 'Người soát xét', width: 150, inputType: 'select', editable: true },
+  { id: 'targetDate', label: 'Hạn xử lý', width: 122, inputType: 'date', editable: true },
+  { id: 'evaluationAt', label: 'Ngày đánh giá', width: 145, inputType: 'date', editable: true },
+  { id: 'effectiveAt', label: 'Ngày hiệu lực', width: 145, inputType: 'date', editable: true },
+  { id: 'exceptionReason', label: 'Lý do ngoại lệ', width: 220, inputType: 'textarea', editable: true },
+  { id: 'stationTitle', label: 'Bước hiện tại', width: 180 },
+  { id: 'completenessScore', label: 'Hoàn thiện', width: 95 },
+  { id: 'missingRequiredCount', label: 'Thiếu bắt buộc', width: 105 },
+  { id: 'sampleQuantity', label: 'SL mẫu', width: 90 },
+  { id: 'sampleLocations', label: 'Địa điểm lấy mẫu', width: 190 },
+  { id: 'sampleReceivedAt', label: 'Ngày nhận mẫu', width: 145 },
+  { id: 'labStatuses', label: 'Trạng thái PTN', width: 180 },
+  { id: 'testCriteria', label: 'Tiêu chí thử', width: 220 },
+  { id: 'reportNumbers', label: 'Số phiếu KQ', width: 160 },
+  { id: 'lastResultReceivedAt', label: 'Ngày nhận KQ', width: 145 },
+  { id: 'lastResultOutcome', label: 'Kết quả cuối', width: 140 },
+  { id: 'issuanceNumber', label: 'Số chứng nhận', width: 145 },
+  { id: 'issuedAt', label: 'Ngày cấp', width: 125 },
+  { id: 'sampleReturnedAt', label: 'Ngày trả mẫu', width: 145 },
+];
+
+function userOptions(users: PcnUserAccount[]) {
+  return [{ value: '', label: 'Chưa phân công' }, ...users.filter((user) => user.active && user.systemRole !== 'viewer' && user.role !== 'viewer').map((user) => ({ value: user.username, label: `${user.name || 'Người dùng hệ thống'} · ${user.username}` }))];
 }
 
 export default function PcnOperationsRegisterView(props: Props) {
-  const [query, setQuery] = useState('');
   const [completeness, setCompleteness] = useState<'ALL' | 'INCOMPLETE' | 'COMPLETE'>('ALL');
   const [assignment, setAssignment] = useState<'ALL' | 'ASSIGNED' | 'UNASSIGNED'>('ALL');
   const [fieldCode, setFieldCode] = useState('');
-  const rows = useMemo(() => buildPcnOperationsRegisterRows(props), [props]);
-  const visibleRows = useMemo(() => filterPcnOperationsRegisterRows(rows, { query, fieldCode, completeness, assignment }), [rows, query, fieldCode, completeness, assignment]);
+  const [status, setStatus] = useState('ALL');
+  const [year, setYear] = useState('ALL');
+  const registerRows = useMemo(() => buildPcnOperationsRegisterRows(props), [props]);
+  const dossierById = useMemo(() => new Map(props.dossiers.map((dossier) => [dossier.id, dossier])), [props.dossiers]);
+  const proposalById = useMemo(() => new Map(props.proposals.map((proposal) => [proposal.id, proposal])), [props.proposals]);
+  const rows = useMemo<SummaryGridRow[]>(() => registerRows.map((row) => {
+    const dossier = dossierById.get(row.dossierId);
+    const proposal = dossier ? proposalById.get(dossier.proposalId) : undefined;
+    const customer = (dossier?.customerSnapshot ?? proposal?.customerSnapshot ?? {}) as { name?: string; address?: string; taxId?: string; contactPerson?: string; phone?: string; email?: string };
+    const cells = {
+      registrationCode: row.registrationCode,
+      dossierCode: row.dossierCode,
+      receivedAt: row.receivedAt,
+      customerName: customer.name ?? row.customerName,
+      customerAddress: customer.address ?? row.customerAddress,
+      customerTaxId: customer.taxId,
+      customerContact: customer.contactPerson,
+      customerPhone: customer.phone,
+      customerEmail: customer.email,
+      productName: proposal?.productName ?? row.productName,
+      productType: proposal?.productType,
+      model: proposal?.model ?? row.model,
+      brand: proposal?.brand ?? row.brand,
+      specifications: proposal?.specifications,
+      manufacturer: proposal?.manufacturer,
+      manufacturerAddress: proposal?.manufacturerAddress,
+      warehouseAddress: proposal?.warehouseAddress,
+      quantity: proposal?.quantity ?? row.sampleQuantity,
+      fieldCodes: row.fieldCodes.join('; '),
+      standardRefs: row.standardRefs.join('; '),
+      dossierStatus: row.dossierStatus,
+      ownerUsername: row.ownerUsername,
+      evaluatorUsername: row.evaluatorUsername,
+      reviewerUsername: dossier?.reviewerUsername,
+      targetDate: dossier?.targetDate,
+      evaluationAt: row.evaluationAt,
+      effectiveAt: row.effectiveAt,
+      exceptionReason: dossier?.exceptionReason,
+      stationTitle: row.stationTitle,
+      completenessScore: `${row.completenessScore}%`,
+      missingRequiredCount: row.missingRequiredCount,
+      sampleQuantity: row.sampleQuantity,
+      sampleLocations: row.sampleLocations.join('; '),
+      sampleReceivedAt: row.sampleReceivedAt,
+      labStatuses: row.labStatuses.join('; '),
+      testCriteria: row.testCriteria.join('; '),
+      reportNumbers: row.reportNumbers.join('; '),
+      lastResultReceivedAt: row.lastResultReceivedAt,
+      lastResultOutcome: row.lastResultOutcome,
+      issuanceNumber: row.issuanceNumber,
+      issuedAt: row.issuedAt,
+      sampleReturnedAt: row.sampleReturnedAt,
+    };
+    const userNames = new Map(props.users.map((user) => [user.username, user.name || 'Người dùng hệ thống']));
+    return { id: row.dossierId, cells, displayCells: { ownerUsername: row.ownerUsername ? userNames.get(row.ownerUsername) : undefined, evaluatorUsername: row.evaluatorUsername ? userNames.get(row.evaluatorUsername) : undefined, reviewerUsername: dossier?.reviewerUsername ? userNames.get(dossier.reviewerUsername) : undefined }, searchText: Object.values(cells).map((value) => Array.isArray(value) ? value.join(' ') : String(value ?? '')).join(' ') };
+  }), [dossierById, proposalById, props.users, registerRows]);
+  const configuredColumns = useMemo(() => columns.map((column) => ['ownerUsername', 'evaluatorUsername', 'reviewerUsername'].includes(column.id) ? { ...column, options: userOptions(props.users) } : column), [props.users]);
+  const filterRows = useMemo(() => (items: SummaryGridRow[]) => items.filter((row) => {
+    const source = registerRows.find((item) => item.dossierId === row.id);
+    if (!source) return false;
+    return (completeness === 'ALL' || (completeness === 'COMPLETE' ? source.missingRequiredCount === 0 : source.missingRequiredCount > 0))
+      && (assignment === 'ALL' || (assignment === 'ASSIGNED' ? Boolean(source.ownerUsername) : !source.ownerUsername))
+      && (!fieldCode || source.fieldCodes.includes(fieldCode))
+      && (status === 'ALL' || source.dossierStatus === status)
+      && (year === 'ALL' || (source.receivedAt && source.receivedAt.slice(0, 4) === year));
+  }), [assignment, completeness, fieldCode, registerRows, status, year]);
 
-  const exportCsv = () => {
-    const blob = new Blob([toPcnOperationsRegisterCsv(visibleRows)], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `so-dieu-hanh-pcn-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const commitCell = async (rowId: string, columnId: string, rawValue: string) => {
+    const dossier = dossierById.get(rowId);
+    const proposal = dossier ? proposalById.get(dossier.proposalId) : undefined;
+    if (!dossier || !proposal) throw new Error('Không tìm thấy hồ sơ PCN để cập nhật.');
+    const update = getPcnSummaryCellUpdate(proposal, dossier, columnId, rawValue);
+    if (update.target === 'proposal') await props.onUpdateProposal(proposal.id, update.updates as Partial<CertificationProposal>);
+    else await props.onUpdateDossier(dossier.id, update.updates as Partial<CertificationDossier>);
   };
 
-  return (
-    <div className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5">
-      <PgdcnPageHeader eyebrow="Quản lý PCN" title="Sổ điều hành" description="Một dòng là một bộ hồ sơ. Số liệu lấy từ card hồ sơ chuẩn và chỉ đọc." actions={<button type="button" onClick={exportCsv} className="mobile-touch-target inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-600 shadow-sm hover:border-emerald-300 hover:text-emerald-700"><Download size={14} /> Xuất CSV</button>} />
-      <PgdcnToolbar actions={<span className="text-right text-[10px] font-bold text-slate-500">{visibleRows.length}/{rows.length} hồ sơ</span>}>
-        <label className="relative block"><Search size={14} className="absolute left-2.5 top-2 text-slate-400" /><input aria-label="Tìm Sổ điều hành" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Mã Đề nghị, hồ sơ, khách hàng, sản phẩm..." className="w-full rounded-md border border-slate-200 py-1.5 pl-8 pr-2 text-[11px] outline-none focus:border-emerald-400" /></label>
-        <select aria-label="Lọc mức hoàn thiện" value={completeness} onChange={(event) => setCompleteness(event.target.value as typeof completeness)} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px]"><option value="ALL">Tất cả hoàn thiện</option><option value="INCOMPLETE">Còn thiếu tài liệu</option><option value="COMPLETE">Đủ tài liệu bắt buộc</option></select>
-        <select aria-label="Lọc phân công" value={assignment} onChange={(event) => setAssignment(event.target.value as typeof assignment)} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px]"><option value="ALL">Tất cả chủ hồ sơ</option><option value="ASSIGNED">Đã phân công</option><option value="UNASSIGNED">Chưa phân công</option></select>
-        <select aria-label="Lọc lĩnh vực Sổ điều hành" value={fieldCode} onChange={(event) => setFieldCode(event.target.value)} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px]"><option value="">Tất cả Lĩnh vực</option>{props.fields.map((field) => <option key={field.code} value={field.code}>{field.code} · {field.name}</option>)}</select>
-      </PgdcnToolbar>
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[1120px] text-left"><thead className="bg-slate-50 text-[9px] font-black uppercase tracking-wide text-slate-500"><tr><th className="px-3 py-2">Đề nghị / hồ sơ</th><th className="px-3 py-2">Khách hàng / sản phẩm</th><th className="px-3 py-2">Bước hiện tại</th><th className="px-3 py-2">Hoàn thiện</th><th className="px-3 py-2">Mẫu / PTN</th><th className="px-3 py-2">Hạn / chủ hồ sơ</th><th className="px-3 py-2" /></tr></thead><tbody className="divide-y divide-slate-100">{visibleRows.map((row) => { const stage = getPcnWorkflowStage(row.dossierStatus); const dossier = props.dossiers.find((item) => item.id === row.dossierId); return <tr key={row.dossierId} className="hover:bg-emerald-50/30"><td className="px-3 py-2.5"><div className="font-mono text-[11px] font-black text-slate-800">{row.registrationCode}</div><div className="mt-0.5 font-mono text-[10px] text-slate-500">{row.dossierCode}</div></td><td className="max-w-[220px] px-3 py-2.5"><div className="truncate text-[11px] font-bold text-slate-700">{row.customerName}</div><div className="truncate text-[10px] text-slate-500">{row.productName}{row.model ? ` · ${row.model}` : ''}</div></td><td className="px-3 py-2.5"><span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[9px] font-black text-emerald-700">Bước {stage.number} · {stage.title}</span><div className="mt-1 text-[10px] text-slate-500">{row.dossierStatus}</div></td><td className="px-3 py-2.5"><div className="text-[11px] font-black text-slate-700">{row.completenessScore}%</div><div className="text-[9px] text-slate-500">{row.requiredDocumentPresent}/{row.requiredDocumentTotal} · thiếu {row.missingRequiredCount}</div></td><td className="px-3 py-2.5"><div className="text-[10px] font-bold text-slate-700">{row.sampleQuantity ?? '—'} {row.sampleQuantity ? 'mẫu' : ''}</div><div className="max-w-[180px] truncate text-[9px] text-slate-500">{row.labStatuses.join(' · ') || 'Chưa có tuyến'}</div></td><td className="px-3 py-2.5"><div className="text-[10px] font-bold text-slate-700">{row.ownerUsername || 'Chưa phân công'}</div><div className="text-[9px] text-slate-500">Nhận {date(row.receivedAt)}</div></td><td className="px-3 py-2.5 text-right"><button type="button" onClick={() => dossier && props.onOpenDossier(dossier, 'documents')} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1.5 text-[9px] font-black text-emerald-700 hover:border-emerald-300"><ExternalLink size={12} /> Mở hồ sơ</button></td></tr>; })}</tbody></table></div>
-        <div className="divide-y divide-slate-100 md:hidden">{visibleRows.map((row) => { const stage = getPcnWorkflowStage(row.dossierStatus); const dossier = props.dossiers.find((item) => item.id === row.dossierId); return <button type="button" key={row.dossierId} onClick={() => dossier && props.onOpenDossier(dossier, 'documents')} className="block w-full p-3 text-left hover:bg-emerald-50/30"><div className="flex items-start justify-between gap-2"><div><div className="font-mono text-[11px] font-black text-slate-800">{row.registrationCode}</div><div className="text-[10px] text-slate-500">{row.customerName} · {row.productName}</div></div><span className="rounded-full bg-emerald-50 px-1.5 py-1 text-[9px] font-black text-emerald-700">Bước {stage.number}</span></div><div className="mt-2 flex justify-between text-[10px] text-slate-500"><span>{stage.title}</span><span className="font-black text-slate-700">{row.completenessScore}% · thiếu {row.missingRequiredCount}</span></div></button>; })}</div>
-        {visibleRows.length === 0 && <PgdcnStatePanel tone="empty" title="Không có hồ sơ phù hợp bộ lọc" description="Hãy điều chỉnh từ khóa hoặc bộ lọc để xem lại danh sách hồ sơ." />}
-      </div>
-    </div>
-  );
+  const filterControls = <>
+    <select aria-label="Lọc hoàn thiện Sổ tổng hợp PCN" value={completeness} onChange={(event) => setCompleteness(event.target.value as typeof completeness)} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="ALL">Tất cả hoàn thiện</option><option value="INCOMPLETE">Còn thiếu tài liệu</option><option value="COMPLETE">Đủ tài liệu bắt buộc</option></select>
+    <select aria-label="Lọc phân công Sổ tổng hợp PCN" value={assignment} onChange={(event) => setAssignment(event.target.value as typeof assignment)} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="ALL">Tất cả chủ hồ sơ</option><option value="ASSIGNED">Đã phân công</option><option value="UNASSIGNED">Chưa phân công</option></select>
+    <select aria-label="Lọc lĩnh vực Sổ tổng hợp PCN" value={fieldCode} onChange={(event) => setFieldCode(event.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="">Tất cả lĩnh vực</option>{props.fields.map((field) => <option key={field.code} value={field.code}>{field.code} · {field.name}</option>)}</select>
+    <select aria-label="Lọc trạng thái Sổ tổng hợp PCN" value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="ALL">Tất cả trạng thái</option>{Array.from(new Set(registerRows.map((row) => row.dossierStatus))).map((value) => <option key={value} value={value}>{value}</option>)}</select>
+    <select aria-label="Lọc năm Sổ tổng hợp PCN" value={year} onChange={(event) => setYear(event.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="ALL">Tất cả năm</option>{Array.from(new Set(registerRows.map((row) => row.receivedAt?.slice(0, 4)).filter(Boolean))).sort().reverse().map((value) => <option key={value} value={value}>{value}</option>)}</select>
+  </>;
+
+  return <div className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5"><PgdcnPageHeader eyebrow="Quản lý PCN" title="Sổ tổng hợp PCN" description="Mỗi dòng là một bộ hồ sơ PCN, mỗi cột là một trường dữ liệu. Cell được phép chỉnh sửa trực tiếp theo đúng ranh giới Đề nghị hoặc Hồ sơ." /><PgdcnDossierSummaryGrid domain="PCN" columns={configuredColumns} rows={rows} currentUsername={props.currentUsername} canEdit={props.canEdit} filterRows={filterRows} filterControls={filterControls} onOpenRow={(rowId) => { const dossier = dossierById.get(rowId); if (dossier) props.onOpenDossier(dossier, 'documents'); }} onCommitCell={commitCell} searchPlaceholder="Tìm mã đề nghị, mã hồ sơ, khách hàng, sản phẩm, lĩnh vực..." emptyTitle="Không có hồ sơ PCN phù hợp" emptyDescription="Hãy điều chỉnh từ khóa hoặc các bộ lọc Sổ tổng hợp." /></div>;
 }

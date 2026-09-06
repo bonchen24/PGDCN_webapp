@@ -31,7 +31,7 @@ const retiredContractTests = new Set([
 ]);
 
 const testFiles = fs.readdirSync(testDir)
-  .filter((name) => /^pcn-.*\.test\.(?:ts|mjs)$/.test(name))
+  .filter((name) => /^pcn-.*\.test\.(?:ts|mjs)$/.test(name) || name === 'summary-register-grid.test.ts')
   .filter((name) => !retiredContractTests.has(name))
   .sort()
   .map((name) => path.join(testDir, name));

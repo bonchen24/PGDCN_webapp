@@ -1,18 +1,23 @@
 'use client';
 
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronsDownUp, ChevronsUpDown, Clock3, FlaskConical, MapPin, Search, Send } from 'lucide-react';
+import { ClipboardList, Filter, Plus, Search, Send } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-import type { CertificationDossier, CertificationProposal, OutboundLabRequest, PcnSampleItem, PcnSampleLot, PcnSampleRoute, ReturnedTestResult } from '../types';
-import {
-  buildPcnSampleFlowProjections,
-  filterPcnSampleFlowProjections,
-  getPcnLabRequestStatusLabel,
-  getPcnSampleExecutionOutcomeLabel,
-  getPcnSampleExecutionStatusLabel,
-  getPcnSampleRouteStatusLabel,
-} from '../utils/pcnLabOperations';
-import { getPcnSampleExecutionMode } from '../utils/pcnSampleFlow';
+import type {
+  CertificationDossier,
+  CertificationProposal,
+  OutboundLabRequest,
+  PcnSampleItem,
+  PcnSampleLabCode,
+  PcnSampleLot,
+  PcnSampleRequestBundle,
+  PcnSampleRequestBundleDraft,
+  PcnSampleRoute,
+  ReturnedTestResult,
+} from '../types';
+import { PCN_SAMPLE_LAB_OPTIONS } from '../types';
+import { buildSampleRegisterRows, type PcnSampleRegisterLabCell, type PcnSampleRegisterRow } from '../utils/pcnSampleRegister';
+import PcnSampleRequestBundleModal from './PcnSampleRequestBundleModal';
 
 type Props = {
   dossiers: CertificationDossier[];
@@ -21,126 +26,60 @@ type Props = {
   sampleItems: PcnSampleItem[];
   sampleRoutes: PcnSampleRoute[];
   labRequests: OutboundLabRequest[];
+  sampleRequestBundles: PcnSampleRequestBundle[];
   returnedResults: ReturnedTestResult[];
+  canEdit: boolean;
+  onSaveBundle: (draft: PcnSampleRequestBundleDraft) => Promise<PcnSampleRequestBundle>;
+  onSendBundle: (bundleId: string) => Promise<PcnSampleRequestBundle>;
+  onRetryBundleDispatch: (bundleId: string, dispatchId: string) => Promise<PcnSampleRequestBundle>;
   onOpenDossier: (dossier: CertificationDossier, initialTab?: 'lab' | 'results') => void;
 };
 
-const date = (value?: string) => value ? new Date(value).toLocaleDateString('vi-VN') : '—';
-const dateTime = (value?: string) => value ? new Date(value).toLocaleString('vi-VN') : '—';
+const labTone: Record<PcnSampleLabCode, { header: string; cell: string; badge: string }> = {
+  PERFORMANCE: { header: 'bg-sky-100 text-sky-800', cell: 'bg-sky-50/80', badge: 'bg-sky-100 text-sky-800' },
+  EMC: { header: 'bg-violet-100 text-violet-800', cell: 'bg-violet-50/80', badge: 'bg-violet-100 text-violet-800' },
+  ELECTRICAL_SAFETY: { header: 'bg-amber-100 text-amber-800', cell: 'bg-amber-50/80', badge: 'bg-amber-100 text-amber-800' },
+  CHEMICAL_ANALYSIS: { header: 'bg-emerald-100 text-emerald-800', cell: 'bg-emerald-50/80', badge: 'bg-emerald-100 text-emerald-800' },
+};
 
-export default function PcnLabOperationsView({ dossiers, proposals, sampleLots, sampleItems, sampleRoutes, labRequests, returnedResults, onOpenDossier }: Props) {
+function statusLabel(value?: string): string {
+  const labels: Record<string, string> = { PENDING: 'Chờ gửi', SENT: 'Đã gửi', RECEIVED: 'PTN đã nhận', RESULT_RETURNED: 'Đã trả KQ', RETURNED_TO_PCN: 'Đã trả mẫu', CLOSED: 'Đóng', ISSUE: 'Có sự cố', CANCELLED: 'Hủy' };
+  return labels[String(value || '')] || value || 'Chưa có tuyến';
+}
+
+export default function PcnLabOperationsView({ dossiers, proposals, sampleLots, sampleItems, sampleRoutes, labRequests, sampleRequestBundles, returnedResults, canEdit, onSaveBundle, onSendBundle, onRetryBundleDispatch, onOpenDossier }: Props) {
   const [query, setQuery] = useState('');
-  const [expandedSampleIds, setExpandedSampleIds] = useState<Set<string>>(new Set());
-  const projections = useMemo(() => buildPcnSampleFlowProjections({ dossiers, proposals, sampleLots, sampleItems, sampleRoutes, labRequests, returnedResults }), [dossiers, proposals, sampleLots, sampleItems, sampleRoutes, labRequests, returnedResults]);
-  const visibleProjections = useMemo(() => filterPcnSampleFlowProjections(projections, query), [projections, query]);
-  const ready = visibleProjections.filter((projection) => projection.routes.some((route) => route.readiness === 'READY')).length;
-  const inLab = visibleProjections.filter((projection) => projection.routes.some((route) => route.readiness === 'CURRENT')).length;
-  const failed = visibleProjections.filter((projection) => projection.routes.some((route) => route.executionOutcome === 'FAIL')).length;
-  const completed = visibleProjections.filter((projection) => projection.routes.length > 0 && projection.routes.every((route) => route.readiness === 'COMPLETED' || route.readiness === 'CANCELLED')).length;
-  const toggleSample = (sampleId: string) => setExpandedSampleIds((previous) => {
-    const next = new Set(previous);
-    if (next.has(sampleId)) next.delete(sampleId); else next.add(sampleId);
-    return next;
-  });
-  const expandVisibleSamples = () => setExpandedSampleIds((previous) => new Set([...previous, ...visibleProjections.map((projection) => projection.id)]));
-  const collapseVisibleSamples = () => setExpandedSampleIds((previous) => {
-    const next = new Set(previous);
-    for (const projection of visibleProjections) next.delete(projection.id);
-    return next;
-  });
+  const [labFilter, setLabFilter] = useState<PcnSampleLabCode | ''>('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const rows = useMemo(() => buildSampleRegisterRows({ dossiers, proposals, sampleLots, sampleItems, sampleRoutes, labRequests, bundles: sampleRequestBundles, returnedResults }), [dossiers, proposals, sampleLots, sampleItems, sampleRoutes, labRequests, sampleRequestBundles, returnedResults]);
+  const visibleRows = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase('vi-VN');
+    return rows.filter((row) => {
+      if (labFilter && !row.labCells[labFilter]) return false;
+      if (!normalized) return true;
+      return [row.lotCode, row.sampleCode, row.sampleType, row.model, row.customerName, row.dossierCode, row.proposalCode, row.currentLocation, ...Object.values(row.labCells).flatMap((cell) => [cell?.labName, cell?.pycNumber, cell?.externalRequestCode, cell?.routeStatus])].filter(Boolean).join(' ').toLocaleLowerCase('vi-VN').includes(normalized);
+    });
+  }, [labFilter, query, rows]);
+  const assignedCells = rows.reduce((total, row) => total + Object.keys(row.labCells).length, 0);
+  const returnedCells = rows.reduce((total, row) => total + Object.values(row.labCells).filter((cell) => cell?.resultId).length, 0);
 
   return <div className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5">
-    <div>
-      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Phòng Chứng nhận (PCN)</p>
-      <h1 className="mt-1 text-xl font-black text-slate-900">Phiếu yêu cầu & Luân chuyển mẫu nội bộ</h1>
-      <p className="mt-1 max-w-3xl text-[11px] text-slate-500">Mỗi card là một mẫu/model trong lô; chỉ các phép thử đã gán cho mẫu mới xuất hiện thành luồng. PYC và trạng thái lịch thử được theo dõi trong phạm vi các phòng thử nội bộ thuộc Trung tâm TVCI.</p>
-    </div>
-
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
-      <Metric label="Tổng mẫu/model" value={visibleProjections.length} icon={FlaskConical} />
-      <Metric label="Sẵn sàng chuyển" value={ready} icon={Send} />
-      <Metric label="Đang ở phòng thử" value={inLab} icon={MapPin} />
-      <Metric label="Có FAIL / sự cố" value={failed} icon={AlertTriangle} tone="rose" />
-      <Metric label="Đã hoàn tất" value={completed} icon={CheckCircle2} tone="emerald" />
-    </div>
-
-    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center">
-        <div className="relative min-w-0 flex-1">
-          <Search size={14} className="absolute left-2.5 top-2 text-slate-400" />
-          <input aria-label="Tìm mẫu, PYC và phòng thử" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm lô mẫu, mã hồ sơ, PYC, khách hàng, phòng thử, vị trí..." className="w-full rounded-md border border-slate-200 py-1.5 pl-8 pr-2 text-[11px] outline-none focus:border-emerald-400" />
-        </div>
-        <div className="flex shrink-0 items-center justify-end gap-1.5">
-          <button type="button" onClick={expandVisibleSamples} disabled={visibleProjections.length === 0} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1.5 text-[10px] font-black text-slate-600 hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"><ChevronsDownUp size={13} /> Mở tất cả</button>
-          <button type="button" onClick={collapseVisibleSamples} disabled={visibleProjections.length === 0} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1.5 text-[10px] font-black text-slate-600 hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"><ChevronsUpDown size={13} /> Thu gọn tất cả</button>
-        </div>
-      </div>
-    </div>
-
-    <div className="space-y-3">
-      {visibleProjections.map((projection) => {
-        const dossier = dossiers.find((item) => item.id === projection.dossierId);
-        const hasFailedRoute = projection.routes.some((route) => route.executionOutcome === 'FAIL');
-        const cardTone = projection.hasDataIssue || hasFailedRoute ? 'border-rose-200 bg-rose-50/20' : 'border-slate-200 bg-white';
-        const isExpanded = expandedSampleIds.has(projection.id);
-        return <article key={projection.id} className={`rounded-xl border p-3 shadow-sm md:p-4 ${cardTone}`}>
-          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <button type="button" onClick={() => toggleSample(projection.id)} aria-expanded={isExpanded} aria-controls={`sample-flow-${projection.id}`} className="inline-flex min-w-0 items-center gap-1.5 text-left">
-                  <ChevronDown size={15} className={`shrink-0 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                  <span className="font-mono text-sm font-black text-slate-900">{projection.lotCode}</span>
-                  <span className="truncate text-xs font-black text-slate-800">· {projection.sampleCode} · {projection.sampleType} · Model {projection.model}</span>
-                </button>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-600">{projection.lotStatus}</span>
-                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[9px] font-black text-indigo-700">{projection.routes.length} phép thử</span>
-                {projection.activeRouteCount > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-black text-amber-700">Đang xử lý {projection.activeRouteCount} tuyến</span>}
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-600">
-                <span>Số lượng: {projection.quantity} {projection.unit || 'mẫu'} · Mã mẫu: {projection.sampleItemId}</span>
-                <span className="font-black text-indigo-700">{getPcnSampleExecutionMode({ quantity: projection.quantity }) === 'PARALLEL' ? 'Song song' : 'Tuần tự theo chặng'}</span>
-                <span className="truncate">{projection.dossierCode} · {projection.customerName} · {projection.productName}</span>
-              </div>
-              <p className="mt-1 flex items-center gap-1 text-[10px] font-bold text-slate-700"><MapPin size={12} className="text-emerald-600" /> Vị trí hiện tại: {projection.currentLocation}</p>
-            </div>
-            <button type="button" onClick={() => dossier && onOpenDossier(dossier, projection.routes.some((route) => route.resultOutcome) ? 'results' : 'lab')} className="shrink-0 self-start rounded-md border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-emerald-700 hover:border-emerald-300">Mở card hồ sơ</button>
-          </div>
-
-          {projection.hasDataIssue && <div className="mt-3 flex items-start gap-2 rounded-md bg-rose-100 px-2.5 py-2 text-[10px] font-bold text-rose-800"><AlertTriangle size={14} className="mt-0.5 shrink-0" /><span>Dữ liệu cần rà soát: có tuyến/PYC chưa khớp hoặc nhiều tuyến cùng được xem là đang xử lý.</span></div>}
-
-          <div id={`sample-flow-${projection.id}`} hidden={!isExpanded} className="mt-4 border-t border-slate-200/80 pt-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Luồng phép thử đã gán</p>
-              <button type="button" onClick={() => toggleSample(projection.id)} className="text-[10px] font-black text-slate-500 hover:text-emerald-700">Thu gọn</button>
-            </div>
-            <div className="overflow-x-auto pb-1">
-              <div className="flex min-w-max items-stretch gap-2">
-                {projection.routes.length === 0 && <div className="rounded-lg border border-dashed border-rose-200 bg-white px-4 py-3 text-[10px] font-bold text-rose-700">Chưa có tuyến phòng thử</div>}
-                {projection.routes.map((route) => <RouteNode key={route.routeId} route={route} />)}
-              </div>
-            </div>
-
-            {projection.unlinkedPyc.length > 0 && <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"><p className="text-[10px] font-black uppercase tracking-wide text-amber-800">PYC chưa gắn đúng tuyến mẫu</p><div className="mt-1 flex flex-wrap gap-2">{projection.unlinkedPyc.map((pyc) => <span key={pyc.requestId} className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-amber-900">{pyc.pycNumber} · {getPcnLabRequestStatusLabel(pyc.pycStatus)}</span>)}</div></div>}
-          </div>
-        </article>;
-      })}
-    </div>
-    {visibleProjections.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-[11px] text-slate-500">Chưa có lô mẫu/PYC phù hợp.</div>}
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Phòng Chứng nhận (PCN)</p><h1 className="mt-1 text-xl font-black text-slate-900">Sổ quản lý mẫu</h1><p className="mt-1 max-w-4xl text-[11px] text-slate-500">Mỗi dòng là một mẫu thử. Mỗi cell PTN là một tuyến/PYC riêng; màu nền giúp nhận diện ngay nơi đang xử lý và phản hồi.</p></div>{canEdit && <button type="button" onClick={() => setModalOpen(true)} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white shadow-sm hover:bg-emerald-500"><Plus size={14} /> Tạo Phiếu yêu cầu thử nghiệm</button>}</div>
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-4"><Metric label="Mẫu thử" value={rows.length} /><Metric label="Cell PTN" value={assignedCells} /><Metric label="Đã có phản hồi" value={returnedCells} tone="emerald" /><Metric label="PYC tổng" value={sampleRequestBundles.length} tone="indigo" /></div>
+    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><div className="flex flex-col gap-2 md:flex-row md:items-center"><div className="relative min-w-0 flex-1"><Search size={14} className="absolute left-2.5 top-2 text-slate-400" /><input aria-label="Tìm trong Sổ quản lý mẫu" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã lô, mã mẫu, khách hàng, hồ sơ, PYC..." className="w-full rounded-md border border-slate-200 py-1.5 pl-8 pr-2 text-[11px] outline-none focus:border-emerald-400" /></div><div className="flex items-center gap-1.5"><Filter size={13} className="text-slate-400" /><select aria-label="Lọc theo phòng thử nghiệm" value={labFilter} onChange={(event) => setLabFilter(event.target.value as PcnSampleLabCode | '')} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-600"><option value="">Tất cả PTN</option>{PCN_SAMPLE_LAB_OPTIONS.map((lab) => <option key={lab.code} value={lab.code}>{lab.name}</option>)}</select></div><span className="text-[10px] font-bold text-slate-400">{visibleRows.length}/{rows.length} dòng</span></div></div>
+    <div data-testid="sample-register-grid" className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div className="overflow-x-auto"><table className="min-w-[1500px] w-full border-collapse text-left text-[10px]"><thead><tr className="border-b border-slate-200 bg-slate-100 text-[9px] font-black uppercase tracking-wide text-slate-500"><th className="sticky left-0 z-10 min-w-[250px] border-r border-slate-200 bg-slate-100 px-3 py-2">Mẫu thử / mã hóa</th><th className="min-w-[175px] px-3 py-2">Khách hàng</th><th className="min-w-[125px] px-3 py-2">Hồ sơ / Đề nghị</th><th className="min-w-[145px] px-3 py-2">Số lượng / vị trí</th>{PCN_SAMPLE_LAB_OPTIONS.map((lab) => <th key={lab.code} className={`min-w-[210px] border-l border-white px-3 py-2 ${labTone[lab.code].header}`}>{lab.name}</th>)}</tr></thead><tbody>{visibleRows.map((row) => <RegisterRow key={row.id} row={row} dossiers={dossiers} onOpenDossier={onOpenDossier} onRetryBundleDispatch={onRetryBundleDispatch} />)}</tbody></table></div>{visibleRows.length === 0 && <div className="border-t border-dashed border-slate-200 p-10 text-center text-[11px] text-slate-500">Chưa có mẫu thử phù hợp.</div>}</div>
+    <PcnSampleRequestBundleModal open={modalOpen} dossiers={dossiers} proposals={proposals} sampleLots={sampleLots} sampleItems={sampleItems} onClose={() => setModalOpen(false)} onSave={onSaveBundle} onSend={onSendBundle} />
   </div>;
 }
 
-function RouteNode({ route }: { route: ReturnType<typeof buildPcnSampleFlowProjections>[number]['routes'][number] }) {
-  const tone = route.executionOutcome === 'FAIL' || route.readiness === 'BLOCKED' ? 'border-rose-200 bg-rose-50/60' : route.readiness === 'COMPLETED' ? 'border-emerald-200 bg-emerald-50/60' : route.readiness === 'READY' ? 'border-amber-200 bg-amber-50/60' : 'border-sky-200 bg-sky-50/60';
-  return <div className={`w-[245px] rounded-lg border p-3 ${tone}`}>
-    <div className="flex items-start justify-between gap-2"><div><div className="text-[9px] font-black uppercase tracking-wide text-slate-500">Bước {route.sequence}</div><p className="mt-0.5 text-xs font-black text-slate-900">{route.labName}</p></div><span className="rounded-full bg-white/80 px-1.5 py-0.5 text-[9px] font-black text-slate-700">{route.readiness}</span></div>
-    <div className="mt-2 space-y-1.5 text-[10px]"><Line label="Luân chuyển" value={getPcnSampleRouteStatusLabel(route.routeStatus)} /><Line label="Thực hiện" value={getPcnSampleExecutionStatusLabel(route.executionStatus)} /><Line label="Lịch thử" value={date(route.executionScheduledDate)} /><Line label="KQ thực hiện" value={getPcnSampleExecutionOutcomeLabel(route.executionOutcome)} /><Line label="KQTN chính thức" value={route.resultReportNumber ? `${route.resultReportNumber} · ${route.resultOutcome}` : 'Chưa có KQ'} /></div>
-    <div className="mt-2 border-t border-slate-200/70 pt-2 text-[9px] text-slate-600"><div className="flex items-center gap-1"><Clock3 size={11} /> Bắt đầu: {dateTime(route.executionStartedAt)}</div><div className="mt-1 flex items-center gap-1"><CheckCircle2 size={11} /> Hoàn tất: {dateTime(route.executionCompletedAt)}</div></div>
-    <div className="mt-2 flex flex-wrap gap-1.5">{route.hasLabRequest ? <span className="rounded-full bg-white px-1.5 py-0.5 text-[9px] font-black text-emerald-700">{route.pycNumber || 'Đã có PYC'}</span> : <span className="rounded-full bg-white px-1.5 py-0.5 text-[9px] font-black text-rose-700">Chưa có PYC</span>}{route.externalRequestCode && <span className="rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-slate-600">Ngoài: {route.externalRequestCode}</span>}{route.pycSyncStatus && <span className="rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-slate-600">Sync: {route.pycSyncStatus}</span>}</div>
-    {route.issueDescription && <p className="mt-2 rounded bg-rose-100 px-2 py-1 text-[9px] font-bold text-rose-800">Sự cố: {route.issueDescription}</p>}
-  </div>;
+function RegisterRow({ row, dossiers, onOpenDossier, onRetryBundleDispatch }: { row: PcnSampleRegisterRow; dossiers: CertificationDossier[]; onOpenDossier: Props['onOpenDossier']; onRetryBundleDispatch: Props['onRetryBundleDispatch'] }) {
+  const dossier = dossiers.find((candidate) => candidate.dossierCode === row.dossierCode || candidate.id === row.dossierCode);
+  return <tr className="group border-t border-slate-100 align-top hover:bg-slate-50/70"><td className="sticky left-0 z-[1] border-r border-slate-100 bg-white px-3 py-2 group-hover:bg-slate-50"><button type="button" onClick={() => dossier && onOpenDossier(dossier, Object.values(row.labCells).some((cell) => cell?.resultId) ? 'results' : 'lab')} className="text-left"><p className="font-mono text-[11px] font-black text-slate-900 group-hover:text-emerald-700">{row.sampleCode}</p><p className="mt-0.5 font-mono text-[9px] font-bold text-slate-500">Lô {row.lotCode}</p><p className="mt-1 text-[9px] text-slate-500">{row.sampleType} · {row.model}</p></button></td><td className="px-3 py-2"><p className="font-black text-slate-700">{row.customerName}</p><p className="mt-1 text-[9px] text-slate-500">{row.proposalCode}</p></td><td className="px-3 py-2"><p className="font-mono font-black text-slate-700">{row.dossierCode}</p><span className="mt-1 inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">{row.lotStatus}</span></td><td className="px-3 py-2"><p className="font-black text-slate-700">{row.quantity} {row.unit || 'mẫu'}</p><p className="mt-1 flex items-center gap-1 text-[9px] text-slate-500"><Send size={10} />{row.currentLocation}</p></td>{PCN_SAMPLE_LAB_OPTIONS.map((lab) => <LabCell key={lab.code} labCode={lab.code} cell={row.labCells[lab.code]} onRetryBundleDispatch={onRetryBundleDispatch} />)}</tr>;
 }
 
-function Metric({ label, value, icon: Icon, tone = 'slate' }: { label: string; value: number; icon: typeof FlaskConical; tone?: 'slate' | 'rose' | 'emerald' }) { const iconTone = tone === 'rose' ? 'text-rose-600' : tone === 'emerald' ? 'text-emerald-600' : 'text-slate-600'; return <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm"><Icon size={15} className={iconTone} /><div className="mt-1 text-lg font-black text-slate-800">{value}</div><div className="truncate text-[9px] font-bold text-slate-500">{label}</div></div>; }
-function Line({ label, value }: { label: string; value: string }) { return <div className="flex items-start justify-between gap-2"><span className="text-slate-500">{label}</span><span className="text-right font-black text-slate-700">{value}</span></div>; }
+function LabCell({ labCode, cell, onRetryBundleDispatch }: { labCode: PcnSampleLabCode; cell?: PcnSampleRegisterLabCell; onRetryBundleDispatch: Props['onRetryBundleDispatch'] }) {
+  const tone = labTone[labCode];
+  return <td data-testid={`lab-cell-${labCode}`} className={`border-l border-white px-3 py-2 ${cell ? tone.cell : 'bg-slate-50/40'}`}>{cell ? <div className="space-y-1.5"><div className="flex items-center justify-between gap-2"><span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black ${tone.badge}`}>{statusLabel(cell.routeStatus)}</span>{cell.resultOutcome && <span className="text-[9px] font-black text-emerald-700">KQ: {cell.resultOutcome}</span>}</div><p className="font-mono text-[10px] font-black text-slate-800">{cell.pycNumber || 'Chưa tạo PYC'}</p>{cell.externalRequestCode && <p className="text-[9px] text-slate-600">Mã PTN: {cell.externalRequestCode}</p>}{cell.syncStatus && <p className="text-[9px] font-bold text-slate-500">Liên thông: {cell.syncStatus}</p>}{cell.dispatchStatus === 'ERROR' || cell.dispatchStatus === 'RECONCILE_REQUIRED' ? <button type="button" onClick={() => cell.bundleId && cell.dispatchId && void onRetryBundleDispatch(cell.bundleId, cell.dispatchId)} className="rounded bg-white px-2 py-1 text-[9px] font-black text-rose-700 shadow-sm hover:bg-rose-100">Retry PTN</button> : null}</div> : <span className="text-[9px] text-slate-300">Không gán PTN</span>}</td>;
+}
 
-// --- End of PcnLabOperationsView.tsx ---
+function Metric({ label, value, tone = 'slate' }: { label: string; value: number; tone?: 'slate' | 'emerald' | 'indigo' }) { const color = tone === 'emerald' ? 'text-emerald-600' : tone === 'indigo' ? 'text-indigo-600' : 'text-slate-800'; return <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm"><ClipboardList size={15} className="text-slate-400" /><div className={`mt-1 text-lg font-black ${color}`}>{value}</div><div className="truncate text-[9px] font-bold text-slate-500">{label}</div></div>; }

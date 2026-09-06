@@ -74,6 +74,9 @@ import type {
   PcnSampleExecutionSnapshot,
   PcnSampleRouteItemSnapshot,
   PcnSampleRouteStatus,
+  PcnSampleRequestBundle,
+  PcnSampleRequestBundleDispatch,
+  PcnSampleRequestBundleDraft,
   PcnLabRequestStatus,
   PcnTemplateDefinition,
   PcnTemplateAnnotationMapping,
@@ -220,6 +223,7 @@ import { archivePcnIssuancePackage, buildPcnIssuancePackage, deliverPcnIssuanceP
 import { buildPcnSampleFlowEvent, buildPcnSampleLot, derivePcnSampleLotStatus, getPcnSampleRouteStartDenial, projectPcnSampleRouteFromItemSnapshots, transitionPcnSampleRoute, type PcnSampleLotDraft, type PcnSampleRouteUpdate } from './utils/pcnSampleFlow.ts';
 import { formatPcnProposalCode, formatPcnSampleLotCode, getPcnVietnamDateKey, getPcnVietnamYearKey } from './utils/pcnIdentifier.ts';
 import { PCN_LAB_INTEGRATION_CONTRACT_VERSION, buildPcnLabDispatchPayload, buildPcnLabHmacSigningInput, buildPcnLabIntegrationFingerprint, canonicalizePcnLabIntegrationPayload, getPcnLabIntegrationEventId, mapPcnLabStatusEvent, type PcnLabDispatchPayload, type PcnLabStatusEventInput } from './utils/pcnLabIntegration.ts';
+import { buildSampleRequestBundleDraft, PCN_SAMPLE_REQUEST_BUNDLE_MAPPING_VERSION, validateSampleRequestBundleDraft } from './utils/pcnSampleRequestBundle.ts';
 import { buildPcnLabRequest, transitionPcnLabRequest, type PcnLabRequestDraft } from './utils/pcnLabRouting.ts';
 import { buildPcnSampleHandoverDetails } from './utils/pcnHandoverPolicy.ts';
 import { buildPcnReturnedResult, markOfficialPcnResults } from './utils/pcnResultPolicy.ts';
@@ -684,6 +688,7 @@ const PCN_DB_COLLECTIONS = new Set([
   "pcnSampleItems",
   "pcnSampleRoutes",
   "pcnSampleFlowEvents",
+  "pcnSampleRequestBundles",
   "labRequests",
   "returnedResults",
   "approvalSteps",
@@ -2367,6 +2372,98 @@ function samePcnLabRequestCreation(left: OutboundLabRequest, right: OutboundLabR
     && left.status === right.status;
 }
 
+/**
+ * Keep the aggregate PYC projection in sync with the existing single-lab
+ * dispatch boundary. The child request remains the source of delivery facts;
+ * the bundle only projects per-lab outcome and never overwrites an ACK with a
+ * later retry/error from another dispatch.
+ */
+async function updatePcnSampleRequestBundleDispatch(
+  client: any,
+  requestId: string,
+  input: {
+    status: 'SENDING' | 'ACKNOWLEDGED' | 'ERROR' | 'RECONCILE_REQUIRED';
+    request?: OutboundLabRequest;
+    errorCode?: string;
+    errorMessage?: string;
+    now?: string;
+  },
+): Promise<PcnSampleRequestBundle | undefined> {
+  const bundleResult = await client.query(
+    `SELECT document_id, data FROM app_documents
+     WHERE collection_name = 'pcnSampleRequestBundles'
+     ORDER BY updated_at DESC
+     FOR UPDATE`,
+  );
+  const now = input.now || new Date().toISOString();
+  for (const row of bundleResult.rows) {
+    const bundle = mapDocumentRow(row) as PcnSampleRequestBundle;
+    const dispatchIndex = (bundle.dispatches || []).findIndex((dispatch) => dispatch.labRequestIds.includes(requestId));
+    if (dispatchIndex < 0) continue;
+    const currentDispatch = bundle.dispatches[dispatchIndex];
+    const nextDispatch: PcnSampleRequestBundleDispatch = {
+      ...currentDispatch,
+      status: input.status,
+      ...(input.request?.integration?.externalRequestId ? { externalRequestIds: Array.from(new Set([...(currentDispatch.externalRequestIds || []), input.request.integration.externalRequestId])) } : {}),
+      ...(input.request?.integration?.externalRequestCode ? { externalRequestCodes: Array.from(new Set([...(currentDispatch.externalRequestCodes || []), input.request.integration.externalRequestCode])) } : {}),
+      ...(input.errorCode ? { lastErrorCode: input.errorCode } : { lastErrorCode: undefined }),
+      ...(input.errorMessage ? { lastErrorMessage: input.errorMessage } : { lastErrorMessage: undefined }),
+      ...(input.request?.integration?.lastAttemptAt ? { lastAttemptAt: input.request.integration.lastAttemptAt } : { lastAttemptAt: now }),
+      ...(input.request?.integration?.acknowledgedAt ? { acknowledgedAt: input.request.integration.acknowledgedAt } : {}),
+    };
+    const dispatches = bundle.dispatches.map((item, index) => index === dispatchIndex ? nextDispatch : item);
+    const acknowledged = dispatches.filter((item) => item.status === 'ACKNOWLEDGED' || item.status === 'SENT').length;
+    const failed = dispatches.filter((item) => item.status === 'ERROR' || item.status === 'RECONCILE_REQUIRED').length;
+    const pending = dispatches.filter((item) => item.status === 'DRAFT' || item.status === 'SENDING').length;
+    const status: PcnSampleRequestBundle['status'] = failed > 0
+      ? (acknowledged > 0 ? 'PARTIALLY_SENT' : 'RECONCILE_REQUIRED')
+      : pending > 0
+        ? 'SENDING'
+        : 'SENT';
+    const nextBundle: PcnSampleRequestBundle = { ...bundle, dispatches, status, updatedAt: now };
+    await client.query(
+      `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+       WHERE collection_name = 'pcnSampleRequestBundles' AND document_id = $1`,
+      [bundle.id, JSON.stringify(getDocumentPayload(nextBundle))],
+    );
+    return nextBundle;
+  }
+  return undefined;
+}
+
+async function updatePcnSampleRequestBundleResultState(client: any, requestId: string, now = new Date().toISOString()): Promise<PcnSampleRequestBundle | undefined> {
+  const bundleResult = await client.query(
+    `SELECT document_id, data FROM app_documents
+     WHERE collection_name = 'pcnSampleRequestBundles'
+     ORDER BY updated_at DESC
+     FOR UPDATE`,
+  );
+  for (const row of bundleResult.rows) {
+    const bundle = mapDocumentRow(row) as PcnSampleRequestBundle;
+    if (!bundle.dispatches.some((dispatch) => dispatch.labRequestIds.includes(requestId))) continue;
+    const requestIds = Array.from(new Set(bundle.dispatches.flatMap((dispatch) => dispatch.labRequestIds)));
+    const resultQuery = await client.query(
+      `SELECT DISTINCT data->>'labRequestId' AS lab_request_id
+       FROM app_documents
+       WHERE collection_name = 'returnedResults' AND data->>'labRequestId' = ANY($1::text[])`,
+      [requestIds],
+    );
+    const returnedRequestIds = new Set(resultQuery.rows.map((item: any) => String(item.lab_request_id || '').trim()).filter(Boolean));
+    const nextStatus: PcnSampleRequestBundle['status'] = returnedRequestIds.size > 0
+      ? (returnedRequestIds.size === requestIds.length ? 'RESULT_RETURNED' : 'PARTIALLY_SENT')
+      : bundle.status;
+    if (nextStatus === bundle.status) return bundle;
+    const nextBundle: PcnSampleRequestBundle = { ...bundle, status: nextStatus, updatedAt: now };
+    await client.query(
+      `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+       WHERE collection_name = 'pcnSampleRequestBundles' AND document_id = $1`,
+      [bundle.id, JSON.stringify(getDocumentPayload(nextBundle))],
+    );
+    return nextBundle;
+  }
+  return undefined;
+}
+
 function samePcnReturnedResult(left: ReturnedTestResult, right: ReturnedTestResult): boolean {
   const normalizeIssue = (issue: ReturnedTestResult['sampleIssue']) => issue
     ? {
@@ -2906,6 +3003,11 @@ async function startServer() {
              WHERE collection_name = 'labRequests' AND document_id = $1`,
             [nextRequest.id, JSON.stringify(getDocumentPayload(nextRequest))],
           );
+          await updatePcnSampleRequestBundleDispatch(client, nextRequest.id, {
+            status: mapped.issueCode ? 'RECONCILE_REQUIRED' : 'ACKNOWLEDGED',
+            request: nextRequest,
+            now,
+          });
         }
         const nextDossier: CertificationDossier = {
           ...dossier, updatedAt: now,
@@ -5433,6 +5535,11 @@ async function startServer() {
         const validationError = validateActivityLogPayload(activity);
         if (validationError) throw new Error(validationError);
         await client.query(`INSERT INTO app_documents (collection_name, document_id, data, updated_at) VALUES ('activityLogs', $1, $2::jsonb, CURRENT_TIMESTAMP)`, [activity.id, JSON.stringify(getDocumentPayload(activity))]);
+        await updatePcnSampleRequestBundleDispatch(client, currentRequest.id, {
+          status: 'ACKNOWLEDGED',
+          request: nextRequest,
+          now,
+        });
         return { request: nextRequest, dossier, lot: nextLot, route: nextRoute, activityLogs: [activity], idempotent: false };
       });
       res.status(200).json(result);
@@ -5456,6 +5563,13 @@ async function startServer() {
             updatedAt: new Date().toISOString(),
           };
           await client.query(`UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP WHERE collection_name = 'labRequests' AND document_id = $1`, [request.id, JSON.stringify(getDocumentPayload(nextRequest))]);
+          await updatePcnSampleRequestBundleDispatch(client, request.id, {
+            status: 'ERROR',
+            request: nextRequest,
+            errorCode,
+            errorMessage: nextRequest.integration?.lastErrorMessage,
+            now: nextRequest.updatedAt,
+          });
         });
       } catch (persistError) {
         console.error('PCN lab dispatch error-state persistence failed:', persistError);
@@ -9171,6 +9285,7 @@ async function startServer() {
           changes: diffActivityFields(dossier, nextDossier, ['status', 'returnedResultIds']),
           createdAt: now,
         }));
+        await updatePcnSampleRequestBundleResultState(client, nextRequest.id, now);
         return {
           results: nextResults,
           request: nextRequest,
@@ -9188,6 +9303,381 @@ async function startServer() {
       const message = String(error?.message || error);
       const statusCode = Number(error?.statusCode) || (message.includes('Không tìm thấy') ? 404 : 400);
       res.status(statusCode).json({ error: message });
+    }
+  });
+
+  app.post('/api/pcn/sample-request-bundles', async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') {
+      res.status(404).json({ error: 'Sổ quản lý mẫu PCN chỉ khả dụng trong profile PCN.' });
+      return;
+    }
+    if (!requirePcnMutation(req, res)) return;
+    const rawBundle = req.body?.bundle;
+    if (!rawBundle || typeof rawBundle !== 'object' || Array.isArray(rawBundle)) {
+      res.status(400).json({ error: 'Thiếu dữ liệu PYC tổng.' });
+      return;
+    }
+    const bundleId = String(rawBundle.id || '').trim();
+    const parentPycNumber = String(rawBundle.parentPycNumber || '').trim();
+    const rawLines = Array.isArray(rawBundle.lines) ? rawBundle.lines : [];
+    const rawCustomer = rawBundle.customerSnapshot && typeof rawBundle.customerSnapshot === 'object' && !Array.isArray(rawBundle.customerSnapshot)
+      ? rawBundle.customerSnapshot
+      : null;
+    if (!isSafePcnSampleKey(bundleId) || !parentPycNumber || !rawCustomer || rawLines.length === 0) {
+      res.status(400).json({ error: 'PYC tổng phải có mã định danh, số PYC, khách hàng và ít nhất một mẫu.' });
+      return;
+    }
+    const actor = getPcnSessionUser(req)!;
+    const customerKey = (value: any) => ['name', 'taxId', 'address', 'phone', 'email']
+      .map((key) => String(value?.[key] || '').trim().toLocaleLowerCase('vi-VN'))
+      .join('|');
+    const bundleCustomerKey = customerKey(rawCustomer);
+    if (!bundleCustomerKey) {
+      res.status(400).json({ error: 'PYC tổng phải có thông tin khách hàng để khóa phạm vi cùng khách hàng.' });
+      return;
+    }
+    try {
+      const result = await withPgTransaction(async (client) => {
+        const existingBundleResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'pcnSampleRequestBundles' AND document_id = $1
+           LIMIT 1 FOR UPDATE`,
+          [bundleId],
+        );
+        if (existingBundleResult.rows[0]) {
+          const existingBundle = mapDocumentRow(existingBundleResult.rows[0]) as PcnSampleRequestBundle;
+          if (existingBundle.status !== 'DRAFT') {
+            throw Object.assign(new Error('PYC tổng đã gửi; không được ghi đè snapshot đã liên thông.'), { statusCode: 409 });
+          }
+          const requestIds = Array.from(new Set(existingBundle.dispatches.flatMap((dispatch) => dispatch.labRequestIds)));
+          const [lotResult, itemResult, routeResult, requestResult] = await Promise.all([
+            client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleLots' AND document_id = ANY($1::text[]) ORDER BY document_id`, [existingBundle.sampleLotIds]),
+            client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleItems' AND document_id = ANY($1::text[]) ORDER BY document_id`, [existingBundle.sampleItemIds]),
+            client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleRoutes' AND data->>'sampleLotId' = ANY($1::text[]) ORDER BY document_id`, [existingBundle.sampleLotIds]),
+            client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'labRequests' AND document_id = ANY($1::text[]) ORDER BY document_id`, [requestIds]),
+          ]);
+          return {
+            bundle: existingBundle,
+            lots: lotResult.rows.map(mapDocumentRow),
+            items: itemResult.rows.map(mapDocumentRow),
+            routes: routeResult.rows.map(mapDocumentRow),
+            dispatches: existingBundle.dispatches,
+            labRequests: requestResult.rows.map(mapDocumentRow),
+            activityLogs: [],
+            idempotent: true,
+          };
+        }
+
+        const bundleFieldCodes = normalizePcnSampleList(rawBundle.fieldCodes);
+        if (bundleFieldCodes.length === 0) throw Object.assign(new Error('PYC tổng phải có ít nhất một Lĩnh vực.'), { statusCode: 400 });
+        const seenLotCodes = new Set<string>();
+        const seenSampleCodes = new Set<string>();
+        const normalizedLines: PcnSampleRequestBundleDraft['lines'] = [];
+        const lots: PcnSampleLot[] = [];
+        const items: PcnSampleItem[] = [];
+        const routes: PcnSampleRoute[] = [];
+        const flowEvents: Array<ReturnType<typeof buildPcnSampleFlowEvent>> = [];
+        const labRequestIdsByLab = new Map<PcnSampleLabCode, string[]>();
+        const dossierById = new Map<string, CertificationDossier>();
+        const dossierLotIds = new Map<string, Set<string>>();
+        const dossierRequestIds = new Map<string, Set<string>>();
+
+        const loadDossier = async (dossierId: string): Promise<CertificationDossier> => {
+          const cached = dossierById.get(dossierId);
+          if (cached) return cached;
+          const dossierResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'certificationDossiers' AND document_id = $1
+             LIMIT 1 FOR UPDATE`,
+            [dossierId],
+          );
+          if (!dossierResult.rows[0]) throw Object.assign(new Error(`Không tìm thấy hồ sơ PCN ${dossierId}.`), { statusCode: 404 });
+          const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
+          if (isPcnDossierPostApprovalLocked(dossier.status)) throw Object.assign(new Error('Hồ sơ đã duyệt/phát hành; phải thu hồi có lý do trước khi tạo PYC tổng.'), { statusCode: 409 });
+          if (dossier.ownerUsername && dossier.ownerUsername.trim().toLowerCase() !== actor.username.trim().toLowerCase()) throw Object.assign(new Error('Chỉ chủ hồ sơ được chỉnh sửa dữ liệu bước lấy mẫu.'), { statusCode: 403 });
+          if (!canCreatePcnLabRequest(dossier)) throw Object.assign(new Error('Hồ sơ chưa đến bước lấy mẫu & gửi PTN để tạo PYC tổng.'), { statusCode: 409 });
+          const dossierCustomerKey = customerKey(dossier.customerSnapshot || rawCustomer);
+          if (dossierCustomerKey !== bundleCustomerKey) throw Object.assign(new Error('Các mẫu trong PYC tổng phải thuộc cùng một khách hàng.'), { statusCode: 400 });
+          dossierById.set(dossierId, dossier);
+          dossierLotIds.set(dossierId, new Set(dossier.sampleLotIds || []));
+          dossierRequestIds.set(dossierId, new Set(dossier.labRequestIds || []));
+          return dossier;
+        };
+
+        for (let index = 0; index < rawLines.length; index += 1) {
+          const rawLine = rawLines[index];
+          if (!rawLine || typeof rawLine !== 'object' || Array.isArray(rawLine)) throw Object.assign(new Error(`Mẫu thứ ${index + 1} không hợp lệ.`), { statusCode: 400 });
+          const dossierId = String(rawLine.dossierId || '').trim();
+          const lotCode = String(rawLine.lotCode || '').trim();
+          const sampleCode = String(rawLine.sampleCode || '').trim();
+          const sampleType = String(rawLine.sampleType || '').trim();
+          const model = String(rawLine.model || '').trim();
+          const quantity = Number(rawLine.quantity);
+          if (!isSafePcnSampleKey(dossierId) || !lotCode || !sampleCode || !sampleType || !model || !Number.isInteger(quantity) || quantity < 1) {
+            throw Object.assign(new Error(`Mẫu thứ ${index + 1} thiếu dữ liệu bắt buộc hoặc có số lượng không hợp lệ.`), { statusCode: 400 });
+          }
+          const normalizedLotKey = lotCode.toLocaleLowerCase('vi-VN');
+          const normalizedSampleKey = sampleCode.toLocaleLowerCase('vi-VN');
+          if (seenLotCodes.has(normalizedLotKey)) throw Object.assign(new Error(`Mã lô ${lotCode} bị trùng trong PYC tổng.`), { statusCode: 400 });
+          if (seenSampleCodes.has(normalizedSampleKey)) throw Object.assign(new Error(`Mã mẫu ${sampleCode} bị trùng trong PYC tổng.`), { statusCode: 400 });
+          seenLotCodes.add(normalizedLotKey);
+          seenSampleCodes.add(normalizedSampleKey);
+          const labCodes = normalizePcnSampleLabCodes(rawLine.labCodes);
+          if (labCodes.length === 0) throw Object.assign(new Error(`Mẫu ${sampleCode} phải được gán ít nhất một PTN.`), { statusCode: 400 });
+          const dossier = await loadDossier(dossierId);
+          if (rawLine.customerSnapshot && customerKey(rawLine.customerSnapshot) !== bundleCustomerKey) throw Object.assign(new Error('CUSTOMER_MISMATCH: Các mẫu trong PYC tổng phải thuộc cùng một khách hàng.'), { statusCode: 400 });
+          const lineFieldCodes = bundleFieldCodes.filter((code) => (dossier.fieldCodes || []).includes(code as any));
+          if (lineFieldCodes.length === 0) throw Object.assign(new Error(`Mẫu ${sampleCode} không có Lĩnh vực hợp lệ trong hồ sơ ${dossier.dossierCode}.`), { statusCode: 400 });
+
+          let lot: PcnSampleLot;
+          let item: PcnSampleItem;
+          let lineRoutes: PcnSampleRoute[];
+          const requestedItemId = String(rawLine.sampleItemId || '').trim();
+          const requestedLotId = String(rawLine.sampleLotId || '').trim();
+          if (requestedItemId) {
+            const itemResult = await client.query(
+              `SELECT document_id, data FROM app_documents
+               WHERE collection_name = 'pcnSampleItems' AND document_id = $1
+               LIMIT 1 FOR UPDATE`,
+              [requestedItemId],
+            );
+            if (!itemResult.rows[0]) throw Object.assign(new Error(`Không tìm thấy mẫu nguồn ${requestedItemId}.`), { statusCode: 404 });
+            item = mapDocumentRow(itemResult.rows[0]) as PcnSampleItem;
+            const lotId = requestedLotId || item.sampleLotId;
+            const lotResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleLots' AND document_id = $1 LIMIT 1 FOR UPDATE`, [lotId]);
+            if (!lotResult.rows[0]) throw Object.assign(new Error(`Không tìm thấy lô mẫu của ${item.sampleCode}.`), { statusCode: 404 });
+            lot = mapDocumentRow(lotResult.rows[0]) as PcnSampleLot;
+            if (lot.dossierId !== dossierId || item.sampleLotId !== lot.id) throw Object.assign(new Error('Mẫu nguồn không thuộc đúng hồ sơ/lô đã chọn.'), { statusCode: 400 });
+            const routeResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleRoutes' AND data->>'sampleLotId' = $1 ORDER BY document_id FOR UPDATE`, [lot.id]);
+            const allRoutes = routeResult.rows.map(mapDocumentRow) as PcnSampleRoute[];
+            const requestedRouteIds = rawLine.routeIdsByLab && typeof rawLine.routeIdsByLab === 'object' ? rawLine.routeIdsByLab : {};
+            lineRoutes = labCodes.map((labCode) => {
+              const requestedIds = Array.isArray(requestedRouteIds[labCode]) ? requestedRouteIds[labCode].map((value: unknown) => String(value).trim()) : [];
+              const candidate = allRoutes.find((route) => (requestedIds.length > 0 ? requestedIds.includes(route.id) : route.labCode === labCode) && route.labCode === labCode && (!route.sampleItemIds?.length || route.sampleItemIds.includes(item.id)));
+              if (!candidate) throw Object.assign(new Error(`Không tìm thấy tuyến ${labCode} cho mẫu ${item.sampleCode}.`), { statusCode: 409 });
+              return candidate;
+            });
+          } else {
+            const lotId = requestedLotId || `${bundleId}-lot-${index + 1}`;
+            const itemId = `${lotId}-item-1`;
+            if (!isSafePcnSampleKey(lotId) || !isSafePcnSampleKey(itemId)) throw Object.assign(new Error('Mã định danh lô/mẫu không an toàn.'), { statusCode: 400 });
+            const duplicateLotResult = await client.query(`SELECT document_id FROM app_documents WHERE collection_name = 'pcnSampleLots' AND LOWER(data->>'lotCode') = LOWER($1) LIMIT 1 FOR UPDATE`, [lotCode]);
+            if (duplicateLotResult.rows[0]) throw Object.assign(new Error(`DUPLICATE_LOT_CODE: Mã lô ${lotCode} đã tồn tại.`), { statusCode: 409 });
+            const duplicateItemResult = await client.query(`SELECT document_id FROM app_documents WHERE collection_name = 'pcnSampleItems' AND LOWER(data->>'sampleCode') = LOWER($1) LIMIT 1 FOR UPDATE`, [sampleCode]);
+            if (duplicateItemResult.rows[0]) throw Object.assign(new Error(`DUPLICATE_SAMPLE_CODE: Mã mẫu ${sampleCode} đã tồn tại.`), { statusCode: 409 });
+            const built = buildPcnSampleLot({
+              id: lotId,
+              dossierId,
+              lotCode,
+              sampleItems: [{ id: itemId, sampleCode, sampleType, model, brand: rawLine.brand, quantity, unit: rawLine.unit, testLabCodes: labCodes, notes: rawLine.notes }],
+              quantity,
+              fieldCodes: lineFieldCodes,
+              labCodes,
+              notes: rawLine.notes,
+            } as PcnSampleLotDraft, new Date().toISOString());
+            lot = built.lot;
+            item = built.items[0];
+            lineRoutes = built.routes;
+            for (const candidate of built.items) {
+              await client.query(`INSERT INTO app_documents (collection_name, document_id, data, updated_at) VALUES ('pcnSampleItems', $1, $2::jsonb, CURRENT_TIMESTAMP)`, [candidate.id, JSON.stringify(getDocumentPayload(candidate))]);
+              items.push(candidate);
+            }
+            for (const candidate of built.routes) {
+              await client.query(`INSERT INTO app_documents (collection_name, document_id, data, updated_at) VALUES ('pcnSampleRoutes', $1, $2::jsonb, CURRENT_TIMESTAMP)`, [candidate.id, JSON.stringify(getDocumentPayload(candidate))]);
+              routes.push(candidate);
+            }
+            await client.query(`INSERT INTO app_documents (collection_name, document_id, data, updated_at) VALUES ('pcnSampleLots', $1, $2::jsonb, CURRENT_TIMESTAMP)`, [lot.id, JSON.stringify(getDocumentPayload(lot))]);
+            const event = buildPcnSampleFlowEvent({
+              id: stablePcnMutationId('pcn-sample-event-bundle-created', lot.id),
+              sampleLotId: lot.id,
+              type: 'LOT_CREATED',
+              location: lot.currentLocation,
+              note: `Tạo lô ${lot.lotCode} từ modal PYC tổng`,
+              actorUsername: actor.username,
+            }, lot.createdAt || new Date().toISOString());
+            await client.query(`INSERT INTO app_documents (collection_name, document_id, data, updated_at) VALUES ('pcnSampleFlowEvents', $1, $2::jsonb, CURRENT_TIMESTAMP) ON CONFLICT (collection_name, document_id) DO NOTHING`, [event.id, JSON.stringify(getDocumentPayload(event))]);
+            flowEvents.push(event);
+            lots.push(lot);
+          }
+
+          if (!items.some((candidate) => candidate.id === item.id)) items.push(item);
+          if (!lots.some((candidate) => candidate.id === lot.id)) lots.push(lot);
+          for (const route of lineRoutes) if (!routes.some((candidate) => candidate.id === route.id)) routes.push(route);
+          const routeIdsByLab = Object.fromEntries(lineRoutes.map((route) => [route.labCode, [route.id]])) as PcnSampleRequestBundleDraft['lines'][number]['routeIdsByLab'];
+          normalizedLines.push({
+            sampleItemId: item.id,
+            sampleLotId: lot.id,
+            dossierId,
+            lotCode: lot.lotCode,
+            sampleCode: item.sampleCode,
+            sampleType: item.sampleType,
+            model: item.model,
+            ...(item.brand ? { brand: item.brand } : {}),
+            quantity: item.quantity,
+            ...(item.unit ? { unit: item.unit } : {}),
+            labCodes,
+            routeIdsByLab,
+            customerSnapshot: dossier.customerSnapshot || rawCustomer,
+            ...(item.notes ? { notes: item.notes } : {}),
+          });
+          const lotIds = dossierLotIds.get(dossierId)!;
+          lotIds.add(lot.id);
+
+          for (const route of lineRoutes) {
+            const requestId = stablePcnMutationId('pcn-lab-request-bundle', `${bundleId}:${route.id}`);
+            const existingRequestResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'labRequests' AND document_id = $1 LIMIT 1 FOR UPDATE`, [requestId]);
+            let request: OutboundLabRequest;
+            if (existingRequestResult.rows[0]) {
+              request = mapDocumentRow(existingRequestResult.rows[0]) as OutboundLabRequest;
+              if (request.bundleId !== bundleId || request.sampleRouteId !== route.id) throw Object.assign(new Error('PYC con đã tồn tại nhưng không khớp bundle/tuyến mẫu.'), { statusCode: 409 });
+            } else {
+              const pycNumber = `${parentPycNumber}-${route.labCode}-${String(index + 1).padStart(2, '0')}`;
+              request = {
+                ...buildPcnLabRequest({ id: requestId, dossierId, fieldCode: lineFieldCodes[0] as PcnCertificationFieldCode, laboratoryName: route.labName, sampleLotId: lot.id, sampleRouteId: route.id, pycNumber, targetDate: rawBundle.targetDate, criteria: rawBundle.criteria }, new Date().toISOString()),
+                bundleId,
+                parentPycNumber,
+                sampleItemIds: [...(route.sampleItemIds || [item.id])],
+                mappingVersion: PCN_SAMPLE_REQUEST_BUNDLE_MAPPING_VERSION,
+              };
+              await client.query(`INSERT INTO app_documents (collection_name, document_id, data, updated_at) VALUES ('labRequests', $1, $2::jsonb, CURRENT_TIMESTAMP)`, [request.id, JSON.stringify(getDocumentPayload(request))]);
+            }
+            if (route.labRequestId && route.labRequestId !== request.id) throw Object.assign(new Error('Tuyến mẫu đã được gắn với PYC khác.'), { statusCode: 409 });
+            if (route.labRequestId !== request.id) {
+              const linkedRoute = { ...route, labRequestId: request.id, updatedAt: new Date().toISOString() };
+              await client.query(`UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP WHERE collection_name = 'pcnSampleRoutes' AND document_id = $1`, [route.id, JSON.stringify(getDocumentPayload(linkedRoute))]);
+              const routeIndex = routes.findIndex((candidate) => candidate.id === route.id);
+              if (routeIndex >= 0) routes[routeIndex] = linkedRoute;
+            }
+            const requestIds = labRequestIdsByLab.get(route.labCode) || [];
+            requestIds.push(request.id);
+            labRequestIdsByLab.set(route.labCode, requestIds);
+            const requestDossierIds = dossierRequestIds.get(dossierId)!;
+            requestDossierIds.add(request.id);
+          }
+        }
+
+        const draft: PcnSampleRequestBundleDraft = {
+          id: bundleId,
+          parentPycNumber,
+          customerSnapshot: rawCustomer,
+          sourceRefs: Array.isArray(rawBundle.sourceRefs) ? rawBundle.sourceRefs : [],
+          fieldCodes: bundleFieldCodes as PcnCertificationFieldCode[],
+          lines: normalizedLines,
+          ...(String(rawBundle.targetDate || '').trim() ? { targetDate: String(rawBundle.targetDate).trim() } : {}),
+          ...(String(rawBundle.criteria || '').trim() ? { criteria: String(rawBundle.criteria).trim() } : {}),
+        };
+        const bundle = buildSampleRequestBundleDraft(draft, new Date().toISOString());
+        const dispatches = bundle.dispatches.map((dispatch) => ({
+          ...dispatch,
+          labRequestIds: Array.from(new Set(labRequestIdsByLab.get(dispatch.labCode) || [])),
+        }));
+        const persistedBundle: PcnSampleRequestBundle = { ...bundle, dispatches };
+        await client.query(`INSERT INTO app_documents (collection_name, document_id, data, updated_at) VALUES ('pcnSampleRequestBundles', $1, $2::jsonb, CURRENT_TIMESTAMP)`, [bundle.id, JSON.stringify(getDocumentPayload(persistedBundle))]);
+        for (const [dossierId, dossier] of dossierById.entries()) {
+          const nextDossier: CertificationDossier = {
+            ...dossier,
+            sampleLotIds: Array.from(dossierLotIds.get(dossierId) || []),
+            labRequestIds: Array.from(dossierRequestIds.get(dossierId) || []),
+            updatedAt: persistedBundle.updatedAt,
+          };
+          await client.query(`UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP WHERE collection_name = 'certificationDossiers' AND document_id = $1`, [dossierId, JSON.stringify(getDocumentPayload(nextDossier))]);
+        }
+        const activity = buildActivityLog({
+          id: stablePcnMutationId('activity-pcn-sample-request-bundle', bundle.id),
+          action: 'CREATED',
+          entityType: 'PCN_LAB_REQUEST',
+          entityId: bundle.id,
+          entityLabel: bundle.parentPycNumber,
+          actorUsername: actor.username,
+          actorName: actor.name,
+          actorRole: actor.systemRole || actor.role,
+          summary: 'Lưu PYC tổng và chuẩn bị các PYC con theo từng phòng thử',
+          source: 'UI',
+          groupId: bundle.id,
+          changes: diffActivityFields({}, persistedBundle, ['parentPycNumber', 'customerSnapshot', 'sampleItemIds', 'sampleLotIds', 'dispatches', 'status']),
+          createdAt: persistedBundle.createdAt,
+        });
+        const validationError = validateActivityLogPayload(activity);
+        if (validationError) throw new Error(validationError);
+        await client.query(`INSERT INTO app_documents (collection_name, document_id, data, updated_at) VALUES ('activityLogs', $1, $2::jsonb, CURRENT_TIMESTAMP)`, [activity.id, JSON.stringify(getDocumentPayload(activity))]);
+        const requestIds = Array.from(new Set(dispatches.flatMap((dispatch) => dispatch.labRequestIds)));
+        const requestResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'labRequests' AND document_id = ANY($1::text[]) ORDER BY document_id`, [requestIds]);
+        return { bundle: persistedBundle, lots, items, routes, dispatches, labRequests: requestResult.rows.map(mapDocumentRow), events: flowEvents, activityLogs: [activity], idempotent: false };
+      });
+      res.status(result.idempotent ? 200 : 201).json(result);
+    } catch (error: any) {
+      console.error('PCN sample request bundle save error:', error);
+      const message = String(error?.message || error);
+      res.status(Number(error?.statusCode) || (message.includes('Không tìm thấy') ? 404 : 400)).json({ error: message });
+    }
+  });
+
+  app.post('/api/pcn/sample-request-bundles/:bundleId/send', async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') {
+      res.status(404).json({ error: 'Gửi PYC tổng PCN chỉ khả dụng trong profile PCN.' });
+      return;
+    }
+    if (!requirePcnMutation(req, res)) return;
+    const bundleId = String(req.params.bundleId || '').trim();
+    if (!isSafePcnSampleKey(bundleId)) {
+      res.status(400).json({ error: 'Mã PYC tổng không hợp lệ.' });
+      return;
+    }
+    try {
+      const result = await withPgTransaction(async (client) => {
+        const bundleResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleRequestBundles' AND document_id = $1 LIMIT 1 FOR UPDATE`, [bundleId]);
+        if (!bundleResult.rows[0]) throw Object.assign(new Error('Không tìm thấy PYC tổng để gửi.'), { statusCode: 404 });
+        const bundle = mapDocumentRow(bundleResult.rows[0]) as PcnSampleRequestBundle;
+        if (bundle.status === 'SENT' || bundle.status === 'PARTIALLY_SENT') return { bundle, dispatches: bundle.dispatches, labRequests: [], lots: [], items: [], routes: [], activityLogs: [], idempotent: true };
+        if (bundle.status === 'CANCELLED') throw Object.assign(new Error('PYC tổng đã hủy.'), { statusCode: 409 });
+        const now = new Date().toISOString();
+        const nextDispatches = bundle.dispatches.map((dispatch) => dispatch.status === 'ACKNOWLEDGED' ? dispatch : { ...dispatch, status: 'SENDING' as const, lastAttemptAt: now, lastErrorCode: undefined, lastErrorMessage: undefined });
+        const nextBundle: PcnSampleRequestBundle = { ...bundle, status: 'SENDING', dispatches: nextDispatches, updatedAt: now };
+        await client.query(`UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP WHERE collection_name = 'pcnSampleRequestBundles' AND document_id = $1`, [bundle.id, JSON.stringify(getDocumentPayload(nextBundle))]);
+        const requestIds = Array.from(new Set(nextDispatches.flatMap((dispatch) => dispatch.labRequestIds)));
+        const requestResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'labRequests' AND document_id = ANY($1::text[]) ORDER BY document_id`, [requestIds]);
+        const [lotResult, itemResult, routeResult] = await Promise.all([
+          client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleLots' AND document_id = ANY($1::text[]) ORDER BY document_id`, [bundle.sampleLotIds]),
+          client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleItems' AND document_id = ANY($1::text[]) ORDER BY document_id`, [bundle.sampleItemIds]),
+          client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleRoutes' AND data->>'sampleLotId' = ANY($1::text[]) ORDER BY document_id`, [bundle.sampleLotIds]),
+        ]);
+        return { bundle: nextBundle, dispatches: nextDispatches, labRequests: requestResult.rows.map(mapDocumentRow), lots: lotResult.rows.map(mapDocumentRow), items: itemResult.rows.map(mapDocumentRow), routes: routeResult.rows.map(mapDocumentRow), activityLogs: [], idempotent: false };
+      });
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pcn/sample-request-bundles/:bundleId/retry/:dispatchId', async (req, res) => {
+    if (DATABASE_PROFILE !== 'pcn') {
+      res.status(404).json({ error: 'Retry PYC tổng PCN chỉ khả dụng trong profile PCN.' });
+      return;
+    }
+    if (!requirePcnMutation(req, res)) return;
+    const bundleId = String(req.params.bundleId || '').trim();
+    const dispatchId = String(req.params.dispatchId || '').trim();
+    if (!isSafePcnSampleKey(bundleId) || !isSafePcnSampleKey(dispatchId)) {
+      res.status(400).json({ error: 'Mã bundle hoặc dispatch không hợp lệ.' });
+      return;
+    }
+    try {
+      const result = await withPgTransaction(async (client) => {
+        const bundleResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnSampleRequestBundles' AND document_id = $1 LIMIT 1 FOR UPDATE`, [bundleId]);
+        if (!bundleResult.rows[0]) throw Object.assign(new Error('Không tìm thấy PYC tổng để retry.'), { statusCode: 404 });
+        const bundle = mapDocumentRow(bundleResult.rows[0]) as PcnSampleRequestBundle;
+        const dispatch = bundle.dispatches.find((item) => item.id === dispatchId);
+        if (!dispatch) throw Object.assign(new Error('Không tìm thấy PTN cần retry trong PYC tổng.'), { statusCode: 404 });
+        const now = new Date().toISOString();
+        const dispatches = bundle.dispatches.map((item) => item.id === dispatchId ? { ...item, status: 'SENDING' as const, lastAttemptAt: now, lastErrorCode: undefined, lastErrorMessage: undefined } : item);
+        const nextBundle: PcnSampleRequestBundle = { ...bundle, status: 'SENDING', dispatches, updatedAt: now };
+        await client.query(`UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP WHERE collection_name = 'pcnSampleRequestBundles' AND document_id = $1`, [bundle.id, JSON.stringify(getDocumentPayload(nextBundle))]);
+        const requestResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'labRequests' AND document_id = ANY($1::text[]) ORDER BY document_id`, [dispatch.labRequestIds]);
+        return { bundle: nextBundle, dispatches, labRequests: requestResult.rows.map(mapDocumentRow), lots: [], items: [], routes: [], activityLogs: [], idempotent: false };
+      });
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
     }
   });
 
@@ -14533,6 +15023,10 @@ async function startServer() {
       res.status(405).json({ error: 'Template PCN chỉ được cập nhật qua boundary quản trị template; không ghi qua API collection chung.' });
       return;
     }
+    if (DATABASE_PROFILE === 'pcn' && collectionName === 'pcnSampleRequestBundles') {
+      res.status(405).json({ error: 'PYC tổng chỉ được cập nhật qua boundary Sổ quản lý mẫu.' });
+      return;
+    }
     if (DATABASE_PROFILE === 'pcn' && collectionName === 'issuancePackages') {
       const denial = getPcnIssuanceGenericMutationDenial({ status: req.body?.status });
       if (denial) {
@@ -14632,6 +15126,10 @@ async function startServer() {
       res.status(405).json({ error: 'Template PCN không được xóa qua API collection chung; hãy dùng thao tác nghỉ hưu trong Cài đặt PCN.' });
       return;
     }
+    if (DATABASE_PROFILE === 'pcn' && collectionName === 'pcnSampleRequestBundles') {
+      res.status(405).json({ error: 'PYC tổng chỉ được xóa qua boundary Sổ quản lý mẫu.' });
+      return;
+    }
     const documentId = decodeURIComponent(String(req.params.id || ""));
     if (DATABASE_PROFILE === 'pcn' && collectionName === 'activityLogs') {
       res.status(405).json({ error: "Activity log PCN là append-only và không được xóa." });
@@ -14663,6 +15161,10 @@ async function startServer() {
     }
     if (DATABASE_PROFILE === 'pcn' && collectionName === 'pcnTemplateDefinitions') {
       res.status(405).json({ error: 'Template PCN chỉ được cập nhật qua boundary quản trị template; không ghi batch qua API collection chung.' });
+      return;
+    }
+    if (DATABASE_PROFILE === 'pcn' && collectionName === 'pcnSampleRequestBundles') {
+      res.status(405).json({ error: 'PYC tổng chỉ được cập nhật qua boundary Sổ quản lý mẫu.' });
       return;
     }
     const items = Array.isArray(req.body?.items) ? req.body.items : [];
@@ -14785,6 +15287,10 @@ async function startServer() {
     }
     if (DATABASE_PROFILE === 'pcn' && collectionName === 'pcnTemplateDefinitions') {
       res.status(405).json({ error: 'Template PCN không được xóa batch qua API collection chung; hãy dùng thao tác nghỉ hưu trong Cài đặt PCN.' });
+      return;
+    }
+    if (DATABASE_PROFILE === 'pcn' && collectionName === 'pcnSampleRequestBundles') {
+      res.status(405).json({ error: 'PYC tổng chỉ được xóa qua boundary Sổ quản lý mẫu.' });
       return;
     }
     const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(String).filter(Boolean) : [];

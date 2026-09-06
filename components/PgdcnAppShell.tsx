@@ -41,12 +41,12 @@ const getActiveContextLabel = (target: PgdcnNavigationTarget): string => {
   }
   if (target.domain === 'PCN') {
     if (target.section === 'proposals') return 'Đề nghị';
-    if (target.section === 'operations') return 'Sổ điều hành';
-    if (target.section === 'lab-operations') return 'PYC & luân chuyển mẫu';
+    if (target.section === 'operations') return 'Sổ tổng hợp';
+    if (target.section === 'lab-operations') return 'Sổ quản lý mẫu';
     return 'Soạn thảo tài liệu';
   }
   if (target.section === 'requests') return 'Hồ sơ PYC';
-  if (target.section === 'operations') return 'Sổ điều hành PGD';
+  if (target.section === 'operations') return 'Sổ tổng hợp';
   return 'Soạn thảo tài liệu';
 };
 

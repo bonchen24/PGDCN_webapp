@@ -55,8 +55,8 @@ import { PCN_MOBILE_NAVIGATION, type PcnSection } from '../utils/pcnNavigation';
 const sectionLabels: Record<PcnSection, string> = {
   dashboard: 'Tổng quan',
   proposals: 'Đề nghị',
-  operations: 'Sổ điều hành',
-  'lab-operations': 'PYC & luân chuyển mẫu nội bộ',
+  operations: 'Sổ tổng hợp',
+  'lab-operations': 'Sổ quản lý mẫu',
   drafting: 'Soạn thảo tài liệu',
   assistant: 'Trợ lý phê duyệt',
   customers: 'Danh sách khách hàng',
@@ -713,9 +713,9 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', o
   ) : activeSection === 'proposals' ? (
     <ProposalView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} customers={pcn.customers} canEdit={canMutatePcn} initialDossierId={focusedDossierId} initialFieldCode={selectedField} openFormRequest={proposalFormRequest} onSave={(proposal) => pcn.addProposal(proposal)} onUpdateProposal={(proposalId, updates) => pcn.updateProposal(proposalId, updates)} onOpenDossier={(dossier) => { setSelectedDossierTab(undefined); setSelectedDossierId(dossier.id); }} />
   ) : activeSection === 'operations' ? (
-    <PcnOperationsRegisterView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} issuancePackages={pcn.issuancePackages} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} users={pcn.users} onOpenDossier={openDossierAtCurrentStation} />
+    <PcnOperationsRegisterView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} issuancePackages={pcn.issuancePackages} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} users={pcn.users} currentUsername={currentUser.username} canEdit={canMutatePcn} onUpdateProposal={pcn.updateProposal} onUpdateDossier={pcn.updateDossier} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'lab-operations' ? (
-    <PcnLabOperationsView dossiers={pcn.dossiers} proposals={pcn.proposals} sampleLots={pcn.sampleLots} sampleItems={pcn.sampleItems} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} onOpenDossier={openDossierAtCurrentStation} />
+    <PcnLabOperationsView dossiers={pcn.dossiers} proposals={pcn.proposals} sampleLots={pcn.sampleLots} sampleItems={pcn.sampleItems} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} sampleRequestBundles={pcn.sampleRequestBundles} returnedResults={pcn.returnedResults} canEdit={canMutatePcn} onSaveBundle={pcn.saveSampleRequestBundle} onSendBundle={pcn.sendSampleRequestBundle} onRetryBundleDispatch={pcn.retrySampleRequestBundleDispatch} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'drafting' ? (
     <PcnDraftingWorkspaceView proposals={pcn.proposals} dossiers={pcn.dossiers} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} onToast={(message, type) => type === 'error' ? toast.error(message) : toast.success(message)} onOpenSettings={() => openSection('settings')} />
   ) : activeSection === 'assistant' ? (

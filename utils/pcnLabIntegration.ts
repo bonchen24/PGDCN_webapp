@@ -54,6 +54,10 @@ export interface PcnLabDispatchPayload {
   request: {
     pcnLabRequestId: string;
     pcnNumber: string;
+    bundleId?: string;
+    parentPycNumber?: string;
+    mappingVersion?: string;
+    pcnSampleItemIds: string[];
     dossierId: string;
     dossierCode: string;
     proposalId?: string;
@@ -242,6 +246,10 @@ export function buildPcnLabDispatchPayload(input: PcnLabDispatchInput): PcnLabDi
     request: {
       pcnLabRequestId: required(input.request.id, 'Mã PYC PCN'),
       pcnNumber: required(input.request.pycNumber, 'Số PYC PCN'),
+      ...(optional(input.request.bundleId) ? { bundleId: optional(input.request.bundleId) } : {}),
+      ...(optional(input.request.parentPycNumber) ? { parentPycNumber: optional(input.request.parentPycNumber) } : {}),
+      ...(optional(input.request.mappingVersion) ? { mappingVersion: optional(input.request.mappingVersion) } : {}),
+      pcnSampleItemIds: sampleItems.map((item) => required(item.id, 'Mã mẫu/model PCN')),
       dossierId: input.dossier.id,
       dossierCode: required(input.dossier.dossierCode, 'Mã hồ sơ PCN'),
       fieldCode: required(input.request.fieldCode, 'Mã lĩnh vực'),

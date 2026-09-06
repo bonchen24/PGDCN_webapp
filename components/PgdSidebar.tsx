@@ -22,7 +22,7 @@ export type PgdEntrySection = PgdSection | 'intake';
 export const PGD_SECTION_LABELS: Record<PgdSection, string> = {
   dashboard: 'Tổng quan PGD',
   requests: 'Hồ sơ PYC',
-  operations: 'Sổ điều hành PGD',
+  operations: 'Sổ tổng hợp',
   preparation: 'Chuẩn bị & Phân công',
   field: 'Hiện trường & Lấy mẫu',
   labs: 'PTN & Kết quả',
