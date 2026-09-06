@@ -13,9 +13,21 @@ import type {
   PcnSampleRoute,
   PcnSampleRouteStatus,
   PcnSampleExecutionOutcome,
+  PcnSampleLabFeedback,
 } from '../types.ts';
 
 export const PCN_LAB_INTEGRATION_CONTRACT_VERSION = '1';
+
+/**
+ * Route code identifies the testing branch; target system identifies the
+ * connected app. EMC and electrical safety are two branches of the same DDT
+ * electrical-electronics laboratory app.
+ */
+export function resolvePcnLabTargetSystemCode(value: unknown): string {
+  const code = required(value, 'Mã app/phòng thử').toUpperCase();
+  if (code === 'EMC' || code === 'ELECTRICAL_SAFETY' || code === 'ITD') return 'DDT';
+  return code;
+}
 
 export const PCN_LAB_STATUS_EVENT_TYPES = [
   'RECEIVED',
@@ -57,7 +69,8 @@ export interface PcnLabDispatchPayload {
     bundleId?: string;
     parentPycNumber?: string;
     mappingVersion?: string;
-    pcnSampleItemIds: string[];
+    /** Optional on the legacy PERFORMANCE/LABFTEE v1 transport contract. */
+    pcnSampleItemIds?: string[];
     dossierId: string;
     dossierCode: string;
     proposalId?: string;
@@ -125,6 +138,7 @@ export interface PcnLabStatusEventInput {
   pcnRouteId?: string;
   pcnLabRequestId?: string;
   pcnSampleItemIds?: string[];
+  sampleFeedback?: PcnSampleLabFeedback[];
   eventType: PcnLabStatusEventType;
   occurredAt: string;
   scheduledDate?: string;
@@ -142,6 +156,7 @@ export interface PcnLabStatusEventMapping {
   routeStatus?: PcnSampleRouteStatus;
   internalEventType: PcnSampleFlowEventType;
   execution: PcnSampleExecutionSnapshot;
+  sampleFeedback?: PcnSampleLabFeedback[];
   note?: string;
   issueCode?: string;
 }
@@ -175,6 +190,33 @@ function optional(value: unknown): string | undefined {
   return normalized || undefined;
 }
 
+function normalizeSampleFeedback(value: PcnSampleLabFeedback[] | undefined): PcnSampleLabFeedback[] | undefined {
+  if (!value?.length) return undefined;
+  const seen = new Set<string>();
+  const feedback = value.map((entry) => {
+    const pcnSampleItemId = required(entry?.pcnSampleItemId, 'sampleFeedback.pcnSampleItemId');
+    if (seen.has(pcnSampleItemId)) throw new Error('sampleFeedback không được trùng mẫu/model.');
+    seen.add(pcnSampleItemId);
+    const receivedQuantity = entry.receivedQuantity === undefined || entry.receivedQuantity === null
+      ? undefined
+      : Number(entry.receivedQuantity);
+    if (receivedQuantity !== undefined && (!Number.isFinite(receivedQuantity) || receivedQuantity < 0)) {
+      throw new Error('sampleFeedback.receivedQuantity phải là số không âm.');
+    }
+    return {
+      pcnSampleItemId,
+      ...(optional(entry.labSampleCode) ? { labSampleCode: optional(entry.labSampleCode) } : {}),
+      ...(optional(entry.sampleConditionCode) ? { sampleConditionCode: optional(entry.sampleConditionCode) } : {}),
+      ...(optional(entry.sampleConditionNote) ? { sampleConditionNote: optional(entry.sampleConditionNote) } : {}),
+      ...(receivedQuantity !== undefined ? { receivedQuantity } : {}),
+      ...(optional(entry.receivedUnit) ? { receivedUnit: optional(entry.receivedUnit) } : {}),
+      ...(optional(entry.receivedAt) ? { receivedAt: optional(entry.receivedAt) } : {}),
+      ...(optional(entry.receivedBy) ? { receivedBy: optional(entry.receivedBy) } : {}),
+    } satisfies PcnSampleLabFeedback;
+  });
+  return feedback;
+}
+
 function normalizeSystemCode(value: unknown, label: string): string {
   return required(value, label).toUpperCase();
 }
@@ -203,7 +245,13 @@ function normalizeInitiatedBy(value: PcnIntegrationActorSnapshot | undefined): P
  * contains sample/PYC identity and test context, never credentials or files.
  */
 export function buildPcnLabDispatchPayload(input: PcnLabDispatchInput): PcnLabDispatchPayload {
-  const targetSystem = normalizeSystemCode(input.targetSystemCode, 'Mã app phòng thử');
+  const targetSystem = resolvePcnLabTargetSystemCode(normalizeSystemCode(input.targetSystemCode, 'Mã app phòng thử'));
+  // LABFTEE's current PERFORMANCE ingress validates payload.request with an
+  // exact allow-list and predates the aggregate sample-request bundle fields.
+  // Keep the richer identity in PCN persistence, but send only its legacy
+  // request contract at this boundary. Other connected labs receive the full
+  // mapping metadata.
+  const usesLegacyPerformanceRequestContract = targetSystem === 'PERFORMANCE';
   const messageId = required(input.messageId, 'messageId');
   const idempotencyKey = required(input.idempotencyKey, 'idempotencyKey');
   const initiatedBy = normalizeInitiatedBy(input.initiatedBy);
@@ -246,10 +294,10 @@ export function buildPcnLabDispatchPayload(input: PcnLabDispatchInput): PcnLabDi
     request: {
       pcnLabRequestId: required(input.request.id, 'Mã PYC PCN'),
       pcnNumber: required(input.request.pycNumber, 'Số PYC PCN'),
-      ...(optional(input.request.bundleId) ? { bundleId: optional(input.request.bundleId) } : {}),
-      ...(optional(input.request.parentPycNumber) ? { parentPycNumber: optional(input.request.parentPycNumber) } : {}),
-      ...(optional(input.request.mappingVersion) ? { mappingVersion: optional(input.request.mappingVersion) } : {}),
-      pcnSampleItemIds: sampleItems.map((item) => required(item.id, 'Mã mẫu/model PCN')),
+      ...(!usesLegacyPerformanceRequestContract && optional(input.request.bundleId) ? { bundleId: optional(input.request.bundleId) } : {}),
+      ...(!usesLegacyPerformanceRequestContract && optional(input.request.parentPycNumber) ? { parentPycNumber: optional(input.request.parentPycNumber) } : {}),
+      ...(!usesLegacyPerformanceRequestContract && optional(input.request.mappingVersion) ? { mappingVersion: optional(input.request.mappingVersion) } : {}),
+      ...(!usesLegacyPerformanceRequestContract ? { pcnSampleItemIds: sampleItems.map((item) => required(item.id, 'Mã mẫu/model PCN')) } : {}),
       dossierId: input.dossier.id,
       dossierCode: required(input.dossier.dossierCode, 'Mã hồ sơ PCN'),
       fieldCode: required(input.request.fieldCode, 'Mã lĩnh vực'),
@@ -349,10 +397,12 @@ export function mapPcnLabStatusEvent(input: PcnLabStatusEventInput): PcnLabStatu
     lastSyncedAt: occurredAt,
     ...(optional(input.externalStatusCode) ? { externalStatusCode: optional(input.externalStatusCode) } : {}),
   };
+  const sampleFeedback = normalizeSampleFeedback(input.sampleFeedback);
   const mapping: PcnLabStatusEventMapping = {
     eventType: input.eventType,
     internalEventType: 'UPDATED',
     execution: executionBase,
+    ...(sampleFeedback ? { sampleFeedback } : {}),
     ...(optional(input.note) ? { note: optional(input.note) } : {}),
     ...(optional(input.issueCode) ? { issueCode: optional(input.issueCode) } : {}),
   };

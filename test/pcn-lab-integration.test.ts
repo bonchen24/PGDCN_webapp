@@ -14,6 +14,7 @@ import {
   buildPcnLabIntegrationFingerprint,
   getPcnLabIntegrationEventId,
   mapPcnLabStatusEvent,
+  resolvePcnLabTargetSystemCode,
 } from '../utils/pcnLabIntegration.ts';
 
 const requestFixture = (): OutboundLabRequest => ({
@@ -80,6 +81,28 @@ const proposalFixture = (): CertificationProposal => ({
   updatedAt: '2026-08-30T03:00:00.000Z',
 } as unknown as CertificationProposal);
 
+test('resolves the shared DDT app for both electrical-electronics branches', () => {
+  assert.equal(resolvePcnLabTargetSystemCode('EMC'), 'DDT');
+  assert.equal(resolvePcnLabTargetSystemCode('ELECTRICAL_SAFETY'), 'DDT');
+  assert.equal(resolvePcnLabTargetSystemCode('PERFORMANCE'), 'PERFORMANCE');
+});
+
+test('dispatch keeps DDT branch code while routing both branches to one app', () => {
+  const payload = buildPcnLabDispatchPayload({
+    request: requestFixture(),
+    lot: lotFixture(),
+    sampleItems: sampleItemsFixture(),
+    route: { ...routeFixture(), labCode: 'EMC', labName: 'Phòng Điện - Điện tử / EMC' },
+    dossier: dossierFixture(),
+    targetSystemCode: 'EMC',
+    messageId: 'msg-ddt-emc',
+    idempotencyKey: 'PCN:r-1:pyc-1:ddt-emc:v1',
+  });
+
+  assert.equal(payload.targetSystem, 'DDT');
+  assert.equal(payload.route.labCode, 'EMC');
+});
+
 test('dispatch payload contains PCN route identity and no credential/file fields', () => {
   const payload = buildPcnLabDispatchPayload({
     request: requestFixture(),
@@ -116,6 +139,42 @@ test('dispatch payload contains PCN route identity and no credential/file fields
   assert.equal('fileBytes' in payload.samples[0], false);
   assert.equal('password' in payload.initiatedBy, false);
   assert.equal('token' in payload.initiatedBy, false);
+});
+
+test('PERFORMANCE legacy adapter omits bundle metadata from the remote request contract', () => {
+  const payload = buildPcnLabDispatchPayload({
+    request: {
+      ...requestFixture(),
+      bundleId: 'bundle-legacy-1',
+      parentPycNumber: 'PYC-TONG-001',
+      mappingVersion: 'pcn-lab-map-v1',
+    },
+    lot: lotFixture(),
+    sampleItems: sampleItemsFixture(),
+    route: routeFixture(),
+    dossier: dossierFixture(),
+    proposal: proposalFixture(),
+    targetSystemCode: 'PERFORMANCE',
+    messageId: 'msg-legacy-performance',
+    idempotencyKey: 'PCN:r-1:pyc-1:legacy-performance:v1',
+  });
+
+  assert.deepEqual(Object.keys(payload.request).sort(), [
+    'criteria',
+    'dossierCode',
+    'dossierId',
+    'fieldCode',
+    'pcnLabRequestId',
+    'pcnNumber',
+    'pcnRouteId',
+    'proposalCode',
+    'proposalId',
+    'requestedAt',
+    'targetDate',
+  ]);
+  assert.equal(payload.request.pcnSampleItemIds, undefined);
+  assert.equal(payload.request.parentPycNumber, undefined);
+  assert.equal(payload.request.mappingVersion, undefined);
 });
 
 test('dispatch payload rejects an incomplete PCN actor snapshot', () => {
@@ -202,6 +261,62 @@ test('event mapping keeps TEST_COMPLETED distinct from a formal returned result'
   assert.equal(mapped.execution.outcome, 'FAIL');
   assert.equal(mapped.execution.externalReportNumber, 'EMC-FAIL-002');
   assert.equal(mapped.internalEventType, 'UPDATED');
+});
+
+test('status event mapping keeps per-sample PTN feedback alongside execution milestones', () => {
+  const mapped = mapPcnLabStatusEvent({
+    sourceSystemCode: 'EMC',
+    externalEventId: 'evt-feedback-1',
+    externalRequestId: 'ext-feedback-1',
+    externalSequence: 5,
+    pcnRouteId: 'r-2',
+    pcnSampleItemIds: ['item-1'],
+    eventType: 'SCHEDULED',
+    scheduledDate: '2026-09-10',
+    occurredAt: '2026-09-06T08:01:00.000Z',
+    sampleFeedback: [{
+      pcnSampleItemId: 'item-1',
+      labSampleCode: 'EMC-26-001',
+      sampleConditionCode: 'INTACT',
+      sampleConditionNote: 'Nguyên vẹn, đủ tem niêm phong',
+      receivedQuantity: 1,
+      receivedUnit: 'mẫu',
+      receivedAt: '2026-09-05T09:30:00.000Z',
+      receivedBy: 'PTN EMC',
+    }],
+  });
+
+  assert.equal(mapped.execution.status, 'SCHEDULED');
+  assert.equal(mapped.execution.scheduledDate, '2026-09-10');
+  assert.deepEqual(mapped.sampleFeedback, [{
+    pcnSampleItemId: 'item-1',
+    labSampleCode: 'EMC-26-001',
+    sampleConditionCode: 'INTACT',
+    sampleConditionNote: 'Nguyên vẹn, đủ tem niêm phong',
+    receivedQuantity: 1,
+    receivedUnit: 'mẫu',
+    receivedAt: '2026-09-05T09:30:00.000Z',
+    receivedBy: 'PTN EMC',
+  }]);
+});
+
+test('status event mapping rejects duplicate sample feedback entries', () => {
+  assert.throws(
+    () => mapPcnLabStatusEvent({
+      sourceSystemCode: 'PERFORMANCE',
+      externalEventId: 'evt-feedback-duplicate',
+      externalRequestId: 'ext-feedback-duplicate',
+      externalSequence: 6,
+      pcnRouteId: 'r-1',
+      eventType: 'RECEIVED',
+      occurredAt: '2026-09-06T08:02:00.000Z',
+      sampleFeedback: [
+        { pcnSampleItemId: 'item-1', labSampleCode: 'P-001' },
+        { pcnSampleItemId: 'item-1', labSampleCode: 'P-001-UPDATED' },
+      ],
+    }),
+    /sampleFeedback không được trùng mẫu\/model/,
+  );
 });
 
 test('duplicate and stale event keys are stable and distinguishable', async () => {

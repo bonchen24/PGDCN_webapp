@@ -892,6 +892,7 @@ export interface PcnLabRequestIntegrationLink {
   idempotencyKey?: string;
   externalRequestId?: string;
   externalRequestCode?: string;
+  externalLotCode?: string;
   payloadFingerprint?: string;
   lastAttemptAt?: string;
   acknowledgedAt?: string;

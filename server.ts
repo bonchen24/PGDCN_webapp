@@ -230,7 +230,7 @@ import { applyPcnApprovalDecision, buildPcnApprovalSteps, getPcnApprovalDecision
 import { archivePcnIssuancePackage, buildPcnIssuancePackage, deliverPcnIssuancePackage, getPcnIssuanceGenericMutationDenial, getPcnIssuanceOfficialDocumentReadiness, getPcnIssuanceReadiness, issuePcnIssuancePackage, withdrawPcnIssuancePackage } from "./utils/pcnIssuance.ts";
 import { buildPcnSampleFlowEvent, buildPcnSampleLot, derivePcnSampleLotStatus, getPcnSampleRouteStartDenial, projectPcnSampleRouteFromItemSnapshots, transitionPcnSampleRoute, type PcnSampleLotDraft, type PcnSampleRouteUpdate } from './utils/pcnSampleFlow.ts';
 import { formatPcnProposalCode, formatPcnSampleLotCode, getPcnVietnamDateKey, getPcnVietnamYearKey } from './utils/pcnIdentifier.ts';
-import { PCN_LAB_INTEGRATION_CONTRACT_VERSION, buildPcnLabDispatchPayload, buildPcnLabHmacSigningInput, buildPcnLabIntegrationFingerprint, canonicalizePcnLabIntegrationPayload, getPcnLabIntegrationEventId, mapPcnLabStatusEvent, type PcnLabDispatchPayload, type PcnLabStatusEventInput } from './utils/pcnLabIntegration.ts';
+import { PCN_LAB_INTEGRATION_CONTRACT_VERSION, buildPcnLabDispatchPayload, buildPcnLabHmacSigningInput, buildPcnLabIntegrationFingerprint, canonicalizePcnLabIntegrationPayload, getPcnLabIntegrationEventId, mapPcnLabStatusEvent, resolvePcnLabTargetSystemCode, type PcnLabDispatchPayload, type PcnLabStatusEventInput } from './utils/pcnLabIntegration.ts';
 import { buildSampleRequestBundleDraft, PCN_SAMPLE_REQUEST_BUNDLE_MAPPING_VERSION, validateSampleRequestBundleDraft } from './utils/pcnSampleRequestBundle.ts';
 import { buildPcnLabRequest, transitionPcnLabRequest, type PcnLabRequestDraft } from './utils/pcnLabRouting.ts';
 import { buildPcnSampleHandoverDetails } from './utils/pcnHandoverPolicy.ts';
@@ -2201,6 +2201,7 @@ function stablePcnMutationId(prefix: string, value: string): string {
 }
 
 interface PcnLabIntegrationConfig {
+  routeCode: string;
   systemCode: string;
   baseUrl: string;
   secretEnv: string;
@@ -2218,15 +2219,19 @@ function getPcnLabIntegrationConfig(systemCode: string): PcnLabIntegrationConfig
     throw Object.assign(new Error('Cấu hình tích hợp phòng thử không hợp lệ.'), { statusCode: 503 });
   }
   const entries = Array.isArray(parsed)
-    ? parsed
+    ? parsed.map((item: any) => ({
+        ...(item && typeof item === 'object' ? item : {}),
+        routeCode: String(item?.routeCode || item?.systemCode || '').trim().toUpperCase(),
+      }))
     : parsed && typeof parsed === 'object'
       ? Object.entries(parsed as Record<string, unknown>).map(([key, value]) => ({
           ...(value && typeof value === 'object' && !Array.isArray(value) ? value : {}),
-          systemCode: key,
+          routeCode: String((value as any)?.routeCode || key).trim().toUpperCase(),
         }))
       : [];
   const wanted = String(systemCode || '').trim().toUpperCase();
-  const entry = entries.find((item) => item && typeof item === 'object' && String((item as any).systemCode || '').trim().toUpperCase() === wanted) as any;
+  const wantedAliases = new Set([wanted, wanted === 'ITD' ? 'ELECTRICAL_SAFETY' : wanted]);
+  const entry = entries.find((item) => item && typeof item === 'object' && wantedAliases.has(String((item as any).routeCode || '').trim().toUpperCase())) as any;
   if (!entry) return null;
   const baseUrl = String(entry.baseUrl || '').trim();
   const secretEnv = String(entry.secretEnv || '').trim();
@@ -2234,7 +2239,8 @@ function getPcnLabIntegrationConfig(systemCode: string): PcnLabIntegrationConfig
     throw Object.assign(new Error(`Cấu hình app phòng thử ${wanted} chưa có baseUrl/secretEnv hợp lệ.`), { statusCode: 503 });
   }
   return {
-    systemCode: wanted,
+    routeCode: wanted,
+    systemCode: resolvePcnLabTargetSystemCode(entry.systemCode || wanted),
     baseUrl: baseUrl.replace(/\/+$/, ''),
     secretEnv,
     ...(String(entry.requestPath || '').trim() ? { requestPath: String(entry.requestPath).trim() } : {}),
@@ -5532,7 +5538,7 @@ async function startServer() {
           route,
           dossier,
           proposal,
-          targetSystemCode: route.labCode,
+          targetSystemCode: config.systemCode,
           messageId,
           idempotencyKey,
           sentAt,
@@ -5550,7 +5556,7 @@ async function startServer() {
           ...request,
           integration: {
             ...(request.integration || {}),
-            targetSystemCode: route.labCode,
+            targetSystemCode: dispatchContext.config.systemCode,
             syncStatus: 'PENDING',
             idempotencyKey,
             payloadFingerprint: bodySha256,
@@ -5647,6 +5653,7 @@ async function startServer() {
             syncStatus: 'ACKNOWLEDGED',
             externalRequestId: String(ack.externalRequestId).trim(),
             externalRequestCode: String(ack.externalRequestCode).trim(),
+            ...(String(ack.externalLotCode || '').trim() ? { externalLotCode: String(ack.externalLotCode).trim() } : {}),
             acknowledgedAt: String(ack.acceptedAt).trim(),
             lastSyncedAt: now,
             lastErrorCode: undefined,
