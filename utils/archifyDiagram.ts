@@ -32,10 +32,16 @@ function normalizeIdentifierPart(value: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+function unicodeDisambiguator(value: string): string {
+  const codePoints = Array.from(value, (character) => character.codePointAt(0)!.toString(16));
+  return codePoints.length > 0 ? `-u${codePoints.join('x')}` : '';
+}
+
 export function archifyStableId(prefix: string, value: string): string {
   const normalizedPrefix = normalizeIdentifierPart(prefix) || 'archify';
   const normalizedValue = normalizeIdentifierPart(value) || 'unknown';
-  return `${normalizedPrefix}-${normalizedValue}`;
+  const disambiguator = /[^\x00-\x7F]/.test(value) ? unicodeDisambiguator(value) : '';
+  return `${normalizedPrefix}-${normalizedValue}${disambiguator}`;
 }
 
 export function unavailableDiagram(diagramType: ArchifyDiagramUnavailable['diagramType'], reason: string): ArchifyDiagramUnavailable {

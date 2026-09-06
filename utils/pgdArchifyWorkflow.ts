@@ -217,9 +217,9 @@ export function buildPgdArchifyWorkflow(input: PgdArchifyWorkflowInput): Archify
 export function buildPgdArchifyDiagramSuite(input: PgdArchifyWorkflowInput): PgdArchifyDiagramSuite {
   return {
     workflow: buildPgdArchifyWorkflow(input),
-    lifecycle: unavailableDiagram('lifecycle', 'Chưa có bộ dựng lịch sử trạng thái trong Task 1.'),
-    dataflow: unavailableDiagram('dataflow', 'Chưa có bộ dựng đường đi tài liệu trong Task 1.'),
+    lifecycle: unavailableDiagram('lifecycle', 'Chưa có đủ dữ liệu lịch sử trạng thái để dựng biểu đồ.'),
+    dataflow: unavailableDiagram('dataflow', 'Chưa có đủ dữ liệu liên kết tài liệu để dựng biểu đồ.'),
     sequence: unavailableDiagram('sequence', 'Chưa có dữ liệu hoạt động để dựng chuỗi actor/task/audit.'),
-    architecture: unavailableDiagram('architecture', 'Chưa có bộ dựng boundary kiến trúc trong Task 1.'),
+    architecture: unavailableDiagram('architecture', 'Chưa có đủ dữ liệu boundary liên quan để dựng biểu đồ.'),
   };
 }

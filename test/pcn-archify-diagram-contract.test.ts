@@ -9,6 +9,7 @@ import {
   buildPcnArchifyDiagramSuite,
   type PcnArchifyWorkflowInput,
 } from '../utils/pcnArchifyWorkflow.ts';
+import { buildPgdArchifyDiagramSuite } from '../utils/pgdArchifyWorkflow.ts';
 
 const workflow = {
   templateCode: 'PCN-CUSTOM',
@@ -83,6 +84,48 @@ test('PCN diagram suite exposes the workflow and explicit unavailable five-view 
     [suite.lifecycle, suite.dataflow, suite.sequence, suite.architecture].map((view) => view.diagramType),
     ['lifecycle', 'dataflow', 'sequence', 'architecture'],
   );
+  for (const view of [suite.lifecycle, suite.dataflow, suite.sequence, suite.architecture]) {
+    assert.doesNotMatch(view.reason, /Task 1/);
+  }
+});
+
+test('PGD diagram suite exposes the same five-view contract without mixing PCN fields', () => {
+  const request = {
+    id: 'request-contract',
+    domain: 'pgd',
+    requestCode: 'PGD-260906-CONTRACT',
+    status: 'INTAKE_REVIEW',
+    productGroup: 'STEEL_METAL',
+    catalogItemId: 'STEEL_LOT_INSPECTION',
+    productName: 'Thép cuộn',
+    quantity: 1,
+    unit: 'tấn',
+    inspectionScope: 'Số lượng',
+    inspectionLocation: 'Kho khách hàng',
+    standards: [],
+    sampleIds: [],
+    labRequestIds: [],
+    documentPointers: [],
+    dossierChecklist: [],
+    createdAt: '2026-09-06T00:00:00.000Z',
+    updatedAt: '2026-09-06T00:00:00.000Z',
+  };
+  const suite = buildPgdArchifyDiagramSuite({
+    request,
+    samples: [],
+    labRequests: [],
+    labResults: [],
+    dossierDocuments: [],
+    approvals: [],
+    activityLogs: [],
+  } as any);
+
+  assert.equal(suite.workflow.diagram_type, 'workflow');
+  assert.deepEqual(
+    [suite.lifecycle.diagramType, suite.dataflow.diagramType, suite.sequence.diagramType, suite.architecture.diagramType],
+    ['lifecycle', 'dataflow', 'sequence', 'architecture'],
+  );
+  assert.equal(suite.sequence.available, false);
 });
 
 test('sequence stays unavailable without activity events and does not fabricate a message', () => {
@@ -99,4 +142,13 @@ test('stable IDs normalize conservatively and remain deterministic', () => {
   assert.equal(archifyStableId('node', '123'), 'node-123');
   assert.equal(archifyStableId('node', 'A/B'), 'node-a-b');
   assert.equal(archifyStableId('node', 'A/B'), archifyStableId('node', 'A/B'));
+});
+
+test('stable IDs disambiguate distinct Unicode source IDs', () => {
+  const first = archifyStableId('node', '申請');
+  const second = archifyStableId('node', '審査');
+
+  assert.notEqual(first, second);
+  assert.equal(first, archifyStableId('node', '申請'));
+  assert.equal(second, archifyStableId('node', '審査'));
 });
