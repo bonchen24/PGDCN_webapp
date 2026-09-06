@@ -108,6 +108,7 @@ import {
   normalizePcnSystemRole,
   getDepartmentScopes,
   getPgdRole,
+  shouldUseSecurePcnSessionCookie,
   toPcnUserAccount,
   verifyPcnPassword,
   verifyPcnSessionToken,
@@ -1102,8 +1103,16 @@ async function getPcnStoredGeminiModel(req: express.Request): Promise<string | u
   return model || undefined;
 }
 
-function setPcnSessionCookie(res: express.Response, token: string, maxAgeSeconds = PCN_SESSION_TTL_SECONDS): void {
-  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+function setPcnSessionCookie(req: express.Request, res: express.Response, token: string, maxAgeSeconds = PCN_SESSION_TTL_SECONDS): void {
+  const forwardedProto = Array.isArray(req.headers['x-forwarded-proto'])
+    ? req.headers['x-forwarded-proto'].join(',')
+    : req.headers['x-forwarded-proto'];
+  const secure = shouldUseSecurePcnSessionCookie({
+    nodeEnv: process.env.NODE_ENV,
+    protocol: req.protocol,
+    forwardedProto,
+    secure: req.secure,
+  }) ? '; Secure' : '';
   res.setHeader(
     'Set-Cookie',
     `${PCN_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=${maxAgeSeconds}; HttpOnly; SameSite=Lax${secure}`,
@@ -6012,7 +6021,7 @@ async function startServer() {
           return;
         }
       }
-      setPcnSessionCookie(res, createPcnSessionToken(user, PCN_SESSION_SECRET));
+      setPcnSessionCookie(req, res, createPcnSessionToken(user, PCN_SESSION_SECRET));
       res.json({ authenticated: true, user });
     } catch (error: any) {
       console.error('PCN session login error:', error);
@@ -6038,7 +6047,7 @@ async function startServer() {
       res.status(404).json({ error: 'PCN session chỉ khả dụng trong profile PCN.' });
       return;
     }
-    setPcnSessionCookie(res, '', 0);
+    setPcnSessionCookie(req, res, '', 0);
     res.status(204).end();
   });
 

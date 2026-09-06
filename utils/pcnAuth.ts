@@ -155,6 +155,18 @@ export function verifyPcnPassword(row: PcnUserRow, inputPassword: string, custom
   return password === validPassword || (password === 'Abc123456' && !configuredPassword && !configuredCustomPassword);
 }
 
+export function shouldUseSecurePcnSessionCookie(input: {
+  nodeEnv?: string;
+  protocol?: string;
+  forwardedProto?: string;
+  secure?: boolean;
+}): boolean {
+  if (String(input.nodeEnv || '').trim().toLowerCase() !== 'production') return false;
+  const protocol = String(input.protocol || '').trim().toLowerCase();
+  const forwardedProto = String(input.forwardedProto || '').split(',')[0].trim().toLowerCase();
+  return input.secure === true || protocol === 'https' || forwardedProto === 'https';
+}
+
 export function toPcnUserAccount(row: PcnUserRow): PcnUserAccount {
   const userData: Record<string, unknown> = { ...row.data, id: row.documentId };
   const systemRole = normalizePcnSystemRole(userData);

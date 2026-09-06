@@ -9,6 +9,7 @@ import {
   verifyPcnPassword,
   verifyPcnSessionToken,
 } from '../utils/pcnAuth.ts';
+import * as pcnAuth from '../utils/pcnAuth.ts';
 
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const loginSource = fs.readFileSync(new URL('../components/LoginScreen.tsx', import.meta.url), 'utf8');
@@ -51,6 +52,17 @@ test('PCN session token preserves a safe user snapshot and rejects tampering/exp
   assert.equal(verifyPcnSessionToken(`${token}tampered`, 'pcn-test-secret', 1_500), null);
   assert.equal(verifyPcnSessionToken(token, 'pcn-test-secret', 62_000), null);
   assert.equal((user as unknown as Record<string, unknown>).password, undefined);
+});
+
+test('PCN session cookie is Secure only for HTTPS requests in production', () => {
+  const shouldUseSecureCookie = (pcnAuth as typeof pcnAuth & {
+    shouldUseSecurePcnSessionCookie?: (input: { nodeEnv?: string; protocol?: string; forwardedProto?: string; secure?: boolean }) => boolean;
+  }).shouldUseSecurePcnSessionCookie;
+  assert.equal(typeof shouldUseSecureCookie, 'function');
+  assert.equal(shouldUseSecureCookie?.({ nodeEnv: 'production', protocol: 'http' }), false);
+  assert.equal(shouldUseSecureCookie?.({ nodeEnv: 'production', protocol: 'https' }), true);
+  assert.equal(shouldUseSecureCookie?.({ nodeEnv: 'production', protocol: 'http', forwardedProto: 'https' }), true);
+  assert.equal(shouldUseSecureCookie?.({ nodeEnv: 'development', protocol: 'https' }), false);
 });
 
 test('PCN login uses a server session and PCN data/file APIs require that session', () => {

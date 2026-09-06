@@ -87,6 +87,41 @@ test('PCN adapter preserves authored graph, parallel branches and return route',
   assert.match(compiled.svg, /data-edge-id="t-review-decision"/);
 });
 
+test('PCN adapter keeps a forward rework policy edge on the readable main route', async () => {
+  const forwardPolicyWorkflow = {
+    ...pcnWorkflow,
+    transitions: pcnWorkflow.transitions.map((edge) => edge.id === 't-join-review'
+      ? { ...edge, returnPolicy: 'REWORK' as const }
+      : edge),
+  };
+  const workflowDocument = buildPcnArchifyWorkflow({
+    dossier: { ...pcnDossier, workflowSnapshot: forwardPolicyWorkflow },
+    workflow: forwardPolicyWorkflow as any,
+    tasks: forwardPolicyWorkflow.nodes.map((node) => ({
+      id: `task-forward-${node.id}`,
+      dossierId: pcnDossier.id,
+      nodeId: node.id,
+      status: 'LOCKED',
+      cycleNo: 1,
+      updatedAt: '2026-09-06T00:00:00.000Z',
+      updatedBy: 'operator',
+    })),
+    documents: [],
+    documentWaivers: {},
+    results: [],
+    approvalSteps: [],
+    activityLogs: [],
+  });
+
+  const forwardEdge = workflowDocument.edges.find((edge) => edge.id === 't-join-review');
+  assert.equal(forwardEdge?.role, 'main');
+  assert.equal(forwardEdge?.variant, 'default');
+
+  const { compileWorkflow } = await import('../vendor/archify/archify/renderers/workflow/workflow-compiler.mjs');
+  const compiled = compileWorkflow({ workflow: workflowDocument, qualityProfile: workflowDocument.meta.quality_profile });
+  assert.equal(compiled.ok, true, JSON.stringify(compiled.diagnostics));
+});
+
 test('PGD adapter projects the same Archify runtime for the second domain', async () => {
   const request = {
     id: 'request-1',

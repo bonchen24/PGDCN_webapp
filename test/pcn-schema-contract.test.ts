@@ -34,6 +34,7 @@ test('PCN schema contains only the shared JSON document and file metadata primit
   assert.match(schema, /LOWER\(data->>'proposalCode'\)/);
   assert.match(schema, /idx_pcn_lab_requests_pyc_number_ci/);
   assert.match(schema, /idx_pcn_lab_requests_sample_route/);
+  assert.doesNotMatch(schema, /"id":"t-join-approval"[^\n]*"returnPolicy":"REWORK"/);
 });
 
 test('PCN server collection allowlist names only PCN business collections', () => {

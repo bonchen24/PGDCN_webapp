@@ -291,7 +291,7 @@ VALUES (
         {"id":"t-split-review","fromNodeId":"split","toNodeId":"review","condition":"ALWAYS"},
         {"id":"t-sampling-join","fromNodeId":"sampling","toNodeId":"join","condition":"ALWAYS"},
         {"id":"t-review-join","fromNodeId":"review","toNodeId":"join","condition":"ALWAYS"},
-        {"id":"t-join-approval","fromNodeId":"join","toNodeId":"approval","condition":"ALWAYS","returnPolicy":"REWORK"},
+        {"id":"t-join-approval","fromNodeId":"join","toNodeId":"approval","condition":"ALWAYS"},
         {"id":"t-approval-delivery","fromNodeId":"approval","toNodeId":"delivery","condition":"ALWAYS"},
         {"id":"t-delivery-archive","fromNodeId":"delivery","toNodeId":"archive","condition":"ALWAYS"}
       ],

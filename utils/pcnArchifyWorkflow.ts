@@ -93,7 +93,10 @@ function unique<T>(values: T[]): T[] {
 function isReturnEdge(edge: PcnWorkflowSnapshot['transitions'][number], nodesById: Map<string, PcnWorkflowNodeDefinition>): boolean {
   const from = nodesById.get(edge.fromNodeId);
   const to = nodesById.get(edge.toNodeId);
-  return Boolean(edge.returnPolicy) || Boolean(from && to && to.sortOrder <= from.sortOrder);
+  // returnPolicy describes the rework policy carried by a transition; it does
+  // not by itself make a forward transition a return route. The seeded
+  // topology intentionally keeps that metadata on the join -> approval edge.
+  return Boolean(from && to && to.sortOrder <= from.sortOrder);
 }
 
 function buildBranchLaneMap(workflow: PcnWorkflowSnapshot): Map<string, string> {
