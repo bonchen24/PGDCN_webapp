@@ -12,7 +12,7 @@ import {
   getPcnDocumentRequirements,
   mergePcnDossierChecklist,
 } from '../utils/pcnDossierDocuments.ts';
-import { confirmPcnGeneratedDocumentIntoChecklist, uploadPcnDossierDocument } from '../utils/pcnDossierDocumentApi.ts';
+import { confirmPcnGeneratedDocumentIntoChecklist, generateAndAttachPcnDossierNodeDocument, removeCurrentPcnDossierDocument, uploadPcnDossierDocument, waivePcnDossierDocument } from '../utils/pcnDossierDocumentApi.ts';
 import type { PcnGeneratedDocument } from '../types.ts';
 
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
@@ -193,6 +193,58 @@ test('generated confirmation route copies into dossier provenance and audits the
   assert.match(route, /sourceCollection.*dossierDocuments|dossierDocuments.*sourceCollection/);
   assert.match(route, /Xác nhận bản sinh/);
   assert.match(route, /validateActivityLogPayload/);
+});
+
+test('node document boundaries keep waiver and remove-current operations explicit', async () => {
+  const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input, init) => {
+    calls.push({ input, init });
+    return Response.json({ document: { id: 'dossier-document-1' }, dossier: {}, activityLog: null });
+  }) as typeof fetch;
+  try {
+    await waivePcnDossierDocument({ dossierId: 'dossier-1', requirementId: 'QC4-COMMERCIAL', reason: 'Bổ sung sau' });
+    await removeCurrentPcnDossierDocument({ dossierId: 'dossier-1', requirementId: 'QC4-COMMERCIAL' });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.deepEqual(calls.map((call) => `${call.init?.method} ${call.input}`), [
+    'POST /api/pcn/dossiers/dossier-1/documents/QC4-COMMERCIAL/waive',
+    'POST /api/pcn/dossiers/dossier-1/documents/QC4-COMMERCIAL/remove-current',
+  ]);
+  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { reason: 'Bổ sung sau' });
+  assert.deepEqual(JSON.parse(String(calls[1].init?.body)), {});
+});
+
+test('server keeps current-document removal non-destructive and waiver audited', () => {
+  assert.match(serverSource, /app\.post\('\/api\/pcn\/dossiers\/:dossierId\/documents\/:requirementId\/waive'/);
+  assert.match(serverSource, /app\.post\('\/api\/pcn\/dossiers\/:dossierId\/documents\/:requirementId\/remove-current'/);
+  const removeRoute = serverSource.slice(serverSource.indexOf("app.post('/api/pcn/dossiers/:dossierId/documents/:requirementId/remove-current'"));
+  assert.match(removeRoute, /currentVersionId/);
+  assert.match(removeRoute, /versions/);
+  assert.match(removeRoute, /validateActivityLogPayload/);
+  assert.match(removeRoute, /MISSING/);
+});
+
+test('node work generation uses a dedicated generate-and-attach boundary', async () => {
+  const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input, init) => {
+    calls.push({ input, init });
+    return Response.json({ generated: { id: 'generated-1' }, document: { id: 'document-1' }, activityLog: null });
+  }) as typeof fetch;
+  try {
+    await generateAndAttachPcnDossierNodeDocument({ dossierId: 'dossier-1', nodeId: 'assignment', requirementId: 'QC4-ASSIGNMENT_FORM' });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.equal(String(calls[0].input), '/api/pcn/dossiers/dossier-1/node-work/assignment/generate-and-attach');
+  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { requirementId: 'QC4-ASSIGNMENT_FORM' });
+  const route = serverSource.slice(serverSource.indexOf("app.post('/api/pcn/dossiers/:dossierId/node-work/:nodeId/generate-and-attach'"));
+  assert.match(route, /getPcnNodeDocumentGenerationKind/);
+  assert.match(route, /renderPcnNodeGeneratedDocx/);
+  assert.match(route, /buildPcnGeneratedDossierAttachment/);
+  assert.match(route, /Tự sinh và gắn/);
 });
 
 // --- End of pcn-dossier-documents.test.ts ---

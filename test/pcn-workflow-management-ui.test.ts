@@ -16,9 +16,15 @@ test('workflow template management is a manager/admin surface with revision and 
   assert.match(view, /Chỉ Admin hoặc Quản lý PCN/);
 });
 
-test('shared settings passes the workflow catalog and manager-only actions to the workflow surface', () => {
+test('shared Hồ sơ mẫu workspace owns the workflow catalog and manager-only actions', () => {
   const settings = read('components/PgdcnSystemSettingsView.tsx');
-  assert.match(settings, /PcnWorkflowTemplateManagementView/);
-  assert.match(settings, /workflowTemplates/);
-  assert.match(settings, /canManageWorkflow/);
+  const shell = read('components/PgdcnAppShell.tsx');
+  const workspace = read('components/PgdcnDossierTemplateManagementView.tsx');
+  assert.match(shell, /PgdcnDossierTemplateManagementView/);
+  assert.match(shell, /pcn\.workflowTemplates/);
+  assert.match(shell, /pgd\.workflowTemplates/);
+  assert.match(workspace, /onCreatePcnWorkflowRevision/);
+  assert.match(workspace, /onCreatePgdWorkflowRevision/);
+  assert.match(workspace, /canPcn|canPgd/);
+  assert.doesNotMatch(settings, /PcnWorkflowTemplateManagementView/);
 });

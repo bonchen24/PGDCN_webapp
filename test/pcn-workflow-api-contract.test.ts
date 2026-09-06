@@ -35,7 +35,10 @@ test('server exposes manager-only template and task boundaries', () => {
   assert.match(serverSource, /FOR UPDATE/);
   assert.match(serverSource, /workflowSnapshot/);
   assert.match(serverSource, /idempotent/);
+  assert.match(serverSource, /expectedCycleNo/);
   assert.match(serverSource, /buildPcnWorkflowConditionContext/);
+  assert.match(serverSource, /buildPcnDossierNodeWorkProjection/);
+  assert.match(serverSource, /workProjection\.canContinue/);
   assert.match(serverSource, /collection_name = 'returnedResults'/);
   assert.match(serverSource, /collection_name = 'approvalSteps'/);
 });
@@ -52,7 +55,7 @@ test('workflow clients use dedicated routes and send controlled payloads', async
     await publishPcnWorkflowTemplate('workflow-1');
     await retirePcnWorkflowTemplate('workflow-1', 'Không còn dùng');
     await startPcnWorkflowTask('dossier-1', 'task-1');
-    await completePcnWorkflowTask('dossier-1', 'task-1');
+    await completePcnWorkflowTask('dossier-1', 'task-1', 2);
     await returnPcnWorkflowTask('dossier-1', 'task-1', { targetNodeId: 'intake', reason: 'Thiếu tài liệu' });
   } finally {
     globalThis.fetch = originalFetch;
@@ -66,5 +69,6 @@ test('workflow clients use dedicated routes and send controlled payloads', async
     'POST /api/pcn/dossiers/dossier-1/workflow-tasks/task-1/return',
   ]);
   assert.deepEqual(JSON.parse(String(calls[2].init?.body)), { reason: 'Không còn dùng' });
+  assert.deepEqual(JSON.parse(String(calls[4].init?.body)), { expectedCycleNo: 2 });
   assert.deepEqual(JSON.parse(String(calls[5].init?.body)), { targetNodeId: 'intake', reason: 'Thiếu tài liệu' });
 });

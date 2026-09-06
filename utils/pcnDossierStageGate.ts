@@ -60,6 +60,10 @@ export function canProcessPcnDossierRequirement(
   if (POST_APPROVAL_STATUSES.has(dossier.status)) return false;
   const requirementStageIndex = getPcnRequirementWorkflowStageIndex(requirement);
   if (requirementStageIndex < 0) return true;
+  // Workflow revision 2 exposes certificate and decision drafts as nodes
+  // before the issuance package is submitted for approval. The existing
+  // issuance boundary still performs the final checklist recheck.
+  if (currentStage.key === 'TECHNICAL_REVIEW' && requirement.stages.includes('ISSUANCE')) return true;
   return requirementStageIndex <= getPcnWorkflowStageIndex(currentStage.key);
 }
 

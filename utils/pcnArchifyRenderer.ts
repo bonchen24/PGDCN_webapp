@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import type { ArchifyWorkflowDocument } from './pcnArchifyWorkflow.ts';
+import { PCN_ARCHIFY_STATUS_TAG_PREFIX, type ArchifyWorkflowDocument } from './pcnArchifyWorkflow.ts';
 import { ARCHIFY_MAX_OUTPUT_BYTES, ARCHIFY_RENDERER_ENTRYPOINTS, ARCHIFY_TEMPLATE_ENTRYPOINT, runArchifyRenderer, resetArchifyRuntimeTestHooks, setArchifyRuntimeTestHooks, validateArchifyDocument } from './archifyRuntime.ts';
 import type { ArchifyDiagramType, ArchifyDiagramResult } from './archifyDiagram.ts';
 
@@ -56,7 +56,14 @@ function safeRenderError(message: string): Error {
 type WorkflowMotionState = 'reached' | 'active' | 'future';
 
 function workflowMotionState(node: ArchifyWorkflowDocument['nodes'][number]): WorkflowMotionState | undefined {
-  const tag = String(node.tag || '').trim().toLocaleLowerCase('vi-VN');
+  const rawTag = String(node.tag || '').trim();
+  if (rawTag.startsWith(PCN_ARCHIFY_STATUS_TAG_PREFIX)) {
+    const status = rawTag.slice(PCN_ARCHIFY_STATUS_TAG_PREFIX.length).trim().toUpperCase();
+    if (['COMPLETED', 'SKIPPED'].includes(status)) return 'reached';
+    if (['READY', 'IN_PROGRESS', 'WAITING', 'RETURNED', 'STALE'].includes(status)) return 'active';
+    if (['LOCKED', 'CANCELLED'].includes(status)) return 'future';
+  }
+  const tag = rawTag.toLocaleLowerCase('vi-VN');
   if (!tag) return undefined;
   if (/hoàn tất|đã có|kq đã nhận|đã miễn|đã ký|bỏ qua/.test(tag)) return 'reached';
   if (/hiện tại|đang xử lý|đang chờ|sẵn sàng|chờ kq|cần xử lý lại/.test(tag)) return 'active';

@@ -21,6 +21,7 @@ import type {
 import type { PgdCaseEvent, PgdDossierIndex, PgdFieldActivityLog, PgdInspectionPlan, PgdLabResultReview } from './utils/pgdArtifacts.ts';
 import type { PgdDocumentTemplate } from './utils/pgdDocumentTemplates.ts';
 import type { PgdDossierDocument, PgdDossierRequirement } from './utils/pgdDossier.ts';
+import type { PgdWorkflowTemplate } from './utils/pgdWorkflowTemplate.ts';
 import type { CustomerRef, PcnUserAccount } from './types.ts';
 import {
   approvePgdStep,
@@ -50,6 +51,14 @@ import {
   generatePgdDocument,
   savePgdDocumentTemplate,
 } from './utils/pgdApi.ts';
+import {
+  createPgdWorkflowRevision,
+  createPgdWorkflowTemplate,
+  fetchPgdWorkflowTemplates,
+  publishPgdWorkflowTemplate,
+  retirePgdWorkflowTemplate,
+  updatePgdWorkflowTemplate,
+} from './utils/pgdWorkflowTemplateApi.ts';
 
 interface PgdStoreState {
   customers: CustomerRef[];
@@ -66,6 +75,7 @@ interface PgdStoreState {
   certificates: PgdInspectionCertificate[];
   approvals: PgdApprovalStep[];
   documentTemplates: PgdDocumentTemplate[];
+  workflowTemplates: PgdWorkflowTemplate[];
   dossierDocuments: PgdDossierDocument[];
   documents: PgdGeneratedDocument[];
   inspectionPlans: PgdInspectionPlan[];
@@ -103,6 +113,11 @@ interface PgdStoreState {
   saveCalibrationInstrument: (instrument: PgdCalibrationInstrument) => Promise<PgdCalibrationInstrument>;
   approveStep: (step: PgdApprovalStep) => Promise<void>;
   saveDocumentTemplate: (template: PgdDocumentTemplate) => Promise<PgdDocumentTemplate>;
+  createWorkflowTemplate: (template: PgdWorkflowTemplate) => Promise<PgdWorkflowTemplate>;
+  updateWorkflowTemplate: (templateId: string, template: PgdWorkflowTemplate, expectedUpdatedAt?: string) => Promise<PgdWorkflowTemplate>;
+  createWorkflowRevision: (templateId: string, template: PgdWorkflowTemplate) => Promise<PgdWorkflowTemplate>;
+  publishWorkflowTemplate: (templateId: string) => Promise<PgdWorkflowTemplate>;
+  retireWorkflowTemplate: (templateId: string, reason: string) => Promise<PgdWorkflowTemplate>;
   generateDocument: (input: Parameters<typeof generatePgdDocument>[0]) => Promise<Awaited<ReturnType<typeof generatePgdDocument>>>;
 }
 
@@ -111,6 +126,7 @@ const emptyState = {
   catalog: [], templates: [], requests: [], assignments: [], fieldInspections: [], samples: [],
   labRequests: [], labResults: [], reports: [], certificates: [], approvals: [], isLoading: false, isLoaded: false,
   documentTemplates: [], dossierDocuments: [], documents: [],
+  workflowTemplates: [],
   inspectionPlans: [], caseEvents: [], fieldActivityLogs: [], labResultReviews: [], dossierIndexes: [],
   calibrationInstruments: [],
 };
@@ -303,6 +319,31 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
     const next = await savePgdDocumentTemplate(template);
     set((state) => ({ documentTemplates: replaceOne(state.documentTemplates, next) }));
     return next;
+  },
+  createWorkflowTemplate: async (template) => {
+    const result = await createPgdWorkflowTemplate(template);
+    set((state) => ({ workflowTemplates: [result.template, ...state.workflowTemplates.filter((item) => item.id !== result.template.id)] }));
+    return result.template;
+  },
+  updateWorkflowTemplate: async (templateId, template, expectedUpdatedAt) => {
+    const result = await updatePgdWorkflowTemplate(templateId, template, expectedUpdatedAt);
+    set((state) => ({ workflowTemplates: [result.template, ...state.workflowTemplates.filter((item) => item.id !== result.template.id)] }));
+    return result.template;
+  },
+  createWorkflowRevision: async (templateId, template) => {
+    const result = await createPgdWorkflowRevision(templateId, template);
+    set((state) => ({ workflowTemplates: [result.template, ...state.workflowTemplates.filter((item) => item.id !== result.template.id)] }));
+    return result.template;
+  },
+  publishWorkflowTemplate: async (templateId) => {
+    const result = await publishPgdWorkflowTemplate(templateId);
+    set((state) => ({ workflowTemplates: [result.template, ...state.workflowTemplates.filter((item) => item.id !== result.template.id)] }));
+    return result.template;
+  },
+  retireWorkflowTemplate: async (templateId, reason) => {
+    const result = await retirePgdWorkflowTemplate(templateId, reason);
+    set((state) => ({ workflowTemplates: [result.template, ...state.workflowTemplates.filter((item) => item.id !== result.template.id)] }));
+    return result.template;
   },
   generateDocument: async (input) => {
     const result = await generatePgdDocument(input);

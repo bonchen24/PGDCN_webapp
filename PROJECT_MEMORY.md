@@ -6,6 +6,16 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-07 — Workflow-first hồ sơ và quản lý Hồ sơ mẫu trực quan
+
+- PCN dossier detail đã chuyển sang workflow-first: khi mở hồ sơ chỉ hiện thông tin cơ bản và bản đồ Archify; panel công việc chỉ mở khi chọn node active hoặc completed. Node locked/cancelled dùng visual state mờ, không in chữ trạng thái khóa/mở; panel desktop nằm bên phải và mobile xếp bên dưới.
+- `PcnDossierNodeWorkProjection` lọc tài liệu đúng theo `requirementIds` của node, suy ra công việc nghiệp vụ theo `actionKey`, phân biệt `PRESENT`/`MISSING`/`WAIVED`/`IN_PROGRESS`/`COMPLETED`/`ATTENTION`/`NOT_APPLICABLE`, và chỉ cho **Tiếp tục** sau khi server kiểm tra lại toàn bộ gate. Tài liệu hiện hành có xem/thay phiên bản/sửa form/xóa current; tài liệu thiếu có upload, sinh biểu mẫu-tự gắn hoặc waiver kèm lý do.
+- Boundary server đã bổ sung waiver, remove-current và generate-and-attach; waiver có RBAC/audit, remove-current chỉ gỡ `currentVersionId` và giữ file/version/lịch sử. Sửa tài liệu ở node hoàn tất tạo cycle rework, đánh dấu downstream `STALE`, rollback status tổng và giữ lịch sử cũ; complete task có `expectedCycleNo` chống stale write.
+- Đã thêm workflow template revision 2 theo lĩnh vực QC4/QC9 với các node chi tiết hơn; snapshot cũ vẫn tương thích và template mới chỉ áp dụng cho hồ sơ tạo sau khi phát hành.
+- Đã triển khai workspace **Hồ sơ mẫu** chung cho PCN/PGD: contract PGD riêng, normalized editor model, palette/canvas lane-cột/inspector, quản lý draft/revision/publish/retire theo scope, adapter requirement tách miền và preview Archify không chứa dữ liệu hồ sơ/private asset. `PUBLISHED` bất biến; chỉnh sửa phải tạo revision mới.
+- SSoT vẫn là `design.md`; `PROJECT_MEMORY.md` và ghi chú Obsidian chỉ là nhật ký tra cứu, không ghi secret, raw hồ sơ hoặc đường dẫn nguồn riêng tư.
+- Verification hiện tại: `npm test` **840/840 pass**, `npm run typecheck` **pass**, `npm run lint` **pass**, `npm run build` **pass**, `git diff --check` **pass** (chỉ có cảnh báo chuyển LF/CRLF của Git).
+
 ## Cập nhật 2026-09-06 — Đóng tích hợp full-reader Archify và baseline triển khai
 
 - Tích hợp đủ năm view Archify (`workflow`, `lifecycle`, `dataflow`, `sequence`, `architecture`) cho cả PCN và PGD; mỗi hồ sơ giữ boundary dữ liệu riêng. Runtime Archify được pin và chạy server-only, route/reader gắn theo từng dossier; graph giữ nhánh, parallel, join và return; các view không phải workflow chỉ đọc và trả trạng thái unavailable khi thiếu dữ kiện.

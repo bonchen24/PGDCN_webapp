@@ -52,11 +52,11 @@ import { markPcnProposalConverted } from './utils/pcnPolicy';
 import { uploadPcnFile } from './utils/pcnFileApi';
 import { ensurePcnDossierCustomerSnapshot } from './utils/pcnDossierPolicy';
 import { createPcnIntake } from './utils/pcnIntakeApi';
-import { createPcnWorkflowRevision, createPcnWorkflowTemplate, fetchPcnWorkflowTemplates, publishPcnWorkflowTemplate, retirePcnWorkflowTemplate } from './utils/pcnWorkflowTemplateApi';
+import { createPcnWorkflowRevision, createPcnWorkflowTemplate, fetchPcnWorkflowTemplates, publishPcnWorkflowTemplate, retirePcnWorkflowTemplate, updatePcnWorkflowTemplate } from './utils/pcnWorkflowTemplateApi';
 import { completePcnWorkflowTask, returnPcnWorkflowTask, startPcnWorkflowTask } from './utils/pcnWorkflowTaskApi';
 import { updatePcnProposal, type PcnProposalUpdateInput } from './utils/pcnProposalApi';
 import { deletePcnDossier, updatePcnDossier, type PcnDossierUpdateInput } from './utils/pcnDossierApi';
-import { confirmPcnGeneratedDocumentIntoChecklist, uploadPcnDossierDocument } from './utils/pcnDossierDocumentApi';
+import { confirmPcnGeneratedDocumentIntoChecklist, generateAndAttachPcnDossierNodeDocument, removeCurrentPcnDossierDocument, uploadPcnDossierDocument, waivePcnDossierDocument } from './utils/pcnDossierDocumentApi';
 import { generatePcnDossierDocuments, preflightPcnDossierDocuments } from './utils/pcnDocumentGenerationApi';
 import type { PcnDossierDocumentContext } from './utils/pcnDocumentGeneration';
 import { createPcnSampleLot as createPcnSampleLotApi, updatePcnSampleRoute as updatePcnSampleRouteApi } from './utils/pcnSampleApi';
@@ -120,13 +120,17 @@ interface PcnStoreState {
   updateProposal: (proposalId: string, updates: PcnProposalUpdateInput) => Promise<void>;
   addDossier: (dossier: CertificationDossier) => Promise<void>;
   createWorkflowTemplate: (template: PcnWorkflowTemplate) => Promise<PcnWorkflowTemplate>;
+  updateWorkflowTemplate: (templateId: string, template: PcnWorkflowTemplate, expectedUpdatedAt?: string) => Promise<PcnWorkflowTemplate>;
   createWorkflowRevision: (templateId: string, template: PcnWorkflowTemplate) => Promise<PcnWorkflowTemplate>;
   publishWorkflowTemplate: (templateId: string) => Promise<PcnWorkflowTemplate>;
   retireWorkflowTemplate: (templateId: string, reason: string) => Promise<PcnWorkflowTemplate>;
   startWorkflowTask: (dossierId: string, taskId: string) => Promise<void>;
-  completeWorkflowTask: (dossierId: string, taskId: string) => Promise<void>;
+  completeWorkflowTask: (dossierId: string, taskId: string, expectedCycleNo?: number) => Promise<void>;
   returnWorkflowTask: (dossierId: string, taskId: string, input: { targetNodeId: string; reason: string }) => Promise<void>;
   uploadDossierDocument: (dossierId: string, requirementId: string, file: File) => Promise<void>;
+  waiveDossierDocument: (dossierId: string, requirementId: string, reason: string) => Promise<void>;
+  removeCurrentDossierDocument: (dossierId: string, requirementId: string) => Promise<void>;
+  generateAndAttachDossierNodeDocument: (dossierId: string, nodeId: string, requirementId: string) => Promise<void>;
   confirmGeneratedDocument: (dossierId: string, generated: PcnGeneratedDocument, requirement: PcnDocumentRequirement) => Promise<void>;
   updateDossier: (dossierId: string, updates: PcnDossierUpdateInput) => Promise<void>;
   deleteDossier: (dossierId: string, reason: string, confirmationCode: string) => Promise<void>;
@@ -226,10 +230,11 @@ function assertPcnStoreWorkflowManagerMutationAllowed(): void {
   if (denial) throw new Error(denial);
 }
 
-function mergePcnWorkflowTaskMutationState(state: PcnStoreState, result: { task: PcnDossierWorkflowTask; tasks?: PcnDossierWorkflowTask[]; activityLog?: ActivityLog }): Partial<PcnStoreState> {
+function mergePcnWorkflowTaskMutationState(state: PcnStoreState, result: { task: PcnDossierWorkflowTask; tasks?: PcnDossierWorkflowTask[]; dossier?: CertificationDossier; activityLog?: ActivityLog }): Partial<PcnStoreState> {
   const incoming = result.tasks?.length ? result.tasks : [result.task];
   return {
     workflowTasks: mergeManyById(state.workflowTasks, incoming),
+    ...(result.dossier ? { dossiers: state.dossiers.map((item) => item.id === result.dossier?.id ? result.dossier! : item) } : {}),
     ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs.filter((item) => item.id !== result.activityLog?.id)] } : {}),
   };
 }
@@ -724,6 +729,16 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     return result.template;
   },
 
+  updateWorkflowTemplate: async (templateId, template, expectedUpdatedAt) => {
+    assertPcnStoreWorkflowManagerMutationAllowed();
+    const result = await updatePcnWorkflowTemplate(templateId, template, expectedUpdatedAt);
+    set((state) => ({
+      workflowTemplates: [result.template, ...state.workflowTemplates.filter((item) => item.id !== result.template.id)],
+      ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs.filter((item) => item.id !== result.activityLog?.id)] } : {}),
+    }));
+    return result.template;
+  },
+
   createWorkflowRevision: async (templateId, template) => {
     assertPcnStoreWorkflowManagerMutationAllowed();
     const result = await createPcnWorkflowRevision(templateId, template);
@@ -760,9 +775,10 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     set((state) => mergePcnWorkflowTaskMutationState(state, result));
   },
 
-  completeWorkflowTask: async (dossierId, taskId) => {
+  completeWorkflowTask: async (dossierId, taskId, expectedCycleNo) => {
     assertPcnStoreMutationAllowed();
-    const result = await completePcnWorkflowTask(dossierId, taskId);
+    const currentTask = get().workflowTasks.find((task) => task.id === taskId && task.dossierId === dossierId);
+    const result = await completePcnWorkflowTask(dossierId, taskId, expectedCycleNo ?? currentTask?.cycleNo);
     set((state) => mergePcnWorkflowTaskMutationState(state, result));
   },
 
@@ -805,7 +821,42 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
       dossierDocuments: [result.document, ...state.dossierDocuments.filter((item) => item.id !== result.document.id)],
       ...(result.attachment ? { dossierAttachments: [result.attachment, ...state.dossierAttachments.filter((item) => item.id !== result.attachment?.id)] } : {}),
       ...(result.dossier ? { dossiers: state.dossiers.map((item) => item.id === result.dossier?.id ? result.dossier! : item) } : {}),
+      ...(result.workflowTasks?.length ? { workflowTasks: mergeManyById(state.workflowTasks, result.workflowTasks) } : {}),
       ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs] } : {}),
+    }));
+  },
+
+  waiveDossierDocument: async (dossierId, requirementId, reason) => {
+    assertPcnStoreMutationAllowed();
+    const result = await waivePcnDossierDocument({ dossierId, requirementId, reason });
+    set((state) => ({
+      ...(result.dossier ? { dossiers: state.dossiers.map((item) => item.id === result.dossier?.id ? result.dossier! : item) } : {}),
+      ...(result.workflowTasks?.length ? { workflowTasks: mergeManyById(state.workflowTasks, result.workflowTasks) } : {}),
+      ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs.filter((item) => item.id !== result.activityLog?.id)] } : {}),
+    }));
+  },
+
+  removeCurrentDossierDocument: async (dossierId, requirementId) => {
+    assertPcnStoreMutationAllowed();
+    const result = await removeCurrentPcnDossierDocument({ dossierId, requirementId });
+    set((state) => ({
+      ...(result.document ? { dossierDocuments: [result.document, ...state.dossierDocuments.filter((item) => item.id !== result.document?.id)] } : {}),
+      ...(result.dossier ? { dossiers: state.dossiers.map((item) => item.id === result.dossier?.id ? result.dossier! : item) } : {}),
+      ...(result.workflowTasks?.length ? { workflowTasks: mergeManyById(state.workflowTasks, result.workflowTasks) } : {}),
+      ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs.filter((item) => item.id !== result.activityLog?.id)] } : {}),
+    }));
+  },
+
+  generateAndAttachDossierNodeDocument: async (dossierId, nodeId, requirementId) => {
+    assertPcnStoreMutationAllowed();
+    const result = await generateAndAttachPcnDossierNodeDocument({ dossierId, nodeId, requirementId });
+    set((state) => ({
+      ...(result.document ? { dossierDocuments: [result.document, ...state.dossierDocuments.filter((item) => item.id !== result.document?.id)] } : {}),
+      ...(result.attachment ? { dossierAttachments: [result.attachment, ...state.dossierAttachments.filter((item) => item.id !== result.attachment?.id)] } : {}),
+      ...(result.generated ? { generatedDocuments: [result.generated, ...state.generatedDocuments.filter((item) => item.id !== result.generated?.id)] } : {}),
+      ...(result.dossier ? { dossiers: state.dossiers.map((item) => item.id === result.dossier?.id ? result.dossier! : item) } : {}),
+      ...(result.workflowTasks?.length ? { workflowTasks: mergeManyById(state.workflowTasks, result.workflowTasks) } : {}),
+      ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs.filter((item) => item.id !== result.activityLog?.id)] } : {}),
     }));
   },
 
@@ -821,6 +872,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
       dossierDocuments: [result.document, ...state.dossierDocuments.filter((item) => item.id !== result.document.id)],
       ...(result.attachment ? { dossierAttachments: [result.attachment, ...state.dossierAttachments.filter((item) => item.id !== result.attachment?.id)] } : {}),
       ...(result.dossier ? { dossiers: state.dossiers.map((item) => item.id === result.dossier?.id ? result.dossier! : item) } : {}),
+      ...(result.workflowTasks?.length ? { workflowTasks: mergeManyById(state.workflowTasks, result.workflowTasks) } : {}),
       ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs] } : {}),
     }));
   },

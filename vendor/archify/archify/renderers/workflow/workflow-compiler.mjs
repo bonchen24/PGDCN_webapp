@@ -4190,6 +4190,14 @@ function renderGroup(group, index) {
 function renderNode(node) {
   const fill = componentFill[node.type] || 'c-external';
   const accent = componentText[node.type] || 't-muted';
+  const internalStatusPrefix = '__pcn_status__';
+  const internalStatus = typeof node.tag === 'string' && node.tag.startsWith(internalStatusPrefix)
+    ? node.tag.slice(internalStatusPrefix.length).trim().toLowerCase()
+    : '';
+  const stateAttr = ['locked', 'ready', 'in_progress', 'waiting', 'completed', 'returned', 'skipped', 'stale', 'cancelled'].includes(internalStatus)
+    ? ` data-node-state="${internalStatus}" class="pcn-node-${internalStatus}"`
+    : '';
+  const visibleTag = internalStatus ? '' : node.tag;
   const hasSub = node.sublabel != null && node.sublabel !== '';
   const labelFontSize = fittedNodeFontSize(node.label, brandLabelFitWidth(node, node.width), nodeTextFit.labelPreferred, nodeTextFit.labelMinimum);
   const sublabelFontSize = hasSub
@@ -4198,12 +4206,12 @@ function renderNode(node) {
   const sub = hasSub
     ? `\n          <text data-detail="context" x="${node.cx}" y="${node.y + 38}" class="t-muted" font-size="${sublabelFontSize}" text-anchor="middle">${esc(node.sublabel)}</text>`
     : '';
-  const tag = node.tag
-    ? `\n        <text data-detail="fine" x="${node.cx}" y="${node.y + node.height - 12}" class="${accent}" font-size="${fittedNodeFontSize(node.tag, node.width, nodeTextFit.tagPreferred, nodeTextFit.tagMinimum)}" text-anchor="middle">${esc(node.tag)}</text>`
+  const tag = visibleTag
+    ? `\n        <text data-detail="fine" x="${node.cx}" y="${node.y + node.height - 12}" class="${accent}" font-size="${fittedNodeFontSize(visibleTag, node.width, nodeTextFit.tagPreferred, nodeTextFit.tagMinimum)}" text-anchor="middle">${esc(visibleTag)}</text>`
     : '';
   const brand = renderBrandMark(node, { x: node.x + node.width - 22, y: node.y + 6 });
-  const passport = { kind: node.type, sublabel: node.sublabel, tag: node.tag, context: nodeContext(node), ...brandMetadataFor(node) };
-  return `        <g ${focusNodeAttrs(node.id, node.label, passport, workflow.meta.locale)}>
+  const passport = { kind: node.type, sublabel: node.sublabel, tag: visibleTag, context: nodeContext(node), ...brandMetadataFor(node) };
+  return `        <g${stateAttr} ${focusNodeAttrs(node.id, node.label, passport, workflow.meta.locale)}>
           ${focusNodeTitle(node.label, passport)}
           <rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="6" class="c-mask"/>
           <rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="6" class="${fill}"${animateAttr(workflow.meta, 'node', nodeStep(node))} stroke-width="1.5"/>

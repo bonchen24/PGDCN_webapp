@@ -47,6 +47,22 @@ function statusLabel(value?: string): string {
   return labels[String(value || '')] || value || 'Chưa có tuyến';
 }
 
+function executionStatusLabel(value?: string): string {
+  const labels: Record<string, string> = { UNSCHEDULED: 'Chưa xếp lịch', SCHEDULED: 'Đã xếp lịch', IN_PROGRESS: 'Đang thử', COMPLETED: 'Đã thử xong', BLOCKED: 'Bị chặn', CANCELLED: 'Đã hủy' };
+  return labels[String(value || '')] || value || '';
+}
+
+function conditionLabel(code?: string, note?: string): string {
+  const labels: Record<string, string> = { INTACT: 'Nguyên vẹn', DAMAGED: 'Hư hỏng', INCOMPLETE: 'Thiếu mẫu', SEAL_BROKEN: 'Rách tem', OTHER: 'Khác' };
+  return [labels[String(code || '').toUpperCase()] || code, note].filter(Boolean).join(' · ');
+}
+
+function displayDate(value?: string): string {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('vi-VN');
+}
+
 export default function PcnLabOperationsView({ dossiers, proposals, sampleLots, sampleItems, sampleRoutes, labRequests, sampleRequestBundles, returnedResults, canEdit, onSaveBundle, onSendBundle, onRetryBundleDispatch, onOpenDossier }: Props) {
   const [query, setQuery] = useState('');
   const [labFilter, setLabFilter] = useState<PcnSampleLabCode | ''>('');
@@ -57,7 +73,7 @@ export default function PcnLabOperationsView({ dossiers, proposals, sampleLots, 
     return rows.filter((row) => {
       if (labFilter && !row.labCells[labFilter]) return false;
       if (!normalized) return true;
-      return [row.lotCode, row.sampleCode, row.sampleType, row.model, row.customerName, row.dossierCode, row.proposalCode, row.currentLocation, ...Object.values(row.labCells).flatMap((cell) => [cell?.labName, cell?.pycNumber, cell?.externalRequestCode, cell?.routeStatus])].filter(Boolean).join(' ').toLocaleLowerCase('vi-VN').includes(normalized);
+      return [row.lotCode, row.sampleCode, row.sampleType, row.model, row.customerName, row.dossierCode, row.proposalCode, row.currentLocation, ...Object.values(row.labCells).flatMap((cell) => [cell?.labName, cell?.pycNumber, cell?.externalRequestCode, cell?.routeStatus, cell?.executionStatus, cell?.labSampleCode, cell?.sampleConditionCode, cell?.sampleConditionNote])].filter(Boolean).join(' ').toLocaleLowerCase('vi-VN').includes(normalized);
     });
   }, [labFilter, query, rows]);
   const assignedCells = rows.reduce((total, row) => total + Object.keys(row.labCells).length, 0);
@@ -79,7 +95,7 @@ function RegisterRow({ row, dossiers, onOpenDossier, onRetryBundleDispatch }: { 
 
 function LabCell({ labCode, cell, onRetryBundleDispatch }: { labCode: PcnSampleLabCode; cell?: PcnSampleRegisterLabCell; onRetryBundleDispatch: Props['onRetryBundleDispatch'] }) {
   const tone = labTone[labCode];
-  return <td data-testid={`lab-cell-${labCode}`} className={`border-l border-white px-3 py-2 ${cell ? tone.cell : 'bg-slate-50/40'}`}>{cell ? <div className="space-y-1.5"><div className="flex items-center justify-between gap-2"><span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black ${tone.badge}`}>{statusLabel(cell.routeStatus)}</span>{cell.resultOutcome && <span className="text-[9px] font-black text-emerald-700">KQ: {cell.resultOutcome}</span>}</div><p className="font-mono text-[10px] font-black text-slate-800">{cell.pycNumber || 'Chưa tạo PYC'}</p>{cell.externalRequestCode && <p className="text-[9px] text-slate-600">Mã PTN: {cell.externalRequestCode}</p>}{cell.syncStatus && <p className="text-[9px] font-bold text-slate-500">Liên thông: {cell.syncStatus}</p>}{cell.dispatchStatus === 'ERROR' || cell.dispatchStatus === 'RECONCILE_REQUIRED' ? <button type="button" onClick={() => cell.bundleId && cell.dispatchId && void onRetryBundleDispatch(cell.bundleId, cell.dispatchId)} className="rounded bg-white px-2 py-1 text-[9px] font-black text-rose-700 shadow-sm hover:bg-rose-100">Retry PTN</button> : null}</div> : <span className="text-[9px] text-slate-300">Không gán PTN</span>}</td>;
+  return <td data-testid={`lab-cell-${labCode}`} className={`border-l border-white px-3 py-2 ${cell ? tone.cell : 'bg-slate-50/40'}`}>{cell ? <div className="space-y-1.5"><div className="flex items-center justify-between gap-2"><span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black ${tone.badge}`}>{statusLabel(cell.routeStatus)}</span>{cell.resultOutcome && <span className="text-[9px] font-black text-emerald-700">KQ: {cell.resultOutcome}</span>}</div><p className="font-mono text-[10px] font-black text-slate-800">{cell.pycNumber || 'Chưa tạo PYC'}</p>{cell.externalRequestCode && <p className="text-[9px] text-slate-600">Mã phiếu PTN: {cell.externalRequestCode}</p>}{cell.labSampleCode && <p className="text-[9px] font-bold text-slate-700">Mã mẫu PTN: <span className="font-mono">{cell.labSampleCode}</span></p>}{cell.executionStatus && <p className="text-[9px] font-black text-indigo-700">Thực thi: {executionStatusLabel(cell.executionStatus)}{cell.executionOutcome ? ` · ${cell.executionOutcome}` : ''}</p>}{cell.executionScheduledDate && <p className="text-[9px] text-slate-600">Lịch thử: {displayDate(cell.executionScheduledDate)}</p>}{cell.executionStartedAt && <p className="text-[9px] text-slate-600">Bắt đầu: {displayDate(cell.executionStartedAt)}</p>}{cell.executionCompletedAt && <p className="text-[9px] text-slate-600">Thử xong: {displayDate(cell.executionCompletedAt)}</p>}{(cell.sampleConditionCode || cell.sampleConditionNote) && <p className="text-[9px] text-slate-600">Tình trạng: {conditionLabel(cell.sampleConditionCode, cell.sampleConditionNote)}</p>}{(cell.receivedAt || cell.receivedBy || cell.receivedQuantity !== undefined) && <p className="text-[9px] text-slate-600">PTN nhận: {cell.receivedAt ? displayDate(cell.receivedAt) : 'Đã ghi nhận'}{cell.receivedQuantity !== undefined ? ` · ${cell.receivedQuantity} ${cell.receivedUnit || 'mẫu'}` : ''}{cell.receivedBy ? ` · ${cell.receivedBy}` : ''}</p>}{cell.syncStatus && <p className="text-[9px] font-bold text-slate-500">Liên thông: {cell.syncStatus}</p>}{cell.dispatchStatus === 'ERROR' || cell.dispatchStatus === 'RECONCILE_REQUIRED' ? <button type="button" onClick={() => cell.bundleId && cell.dispatchId && void onRetryBundleDispatch(cell.bundleId, cell.dispatchId)} className="rounded bg-white px-2 py-1 text-[9px] font-black text-rose-700 shadow-sm hover:bg-rose-100">Retry PTN</button> : null}</div> : <span className="text-[9px] text-slate-300">Không gán PTN</span>}</td>;
 }
 
 function Metric({ label, value, tone = 'slate' }: { label: string; value: number; tone?: 'slate' | 'emerald' | 'indigo' }) { const color = tone === 'emerald' ? 'text-emerald-600' : tone === 'indigo' ? 'text-indigo-600' : 'text-slate-800'; return <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm"><ClipboardList size={15} className="text-slate-400" /><div className={`mt-1 text-lg font-black ${color}`}>{value}</div><div className="truncate text-[9px] font-bold text-slate-500">{label}</div></div>; }

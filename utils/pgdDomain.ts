@@ -25,6 +25,7 @@ export const PGD_COLLECTIONS = {
   labResultReviews: 'pgdLabResultReviews',
   dossierIndexes: 'pgdDossierIndexes',
   calibrationInstruments: 'pgdCalibrationInstruments',
+  workflowTemplates: 'pgdWorkflowTemplates',
 } as const;
 
 export type PgdInspectionStatus =

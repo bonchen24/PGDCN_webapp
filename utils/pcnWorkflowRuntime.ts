@@ -1,6 +1,7 @@
 import type {
   PcnApprovalStep,
   PcnCertificationMethod,
+  PcnDossierStatus,
   PcnDossierDocument,
   PcnDossierDocumentWaiver,
   PcnDossierWorkflowTask,
@@ -56,6 +57,23 @@ export interface PcnWorkflowRuntimeProjection {
   activeNodeIds: string[];
   returnedNodeIds: string[];
   hasReturned: boolean;
+}
+
+/** Maps detailed node completion back to the compact dossier lifecycle. */
+export function getPcnDossierStatusAfterWorkflowTaskComplete(
+  node: Pick<PcnWorkflowNodeDefinition, 'id' | 'actionKey'>,
+  currentStatus: PcnDossierStatus,
+): PcnDossierStatus | undefined {
+  const actionKey = String(node.actionKey || '').trim().toUpperCase();
+  const nodeId = String(node.id || '').trim().toLowerCase();
+  if (actionKey === 'ASSIGNMENT') return 'ASSIGNED';
+  if (actionKey === 'EVALUATION') return nodeId.includes('plan') ? 'PLAN_PENDING_APPROVAL' : 'FIELD_EVALUATION';
+  if (actionKey === 'SAMPLING_LAB') return 'AWAITING_SAMPLING';
+  if (actionKey === 'SAMPLE_HANDOVER') return 'SENT_TO_LAB';
+  if (actionKey === 'TEST_REPORT') return 'AWAITING_RESULTS';
+  if (actionKey === 'TECHNICAL_REVIEW') return 'TECHNICAL_REVIEW';
+  if (currentStatus === 'ARCHIVED') return undefined;
+  return undefined;
 }
 
 function recordTimestamp(record: { receivedAt?: string; updatedAt?: string; createdAt?: string }): string {
@@ -355,6 +373,52 @@ export function applyPcnWorkflowReturn(input: {
   });
   const returnedTask = tasks.find((task) => task.nodeId === input.sourceNodeId)!;
   return { tasks, returnedTask };
+}
+
+/** Reopens the node whose completed evidence changed while preserving every prior cycle. */
+export function applyPcnWorkflowDocumentRework(input: {
+  workflow: PcnWorkflowSnapshot;
+  tasks: readonly PcnDossierWorkflowTask[];
+  sourceNodeId: string;
+  actor: string;
+  now: string;
+}): { tasks: PcnDossierWorkflowTask[]; reopenedTask: PcnDossierWorkflowTask } {
+  const sourceNode = input.workflow.nodes.find((node) => node.id === input.sourceNodeId);
+  const sourceTask = input.tasks.find((task) => task.nodeId === input.sourceNodeId);
+  if (!sourceNode || !sourceTask) throw new Error('Không tìm thấy node hoặc task tài liệu cần xử lý lại.');
+  if (!['COMPLETED', 'SKIPPED'].includes(sourceTask.status)) {
+    throw new Error('Chỉ tài liệu của node đã hoàn tất mới tạo vòng xử lý lại.');
+  }
+
+  const descendants = new Set<string>();
+  const queue = [input.sourceNodeId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const edge of getOutgoing(input.workflow, current)) {
+      if (descendants.has(edge.toNodeId)) continue;
+      descendants.add(edge.toNodeId);
+      queue.push(edge.toNodeId);
+    }
+  }
+  const cycleNo = (sourceTask.cycleNo || 1) + 1;
+  const tasks = input.tasks.map((task) => {
+    if (task.nodeId === input.sourceNodeId) {
+      return {
+        ...task,
+        status: 'IN_PROGRESS' as const,
+        cycleNo,
+        returnReason: undefined,
+        returnTargetNodeId: undefined,
+        updatedAt: input.now,
+        updatedBy: input.actor,
+      };
+    }
+    if (descendants.has(task.nodeId) && task.status !== 'CANCELLED') {
+      return { ...task, status: 'STALE' as const, cycleNo, updatedAt: input.now, updatedBy: input.actor };
+    }
+    return task;
+  });
+  return { tasks, reopenedTask: tasks.find((task) => task.nodeId === input.sourceNodeId)! };
 }
 
 // --- End of pcnWorkflowRuntime.ts ---

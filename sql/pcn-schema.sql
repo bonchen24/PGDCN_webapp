@@ -144,10 +144,17 @@ CREATE TABLE IF NOT EXISTS file_assets (
 -- pcnWorkflowTemplates stores manager-authored, versioned topology only;
 -- pcnDossierWorkflowTasks stores current node state. Published templates are
 -- immutable by server policy, while a dossier keeps its own workflowSnapshot.
+-- pgdWorkflowTemplates stores the PGD-owned equivalent. It contains only
+-- workflow topology and requirement codes; runtime dossier files stay in
+-- pgdDossierDocuments and are never bundled into a template.
 
 CREATE INDEX IF NOT EXISTS idx_pcn_workflow_templates_code_version
     ON app_documents (LOWER(data->>'code'), (data->>'version') DESC, updated_at DESC)
     WHERE collection_name = 'pcnWorkflowTemplates';
+
+CREATE INDEX IF NOT EXISTS idx_pgd_workflow_templates_code_version
+    ON app_documents (LOWER(data->>'code'), (data->>'version') DESC, updated_at DESC)
+    WHERE collection_name = 'pgdWorkflowTemplates' AND data->>'domain' = 'pgd';
 
 CREATE INDEX IF NOT EXISTS idx_pcn_workflow_tasks_dossier_status
     ON app_documents ((data->>'dossierId'), (data->>'status'), updated_at DESC)
@@ -257,6 +264,53 @@ SET data = CASE
 END,
 updated_at = app_documents.updated_at;
 
+-- Default PGD workflow: a shared, published starting point for the four
+-- product groups. Requirement codes remain references to the PGD checklist;
+-- actual files are created only inside a running dossier.
+INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+VALUES (
+    'pgdWorkflowTemplates',
+    'pgd-standard-v1',
+    $$
+    {
+      "domain":"pgd",
+      "code":"PGD-STANDARD",
+      "name":"Lưu trình PGD tiêu chuẩn",
+      "description":"Lưu trình mặc định cho hồ sơ giám định; quản lý có thể tạo revision theo nhóm sản phẩm hoặc phương thức.",
+      "appliesTo":{"productGroups":["STEEL_METAL","MACHINERY_LINE","COAL","OTHER"],"methodCodes":["TT58","QT-GĐ-14","GENERIC"]},
+      "version":1,
+      "status":"PUBLISHED",
+      "nodes":[
+        {"id":"request","kind":"DOCUMENT_TASK","label":"Tiếp nhận PYC","actionKey":"INTAKE","requirementCodes":["REQUEST_PYC","REQUEST_SUPPORTING"],"active":true,"sortOrder":10,"laneId":"intake","column":1},
+        {"id":"commercial","kind":"DOCUMENT_TASK","label":"Bổ sung hồ sơ thương mại","actionKey":"DOCUMENTS","requirementCodes":["COMMERCIAL_CONTRACT","COMMERCIAL_INVOICE","PACKING_LIST","BILL_OF_LADING","CUSTOMS_DECLARATION","CERTIFICATE_OF_ORIGIN"],"active":true,"sortOrder":20,"laneId":"intake","column":2},
+        {"id":"plan","kind":"DOCUMENT_TASK","label":"Lập kế hoạch giám định","actionKey":"PLAN","requirementCodes":["INSPECTION_PLAN","TECHNICAL_SPECIFICATION","MACHINERY_TECHNICAL_DOSSIER","COAL_TECHNICAL_OVERVIEW","COAL_QUALITY_SPECIFICATION","TECHNICAL_OVERVIEW"],"active":true,"sortOrder":30,"laneId":"preparation","column":3},
+        {"id":"field","kind":"DOCUMENT_TASK","label":"Giám định hiện trường","actionKey":"FIELD","requirementCodes":["FIELD_INSPECTION_MINUTES","FIELD_ACTIVITY_LOG","FIELD_SAMPLE_TAKING","MACHINERY_CONDITION_ASSESSMENT","MACHINERY_SYNCHRONIZATION_ASSESSMENT"],"active":true,"sortOrder":40,"laneId":"field","column":4},
+        {"id":"lab","kind":"DOCUMENT_TASK","label":"Giao mẫu và tiếp nhận KQTN","actionKey":"LAB_SUBCONTRACTOR","requirementCodes":["SAMPLE_HANDOVER_LAB","LAB_RESULT"],"active":true,"sortOrder":50,"laneId":"lab","column":5},
+        {"id":"review","kind":"DOCUMENT_TASK","label":"Rà soát và lập báo cáo","actionKey":"RESULT_ISSUANCE","requirementCodes":["LAB_RESULT_REVIEW","INSPECTION_REPORT"],"active":true,"sortOrder":60,"laneId":"review","column":5},
+        {"id":"approval","kind":"APPROVAL_TASK","label":"Phê duyệt chứng thư","actionKey":"APPROVAL","requirementCodes":["DECISION","INSPECTION_CERTIFICATE"],"active":true,"sortOrder":70,"laneId":"review","column":6},
+        {"id":"archive","kind":"END","label":"Đóng và lưu trữ","actionKey":"ARCHIVE","requirementCodes":["DOSSIER_COVER","ARCHIVE_INDEX"],"active":true,"sortOrder":80,"laneId":"archive","column":6}
+      ],
+      "transitions":[
+        {"id":"request-commercial","fromNodeId":"request","toNodeId":"commercial","condition":"ALWAYS"},
+        {"id":"commercial-plan","fromNodeId":"commercial","toNodeId":"plan","condition":"REQUIRED_DOCUMENTS_COMPLETE"},
+        {"id":"plan-field","fromNodeId":"plan","toNodeId":"field","condition":"REQUIRED_DOCUMENTS_COMPLETE"},
+        {"id":"field-lab","fromNodeId":"field","toNodeId":"lab","condition":"ALWAYS"},
+        {"id":"lab-review","fromNodeId":"lab","toNodeId":"review","condition":"REQUIRED_DOCUMENTS_COMPLETE"},
+        {"id":"review-approval","fromNodeId":"review","toNodeId":"approval","condition":"REQUIRED_DOCUMENTS_COMPLETE"},
+        {"id":"approval-archive","fromNodeId":"approval","toNodeId":"archive","condition":"ALWAYS"}
+      ],
+      "createdAt":"2026-09-06T00:00:00.000Z",
+      "createdBy":"SYSTEM_SEED",
+      "updatedAt":"2026-09-06T00:00:00.000Z",
+      "updatedBy":"SYSTEM_SEED",
+      "publishedAt":"2026-09-06T00:00:00.000Z",
+      "publishedBy":"SYSTEM_SEED"
+    }
+    $$::jsonb,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT (collection_name, document_id) DO NOTHING;
+
 -- Default PCN workflow: a versioned, manager-owned topology with one
 -- parallel lab/document-review branch. It is intentionally small and can be
 -- superseded by a manager revision without changing existing dossier snapshots.
@@ -302,6 +356,113 @@ VALUES (
       "publishedAt":"2026-09-06T00:00:00.000Z",
       "publishedBy":"SYSTEM_SEED"
     }'::jsonb,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT (collection_name, document_id) DO NOTHING;
+
+-- PCN workflow revision 2 splits the work into small, selectable nodes.  The
+-- field-specific rows intentionally supersede v1 only for newly created
+-- dossiers; existing dossiers keep their captured workflow snapshot.
+INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+VALUES
+(
+    'pcnWorkflowTemplates',
+    'pcn-qc4-standard-v2',
+    $$
+    {
+      "code":"QC-STANDARD",
+      "name":"Lưu trình PCN QC4 tiêu chuẩn",
+      "description":"Revision 2 tách nhỏ các bước QC4 để hoàn thiện hồ sơ theo từng node.",
+      "appliesTo":{"fieldCodes":["QC4"],"methods":["METHOD_1","METHOD_5","METHOD_7"]},
+      "version":2,
+      "status":"PUBLISHED",
+      "nodes":[
+        {"id":"proposal","kind":"DOCUMENT_TASK","label":"Đề nghị","actionKey":"INTAKE","requirementIds":["QC4-PROPOSAL"],"active":true,"sortOrder":10},
+        {"id":"commercial","kind":"DOCUMENT_TASK","label":"Thương mại","actionKey":"INTAKE","requirementIds":["QC4-COMMERCIAL"],"active":true,"sortOrder":20},
+        {"id":"assignment","kind":"APPROVAL_TASK","label":"Phân công","actionKey":"ASSIGNMENT","requirementIds":["QC4-ASSIGNMENT_FORM"],"active":true,"sortOrder":30},
+        {"id":"evaluation-plan","kind":"DOCUMENT_TASK","label":"Kế hoạch đánh giá","actionKey":"EVALUATION","requirementIds":["QC4-EVALUATION_PLAN"],"active":true,"sortOrder":40},
+        {"id":"field-inspection","kind":"DOCUMENT_TASK","label":"Kiểm tra hiện trường","actionKey":"EVALUATION","requirementIds":["QC4-FIELD_INSPECTION"],"active":true,"sortOrder":50},
+        {"id":"pyc","kind":"DOCUMENT_TASK","label":"PYC","actionKey":"SAMPLING_LAB","requirementIds":["QC4-LAB_REQUEST"],"active":true,"sortOrder":60},
+        {"id":"sample-coding","kind":"DOCUMENT_TASK","label":"Mã hóa mẫu","actionKey":"SAMPLE_CODING","requirementIds":["QC4-SAMPLE_CODING"],"active":true,"sortOrder":70},
+        {"id":"sample-handover","kind":"DOCUMENT_TASK","label":"Giao mẫu","actionKey":"SAMPLE_HANDOVER","requirementIds":["QC4-SAMPLE_HANDOVER"],"active":true,"sortOrder":80},
+        {"id":"receive-test-result","kind":"DOCUMENT_TASK","label":"Tiếp nhận KQTN","actionKey":"TEST_REPORT","requirementIds":["QC4-TEST_REPORT"],"active":true,"sortOrder":90},
+        {"id":"complete-result","kind":"DOCUMENT_TASK","label":"Hoàn thiện kết quả","actionKey":"TECHNICAL_REVIEW","requirementIds":["QC4-CERTIFICATION_RESULT"],"active":true,"sortOrder":100},
+        {"id":"certificate","kind":"DOCUMENT_TASK","label":"Chứng thư","requirementIds":["QC4-CERTIFICATE"],"active":true,"sortOrder":110},
+        {"id":"decision","kind":"DOCUMENT_TASK","label":"Quyết định","requirementIds":["QC4-DECISION"],"active":true,"sortOrder":120},
+        {"id":"approval","kind":"APPROVAL_TASK","label":"Phê duyệt","actionKey":"APPROVAL","requirementIds":[],"active":true,"sortOrder":130},
+        {"id":"deliver","kind":"DOCUMENT_TASK","label":"Giao khách hàng","actionKey":"DELIVERY","requirementIds":[],"active":true,"sortOrder":140},
+        {"id":"archive","kind":"END","label":"Lưu trữ","actionKey":"ARCHIVE","requirementIds":[],"active":true,"sortOrder":150}
+      ],
+      "transitions":[
+        {"id":"proposal-commercial","fromNodeId":"proposal","toNodeId":"commercial","condition":"ALWAYS"},
+        {"id":"commercial-assignment","fromNodeId":"commercial","toNodeId":"assignment","condition":"ALWAYS"},
+        {"id":"assignment-evaluation-plan","fromNodeId":"assignment","toNodeId":"evaluation-plan","condition":"ALWAYS"},
+        {"id":"evaluation-plan-field-inspection","fromNodeId":"evaluation-plan","toNodeId":"field-inspection","condition":"ALWAYS"},
+        {"id":"field-inspection-pyc","fromNodeId":"field-inspection","toNodeId":"pyc","condition":"ALWAYS"},
+        {"id":"pyc-sample-coding","fromNodeId":"pyc","toNodeId":"sample-coding","condition":"ALWAYS"},
+        {"id":"sample-coding-sample-handover","fromNodeId":"sample-coding","toNodeId":"sample-handover","condition":"ALWAYS"},
+        {"id":"sample-handover-receive-test-result","fromNodeId":"sample-handover","toNodeId":"receive-test-result","condition":"ALWAYS"},
+        {"id":"receive-test-result-complete-result","fromNodeId":"receive-test-result","toNodeId":"complete-result","condition":"ALWAYS"},
+        {"id":"complete-result-certificate","fromNodeId":"complete-result","toNodeId":"certificate","condition":"ALWAYS"},
+        {"id":"certificate-decision","fromNodeId":"certificate","toNodeId":"decision","condition":"ALWAYS"},
+        {"id":"decision-approval","fromNodeId":"decision","toNodeId":"approval","condition":"ALWAYS"},
+        {"id":"approval-deliver","fromNodeId":"approval","toNodeId":"deliver","condition":"ALWAYS"},
+        {"id":"deliver-archive","fromNodeId":"deliver","toNodeId":"archive","condition":"ALWAYS"}
+      ],
+      "createdAt":"2026-09-06T00:00:00.000Z","createdBy":"SYSTEM_SEED","updatedAt":"2026-09-06T00:00:00.000Z","updatedBy":"SYSTEM_SEED","publishedAt":"2026-09-06T00:00:00.000Z","publishedBy":"SYSTEM_SEED"
+    }
+    $$::jsonb,
+    CURRENT_TIMESTAMP
+),
+(
+    'pcnWorkflowTemplates',
+    'pcn-qc9-standard-v2',
+    $$
+    {
+      "code":"QC-STANDARD",
+      "name":"Lưu trình PCN QC9 tiêu chuẩn",
+      "description":"Revision 2 tách nhỏ các bước QC9 để hoàn thiện hồ sơ theo từng node.",
+      "appliesTo":{"fieldCodes":["QC9"],"methods":["METHOD_1","METHOD_5","METHOD_7"]},
+      "version":2,
+      "status":"PUBLISHED",
+      "nodes":[
+        {"id":"proposal","kind":"DOCUMENT_TASK","label":"Đề nghị","actionKey":"INTAKE","requirementIds":["QC9-PROPOSAL"],"active":true,"sortOrder":10},
+        {"id":"commercial","kind":"DOCUMENT_TASK","label":"Thương mại","actionKey":"INTAKE","requirementIds":["QC9-COMMERCIAL"],"active":true,"sortOrder":20},
+        {"id":"assignment","kind":"APPROVAL_TASK","label":"Phân công","actionKey":"ASSIGNMENT","requirementIds":["QC9-ASSIGNMENT_FORM"],"active":true,"sortOrder":30},
+        {"id":"evaluation-plan","kind":"DOCUMENT_TASK","label":"Kế hoạch đánh giá","actionKey":"EVALUATION","requirementIds":["QC9-EVALUATION_PLAN"],"active":true,"sortOrder":40},
+        {"id":"field-inspection","kind":"DOCUMENT_TASK","label":"Kiểm tra hiện trường","actionKey":"EVALUATION","requirementIds":["QC9-FIELD_INSPECTION"],"active":true,"sortOrder":50},
+        {"id":"pyc","kind":"DOCUMENT_TASK","label":"PYC","actionKey":"SAMPLING_LAB","requirementIds":["QC9-LAB_REQUEST"],"active":true,"sortOrder":60},
+        {"id":"sample-coding","kind":"DOCUMENT_TASK","label":"Mã hóa mẫu","actionKey":"SAMPLE_CODING","requirementIds":["QC9-SAMPLE_CODING"],"active":true,"sortOrder":70},
+        {"id":"sample-handover","kind":"DOCUMENT_TASK","label":"Giao mẫu","actionKey":"SAMPLE_HANDOVER","requirementIds":["QC9-SAMPLE_HANDOVER"],"active":true,"sortOrder":80},
+        {"id":"sample-return","kind":"DOCUMENT_TASK","label":"Trả mẫu","actionKey":"SAMPLE_RETURN","requirementIds":["QC9-SAMPLE_RETURN"],"active":true,"sortOrder":90},
+        {"id":"receive-test-result","kind":"DOCUMENT_TASK","label":"Tiếp nhận KQTN","actionKey":"TEST_REPORT","requirementIds":["QC9-TEST_REPORT"],"active":true,"sortOrder":100},
+        {"id":"complete-result","kind":"DOCUMENT_TASK","label":"Hoàn thiện kết quả","actionKey":"TECHNICAL_REVIEW","requirementIds":[],"active":true,"sortOrder":110},
+        {"id":"certificate","kind":"DOCUMENT_TASK","label":"Chứng thư","requirementIds":["QC9-CERTIFICATE"],"active":true,"sortOrder":120},
+        {"id":"decision","kind":"DOCUMENT_TASK","label":"Quyết định","requirementIds":["QC9-DECISION"],"active":true,"sortOrder":130},
+        {"id":"approval","kind":"APPROVAL_TASK","label":"Phê duyệt","actionKey":"APPROVAL","requirementIds":[],"active":true,"sortOrder":140},
+        {"id":"deliver","kind":"DOCUMENT_TASK","label":"Giao khách hàng","actionKey":"DELIVERY","requirementIds":[],"active":true,"sortOrder":150},
+        {"id":"archive","kind":"END","label":"Lưu trữ","actionKey":"ARCHIVE","requirementIds":[],"active":true,"sortOrder":160}
+      ],
+      "transitions":[
+        {"id":"proposal-commercial","fromNodeId":"proposal","toNodeId":"commercial","condition":"ALWAYS"},
+        {"id":"commercial-assignment","fromNodeId":"commercial","toNodeId":"assignment","condition":"ALWAYS"},
+        {"id":"assignment-evaluation-plan","fromNodeId":"assignment","toNodeId":"evaluation-plan","condition":"ALWAYS"},
+        {"id":"evaluation-plan-field-inspection","fromNodeId":"evaluation-plan","toNodeId":"field-inspection","condition":"ALWAYS"},
+        {"id":"field-inspection-pyc","fromNodeId":"field-inspection","toNodeId":"pyc","condition":"ALWAYS"},
+        {"id":"pyc-sample-coding","fromNodeId":"pyc","toNodeId":"sample-coding","condition":"ALWAYS"},
+        {"id":"sample-coding-sample-handover","fromNodeId":"sample-coding","toNodeId":"sample-handover","condition":"ALWAYS"},
+        {"id":"sample-handover-sample-return","fromNodeId":"sample-handover","toNodeId":"sample-return","condition":"ALWAYS"},
+        {"id":"sample-return-receive-test-result","fromNodeId":"sample-return","toNodeId":"receive-test-result","condition":"ALWAYS"},
+        {"id":"receive-test-result-complete-result","fromNodeId":"receive-test-result","toNodeId":"complete-result","condition":"ALWAYS"},
+        {"id":"complete-result-certificate","fromNodeId":"complete-result","toNodeId":"certificate","condition":"ALWAYS"},
+        {"id":"certificate-decision","fromNodeId":"certificate","toNodeId":"decision","condition":"ALWAYS"},
+        {"id":"decision-approval","fromNodeId":"decision","toNodeId":"approval","condition":"ALWAYS"},
+        {"id":"approval-deliver","fromNodeId":"approval","toNodeId":"deliver","condition":"ALWAYS"},
+        {"id":"deliver-archive","fromNodeId":"deliver","toNodeId":"archive","condition":"ALWAYS"}
+      ],
+      "createdAt":"2026-09-06T00:00:00.000Z","createdBy":"SYSTEM_SEED","updatedAt":"2026-09-06T00:00:00.000Z","updatedBy":"SYSTEM_SEED","publishedAt":"2026-09-06T00:00:00.000Z","publishedBy":"SYSTEM_SEED"
+    }
+    $$::jsonb,
     CURRENT_TIMESTAMP
 )
 ON CONFLICT (collection_name, document_id) DO NOTHING;

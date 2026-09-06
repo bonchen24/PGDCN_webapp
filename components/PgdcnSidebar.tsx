@@ -12,6 +12,7 @@ import {
   FilePlus2,
   FlaskConical,
   FilePenLine,
+  GitBranch,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -23,8 +24,9 @@ import type { PcnUserAccount } from '../types';
 import type { PgdSection } from './PgdSidebar';
 import type { PcnSection } from '../utils/pcnNavigation';
 import { canViewSystemSettings } from '../utils/systemSettingsPolicy';
+import { isPcnSystemManager } from '../utils/pcnRbac';
 
-export type PgdcnSharedSection = 'department-dashboard' | 'customers' | 'assistant' | 'activityLogs' | 'system-settings';
+export type PgdcnSharedSection = 'department-dashboard' | 'customers' | 'assistant' | 'activityLogs' | 'system-settings' | 'dossier-templates';
 export type PgdcnDomain = 'department' | 'PCN' | 'PGD';
 export type PgdcnNavigationTarget =
   | { domain: 'department'; section: PgdcnSharedSection }
@@ -76,6 +78,8 @@ export default function PgdcnSidebar({
   const expanded = !collapsed || mobileOpen;
   const scopes = currentUser.departmentScopes || [];
   const canManageSettings = canViewSystemSettings(currentUser);
+  const canManageDossierTemplates = scopes.some((scope) => scope === 'PCN' || scope === 'PGD')
+    && (isPcnSystemManager(currentUser) || ['PGD_ADMIN', 'PGD_MANAGER'].includes(String(currentUser.pgdRole || '').toUpperCase()));
 
   useEffect(() => {
     if (activeTarget.domain === 'PCN') setPcnOpen(true);
@@ -111,6 +115,7 @@ export default function PgdcnSidebar({
       {renderSharedButton('Khách hàng', Building2, { domain: 'department', section: 'customers' })}
       {renderSharedButton('Trợ lý AI', Bot, { domain: 'department', section: 'assistant' })}
       {renderSharedButton('Nhật ký hoạt động', Activity, { domain: 'department', section: 'activityLogs' })}
+      {canManageDossierTemplates && renderSharedButton('Hồ sơ mẫu', GitBranch, { domain: 'department', section: 'dossier-templates' })}
       {canManageSettings && renderSharedButton('Cài đặt hệ thống', Settings, { domain: 'department', section: 'system-settings' })}
 
       {scopes.includes('PCN') && <div className="pt-2">

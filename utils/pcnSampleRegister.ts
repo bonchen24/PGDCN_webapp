@@ -28,6 +28,18 @@ export interface PcnSampleRegisterLabCell {
   bundleId?: string;
   dispatchId?: string;
   dispatchStatus?: PcnSampleRequestBundle['dispatches'][number]['status'];
+  executionStatus?: NonNullable<PcnSampleRoute['execution']>['status'];
+  executionScheduledDate?: string;
+  executionStartedAt?: string;
+  executionCompletedAt?: string;
+  executionOutcome?: NonNullable<PcnSampleRoute['execution']>['outcome'];
+  labSampleCode?: string;
+  sampleConditionCode?: string;
+  sampleConditionNote?: string;
+  receivedQuantity?: number;
+  receivedUnit?: string;
+  receivedAt?: string;
+  receivedBy?: string;
 }
 
 export interface PcnSampleRegisterRow {
@@ -87,6 +99,8 @@ export function buildSampleRegisterRows(input: PcnSampleRegisterInput): PcnSampl
     const routes = input.sampleRoutes.filter((route) => route.sampleLotId === lot.id && route.sampleItemIds?.includes(item.id));
     const labCells: PcnSampleRegisterRow['labCells'] = {};
     for (const route of routes) {
+      const itemSnapshot = route.itemSnapshots?.[item.id];
+      const execution = itemSnapshot?.execution || route.execution;
       const request = input.labRequests.find((candidate) => candidate.sampleRouteId === route.id);
       const result = resultForRequest(request, input.returnedResults);
       const bundleEntry = (bundlesByItemId.get(item.id) || []).find((entry) => entry.dispatch.labCode === route.labCode);
@@ -98,6 +112,20 @@ export function buildSampleRegisterRows(input: PcnSampleRegisterInput): PcnSampl
         ...(request ? { pycNumber: request.pycNumber, syncStatus: request.integration?.syncStatus, externalRequestCode: request.integration?.externalRequestCode } : {}),
         ...(result ? { resultId: result.id, resultOutcome: result.outcome } : {}),
         ...(bundleEntry ? { bundleId: bundleEntry.bundle.id, dispatchId: bundleEntry.dispatch.id, dispatchStatus: bundleEntry.dispatch.status } : {}),
+        ...(execution ? {
+          executionStatus: execution.status,
+          ...(execution.scheduledDate ? { executionScheduledDate: execution.scheduledDate } : {}),
+          ...(execution.startedAt ? { executionStartedAt: execution.startedAt } : {}),
+          ...(execution.completedAt ? { executionCompletedAt: execution.completedAt } : {}),
+          ...(execution.outcome ? { executionOutcome: execution.outcome } : {}),
+        } : {}),
+        ...(itemSnapshot?.labSampleCode ? { labSampleCode: itemSnapshot.labSampleCode } : {}),
+        ...(itemSnapshot?.sampleConditionCode ? { sampleConditionCode: itemSnapshot.sampleConditionCode } : {}),
+        ...(itemSnapshot?.sampleConditionNote ? { sampleConditionNote: itemSnapshot.sampleConditionNote } : {}),
+        ...(itemSnapshot?.receivedQuantity !== undefined ? { receivedQuantity: itemSnapshot.receivedQuantity } : {}),
+        ...(itemSnapshot?.receivedUnit ? { receivedUnit: itemSnapshot.receivedUnit } : {}),
+        ...(itemSnapshot?.receivedAt ? { receivedAt: itemSnapshot.receivedAt } : {}),
+        ...(itemSnapshot?.receivedBy ? { receivedBy: itemSnapshot.receivedBy } : {}),
       };
     }
     rows.push({

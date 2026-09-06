@@ -22,11 +22,19 @@ import PgdcnDashboardView from './PgdcnDashboardView';
 import PgdcnAssistantView from './PgdcnAssistantView';
 import PgdcnCustomersView from './PgdcnCustomersView';
 import PgdcnSystemSettingsView from './PgdcnSystemSettingsView';
+import PgdcnDossierTemplateManagementView from './PgdcnDossierTemplateManagementView';
 import { PgdcnNotificationDropdown } from './PgdcnNotificationDropdown';
 import PcnPersonalSettingsPanel from './PcnPersonalSettingsPanel';
 import type { PcnSection } from '../utils/pcnNavigation';
 import type { PcnDossierDetailTab } from '../utils/pcnDossierNavigation';
 import type { PgdSection } from './PgdSidebar';
+import { getPgdDossierRequirements } from '../utils/pgdDossier';
+
+const PGD_TEMPLATE_REQUIREMENTS = Array.from(new Map(
+  (['OTHER', 'STEEL_METAL', 'MACHINERY_LINE', 'COAL'] as const)
+    .flatMap((productGroup) => getPgdDossierRequirements(productGroup))
+    .map((requirement) => [requirement.code, requirement] as const),
+).values());
 
 type PgdcnAppShellProps = {
   initialDomain?: PgdcnDomain;
@@ -43,6 +51,7 @@ const getActiveContextLabel = (target: PgdcnNavigationTarget): string => {
     if (target.section === 'customers') return 'Khách hàng';
     if (target.section === 'assistant') return 'Trợ lý AI';
     if (target.section === 'activityLogs') return 'Nhật ký hoạt động';
+    if (target.section === 'dossier-templates') return 'Hồ sơ mẫu';
     return 'Cài đặt hệ thống';
   }
   if (target.domain === 'PCN') {
@@ -264,8 +273,10 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     <PgdcnDashboardView scopes={scopes} pcnDossiers={pcn.dossiers} pgdRequests={pgd.requests} notifications={notifications} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} onOpenNotifications={handleOpenNotifications} onSelectNotification={handleDashboardNotificationSelect} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'customers' ? (
     <PgdcnCustomersView scopes={scopes} />
+  ) : activeTarget.domain === 'department' && activeTarget.section === 'dossier-templates' ? (
+    <PgdcnDossierTemplateManagementView currentUser={currentUser} pcnTemplates={pcn.workflowTemplates} pcnRequirements={pcn.documentRequirements} pgdTemplates={pgd.workflowTemplates} pgdRequirements={PGD_TEMPLATE_REQUIREMENTS} onCreatePcnWorkflowTemplate={pcn.createWorkflowTemplate} onUpdatePcnWorkflowTemplate={pcn.updateWorkflowTemplate} onCreatePcnWorkflowRevision={pcn.createWorkflowRevision} onPublishPcnWorkflowTemplate={pcn.publishWorkflowTemplate} onRetirePcnWorkflowTemplate={pcn.retireWorkflowTemplate} onCreatePgdWorkflowTemplate={pgd.createWorkflowTemplate} onUpdatePgdWorkflowTemplate={pgd.updateWorkflowTemplate} onCreatePgdWorkflowRevision={pgd.createWorkflowRevision} onPublishPgdWorkflowTemplate={pgd.publishWorkflowTemplate} onRetirePgdWorkflowTemplate={pgd.retireWorkflowTemplate} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'system-settings' ? (
-    <PgdcnSystemSettingsView currentUser={currentUser} users={systemUsers} roles={pcn.departmentRoles} fields={pcn.fields} pcnTemplates={pcn.templates} onUploadPcnTemplate={pcn.uploadPcnTemplate} onReviewPcnTemplate={pcn.reviewPcnTemplate} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} workflowTemplates={pcn.workflowTemplates} onCreateWorkflowRevision={pcn.createWorkflowRevision} onPublishWorkflowTemplate={pcn.publishWorkflowTemplate} onRetireWorkflowTemplate={pcn.retireWorkflowTemplate} />
+    <PgdcnSystemSettingsView currentUser={currentUser} users={systemUsers} roles={pcn.departmentRoles} fields={pcn.fields} pcnTemplates={pcn.templates} onUploadPcnTemplate={pcn.uploadPcnTemplate} onReviewPcnTemplate={pcn.reviewPcnTemplate} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'activityLogs' ? (
     <ActivityLogView currentUser={currentUser} systemUsers={systemUsers} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'assistant' ? (

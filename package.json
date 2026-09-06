@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "node --require ./scripts/native-dev-preload.cjs ./node_modules/tsx/dist/cli.mjs server.ts",
     "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "npm run test:pcn",
     "test:pcn": "node ./scripts/run-pcn-tests.cjs",
     "test:all": "node --require ./scripts/native-dev-preload.cjs ./node_modules/tsx/dist/cli.mjs --test",

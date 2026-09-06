@@ -1,6 +1,7 @@
 import type {
   PcnSampleFlowEvent,
   PcnSampleFlowEventType,
+  PcnSampleLabFeedback,
   PcnSampleLabCode,
   PcnSampleItem,
   PcnSampleLot,
@@ -378,6 +379,7 @@ export interface PcnSampleFlowEventDraft {
   externalRequestId?: string;
   externalSequence?: number;
   sampleItemIds?: string[];
+  sampleFeedback?: PcnSampleLabFeedback[];
   type: PcnSampleFlowEventType;
   fromStatus?: PcnSampleRouteStatus;
   toStatus?: PcnSampleRouteStatus;
@@ -402,6 +404,7 @@ export function buildPcnSampleFlowEvent(
     ...(draft.externalRequestId ? { externalRequestId: draft.externalRequestId } : {}),
     ...(draft.externalSequence !== undefined ? { externalSequence: draft.externalSequence } : {}),
     ...(draft.sampleItemIds?.length ? { sampleItemIds: Array.from(new Set(draft.sampleItemIds.map((value) => String(value).trim()).filter(Boolean))) } : {}),
+    ...(draft.sampleFeedback?.length ? { sampleFeedback: draft.sampleFeedback } : {}),
     type: draft.type,
     ...(draft.fromStatus ? { fromStatus: draft.fromStatus } : {}),
     ...(draft.toStatus ? { toStatus: draft.toStatus } : {}),

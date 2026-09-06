@@ -1,8 +1,9 @@
-import type { ActivityLog, PcnDossierWorkflowTask } from '../types.ts';
+import type { ActivityLog, CertificationDossier, PcnDossierWorkflowTask } from '../types.ts';
 
 export interface PcnWorkflowTaskMutationResponse {
   task: PcnDossierWorkflowTask;
   tasks?: PcnDossierWorkflowTask[];
+  dossier?: CertificationDossier;
   activityLog?: ActivityLog;
 }
 
@@ -36,8 +37,8 @@ export function startPcnWorkflowTask(dossierId: string, taskId: string): Promise
   return mutateTask(dossierId, taskId, 'start');
 }
 
-export function completePcnWorkflowTask(dossierId: string, taskId: string): Promise<PcnWorkflowTaskMutationResponse> {
-  return mutateTask(dossierId, taskId, 'complete');
+export function completePcnWorkflowTask(dossierId: string, taskId: string, expectedCycleNo?: number): Promise<PcnWorkflowTaskMutationResponse> {
+  return mutateTask(dossierId, taskId, 'complete', Number.isFinite(expectedCycleNo) ? { expectedCycleNo } : undefined);
 }
 
 export function returnPcnWorkflowTask(dossierId: string, taskId: string, input: { targetNodeId: string; reason: string }): Promise<PcnWorkflowTaskMutationResponse> {

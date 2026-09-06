@@ -479,6 +479,10 @@ export interface PcnWorkflowNodeDefinition {
   quorum?: number;
   active: boolean;
   sortOrder: number;
+  /** Optional visual editor placement; old workflow snapshots remain valid without it. */
+  laneId?: string;
+  /** One-based visual column in the template editor canvas. */
+  column?: number;
 }
 
 export interface PcnWorkflowTransitionDefinition {

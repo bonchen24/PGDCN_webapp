@@ -3,11 +3,13 @@ import test from 'node:test';
 
 import type { PcnDossierWorkflowTask, PcnWorkflowSnapshot, PcnWorkflowTemplate } from '../types.ts';
 import {
+  applyPcnWorkflowDocumentRework,
   applyPcnWorkflowReturn,
   buildPcnWorkflowTaskSeed,
   buildPcnWorkflowConditionContext,
   evaluatePcnWorkflowCondition,
   getPcnWorkflowFocusNode,
+  getPcnDossierStatusAfterWorkflowTaskComplete,
   isPcnWorkflowTransitionAllowed,
   projectPcnWorkflowRuntime,
 } from '../utils/pcnWorkflowRuntime.ts';
@@ -157,4 +159,22 @@ test('only returns an active node to an upstream node', () => {
   const tasks = [task('start', 'COMPLETED'), task('split', 'COMPLETED'), task('doc-a', 'COMPLETED'), task('doc-b', 'COMPLETED'), task('join', 'COMPLETED'), task('decision', 'IN_PROGRESS'), task('end', 'LOCKED')];
   assert.throws(() => applyPcnWorkflowReturn({ workflow: snap(), tasks, sourceNodeId: 'decision', targetNodeId: 'end', reason: 'Cần sửa', actor: 'reviewer', now: '2026-09-06T03:00:00.000Z' }), /trước|upstream|node/i);
   assert.throws(() => applyPcnWorkflowReturn({ workflow: snap(), tasks: tasks.map((item) => item.nodeId === 'decision' ? { ...item, status: 'LOCKED' as const } : item), sourceNodeId: 'decision', targetNodeId: 'join', reason: 'Cần sửa', actor: 'reviewer', now: '2026-09-06T03:00:00.000Z' }), /xử lý|trả lại|active/i);
+});
+
+test('document mutation reopens the completed node and marks only downstream work stale', () => {
+  const tasks = [task('start', 'COMPLETED'), task('split', 'COMPLETED'), task('doc-a', 'COMPLETED'), task('doc-b', 'COMPLETED'), task('join', 'COMPLETED'), task('decision', 'COMPLETED'), task('end', 'LOCKED')];
+  const result = applyPcnWorkflowDocumentRework({ workflow: snap(), tasks, sourceNodeId: 'doc-a', actor: 'reviewer', now: '2026-09-06T03:00:00.000Z' });
+  assert.equal(result.tasks.find((item) => item.nodeId === 'doc-a')?.status, 'IN_PROGRESS');
+  assert.equal(result.tasks.find((item) => item.nodeId === 'doc-a')?.cycleNo, 2);
+  assert.equal(result.tasks.find((item) => item.nodeId === 'doc-b')?.status, 'COMPLETED');
+  assert.equal(result.tasks.find((item) => item.nodeId === 'join')?.status, 'STALE');
+  assert.equal(result.tasks.find((item) => item.nodeId === 'decision')?.status, 'STALE');
+  assert.equal(result.tasks.find((item) => item.nodeId === 'start')?.status, 'COMPLETED');
+});
+
+test('detailed node completion synchronizes the compact dossier status', () => {
+  assert.equal(getPcnDossierStatusAfterWorkflowTaskComplete({ id: 'assignment', actionKey: 'ASSIGNMENT' }, 'INTAKE_REVIEW'), 'ASSIGNED');
+  assert.equal(getPcnDossierStatusAfterWorkflowTaskComplete({ id: 'evaluation-plan', actionKey: 'EVALUATION' }, 'ASSIGNED'), 'PLAN_PENDING_APPROVAL');
+  assert.equal(getPcnDossierStatusAfterWorkflowTaskComplete({ id: 'field-inspection', actionKey: 'EVALUATION' }, 'PLAN_PENDING_APPROVAL'), 'FIELD_EVALUATION');
+  assert.equal(getPcnDossierStatusAfterWorkflowTaskComplete({ id: 'complete-result', actionKey: 'TECHNICAL_REVIEW' }, 'AWAITING_RESULTS'), 'TECHNICAL_REVIEW');
 });

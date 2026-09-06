@@ -35,6 +35,10 @@ export async function createPcnWorkflowTemplate(template: PcnWorkflowTemplate): 
   return request('/api/pcn/workflow-templates', 'POST', { template }) as Promise<PcnWorkflowTemplateMutationResponse>;
 }
 
+export async function updatePcnWorkflowTemplate(templateId: string, template: PcnWorkflowTemplate, expectedUpdatedAt?: string): Promise<PcnWorkflowTemplateMutationResponse> {
+  return request(`/api/pcn/workflow-templates/${encodeURIComponent(templateId)}`, 'PUT', { template, ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}) }) as Promise<PcnWorkflowTemplateMutationResponse>;
+}
+
 export async function createPcnWorkflowRevision(templateId: string, template: PcnWorkflowTemplate): Promise<PcnWorkflowTemplateMutationResponse> {
   return request(`/api/pcn/workflow-templates/${encodeURIComponent(templateId)}/revisions`, 'POST', { template }) as Promise<PcnWorkflowTemplateMutationResponse>;
 }

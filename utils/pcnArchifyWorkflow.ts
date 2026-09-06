@@ -57,6 +57,9 @@ export type ArchifyWorkflowDocument = {
   cards: Array<{ dot: 'cyan' | 'emerald' | 'violet' | 'amber' | 'rose' | 'orange' | 'slate'; title: string; items: string[] }>;
 };
 
+/** Internal, schema-safe tag used to carry runtime state into the Archify renderer. */
+export const PCN_ARCHIFY_STATUS_TAG_PREFIX = '__pcn_status__';
+
 export interface PcnArchifyWorkflowInput {
   dossier: CertificationDossier;
   workflow: PcnWorkflowSnapshot;
@@ -164,12 +167,6 @@ function calculateColumns(workflow: PcnWorkflowSnapshot, activeNodes: PcnWorkflo
   return columns;
 }
 
-function statusLabel(status: string | undefined): string {
-  return ({
-    LOCKED: 'Đang khóa', READY: 'Sẵn sàng', IN_PROGRESS: 'Đang xử lý', WAITING: 'Đang chờ', COMPLETED: 'Hoàn tất', RETURNED: 'Đã trả lại', SKIPPED: 'Bỏ qua', STALE: 'Cần làm lại', CANCELLED: 'Đã hủy',
-  } as Record<string, string>)[status || ''] || 'Chưa có trạng thái';
-}
-
 function buildMainPath(workflow: PcnWorkflowSnapshot, columns: Map<string, number>): string[] {
   const nodesById = new Map(workflow.nodes.map((node) => [node.id, node]));
   const active = workflow.nodes.filter((node) => node.active !== false);
@@ -248,15 +245,15 @@ export function buildPcnArchifyWorkflow(input: PcnArchifyWorkflowInput): Archify
     const yOffset = index === 0 ? undefined : (index - 0.5) * 78;
     const requirements = node.requirementIds.length;
     const assigned = runtimeNode?.assignedUsername ? ` · ${runtimeNode.assignedUsername}` : '';
-    const status = statusLabel(runtimeNode?.status);
-    const tag = runtimeNode?.returnReason ? 'Cần xử lý lại' : status;
+    const status = runtimeNode?.status || 'LOCKED';
+    const tag = `${PCN_ARCHIFY_STATUS_TAG_PREFIX}${status}`;
     return {
       id: archifyId(node.id),
       lane,
       col,
       type: TYPE_BY_KIND[node.kind],
       label: node.label,
-      sublabel: `${node.kind.replaceAll('_', ' ')} · ${status}${assigned}${requirements ? ` · ${requirements} tài liệu` : ''}`,
+      sublabel: `${node.kind.replaceAll('_', ' ')}${assigned}${requirements ? ` · ${requirements} tài liệu` : ''}`,
       tag,
       width: 210,
       height: 68,

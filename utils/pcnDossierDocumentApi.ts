@@ -1,4 +1,4 @@
-import type { ActivityLog, CertificationDossier, PcnCertificationFieldCode, PcnDocumentRequirement, PcnDossierAttachment, PcnDossierDocument, PcnGeneratedDocument } from '../types.ts';
+import type { ActivityLog, CertificationDossier, PcnCertificationFieldCode, PcnDocumentRequirement, PcnDossierAttachment, PcnDossierDocument, PcnDossierWorkflowTask, PcnGeneratedDocument, PcnGeneratedDocumentKind } from '../types.ts';
 import { buildPcnDossierDocumentId } from './pcnDossierDocuments.ts';
 import { uploadPcnFile, type PcnFileAsset } from './pcnFileApi.ts';
 
@@ -10,6 +10,48 @@ async function parseResponse(response: Response): Promise<any> {
     throw new Error(message || `PCN dossier document API trả về HTTP ${response.status}`);
   }
   return payload;
+}
+
+export interface PcnDossierDocumentMutationResponse {
+  document?: PcnDossierDocument;
+  dossier?: CertificationDossier;
+  attachment?: PcnDossierAttachment;
+  asset?: PcnFileAsset;
+  workflowTasks?: PcnDossierWorkflowTask[];
+  activityLog?: ActivityLog;
+}
+
+async function mutateDossierDocumentBoundary(input: { dossierId: string; requirementId: string; action: 'waive' | 'remove-current'; reason?: string }): Promise<PcnDossierDocumentMutationResponse> {
+  const response = await fetch(`/api/pcn/dossiers/${encodeURIComponent(input.dossierId)}/documents/${encodeURIComponent(input.requirementId)}/${input.action}`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input.action === 'waive' ? { reason: input.reason } : {}),
+  });
+  return parseResponse(response) as Promise<PcnDossierDocumentMutationResponse>;
+}
+
+export function waivePcnDossierDocument(input: { dossierId: string; requirementId: string; reason: string }): Promise<PcnDossierDocumentMutationResponse> {
+  return mutateDossierDocumentBoundary({ ...input, action: 'waive' });
+}
+
+export function removeCurrentPcnDossierDocument(input: { dossierId: string; requirementId: string }): Promise<PcnDossierDocumentMutationResponse> {
+  return mutateDossierDocumentBoundary({ ...input, action: 'remove-current' });
+}
+
+export async function generateAndAttachPcnDossierNodeDocument(input: {
+  dossierId: string;
+  nodeId: string;
+  requirementId: string;
+  kind?: PcnGeneratedDocumentKind;
+}): Promise<PcnDossierDocumentMutationResponse & { generated?: PcnGeneratedDocument }> {
+  const response = await fetch(`/api/pcn/dossiers/${encodeURIComponent(input.dossierId)}/node-work/${encodeURIComponent(input.nodeId)}/generate-and-attach`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ requirementId: input.requirementId, ...(input.kind ? { kind: input.kind } : {}) }),
+  });
+  return parseResponse(response) as Promise<PcnDossierDocumentMutationResponse & { generated?: PcnGeneratedDocument }>;
 }
 
 export async function fetchPcnDocumentRequirements(fieldCodes: PcnCertificationFieldCode[]): Promise<PcnDocumentRequirement[]> {
@@ -34,6 +76,7 @@ export async function uploadPcnDossierDocument(input: {
   asset: PcnFileAsset;
   dossier?: CertificationDossier;
   attachment?: PcnDossierAttachment;
+  workflowTasks?: PcnDossierWorkflowTask[];
   activityLog?: ActivityLog;
 }> {
   const documentId = buildPcnDossierDocumentId(input.dossierId, input.requirement.id);
@@ -61,6 +104,7 @@ export async function uploadPcnDossierDocument(input: {
       asset,
       ...(payload.dossier ? { dossier: payload.dossier as CertificationDossier } : {}),
       ...(payload.attachment ? { attachment: payload.attachment as PcnDossierAttachment } : {}),
+      ...(Array.isArray(payload.workflowTasks) ? { workflowTasks: payload.workflowTasks as PcnDossierWorkflowTask[] } : {}),
       ...(payload.activityLog ? { activityLog: payload.activityLog as ActivityLog } : {}),
     };
   } catch (error) {
@@ -78,6 +122,7 @@ export async function confirmPcnGeneratedDocumentIntoChecklist(input: {
   asset: PcnFileAsset;
   dossier?: CertificationDossier;
   attachment?: PcnDossierAttachment;
+  workflowTasks?: PcnDossierWorkflowTask[];
   activityLog?: ActivityLog;
 }> {
   const response = await fetch(`/api/pcn/dossiers/${encodeURIComponent(input.dossierId)}/documents/confirm-generated`, {
@@ -92,6 +137,7 @@ export async function confirmPcnGeneratedDocumentIntoChecklist(input: {
     asset: payload.asset as PcnFileAsset,
     ...(payload.dossier ? { dossier: payload.dossier as CertificationDossier } : {}),
     ...(payload.attachment ? { attachment: payload.attachment as PcnDossierAttachment } : {}),
+    ...(Array.isArray(payload.workflowTasks) ? { workflowTasks: payload.workflowTasks as PcnDossierWorkflowTask[] } : {}),
     ...(payload.activityLog ? { activityLog: payload.activityLog as ActivityLog } : {}),
   };
 }

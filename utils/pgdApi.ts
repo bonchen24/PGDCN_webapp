@@ -25,6 +25,7 @@ import type {
   PgdDocumentTemplateKind,
 } from './pgdDocumentTemplates.ts';
 import type { PgdDossierDocument, PgdDossierRequirement } from './pgdDossier.ts';
+import type { PgdWorkflowTemplate } from './pgdWorkflowTemplate.ts';
 
 export interface PgdBootstrapSnapshot {
   customers: CustomerRef[];
@@ -49,6 +50,7 @@ export interface PgdBootstrapSnapshot {
   labResultReviews: PgdLabResultReview[];
   dossierIndexes: PgdDossierIndex[];
   calibrationInstruments: PgdCalibrationInstrument[];
+  workflowTemplates: PgdWorkflowTemplate[];
 }
 
 export interface PgdDocumentGenerationResponse {
@@ -156,6 +158,7 @@ export async function fetchPgdBootstrap(): Promise<PgdBootstrapSnapshot> {
     labResultReviews: Array.isArray(payload?.labResultReviews) ? payload.labResultReviews as PgdLabResultReview[] : [],
     dossierIndexes: Array.isArray(payload?.dossierIndexes) ? payload.dossierIndexes as PgdDossierIndex[] : [],
     calibrationInstruments: Array.isArray(payload?.calibrationInstruments) ? payload.calibrationInstruments as PgdCalibrationInstrument[] : [],
+    workflowTemplates: Array.isArray(payload?.workflowTemplates) ? payload.workflowTemplates as PgdWorkflowTemplate[] : [],
   };
 }
 
