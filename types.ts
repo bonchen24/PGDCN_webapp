@@ -441,6 +441,101 @@ export interface PcnRetentionMetadata {
   legalHoldAt?: string;
 }
 
+export type PcnWorkflowTemplateStatus = 'DRAFT' | 'PUBLISHED' | 'RETIRED';
+export type PcnWorkflowNodeKind = 'DOCUMENT_TASK' | 'APPROVAL_TASK' | 'DECISION' | 'PARALLEL_SPLIT' | 'PARALLEL_JOIN' | 'END';
+export type PcnWorkflowJoinPolicy = 'ALL' | 'ANY' | 'QUORUM';
+export type PcnWorkflowReturnPolicy = 'REWORK' | 'RESTART_DEPENDENCIES' | 'RESTART_TEMPLATE';
+export type PcnWorkflowCondition =
+  | 'ALWAYS'
+  | 'REQUIRED_DOCUMENTS_COMPLETE'
+  | 'ANY_RESULT_RETURNED'
+  | 'RESULT_PASSED'
+  | 'RESULT_FAILED'
+  | 'APPROVAL_RETURNED'
+  | 'FIELD_MATCH'
+  | 'METHOD_MATCH';
+
+export interface PcnWorkflowConditionConfig {
+  expectedFieldCodes?: string[];
+  expectedMethod?: PcnCertificationMethod;
+}
+
+export interface PcnWorkflowTemplateAppliesTo {
+  fieldCodes: string[];
+  methods?: PcnCertificationMethod[];
+  dossierType?: string;
+}
+
+export interface PcnWorkflowNodeDefinition {
+  id: string;
+  kind: PcnWorkflowNodeKind;
+  label: string;
+  description?: string;
+  actionKey?: string;
+  requirementIds: string[];
+  assigneeRole?: string;
+  slaDays?: number;
+  joinPolicy?: PcnWorkflowJoinPolicy;
+  quorum?: number;
+  active: boolean;
+  sortOrder: number;
+}
+
+export interface PcnWorkflowTransitionDefinition {
+  id: string;
+  fromNodeId: string;
+  toNodeId: string;
+  label?: string;
+  condition?: PcnWorkflowCondition;
+  conditionConfig?: PcnWorkflowConditionConfig;
+  priority?: number;
+  returnPolicy?: PcnWorkflowReturnPolicy;
+}
+
+export interface PcnWorkflowTemplate {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  appliesTo: PcnWorkflowTemplateAppliesTo;
+  version: number;
+  status: PcnWorkflowTemplateStatus;
+  nodes: PcnWorkflowNodeDefinition[];
+  transitions: PcnWorkflowTransitionDefinition[];
+  createdAt: string;
+  createdBy: string;
+  publishedAt?: string;
+  publishedBy?: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface PcnWorkflowSnapshot {
+  templateCode: string;
+  templateVersion: number;
+  nodes: PcnWorkflowNodeDefinition[];
+  transitions: PcnWorkflowTransitionDefinition[];
+  capturedAt: string;
+  capturedBy: string;
+}
+
+export type PcnDossierWorkflowTaskStatus = 'LOCKED' | 'READY' | 'IN_PROGRESS' | 'WAITING' | 'COMPLETED' | 'RETURNED' | 'SKIPPED' | 'STALE' | 'CANCELLED';
+
+export interface PcnDossierWorkflowTask {
+  id: string;
+  dossierId: string;
+  nodeId: string;
+  status: PcnDossierWorkflowTaskStatus;
+  cycleNo: number;
+  assignedUsername?: string;
+  returnReason?: string;
+  returnTargetNodeId?: string;
+  startedAt?: string;
+  completedAt?: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
 export interface CertificationDossier {
   id: string;
   dossierCode: string;
@@ -449,7 +544,12 @@ export interface CertificationDossier {
   customerSnapshot?: Pick<CustomerRef, 'name' | 'address' | 'taxId' | 'phone' | 'email' | 'contactPerson'>;
   fieldCodes: PcnCertificationFieldCode[];
   method: PcnCertificationMethod;
+  /** Optional dossier subtype used when selecting a more specific workflow template. */
+  dossierType?: string;
   status: PcnDossierStatus;
+  workflowTemplateId?: string;
+  workflowTemplateVersion?: number;
+  workflowSnapshot?: PcnWorkflowSnapshot;
   /** One accountable PCN operator from intake through packaging and archive. */
   ownerUsername?: string;
   /** Explicit operator-confirmed reason for an exception-lane status. */
@@ -751,6 +851,18 @@ export type PcnSampleExecutionStatus =
 
 export type PcnSampleExecutionOutcome = 'PENDING' | 'PASS' | 'FAIL';
 
+/** Per-sample facts returned by the laboratory application. */
+export interface PcnSampleLabFeedback {
+  pcnSampleItemId: string;
+  labSampleCode?: string;
+  sampleConditionCode?: string;
+  sampleConditionNote?: string;
+  receivedQuantity?: number;
+  receivedUnit?: string;
+  receivedAt?: string;
+  receivedBy?: string;
+}
+
 /** Remote execution facts owned by the target testing-room application. */
 export interface PcnSampleExecutionSnapshot {
   status: PcnSampleExecutionStatus;
@@ -851,8 +963,14 @@ export interface PcnSampleItem {
 export interface PcnSampleRouteItemSnapshot {
   status?: PcnSampleRouteStatus;
   execution?: PcnSampleExecutionSnapshot;
-  sentAt?: string;
+  labSampleCode?: string;
+  sampleConditionCode?: string;
+  sampleConditionNote?: string;
+  receivedQuantity?: number;
+  receivedUnit?: string;
   receivedAt?: string;
+  receivedBy?: string;
+  sentAt?: string;
   resultReturnedAt?: string;
   returnedAt?: string;
   note?: string;
@@ -908,6 +1026,7 @@ export interface PcnSampleFlowEvent {
   externalRequestId?: string;
   externalSequence?: number;
   sampleItemIds?: string[];
+  sampleFeedback?: PcnSampleLabFeedback[];
   type: PcnSampleFlowEventType;
   fromStatus?: PcnSampleRouteStatus;
   toStatus?: PcnSampleRouteStatus;

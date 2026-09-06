@@ -109,6 +109,10 @@ export function assertPcnPersonnelAdmin(user: PcnClientUserRole | null | undefin
   }
 }
 
+export function getPcnWorkflowTemplateMutationDenial(user: PcnClientUserRole | null | undefined): string | null {
+  return isPcnSystemManager(user) ? null : 'Chỉ Admin hoặc Quản lý PCN được thay đổi danh sách lưu trình hồ sơ.';
+}
+
 export const PCN_DEDICATED_MUTATION_COLLECTIONS = new Set([
   'certificationProposals',
   'certificationDossiers',
@@ -122,6 +126,8 @@ export const PCN_DEDICATED_MUTATION_COLLECTIONS = new Set([
   'pcnSampleFlowEvents',
   'labRequests',
   'returnedResults',
+  'pcnWorkflowTemplates',
+  'pcnDossierWorkflowTasks',
 ]);
 
 export const PCN_STAFF_MUTABLE_COLLECTIONS = new Set([

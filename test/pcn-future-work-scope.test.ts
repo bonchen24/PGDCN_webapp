@@ -70,8 +70,9 @@ test('PCN navigation keeps dossier cards while exposing management projections a
 test('opening a dossier from the proposal register lets the detail view choose the current region', () => {
   const workspace = read('components/PcnWorkspace.tsx');
 
-  assert.match(workspace, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\(undefined\); setSelectedDossierId\(dossier\.id\); \}\}/);
-  assert.doesNotMatch(workspace, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\('overview'\); setSelectedDossierId\(dossier\.id\); \}\}/);
+  assert.match(workspace, /<ProposalView[\s\S]*onOpenDossier=\{openDossierAtCurrentStation\}/);
+  assert.match(workspace, /router\.push\(`\/pgdcn\/pcn\/dossiers/);
+  assert.doesNotMatch(workspace, /setSelectedDossierTab\('overview'\)/);
 });
 
 test('dashboard create action opens the new-proposal form directly', () => {

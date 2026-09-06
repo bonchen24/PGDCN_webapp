@@ -141,6 +141,17 @@ CREATE TABLE IF NOT EXISTS file_assets (
 -- pcnSampleRequestBundles stores the user-facing aggregate PYC tổng; child
 -- labRequests remain the route/PTN integration records and keep their own
 -- external request identity.
+-- pcnWorkflowTemplates stores manager-authored, versioned topology only;
+-- pcnDossierWorkflowTasks stores current node state. Published templates are
+-- immutable by server policy, while a dossier keeps its own workflowSnapshot.
+
+CREATE INDEX IF NOT EXISTS idx_pcn_workflow_templates_code_version
+    ON app_documents (LOWER(data->>'code'), (data->>'version') DESC, updated_at DESC)
+    WHERE collection_name = 'pcnWorkflowTemplates';
+
+CREATE INDEX IF NOT EXISTS idx_pcn_workflow_tasks_dossier_status
+    ON app_documents ((data->>'dossierId'), (data->>'status'), updated_at DESC)
+    WHERE collection_name = 'pcnDossierWorkflowTasks';
 
 CREATE INDEX IF NOT EXISTS idx_pcn_sample_request_bundles_customer
     ON app_documents (collection_name, (data->'customerSnapshot'->>'name'))
@@ -238,13 +249,62 @@ FROM jsonb_array_elements('[
   {"id":"QC9-CLIENT_PACKAGE","fieldCode":"QC9","code":"CLIENT_PACKAGE","name":"Hồ sơ gửi khách hàng","stages":["DELIVERY"],"stationKeys":["DELIVERY_ARCHIVE"],"required":true,"active":true,"sortOrder":120},
   {"id":"QC9-ARCHIVE_SCAN","fieldCode":"QC9","code":"ARCHIVE_SCAN","name":"Bản scan lưu hồ sơ","stages":["ARCHIVE"],"stationKeys":["DELIVERY_ARCHIVE"],"required":true,"active":true,"sortOrder":130}
 ]'::jsonb) AS item
-    ON CONFLICT (collection_name, document_id) DO UPDATE
+ON CONFLICT (collection_name, document_id) DO UPDATE
 SET data = CASE
   WHEN app_documents.data ? 'stationKeys' THEN app_documents.data
   WHEN EXCLUDED.data ? 'stationKeys' THEN app_documents.data || jsonb_build_object('stationKeys', EXCLUDED.data->'stationKeys')
   ELSE app_documents.data
 END,
 updated_at = app_documents.updated_at;
+
+-- Default PCN workflow: a versioned, manager-owned topology with one
+-- parallel lab/document-review branch. It is intentionally small and can be
+-- superseded by a manager revision without changing existing dossier snapshots.
+INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+VALUES (
+    'pcnWorkflowTemplates',
+    'pcn-qc-standard-v1',
+    '{
+      "code":"QC-STANDARD",
+      "name":"Lưu trình PCN tiêu chuẩn",
+      "description":"Lưu trình mặc định cho hồ sơ QC mới; các loại hồ sơ khác có thể dùng revision riêng.",
+      "appliesTo":{"fieldCodes":[],"methods":["METHOD_1","METHOD_5","METHOD_7"]},
+      "version":1,
+      "status":"PUBLISHED",
+      "nodes":[
+        {"id":"intake","kind":"DOCUMENT_TASK","label":"Tiếp nhận Đề nghị","actionKey":"INTAKE","requirementIds":["QC4-PROPOSAL","QC4-COMMERCIAL","QC9-PROPOSAL","QC9-COMMERCIAL"],"active":true,"sortOrder":10},
+        {"id":"assignment","kind":"APPROVAL_TASK","label":"Phân công hồ sơ","actionKey":"ASSIGNMENT","requirementIds":["QC4-ASSIGNMENT_FORM","QC9-ASSIGNMENT_FORM"],"active":true,"sortOrder":20},
+        {"id":"evaluation","kind":"DOCUMENT_TASK","label":"Đánh giá hiện trường","actionKey":"EVALUATION","requirementIds":["QC4-EVALUATION_PLAN","QC4-FIELD_INSPECTION","QC9-EVALUATION_PLAN","QC9-FIELD_INSPECTION"],"active":true,"sortOrder":30},
+        {"id":"split","kind":"PARALLEL_SPLIT","label":"Tách nhánh xử lý","requirementIds":[],"active":true,"sortOrder":40},
+        {"id":"sampling","kind":"DOCUMENT_TASK","label":"Lấy mẫu và gửi PTN","actionKey":"SAMPLING_LAB","requirementIds":["QC4-LAB_REQUEST","QC4-SAMPLE_CODING","QC4-SAMPLE_HANDOVER","QC9-LAB_REQUEST","QC9-SAMPLE_CODING","QC9-SAMPLE_HANDOVER","QC9-SAMPLE_RETURN"],"active":true,"sortOrder":50},
+        {"id":"review","kind":"DOCUMENT_TASK","label":"Hoàn thiện kết quả","actionKey":"TECHNICAL_REVIEW","requirementIds":["QC4-CERTIFICATION_RESULT","QC9-TEST_REPORT"],"active":true,"sortOrder":60},
+        {"id":"join","kind":"PARALLEL_JOIN","label":"Gom nhánh","joinPolicy":"ALL","requirementIds":[],"active":true,"sortOrder":70},
+        {"id":"approval","kind":"APPROVAL_TASK","label":"Phê duyệt","actionKey":"APPROVAL","requirementIds":["QC4-CERTIFICATE","QC4-DECISION","QC9-CERTIFICATE","QC9-DECISION"],"active":true,"sortOrder":80},
+        {"id":"delivery","kind":"DOCUMENT_TASK","label":"Giao khách hàng","actionKey":"DELIVERY_ARCHIVE","requirementIds":["QC4-CLIENT_PACKAGE","QC9-CLIENT_PACKAGE"],"active":true,"sortOrder":90},
+        {"id":"archive","kind":"END","label":"Lưu trữ hồ sơ","actionKey":"DELIVERY_ARCHIVE","requirementIds":["QC4-ARCHIVE_SCAN","QC9-ARCHIVE_SCAN"],"active":true,"sortOrder":100}
+      ],
+      "transitions":[
+        {"id":"t-intake-assignment","fromNodeId":"intake","toNodeId":"assignment","condition":"ALWAYS"},
+        {"id":"t-assignment-evaluation","fromNodeId":"assignment","toNodeId":"evaluation","condition":"ALWAYS"},
+        {"id":"t-evaluation-split","fromNodeId":"evaluation","toNodeId":"split","condition":"ALWAYS"},
+        {"id":"t-split-sampling","fromNodeId":"split","toNodeId":"sampling","condition":"ALWAYS"},
+        {"id":"t-split-review","fromNodeId":"split","toNodeId":"review","condition":"ALWAYS"},
+        {"id":"t-sampling-join","fromNodeId":"sampling","toNodeId":"join","condition":"ALWAYS"},
+        {"id":"t-review-join","fromNodeId":"review","toNodeId":"join","condition":"ALWAYS"},
+        {"id":"t-join-approval","fromNodeId":"join","toNodeId":"approval","condition":"ALWAYS","returnPolicy":"REWORK"},
+        {"id":"t-approval-delivery","fromNodeId":"approval","toNodeId":"delivery","condition":"ALWAYS"},
+        {"id":"t-delivery-archive","fromNodeId":"delivery","toNodeId":"archive","condition":"ALWAYS"}
+      ],
+      "createdAt":"2026-09-06T00:00:00.000Z",
+      "createdBy":"SYSTEM_SEED",
+      "updatedAt":"2026-09-06T00:00:00.000Z",
+      "updatedBy":"SYSTEM_SEED",
+      "publishedAt":"2026-09-06T00:00:00.000Z",
+      "publishedBy":"SYSTEM_SEED"
+    }'::jsonb,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT (collection_name, document_id) DO NOTHING;
 
 -- PGD owns an independent catalog and result-template snapshots for
 -- stainless-steel inspection. PCN has no stainless-steel field.

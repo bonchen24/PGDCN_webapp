@@ -8,6 +8,7 @@ import { getPcnNotificationDossierTab } from '../utils/pcnDossierNavigation.ts';
 
 const schemaSource = fs.readFileSync(new URL('../sql/pcn-schema.sql', import.meta.url), 'utf8');
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
+const shellSource = fs.readFileSync(new URL('../components/PgdcnAppShell.tsx', import.meta.url), 'utf8');
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 
 const activity = (overrides: Partial<ActivityLog> = {}): ActivityLog => ({
@@ -103,7 +104,14 @@ test('PCN notification types deep-link to the matching dossier detail area', () 
 
 test('PCN notification handler passes the deep-link detail area when a dossier exists', () => {
   assert.match(workspaceSource, /getPcnNotificationDossierTab\(notification\.entityType\)/);
-  assert.match(workspaceSource, /setSelectedDossierTab\(notificationTab\)/);
+  assert.match(workspaceSource, /openDossierAtCurrentStation\(dossier, notificationTab\)/);
+});
+
+test('shared notification handler opens the canonical standalone dossier route', () => {
+  assert.match(shellSource, /getPcnNotificationDossierTab/);
+  assert.match(shellSource, /notification\.entityType === 'PCN_SAMPLE_LOT'/);
+  assert.match(shellSource, /openPcnDossier\(dossier\.id, getPcnNotificationDossierTab\(notification\.entityType\)\)/);
+  assert.match(shellSource, /router\.push\(`\/pgdcn\/pcn\/dossiers/);
 });
 
 // --- End of pcn-notification-contract.test.ts ---

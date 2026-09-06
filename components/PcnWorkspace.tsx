@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Activity,
   Award,
@@ -518,10 +519,15 @@ function Field({ label, error, hideLabel = false, children }: { label: string; e
 export type PcnWorkspaceProps = {
   embedded?: boolean;
   initialSection?: PcnSection;
+  initialDossierId?: string;
+  initialDossierTab?: import('../utils/pcnDossierNavigation').PcnDossierDetailTab;
+  initialDossierNodeId?: string;
+  standaloneDossier?: boolean;
   onActiveSectionChange?: (section: PcnSection) => void;
 };
 
-export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', onActiveSectionChange }: PcnWorkspaceProps = {}) {
+export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', initialDossierId, initialDossierTab, initialDossierNodeId, standaloneDossier = false, onActiveSectionChange }: PcnWorkspaceProps = {}) {
+  const router = useRouter();
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const clearCurrentUser = usePcnSessionStore((state) => state.clearCurrentUser);
   const pcn = usePcnStore();
@@ -532,8 +538,8 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', o
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [focusedDossierId, setFocusedDossierId] = useState<string | undefined>();
   const [proposalFormRequest, setProposalFormRequest] = useState(0);
-  const [selectedDossierId, setSelectedDossierId] = useState<string | undefined>();
-  const [selectedDossierTab, setSelectedDossierTab] = useState<import('../utils/pcnDossierNavigation').PcnDossierDetailTab | undefined>();
+  const [selectedDossierId, setSelectedDossierId] = useState<string | undefined>(initialDossierId);
+  const [selectedDossierTab, setSelectedDossierTab] = useState<import('../utils/pcnDossierNavigation').PcnDossierDetailTab | undefined>(initialDossierTab);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') return window.localStorage.getItem('pcn_sidebar_collapsed') === 'true';
@@ -545,6 +551,12 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', o
   useEffect(() => {
     setActiveSection(initialSection);
   }, [initialSection]);
+
+  useEffect(() => {
+    if (!initialDossierId) return;
+    setSelectedDossierId(initialDossierId);
+    setSelectedDossierTab(initialDossierTab);
+  }, [initialDossierId, initialDossierTab]);
 
   useEffect(() => {
     let cancelled = false;
@@ -601,8 +613,8 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', o
     setMobileMenuOpen(false);
   };
   const openDossierAtCurrentStation = (dossier: CertificationDossier, initialTab?: import('../utils/pcnDossierNavigation').PcnDossierDetailTab) => {
-    setSelectedDossierTab(initialTab);
-    setSelectedDossierId(dossier.id);
+    const query = initialTab ? `?tab=${encodeURIComponent(initialTab)}` : '';
+    router.push(`/pgdcn/pcn/dossiers/${encodeURIComponent(dossier.id)}${query}`);
   };
   const findNotificationDossier = (notification: AppNotification): CertificationDossier | undefined => {
     if (notification.entityType === 'PCN_PROPOSAL') {
@@ -638,8 +650,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', o
     const dossier = findNotificationDossier(notification);
     if (dossier) {
       const notificationTab = getPcnNotificationDossierTab(notification.entityType);
-      setSelectedDossierTab(notificationTab);
-      setSelectedDossierId(dossier.id);
+      openDossierAtCurrentStation(dossier, notificationTab);
       return;
     }
     const section: PcnSection | undefined = notification.entityType === 'PCN_PROPOSAL'
@@ -650,6 +661,14 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', o
     if (section) openSection(section);
   };
   const selectedDossier = pcn.dossiers.find((dossier) => dossier.id === selectedDossierId);
+  const closeSelectedDossier = () => {
+    if (standaloneDossier) {
+      router.replace('/pgdcn/pcn');
+      return;
+    }
+    setSelectedDossierTab(undefined);
+    setSelectedDossierId(undefined);
+  };
   const downloadDossierPackage = async (dossier: CertificationDossier) => {
     try {
       await downloadPcnDossierPackage(dossier.id, dossier.dossierCode);
@@ -704,7 +723,8 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', o
   const mobileNavItems = PCN_MOBILE_NAVIGATION.map((key) => ({ key, icon: PCN_SECTION_ICONS[key] }));
 
 
-  const content = activeSection === 'dashboard' ? (
+  const renderDossierDetail = (standalone: boolean) => selectedDossier ? <PcnDossierDetailView dossier={selectedDossier} proposal={pcn.proposals.find((proposal) => proposal.id === selectedDossier.proposalId)} fields={pcn.fields} templates={pcn.templates} labRequests={pcn.labRequests} results={pcn.returnedResults} approvalSteps={pcn.approvalSteps} issuancePackages={pcn.issuancePackages} activityLogs={pcn.activityLogs} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} dossierAttachments={pcn.dossierAttachments} generatedDocuments={pcn.generatedDocuments} officialDocuments={pcn.officialDocuments} signerDelegations={pcn.signerDelegations} sampleLots={pcn.sampleLots} sampleItems={pcn.sampleItems} sampleRoutes={pcn.sampleRoutes} users={pcn.users} currentUser={currentUser} standalone={standalone} workflowTasks={pcn.workflowTasks} onStartWorkflowTask={(taskId) => pcn.startWorkflowTask(selectedDossier.id, taskId)} onCompleteWorkflowTask={(taskId) => pcn.completeWorkflowTask(selectedDossier.id, taskId)} onReturnWorkflowTask={(taskId, input) => pcn.returnWorkflowTask(selectedDossier.id, taskId, input)} initialTab={selectedDossierTab} initialNodeId={initialDossierNodeId} onUploadDocument={(requirementId, file) => pcn.uploadDossierDocument(selectedDossier.id, requirementId, file)} onUpdateStatus={(status, exceptionReason) => pcn.updateDossier(selectedDossier.id, { status, ...(exceptionReason !== undefined ? { exceptionReason } : {}) })} onUpdateDossier={(updates) => pcn.updateDossier(selectedDossier.id, updates)} onDeleteDossier={(reason, confirmationCode) => pcn.deleteDossier(selectedDossier.id, reason, confirmationCode)} canEditMilestones={currentUser.systemRole !== 'viewer' && currentUser.role !== 'viewer'} onPreflight={(kind, sampleRouteId, labRequestId) => pcn.preflightDossierDocuments(selectedDossier.id, kind, sampleRouteId, labRequestId)} onGenerateDocuments={(kind, formats, sampleRouteId, expectedContextHash, labRequestId) => pcn.generateDossierDocuments(selectedDossier.id, kind, formats, sampleRouteId, expectedContextHash, labRequestId)} onDownloadPackage={() => downloadDossierPackage(selectedDossier)} onCreateSampleLot={pcn.addSampleLot} onUpdateSampleRoute={pcn.updateSampleRoute} onSaveLabRequest={pcn.addLabRequest} onUpdateLabRequest={pcn.updateLabRequest} onDispatchLabRequest={pcn.dispatchLabRequest} onReconcileLabRequest={pcn.reconcileLabRequest} onSaveHandover={(request, details) => pcn.updateLabRequest(request.id, request.status, { handoverDetails: details })} onSaveResult={pcn.addReturnedResult} onAttachResultFile={pcn.attachResultFile} onPrepareIssuance={prepareIssuance} onApproveStep={approveStep} onIssue={issuePackage} onDeliver={deliverPackage} onArchive={archivePackage} onWithdraw={withdrawPackage} onAttachIssuanceFile={pcn.attachIssuanceFile} onPreflightOfficialDocuments={pcn.preflightOfficialDocuments} onGenerateOfficialDocuments={pcn.generateOfficialDocuments} onCreateSignerDelegation={pcn.addSignerDelegation} onRevokeSignerDelegation={pcn.revokeSignerDelegation} onClose={closeSelectedDossier} /> : null;
+  const content = standaloneDossier ? (selectedDossier ? renderDossierDetail(true) : <div className="p-6 text-sm font-bold text-slate-600">Không tìm thấy hồ sơ PCN.</div>) : activeSection === 'dashboard' ? (
     <PcnDashboard
       proposals={pcn.proposals}
       dossiers={pcn.dossiers}
@@ -723,7 +743,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', o
       onAssignDossier={assignPcnDossier}
     />
   ) : activeSection === 'proposals' ? (
-    <ProposalView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} customers={pcn.customers} canEdit={canMutatePcn} initialDossierId={focusedDossierId} initialFieldCode={selectedField} openFormRequest={proposalFormRequest} onSave={(proposal) => pcn.addProposal(proposal)} onUpdateProposal={(proposalId, updates) => pcn.updateProposal(proposalId, updates)} onOpenDossier={(dossier) => { setSelectedDossierTab(undefined); setSelectedDossierId(dossier.id); }} />
+    <ProposalView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} customers={pcn.customers} canEdit={canMutatePcn} initialDossierId={focusedDossierId} initialFieldCode={selectedField} openFormRequest={proposalFormRequest} onSave={(proposal) => pcn.addProposal(proposal)} onUpdateProposal={(proposalId, updates) => pcn.updateProposal(proposalId, updates)} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'operations' ? (
     <PcnOperationsRegisterView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} issuancePackages={pcn.issuancePackages} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} users={pcn.users} currentUser={currentUser} currentUsername={currentUser.username} canEdit={canMutatePcn} onUpdateProposal={pcn.updateProposal} onUpdateDossier={pcn.updateDossier} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'lab-operations' ? (
@@ -806,7 +826,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', o
       </div>
       {personalSettingsOpen && <PcnPersonalSettingsPanel currentUser={currentUser} onClose={() => setPersonalSettingsOpen(false)} />}
       {/* The detail view normalizes the legacy result-file callback internally. */}
-      {selectedDossier && <PcnDossierDetailView dossier={selectedDossier} proposal={pcn.proposals.find((proposal) => proposal.id === selectedDossier.proposalId)} fields={pcn.fields} templates={pcn.templates} labRequests={pcn.labRequests} results={pcn.returnedResults} approvalSteps={pcn.approvalSteps} issuancePackages={pcn.issuancePackages} activityLogs={pcn.activityLogs} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} dossierAttachments={pcn.dossierAttachments} generatedDocuments={pcn.generatedDocuments} officialDocuments={pcn.officialDocuments} signerDelegations={pcn.signerDelegations} sampleLots={pcn.sampleLots} sampleItems={pcn.sampleItems} sampleRoutes={pcn.sampleRoutes} users={pcn.users} currentUser={currentUser} initialTab={selectedDossierTab} onUploadDocument={(requirementId, file) => pcn.uploadDossierDocument(selectedDossier.id, requirementId, file)} onUpdateStatus={(status, exceptionReason) => pcn.updateDossier(selectedDossier.id, { status, ...(exceptionReason !== undefined ? { exceptionReason } : {}) })} onUpdateDossier={(updates) => pcn.updateDossier(selectedDossier.id, updates)} onDeleteDossier={(reason, confirmationCode) => pcn.deleteDossier(selectedDossier.id, reason, confirmationCode)} canEditMilestones={currentUser.systemRole !== 'viewer' && currentUser.role !== 'viewer'} onPreflight={(kind, sampleRouteId, labRequestId) => pcn.preflightDossierDocuments(selectedDossier.id, kind, sampleRouteId, labRequestId)} onGenerateDocuments={(kind, formats, sampleRouteId, expectedContextHash, labRequestId) => pcn.generateDossierDocuments(selectedDossier.id, kind, formats, sampleRouteId, expectedContextHash, labRequestId)} onDownloadPackage={() => downloadDossierPackage(selectedDossier)} onCreateSampleLot={pcn.addSampleLot} onUpdateSampleRoute={pcn.updateSampleRoute} onSaveLabRequest={pcn.addLabRequest} onUpdateLabRequest={pcn.updateLabRequest} onDispatchLabRequest={pcn.dispatchLabRequest} onReconcileLabRequest={pcn.reconcileLabRequest} onSaveHandover={(request, details) => pcn.updateLabRequest(request.id, request.status, { handoverDetails: details })} onSaveResult={pcn.addReturnedResult} onAttachResultFile={pcn.attachResultFile} onPrepareIssuance={prepareIssuance} onApproveStep={approveStep} onIssue={issuePackage} onDeliver={deliverPackage} onArchive={archivePackage} onWithdraw={withdrawPackage} onAttachIssuanceFile={pcn.attachIssuanceFile} onPreflightOfficialDocuments={pcn.preflightOfficialDocuments} onGenerateOfficialDocuments={pcn.generateOfficialDocuments} onCreateSignerDelegation={pcn.addSignerDelegation} onRevokeSignerDelegation={pcn.revokeSignerDelegation} onClose={() => { setSelectedDossierTab(undefined); setSelectedDossierId(undefined); }} />}
+      {!standaloneDossier && renderDossierDetail(false)}
     </>
   );
 }

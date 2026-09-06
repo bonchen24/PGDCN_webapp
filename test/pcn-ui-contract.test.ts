@@ -205,8 +205,8 @@ test('PCN section dossier shortcuts preserve the operator station context', () =
   const source = fs.readFileSync(workspacePath, 'utf8');
 
   assert.match(source, /function openDossierAtCurrentStation|const openDossierAtCurrentStation/);
-  assert.match(source, /setSelectedDossierTab\(initialTab\)/);
-  assert.match(source, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\(undefined\); setSelectedDossierId\(dossier\.id\); \}\}/);
+  assert.match(source, /router\.push\(`\/pgdcn\/pcn\/dossiers/);
+  assert.match(source, /initialTab \? `\?tab=/);
   assert.match(source, /<PcnDashboard[\s\S]*onOpenDossier=\{openDossierAtCurrentStation\}/);
   assert.match(source, /<PcnPipelineBoard[\s\S]*onOpenDossier=\{onOpenDossier\}/);
   assert.match(source, /<PcnWorkQueueView[\s\S]*onOpenDossier=\{onOpenDossier\}/);

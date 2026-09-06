@@ -89,6 +89,9 @@ import type {
   PcnDraftOutput,
   PcnDraftWorkspace,
   PcnUserAccount,
+  PcnDossierWorkflowTask,
+  PcnWorkflowTemplate,
+  PcnWorkflowSnapshot,
   ReturnedTestResult,
   ActivityLogAction,
   ActivityLogChange,
@@ -217,6 +220,8 @@ import { getPcnPdfRendererReadiness, renderPcnDocxToPdf } from "./utils/pcnPdfRe
 import { renderPcnOperationalTemplateDocx } from "./utils/pcnOperationalTemplateGeneration.ts";
 import { getPcnOperationalTemplateForKind } from './utils/pcnOperationalTemplateCatalog.ts';
 import { getPcnCollectionMutationDenial, getPcnDepartmentScopeDenial, getPcnDossierDeletionDenial, getPcnDossierEditDenial, isPcnPersonnelManager, isPcnSystemManager } from "./utils/pcnRbac.ts";
+import { applyPcnWorkflowReturn, buildPcnWorkflowConditionContext, buildPcnWorkflowTaskSeed, projectPcnWorkflowRuntime } from './utils/pcnWorkflowRuntime.ts';
+import { getPcnWorkflowForDossier, selectPcnPublishedWorkflowTemplate, snapshotPcnWorkflowTemplate, validatePcnWorkflowTemplate } from './utils/pcnWorkflowTemplate.ts';
 import { PCN_CERTIFICATION_FIELD_CODES, getPcnDossierExceptionReasonDenial, getPcnDossierMethodChangeDenial, getPcnDossierStatusMutationDenial, isPcnDossierTransitionAllowed } from "./utils/pcnWorkflow.ts";
 import { getPcnSignerAuthorization } from "./utils/pcnSignerAuthorization.ts";
 import { applyPcnApprovalDecision, buildPcnApprovalSteps, getPcnApprovalDecisionDenial, getPcnEffectiveApprovalSteps, isPcnApprovalComplete } from "./utils/pcnApproval.ts";
@@ -703,7 +708,9 @@ const PCN_DB_COLLECTIONS = new Set([
   "userPreferences",
   "passwordResetRequests",
   "notifications",
-  "activityLogs"
+  "activityLogs",
+  "pcnWorkflowTemplates",
+  "pcnDossierWorkflowTasks"
 ]);
 
 const PCN_NOTIFICATION_ENTITY_TYPES = [
@@ -1178,6 +1185,23 @@ function requirePcnAdmin(req: express.Request, res: express.Response): boolean {
   }
   if (!isPcnAdminSession(req)) {
     res.status(403).json({ error: 'Chỉ Admin PCN mới được quản lý nhân sự và role.' });
+    return false;
+  }
+  return true;
+}
+
+function requirePcnWorkflowManager(req: express.Request, res: express.Response): boolean {
+  if (DATABASE_PROFILE !== 'pcn') {
+    res.status(404).json({ error: 'Quản trị lưu trình PCN chỉ khả dụng trong profile PCN.' });
+    return false;
+  }
+  const actor = getPcnSessionUser(req);
+  if (!actor) {
+    res.status(401).json({ error: 'Phiên PCN không hợp lệ hoặc đã hết hạn.' });
+    return false;
+  }
+  if (!isPcnSystemManager(actor)) {
+    res.status(403).json({ error: 'Chỉ Admin hoặc Quản lý PCN được thay đổi danh sách lưu trình hồ sơ.' });
     return false;
   }
   return true;
@@ -2762,6 +2786,7 @@ async function startServer() {
         pcnRouteId: String(body.pcnRouteId || '').trim() || undefined,
         pcnLabRequestId: String(body.pcnLabRequestId || '').trim() || undefined,
         pcnSampleItemIds: Array.isArray(body.pcnSampleItemIds) ? body.pcnSampleItemIds.map((value: unknown) => String(value).trim()).filter(Boolean) : undefined,
+        sampleFeedback: Array.isArray(body.sampleFeedback) ? body.sampleFeedback : undefined,
         eventType: String(body.eventType || '').trim().toUpperCase(),
         occurredAt: String(body.occurredAt || '').trim(),
       } as PcnLabStatusEventInput;
@@ -2830,7 +2855,10 @@ async function startServer() {
         );
         const sampleItems = sampleItemsResult.rows.map(mapDocumentRow) as PcnSampleItem[];
         const lotSampleItemIds = new Set(sampleItemsResult.rows.map((row) => String(row.document_id || '').trim()).filter(Boolean));
-        const eventSampleItemIds = Array.from(new Set(eventInput.pcnSampleItemIds || []));
+        const eventSampleItemIds = Array.from(new Set([
+          ...(eventInput.pcnSampleItemIds || []),
+          ...(mapped.sampleFeedback || []).map((feedback) => feedback.pcnSampleItemId),
+        ]));
         if (eventSampleItemIds.some((itemId) => !lotSampleItemIds.has(itemId))) {
           throw Object.assign(new Error('Webhook chứa mẫu/model không thuộc lô PCN.'), { statusCode: 409 });
         }
@@ -2890,6 +2918,7 @@ async function startServer() {
             externalRequestId: eventInput.externalRequestId,
             externalSequence: eventInput.externalSequence,
             ...(eventSampleItemIds.length ? { sampleItemIds: eventSampleItemIds } : {}),
+            ...(mapped.sampleFeedback?.length ? { sampleFeedback: mapped.sampleFeedback } : {}),
             type: mapped.internalEventType,
             fromStatus: route.status,
             toStatus: route.status,
@@ -2931,6 +2960,18 @@ async function startServer() {
               ...(nextItemRoute.returnedAt ? { returnedAt: nextItemRoute.returnedAt } : {}),
               ...(mapped.note ? { note: mapped.note } : {}),
             };
+            const feedback = mapped.sampleFeedback?.find((entry) => entry.pcnSampleItemId === sampleItemId);
+            if (feedback) {
+              Object.assign(nextItemSnapshot, {
+                ...(feedback.labSampleCode ? { labSampleCode: feedback.labSampleCode } : {}),
+                ...(feedback.sampleConditionCode ? { sampleConditionCode: feedback.sampleConditionCode } : {}),
+                ...(feedback.sampleConditionNote ? { sampleConditionNote: feedback.sampleConditionNote } : {}),
+                ...(feedback.receivedQuantity !== undefined ? { receivedQuantity: feedback.receivedQuantity } : {}),
+                ...(feedback.receivedUnit ? { receivedUnit: feedback.receivedUnit } : {}),
+                ...(feedback.receivedAt ? { receivedAt: feedback.receivedAt } : {}),
+                ...(feedback.receivedBy ? { receivedBy: feedback.receivedBy } : {}),
+              });
+            }
             itemSnapshots[sampleItemId] = nextItemSnapshot;
           }
           nextRoute = projectPcnSampleRouteFromItemSnapshots({ ...route, itemSnapshots, updatedAt: now }, sampleItems);
@@ -2988,6 +3029,7 @@ async function startServer() {
           externalRequestId: eventInput.externalRequestId,
           externalSequence: eventInput.externalSequence,
           ...(eventSampleItemIds.length ? { sampleItemIds: eventSampleItemIds } : {}),
+          ...(mapped.sampleFeedback?.length ? { sampleFeedback: mapped.sampleFeedback } : {}),
           type: mapped.internalEventType,
           fromStatus: route.status,
           toStatus: nextRoute.status,
@@ -7973,6 +8015,347 @@ async function startServer() {
     }
   });
 
+  const buildPcnWorkflowTemplateRecord = (raw: any, actor: PcnUserAccount, now: string, base?: PcnWorkflowTemplate): PcnWorkflowTemplate => {
+    const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    return {
+      id: String(source.id || base?.id || `pcn-workflow-${randomUUID()}`).trim(),
+      code: String(source.code || base?.code || '').trim().toUpperCase(),
+      name: String(source.name || base?.name || '').trim(),
+      ...(String(source.description || base?.description || '').trim() ? { description: String(source.description || base?.description).trim() } : {}),
+      appliesTo: {
+        fieldCodes: Array.from(new Set((Array.isArray(source.appliesTo?.fieldCodes) ? source.appliesTo.fieldCodes : base?.appliesTo?.fieldCodes || []).map((value: unknown) => String(value).trim().toUpperCase()).filter(Boolean))),
+        ...(Array.isArray(source.appliesTo?.methods) || base?.appliesTo?.methods ? { methods: Array.from(new Set((Array.isArray(source.appliesTo?.methods) ? source.appliesTo.methods : base?.appliesTo?.methods || []).map((value: unknown) => String(value).trim().toUpperCase()).filter(Boolean))) as any } : {}),
+        ...(String(source.appliesTo?.dossierType || base?.appliesTo?.dossierType || '').trim() ? { dossierType: String(source.appliesTo?.dossierType || base?.appliesTo?.dossierType).trim() } : {}),
+      },
+      version: Number(source.version || base?.version || 1),
+      status: source.status === 'PUBLISHED' || source.status === 'RETIRED' ? source.status : 'DRAFT',
+      nodes: Array.isArray(source.nodes) ? source.nodes : base?.nodes || [],
+      transitions: Array.isArray(source.transitions) ? source.transitions : base?.transitions || [],
+      createdAt: base?.createdAt || now,
+      createdBy: base?.createdBy || actor.username,
+      ...(base?.publishedAt ? { publishedAt: base.publishedAt } : {}),
+      ...(base?.publishedBy ? { publishedBy: base.publishedBy } : {}),
+      updatedAt: now,
+      updatedBy: actor.username,
+    };
+  };
+
+  const assertPcnWorkflowRequirementReferences = async (client: any, template: PcnWorkflowTemplate): Promise<void> => {
+    const requirementIds = Array.from(new Set(template.nodes.flatMap((node) => node.requirementIds || []).map((id) => String(id).trim()).filter(Boolean)));
+    if (requirementIds.length === 0) return;
+    const result = await client.query(
+      `SELECT document_id FROM app_documents
+       WHERE collection_name = 'pcnDocumentRequirements'
+         AND document_id = ANY($1::text[])
+         AND COALESCE(data->>'active', 'true') = 'true'`,
+      [requirementIds],
+    );
+    const available = new Set(result.rows.map((row: any) => String(row.document_id)));
+    const missing = requirementIds.filter((id) => !available.has(id));
+    if (missing.length > 0) throw Object.assign(new Error(`Template tham chiếu requirement không tồn tại hoặc đã tắt: ${missing.join(', ')}.`), { statusCode: 400 });
+  };
+
+  const writePcnWorkflowActivity = async (client: any, input: { action: ActivityLogAction; entityId: string; entityLabel: string; summary: string; actor: PcnUserAccount; createdAt: string }) => {
+    const log = buildActivityLog({
+      action: input.action,
+      entityType: input.entityId.includes('--') ? 'PCN_DOSSIER' : 'PCN_TEMPLATE',
+      entityId: input.entityId,
+      entityLabel: input.entityLabel,
+      actorUsername: input.actor.username,
+      actorName: input.actor.name,
+      actorRole: input.actor.systemRole || input.actor.role,
+      summary: input.summary,
+      source: 'UI',
+      createdAt: input.createdAt,
+    });
+    const validationError = validateActivityLogPayload(log);
+    if (validationError) throw Object.assign(new Error(validationError), { statusCode: 400 });
+    await client.query(
+      `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+       VALUES ('activityLogs', $1, $2::jsonb, CURRENT_TIMESTAMP)
+       ON CONFLICT (collection_name, document_id) DO NOTHING`,
+      [log.id, JSON.stringify(getDocumentPayload(log))],
+    );
+    return log;
+  };
+
+  app.get('/api/pcn/workflow-templates', async (req, res) => {
+    if (!requirePcnSession(req, res)) return;
+    try {
+      const result = await pool.query(
+        `SELECT document_id, data FROM app_documents
+         WHERE collection_name = 'pcnWorkflowTemplates'
+         ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`,
+      );
+      res.json({ items: result.rows.map(mapDocumentRow) });
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pcn/workflow-templates', async (req, res) => {
+    if (!requirePcnWorkflowManager(req, res)) return;
+    const actor = getPcnSessionUser(req)! as PcnUserAccount;
+    const now = new Date().toISOString();
+    const template = buildPcnWorkflowTemplateRecord(req.body?.template, actor, now);
+    if (!isSafePcnSampleKey(template.id) || !template.code || !template.name || template.status !== 'DRAFT') {
+      res.status(400).json({ error: 'Template workflow mới phải có id, mã, tên và bắt đầu ở trạng thái DRAFT.' });
+      return;
+    }
+    const validation = validatePcnWorkflowTemplate(template);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.errors.join(' '), issues: validation.errors });
+      return;
+    }
+    try {
+      const result = await withPgTransaction(async (client) => {
+        await assertPcnWorkflowRequirementReferences(client, template);
+        const write = await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('pcnWorkflowTemplates', $1, $2::jsonb, CURRENT_TIMESTAMP)
+           ON CONFLICT (collection_name, document_id) DO NOTHING
+           RETURNING document_id, data`,
+          [template.id, JSON.stringify(getDocumentPayload(template))],
+        );
+        if (write.rows.length === 0) throw Object.assign(new Error('Mã template workflow đã tồn tại.'), { statusCode: 409 });
+        const activityLog = await writePcnWorkflowActivity(client, { action: 'CONFIGURED', entityId: template.id, entityLabel: template.name, summary: `Tạo bản nháp lưu trình ${template.name} v${template.version}.`, actor, createdAt: now });
+        return { template: mapDocumentRow(write.rows[0]) as PcnWorkflowTemplate, activityLog };
+      });
+      res.status(201).json(result);
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pcn/workflow-templates/:templateId/revisions', async (req, res) => {
+    if (!requirePcnWorkflowManager(req, res)) return;
+    const actor = getPcnSessionUser(req)! as PcnUserAccount;
+    const templateId = String(req.params.templateId || '').trim();
+    if (!isSafePcnSampleKey(templateId)) { res.status(400).json({ error: 'Mã template workflow không hợp lệ.' }); return; }
+    const now = new Date().toISOString();
+    try {
+      const result = await withPgTransaction(async (client) => {
+        const existingResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'pcnWorkflowTemplates' AND document_id = $1
+           LIMIT 1 FOR UPDATE`,
+          [templateId],
+        );
+        if (!existingResult.rows[0]) throw Object.assign(new Error('Không tìm thấy template workflow gốc.'), { statusCode: 404 });
+        const existing = mapDocumentRow(existingResult.rows[0]) as PcnWorkflowTemplate;
+        const revision = buildPcnWorkflowTemplateRecord(req.body?.template, actor, now, existing);
+        revision.id = `${existing.id}-v${existing.version + 1}`;
+        revision.version = existing.version + 1;
+        revision.status = 'DRAFT';
+        revision.publishedAt = undefined;
+        revision.publishedBy = undefined;
+        if (!isSafePcnSampleKey(revision.id)) throw Object.assign(new Error('Mã revision workflow không hợp lệ.'), { statusCode: 400 });
+        const validation = validatePcnWorkflowTemplate(revision);
+        if (!validation.valid) throw Object.assign(new Error(validation.errors.join(' ')), { statusCode: 400 });
+        await assertPcnWorkflowRequirementReferences(client, revision);
+        const write = await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('pcnWorkflowTemplates', $1, $2::jsonb, CURRENT_TIMESTAMP)
+           ON CONFLICT (collection_name, document_id) DO NOTHING
+           RETURNING document_id, data`,
+          [revision.id, JSON.stringify(getDocumentPayload(revision))],
+        );
+        if (!write.rows[0]) throw Object.assign(new Error('Revision workflow vừa được tạo bởi thao tác khác.'), { statusCode: 409 });
+        const activityLog = await writePcnWorkflowActivity(client, { action: 'CONFIGURED', entityId: revision.id, entityLabel: revision.name, summary: `Tạo revision lưu trình ${revision.name} v${revision.version}.`, actor, createdAt: now });
+        return { template: mapDocumentRow(write.rows[0]) as PcnWorkflowTemplate, activityLog };
+      });
+      res.status(201).json(result);
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pcn/workflow-templates/:templateId/publish', async (req, res) => {
+    if (!requirePcnWorkflowManager(req, res)) return;
+    const actor = getPcnSessionUser(req)! as PcnUserAccount;
+    const templateId = String(req.params.templateId || '').trim();
+    if (!isSafePcnSampleKey(templateId)) { res.status(400).json({ error: 'Mã template workflow không hợp lệ.' }); return; }
+    const now = new Date().toISOString();
+    try {
+      const result = await withPgTransaction(async (client) => {
+        const existingResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'pcnWorkflowTemplates' AND document_id = $1
+           LIMIT 1 FOR UPDATE`,
+          [templateId],
+        );
+        if (!existingResult.rows[0]) throw Object.assign(new Error('Không tìm thấy template workflow.'), { statusCode: 404 });
+        const existing = mapDocumentRow(existingResult.rows[0]) as PcnWorkflowTemplate;
+        if (existing.status === 'PUBLISHED') throw Object.assign(new Error('Template PUBLISHED bất biến; hãy tạo revision mới.'), { statusCode: 409 });
+        if (existing.status === 'RETIRED') throw Object.assign(new Error('Không thể publish template đã RETIRED.'), { statusCode: 409 });
+        const validation = validatePcnWorkflowTemplate(existing);
+        if (!validation.valid) throw Object.assign(new Error(validation.errors.join(' ')), { statusCode: 400 });
+        await assertPcnWorkflowRequirementReferences(client, existing);
+        const next = { ...existing, status: 'PUBLISHED' as const, publishedAt: now, publishedBy: actor.username, updatedAt: now, updatedBy: actor.username };
+        await client.query(
+          `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+           WHERE collection_name = 'pcnWorkflowTemplates' AND document_id = $1`,
+          [templateId, JSON.stringify(getDocumentPayload(next))],
+        );
+        const activityLog = await writePcnWorkflowActivity(client, { action: 'CONFIGURED', entityId: templateId, entityLabel: next.name, summary: `Publish lưu trình ${next.name} v${next.version}.`, actor, createdAt: now });
+        return { template: next, activityLog };
+      });
+      res.json(result);
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pcn/workflow-templates/:templateId/retire', async (req, res) => {
+    if (!requirePcnWorkflowManager(req, res)) return;
+    const actor = getPcnSessionUser(req)! as PcnUserAccount;
+    const templateId = String(req.params.templateId || '').trim();
+    const reason = String(req.body?.reason || '').trim();
+    if (!isSafePcnSampleKey(templateId) || !reason || reason.length > 1000) { res.status(400).json({ error: 'Ngừng lưu trình phải có mã và lý do tối đa 1000 ký tự.' }); return; }
+    const now = new Date().toISOString();
+    try {
+      const result = await withPgTransaction(async (client) => {
+        const existingResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'pcnWorkflowTemplates' AND document_id = $1
+           LIMIT 1 FOR UPDATE`,
+          [templateId],
+        );
+        if (!existingResult.rows[0]) throw Object.assign(new Error('Không tìm thấy template workflow.'), { statusCode: 404 });
+        const existing = mapDocumentRow(existingResult.rows[0]) as PcnWorkflowTemplate;
+        const next = { ...existing, status: 'RETIRED' as const, updatedAt: now, updatedBy: actor.username };
+        await client.query(
+          `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+           WHERE collection_name = 'pcnWorkflowTemplates' AND document_id = $1`,
+          [templateId, JSON.stringify(getDocumentPayload(next))],
+        );
+        const activityLog = await writePcnWorkflowActivity(client, { action: 'CONFIGURED', entityId: templateId, entityLabel: next.name, summary: `Ngừng lưu trình ${next.name}: ${reason}`, actor, createdAt: now });
+        return { template: next, activityLog };
+      });
+      res.json(result);
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  const mutatePcnWorkflowTask = async (req: express.Request, res: express.Response, action: 'start' | 'complete' | 'return') => {
+    if (!requirePcnMutation(req, res)) return;
+    const dossierId = String(req.params.dossierId || '').trim();
+    const taskId = String(req.params.taskId || '').trim();
+    if (!isSafePcnSampleKey(dossierId) || !isSafePcnSampleKey(taskId)) { res.status(400).json({ error: 'Mã hồ sơ hoặc task workflow không hợp lệ.' }); return; }
+    const actor = getPcnSessionUser(req)! as PcnUserAccount;
+    const now = new Date().toISOString();
+    try {
+      const result = await withPgTransaction(async (client) => {
+        const dossierResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'certificationDossiers' AND document_id = $1
+           LIMIT 1 FOR UPDATE`,
+          [dossierId],
+        );
+        if (!dossierResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PCN.'), { statusCode: 404 });
+        const dossier = mapDocumentRow(dossierResult.rows[0]) as CertificationDossier;
+        if (!dossier.workflowSnapshot) throw Object.assign(new Error('Hồ sơ legacy chưa có snapshot workflow để xử lý task.'), { statusCode: 409 });
+        const taskResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'pcnDossierWorkflowTasks'
+             AND document_id = $1 AND data->>'dossierId' = $2
+           LIMIT 1 FOR UPDATE`,
+          [taskId, dossierId],
+        );
+        if (!taskResult.rows[0]) throw Object.assign(new Error('Không tìm thấy task workflow trong hồ sơ.'), { statusCode: 404 });
+        const task = mapDocumentRow(taskResult.rows[0]) as PcnDossierWorkflowTask;
+        if (!isPcnSystemManager(actor) && ((dossier.ownerUsername && dossier.ownerUsername !== actor.username) || (task.assignedUsername && task.assignedUsername !== actor.username))) {
+          throw Object.assign(new Error('Bạn không được phân công task workflow này.'), { statusCode: 403 });
+        }
+        const workflow = getPcnWorkflowForDossier(dossier);
+        const documentsResult = await client.query(
+          `SELECT document_id, data FROM app_documents WHERE collection_name = 'dossierDocuments' AND data->>'dossierId' = $1`,
+          [dossierId],
+        );
+        const resultsResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'returnedResults' AND data->>'dossierId' = $1
+           ORDER BY COALESCE(data->>'receivedAt', data->>'updatedAt', data->>'createdAt', '') DESC, document_id`,
+          [dossierId],
+        );
+        const approvalStepsResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'approvalSteps' AND data->>'dossierId' = $1
+           ORDER BY COALESCE((data->>'sequence')::int, 999), document_id`,
+          [dossierId],
+        );
+        const currentTasksResult = await client.query(
+          `SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnDossierWorkflowTasks' AND data->>'dossierId' = $1 ORDER BY document_id`,
+          [dossierId],
+        );
+        const dossierDocuments = documentsResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierDocument);
+        const dossierResults = resultsResult.rows.map((row: any) => mapDocumentRow(row) as ReturnedTestResult);
+        const dossierApprovalSteps = approvalStepsResult.rows.map((row: any) => mapDocumentRow(row) as PcnApprovalStep);
+        const currentTasks = currentTasksResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierWorkflowTask);
+        const conditionContext = buildPcnWorkflowConditionContext({ workflow, documents: dossierDocuments, documentWaivers: dossier.documentWaivers, results: dossierResults, approvalSteps: dossierApprovalSteps, fieldCodes: dossier.fieldCodes, method: dossier.method });
+        let nextTasks = currentTasks;
+        if (action === 'start') {
+          const projected = projectPcnWorkflowRuntime({ workflow, tasks: currentTasks, documents: dossierDocuments, documentWaivers: dossier.documentWaivers, conditionContext });
+          const projectedNode = projected.byNodeId[task.nodeId];
+          const conditionActivatedTask = task.status === 'LOCKED' && projectedNode?.status === 'READY';
+          if (!['READY', 'RETURNED'].includes(task.status) && !conditionActivatedTask) throw Object.assign(new Error('Task chỉ được bắt đầu khi đang READY hoặc RETURNED.'), { statusCode: 409 });
+          nextTasks = currentTasks.map((item) => item.id === task.id ? { ...item, status: 'IN_PROGRESS' as const, startedAt: item.startedAt || now, updatedAt: now, updatedBy: actor.username } : item);
+        } else if (action === 'complete') {
+          const projected = projectPcnWorkflowRuntime({ workflow, tasks: currentTasks, documents: dossierDocuments, documentWaivers: dossier.documentWaivers, conditionContext });
+          const projectedNode = projected.byNodeId[task.nodeId];
+          const conditionActivatedTask = task.status === 'LOCKED' && projectedNode?.status === 'READY';
+          if ((!['READY', 'IN_PROGRESS'].includes(task.status) && !conditionActivatedTask) || !projectedNode || projectedNode.blockedReason) throw Object.assign(new Error('Task chưa đủ điều kiện hoặc còn tài liệu bắt buộc.'), { statusCode: 409 });
+          nextTasks = currentTasks.map((item) => item.id === task.id ? { ...item, status: 'COMPLETED' as const, completedAt: now, updatedAt: now, updatedBy: actor.username } : item);
+          const after = projectPcnWorkflowRuntime({ workflow, tasks: nextTasks, documents: dossierDocuments, documentWaivers: dossier.documentWaivers, conditionContext });
+          nextTasks = nextTasks.map((item) => after.byNodeId[item.nodeId]?.status === 'READY' && item.status === 'LOCKED' ? { ...item, status: 'READY' as const, updatedAt: now, updatedBy: actor.username } : item);
+        } else {
+          const targetNodeId = String(req.body?.targetNodeId || '').trim();
+          const reason = String(req.body?.reason || '').trim();
+          const returned = applyPcnWorkflowReturn({ workflow, tasks: currentTasks, sourceNodeId: task.nodeId, targetNodeId, reason, actor: actor.username, now });
+          nextTasks = returned.tasks;
+        }
+        for (const nextTask of nextTasks) {
+          await client.query(
+            `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+             VALUES ('pcnDossierWorkflowTasks', $1, $2::jsonb, CURRENT_TIMESTAMP)
+             ON CONFLICT (collection_name, document_id)
+             DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP`,
+            [nextTask.id, JSON.stringify(getDocumentPayload(nextTask))],
+          );
+        }
+        const updatedTask = nextTasks.find((item) => item.id === task.id)!;
+        const actionLabel = action === 'start' ? 'bắt đầu' : action === 'complete' ? 'hoàn tất' : 'trả lại';
+        const activityLog = await writePcnWorkflowActivity(client, { action: action === 'return' ? 'STATUS_CHANGED' : 'UPDATED', entityId: task.id, entityLabel: dossier.dossierCode, summary: `Task ${task.nodeId} đã ${actionLabel}.`, actor, createdAt: now });
+        return { task: updatedTask, tasks: nextTasks, activityLog };
+      });
+      res.json(result);
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 500).json({ error: error?.message || String(error) });
+    }
+  };
+
+  app.get('/api/pcn/dossiers/:dossierId/workflow-tasks', async (req, res) => {
+    if (!requirePcnSession(req, res)) return;
+    const dossierId = String(req.params.dossierId || '').trim();
+    if (!isSafePcnSampleKey(dossierId)) { res.status(400).json({ error: 'Mã hồ sơ không hợp lệ.' }); return; }
+    try {
+      const result = await pool.query(
+        `SELECT document_id, data FROM app_documents
+         WHERE collection_name = 'pcnDossierWorkflowTasks' AND data->>'dossierId' = $1
+         ORDER BY COALESCE((data->>'cycleNo')::int, 0), document_id`,
+        [dossierId],
+      );
+      res.json({ items: result.rows.map(mapDocumentRow) });
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pcn/dossiers/:dossierId/workflow-tasks/:taskId/start', (req, res) => { void mutatePcnWorkflowTask(req, res, 'start'); });
+  app.post('/api/pcn/dossiers/:dossierId/workflow-tasks/:taskId/complete', (req, res) => { void mutatePcnWorkflowTask(req, res, 'complete'); });
+  app.post('/api/pcn/dossiers/:dossierId/workflow-tasks/:taskId/return', (req, res) => { void mutatePcnWorkflowTask(req, res, 'return'); });
+
   app.post('/api/pcn/intake', async (req, res) => {
     if (DATABASE_PROFILE !== 'pcn') {
       res.status(404).json({ error: 'PCN intake chỉ khả dụng trong profile PCN.' });
@@ -8034,10 +8417,17 @@ async function startServer() {
              ORDER BY document_id`,
             [String(existingDossier.rows[0].document_id)],
           );
+          const existingWorkflowTasks = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'pcnDossierWorkflowTasks' AND data->>'dossierId' = $1
+             ORDER BY document_id`,
+            [String(existingDossier.rows[0].document_id)],
+          );
           return {
             proposal: storedProposal,
             dossier: mapDocumentRow(existingDossier.rows[0]),
             dossierDocuments: existingDocuments.rows.map((row: any) => mapDocumentRow(row)) as PcnDossierDocument[],
+            workflowTasks: existingWorkflowTasks.rows.map((row: any) => mapDocumentRow(row)) as PcnDossierWorkflowTask[],
             activityLogs: [],
             idempotent: true,
           };
@@ -8062,6 +8452,28 @@ async function startServer() {
           throw Object.assign(new Error(`Đã hết dãy mã Đề nghị PCN cho ngày ${proposalDateKey}.`), { statusCode: 409 });
         }
         const proposalCode = formatPcnProposalCode(nextProposalSerial, proposalReceivedAt);
+        const workflowTemplateResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'pcnWorkflowTemplates'
+             AND data->>'status' = 'PUBLISHED'`,
+        );
+        const workflowTemplates = workflowTemplateResult.rows.map((row: any) => mapDocumentRow(row) as PcnWorkflowTemplate);
+        const workflowTemplate = selectPcnPublishedWorkflowTemplate(workflowTemplates, {
+          fieldCodes: Array.from(new Set(proposal.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean))),
+          method: dossier.method,
+          dossierType: String(dossier.dossierType || '').trim() || undefined,
+        });
+        if (!workflowTemplate) throw Object.assign(new Error('Chưa có template lưu trình PUBLISHED phù hợp với Lĩnh vực và phương thức của hồ sơ.'), { statusCode: 409 });
+        const sessionUser = getPcnSessionUser(req);
+        const workflowSnapshot = snapshotPcnWorkflowTemplate(workflowTemplate, { capturedAt: now, capturedBy: sessionUser?.username || 'SYSTEM' });
+        const dossierFieldSet = new Set(proposal.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean));
+        workflowSnapshot.nodes = workflowSnapshot.nodes.map((node) => ({
+          ...node,
+          requirementIds: node.requirementIds.filter((requirementId) => {
+            const prefix = String(requirementId).split('-')[0].toUpperCase();
+            return !['QC4', 'QC9'].includes(prefix) || dossierFieldSet.has(prefix);
+          }),
+        }));
         const storedProposal = {
           ...intakeProposal,
           id: proposalId,
@@ -8079,6 +8491,9 @@ async function startServer() {
           proposalId,
           status: 'INTAKE_REVIEW',
           fieldCodes: storedProposal.fieldCodes,
+          workflowTemplateId: workflowTemplate.id,
+          workflowTemplateVersion: workflowTemplate.version,
+          workflowSnapshot,
           labRequestIds: Array.isArray(dossier.labRequestIds) ? dossier.labRequestIds : [],
           returnedResultIds: Array.isArray(dossier.returnedResultIds) ? dossier.returnedResultIds : [],
           createdAt: dossier.createdAt || now,
@@ -8117,7 +8532,17 @@ async function startServer() {
           );
         }
 
-        const user = getPcnSessionUser(req);
+        const workflowTasks = buildPcnWorkflowTaskSeed(workflowSnapshot, dossierId, sessionUser?.username || 'SYSTEM', now);
+        for (const task of workflowTasks) {
+          await client.query(
+            `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+             VALUES ('pcnDossierWorkflowTasks', $1, $2::jsonb, CURRENT_TIMESTAMP)
+             ON CONFLICT (collection_name, document_id) DO NOTHING`,
+            [task.id, JSON.stringify(getDocumentPayload(task))],
+          );
+        }
+
+        const user = sessionUser;
         const actor = {
           ...(user?.username ? { actorUsername: user.username } : {}),
           actorName: user?.name || 'Người dùng PCN',
@@ -8159,6 +8584,7 @@ async function startServer() {
           proposal: mapDocumentRow(proposalWrite.rows[0]),
           dossier: mapDocumentRow(dossierWrite.rows[0]),
           dossierDocuments,
+          workflowTasks,
           activityLogs: logs,
           idempotent: false,
         };

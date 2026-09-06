@@ -123,9 +123,10 @@ test('dossier detail opens the current workflow region and only presents step-fi
     workspaceSource.indexOf('const openDossierAtCurrentStation'),
     workspaceSource.indexOf('const findNotificationDossier'),
   );
-  assert.match(openHandler, /setSelectedDossierTab\(initialTab\)/);
-  assert.doesNotMatch(openHandler, /initialTab \|\| 'documents'/);
-  assert.match(workspaceSource, /onOpenDossier=\{\(dossier\) => \{ setSelectedDossierTab\(undefined\);/);
+  assert.match(openHandler, /router\.push\(`\/pgdcn\/pcn\/dossiers/);
+  assert.match(openHandler, /initialTab \? `\?tab=/);
+  assert.doesNotMatch(openHandler, /setSelectedDossierTab\(initialTab\)/);
+  assert.match(workspaceSource, /<ProposalView[\s\S]*onOpenDossier=\{openDossierAtCurrentStation\}/);
 });
 
 test('dossier detail provides a focused workspace and an obvious document supplementation path', () => {

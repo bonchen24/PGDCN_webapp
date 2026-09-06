@@ -1,10 +1,11 @@
-import type { ActivityLog, CertificationDossier, CertificationProposal, PcnDossierDocument } from '../types.ts';
+import type { ActivityLog, CertificationDossier, CertificationProposal, PcnDossierDocument, PcnDossierWorkflowTask } from '../types.ts';
 import type { PcnIntakeValidationIssue } from './pcnIntakePolicy.ts';
 
 export interface PcnIntakeResponse {
   proposal: CertificationProposal;
   dossier: CertificationDossier;
   dossierDocuments?: PcnDossierDocument[];
+  workflowTasks?: PcnDossierWorkflowTask[];
   activityLogs?: ActivityLog[];
   idempotent?: boolean;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Toaster } from 'sonner';
 import { toast } from 'sonner';
 
@@ -11,6 +12,7 @@ import { usePcnStore } from '../store-pcn';
 import { usePgdStore } from '../store-pgd';
 import { clearPgdcnNotifications, fetchPgdcnNotifications, markAllPgdcnNotificationsRead, markPgdcnNotificationRead } from '../utils/pgdcnNotificationApi';
 import { getPgdcnNotificationNavigation } from '../utils/pgdcnNotification';
+import { getPcnNotificationDossierTab } from '../utils/pcnDossierNavigation';
 import PcnLoginScreen from './PcnLoginScreen';
 import PcnWorkspace from './PcnWorkspace';
 import PgdWorkspace from './PgdWorkspace';
@@ -23,10 +25,14 @@ import PgdcnSystemSettingsView from './PgdcnSystemSettingsView';
 import { PgdcnNotificationDropdown } from './PgdcnNotificationDropdown';
 import PcnPersonalSettingsPanel from './PcnPersonalSettingsPanel';
 import type { PcnSection } from '../utils/pcnNavigation';
+import type { PcnDossierDetailTab } from '../utils/pcnDossierNavigation';
 import type { PgdSection } from './PgdSidebar';
 
 type PgdcnAppShellProps = {
   initialDomain?: PgdcnDomain;
+  initialPcnDossierId?: string;
+  initialPcnDossierTab?: PcnDossierDetailTab;
+  initialPcnDossierNodeId?: string;
 };
 
 const getScopes = (value: readonly DepartmentScope[] | undefined): DepartmentScope[] => Array.from(new Set((value || []).filter((scope): scope is DepartmentScope => scope === 'PCN' || scope === 'PGD')));
@@ -62,7 +68,8 @@ const getSharedTargetForPgdSection = (section: PgdSection): PgdcnNavigationTarge
   return undefined;
 };
 
-export default function PgdcnAppShell({ initialDomain = 'department' }: PgdcnAppShellProps) {
+export default function PgdcnAppShell({ initialDomain = 'department', initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId }: PgdcnAppShellProps) {
+  const router = useRouter();
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const setCurrentUser = usePcnSessionStore((state) => state.setCurrentUser);
   const clearCurrentUser = usePcnSessionStore((state) => state.clearCurrentUser);
@@ -181,6 +188,26 @@ export default function PgdcnAppShell({ initialDomain = 'department' }: PgdcnApp
     const target = getPgdcnNotificationNavigation(notification);
     if (!target) return;
     if (target.domain === 'PCN') {
+      const recordId = target.recordId;
+      const directDossier = pcn.dossiers.find((dossier) => dossier.id === recordId);
+      const proposalDossier = pcn.dossiers.find((dossier) => dossier.proposalId === recordId)
+        || pcn.dossiers.find((dossier) => pcn.proposals.some((proposal) => proposal.id === recordId && proposal.dossierId === dossier.id));
+      const linkedDossierId = notification.entityType === 'PCN_SAMPLE_LOT'
+        ? pcn.sampleLots.find((item) => item.id === recordId)?.dossierId
+        : notification.entityType === 'PCN_LAB_REQUEST'
+          ? pcn.labRequests.find((item) => item.id === recordId)?.dossierId
+          : notification.entityType === 'PCN_RESULT'
+            ? pcn.returnedResults.find((item) => item.id === recordId)?.dossierId
+            : notification.entityType === 'PCN_APPROVAL'
+              ? pcn.approvalSteps.find((item) => item.id === recordId)?.dossierId
+              : notification.entityType === 'PCN_ISSUANCE'
+                ? pcn.issuancePackages.find((item) => item.id === recordId)?.dossierId
+                : undefined;
+      const dossier = directDossier || proposalDossier || (linkedDossierId ? pcn.dossiers.find((item) => item.id === linkedDossierId) : undefined);
+      if (dossier) {
+        openPcnDossier(dossier.id, getPcnNotificationDossierTab(notification.entityType));
+        return;
+      }
       setActiveTarget({ domain: 'PCN', section: target.section });
     } else if (target.domain === 'PGD') {
       setActiveTarget({ domain: 'PGD', section: target.section });
@@ -199,10 +226,11 @@ export default function PgdcnAppShell({ initialDomain = 'department' }: PgdcnApp
     void refreshPgdcnNotifications();
     setNotificationOpen(true);
   };
-  const openPcnDossier = (dossierId: string) => {
-    setActiveTarget({ domain: 'PCN', section: 'proposals' });
+  const openPcnDossier = (dossierId: string, initialTab?: PcnDossierDetailTab) => {
     setMobileOpen(false);
     if (!dossierId) return;
+    const query = initialTab ? `?tab=${encodeURIComponent(initialTab)}` : '';
+    router.push(`/pgdcn/pcn/dossiers/${encodeURIComponent(dossierId)}${query}`);
   };
   const openPgdRequest = (requestId: string) => {
     setActiveTarget({ domain: 'PGD', section: 'requests' });
@@ -231,13 +259,13 @@ export default function PgdcnAppShell({ initialDomain = 'department' }: PgdcnApp
   ) : activeTarget.domain === 'department' && activeTarget.section === 'customers' ? (
     <PgdcnCustomersView scopes={scopes} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'system-settings' ? (
-    <PgdcnSystemSettingsView currentUser={currentUser} users={systemUsers} roles={pcn.departmentRoles} fields={pcn.fields} pcnTemplates={pcn.templates} onUploadPcnTemplate={pcn.uploadPcnTemplate} onReviewPcnTemplate={pcn.reviewPcnTemplate} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
+    <PgdcnSystemSettingsView currentUser={currentUser} users={systemUsers} roles={pcn.departmentRoles} fields={pcn.fields} pcnTemplates={pcn.templates} onUploadPcnTemplate={pcn.uploadPcnTemplate} onReviewPcnTemplate={pcn.reviewPcnTemplate} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} workflowTemplates={pcn.workflowTemplates} onCreateWorkflowRevision={pcn.createWorkflowRevision} onPublishWorkflowTemplate={pcn.publishWorkflowTemplate} onRetireWorkflowTemplate={pcn.retireWorkflowTemplate} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'activityLogs' ? (
     <ActivityLogView currentUser={currentUser} systemUsers={systemUsers} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'assistant' ? (
     <PgdcnAssistantView currentUser={currentUser} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pcnRequirements={pcn.documentRequirements} pcnDocuments={pcn.dossierDocuments} pcnLabRequests={pcn.labRequests} pcnSampleLots={pcn.sampleLots} pcnSampleRoutes={pcn.sampleRoutes} pcnReturnedResults={pcn.returnedResults} pgdRequests={pgd.requests} pgdAssignments={pgd.assignments} pgdFieldInspections={pgd.fieldInspections} pgdSamples={pgd.samples} pgdLabRequests={pgd.labRequests} pgdLabResults={pgd.labResults} pgdReports={pgd.reports} pgdCertificates={pgd.certificates} pgdApprovals={pgd.approvals} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} />
   ) : activeTarget.domain === 'PCN' ? (
-    <PcnWorkspace embedded initialSection={activeTarget.section as PcnSection} onActiveSectionChange={openPcnSection} />
+    <PcnWorkspace embedded initialSection={activeTarget.section as PcnSection} initialDossierId={initialPcnDossierId} initialDossierTab={initialPcnDossierTab} initialDossierNodeId={initialPcnDossierNodeId} standaloneDossier={Boolean(initialPcnDossierId)} onActiveSectionChange={openPcnSection} />
   ) : (
     <PgdWorkspace embedded initialSection={activeTarget.section as PgdSection} onActiveSectionChange={openPgdSection} />
   );
