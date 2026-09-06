@@ -21,6 +21,11 @@
 - Đã thêm regression tests cho mobile height/scroll contract và server root theme.
 - Verification: full suite **763/763**, focused renderer **2/2**, lint/build/diff-check pass; Docker image `sha256:f616a8a251a63397bde768d92eb4347424a851149ca85af7b4a6c855e25695e9` đang chạy và `/api/health` trả HTTP 200.
 
+## Cập nhật PGD surface light
+
+- Các trạng thái xác thực và thiếu scope của PGD dùng surface sáng thay vì `bg-slate-950`, tránh hiển thị toàn màn hình đen quanh reader khi session/scope chưa sẵn sàng.
+- Verification: full suite **764/764**, lint/build/diff-check pass; Docker image `sha256:3cd609c95656a5b9883565d8e4705e52b89caa637fd020fb9cb63aaacbd1e1b4` running, `/api/health` HTTP 200.
+
 ## Quy tắc nghiệp vụ đã chốt
 
 - Mỗi hồ sơ có thể chọn một workflow template khác nhau theo lĩnh vực, phương thức và loại hồ sơ.

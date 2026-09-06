@@ -145,7 +145,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
 
   const systemUsers = useMemo(() => Array.from(new Map([...pgd.users, ...pcn.users].map((user) => [user.username, user])).values()), [pcn.users, pgd.users]);
 
-  if (!sessionChecked) return <div className="flex min-h-[100dvh] items-center justify-center bg-slate-950 text-xs font-bold text-slate-300">Đang xác thực phiên PGDCN...</div>;
+  if (!sessionChecked) return <div className="flex min-h-[100dvh] items-center justify-center bg-slate-50 text-xs font-bold text-slate-700">Đang xác thực phiên PGDCN...</div>;
   if (!currentUser) return <PcnLoginScreen />;
 
   const navigate = (target: PgdcnNavigationTarget) => {

@@ -20,6 +20,11 @@ Visibility/backfill fix: `86caa2b` — `fix: surface dynamic workflow nodes in d
 - Regression contracts đã bao phủ mobile height/scroll và server root theme.
 - Verification cuối: full suite **763/763**, focused renderer **2/2**, lint/build/diff-check pass; Docker image `sha256:f616a8a251a63397bde768d92eb4347424a851149ca85af7b4a6c855e25695e9` running, `/api/health` HTTP 200.
 
+## PGD không còn fallback đen
+
+- `PgdWorkspace` và `PgdcnAppShell` đổi loading/thiếu scope state sang surface sáng; reader Archify PGD vẫn dùng cùng root `data-theme="light"` và host light.
+- Verification cuối: full suite **764/764**, lint/build/diff-check pass; Docker image `sha256:3cd609c95656a5b9883565d8e4705e52b89caa637fd020fb9cb63aaacbd1e1b4` running, `/api/health` HTTP 200.
+
 ## Kết quả
 
 - Hồ sơ chọn workflow riêng theo lĩnh vực/phương thức/loại hồ sơ.

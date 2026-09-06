@@ -21,6 +21,11 @@ Description: Persistent project memory and verified deployment observations for 
 - Reader Archify dùng surface sáng mặc định, chiều cao co giãn theo viewport (`min-h` thấp hơn trên mobile), query `theme=light`, và server renderer chuẩn hóa root HTML sang `data-theme="light"` để tránh first paint đen.
 - Đã bổ sung regression contract cho mobile và root theme. Verification cuối lượt: `npm test` **763/763 pass**, focused renderer **2/2 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass; Docker image `sha256:f616a8a251a63397bde768d92eb4347424a851149ca85af7b4a6c855e25695e9`, container `pcn_webapp-webapp` running trên cổng `2357`, `/api/health` HTTP 200.
 
+## Cập nhật 2026-09-06 — PGD không còn fallback toàn màn hình màu đen
+
+- `PgdWorkspace` và `PgdcnAppShell` đã đổi trạng thái xác thực/thiếu scope từ surface `bg-slate-950` sang surface sáng, để không nhầm fallback PGD với flow Archify bị lỗi.
+- Regression contract PGD đã fail trước sửa và pass sau sửa. Verification: `npm test` **764/764 pass**, `npm run lint` pass, `npm run build` pass, `git diff --check` pass; Docker image `sha256:3cd609c95656a5b9883565d8e4705e52b89caa637fd020fb9cb63aaacbd1e1b4`, container running, `/api/health` HTTP 200.
+
 ## Cập nhật 2026-09-06 — Hoàn thiện Trợ lý AI PGD theo UI/UX PCN
 
 - Trợ lý PGD đã đồng nhất với nhịp thao tác của PCN: chọn một bộ hồ sơ → đọc private file → stream tiến độ theo 5 tiêu chí/trạm → hiển thị summary → nêu **Điểm cần sửa / đối chiếu** và mở đúng bằng chứng.
