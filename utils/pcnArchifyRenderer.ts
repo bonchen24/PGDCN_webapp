@@ -85,7 +85,7 @@ export async function renderArchifyDiagram(diagramType: ArchifyDiagramType, docu
   if (unavailable) return unavailable;
   if (diagramType === 'workflow') return { available: true, diagramType, html: await renderWorkflow(document, input) };
   validateArchifyDocument(diagramType, document);
-  const rendered = await runArchifyRenderer({ vendorRoot: ARCHIFY_VENDOR_ROOT, diagramType, document });
+  const rendered = await runArchifyRenderer({ diagramType, document });
   return { available: true, diagramType, html: validateRenderedHtml(injectFocusBridge(normalizeLightRoot(rendered), input.domain, input.recordId)) };
 }
 

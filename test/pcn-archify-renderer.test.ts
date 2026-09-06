@@ -5,6 +5,7 @@ import test from 'node:test';
 import { buildPcnArchifyWorkflow } from '../utils/pcnArchifyWorkflow.ts';
 import { ARCHIFY_RENDERER_ENTRYPOINTS, ARCHIFY_TEMPLATE_ENTRYPOINT, renderArchifyDiagram, resetArchifyRuntimeTestHooks, setArchifyRuntimeTestHooks } from '../utils/pcnArchifyRenderer.ts';
 import { renderArchifyWorkflowDocument } from '../utils/pcnArchifyRenderer.ts';
+import { ARCHIFY_PINNED_VENDOR_ROOT, runArchifyRenderer } from '../utils/archifyRuntime.ts';
 
 function workflowFixture() {
   return buildPcnArchifyWorkflow({
@@ -102,6 +103,51 @@ test('child invocation uses exact arguments and a minimal safe environment', asy
   assert.equal(invocation.options.env.SECRET_TOKEN, undefined);
 });
 
+test('runtime ignores an attempted alternate vendor root and stays pinned', async () => {
+  let cwd = '';
+  const validHtml = '<!doctype html><html><body><svg></svg><script id="archify-guided-views-data"></script></body></html>';
+  setArchifyRuntimeTestHooks({
+    spawn: (_file, _args, options) => { cwd = options.cwd; const handlers = new Map<string, (...values: any[]) => void>(); const child = { once: (event: string, handler: (...values: any[]) => void) => { handlers.set(event, handler); return child; }, kill: () => {} } as any; queueMicrotask(() => handlers.get('close')?.(0)); return child; },
+    statOutput: async () => ({ size: 0 }),
+    readOutput: async () => validHtml,
+  });
+  await runArchifyRenderer({ diagramType: 'architecture', document: JSON.parse(fs.readFileSync(new URL('../vendor/archify/archify/examples/web-app.architecture.json', import.meta.url), 'utf8')), vendorRoot: 'C:\\attacker\\root' } as any);
+  assert.equal(cwd, fs.realpathSync(ARCHIFY_PINNED_VENDOR_ROOT));
+});
+
+test('forbidden and malformed nested fields are rejected before serialization or spawn', async () => {
+  const base = JSON.parse(fs.readFileSync(new URL('../vendor/archify/archify/examples/web-app.architecture.json', import.meta.url), 'utf8'));
+  for (const document of [
+    { ...base, privateBytes: 'secret' },
+    { ...base, components: [{ ...base.components[0], privateToken: 'secret' }] },
+    { ...base, components: [{ ...base.components[0], pos: 'not-a-point' }] },
+    { ...base, components: [{ ...base.components[0], sources: [{ path: 'C:\\private\\source.ts' }] }] },
+  ]) {
+    let wrote = false;
+    let spawned = false;
+    setArchifyRuntimeTestHooks({ writeInput: async () => { wrote = true; }, spawn: () => { spawned = true; throw new Error('must not spawn'); } });
+    await assert.rejects(() => renderArchifyDiagram('architecture', document, { domain: 'pcn', recordId: 'r-1' }), /không hợp lệ/i);
+    assert.equal(wrote, false);
+    assert.equal(spawned, false);
+  }
+});
+
+test('serialization is a sanitized projection without renderer output paths', async () => {
+  let serialized = '';
+  const validHtml = '<!doctype html><html><body><svg></svg><script id="archify-guided-views-data"></script></body></html>';
+  setArchifyRuntimeTestHooks({
+    writeInput: async (_target, data) => { serialized = data; },
+    spawn: (_file, _args, _options) => { const handlers = new Map<string, (...values: any[]) => void>(); const child = { once: (event: string, handler: (...values: any[]) => void) => { handlers.set(event, handler); return child; }, kill: () => {} } as any; queueMicrotask(() => handlers.get('close')?.(0)); return child; },
+    statOutput: async () => ({ size: 0 }),
+    readOutput: async () => validHtml,
+  });
+  const document = JSON.parse(fs.readFileSync(new URL('../vendor/archify/archify/examples/web-app.architecture.json', import.meta.url), 'utf8'));
+  await renderArchifyDiagram('architecture', document, { domain: 'pcn', recordId: 'r-1' });
+  const parsed = JSON.parse(serialized);
+  assert.equal(parsed.meta.output, undefined);
+  assert.equal(parsed.privateBytes, undefined);
+});
+
 test('renderer rejects partial or non-HTML output and inserts a missing light theme', async () => {
   const doc = JSON.parse(fs.readFileSync(new URL('../vendor/archify/archify/examples/web-app.architecture.json', import.meta.url), 'utf8'));
   setArchifyRuntimeTestHooks({ spawn: (_file, _args, _options) => { const handlers = new Map<string, (...values: any[]) => void>(); const child = { once: (event: string, handler: (...values: any[]) => void) => { handlers.set(event, handler); return child; }, kill: () => {} } as any; queueMicrotask(() => handlers.get('close')?.(0)); return child; }, statOutput: async () => ({ size: 0 }), readOutput: async () => '<html><body>archify-guided-views-data</body></html>' });
@@ -169,6 +215,14 @@ test('size guard rejects before reading and read failures still clean up', async
     spawn: (_file, _args, _options) => { const handlers = new Map<string, (...values: any[]) => void>(); const child = { once: (event: string, handler: (...values: any[]) => void) => { handlers.set(event, handler); return child; }, kill: () => {} } as any; queueMicrotask(() => handlers.get('close')?.(0)); return child; },
     statOutput: async () => ({ size: 1 }),
     readOutput: async () => { throw new Error('read failed C:\\secret'); },
+    remove: async (target) => { removed = true; fs.rmSync(target, { recursive: true, force: true }); },
+  });
+  await assert.rejects(() => renderArchifyDiagram('architecture', doc, { domain: 'pcn', recordId: 'r-1' }), (error: any) => { assert.equal(error.message, 'Archify không thể render biểu đồ.'); return true; });
+  assert.equal(removed, true);
+  removed = false;
+  setArchifyRuntimeTestHooks({
+    spawn: (_file, _args, _options) => { const handlers = new Map<string, (...values: any[]) => void>(); const child = { once: (event: string, handler: (...values: any[]) => void) => { handlers.set(event, handler); return child; }, kill: () => {} } as any; queueMicrotask(() => handlers.get('close')?.(0)); return child; },
+    statOutput: async () => { throw new Error('stat failed C:\\secret'); },
     remove: async (target) => { removed = true; fs.rmSync(target, { recursive: true, force: true }); },
   });
   await assert.rejects(() => renderArchifyDiagram('architecture', doc, { domain: 'pcn', recordId: 'r-1' }), (error: any) => { assert.equal(error.message, 'Archify không thể render biểu đồ.'); return true; });
