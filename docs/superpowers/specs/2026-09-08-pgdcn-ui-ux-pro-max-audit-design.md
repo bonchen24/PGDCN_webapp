@@ -43,6 +43,8 @@ Mục tiêu là nâng chất lượng UI mà không đổi business behavior: gi
 
 - Giữ compact density của app nghiệp vụ, nhưng tăng khả năng đọc cho label, field, CTA, lỗi và thông tin chính.
 - Giữ encoding UTF-8 và font stack hiện có với fallback hệ thống hỗ trợ tiếng Việt; không import webfont mới trong đợt này. QA phải kiểm tra `Đ/đ`, `Ă/ă`, `Â/â`, `Ê/ê`, `Ô/ô`, `Ơ/ơ`, `Ư/ư` và dấu thanh trong heading, label, input, badge và validation error.
+- Visual direction là **Official / Superneat**: không gradient, glass, neon, texture, shadow nặng hoặc motion trang trí; ưu tiên surface phẳng, border rõ, một cấp shadow nhẹ và khoảng thở có chủ đích.
+- Dùng spacing 4/8px; giới hạn radius theo vai trò (surface 12–16px, control 8–10px, pill chỉ cho badge/filter); mỗi màn hình chỉ có một primary CTA và copy hành động dùng sentence case.
 - Dùng semantic token thay cho màu ad-hoc; không dùng màu đơn độc để truyền trạng thái.
 
 ## 4. Phạm vi file dự kiến

@@ -1356,7 +1356,10 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 
 ### 5A.2. Nguyên tắc visual và token
 
-- Dùng phong cách **Minimal Swiss / Industrial Operations**: nền slate sáng, surface trắng, header/nav navy-slate, accent emerald cho PCN và blue cho PGD.
+- Dùng phong cách **Official / Superneat / Minimal Swiss**: nền slate sáng, surface trắng, header/nav navy-slate, accent emerald cho PCN và blue cho PGD. Cảm giác chính là chính xác, đáng tin cậy, gọn và có trật tự.
+- Không dùng gradient, glassmorphism, neon, texture, shadow nặng hoặc animation trang trí. Mỗi surface chỉ dùng border trung tính và tối đa một cấp shadow nhẹ để tách lớp.
+- Nhịp spacing chính dùng bội số 4/8px; radius được giới hạn theo hệ thống: surface khoảng 12–16px, control khoảng 8–10px, badge/pill chỉ dành cho trạng thái hoặc filter. Không bo tròn mọi thứ thành pill.
+- Mỗi màn hình chỉ có một primary CTA; action phụ dùng border/text button nhẹ hơn. Copy nghiệp vụ dùng sentence case rõ ràng; chữ in hoa chỉ dành cho eyebrow/metadata ngắn, không dùng tracking rộng cho toàn bộ UI.
 - Màu chức năng phải đi qua token semantic hoặc token badge đã định nghĩa ở mục 2; không thêm màu hex ad-hoc trong component.
 - Dùng một ngôn ngữ icon vector nhất quán (Lucide hiện có). Không dùng emoji hoặc ký tự Unicode làm icon cấu trúc cho navigation, menu, trạng thái hay action.
 - Typography phải giữ encoding UTF-8 và font stack có fallback hệ thống hỗ trợ tiếng Việt; không đổi sang webfont mới nếu chưa kiểm soát subset `vietnamese`, `font-display` và layout shift. Khi QA phải kiểm tra trực tiếp các ký tự `Đ/đ`, `Ă/ă`, `Â/â`, `Ê/ê`, `Ô/ô`, `Ơ/ơ`, `Ư/ư` cùng dấu thanh trong heading, label, input, badge và lỗi validation.
