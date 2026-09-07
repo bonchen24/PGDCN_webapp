@@ -38,3 +38,19 @@ test('Vietnamese-safe typography remains explicit in the global stack', () => {
   assert.match(css, /Roboto/);
   assert.match(css, /Segoe UI|Arial|sans-serif/);
 });
+
+test('PGDCN dashboard keeps official hierarchy and interaction contracts', () => {
+  const dashboard = read('../components/PgdcnDashboardView.tsx');
+  const markers = ['CommandHeader', 'AttentionQueue', 'DomainPipeline', 'UpcomingMilestones', 'SharedNotifications'];
+
+  for (const marker of markers) {
+    assert.match(dashboard, new RegExp(marker));
+  }
+
+  const markerPositions = markers.map((marker) => dashboard.indexOf(marker));
+  assert.deepEqual(markerPositions, [...markerPositions].sort((a, b) => a - b));
+  assert.doesNotMatch(dashboard, /radial-gradient|backdrop-blur|shadow-lg/);
+  assert.match(dashboard, /mobile-touch-target/);
+  assert.match(dashboard, /focus-visible/);
+  assert.doesNotMatch(dashboard, /focus:outline-none/);
+});
