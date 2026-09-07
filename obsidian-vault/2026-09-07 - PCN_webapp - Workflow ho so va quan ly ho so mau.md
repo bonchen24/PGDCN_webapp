@@ -11,6 +11,14 @@ Ngày: 2026-09-07
 - Workspace **Hồ sơ mẫu** dùng chung cho PCN/PGD, gồm normalized editor model, canvas palette + lane/cột, inspector requirement theo đúng miền, version/revision/publish/retire và preview Archify read-only.
 - Card danh mục hiển thị trực tiếp phạm vi áp dụng bằng badge chữ (QC4/QC9 hoặc nhóm sản phẩm/phương pháp PGD). Editor hiển thị cảnh báo thay đổi chưa lưu và hỏi xác nhận trước khi rời mẫu đang sửa; bấm lại đúng tab hiện tại không làm mất editor.
 
+## Cập nhật bổ sung — Đóng hồ sơ khi chuyển workspace và production Docker
+
+- Route hồ sơ standalone `/pgdcn/pcn/dossiers/{dossierId}` được xem là trạng thái đang mở; chuyển sang bất kỳ workspace nào từ sidebar phải đóng hồ sơ, bỏ dossier focus/tab/node tạm thời và thay URL bằng route canonical của workspace đích.
+- Regression `test/pcn-dossier-route.test.ts`: **4/4 pass**, trong đó có kiểm tra chuyển workspace gọi `router.replace` và không giữ route dossier.
+- Commit code trên `master`: `7b42309` — `fix: close dossier on workspace navigation`.
+- Dev asset incident được xác định là process cổng `1357` đã dừng, không phải thiếu file `.next`. Sau khi khởi động lại `npm run dev`, trang PCN và toàn bộ asset lỗi trong browser đều trả HTTP 200.
+- Production Docker đã build/recreate từ tree này bằng `docker-compose.pcn.yml`; image digest `sha256:977b535d62b44145c8cb165b895da49341aa88ffcd5b9eabc34cc0d6a8cf00dc`, container `pcn_webapp-webapp` `Up` tại port `2357`. Health và các route `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` trả HTTP 200; log xác nhận PostgreSQL connected/schema initialized.
+
 ## Boundary và dữ liệu
 
 - PCN và PGD giữ collection, requirement và quyền riêng; không tham chiếu chéo domain.

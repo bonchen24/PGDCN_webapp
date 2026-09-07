@@ -6,6 +6,15 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-07 — Đóng hồ sơ khi chuyển workspace và deploy production mới nhất
+
+- Quy tắc UX mới: khi đang ở route canonical `/pgdcn/pcn/dossiers/{dossierId}`, mọi thao tác chuyển sang workspace khác phải đóng hồ sơ standalone, xóa focus/tab/node tạm thời và thay URL bằng entry canonical `/pgdcn/`, `/pgdcn/pcn` hoặc `/pgdcn/pgd`; không giữ dossier detail overlay trong workspace đích.
+- `PgdcnAppShell` đã gọi `router.replace` về workspace canonical trước khi route state dossier được đồng bộ rỗng; regression `test/pcn-dossier-route.test.ts` bao phủ cả nút đóng hồ sơ và chuyển workspace. Commit code: `7b42309` (`fix: close dossier on workspace navigation`).
+- Verification: focused dossier-route **4/4 pass**, full `npm test` **844/844 pass**, `npm run typecheck` pass và `git diff --check` pass (chỉ cảnh báo line-ending LF/CRLF).
+- Browser dev asset incident: cổng `1357` từng không có process listener nên request tới trang/asset trả `ERR_FAILED` hoặc connection refused; file `.next/static` vẫn tồn tại. Sau `npm run dev`, `/pgdcn/pcn`, `layout.css`, `webpack.js`, `main-app.js`, `app-pages-internals.js` và chunk PCN đều trả HTTP 200.
+- Production Docker Desktop đã build/recreate bằng `docker compose --env-file .env --env-file 'E:\CODING\TVCI_APP\supabase-docker\.env' -f docker-compose.pcn.yml up --build -d`. Image `pcn_webapp-webapp:latest` digest `sha256:977b535d62b44145c8cb165b895da49341aa88ffcd5b9eabc34cc0d6a8cf00dc`; container `pcn_webapp-webapp` đang `Up`, publish `0.0.0.0:2357->2357/tcp`.
+- Smoke production: `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200; `/api/db/health` không có session trả 401 đúng boundary; log xác nhận PostgreSQL connected, schema initialized và server chạy port `2357`. Không ghi secret/raw hồ sơ vào Memory hoặc Obsidian.
+
 ## Cập nhật 2026-09-07 — Workflow-first hồ sơ và quản lý Hồ sơ mẫu trực quan
 
 - PCN dossier detail đã chuyển sang workflow-first: khi mở hồ sơ chỉ hiện thông tin cơ bản và bản đồ Archify; panel công việc chỉ mở khi chọn node active hoặc completed. Node locked/cancelled dùng visual state mờ, không in chữ trạng thái khóa/mở; panel desktop nằm bên phải và mobile xếp bên dưới.
