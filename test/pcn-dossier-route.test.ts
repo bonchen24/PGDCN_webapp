@@ -28,3 +28,8 @@ test('standalone dossier detail is an in-page workspace, not a modal overlay', (
   assert.match(detail, /standalone \? '[^']*' : 'fixed inset-0/);
   assert.match(detail, /initialNodeId/);
 });
+
+test('closing the standalone dossier route clears the selected dossier before returning to the register', () => {
+  const workspace = read('components/PcnWorkspace.tsx');
+  assert.match(workspace, /useEffect\(\(\) => \{\n    setSelectedDossierId\(initialDossierId\);\n    setSelectedDossierTab\(initialDossierTab\);\n  \}, \[initialDossierId, initialDossierTab\]\);/);
+});

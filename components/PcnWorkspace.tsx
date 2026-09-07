@@ -555,7 +555,6 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
   }, [initialSection]);
 
   useEffect(() => {
-    if (!initialDossierId) return;
     setSelectedDossierId(initialDossierId);
     setSelectedDossierTab(initialDossierTab);
   }, [initialDossierId, initialDossierTab]);
