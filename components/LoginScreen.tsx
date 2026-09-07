@@ -42,6 +42,12 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasUsernameError = error === 'Vui lòng nhập tên tài khoản.';
+  const hasPasswordError = Boolean(error) && !hasUsernameError;
+  const normalizedResetError = resetError.toLowerCase();
+  const hasResetUsernameError = /tên đăng nhập|tài khoản này/.test(normalizedResetError);
+  const hasResetFullNameError = /họ và tên/.test(normalizedResetError);
+  const hasResetContactError = /số điện thoại|email liên hệ/.test(normalizedResetError);
 
   // Load systemUsers on login screen if empty to facilitate verification
   React.useEffect(() => {
@@ -257,7 +263,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                    <User size={18} />
+                    <User aria-hidden="true" size={18} />
                   </div>
                   <input
                     id="username"
@@ -267,8 +273,8 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    aria-invalid={Boolean(error)}
-                    aria-describedby={error ? 'legacy-login-error' : undefined}
+                    aria-invalid={hasUsernameError}
+                    aria-describedby={hasUsernameError ? 'legacy-login-error' : undefined}
                     className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     placeholder="Tên đăng nhập..."
                   />
@@ -295,7 +301,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                    <Lock size={18} />
+                    <Lock aria-hidden="true" size={18} />
                   </div>
                   <input
                     id="password"
@@ -304,8 +310,8 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    aria-invalid={Boolean(error)}
-                    aria-describedby={error ? 'legacy-login-error' : undefined}
+                    aria-invalid={hasPasswordError}
+                    aria-describedby={hasPasswordError ? 'legacy-login-error' : undefined}
                     className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-12 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     placeholder="Mật khẩu của bạn"
                   />
@@ -393,7 +399,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                    <User size={18} />
+                    <User aria-hidden="true" size={18} />
                   </div>
                   <input
                     id="reset-username"
@@ -402,8 +408,8 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     required
                     value={resetUsername}
                     onChange={(e) => setResetUsername(e.target.value)}
-                    aria-invalid={Boolean(resetError)}
-                    aria-describedby={resetError ? 'reset-error' : undefined}
+                    aria-invalid={hasResetUsernameError}
+                    aria-describedby={hasResetUsernameError ? 'reset-error' : undefined}
                     className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     placeholder="Tên đăng nhập của bạn..."
                   />
@@ -416,7 +422,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                    <User size={18} />
+                    <User aria-hidden="true" size={18} />
                   </div>
                   <input
                     id="reset-fullname"
@@ -425,8 +431,8 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     required
                     value={resetFullName}
                     onChange={(e) => setResetFullName(e.target.value)}
-                    aria-invalid={Boolean(resetError)}
-                    aria-describedby={resetError ? 'reset-error' : undefined}
+                    aria-invalid={hasResetFullNameError}
+                    aria-describedby={hasResetFullNameError ? 'reset-error' : undefined}
                     className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     placeholder="Họ và tên đăng ký..."
                   />
@@ -439,7 +445,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                    <Phone size={18} />
+                    <Phone aria-hidden="true" size={18} />
                   </div>
                   <input
                     id="reset-contact"
@@ -448,8 +454,8 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     required
                     value={resetContact}
                     onChange={(e) => setResetContact(e.target.value)}
-                    aria-invalid={Boolean(resetError)}
-                    aria-describedby={resetError ? 'reset-error' : undefined}
+                    aria-invalid={hasResetContactError}
+                    aria-describedby={hasResetContactError ? 'reset-error' : undefined}
                     className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     placeholder="Số điện thoại hoặc email liên hệ..."
                   />
@@ -458,14 +464,14 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
 
               {resetError && (
                 <div id="reset-error" role="alert" className="flex items-start gap-2 rounded-lg border border-red-400/40 bg-red-950/50 p-3 text-sm font-medium text-red-200">
-                  <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-400" />
+                  <AlertCircle aria-hidden="true" size={16} className="shrink-0 mt-0.5 text-red-400" />
                   <span>{resetError}</span>
                 </div>
               )}
 
               {resetSuccess && (
                 <div role="status" aria-live="polite" className="flex items-start gap-2 rounded-lg border border-emerald-400/40 bg-emerald-950/50 p-3 text-sm font-medium text-emerald-200">
-                  <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-400" />
+                  <CheckCircle2 aria-hidden="true" size={16} className="shrink-0 mt-0.5 text-emerald-400" />
                   <span>{resetSuccess}</span>
                 </div>
               )}

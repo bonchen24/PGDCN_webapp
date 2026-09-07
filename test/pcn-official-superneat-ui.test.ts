@@ -32,12 +32,45 @@ test('login controls keep accessible error and touch-target contracts', () => {
   ];
 
   for (const source of surfaces) {
-    assert.match(source, /aria-invalid=\{Boolean\(/);
+    assert.match(source, /aria-invalid=\{(?:Boolean\(|has)/);
     assert.match(source, /aria-describedby=\{/);
     assert.match(source, /min-h-11/);
     assert.match(source, /min-w-11/);
     assert.match(source, /focus-visible:ring-2/);
   }
+});
+
+test('login errors bind ARIA state only to the affected field', () => {
+  const pcn = read('../components/PcnLoginScreen.tsx');
+  assert.match(pcn, /aria-invalid=\{hasUsernameError\}/);
+  assert.match(pcn, /aria-describedby=\{hasUsernameError \? 'pcn-login-error' : undefined\}/);
+  assert.match(pcn, /aria-invalid=\{hasPasswordError\}/);
+  assert.match(pcn, /aria-describedby=\{hasPasswordError \? 'pcn-login-error' : undefined\}/);
+
+  const pgd = read('../components/PgdLoginScreen.tsx');
+  const pgdUsername = pgd.slice(pgd.indexOf('id="pgd-username"'), pgd.indexOf('id="pgd-password"'));
+  const pgdPassword = pgd.slice(pgd.indexOf('id="pgd-password"'), pgd.indexOf('id="pgd-login-error"'));
+  assert.doesNotMatch(pgdUsername, /aria-invalid|aria-describedby/);
+  assert.match(pgdPassword, /aria-invalid=\{Boolean\(error\)\}/);
+  assert.match(pgdPassword, /aria-describedby=\{error \? 'pgd-login-error' : undefined\}/);
+
+  const legacy = read('../components/LoginScreen.tsx');
+  assert.match(legacy, /aria-invalid=\{hasUsernameError\}/);
+  assert.match(legacy, /aria-describedby=\{hasUsernameError \? 'legacy-login-error' : undefined\}/);
+  assert.match(legacy, /aria-invalid=\{hasPasswordError\}/);
+  assert.match(legacy, /aria-describedby=\{hasPasswordError \? 'legacy-login-error' : undefined\}/);
+  assert.match(legacy, /aria-invalid=\{hasResetUsernameError\}/);
+  assert.match(legacy, /aria-invalid=\{hasResetFullNameError\}/);
+  assert.match(legacy, /aria-invalid=\{hasResetContactError\}/);
+});
+
+test('legacy login hides decorative icons without hiding action icons', () => {
+  const legacy = read('../components/LoginScreen.tsx');
+  for (const icon of ['User', 'Lock', 'Phone', 'AlertCircle', 'CheckCircle2']) {
+    assert.match(legacy, new RegExp(`<${icon} aria-hidden="true"`));
+  }
+  assert.match(legacy, /<EyeOff size=\{16\}|<Eye size=\{16\}/);
+  assert.match(legacy, /<ArrowLeft size=\{18\}|<ArrowLeft size=\{14\}/);
 });
 
 test('PGDCN shell and sidebar expose accessible official navigation controls', () => {

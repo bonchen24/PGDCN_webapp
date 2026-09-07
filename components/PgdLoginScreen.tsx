@@ -37,7 +37,7 @@ export default function PgdLoginScreen() {
         <form className="mt-8 space-y-5" onSubmit={submit}>
           <div>
             <label htmlFor="pgd-username" className="mb-2 block text-sm font-medium text-slate-200">Tên đăng nhập</label>
-            <div className="relative"><User aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} /><input id="pgd-username" name="username" required value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" aria-invalid={Boolean(error)} aria-describedby={error ? 'pgd-login-error' : undefined} className="min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white outline-none transition-colors focus:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" /></div>
+            <div className="relative"><User aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} /><input id="pgd-username" name="username" required value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" className="min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white outline-none transition-colors focus:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" /></div>
           </div>
           <div>
             <label htmlFor="pgd-password" className="mb-2 block text-sm font-medium text-slate-200">Mật khẩu</label>
