@@ -71,10 +71,28 @@
   #portrait-only-message {
     display: none;
   }
+
+  :where(button, a, input, select, textarea, [role='button'], [role='combobox']):focus-visible {
+    outline: 2px solid var(--pcn-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @layer components {
   :root {
+    --pcn-focus-ring: #2563eb;
+    --pcn-surface-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
     --pcn-scrollbar-thumb: #94a3b8;
     --pcn-scrollbar-track: transparent;
   }
