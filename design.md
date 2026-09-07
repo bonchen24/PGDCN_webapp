@@ -1344,4 +1344,54 @@ Toàn bộ Type định nghĩa hệ thống nằm ở file `/types.ts`.
 - Khi hồ sơ chưa tới bước, người dùng được xem cấu hình nhưng không được upload, đánh dấu bỏ qua, xác nhận sinh tài liệu hoặc lưu form của bước tương lai. Owner được thao tác vùng bước hiện tại và vùng bước trước trong thời gian hồ sơ chưa duyệt; bước sau bị khóa. Mọi boundary server phải áp dụng cùng quy tắc này.
 - Chuyển bước chỉ được thực hiện tuần tự. Bước hiện tại phải đủ các yêu cầu bắt buộc bằng phiên tài liệu hiện hành hợp lệ hoặc waiver do Lãnh đạo duyệt có lý do, người quyết định và thời điểm; các thao tác chuyên biệt PYC, nhận KQTN và lập bộ phát hành cũng không được tạo đường vòng. Thay đổi tài liệu bước trước phải mở lại các bước phụ thuộc; sau duyệt/phát hành chỉ được chỉnh sửa sau boundary thu hồi hợp lệ.
 - PYC chỉ được tạo/gửi khi hồ sơ đã vào bước `SAMPLING_LAB` (`AWAITING_SAMPLING`/`SENT_TO_LAB`) hoặc đang ở luồng sửa chữa cần thử lại (`AWAITING_RESULTS`/`CORRECTIVE_ACTION`); không tạo PYC từ bước tiếp nhận đầu vào hay sau khi đã soát xét kỹ thuật.
+## 5A. ĐỢT AUDIT UI/UX PRO MAX — 2026-09-08
+
+Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN hiện tại. Phạm vi chỉ gồm UI, CSS, khả năng tiếp cận, trạng thái tương tác và responsive; không thay đổi schema, API, persistence, RBAC, dữ liệu nghiệp vụ hoặc lifecycle hồ sơ.
+
+### 5A.1. Mục tiêu và phạm vi bề mặt
+
+- Ưu tiên theo thứ tự: shell dùng chung và đăng nhập → dashboard Tổng quan phòng → modal/form/table/combobox dùng chung → workspace PCN/PGD và chi tiết hồ sơ.
+- Giữ nguyên route, callback, permission guard, collection và business state hiện có. Mọi thay đổi chỉ được thể hiện ở cách trình bày hoặc affordance.
+- Bề mặt desktop giữ tinh thần compact hiện hành; bề mặt mobile phải dễ thao tác, không hy sinh nội dung cốt lõi để né tràn ngang.
+
+### 5A.2. Nguyên tắc visual và token
+
+- Dùng phong cách **Minimal Swiss / Industrial Operations**: nền slate sáng, surface trắng, header/nav navy-slate, accent emerald cho PCN và blue cho PGD.
+- Màu chức năng phải đi qua token semantic hoặc token badge đã định nghĩa ở mục 2; không thêm màu hex ad-hoc trong component.
+- Dùng một ngôn ngữ icon vector nhất quán (Lucide hiện có). Không dùng emoji hoặc ký tự Unicode làm icon cấu trúc cho navigation, menu, trạng thái hay action.
+- Typography phải giữ encoding UTF-8 và font stack có fallback hệ thống hỗ trợ tiếng Việt; không đổi sang webfont mới nếu chưa kiểm soát subset `vietnamese`, `font-display` và layout shift. Khi QA phải kiểm tra trực tiếp các ký tự `Đ/đ`, `Ă/ă`, `Â/â`, `Ê/ê`, `Ô/ô`, `Ơ/ơ`, `Ư/ư` cùng dấu thanh trong heading, label, input, badge và lỗi validation.
+- Giữ phân cấp bằng kích thước, khoảng cách, weight và border; màu không được là tín hiệu duy nhất.
+- Không thay đổi `ddt-compact`, `pcn-compact` hoặc `#root { zoom: 1 }` để tạo shortcut thị giác. Không dùng `transform: scale()`/`zoom` để thu nhỏ hitbox.
+
+### 5A.3. Accessibility và interaction
+
+- Không khóa zoom viewport. Các control keyboard phải có focus indicator rõ ràng, bao gồm input, select, combobox, modal action, sidebar item và icon-only button.
+- Mọi icon-only control phải có accessible name bằng `aria-label` hoặc nhãn tương đương; item điều hướng hiện tại dùng `aria-current="page"`, nhóm mở/đóng dùng `aria-expanded`.
+- Vùng thao tác cảm ứng chính giữ tối thiểu khoảng 44px; trạng thái disabled/loading phải ngăn lặp mutation và hiển thị feedback gần action.
+- Form giữ label liên kết với field, lỗi hiển thị cạnh field hoặc vùng lỗi có liên kết rõ; số/ngày dùng input mode hoặc type phù hợp.
+- Tôn trọng `prefers-reduced-motion`; animation chỉ dùng để giải thích chuyển trạng thái, không làm thay đổi layout hoặc cản thao tác.
+- Modal phải giữ anatomy `header/footer shrink-0` và body có vùng cuộn độc lập; focus không bị che bởi sticky/fixed UI.
+
+### 5A.4. Responsive và scroll contract
+
+- Kiểm tra tối thiểu ở 320/375/390/430px portrait, tablet và desktop; không để body/app shell tạo tràn ngang.
+- Shell `main` là chủ sở hữu scroll cấp trang; vùng bảng, workflow map và timeline rộng dùng `mobile-scroll-x`; nội dung dọc dùng `mobile-scroll-y`.
+- Layout flex/grid phải có `min-w-0`; chuỗi nghiệp vụ dài wrap hoặc truncate có chủ đích và có cách xem đầy đủ.
+- Mobile giữ khoảng an toàn cho bottom navigation và `env(safe-area-inset-bottom)`. Modal/form dùng `max-h` theo viewport, body cuộn độc lập, footer luôn thao tác được.
+- Bảng nhiều cột dùng vùng cuộn ngang hoặc card/stack phù hợp; không giảm chữ xuống mức khó đọc chỉ để tránh overflow.
+
+### 5A.5. Nhịp thông tin chuẩn
+
+- Toolbar nghiệp vụ theo thứ tự: tiêu đề/ngữ cảnh → tìm kiếm/bộ lọc → CTA chính → action phụ.
+- Dashboard dùng thứ tự: command header → KPI → hàng đợi hành động → pipeline theo miền → mốc sắp tới → thông báo phòng; mobile giữ nguyên thứ tự này.
+- Login, empty, loading, error và success dùng cùng anatomy: biểu tượng/nhãn trạng thái → giải thích ngắn → action tiếp theo → chi tiết khi cần.
+- Compact density chỉ áp dụng cho metadata và vùng điều phối; label, field, CTA và thông báo lỗi quan trọng phải đạt mức đọc được trên mobile.
+
+### 5A.6. Tiêu chí nghiệm thu đợt audit
+
+- Không có tràn ngang toàn trang ở 320/375/390/430px; không có nội dung bị che bởi fixed/sticky UI.
+- Các page chính và modal có keyboard focus rõ, icon-only control có accessible name, navigation state được công bố đúng.
+- Login và dashboard có loading/error/disabled feedback rõ ràng; không lộ raw technical error trong layout chính.
+- PCN/PGD vẫn tách badge, accent, callback và quyền hiện hành; không phát sinh collection hoặc mutation mới.
+- `npm run typecheck`, `npm run test:pcn`, `npm run build` và smoke test runtime phải được chạy trước khi kết luận hoàn tất.
 <!-- --- End of design.md --- -->
