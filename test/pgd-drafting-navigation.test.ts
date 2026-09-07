@@ -62,8 +62,9 @@ test('PGD drafting follows the compact PCN workspace without duplicate selectors
   assert.match(drafting, /Kết quả sinh file/);
   assert.equal((drafting.match(/<PcnCatalogCombobox/g) || []).length, 1);
   assert.doesNotMatch(drafting, /Hồ sơ PGD cần soạn tài liệu/);
+  assert.match(drafting, /aria-label="Loại tài liệu PGD"/);
   assert.doesNotMatch(generation, /Danh mục loại tài liệu PGD/);
-  assert.equal((generation.match(/Loại template tài liệu PGD/g) || []).length, 1);
+  assert.doesNotMatch(generation, /Loại template tài liệu PGD/);
   assert.doesNotMatch(generation, /placeholder=/);
   assert.match(generation, /onSaveDraft/);
 });

@@ -68,7 +68,7 @@ const getActiveContextLabel = (target: PgdcnNavigationTarget): string => {
 const getSharedTargetForPcnSection = (section: PcnSection): PgdcnNavigationTarget | undefined => {
   if (section === 'dashboard') return { domain: 'department', section: 'department-dashboard' };
   if (section === 'customers') return { domain: 'department', section: 'customers' };
-  if (section === 'users' || section === 'settings') return { domain: 'department', section: 'system-settings' };
+  if (section === 'users') return { domain: 'department', section: 'system-settings' };
   return undefined;
 };
 

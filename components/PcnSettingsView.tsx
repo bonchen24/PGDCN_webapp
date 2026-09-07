@@ -57,7 +57,7 @@ function templateStatusLabel(status: PcnTemplateDefinition['status']): string {
   } as const)[status];
 }
 
-function PcnTemplateAdminPanel({ templates, onUploadTemplate, onReviewTemplate }: {
+export function PcnTemplateAdminPanel({ templates, onUploadTemplate, onReviewTemplate }: {
   templates: PcnTemplateDefinition[];
   onUploadTemplate: (templateId: string, file: File) => Promise<unknown>;
   onReviewTemplate: (templateId: string, action: PcnTemplateReviewAction, reason?: string) => Promise<unknown>;
