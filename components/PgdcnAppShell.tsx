@@ -162,6 +162,9 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     if (target.domain !== 'PGD') setFocusedPgdRequestId(undefined);
     setActiveTarget(target);
     setMobileOpen(false);
+    if (initialPcnDossierId) {
+      router.replace(target.domain === 'department' ? '/pgdcn' : target.domain === 'PCN' ? '/pgdcn/pcn' : '/pgdcn/pgd');
+    }
   };
   const handleLogout = async () => {
     await clearPcnSession().catch(() => undefined);
