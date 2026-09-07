@@ -27,6 +27,7 @@ Description: File thiết kế chi tiết kiến trúc, dữ liệu, Frontend UI
    - 4.4. [ReportGeneratorView & KQTN Management](#44-reportgeneratorview--kqtn-management-trình-tạo-báo-cáo-thử-nghiệm--quản-lý-kqtn)
    - 4.5. [Phân Hệ Sổ Kết Quả Thử Nghiệm](#45-phân-hệ-sổ-kết-quả-thử-nghiệm-kqtn-redesign--modern-data-grid-architecture)
    - 4.6. [PcnTemplateSettingsModal & Quản lý Template DOCX PCN](#46-pcntemplatesettingsmodal--quản-lý-template-docx-pcn)
+   - 4.7. [Soạn thảo tài liệu PCN & PGD — State UI](#47-soạn-thảo-tài-liệu-pcn--pgd--state-ui)
 0.10. [Bộ hồ sơ mẫu quản trị trực quan](#010-bộ-hồ-sơ-mẫu-quản-trị-trực-quan-2026-09-06)
 5. [CẤU TRÚC LAYOUT TỔNG THỂ & BẢNG ĐIỀU HƯỚNG](#5-cấu-trúc-layout-tổng-thể--bảng-điều-hướng)
    - 5.2. [Tỷ lệ hiển thị giao diện toàn cục](#52-tỷ-lệ-hiển-thị-giao-diện-toàn-cục)
@@ -902,6 +903,14 @@ Hiển thị trong Màn hình Nhật Ký Hoạt Động & Sổ Tổng Hợp (`Su
   - **Nạp template nguồn có kiểm soát**: `npm run import:pcn-template` chạy qua runner khóa `APP_PROFILE=pcn`, bắt buộc nhận diện `templateId` trong catalog, đường dẫn nguồn chỉ tồn tại transient ở lệnh bảo trì, phải dry-run trước rồi mới `--apply`. Import ghi asset vào bucket private PCN mặc định `pcn-files` và metadata vào `pcnTemplateDefinitions`; không được lấy `SUPABASE_STORAGE_BUCKET` chung làm fallback vì có thể trỏ bucket DDT. Nếu cần chú thích/duyệt theo quy trình bảo trì, thao tác đó chạy ngoài bề mặt quản lý file hiện tại.
 - Với `GĐ-THEP-KG`, PGD Admin/Manager dùng modal **Cài đặt DOCX** mở ngay trong workspace **Soạn thảo tài liệu** để tải lên hoặc duyệt asset của các mẫu biên bản, báo cáo, quyết định và chứng thư thép không gỉ đã được phòng xác nhận. Đây không phải route/sidebar riêng và không thuộc **Cài đặt hệ thống**. Không hiển thị hoặc lưu đường dẫn nguồn nghiên cứu; asset upload mới phải được kiểm tra private và fingerprint trước khi tham gia preflight. Mapping field/cell vẫn lấy từ code và template, không chỉnh trực tiếp trong modal.
 - Khi thay asset của một template đã `APPROVED`, server phải xóa dấu vết phê duyệt của asset cũ và chuyển template về `NEEDS_ANNOTATION`; chỉ sau một lần review/approve mới template mới được tham gia preflight. Thao tác review phải có nút rõ ràng cho `APPROVE`, `REQUEST_ANNOTATION` và `RETIRE`, đồng thời giữ audit actor/thời điểm/lý do.
+
+### 4.7. Soạn thảo tài liệu PCN & PGD — State UI
+
+- Workspace **Soạn thảo tài liệu PCN** và panel **Sinh tài liệu PGD** phải biểu diễn rõ state hiện tại, không dùng một nút sinh file hoặc một thông báo chung để che mất điều kiện nghiệp vụ. Bộ state tối thiểu gồm: `EMPTY` (chưa chọn nguồn/template), `EDITING` (đang nhập), `SAVED` (đã lưu bản soạn), `GENERATING` (đang sinh), `READY` (đã có output tải được), `BLOCKED` (thiếu dữ liệu/template hoặc không đủ quyền) và `ERROR` (lỗi có thể thử lại).
+- `EMPTY` phải có hướng dẫn ngắn và một CTA chính để chọn hồ sơ/template; `EDITING` hiển thị chip nguồn dữ liệu, loại biểu mẫu, template/phiên bản và số trường còn thiếu; `SAVED` hiển thị thời điểm lưu và CTA tiếp tục; `GENERATING` khóa các mutation liên quan, có `aria-live`/spinner và không hứa hẹn file trước khi server trả kết quả; `READY` liệt kê từng output DOCX/PDF với tên file, thời điểm sinh, context/template và thao tác mở/tải; `BLOCKED` nêu lý do ngay cạnh vùng thao tác, kèm hành động xử lý phù hợp; `ERROR` giữ lại dữ liệu đang nhập và có CTA thử lại.
+- Bề mặt PCN dùng accent emerald, PGD dùng accent blue; anatomy chung là `header/context` → `readiness summary` → `form` → `sticky action footer` → `outputs`. Footer chỉ có một primary CTA theo state (`Lưu bản soạn`, `Tạo DOCX + PDF`, hoặc `Sinh DOCX/PDF & tải file`), action không khả dụng phải giải thích bằng text/title và không chỉ dựa vào màu hoặc opacity.
+- Readiness phải kiểm tra đúng template đang chọn và snapshot nguồn hiện hành; không tự điền dữ liệu thiếu bằng suy đoán, không coi bản nháp là tài liệu chính thức, không tự đổi lifecycle hồ sơ. Output chỉ hiển thị sau khi API trả asset hợp lệ; lỗi PDF/DOCX hoặc thiếu capability phải giữ state `BLOCKED`/`ERROR` và không tạo link tải giả.
+- Responsive: panel/form dùng cột đơn dưới `640px`, các nhóm trường được phép cuộn dọc độc lập, mã hồ sơ/tên file được xuống dòng hoặc truncate có title, control/action đạt target tối thiểu khoảng 44px và có focus-visible. Text giao diện phải giữ UTF-8 và font fallback có đầy đủ glyph tiếng Việt; không dùng chuỗi mojibake (`Ã`, `Ä`, `áº`) trong source hoặc UI.
 
 ---
 
