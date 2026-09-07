@@ -24,3 +24,15 @@ test('dossier detail exposes a horizontally scrollable workflow rail', () => {
   const source = read('../components/PcnDossierDetailView.tsx');
   assert.match(source, /PgdcnWorkflowRail|mobile-scroll-x/);
 });
+
+test('Official/Superneat surfaces preserve state tones and restrained elevation', () => {
+  const primitives = read('../components/PgdcnUiPrimitives.tsx');
+  assert.match(primitives, /const surfaceClass = 'min-w-0 rounded-xl border border-slate-200 shadow-sm';/);
+  assert.match(primitives, /const whiteSurfaceClass = 'bg-white';/);
+  assert.doesNotMatch(primitives, /const surfaceClass = '[^']*bg-white/);
+  assert.match(primitives, /PgdcnStatePanel[\s\S]*surfaceClass[\s\S]*statePanelToneClass/);
+
+  const sidebar = read('../components/PgdcnSidebar.tsx');
+  assert.doesNotMatch(sidebar, /shadow-lg/);
+  assert.match(sidebar, /shadow-sm/);
+});

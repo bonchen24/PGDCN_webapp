@@ -20,7 +20,8 @@ const stateIcon: Record<'loading' | 'empty' | 'error' | 'success', LucideIcon> =
   success: CheckCircle2,
 };
 
-const surfaceClass = 'min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm';
+const surfaceClass = 'min-w-0 rounded-xl border border-slate-200 shadow-sm';
+const whiteSurfaceClass = 'bg-white';
 
 const statePanelToneClass: Record<'loading' | 'empty' | 'error' | 'success', string> = {
   loading: 'bg-blue-50 text-blue-800',
@@ -34,7 +35,7 @@ export function PgdcnPageHeader({ eyebrow, title, description, actions }: { eyeb
 }
 
 export function PgdcnToolbar({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
-  return <div className={`${surfaceClass} grid gap-2 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center`}><div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-3">{children}</div>{actions && <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 md:justify-end">{actions}</div>}</div>;
+  return <div className={`${surfaceClass} ${whiteSurfaceClass} grid gap-2 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center`}><div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-3">{children}</div>{actions && <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 md:justify-end">{actions}</div>}</div>;
 }
 
 export function PgdcnStatusBadge({ label, tone = 'neutral' }: { label: string; tone?: StateTone }) {
