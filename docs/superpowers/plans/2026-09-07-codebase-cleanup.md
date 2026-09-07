@@ -102,6 +102,8 @@ git status --short -uall
 
 Expected: no whitespace errors and no removed source/test files.
 
+If the baseline contract suite fails only because a source-matching assertion assumes LF line endings, update that assertion to accept both `\n` and `\r\n`; do not change application behavior.
+
 - [ ] **Step 2: Run full verification**
 
 Run:

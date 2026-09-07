@@ -77,7 +77,7 @@ test('dossier detail exposes the graphic workflow and controlled reviewer/deadli
   assert.match(source, /option value="METHOD_5"/);
   assert.match(source, /option value="METHOD_7"/);
   assert.match(source, /disabled=\{Boolean\(issuance\)\}/);
-  assert.match(source, /method,\n/);
+  assert.match(source, /method,\r?\n/);
   assert.match(source, /Người soát xét kỹ thuật/);
   assert.match(source, /Chủ hồ sơ/);
   assert.match(source, /ownerUsername/);
