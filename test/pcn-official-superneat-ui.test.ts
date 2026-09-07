@@ -39,18 +39,27 @@ test('Vietnamese-safe typography remains explicit in the global stack', () => {
   assert.match(css, /Segoe UI|Arial|sans-serif/);
 });
 
-test('PGDCN dashboard keeps official hierarchy and interaction contracts', () => {
+test('PGDCN dashboard keeps official styling and interaction contracts', () => {
   const dashboard = read('../components/PgdcnDashboardView.tsx');
-  const markers = ['CommandHeader', 'AttentionQueue', 'DomainPipeline', 'UpcomingMilestones', 'SharedNotifications'];
+  const renderBlock = dashboard.slice(dashboard.lastIndexOf('export default function PgdcnDashboardView'));
+  const renderedMarkers = [
+    '<CommandHeader',
+    'data-testid="pgdcn-dashboard-kpi-grid"',
+    '<AttentionQueue',
+    '<DomainPipeline',
+    '<UpcomingMilestones',
+    '<SharedNotifications',
+  ];
 
-  for (const marker of markers) {
-    assert.match(dashboard, new RegExp(marker));
+  for (const marker of renderedMarkers) {
+    assert.match(renderBlock, new RegExp(marker));
   }
 
-  const markerPositions = markers.map((marker) => dashboard.indexOf(marker));
-  assert.deepEqual(markerPositions, [...markerPositions].sort((a, b) => a - b));
+  const renderedPositions = renderedMarkers.map((marker) => renderBlock.indexOf(marker));
+  assert.deepEqual(renderedPositions, [...renderedPositions].sort((a, b) => a - b));
   assert.doesNotMatch(dashboard, /radial-gradient|backdrop-blur|shadow-lg/);
   assert.match(dashboard, /mobile-touch-target/);
   assert.match(dashboard, /focus-visible/);
   assert.doesNotMatch(dashboard, /focus:outline-none/);
+  assert.match(dashboard, /Mở thông báo \$\{notification\.title\} · \$\{notification\.read \? 'Đã đọc' : 'Chưa đọc'\}/);
 });
