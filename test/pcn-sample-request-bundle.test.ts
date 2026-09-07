@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import type { CertificationDossier, CertificationProposal, OutboundLabRequest, PcnSampleItem, PcnSampleLot, PcnSampleRoute } from '../types.ts';
 import { buildPcnLabDispatchPayload } from '../utils/pcnLabIntegration.ts';
-import { buildSampleRequestBundleDraft, validateSampleRequestBundleDraft } from '../utils/pcnSampleRequestBundle.ts';
+import { buildSampleRequestBundleDraft, buildSampleRequestBundleMappingPreview, validateSampleRequestBundleDraft } from '../utils/pcnSampleRequestBundle.ts';
 
 const customer = { name: 'Công ty A', address: 'Hà Nội', taxId: '010000001', phone: '0900000001' } as const;
 
@@ -54,7 +54,7 @@ test('rejects duplicate editable lot or sample codes against persisted PCN codes
 });
 
 test('builds one draft bundle with independent dispatches for multiple laboratories', () => {
-  const bundle = buildSampleRequestBundleDraft(makeInput() as any, '2026-09-06T01:00:00.000Z');
+  const bundle = buildSampleRequestBundleDraft({ ...makeInput(), targetDate: '2026-09-30', criteria: 'QCVN 4:2009/BKHCN' } as any, '2026-09-06T01:00:00.000Z');
 
   assert.equal(bundle.status, 'DRAFT');
   assert.deepEqual(bundle.sampleItemIds, ['item-1']);
@@ -63,6 +63,35 @@ test('builds one draft bundle with independent dispatches for multiple laborator
   assert.deepEqual(bundle.dispatches[0].routeIds, ['route-performance']);
   assert.deepEqual(bundle.dispatches[1].routeIds, ['route-emc']);
   assert.equal(bundle.mappingVersion, 'pcn-lab-map-v1');
+  assert.equal(bundle.targetDate, '2026-09-30');
+  assert.equal(bundle.criteria, 'QCVN 4:2009/BKHCN');
+});
+
+test('previews one explicit mapping per laboratory target without mixing DDT branches', () => {
+  const preview = buildSampleRequestBundleMappingPreview(makeInput() as any, [
+    { id: 'route-performance', sampleLotId: 'lot-1', labCode: 'PERFORMANCE', labName: 'Phòng thử hiệu suất', status: 'PENDING', sequence: 1, sampleItemIds: ['item-1'] },
+    { id: 'route-emc', sampleLotId: 'lot-1', labCode: 'EMC', labName: 'Phòng thử EMC', status: 'PENDING', sequence: 2, sampleItemIds: ['item-1'] },
+  ]);
+
+  assert.deepEqual(preview.dispatches.map((dispatch) => [dispatch.labCode, dispatch.targetSystemCode]), [
+    ['PERFORMANCE', 'LABFTEE'],
+    ['EMC', 'DDT'],
+  ]);
+  assert.equal(preview.dispatches[0].rows[0].routeStatus, 'Đã gán tuyến');
+  assert.equal(preview.dispatches[1].rows[0].values.find((field) => field.key === 'sampleRouteId')?.value, 'route-emc');
+  assert.equal(preview.issues.length, 0);
+});
+
+test('flags an existing sample line when a selected laboratory has no exact route', () => {
+  const preview = buildSampleRequestBundleMappingPreview({
+    ...makeInput(),
+    lines: [{ ...makeInput().lines[0], routeIdsByLab: { PERFORMANCE: ['route-performance'] } }],
+  } as any, [
+    { id: 'route-performance', sampleLotId: 'lot-1', labCode: 'PERFORMANCE', labName: 'Phòng thử hiệu suất', status: 'PENDING', sequence: 1, sampleItemIds: ['item-1'] },
+  ]);
+
+  assert.equal(preview.issues.some((issue) => issue.code === 'MISSING_ROUTE' && issue.path.includes('EMC')), true);
+  assert.equal(preview.dispatches.find((dispatch) => dispatch.labCode === 'EMC')?.rows[0].routeStatus, 'Thiếu tuyến');
 });
 
 test('outbound child payload carries bundle and sample identity for exact target mapping', () => {

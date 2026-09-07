@@ -7,14 +7,47 @@ import type {
   PcnSampleRequestBundleDraft,
   PcnSampleRequestBundleLineDraft,
   PcnSampleRequestBundleDispatch,
+  PcnSampleLabCode,
+  PcnSampleRoute,
 } from '../types.ts';
+import { PCN_SAMPLE_LAB_OPTIONS } from '../types.ts';
 
 export const PCN_SAMPLE_REQUEST_BUNDLE_MAPPING_VERSION = 'pcn-lab-map-v1';
 
 export interface PcnSampleRequestBundleValidationIssue {
-  code: 'CUSTOMER_MISMATCH' | 'DUPLICATE_LOT_CODE' | 'DUPLICATE_SAMPLE_CODE' | 'EMPTY_LINES' | 'MISSING_LAB' | 'INVALID_CODE';
+  code: 'CUSTOMER_MISMATCH' | 'DUPLICATE_LOT_CODE' | 'DUPLICATE_SAMPLE_CODE' | 'EMPTY_LINES' | 'MISSING_LAB' | 'INVALID_CODE' | 'MISSING_ROUTE' | 'UNSUPPORTED_TARGET';
   path: string;
   message: string;
+}
+
+export interface PcnSampleRequestBundleMappingField {
+  key: string;
+  label: string;
+  value: string;
+}
+
+export interface PcnSampleRequestBundleMappingRow {
+  lineIndex: number;
+  sampleCode: string;
+  model: string;
+  labCode: PcnSampleLabCode;
+  labName: string;
+  targetSystemCode?: 'LABFTEE' | 'DDT';
+  routeId?: string;
+  routeStatus: 'Đã gán tuyến' | 'Thiếu tuyến' | 'Tuyến sẽ tạo khi lưu';
+  values: PcnSampleRequestBundleMappingField[];
+}
+
+export interface PcnSampleRequestBundleMappingDispatch {
+  labCode: PcnSampleLabCode;
+  labName: string;
+  targetSystemCode?: 'LABFTEE' | 'DDT';
+  rows: PcnSampleRequestBundleMappingRow[];
+}
+
+export interface PcnSampleRequestBundleMappingPreview {
+  dispatches: PcnSampleRequestBundleMappingDispatch[];
+  issues: PcnSampleRequestBundleValidationIssue[];
 }
 
 export interface PcnSampleRequestBundleValidationContext {
@@ -35,6 +68,70 @@ function customerKey(value: Record<string, unknown> | undefined): string {
 
 function collectCodes(lines: PcnSampleRequestBundleLineDraft[], selector: (line: PcnSampleRequestBundleLineDraft) => string): Set<string> {
   return new Set(lines.map((line) => normalize(selector(line))).filter(Boolean));
+}
+
+export function getPcnSampleRequestTargetSystemCode(labCode: PcnSampleLabCode): 'LABFTEE' | 'DDT' | undefined {
+  if (labCode === 'PERFORMANCE') return 'LABFTEE';
+  if (labCode === 'EMC' || labCode === 'ELECTRICAL_SAFETY') return 'DDT';
+  return undefined;
+}
+
+function labName(labCode: PcnSampleLabCode): string {
+  return PCN_SAMPLE_LAB_OPTIONS.find((option) => option.code === labCode)?.name || labCode;
+}
+
+export function buildSampleRequestBundleMappingPreview(
+  draft: PcnSampleRequestBundleDraft,
+  routes: PcnSampleRoute[] = [],
+): PcnSampleRequestBundleMappingPreview {
+  const issues: PcnSampleRequestBundleValidationIssue[] = [];
+  const labCodes = Array.from(new Set(draft.lines.flatMap((line) => line.labCodes)));
+  const dispatches = labCodes.map((labCode) => {
+    const targetSystemCode = getPcnSampleRequestTargetSystemCode(labCode);
+    if (!targetSystemCode) {
+      issues.push({ code: 'UNSUPPORTED_TARGET', path: `labCodes.${labCode}`, message: `${labName(labCode)} chưa có app đích được cấu hình.` });
+    }
+    const rows = draft.lines.flatMap((line, lineIndex) => {
+      if (!line.labCodes.includes(labCode)) return [];
+      const routeId = line.routeIdsByLab?.[labCode]?.[0];
+      const route = routes.find((candidate) => candidate.id === routeId
+        && candidate.labCode === labCode
+        && (!line.sampleLotId || candidate.sampleLotId === line.sampleLotId)
+        && (!line.sampleItemId || candidate.sampleItemIds?.includes(line.sampleItemId)));
+      const routeStatus: PcnSampleRequestBundleMappingRow['routeStatus'] = route
+        ? 'Đã gán tuyến'
+        : line.sampleItemId
+          ? 'Thiếu tuyến'
+          : 'Tuyến sẽ tạo khi lưu';
+      if (!route && line.sampleItemId) {
+        issues.push({ code: 'MISSING_ROUTE', path: `lines.${lineIndex}.routeIdsByLab.${labCode}`, message: `${line.sampleCode} chưa có tuyến ${labName(labCode)} hợp lệ.` });
+      }
+      return [{
+        lineIndex,
+        sampleCode: line.sampleCode,
+        model: line.model,
+        labCode,
+        labName: route?.labName || labName(labCode),
+        ...(targetSystemCode ? { targetSystemCode } : {}),
+        ...(route?.id ? { routeId: route.id } : {}),
+        routeStatus,
+        values: [
+          { key: 'dossierCode', label: 'Hồ sơ PCN', value: line.dossierCode || line.dossierId },
+          { key: 'proposalCode', label: 'Đề nghị', value: line.proposalCode || 'Theo hồ sơ' },
+          { key: 'fieldCode', label: 'Lĩnh vực', value: line.fieldCode || 'Theo hồ sơ' },
+          { key: 'sampleLotId', label: 'Lô mẫu PCN', value: line.lotCode },
+          { key: 'sampleCode', label: 'Mã mẫu PCN', value: line.sampleCode },
+          { key: 'model', label: 'Model', value: line.model },
+          { key: 'quantity', label: 'Số lượng', value: `${line.quantity} ${line.unit || 'mẫu'}` },
+          { key: 'sampleRouteId', label: 'Tuyến mẫu', value: route?.id || routeId || (line.sampleItemId ? 'Thiếu tuyến' : 'Tạo mới khi lưu') },
+          { key: 'targetDate', label: 'Hạn trả KQTN', value: draft.targetDate || 'Chưa nhập' },
+          { key: 'criteria', label: 'Chỉ tiêu/tiêu chuẩn', value: draft.criteria || 'Chưa nhập' },
+        ],
+      } satisfies PcnSampleRequestBundleMappingRow];
+    });
+    return { labCode, labName: labName(labCode), ...(targetSystemCode ? { targetSystemCode } : {}), rows };
+  });
+  return { dispatches, issues };
 }
 
 export function validateSampleRequestBundleDraft(
@@ -77,7 +174,7 @@ function makeDispatch(bundleId: string, labCode: PcnSampleRequestBundleDispatch[
   return {
     id: `${bundleId}-dispatch-${labCode.toLowerCase()}`,
     bundleId,
-    targetSystemCode: `PCN_${labCode}`,
+    targetSystemCode: getPcnSampleRequestTargetSystemCode(labCode) || `PCN_${labCode}`,
     labCode,
     routeIds: Array.from(new Set(matchingLines.flatMap((line) => line.routeIdsByLab?.[labCode] || []))),
     labRequestIds: [],

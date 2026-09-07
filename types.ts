@@ -1054,6 +1054,9 @@ export interface PcnSampleRequestBundleLineDraft {
   sampleItemId?: string;
   sampleLotId?: string;
   dossierId: string;
+  dossierCode?: string;
+  proposalCode?: string;
+  fieldCode?: PcnCertificationFieldCode;
   lotCode: string;
   sampleCode: string;
   sampleType: string;
