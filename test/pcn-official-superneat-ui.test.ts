@@ -20,6 +20,19 @@ test('audited surfaces keep the official icon and visual direction', () => {
   }
 });
 
+test('PGDCN shell and sidebar expose accessible official navigation controls', () => {
+  const shell = read('../components/PgdcnAppShell.tsx');
+  assert.match(shell, /from ['"]lucide-react['"]/);
+  assert.match(shell, /Menu/);
+  assert.match(shell, /aria-label="Mở menu phòng"/);
+  assert.doesNotMatch(shell, />☰</);
+
+  const sidebar = read('../components/PgdcnSidebar.tsx');
+  assert.match(sidebar, /aria-current/);
+  assert.match(sidebar, /aria-expanded/);
+  assert.match(sidebar, /focus-visible/);
+});
+
 test('Vietnamese-safe typography remains explicit in the global stack', () => {
   const css = read('../index.css');
   assert.match(css, /Roboto/);
