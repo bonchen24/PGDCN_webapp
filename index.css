@@ -73,8 +73,9 @@
   }
 
   :where(button, a, input, select, textarea, [role='button'], [role='combobox']):focus-visible {
-    outline: 2px solid var(--pcn-focus-ring);
-    outline-offset: 2px;
+    /* Keep keyboard focus visible even when a component utility suppresses outlines. */
+    outline: 2px solid var(--pcn-focus-ring) !important;
+    outline-offset: 2px !important;
   }
 }
 
