@@ -153,6 +153,7 @@ export function PcnCatalogCombobox({
           placeholder={placeholder}
           required={required}
           disabled={disabled}
+          aria-label={hideLabel ? label : undefined}
           aria-invalid={invalid || ariaInvalid || undefined}
           aria-expanded={isOpen}
           aria-controls={listboxId}

@@ -109,7 +109,7 @@ export default function PcnResultDetailModal({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-[10px]">
-            {result.fileAssetId ? <a href={getPcnFileUrl(result.fileAssetId)} target="_blank" rel="noreferrer" className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 font-black text-indigo-700 underline underline-offset-2">Mở file KQTN</a> : <span className="font-bold text-slate-500">Chưa gắn file báo cáo KQTN</span>}
+            {result.fileAssetId ? <a href={getPcnFileUrl(result.fileAssetId)} target="_blank" rel="noreferrer" className="mobile-touch-target min-h-11 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 font-black text-indigo-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1">Mở file KQTN</a> : <span className="font-bold text-slate-500">Chưa gắn file báo cáo KQTN</span>}
             {hasIssues && <span className="font-bold text-rose-700">Không cho ghi đè file khi còn lỗi integrity.</span>}
           </div>
         </div>

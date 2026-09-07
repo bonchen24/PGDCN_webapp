@@ -125,6 +125,8 @@ test('focused PCN controls and modal surfaces keep touch, focus and scroll contr
   assert.match(combobox, /aria-label/);
   assert.match(combobox, /focus-visible/);
   assert.match(combobox, /mobile-touch-target/);
+  const comboboxInput = combobox.slice(combobox.indexOf('<input'), combobox.indexOf('/>', combobox.indexOf('<input')));
+  assert.match(comboboxInput, /aria-label=\{hideLabel \? label : undefined\}/);
 
   for (const path of [
     '../components/PcnDocumentOutputModal.tsx',
@@ -142,6 +144,29 @@ test('focused PCN controls and modal surfaces keep touch, focus and scroll contr
     assert.match(source, /shrink-0/);
     assert.match(source, /focus-visible/);
     assert.match(source, /mobile-touch-target/);
+  }
+});
+
+test('PCN document links keep visible focus and mobile touch affordances', () => {
+  const links = [
+    ['../components/PcnResultDetailModal.tsx', ['Mở file KQTN']],
+    ['../components/PcnLabRequestDetailModal.tsx', ['Mở PYC DOCX', 'Mở PYC PDF']],
+  ] as const;
+
+  for (const [path, labels] of links) {
+    const source = read(path);
+    for (const label of labels) {
+      const labelIndex = source.indexOf(label);
+      const linkStart = source.lastIndexOf('<a', labelIndex);
+      const linkEnd = source.indexOf('</a>', labelIndex) + '</a>'.length;
+      const link = source.slice(linkStart, linkEnd);
+      assert.ok(labelIndex >= 0 && linkStart >= 0 && linkEnd > linkStart, `${path} should expose ${label}`);
+      assert.match(link, /target="_blank"/);
+      assert.match(link, /rel="noreferrer"/);
+      assert.match(link, /mobile-touch-target/);
+      assert.match(link, /min-h-11/);
+      assert.match(link, /focus-visible:ring-2/);
+    }
   }
 });
 

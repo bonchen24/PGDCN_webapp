@@ -72,3 +72,28 @@ PASS — exit code 0
 ## Verification limitation
 
 No browser-driven visual or manual keyboard/mobile viewport session was run. Confidence is based on the RED/GREEN source contracts, TypeScript validation, and production build. Git emitted environment line-ending/ignore-file warnings during read-only checks, but `git diff --check` returned exit code 0.
+
+## Review fixes — 2026-09-08
+
+Addressed both P1 findings from Task 6 review:
+
+- `PcnCatalogCombobox`: when `hideLabel` is true, the input now receives `aria-label={hideLabel ? label : undefined}`. When the visible label is rendered, the attribute remains undefined so the existing native label remains the sole accessible-name source.
+- `PcnResultDetailModal` KQTN file link and both `PcnLabRequestDetailModal` PYC document links now preserve their existing `href`, `target`, `rel`, and visible text while adding `mobile-touch-target`, `min-h-11`, and visible keyboard focus-ring classes.
+
+Added focused contracts that inspect the actual input/link fragments, including the conditional combobox name and each document link's target, rel, touch target, and focus ring.
+
+Review-fix TDD evidence:
+
+```text
+RED — 9 passed, 2 failed: missing conditional combobox name and document-link affordance classes.
+GREEN — 11 passed, 0 failed in pcn-official-superneat-ui.test.ts.
+```
+
+Final review-fix verification:
+
+```text
+Focused suites — 29 passed, 0 failed
+npm --prefix <worktree> run typecheck — exit code 0
+npm --prefix <worktree> run build — exit code 0
+git -C <worktree> diff --check — exit code 0
+```
