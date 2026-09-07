@@ -228,37 +228,34 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_45%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.05),transparent_40%)]" />
-
-      <div className="sm:mx-auto sm:w-full sm:max-w-md z-10">
+    <div className="flex min-h-screen flex-col justify-center bg-slate-950 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-md">
         <div className="flex justify-center">
           {mode === 'pcn' ? <div className="flex flex-col items-center gap-2">
-            <img src="/icons/iemm-logo-32.png" alt="IEMM • TVCI" className="h-16 w-16 rounded-2xl bg-white object-contain p-1.5 shadow-xl shadow-emerald-900/30 ring-1 ring-emerald-400/30" />
-            <span className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300">IEMM • TVCI</span>
-          </div> : <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-900/30 border border-emerald-500/20 animate-bounce-slow">
+            <img src="/icons/iemm-logo-32.png" alt="IEMM • TVCI" className="h-16 w-16 rounded-xl border border-slate-200/20 bg-white object-contain p-1.5" />
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">IEMM • TVCI</span>
+          </div> : <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-600">
             <ShieldCheck size={36} className="text-white" />
           </div>}
         </div>
-        <h2 className="mt-6 text-center text-2xl font-black tracking-tight text-white uppercase">
+        <h2 className="mt-6 text-center text-2xl font-semibold text-white">
           {mode === 'pcn' ? 'Hệ thống chứng nhận' : 'Hệ thống thử nghiệm'}
         </h2>
-        <p className="mt-2 text-center text-xs text-slate-400 font-medium">
+        <p className="mt-2 text-center text-sm text-slate-400">
           {mode === 'pcn' ? 'Phòng Chứng nhận • Quản lý hồ sơ theo Lĩnh vực' : 'Phòng Điện - Điện tử • Quản lý & Lên lịch Tự động'}
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10 px-4 sm:px-0">
-        <div className="bg-slate-800/80 backdrop-blur-md py-8 px-6 shadow-2xl rounded-3xl border border-slate-700/50">
+      <div className="mx-auto mt-8 w-full max-w-md">
+        <div className="rounded-xl border border-slate-700 bg-slate-900 px-6 py-8 shadow-sm">
           
           {!isForgotMode ? (
             <form className="space-y-5" onSubmit={handleLogin}>
               <div>
-                <label htmlFor="username" className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                <label htmlFor="username" className="mb-2 block text-sm font-medium text-slate-200">
                   Tên đăng nhập
                 </label>
-                <div className="relative rounded-2xl shadow-sm">
+                <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                     <User size={18} />
                   </div>
@@ -270,7 +267,9 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3.5 bg-slate-900/60 border border-slate-700 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? 'legacy-login-error' : undefined}
+                    className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     placeholder="Tên đăng nhập..."
                   />
                 </div>
@@ -278,24 +277,23 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
 
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <label htmlFor="password" className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  <label htmlFor="password" className="block text-sm font-medium text-slate-200">
                     Mật khẩu
                   </label>
-                  <div className="flex items-center" title="Lưu trong trình quản lý mật khẩu của trình duyệt">
+                  <label className="flex min-h-11 items-center gap-2 cursor-pointer text-xs font-medium text-slate-400 transition-colors hover:text-slate-200" title="Lưu trong trình quản lý mật khẩu của trình duyệt">
                     <input
                       id="remember-me"
                       name="remember-me"
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-3.5 w-3.5 rounded border-slate-700 bg-slate-900/60 text-emerald-500 focus:ring-emerald-500/50 cursor-pointer"
+                      aria-label="Lưu mật khẩu"
+                      className="h-4 w-4 cursor-pointer rounded border-slate-700 bg-slate-950 text-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                     />
-                    <label htmlFor="remember-me" className="ml-1.5 block text-[11px] font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors">
-                      Lưu mật khẩu
-                    </label>
-                  </div>
+                    <span>Lưu mật khẩu</span>
+                  </label>
                 </div>
-                <div className="relative rounded-2xl shadow-sm">
+                <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                     <Lock size={18} />
                   </div>
@@ -306,14 +304,16 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-10 pr-10 py-3.5 bg-slate-900/60 border border-slate-700 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? 'legacy-login-error' : undefined}
+                    className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-12 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     placeholder="Mật khẩu của bạn"
                   />
                   <button
                     type="button"
                     aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-300 transition-colors"
+                    className="absolute right-1 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -326,7 +326,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                       setResetError('');
                       setResetSuccess('');
                     }}
-                    className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                    className="min-h-11 rounded-lg px-2 text-xs font-medium text-emerald-400 transition-colors hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                   >
                     Quên mật khẩu?
                   </button>
@@ -334,7 +334,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
               </div>
 
               {error && (
-                <div className="p-3.5 bg-red-900/40 border border-red-500/30 rounded-2xl text-xs text-red-200 font-medium">
+                <div id="legacy-login-error" role="alert" className="rounded-lg border border-red-400/40 bg-red-950/50 p-3 text-sm font-medium text-red-200">
                   {error}
                 </div>
               )}
@@ -342,21 +342,17 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center py-3.5 px-4 border border-transparent rounded-2xl text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-900/20 transition-all bg-emerald-600 hover:bg-emerald-500 active:scale-95 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-emerald-500"
+                  disabled={isLoading}
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 active:bg-emerald-700 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                 >
-                  Đăng nhập hệ thống
+                  {isLoading && <Loader2 size={14} className="animate-spin" />}
+                  {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập hệ thống'}
                 </button>
-                {isLoading && (
-                  <div className="mt-2.5 flex items-center justify-center gap-2 text-[10px] text-slate-400 font-medium">
-                    <Loader2 size={12} className="animate-spin text-emerald-500" />
-                    Đang đồng bộ dữ liệu với máy chủ...
-                  </div>
-                )}
               </div>
             </form>
           ) : (
             <form className="space-y-5" onSubmit={handleForgotPassword}>
-              <div className="mb-4 flex items-center justify-between border-b border-slate-700/50 pb-3">
+              <div className="mb-4 flex items-center justify-between border-b border-slate-700 pb-3">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -365,12 +361,13 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                       setResetError('');
                       setResetSuccess('');
                     }}
-                    className="p-1.5 -ml-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors cursor-pointer"
+                    aria-label="Quay lại đăng nhập"
+                    className="-ml-1.5 flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     title="Quay lại"
                   >
                     <ArrowLeft size={18} />
                   </button>
-                  <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                  <h3 className="text-sm font-semibold text-white">
                     Khôi phục mật khẩu
                   </h3>
                 </div>
@@ -381,9 +378,9 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     setResetError('');
                     setResetSuccess('');
                   }}
-                  className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer flex items-center gap-1"
+                  className="flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-medium text-emerald-400 transition-colors hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
-                  Back
+                  Quay lại
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
@@ -391,10 +388,10 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
               </p>
 
               <div>
-                <label htmlFor="reset-username" className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                <label htmlFor="reset-username" className="mb-2 block text-sm font-medium text-slate-200">
                   Tên đăng nhập
                 </label>
-                <div className="relative rounded-2xl shadow-sm">
+                <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                     <User size={18} />
                   </div>
@@ -405,17 +402,19 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     required
                     value={resetUsername}
                     onChange={(e) => setResetUsername(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3.5 bg-slate-900/60 border border-slate-700 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                    aria-invalid={Boolean(resetError)}
+                    aria-describedby={resetError ? 'reset-error' : undefined}
+                    className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     placeholder="Tên đăng nhập của bạn..."
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="reset-fullname" className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                <label htmlFor="reset-fullname" className="mb-2 block text-sm font-medium text-slate-200">
                   Họ và tên
                 </label>
-                <div className="relative rounded-2xl shadow-sm">
+                <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                     <User size={18} />
                   </div>
@@ -426,17 +425,19 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     required
                     value={resetFullName}
                     onChange={(e) => setResetFullName(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3.5 bg-slate-900/60 border border-slate-700 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                    aria-invalid={Boolean(resetError)}
+                    aria-describedby={resetError ? 'reset-error' : undefined}
+                    className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     placeholder="Họ và tên đăng ký..."
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="reset-contact" className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                <label htmlFor="reset-contact" className="mb-2 block text-sm font-medium text-slate-200">
                   Số điện thoại hoặc Email
                 </label>
-                <div className="relative rounded-2xl shadow-sm">
+                <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                     <Phone size={18} />
                   </div>
@@ -447,21 +448,23 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     required
                     value={resetContact}
                     onChange={(e) => setResetContact(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3.5 bg-slate-900/60 border border-slate-700 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                    aria-invalid={Boolean(resetError)}
+                    aria-describedby={resetError ? 'reset-error' : undefined}
+                    className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     placeholder="Số điện thoại hoặc email liên hệ..."
                   />
                 </div>
               </div>
 
               {resetError && (
-                <div className="p-3.5 bg-red-900/40 border border-red-500/30 rounded-2xl text-xs text-red-200 font-medium flex items-start gap-2">
+                <div id="reset-error" role="alert" className="flex items-start gap-2 rounded-lg border border-red-400/40 bg-red-950/50 p-3 text-sm font-medium text-red-200">
                   <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-400" />
                   <span>{resetError}</span>
                 </div>
               )}
 
               {resetSuccess && (
-                <div className="p-3.5 bg-emerald-900/40 border border-emerald-500/30 rounded-2xl text-xs text-emerald-200 font-medium flex items-start gap-2 animate-in fade-in">
+                <div role="status" aria-live="polite" className="flex items-start gap-2 rounded-lg border border-emerald-400/40 bg-emerald-950/50 p-3 text-sm font-medium text-emerald-200">
                   <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-400" />
                   <span>{resetSuccess}</span>
                 </div>
@@ -471,7 +474,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full flex items-center justify-center py-3.5 px-4 border border-transparent rounded-2xl text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-900/20 transition-all bg-emerald-600 hover:bg-emerald-500 active:scale-95 cursor-pointer disabled:opacity-50"
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 active:bg-emerald-700 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                 >
                   {isSubmitting ? (
                     <Loader2 size={16} className="animate-spin mr-2" />
@@ -486,7 +489,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     setResetError('');
                     setResetSuccess('');
                   }}
-                  className="w-full flex items-center justify-center py-3 px-4 border border-slate-700 rounded-2xl text-xs font-bold uppercase tracking-wider text-slate-300 hover:bg-slate-700/50 transition-all cursor-pointer"
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
                   <ArrowLeft size={14} className="mr-2" /> Quay lại đăng nhập
                 </button>

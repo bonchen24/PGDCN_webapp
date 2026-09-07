@@ -17,6 +17,26 @@ test('audited surfaces keep the official icon and visual direction', () => {
     const source = read(path);
     assert.match(source, /focus-visible/);
     assert.doesNotMatch(source, /radial-gradient|backdrop-blur/);
+    assert.match(source, /aria-label=\{showPassword \? 'Ẩn mật khẩu' : 'Hiện mật khẩu'\}/);
+    assert.match(source, /role="alert"/);
+    assert.match(source, /disabled=\{(?:isSubmitting|busy|isLoading)\}/);
+    assert.doesNotMatch(source, /uppercase[^\n]*tracking-widest/);
+  }
+});
+
+test('login controls keep accessible error and touch-target contracts', () => {
+  const surfaces = [
+    read('../components/PcnLoginScreen.tsx'),
+    read('../components/PgdLoginScreen.tsx'),
+    read('../components/LoginScreen.tsx'),
+  ];
+
+  for (const source of surfaces) {
+    assert.match(source, /aria-invalid=\{Boolean\(/);
+    assert.match(source, /aria-describedby=\{/);
+    assert.match(source, /min-h-11/);
+    assert.match(source, /min-w-11/);
+    assert.match(source, /focus-visible:ring-2/);
   }
 });
 

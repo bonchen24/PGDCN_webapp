@@ -78,28 +78,25 @@ export default function PcnLoginScreen() {
   };
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col justify-center overflow-hidden bg-slate-900 py-12 sm:px-6 lg:px-8">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_45%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.05),transparent_40%)]" />
-
-      <div className="z-10 mx-auto w-full max-w-md px-4 sm:px-0">
+    <div className="flex min-h-[100dvh] flex-col justify-center bg-slate-950 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-md">
         <div className="flex flex-col items-center gap-2">
           <img
             src="/icons/iemm-logo-32.png"
             alt="IEMM • TVCI"
-            className="h-16 w-16 rounded-2xl bg-white object-contain p-1.5 shadow-xl shadow-emerald-900/30 ring-1 ring-emerald-400/30"
+            className="h-16 w-16 rounded-xl border border-slate-200/20 bg-white object-contain p-1.5"
           />
-          <span className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300">IEMM • TVCI</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">IEMM • TVCI</span>
         </div>
-        <h1 className="mt-6 text-center text-2xl font-black uppercase tracking-tight text-white">Hệ thống chứng nhận</h1>
-        <p className="mt-2 text-center text-xs font-medium text-slate-400">Giám định - Chứng nhận • Miền PCN (Phòng Chứng nhận)</p>
+        <h1 className="mt-6 text-center text-2xl font-semibold text-white">Hệ thống chứng nhận</h1>
+        <p className="mt-2 text-center text-sm text-slate-400">Giám định - Chứng nhận • Miền PCN (Phòng Chứng nhận)</p>
 
-        <div className="mt-8 rounded-3xl border border-slate-700/50 bg-slate-800/80 px-6 py-8 shadow-2xl backdrop-blur-md">
+        <div className="mt-8 rounded-xl border border-slate-700 bg-slate-900 px-6 py-8 shadow-sm">
           <form className="space-y-5" onSubmit={handleLogin}>
             <div>
-              <label htmlFor="pcn-username" className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-300">Tên đăng nhập</label>
-              <div className="relative rounded-2xl shadow-sm">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500"><User size={18} /></div>
+              <label htmlFor="pcn-username" className="mb-2 block text-sm font-medium text-slate-200">Tên đăng nhập</label>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500"><User aria-hidden="true" size={18} /></div>
                 <input
                   id="pcn-username"
                   name="username"
@@ -108,7 +105,9 @@ export default function PcnLoginScreen() {
                   required
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
-                  className="block w-full rounded-2xl border border-slate-700 bg-slate-900/60 py-3.5 pl-10 pr-3 text-sm text-white placeholder-slate-500 transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? 'pcn-login-error' : undefined}
+                  className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                   placeholder="Tên đăng nhập..."
                 />
               </div>
@@ -116,9 +115,9 @@ export default function PcnLoginScreen() {
 
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <label htmlFor="pcn-password" className="block text-xs font-bold uppercase tracking-wider text-slate-300">Mật khẩu</label>
+                <label htmlFor="pcn-password" className="block text-sm font-medium text-slate-200">Mật khẩu</label>
                 <label
-                  className={`flex items-center gap-1.5 text-[11px] font-medium ${canRememberPassword === false ? 'cursor-not-allowed text-slate-600' : 'cursor-pointer text-slate-400'}`}
+                  className={`flex min-h-11 items-center gap-2 text-xs font-medium ${canRememberPassword === false ? 'cursor-not-allowed text-slate-600' : 'cursor-pointer text-slate-400'}`}
                   title={canRememberPassword === false ? 'Trình duyệt này không hỗ trợ lưu mật khẩu tự động' : 'Lưu trong trình quản lý mật khẩu của trình duyệt'}
                 >
                   <input
@@ -128,14 +127,15 @@ export default function PcnLoginScreen() {
                     checked={rememberMe}
                     disabled={canRememberPassword !== true}
                     onChange={(event) => setRememberMe(event.target.checked)}
-                    className="h-3.5 w-3.5 cursor-pointer rounded border-slate-700 bg-slate-900/60 text-emerald-500 focus:ring-emerald-500/50"
+                    aria-label="Lưu mật khẩu"
+                    className="h-4 w-4 cursor-pointer rounded border-slate-700 bg-slate-950 text-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                   />
                   Lưu mật khẩu
                 </label>
               </div>
-              {canRememberPassword === false && <p className="mt-1 text-right text-[10px] text-slate-600">Trình duyệt chưa hỗ trợ lưu tự động</p>}
-              <div className="relative rounded-2xl shadow-sm">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500"><Lock size={18} /></div>
+              {canRememberPassword === false && <p className="mt-1 text-right text-xs text-slate-500">Trình duyệt chưa hỗ trợ lưu tự động</p>}
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500"><Lock aria-hidden="true" size={18} /></div>
                 <input
                   id="pcn-password"
                   name="password"
@@ -144,32 +144,34 @@ export default function PcnLoginScreen() {
                   required
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="block w-full rounded-2xl border border-slate-700 bg-slate-900/60 py-3.5 pl-10 pr-10 text-sm text-white placeholder-slate-500 transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? 'pcn-login-error' : undefined}
+                  className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-12 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                   placeholder="Mật khẩu của bạn"
                 />
                 <button
                   type="button"
                   aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                   onClick={() => setShowPassword((current) => !current)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 transition-colors hover:text-slate-300"
+                  className="absolute right-1 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff aria-hidden="true" size={16} /> : <Eye aria-hidden="true" size={16} />}
                 </button>
               </div>
             </div>
 
-            {error && <div role="alert" className="rounded-2xl border border-red-500/30 bg-red-900/40 p-3.5 text-xs font-medium text-red-200">{error}</div>}
+            {error && <div id="pcn-login-error" role="alert" className="rounded-lg border border-red-400/40 bg-red-950/50 p-3 text-sm font-medium text-red-200">{error}</div>}
 
             <div className="pt-2">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-transparent bg-emerald-600 px-4 py-3.5 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-900/20 transition-all hover:bg-emerald-500 active:scale-95 disabled:cursor-wait disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 active:bg-emerald-700 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
               >
-                {isSubmitting && <Loader2 size={14} className="animate-spin" />}
+                {isSubmitting && <Loader2 aria-hidden="true" size={14} className="animate-spin" />}
                 {isSubmitting ? 'Đang xác thực...' : 'Đăng nhập hệ thống'}
               </button>
-              <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] font-medium text-slate-500"><ShieldCheck size={12} className="text-emerald-500" /> Phiên làm việc được bảo vệ riêng cho PCN</div>
+              <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-slate-500"><ShieldCheck aria-hidden="true" size={12} className="text-emerald-500" /> Phiên làm việc được bảo vệ riêng cho PCN</div>
             </div>
           </form>
         </div>
