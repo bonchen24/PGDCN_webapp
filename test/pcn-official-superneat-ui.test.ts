@@ -170,6 +170,21 @@ test('PCN document links keep visible focus and mobile touch affordances', () =>
   }
 });
 
+test('PCN multi-action modal footers stack on mobile and become rows at sm', () => {
+  const documentModal = read('../components/PcnDocumentOutputModal.tsx');
+  const documentFooter = documentModal.slice(documentModal.indexOf('<footer'), documentModal.indexOf('</footer>') + '</footer>'.length);
+  assert.match(documentFooter, /className="flex shrink-0 flex-col items-stretch[^"]*sm:flex-row/);
+  assert.match(documentFooter, /mobile-touch-target min-h-11 w-full[^"]*sm:w-auto/);
+
+  const labModal = read('../components/PcnLabRequestDetailModal.tsx');
+  const labFooter = labModal.slice(labModal.indexOf('<footer'), labModal.indexOf('</footer>') + '</footer>'.length);
+  assert.match(labFooter, /className="flex shrink-0 flex-col items-stretch[^"]*sm:flex-row/);
+  const labButtonCount = labFooter.match(/<button/g)?.length || 0;
+  const responsiveLabButtonCount = labFooter.match(/w-full sm:w-auto/g)?.length || 0;
+  assert.ok(labButtonCount > 0, 'lab footer should keep its actions');
+  assert.equal(responsiveLabButtonCount, labButtonCount, 'every lab footer action should be full-width on mobile and auto-width at sm');
+});
+
 test('PGD register rows expose one clear interactive owner for opening a dossier', () => {
   const workspace = read('../components/PgdWorkspace.tsx');
   const registerTable = workspace.slice(workspace.indexOf('function PgdRegisterTable'), workspace.indexOf('function PgdRequestDetail'));

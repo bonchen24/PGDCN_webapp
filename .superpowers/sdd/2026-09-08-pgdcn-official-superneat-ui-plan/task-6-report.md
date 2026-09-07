@@ -97,3 +97,27 @@ npm --prefix <worktree> run typecheck — exit code 0
 npm --prefix <worktree> run build — exit code 0
 git -C <worktree> diff --check — exit code 0
 ```
+
+## Footer responsive hardening — 2026-09-08
+
+Addressed the broad review's explicit mobile-risk finding within Task 6 scope:
+
+- `PcnDocumentOutputModal` footer now stacks with `flex-col items-stretch` on mobile and switches to a horizontal `sm:flex-row` layout; the existing close copy/callback is unchanged, with `w-full sm:w-auto` sizing.
+- `PcnLabRequestDetailModal` footer now stacks all conditional actions with `flex-col items-stretch` on mobile and switches to a row at `sm`; every existing action and close button has `w-full sm:w-auto`, with all conditions, callbacks, labels, and disabled behavior preserved.
+- Added a contract test that checks both footer container responsive markers and every lab footer button's responsive width classes.
+
+Footer-hardening TDD evidence:
+
+```text
+RED — 11 passed, 1 failed: missing responsive document-footer marker (lab footer was covered by the same new contract after the first assertion).
+GREEN — 12 passed, 0 failed in pcn-official-superneat-ui.test.ts.
+```
+
+Final footer-hardening verification:
+
+```text
+Focused suites — 30 passed, 0 failed
+npm --prefix <worktree> run typecheck — exit code 0
+npm --prefix <worktree> run build — exit code 0
+git -C <worktree> diff --check — exit code 0
+```

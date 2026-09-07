@@ -93,9 +93,9 @@ export function PcnDocumentOutputModal({
             onConfirmGenerated={onConfirmGenerated}
           />
         </main>
-        <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-3">
+        <footer className="flex shrink-0 flex-col items-stretch gap-2 border-t border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-[10px] text-slate-400">Tài liệu chỉ được lưu vào bộ hồ sơ sau khi sinh thành công và giữ nguyên phiên bản cũ.</span>
-          <button type="button" onClick={onClose} className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1">Đóng</button>
+          <button type="button" onClick={onClose} className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 sm:w-auto">Đóng</button>
         </footer>
       </section>
     </div>
