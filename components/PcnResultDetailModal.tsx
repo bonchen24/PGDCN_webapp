@@ -56,8 +56,8 @@ export default function PcnResultDetailModal({
   const tone = hasIssues ? 'text-rose-700 bg-rose-50 border-rose-200' : result.outcome === 'PASS' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : result.outcome === 'FAIL' ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-amber-700 bg-amber-50 border-amber-200';
 
   return (
-    <div className="fixed inset-0 z-[84] flex items-end justify-center bg-slate-950/55 p-0 sm:items-center sm:p-4">
-      <section role="dialog" aria-modal="true" aria-labelledby="pcn-result-detail-title" className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-emerald-200 bg-white shadow-2xl sm:rounded-2xl">
+    <div className="fixed inset-0 z-[84] flex items-end justify-center bg-slate-950/55 p-0 sm:items-center sm:p-4" role="presentation">
+      <section role="dialog" aria-modal="true" aria-labelledby="pcn-result-detail-title" className="flex min-h-0 max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-emerald-200 bg-white shadow-md sm:rounded-2xl">
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -68,7 +68,7 @@ export default function PcnResultDetailModal({
             </div>
             <p className="mt-1 text-[10px] text-slate-500">Bản ghi KQTN gắn với PYC, mẫu và bộ hồ sơ đang mở.</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Đóng chi tiết KQTN" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X size={16} /></button>
+          <button type="button" onClick={onClose} aria-label="Đóng chi tiết KQTN" className="mobile-touch-target rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"><X size={16} /></button>
         </header>
 
         <div className="min-h-0 flex-1 mobile-scroll-y space-y-4 overflow-y-auto p-4">
@@ -114,7 +114,7 @@ export default function PcnResultDetailModal({
           </div>
         </div>
 
-        <footer className="flex shrink-0 justify-end border-t border-slate-200 bg-white px-4 py-3"><button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-600">Đóng</button></footer>
+        <footer className="flex shrink-0 justify-end border-t border-slate-200 bg-white px-4 py-3"><button type="button" onClick={onClose} className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">Đóng</button></footer>
       </section>
     </div>
   );

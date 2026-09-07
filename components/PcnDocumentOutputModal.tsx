@@ -60,7 +60,7 @@ export function PcnDocumentOutputModal({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/55 p-0 sm:items-center sm:p-4" role="presentation">
-      <section className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl" role="dialog" aria-modal="true" aria-labelledby="pcn-document-output-title">
+      <section className="flex min-h-0 max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-md sm:rounded-2xl" role="dialog" aria-modal="true" aria-labelledby="pcn-document-output-title">
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -71,7 +71,7 @@ export function PcnDocumentOutputModal({
             <p className="mt-1 text-[10px] leading-4 text-slate-500">{definition.description} Kết quả gồm bản Sinh DOCX và Sinh PDF, cùng một context dữ liệu của hồ sơ. Bấm “Kiểm tra dữ liệu” trước khi sinh.</p>
             <p className="mt-1 font-mono text-[9px] text-slate-400">{dossier.dossierCode} · {kind}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Đóng modal sinh tài liệu" className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={18} /></button>
+          <button type="button" onClick={onClose} aria-label="Đóng modal sinh tài liệu" className="mobile-touch-target shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"><X size={18} /></button>
         </header>
         <main className="min-h-0 flex-1 mobile-scroll-y overflow-y-auto p-3 md:p-4">
           <PcnDocumentGenerationPanel
@@ -95,7 +95,7 @@ export function PcnDocumentOutputModal({
         </main>
         <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-3">
           <span className="text-[10px] text-slate-400">Tài liệu chỉ được lưu vào bộ hồ sơ sau khi sinh thành công và giữ nguyên phiên bản cũ.</span>
-          <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black text-slate-700 hover:bg-slate-50">Đóng</button>
+          <button type="button" onClick={onClose} className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1">Đóng</button>
         </footer>
       </section>
     </div>

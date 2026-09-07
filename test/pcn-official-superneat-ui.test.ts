@@ -118,3 +118,38 @@ test('PGDCN dashboard keeps official styling and interaction contracts', () => {
   assert.doesNotMatch(dashboard, /focus:outline-none/);
   assert.match(dashboard, /Mở thông báo \$\{notification\.title\} · \$\{notification\.read \? 'Đã đọc' : 'Chưa đọc'\}/);
 });
+
+test('focused PCN controls and modal surfaces keep touch, focus and scroll contracts', () => {
+  const combobox = read('../components/PcnCatalogCombobox.tsx');
+  assert.match(combobox, /role="listbox"/);
+  assert.match(combobox, /aria-label/);
+  assert.match(combobox, /focus-visible/);
+  assert.match(combobox, /mobile-touch-target/);
+
+  for (const path of [
+    '../components/PcnDocumentOutputModal.tsx',
+    '../components/PcnProposalDetailModal.tsx',
+    '../components/PcnResultDetailModal.tsx',
+    '../components/PcnLabRequestDetailModal.tsx',
+  ]) {
+    const source = read(path);
+    assert.match(source, /role="dialog"/);
+    assert.match(source, /aria-modal="true"/);
+    assert.match(source, /aria-labelledby/);
+    assert.match(source, /max-h-\[[^\]]+\]/);
+    assert.match(source, /min-h-0/);
+    assert.match(source, /mobile-scroll-y/);
+    assert.match(source, /shrink-0/);
+    assert.match(source, /focus-visible/);
+    assert.match(source, /mobile-touch-target/);
+  }
+});
+
+test('PGD register rows expose one clear interactive owner for opening a dossier', () => {
+  const workspace = read('../components/PgdWorkspace.tsx');
+  const registerTable = workspace.slice(workspace.indexOf('function PgdRegisterTable'), workspace.indexOf('function PgdRequestDetail'));
+  assert.ok(registerTable.length > 0, 'PGD register table should be present');
+  assert.doesNotMatch(registerTable, /<tr[^>]*onClick=/);
+  assert.match(registerTable, /<button[^>]*onClick=\{\(\) => onOpen\(request\.id\)\}/);
+  assert.match(registerTable, /aria-label=\{`Mở hồ sơ \$\{request\.requestCode\}`\}/);
+});
