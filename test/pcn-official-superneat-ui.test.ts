@@ -32,11 +32,14 @@ test('login controls keep accessible error and touch-target contracts', () => {
   ];
 
   for (const source of surfaces) {
-    assert.match(source, /aria-invalid=\{(?:Boolean\(|has)/);
-    assert.match(source, /aria-describedby=\{/);
     assert.match(source, /min-h-11/);
     assert.match(source, /min-w-11/);
     assert.match(source, /focus-visible:ring-2/);
+  }
+
+  for (const source of [surfaces[0], surfaces[2]]) {
+    assert.match(source, /aria-invalid=\{hasUsernameError\}/);
+    assert.match(source, /aria-describedby=\{/);
   }
 });
 
@@ -44,29 +47,28 @@ test('login errors bind ARIA state only to the affected field', () => {
   const pcn = read('../components/PcnLoginScreen.tsx');
   assert.match(pcn, /aria-invalid=\{hasUsernameError\}/);
   assert.match(pcn, /aria-describedby=\{hasUsernameError \? 'pcn-login-error' : undefined\}/);
-  assert.match(pcn, /aria-invalid=\{hasPasswordError\}/);
-  assert.match(pcn, /aria-describedby=\{hasPasswordError \? 'pcn-login-error' : undefined\}/);
+  assert.doesNotMatch(pcn, /hasPasswordError/);
+  const pcnPassword = pcn.slice(pcn.indexOf('id="pcn-password"'), pcn.indexOf('id="pcn-login-error"'));
+  assert.doesNotMatch(pcnPassword, /aria-invalid|aria-describedby/);
 
   const pgd = read('../components/PgdLoginScreen.tsx');
-  const pgdUsername = pgd.slice(pgd.indexOf('id="pgd-username"'), pgd.indexOf('id="pgd-password"'));
-  const pgdPassword = pgd.slice(pgd.indexOf('id="pgd-password"'), pgd.indexOf('id="pgd-login-error"'));
-  assert.doesNotMatch(pgdUsername, /aria-invalid|aria-describedby/);
-  assert.match(pgdPassword, /aria-invalid=\{Boolean\(error\)\}/);
-  assert.match(pgdPassword, /aria-describedby=\{error \? 'pgd-login-error' : undefined\}/);
+  assert.doesNotMatch(pgd, /aria-invalid|aria-describedby/);
 
   const legacy = read('../components/LoginScreen.tsx');
   assert.match(legacy, /aria-invalid=\{hasUsernameError\}/);
   assert.match(legacy, /aria-describedby=\{hasUsernameError \? 'legacy-login-error' : undefined\}/);
-  assert.match(legacy, /aria-invalid=\{hasPasswordError\}/);
-  assert.match(legacy, /aria-describedby=\{hasPasswordError \? 'legacy-login-error' : undefined\}/);
+  assert.doesNotMatch(legacy, /hasPasswordError/);
+  const legacyPassword = legacy.slice(legacy.indexOf('id="password"'), legacy.indexOf('id="legacy-login-error"'));
+  assert.doesNotMatch(legacyPassword, /aria-invalid|aria-describedby/);
   assert.match(legacy, /aria-invalid=\{hasResetUsernameError\}/);
   assert.match(legacy, /aria-invalid=\{hasResetFullNameError\}/);
   assert.match(legacy, /aria-invalid=\{hasResetContactError\}/);
+  assert.match(legacy, /hasResetUsernameError = \/tên đăng nhập\|không tìm thấy tài khoản này\//);
 });
 
 test('legacy login hides decorative icons without hiding action icons', () => {
   const legacy = read('../components/LoginScreen.tsx');
-  for (const icon of ['User', 'Lock', 'Phone', 'AlertCircle', 'CheckCircle2']) {
+  for (const icon of ['User', 'Lock', 'Phone', 'AlertCircle', 'CheckCircle2', 'ShieldCheck', 'Loader2']) {
     assert.match(legacy, new RegExp(`<${icon} aria-hidden="true"`));
   }
   assert.match(legacy, /<EyeOff size=\{16\}|<Eye size=\{16\}/);

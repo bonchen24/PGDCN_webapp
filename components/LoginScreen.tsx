@@ -43,9 +43,8 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
   const [resetSuccess, setResetSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const hasUsernameError = error === 'Vui lòng nhập tên tài khoản.';
-  const hasPasswordError = Boolean(error) && !hasUsernameError;
   const normalizedResetError = resetError.toLowerCase();
-  const hasResetUsernameError = /tên đăng nhập|tài khoản này/.test(normalizedResetError);
+  const hasResetUsernameError = /tên đăng nhập|không tìm thấy tài khoản này/.test(normalizedResetError);
   const hasResetFullNameError = /họ và tên/.test(normalizedResetError);
   const hasResetContactError = /số điện thoại|email liên hệ/.test(normalizedResetError);
 
@@ -241,7 +240,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
             <img src="/icons/iemm-logo-32.png" alt="IEMM • TVCI" className="h-16 w-16 rounded-xl border border-slate-200/20 bg-white object-contain p-1.5" />
             <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">IEMM • TVCI</span>
           </div> : <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-600">
-            <ShieldCheck size={36} className="text-white" />
+            <ShieldCheck aria-hidden="true" size={36} className="text-white" />
           </div>}
         </div>
         <h2 className="mt-6 text-center text-2xl font-semibold text-white">
@@ -310,8 +309,6 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    aria-invalid={hasPasswordError}
-                    aria-describedby={hasPasswordError ? 'legacy-login-error' : undefined}
                     className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-12 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     placeholder="Mật khẩu của bạn"
                   />
@@ -351,7 +348,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                   disabled={isLoading}
                   className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 active:bg-emerald-700 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                 >
-                  {isLoading && <Loader2 size={14} className="animate-spin" />}
+                  {isLoading && <Loader2 aria-hidden="true" size={14} className="animate-spin" />}
                   {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập hệ thống'}
                 </button>
               </div>
@@ -483,7 +480,7 @@ export const LoginScreen: React.FC<{ mode?: 'legacy' | 'pcn' }> = ({ mode = 'leg
                   className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 active:bg-emerald-700 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                 >
                   {isSubmitting ? (
-                    <Loader2 size={16} className="animate-spin mr-2" />
+                    <Loader2 aria-hidden="true" size={16} className="animate-spin mr-2" />
                   ) : null}
                   Xác nhận & Gửi yêu cầu
                 </button>

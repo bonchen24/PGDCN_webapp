@@ -32,7 +32,6 @@ export default function PcnLoginScreen() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const hasUsernameError = error === 'Vui lòng nhập tên tài khoản.';
-  const hasPasswordError = Boolean(error) && !hasUsernameError;
 
   useEffect(() => {
     let cancelled = false;
@@ -146,8 +145,6 @@ export default function PcnLoginScreen() {
                   required
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  aria-invalid={hasPasswordError}
-                  aria-describedby={hasPasswordError ? 'pcn-login-error' : undefined}
                   className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-12 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                   placeholder="Mật khẩu của bạn"
                 />
