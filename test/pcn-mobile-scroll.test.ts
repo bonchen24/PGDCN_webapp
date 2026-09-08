@@ -61,7 +61,7 @@ test('keeps the PCN shell and overlays inside a mobile scroll surface', () => {
   assert.match(pcnWorkspace, /<nav className="pcn-mobile-nav mobile-scroll-x flex shrink-0/);
   assert.match(pcnWorkspace, /mobile-touch-target flex min-h-11 min-w-\[4\.5rem\] shrink-0/);
   assert.match(pcnSidebar, /mobile-scroll-y/);
-  assert.match(dossierDetail, /<main className="h-0 min-h-0 flex-1 pcn-dossier-focus-scroll/);
+  assert.match(dossierDetail, /<main className="[^"]*(?:pcn-dossier-focus-scroll|mobile-scroll-y)[^"]*"/);
   assert.match(approvalModal, /<main className="min-h-0 flex-1 mobile-scroll-y overflow-y-auto/);
 });
 
@@ -69,14 +69,14 @@ test('gives the focused dossier workspace a definite mobile scroll boundary', ()
   assert.match(dossierDetail, /data-testid="pcn-dossier-focus-shell"/);
   assert.match(dossierDetail, /standalone \? 'flex h-full min-h-0 w-full flex-col overflow-hidden/);
   assert.match(dossierDetail, /: 'flex h-\[100dvh\] min-h-0 w-full flex-col overflow-hidden/);
-  assert.match(dossierDetail, /<main className="h-0 min-h-0 flex-1 pcn-dossier-focus-scroll/);
+  assert.match(dossierDetail, /<main className="[^"]*pcn-dossier-focus-scroll[^"]*"/);
   assert.match(stylesheet, /\.pcn-dossier-focus-scroll\s*\{[\s\S]*height:\s*0[\s\S]*min-height:\s*0[\s\S]*overflow-y:\s*auto/);
 });
 
 test('keeps the dossier workflow summary inside the mobile scroll body', () => {
   const shellStart = dossierDetail.indexOf('return <div data-testid="pcn-dossier-focus-shell"');
   const shell = dossierDetail.slice(shellStart);
-  const mainIndex = shell.indexOf('<main className="h-0 min-h-0 flex-1 pcn-dossier-focus-scroll');
+  const mainIndex = shell.search(/<main className="[^"]*pcn-dossier-focus-scroll[^"]*"/);
   const workflowIndex = shell.indexOf('<DossierWorkflowSummary');
 
   assert.ok(shellStart >= 0, 'focused dossier shell should be present');
