@@ -607,11 +607,15 @@ export type PcnWorkspaceProps = {
   initialDossierId?: string;
   initialDossierTab?: import('../utils/pcnDossierNavigation').PcnDossierDetailTab;
   initialDossierNodeId?: string;
+  initialDraftDossierId?: string;
+  initialDraftRequirementId?: string;
+  initialDraftNodeId?: string;
+  initialDraftKind?: import('../types').PcnDraftFormKind;
   standaloneDossier?: boolean;
   onActiveSectionChange?: (section: PcnSection) => void;
 };
 
-export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', initialDossierId, initialDossierTab, initialDossierNodeId, standaloneDossier = false, onActiveSectionChange }: PcnWorkspaceProps = {}) {
+export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', initialDossierId, initialDossierTab, initialDossierNodeId, initialDraftDossierId, initialDraftRequirementId, initialDraftNodeId, initialDraftKind, standaloneDossier = false, onActiveSectionChange }: PcnWorkspaceProps = {}) {
   const router = useRouter();
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const clearCurrentUser = usePcnSessionStore((state) => state.clearCurrentUser);
@@ -834,7 +838,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
   ) : activeSection === 'lab-operations' ? (
     <PcnLabOperationsView dossiers={pcn.dossiers} proposals={pcn.proposals} sampleLots={pcn.sampleLots} sampleItems={pcn.sampleItems} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} sampleRequestBundles={pcn.sampleRequestBundles} returnedResults={pcn.returnedResults} canEdit={canMutatePcn} onSaveBundle={pcn.saveSampleRequestBundle} onSendBundle={pcn.sendSampleRequestBundle} onRetryBundleDispatch={pcn.retrySampleRequestBundleDispatch} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'drafting' ? (
-    <PcnDraftingWorkspaceView proposals={pcn.proposals} dossiers={pcn.dossiers} templates={pcn.templates} onUploadTemplate={pcn.uploadPcnTemplate} onReviewTemplate={pcn.reviewPcnTemplate} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} onToast={(message, type) => type === 'error' ? toast.error(message) : toast.success(message)} />
+    <PcnDraftingWorkspaceView proposals={pcn.proposals} dossiers={pcn.dossiers} templates={pcn.templates} onUploadTemplate={pcn.uploadPcnTemplate} onReviewTemplate={pcn.reviewPcnTemplate} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} initialDossierId={initialDraftDossierId} initialRequirementId={initialDraftRequirementId} initialNodeId={initialDraftNodeId} initialKind={initialDraftKind} onToast={(message, type) => type === 'error' ? toast.error(message) : toast.success(message)} />
   ) : activeSection === 'assistant' ? (
     <PcnAssistantView dossiers={pcn.dossiers} proposals={pcn.proposals} requirements={pcn.documentRequirements} documents={pcn.dossierDocuments} labRequests={pcn.labRequests} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} returnedResults={pcn.returnedResults} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'customers' ? (

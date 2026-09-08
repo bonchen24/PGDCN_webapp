@@ -31,6 +31,7 @@ export interface PcnDossierWorkflowPanelProps {
   onOpenDocuments?: (nodeId: string) => void;
   onUploadDocument?: (requirementId: string, file: File) => Promise<void>;
   onCreateFromForm?: (requirementId: string) => void;
+  onOpenDrafting?: (item: import('../utils/pcnDossierNodeWork').PcnDossierNodeDocumentItem, nodeId: string) => string | undefined;
   onGenerateAndAttach?: (nodeId: string, requirementId: string) => Promise<void>;
   onRemoveCurrent?: (requirementId: string) => Promise<void>;
   onWaiveDocument?: (requirementId: string, reason: string) => Promise<void>;
@@ -38,7 +39,7 @@ export interface PcnDossierWorkflowPanelProps {
   onOpenBusiness?: (fact: import('../utils/pcnDossierNodeWork').PcnDossierNodeBusinessFact) => void;
 }
 
-export function PcnDossierWorkflowPanel({ dossier, requirements, documents, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], workflowTasks, users = [], canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onCreateFromForm, onGenerateAndAttach, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, initialNodeId }: PcnDossierWorkflowPanelProps) {
+export function PcnDossierWorkflowPanel({ dossier, requirements, documents, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], workflowTasks, users = [], canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onCreateFromForm, onOpenDrafting, onGenerateAndAttach, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, initialNodeId }: PcnDossierWorkflowPanelProps) {
   const workflow = useMemo(() => getPcnWorkflowForDossier(dossier), [dossier]);
   const nodes = useMemo(() => workflow.nodes.filter((node) => node.active !== false).map((node) => ({ id: node.id, label: node.label, kind: node.kind })), [workflow.nodes]);
   const edgeIds = useMemo(() => {
@@ -91,9 +92,9 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
     }),
   }) : undefined;
 
-  return <div className="grid min-h-0 gap-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]" data-testid="pcn-dossier-workflow-first">
+  return <div className="grid min-w-0 min-h-0 gap-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]" data-testid="pcn-dossier-workflow-first">
     <PcnArchifyWorkflowEmbed domain="pcn" recordId={dossier.id} recordCode={dossier.dossierCode} initialNodeId={initialNodeId} nodes={nodes} edgeIds={edgeIds} workflowTasks={dossierTasks} canEdit={canEdit} onStartTask={onStartTask} onCompleteTask={onCompleteTask} onReturnTask={onReturnTask} onOpenDocuments={onOpenDocuments} onSelectNode={selectNode} />
-    {selectedProjection?.isSelectable ? <PcnDossierNodeWorkPanel projection={selectedProjection} taskId={selectedTask?.id} documents={documents} canEdit={canEdit} onStartTask={onStartTask} onCompleteTask={onCompleteTask} onUploadDocument={onUploadDocument} onCreateFromForm={onCreateFromForm} onGenerateAndAttach={(requirementId) => generateAndAttach(selectedProjection.nodeId, requirementId)} onRemoveCurrent={onRemoveCurrent || ((requirementId) => usePcnStore.getState().removeCurrentDossierDocument(dossier.id, requirementId))} onWaive={onWaiveDocument} onClearWaiver={onClearDocumentWaiver} onOpenBusiness={onOpenBusiness} onClose={() => selectNode(null)} /> : null}
+    {selectedProjection?.isSelectable ? <PcnDossierNodeWorkPanel projection={selectedProjection} taskId={selectedTask?.id} documents={documents} canEdit={canEdit} onStartTask={onStartTask} onCompleteTask={onCompleteTask} onUploadDocument={onUploadDocument} onCreateFromForm={onCreateFromForm} onOpenDrafting={onOpenDrafting ? (item) => onOpenDrafting(item, selectedProjection.nodeId) : undefined} onGenerateAndAttach={(requirementId) => generateAndAttach(selectedProjection.nodeId, requirementId)} onRemoveCurrent={onRemoveCurrent || ((requirementId) => usePcnStore.getState().removeCurrentDossierDocument(dossier.id, requirementId))} onWaive={onWaiveDocument} onClearWaiver={onClearDocumentWaiver} onOpenBusiness={onOpenBusiness} onClose={() => selectNode(null)} /> : null}
     {selectedProjection && !selectedProjection.isSelectable ? <div className="hidden" aria-hidden="true">{users.length + issuancePackages.length}</div> : null}
   </div>;
 }

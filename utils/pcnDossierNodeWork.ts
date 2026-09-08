@@ -185,7 +185,7 @@ function documentItem(
       label: requirement.name,
       required: requirement.required,
       status: 'WAIVED',
-      actions: ['UPLOAD', 'CLEAR_WAIVER'],
+       actions: ['UPLOAD', 'CLEAR_WAIVER'],
       waiverReason: waiver.reason.trim(),
     };
   }

@@ -19,6 +19,7 @@ export interface PcnDossierNodeWorkPanelProps {
   onCompleteTask?: (taskId: string, expectedCycleNo?: number) => Promise<void>;
   onUploadDocument?: (requirementId: string, file: File) => Promise<void>;
   onCreateFromForm?: (requirementId: string) => void | Promise<void>;
+  onOpenDrafting?: (item: PcnDossierNodeDocumentItem) => string | undefined;
   onGenerateAndAttach?: (requirementId: string) => Promise<void>;
   onRemoveCurrent?: (requirementId: string) => Promise<void>;
   onWaive?: (requirementId: string, reason: string) => Promise<void>;
@@ -69,6 +70,7 @@ export function PcnDossierNodeWorkPanel({
   onCompleteTask,
   onUploadDocument,
   onCreateFromForm,
+  onOpenDrafting,
   onGenerateAndAttach,
   onRemoveCurrent,
   onWaive,
@@ -105,6 +107,7 @@ export function PcnDossierNodeWorkPanel({
     const inputId = `pcn-upload-${projection.nodeId}-${item.requirementId}`;
     const reason = waiverReasons[item.requirementId] || '';
     const editable = canEdit && projection.isEditable;
+    const draftingHref = editable ? onOpenDrafting?.(item) : undefined;
 
     return (
       <li key={item.requirementId} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm" data-testid={`pcn-node-document-${item.requirementId}`}>
@@ -150,6 +153,11 @@ export function PcnDossierNodeWorkPanel({
             })}>
               {busyKey === `generate:${item.requirementId}` ? 'Đang tạo và gắn…' : (onGenerateAndAttach ? 'Tạo & gắn tài liệu' : actionLabel('CREATE_FROM_FORM'))}
             </button>
+          ) : null}
+          {item.actions.includes('CREATE_FROM_FORM') && draftingHref ? (
+            <a href={draftingHref} target="_blank" rel="noreferrer" className="mobile-touch-target inline-flex min-h-11 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+              Tạo DOCX
+            </a>
           ) : null}
           {item.actions.includes('CLEAR_WAIVER') && editable && onClearWaiver ? (
             <button type="button" className="min-h-10 rounded-md border border-amber-200 px-3 py-2 text-xs font-medium text-amber-800 hover:bg-amber-50" disabled={busyKey === `clear-waiver:${item.requirementId}`} onClick={() => void run(`clear-waiver:${item.requirementId}`, () => onClearWaiver(item.requirementId))}>
