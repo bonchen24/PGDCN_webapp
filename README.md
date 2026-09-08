@@ -61,7 +61,7 @@ PCN là ứng dụng vận hành cho các Đề nghị và bộ hồ sơ mới. 
 
 ## Chạy development ngoài Docker
 
-Sao chép `.env.example` thành `.env`, đặt `PCN_POSTGRES_DB=pcn_certification` và host/port mapping PostgreSQL của Supabase self-host trên máy. Không dùng `DATABASE_URL` của profile DDT cho PCN. `npm run dev` và `npm run dev:pcn` đều khởi động Next/PCN native trên cổng `1357`; profile DDT chỉ còn là lối chạy legacy tường minh qua `npm run dev:ddt`. Production Docker luôn ép `APP_PROFILE=pcn` và chạy cổng `2357`.
+Sao chép `.env.example` thành `.env`, đặt `PCN_POSTGRES_DB=pcn_certification` và host/port mapping PostgreSQL của Supabase self-host trên máy. Không dùng `DATABASE_URL` của profile DDT cho PCN. `npm run dev` và `npm run dev:pcn` đều khởi động Next/PCN native trên cổng `1357`; repository không còn lối chạy frontend DDT legacy. Production Docker luôn ép `APP_PROFILE=pcn` và chạy cổng `2357`.
 
 ```powershell
 npm install

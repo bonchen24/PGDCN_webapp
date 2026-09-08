@@ -13,7 +13,7 @@ test('PGDCN viewport keeps zoom available and global CSS handles motion/focus', 
 
 test('audited surfaces keep the official icon and visual direction', () => {
   assert.doesNotMatch(read('../components/PgdcnAppShell.tsx'), />\u2630</);
-  for (const path of ['../components/PcnLoginScreen.tsx', '../components/PgdLoginScreen.tsx', '../components/LoginScreen.tsx']) {
+  for (const path of ['../components/PcnLoginScreen.tsx', '../components/PgdLoginScreen.tsx']) {
     const source = read(path);
     assert.match(source, /focus-visible/);
     assert.doesNotMatch(source, /radial-gradient|backdrop-blur/);
@@ -28,7 +28,6 @@ test('login controls keep accessible error and touch-target contracts', () => {
   const surfaces = [
     read('../components/PcnLoginScreen.tsx'),
     read('../components/PgdLoginScreen.tsx'),
-    read('../components/LoginScreen.tsx'),
   ];
 
   for (const source of surfaces) {
@@ -37,7 +36,7 @@ test('login controls keep accessible error and touch-target contracts', () => {
     assert.match(source, /focus-visible:ring-2/);
   }
 
-  for (const source of [surfaces[0], surfaces[2]]) {
+  for (const source of [surfaces[0]]) {
     assert.match(source, /aria-invalid=\{hasUsernameError\}/);
     assert.match(source, /aria-describedby=\{/);
   }
@@ -54,25 +53,6 @@ test('login errors bind ARIA state only to the affected field', () => {
   const pgd = read('../components/PgdLoginScreen.tsx');
   assert.doesNotMatch(pgd, /aria-invalid|aria-describedby/);
 
-  const legacy = read('../components/LoginScreen.tsx');
-  assert.match(legacy, /aria-invalid=\{hasUsernameError\}/);
-  assert.match(legacy, /aria-describedby=\{hasUsernameError \? 'legacy-login-error' : undefined\}/);
-  assert.doesNotMatch(legacy, /hasPasswordError/);
-  const legacyPassword = legacy.slice(legacy.indexOf('id="password"'), legacy.indexOf('id="legacy-login-error"'));
-  assert.doesNotMatch(legacyPassword, /aria-invalid|aria-describedby/);
-  assert.match(legacy, /aria-invalid=\{hasResetUsernameError\}/);
-  assert.match(legacy, /aria-invalid=\{hasResetFullNameError\}/);
-  assert.match(legacy, /aria-invalid=\{hasResetContactError\}/);
-  assert.match(legacy, /hasResetUsernameError = \/tên đăng nhập\|không tìm thấy tài khoản này\//);
-});
-
-test('legacy login hides decorative icons without hiding action icons', () => {
-  const legacy = read('../components/LoginScreen.tsx');
-  for (const icon of ['User', 'Lock', 'Phone', 'AlertCircle', 'CheckCircle2', 'ShieldCheck', 'Loader2']) {
-    assert.match(legacy, new RegExp(`<${icon} aria-hidden="true"`));
-  }
-  assert.match(legacy, /<EyeOff size=\{16\}|<Eye size=\{16\}/);
-  assert.match(legacy, /<ArrowLeft size=\{18\}|<ArrowLeft size=\{14\}/);
 });
 
 test('PGDCN shell and sidebar expose accessible official navigation controls', () => {

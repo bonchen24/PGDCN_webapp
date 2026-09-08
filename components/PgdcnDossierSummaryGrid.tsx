@@ -245,17 +245,17 @@ export default function PgdcnDossierSummaryGrid({
 
   return (
     <div data-testid="dossier-summary-grid" className="space-y-3">
-      <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm lg:flex-row lg:items-center">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div data-testid="dossier-summary-toolbar" className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm lg:grid-cols-[minmax(0,1fr)_repeat(5,minmax(7rem,auto))] lg:items-center">
+        <div className="min-w-0">
           <input
             aria-label={`Tìm Sổ tổng hợp ${domain}`}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={searchPlaceholder}
-            className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-[11px] outline-none focus:border-emerald-400"
+            className="min-h-9 w-full min-w-0 rounded-lg border border-slate-200 px-3 py-2 text-[11px] outline-none focus:border-emerald-400"
           />
-          {filterControls}
         </div>
+        <div className="contents">{filterControls}</div>
         <div className="flex items-center justify-between gap-2 text-[10px] font-bold text-slate-500 lg:justify-end">
           <span>{filteredRows.length}/{rows.length} hồ sơ</span>
           <button type="button" onClick={() => setShowColumnConfig((value) => !value)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-2 hover:border-emerald-300 hover:text-emerald-700"><SlidersHorizontal size={13} /> Cột</button>

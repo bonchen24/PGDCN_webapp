@@ -17,15 +17,15 @@ test('global UI scale is 100% and stays within the viewport', () => {
 });
 
 test('defines a scoped compact density without overriding report forms or touch targets', () => {
-  assert.match(stylesheet, /\.ddt-compact\s*\{/);
-  assert.match(stylesheet, /\.ddt-compact[\s\S]*\.text-sm/);
-  assert.match(stylesheet, /\.ddt-compact[\s\S]*class~="gap-3"/);
-  assert.match(stylesheet, /\.ddt-compact[\s\S]*class~="gap-6"/);
-  assert.match(stylesheet, /\.ddt-compact[\s\S]*class~="space-y-6"/);
-  assert.match(stylesheet, /\.ddt-compact[\s\S]*class~="p-8"/);
-  assert.match(stylesheet, /\.ddt-compact[\s\S]*\.report-form-compact/);
-  assert.match(stylesheet, /\.ddt-compact \.report-form-compact[\s\S]*class~="p-6"/);
-  assert.match(stylesheet, /\.ddt-compact[\s\S]*\.mobile-touch-target/);
+  assert.match(stylesheet, /\.app-compact\s*\{/);
+  assert.match(stylesheet, /\.app-compact[\s\S]*\.text-sm/);
+  assert.match(stylesheet, /\.app-compact[\s\S]*class~="gap-3"/);
+  assert.match(stylesheet, /\.app-compact[\s\S]*class~="gap-6"/);
+  assert.match(stylesheet, /\.app-compact[\s\S]*class~="space-y-6"/);
+  assert.match(stylesheet, /\.app-compact[\s\S]*class~="p-8"/);
+  assert.match(stylesheet, /\.app-compact[\s\S]*\.report-form-compact/);
+  assert.match(stylesheet, /\.app-compact \.report-form-compact[\s\S]*class~="p-6"/);
+  assert.match(stylesheet, /\.app-compact[\s\S]*\.mobile-touch-target/);
 });
 
 // --- End of global-ui-scale.test.ts ---

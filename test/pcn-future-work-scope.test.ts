@@ -92,7 +92,7 @@ test('the default runtime entrypoint cannot accidentally launch the legacy DDT s
   const compose = read('docker-compose.yml');
 
   assert.match(packageJson, /"dev":\s*"node \.\/scripts\/native-dev-pcn\.cjs"/);
-  assert.match(packageJson, /"dev:ddt":\s*"node \.\/scripts\/native-dev\.cjs"/);
+  assert.doesNotMatch(packageJson, /"dev:ddt"/);
   assert.match(nativePcnLauncher, /buildPcnChildEnv/);
   assert.match(nativePcnEnv, /APP_PROFILE\s*=\s*'pcn'/);
   assert.match(nativePcnEnv, /PORT\s*=\s*'1357'/);

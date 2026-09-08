@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateDdMmYyyy } from '../utils/formatter';
+
 import React from 'react';
 import { AlertTriangle, CheckCircle2, Clock3, FileCheck2, X } from 'lucide-react';
 
@@ -15,9 +17,7 @@ import { getPcnDossierCustomerSnapshot } from '../utils/pcnDossierPolicy';
 import type { PcnDataIntegrityIssue } from '../utils/pcnDataIntegrity';
 
 function formatDate(value?: string): string {
-  if (!value) return 'Chưa xác định';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Chưa xác định' : date.toLocaleDateString('vi-VN');
+  return formatDateDdMmYyyy(value) || 'Chưa xác định';
 }
 
 function outcomeLabel(outcome: ReturnedTestResult['outcome']): string {

@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateDdMmYyyy } from '../utils/formatter';
+
 import React, { useMemo, useState } from 'react';
 import { Award, FileCheck2, FolderOpen, Hash, ShieldCheck, Upload } from 'lucide-react';
 import { toast } from 'sonner';
@@ -31,6 +33,7 @@ import { getPcnTemplateReadiness } from '../utils/pcnTemplateCatalog';
 import { getPcnAuthorizedSignerOptions, type PcnAuthorizedSignerOption } from '../utils/pcnSignerAuthorization';
 import { getPcnEffectiveApprovalSteps } from '../utils/pcnApproval';
 import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
+import { PgdcnDateInput } from './PgdcnDateInput';
 import type { PcnSignerDelegationInput } from '../utils/pcnSignerDelegationApi';
 import type { PcnOfficialPreflightResponse } from '../utils/pcnOfficialDocumentApi';
 import PcnCatalogCombobox from './PcnCatalogCombobox';
@@ -130,9 +133,9 @@ function IssueModal({
 }) {
   const signerCatalogOptions = signerOptions.map((option) => ({
     value: option.username,
-    label: `${getPcnUserDisplayName(option.username, users)} · ${option.mode === 'DIRECT' ? 'Trực tiếp' : 'Ủy quyền đến ' + new Date(option.validUntil || '').toLocaleDateString('vi-VN')}`,
+    label: `${getPcnUserDisplayName(option.username, users)} · ${option.mode === 'DIRECT' ? 'Trực tiếp' : 'Ủy quyền đến ' + formatDateDdMmYyyy(option.validUntil) || 'Chưa cập nhật'}`,
     searchText: [option.username, getPcnUserDisplayName(option.username, users), option.mode, option.validUntil].filter(Boolean).join(' '),
-    description: option.mode === 'DIRECT' ? 'Ký trực tiếp' : `Ủy quyền đến ${new Date(option.validUntil || '').toLocaleDateString('vi-VN')}`,
+    description: option.mode === 'DIRECT' ? 'Ký trực tiếp' : `Ủy quyền đến ${formatDateDdMmYyyy(option.validUntil) || 'Chưa cập nhật'}`,
   }));
 
   return (
@@ -154,7 +157,7 @@ function IssueModal({
         </label>
         <label className="mt-2 block text-[10px] font-black text-slate-500">
           Ngày phát hành
-          <input required disabled={isSubmitting} type="date" value={form.issuedAt} onChange={(event) => onChange({ ...form, issuedAt: event.target.value })} className={inputClass} />
+          <PgdcnDateInput required disabled={isSubmitting} value={form.issuedAt} onChange={(value) => onChange({ ...form, issuedAt: value })} className={inputClass} />
         </label>
         <button type="submit" disabled={isSubmitting} className="mt-4 w-full rounded-md bg-emerald-600 px-3 py-2 text-[11px] font-black text-white disabled:cursor-wait disabled:opacity-60">{isSubmitting ? 'Đang ghi nhận…' : 'Xác nhận phát hành'}</button>
       </form>
@@ -189,7 +192,7 @@ function DeliveryModal({
         </label>
         <label className="mt-2 block text-[10px] font-black text-slate-500">
           Ngày giao
-          <input required disabled={isSubmitting} type="date" value={form.deliveredAt} onChange={(event) => onChange({ ...form, deliveredAt: event.target.value })} className={inputClass} />
+          <PgdcnDateInput required disabled={isSubmitting} value={form.deliveredAt} onChange={(value) => onChange({ ...form, deliveredAt: value })} className={inputClass} />
         </label>
         <label className="mt-2 block text-[10px] font-black text-slate-500">
           Ghi chú giao nhận

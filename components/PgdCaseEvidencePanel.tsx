@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from '../utils/formatter';
+
 import React, { useMemo, useRef, useState } from 'react';
 import { Download, FileBadge2, FlaskConical, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -41,17 +43,11 @@ const initialForm: DocumentFormState = {
 };
 
 const formatDate = (value?: string): string => {
-  if (!value) return 'Chưa có';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(parsed);
+  return formatDateTimeDdMmYyyy(value) || 'Chưa có';
 };
 
 const formatDateOnly = (value?: string): string => {
-  if (!value) return 'Chưa có';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(parsed);
+  return formatDateDdMmYyyy(value) || 'Chưa có';
 };
 
 const formatBytes = (value?: number): string => {

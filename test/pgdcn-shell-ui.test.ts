@@ -53,3 +53,14 @@ test('domain workspaces support embedded mode and shared-shell section control',
     assert.match(source, /onActiveSectionChange/);
   }
 });
+
+test('shared shell provides mobile navigation, sync status and explicit domain context', () => {
+  const shell = read('../components/PgdcnAppShell.tsx');
+  const sidebar = read('../components/PgdcnSidebar.tsx');
+  assert.match(shell, /pgdcn-mobile-nav/);
+  assert.match(shell, /aria-label=.*PCN.*PGD/);
+  assert.match(shell, /aria-live="polite"/);
+  assert.match(shell, /mobile-safe-bottom/);
+  assert.ok(sidebar.includes('bg-slate-950/95'));
+  assert.ok(sidebar.includes('aria-label='));
+});

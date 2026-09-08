@@ -14,6 +14,7 @@ import { getPcnOperationalTemplateForKind } from '../utils/pcnOperationalTemplat
 import { isPcnInternalSampleRequest } from '../utils/pcnLabOperations';
 import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
 import { canProcessPcnGeneratedDocument } from '../utils/pcnWorkflowStages';
+import { formatDateTimeDdMmYyyy } from '../utils/formatter';
 import PcnCatalogCombobox, { type PcnCatalogOption } from './PcnCatalogCombobox';
 import { PcnFilePreviewButton } from './PcnDossierFilePreview';
 
@@ -44,9 +45,7 @@ function formatBytes(value: number): string {
 }
 
 function formatDateTime(value?: string): string {
-  if (!value) return 'Chưa cập nhật';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Chưa cập nhật' : date.toLocaleString('vi-VN');
+  return formatDateTimeDdMmYyyy(value) || 'Chưa cập nhật';
 }
 
 function kindLabel(kind: PcnGeneratedDocumentKind): string {

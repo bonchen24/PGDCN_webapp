@@ -5,7 +5,6 @@ import test from 'node:test';
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
 const activitySource = `${fs.readFileSync(new URL('../components/ActivityLogView.tsx', import.meta.url), 'utf8')}
 ${fs.readFileSync(new URL('../components/PcnUserKpiTable.tsx', import.meta.url), 'utf8')}`;
-const legacyAppSource = fs.readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 const designSource = fs.readFileSync(new URL('../design.md', import.meta.url), 'utf8');
 
 test('PCN shell exposes the read-only system activity log module', () => {
@@ -26,7 +25,6 @@ test('ActivityLogView does not pull the legacy store when callers provide their 
   assert.doesNotMatch(activitySource, /import \{ useStore \} from ['"]\.\.\/store['"]/);
   assert.doesNotMatch(activitySource, /const storeState = useStore\(\)/);
   assert.doesNotMatch(activitySource, /user\.id/);
-  assert.match(legacyAppSource, /<ActivityLogView currentUser=\{currentUser\} systemUsers=\{systemUsers\} \/>/);
 });
 
 test('PCN activity log remains cursor based and non-mutating', () => {

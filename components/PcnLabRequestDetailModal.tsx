@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateTimeDdMmYyyy } from '../utils/formatter';
+
 import React from 'react';
 import { ArrowRight, Download, ExternalLink, FileText, FlaskConical, MapPin, Package, RefreshCw, Send, X } from 'lucide-react';
 
@@ -12,9 +14,7 @@ function Value({ label, value }: { label: string; value?: React.ReactNode }) {
 }
 
 function formatDateTime(value?: string): string {
-  if (!value) return 'Chưa cập nhật';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Chưa cập nhật' : date.toLocaleString('vi-VN');
+  return formatDateTimeDdMmYyyy(value) || 'Chưa cập nhật';
 }
 
 function statusLabel(status: OutboundLabRequest['status']): string {

@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateDdMmYyyy } from '../utils/formatter';
+
 import React, { useMemo, useState } from 'react';
 import { ArrowRight, Boxes, ChevronDown, ChevronsDownUp, ChevronsUpDown, ClipboardList, MapPin, Plus, Search, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -47,9 +49,7 @@ function makeId(): string {
   return `sample-lot-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`}`;
 }
 function formatDate(value?: string): string {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('vi-VN');
+  return formatDateDdMmYyyy(value) || '—';
 }
 function canEditSamples(user: UserAccount | null): boolean {
   return user?.systemRole === 'admin' || user?.systemRole === 'staff' || user?.role === 'admin' || user?.role === 'staff';

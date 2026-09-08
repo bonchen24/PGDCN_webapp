@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateDdMmYyyy } from '../utils/formatter';
+
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Clock3, ExternalLink, ListTodo } from 'lucide-react';
 
@@ -22,9 +24,7 @@ const priorityStyle: Record<PcnWorkQueuePriority, { label: string; className: st
 };
 
 function formatTargetDate(value?: string): string {
-  if (!value) return 'Chưa đặt hạn';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Chưa đặt hạn' : date.toLocaleDateString('vi-VN');
+  return formatDateDdMmYyyy(value) || 'Chưa đặt hạn';
 }
 
 function assignmentLabel(row: PcnWorkQueueRow): string {

@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateTimeDdMmYyyy } from '../utils/formatter';
+
 import { FileDown, FilePlus2, Settings2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -31,8 +33,7 @@ type PgdDraftingWorkspaceViewProps = {
 };
 
 function formatWorkspaceDate(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Chưa có thời điểm' : new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(date);
+  return formatDateTimeDdMmYyyy(value) || 'Chưa có thời điểm';
 }
 
 function makeDraftId(): string {

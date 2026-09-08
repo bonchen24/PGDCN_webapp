@@ -20,7 +20,7 @@ test('PCN template catalog is separate from the legacy DDT template catalog', ()
   assert.ok(PCN_TEMPLATE_CATALOG.length >= 6);
   assert.ok(PCN_TEMPLATE_CATALOG.every((template) => template.id.startsWith('pcn-')));
   assert.doesNotMatch(source, /REPORT_TEMPLATES_CATALOG/);
-  assert.match(serverSource, /REPORT_TEMPLATES_CATALOG/);
+  assert.doesNotMatch(serverSource, /REPORT_TEMPLATES_CATALOG|\/api\/templates/);
   assert.match(panelSource, /getPcnTemplateReadiness/);
   assert.match(panelSource, /const readiness = getPcnTemplateReadiness\(template, \{ availablePlaceholderKeys: template\.placeholderKeys, requireVerifiedPrivateAsset: true \}\)/);
   assert.match(panelSource, /Biểu mẫu phát hành chính thức/);

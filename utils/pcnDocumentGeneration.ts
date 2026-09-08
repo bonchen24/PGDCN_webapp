@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { PDFDocument } from 'pdf-lib';
 import PizZip from 'pizzip';
 import { Resvg } from '@resvg/resvg-js';
+import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from './formatter.ts';
 
 import type {
   CertificationDossier,
@@ -196,14 +197,11 @@ function truncate(value: string, length: number): string {
 }
 
 function documentDate(value?: string): string {
-  const match = clean(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Chưa cập nhật';
+  return formatDateDdMmYyyy(value) || 'Chưa cập nhật';
 }
 
 function documentDateTime(value?: string): string {
-  const date = new Date(clean(value));
-  if (Number.isNaN(date.getTime())) return 'Chưa cập nhật';
-  return date.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+  return formatDateTimeDdMmYyyy(value) || 'Chưa cập nhật';
 }
 
 export function buildPcnDossierDocumentContext(input: {

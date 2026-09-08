@@ -5,6 +5,7 @@ service-account.json
 node_modules
 .next
 dist
+revised_templates
 .git
 .worktrees
 docs/superpowers/plans

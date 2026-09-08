@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateDdMmYyyy } from '../utils/formatter';
+
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Clock3, FileCheck2, Plus, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -27,9 +29,7 @@ function makeId(): string {
 }
 
 function formatDate(value?: string): string {
-  if (!value) return 'Chưa xác định';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Chưa xác định' : date.toLocaleDateString('vi-VN');
+  return formatDateDdMmYyyy(value) || 'Chưa xác định';
 }
 
 function outcomeLabel(outcome: ReturnedTestResult['outcome']): string {

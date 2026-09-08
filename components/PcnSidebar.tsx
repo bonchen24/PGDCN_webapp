@@ -108,7 +108,7 @@ export default function PcnSidebar({
 
   return (
     <aside
-      className={`ddt-compact-sidebar fixed inset-y-0 left-0 z-50 flex ${sidebarWidthClass === 'w-16' ? 'lg:w-16' : 'lg:w-64'} w-64 flex-col bg-slate-900 text-slate-200 shadow-2xl transition-all duration-300 lg:static lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      className={`app-compact-sidebar fixed inset-y-0 left-0 z-50 flex ${sidebarWidthClass === 'w-16' ? 'lg:w-16' : 'lg:w-64'} w-64 flex-col bg-slate-900 text-slate-200 shadow-2xl transition-all duration-300 lg:static lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
     >
       <div className={`flex h-16 items-center border-b border-slate-800 p-4 ${showExpandedLabels ? 'gap-3' : 'justify-center'}`}>
         <img src="/icons/iemm-logo-32.png" alt="IEMM • TVCI" className="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-0.5" />

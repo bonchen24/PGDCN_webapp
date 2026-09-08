@@ -165,7 +165,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   if (!currentUser) return <PcnLoginScreen />;
 
   const navigate = (target: PgdcnNavigationTarget) => {
-    if (target.domain !== 'PGD') setFocusedPgdRequestId(undefined);
+    setFocusedPgdRequestId(undefined);
     setActiveTarget(target);
     setMobileOpen(false);
     if (initialPcnDossierId) {
@@ -275,6 +275,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   };
 
   const openPgdSection = (section: PgdSection) => {
+    setFocusedPgdRequestId(undefined);
     setActiveTarget(getSharedTargetForPgdSection(section) || { domain: 'PGD', section });
   };
 
@@ -296,11 +297,11 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     <PgdWorkspace embedded initialSection={activeTarget.section as PgdSection} initialRequestId={focusedPgdRequestId} onRequestClose={() => setFocusedPgdRequestId(undefined)} onActiveSectionChange={openPgdSection} />
   );
 
-  return <div className="ddt-compact flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800">
+  return <div className="app-compact flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800">
     <Toaster position="top-right" richColors />
     <PgdcnSidebar currentUser={currentUser} activeTarget={activeTarget} collapsed={collapsed} mobileOpen={mobileOpen} onToggle={() => setCollapsed((value) => !value)} onNavigate={navigate} onCloseMobile={() => setMobileOpen(false)} onOpenPersonalSettings={() => setPersonalSettingsOpen(true)} onLogout={handleLogout} />
     <div className="flex min-w-0 flex-1 flex-col">
-      <header className="ddt-compact-header flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5">
+      <header className="app-compact-header flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5">
         <div className="flex min-w-0 items-center gap-2">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Mở menu phòng" className="mobile-touch-target rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
             <Menu aria-hidden="true" size={18} />

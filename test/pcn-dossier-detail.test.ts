@@ -86,7 +86,7 @@ test('dossier detail exposes the graphic workflow and controlled reviewer/deadli
   assert.match(source, /Nhân viên chỉ có thể tự nhận hồ sơ đang chưa có chủ/);
   assert.match(source, /Hạn xử lý/);
   assert.match(source, /value=\{reviewerUsername\}/);
-  assert.match(source, /type="date" value=\{targetDate\}/);
+  assert.match(source, /PgdcnDateInput[^>]*value=\{targetDate\}/);
   assert.match(source, /const updates: PcnDossierUpdateInput = \{[\s\S]*reviewerUsername[\s\S]*targetDate/);
   assert.match(source, /onUpdateDossier\(updates\)/);
   assert.match(source, /evaluatorOptions\.map/);

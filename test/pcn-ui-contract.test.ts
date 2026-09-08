@@ -81,7 +81,7 @@ test('PCN navigation follows the DDT compact sidebar pattern without a duplicate
   assert.match(source, /PcnSidebar/);
   assert.match(source, /isSidebarCollapsed/);
   assert.match(source, /pcn_sidebar_collapsed/);
-  assert.match(sidebar, /ddt-compact-sidebar/);
+  assert.match(sidebar, /app-compact-sidebar/);
   assert.match(source, /isSidebarCollapsed \? 'w-16' : 'w-64'/);
   assert.match(source, /Mở rộng menu/);
   assert.match(source, /Thu gọn menu/);

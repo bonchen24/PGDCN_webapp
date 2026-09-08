@@ -2,6 +2,8 @@
 // OS support: Web/Node
 // Description: Fixed Vietnam timezone formatting for system activity timestamps
 
+import { formatDateTimeDdMmYyyy } from './formatter.ts';
+
 export const ACTIVITY_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 export type ActivityPeriod = 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
 export const DEFAULT_ACTIVITY_PERIOD: ActivityPeriod = 'MONTH';
@@ -59,11 +61,7 @@ export const getActivityPeriodBounds = (
 export const formatActivityTime = (value: string): string => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('vi-VN', {
-    timeZone: ACTIVITY_TIME_ZONE,
-    dateStyle: 'short',
-    timeStyle: 'medium',
-  }).format(date);
+  return formatDateTimeDdMmYyyy(date);
 };
 
 // --- End of activityLogTime.ts ---

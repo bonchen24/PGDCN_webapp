@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateDdMmYyyy } from '../utils/formatter';
+
 import React, { useMemo, useState } from 'react';
 import { CalendarClock, Plus, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,8 +16,7 @@ function dateInput(value: Date): string {
 }
 
 function formatDate(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Không hợp lệ' : date.toLocaleDateString('vi-VN');
+  return formatDateDdMmYyyy(value) || 'Không hợp lệ';
 }
 
 export function PcnSignerDelegationPanel({

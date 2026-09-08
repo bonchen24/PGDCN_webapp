@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateDdMmYyyy } from '../utils/formatter';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -279,7 +281,7 @@ function ProposalRegisterRow({ proposal, dossier, canEdit, onOpenDossier, onEdit
         </div>
       </div>
       <div className="flex items-center justify-between gap-2 border-t border-indigo-100 bg-white/60 px-3 py-2.5">
-        <span className="text-[9px] font-bold text-slate-400">Tiếp nhận {new Date(proposal.receivedAt).toLocaleDateString('vi-VN')}</span>
+        <span className="text-[9px] font-bold text-slate-400">Tiếp nhận {formatDateDdMmYyyy(proposal.receivedAt) || 'Chưa cập nhật'}</span>
         <div className="flex shrink-0 gap-1.5">
           <button type="button" onClick={onOpenDossier} className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-1.5 text-[9px] font-black text-white hover:bg-indigo-500"><FolderOpen size={12} /> Mở hồ sơ chuẩn</button>
           {canEdit && proposalEditingAllowed && <button type="button" onClick={onEdit} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[9px] font-bold text-slate-600 hover:border-emerald-300 hover:text-emerald-700">Sửa Đề nghị</button>}
@@ -585,7 +587,7 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
 <button type="submit" disabled={saving} aria-busy={saving} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : editingProposal ? 'Lưu thay đổi' : 'Tạo Đề nghị & bộ hồ sơ'}</button>
 </div>
 </div></form></div>}
-      <div className="grid gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-[minmax(0,1fr)_190px_170px_auto]">
+      <div data-testid="pcn-proposal-filters" className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-[minmax(0,1fr)_190px_170px_auto] md:items-center">
         <label className="block"><span className="sr-only">Tìm Đề nghị</span><input aria-label="Tìm Đề nghị" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã, khách hàng, sản phẩm, model..." className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px] outline-none focus:border-emerald-400" /></label>
         <select aria-label="Lọc trạng thái hồ sơ" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as PcnDossierStatus | '')} className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="">Tất cả trạng thái</option>{Object.entries(statusLabels).map(([status, label]) => <option key={status} value={status}>{label}</option>)}</select>
         <select aria-label="Lọc Lĩnh vực" value={fieldFilter} onChange={(event) => setFieldFilter(event.target.value)} className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="">Tất cả Lĩnh vực</option>{fields.map((field) => <option key={field.code} value={field.code}>{field.name}</option>)}</select>
@@ -692,7 +694,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
     });
   };
 
-  const openSection = (section: PcnSection, entityKey?: string) => { setActiveSection(section); onActiveSectionChange?.(section); setFocusedDossierId(undefined); setSelectedField(section === 'proposals' ? entityKey : undefined); setCustomerSearchQuery(section === 'customers' ? (entityKey || '') : ''); setMobileMenuOpen(false); };
+  const openSection = (section: PcnSection, entityKey?: string) => { setActiveSection(section); onActiveSectionChange?.(section); setFocusedDossierId(undefined); setSelectedDossierId(undefined); setSelectedDossierTab(undefined); setSelectedField(section === 'proposals' ? entityKey : undefined); setCustomerSearchQuery(section === 'customers' ? (entityKey || '') : ''); setMobileMenuOpen(false); };
   const openNewProposal = () => {
     openSection('proposals');
     setFocusedDossierId(undefined);
@@ -873,7 +875,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
           onLogout={handleLogout}
         />}
         <div className={embedded ? 'flex h-full min-h-0 min-w-0 flex-1 flex-col' : 'flex min-w-0 flex-1 flex-col'}>
-          {!embedded && <header className="ddt-compact-header flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5">
+          {!embedded && <header className="app-compact-header flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5">
             <div className="flex min-w-0 items-center gap-2">
               <button
                 type="button"

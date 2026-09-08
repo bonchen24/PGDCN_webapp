@@ -1,4 +1,5 @@
 import type { DepartmentScope } from '../types.ts';
+import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from './formatter.ts';
 
 export type PgdcnDashboardDomain = 'PCN' | 'PGD';
 export type DashboardAttentionReason = 'WORK' | 'OVERDUE';
@@ -187,12 +188,8 @@ const parseDateTimestamp = (value: string | undefined): number | undefined => {
 
 const formatDateLabel = (value: string): string => {
   const rawValue = String(value).trim();
-  const dateOnlyMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (dateOnlyMatch) return `${dateOnlyMatch[3]}/${dateOnlyMatch[2]}/${dateOnlyMatch[1]}`;
-
-  const date = new Date(rawValue);
-  if (!Number.isFinite(date.getTime())) return rawValue;
-  return `${date.toLocaleDateString('vi-VN')} ${date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) return formatDateDdMmYyyy(rawValue) || rawValue;
+  return formatDateTimeDdMmYyyy(rawValue) || rawValue;
 };
 
 const isOverdueDate = (value: string | undefined, now: Date): boolean => {

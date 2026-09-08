@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateTimeDdMmYyyy } from '../utils/formatter';
+
 import { useRef, useState } from 'react';
 import { Download, FileUp, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -45,7 +47,7 @@ export function PcnTemplateSettingsModal({ template, onUploadTemplate, onClose }
         <section className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
           <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">File hiện tại</p>
           <p className="mt-1 text-xs font-black text-slate-800">{template.fileAssetId ? 'Đã có file DOCX' : 'Chưa có file DOCX'}</p>
-          {template.importedAt && <p className="mt-1 text-[10px] text-slate-500">Cập nhật lần cuối: {new Date(template.importedAt).toLocaleString('vi-VN')}</p>}
+          {template.importedAt && <p className="mt-1 text-[10px] text-slate-500">Cập nhật lần cuối: {formatDateTimeDdMmYyyy(template.importedAt) || 'Chưa cập nhật'}</p>}
           {template.fileAssetId && <a href={getPcnFileUrl(template.fileAssetId, { download: true })} className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-indigo-200 bg-white px-3 py-2 text-[10px] font-black text-indigo-700 hover:bg-indigo-50"><Download size={14} /> Tải xuống file hiện tại</a>}
         </section>
 

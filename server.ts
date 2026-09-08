@@ -45,7 +45,6 @@ import { getDocxGraphSize } from "./lib/reportDocxImageSizing.js";
 import { buildActivityLog as buildActivityLogBase, diffActivityFields, isValidActivityTimestamp } from "./utils/activityLog.js";
 import { canOpenPgdcnActivitySource, normalizePgdcnActivityLog, type ActivitySourceCollection, type PgdcnActivityLog } from "./utils/pgdcnActivity.ts";
 import { buildPgdNotificationDraft } from "./utils/pgdcnNotification.ts";
-import { REPORT_TEMPLATES_CATALOG, ReportTemplateMetadata } from "./lib/reportTemplatesCatalog.js";
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "crypto";
 import { createSupabaseStorageClient } from "./utils/supabaseStorage.js";
 import type {
@@ -344,7 +343,7 @@ async function getEmfOrWmfToSvg() {
 
 dotenv.config();
 
-const DATABASE_PROFILE = String(process.env.APP_PROFILE || '').trim().toLowerCase() === 'pcn' ? 'pcn' : 'ddt';
+const DATABASE_PROFILE = 'pcn';
 const buildActivityLog = (input: Parameters<typeof buildActivityLogBase>[0]): ReturnType<typeof buildActivityLogBase> => (
   buildActivityLogBase({ domain: 'PCN', ...input })
 );
@@ -611,7 +610,7 @@ function getKqtnStorageClient() {
 }
 
 function getKqtnStorageBucket(): string {
-  return String(process.env.SUPABASE_STORAGE_BUCKET || 'ddt-files').trim() || 'ddt-files';
+  return String(process.env.SUPABASE_STORAGE_BUCKET || 'pcn-files').trim() || 'pcn-files';
 }
 
 function sanitizeKqtnPathSegment(value: string): string {
@@ -16665,195 +16664,6 @@ async function startServer() {
     } catch (error) {
       console.error('Error reading tieuchuan.xlsx:', error);
       return res.status(500).json({ error: 'Failed to read standards', data: [] });
-    }
-  });
-
-  // --- DOCX Templates Management APIs ---
-  app.get("/api/templates", (req, res) => {
-    try {
-      const publicDir = path.join(process.cwd(), "public");
-      const distDir = path.join(process.cwd(), "dist");
-
-      const items: ReportTemplateMetadata[] = REPORT_TEMPLATES_CATALOG.map((tpl) => {
-        let filePath = path.join(publicDir, tpl.filename);
-        if (!fs.existsSync(filePath) && fs.existsSync(path.join(distDir, tpl.filename))) {
-          filePath = path.join(distDir, tpl.filename);
-        }
-
-        const exists = fs.existsSync(filePath);
-        let size = 0;
-        let updatedAt = "";
-
-        if (exists) {
-          try {
-            const stats = fs.statSync(filePath);
-            size = stats.size;
-            updatedAt = stats.mtime.toISOString();
-          } catch {
-            // ignore stat errors
-          }
-        }
-
-        const bakPath = path.join(publicDir, `${tpl.filename}.bak`);
-        const defaultBakPath = tpl.defaultBackupFilename ? path.join(publicDir, tpl.defaultBackupFilename) : null;
-        const hasBackup = fs.existsSync(bakPath) || (defaultBakPath ? fs.existsSync(defaultBakPath) : false);
-
-        return {
-          ...tpl,
-          size,
-          updatedAt,
-          exists,
-          hasBackup,
-        };
-      });
-
-      res.json({ success: true, data: items });
-    } catch (error: any) {
-      console.error("Error fetching templates metadata:", error);
-      res.status(500).json({ success: false, error: error?.message || "Failed to fetch templates" });
-    }
-  });
-
-  app.get("/api/templates/:filename/download", (req, res) => {
-    try {
-      const rawFilename = decodeURIComponent(req.params.filename || "");
-      const safeFilename = path.basename(rawFilename);
-      if (!safeFilename || !safeFilename.endsWith(".docx")) {
-        return res.status(400).json({ error: "Invalid docx filename" });
-      }
-
-      let filePath = path.join(process.cwd(), "public", safeFilename);
-      if (!fs.existsSync(filePath)) {
-        filePath = path.join(process.cwd(), "dist", safeFilename);
-      }
-
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ error: "Template file not found" });
-      }
-
-      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(safeFilename)}"`);
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-      res.sendFile(filePath);
-    } catch (error: any) {
-      console.error("Error downloading template:", error);
-      res.status(500).json({ error: error?.message || "Failed to download template" });
-    }
-  });
-
-  app.post("/api/templates/upload", upload.single("file"), async (req, res) => {
-    try {
-      const file = req.file;
-      const targetFilename = String(req.body.filename || "").trim();
-      const safeFilename = path.basename(targetFilename);
-
-      if (!file) {
-        return res.status(400).json({ success: false, error: "No file uploaded" });
-      }
-      if (!safeFilename || !safeFilename.endsWith(".docx")) {
-        return res.status(400).json({ success: false, error: "Target filename must be a valid .docx file" });
-      }
-
-      const catalogItem = REPORT_TEMPLATES_CATALOG.find((t) => t.filename === safeFilename);
-      if (!catalogItem) {
-        return res.status(400).json({ success: false, error: "Filename is not in the system templates catalog" });
-      }
-
-      const publicDir = path.join(process.cwd(), "public");
-      const distDir = path.join(process.cwd(), "dist");
-      const targetPublicPath = path.join(publicDir, safeFilename);
-      const targetDistPath = path.join(distDir, safeFilename);
-
-      const bakPath = path.join(publicDir, `${safeFilename}.bak`);
-      if (fs.existsSync(targetPublicPath) && !fs.existsSync(bakPath)) {
-        try {
-          fs.copyFileSync(targetPublicPath, bakPath);
-        } catch (bakErr) {
-          console.warn("Could not create .bak backup for template:", bakErr);
-        }
-      }
-
-      fs.writeFileSync(targetPublicPath, file.buffer);
-
-      if (fs.existsSync(distDir)) {
-        try {
-          fs.writeFileSync(targetDistPath, file.buffer);
-        } catch {
-          // ignore dist sync error if any
-        }
-      }
-
-      const stats = fs.statSync(targetPublicPath);
-
-      return res.json({
-        success: true,
-        message: `Đã cập nhật biểu mẫu ${safeFilename} thành công!`,
-        data: {
-          filename: safeFilename,
-          size: stats.size,
-          updatedAt: stats.mtime.toISOString(),
-        },
-      });
-    } catch (error: any) {
-      console.error("Error uploading template:", error);
-      return res.status(500).json({ success: false, error: error?.message || "Failed to update template" });
-    }
-  });
-
-  app.post("/api/templates/:filename/reset", async (req, res) => {
-    try {
-      const rawFilename = decodeURIComponent(req.params.filename || "");
-      const safeFilename = path.basename(rawFilename);
-      if (!safeFilename || !safeFilename.endsWith(".docx")) {
-        return res.status(400).json({ success: false, error: "Invalid docx filename" });
-      }
-
-      const catalogItem = REPORT_TEMPLATES_CATALOG.find((t) => t.filename === safeFilename);
-      if (!catalogItem) {
-        return res.status(400).json({ success: false, error: "Filename is not in the system templates catalog" });
-      }
-
-      const publicDir = path.join(process.cwd(), "public");
-      const distDir = path.join(process.cwd(), "dist");
-      const targetPublicPath = path.join(publicDir, safeFilename);
-      const targetDistPath = path.join(distDir, safeFilename);
-
-      const bakPath = path.join(publicDir, `${safeFilename}.bak`);
-      const defaultBakPath = catalogItem.defaultBackupFilename ? path.join(publicDir, catalogItem.defaultBackupFilename) : null;
-
-      let sourcePath: string | null = null;
-      if (fs.existsSync(bakPath)) {
-        sourcePath = bakPath;
-      } else if (defaultBakPath && fs.existsSync(defaultBakPath)) {
-        sourcePath = defaultBakPath;
-      }
-
-      if (!sourcePath) {
-        return res.status(404).json({ success: false, error: "Không tìm thấy bản lưu gốc để khôi phục" });
-      }
-
-      fs.copyFileSync(sourcePath, targetPublicPath);
-      if (fs.existsSync(distDir)) {
-        try {
-          fs.copyFileSync(sourcePath, targetDistPath);
-        } catch {
-          // ignore dist copy
-        }
-      }
-
-      const stats = fs.statSync(targetPublicPath);
-
-      return res.json({
-        success: true,
-        message: `Đã khôi phục biểu mẫu gốc ${safeFilename}!`,
-        data: {
-          filename: safeFilename,
-          size: stats.size,
-          updatedAt: stats.mtime.toISOString(),
-        },
-      });
-    } catch (error: any) {
-      console.error("Error resetting template:", error);
-      return res.status(500).json({ success: false, error: error?.message || "Failed to reset template" });
     }
   });
 

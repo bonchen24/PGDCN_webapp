@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateDdMmYyyy } from '../utils/formatter';
+
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, CircleUserRound, ClipboardList, FileWarning, UserRound } from 'lucide-react';
 
@@ -26,9 +28,7 @@ function userLabel(username: string | undefined, users: PcnUserAccount[]): strin
 }
 
 function formatDate(value?: string): string {
-  if (!value) return 'Chưa đặt hạn';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Chưa đặt hạn' : date.toLocaleDateString('vi-VN');
+  return formatDateDdMmYyyy(value) || 'Chưa cập nhật';
 }
 
 function missingDocumentSummary(completeness: ReturnType<typeof buildPcnDossierCompleteness>): string {

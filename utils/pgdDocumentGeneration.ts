@@ -31,6 +31,7 @@ import {
   type PgdDocumentTemplateFormat,
   type PgdDocumentTemplateSnapshot,
 } from './pgdDocumentTemplates.ts';
+import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from './formatter.ts';
 import { extractPcnTemplatePlaceholderKeys } from './pcnTemplateDiscovery.ts';
 import { inspectPgdTemplateSource, resolvePgdTemplateSourcePath } from './pgdTemplatePack.ts';
 
@@ -107,6 +108,28 @@ function valueText(value: PgdCellStoredValue): string {
     return value.map((row) => Object.entries(row).map(([key, item]) => key + ': ' + String(item ?? '')).join(' · ')).join('\n');
   }
   return String(value);
+}
+
+function documentValueText(cell: PgdDocumentTemplateSnapshot['cells'][number] | undefined, value: PgdCellStoredValue): string {
+  if (!cell) return valueText(value);
+  if (cell.type === 'DATE') {
+    return formatDateDdMmYyyy(String(value)) || valueText(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((row) => Object.entries(row).map(([key, item]) => {
+      const raw = String(item ?? '');
+      const formatted = /(?:date|ngay)/i.test(key)
+        ? (formatDateDdMmYyyy(raw) || raw)
+        : /(?:at|time|gio)$/i.test(key)
+          ? (formatDateTimeDdMmYyyy(raw) || raw)
+          : raw;
+      return key + ': ' + formatted;
+    }).join(' · ')).join('\n');
+  }
+  const raw = String(value ?? '');
+  if (/(?:date|ngay)/i.test(cell.key)) return formatDateDdMmYyyy(raw) || raw;
+  if (/(?:at|time|gio)$/i.test(cell.key)) return formatDateTimeDdMmYyyy(raw) || raw;
+  return raw;
 }
 
 function valueMap(values: readonly PgdCellValue[]): Record<string, PgdCellStoredValue> {
@@ -333,7 +356,8 @@ function buildDocx(context: PgdDocumentContext): Buffer {
 
   const sourceBytes = readFileSync(templatePath);
   const sourceKeys = extractPcnTemplatePlaceholderKeys(sourceBytes);
-  const values = Object.fromEntries(sourceKeys.map((key) => [key, valueText(context.cellValues[key])]));
+  const cellsByKey = new Map(context.templateSnapshot.cells.map((cell) => [cell.key, cell]));
+  const values = Object.fromEntries(sourceKeys.map((key) => [key, documentValueText(cellsByKey.get(key), context.cellValues[key])]));
   const zip = new PizZip(sourceBytes);
   const document = new Docxtemplater(zip, {
     delimiters: { start: '[[', end: ']]' },
@@ -365,7 +389,7 @@ async function buildPdf(context: PgdDocumentContext): Promise<Buffer> {
   y -= 5;
   for (const cell of context.templateSnapshot.cells) {
     if (cell.active === false) continue;
-    const text = valueText(context.cellValues[cell.key]).replace(/\n/g, ' | ');
+    const text = documentValueText(cell, context.cellValues[cell.key]).replace(/\n/g, ' | ');
     write(cell.label + ': ' + text);
   }
   write('Context hash: ' + context.contextHash, 8);

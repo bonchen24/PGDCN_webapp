@@ -7,14 +7,14 @@ import { toast } from 'sonner';
 import type { OutboundLabRequest, PcnSampleHandoverDetails, PcnSampleLabCode, PcnSampleLot, PcnSampleRoute } from '../types';
 import { PCN_SAMPLE_LAB_OPTIONS } from '../types';
 import { buildPcnSampleHandoverDetails, type PcnSampleHandoverDetailsDraft } from '../utils/pcnHandoverPolicy';
+import { formatDateTimeDdMmYyyy } from '../utils/formatter';
+import { PgdcnDateTimeInput } from './PgdcnDateInput';
 
 function labName(code: PcnSampleLabCode): string {
   return PCN_SAMPLE_LAB_OPTIONS.find((item) => item.code === code)?.name || code;
 }
 function dateTime(value?: string): string {
-  if (!value) return 'Chưa cập nhật';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Chưa cập nhật' : date.toLocaleString('vi-VN');
+  return formatDateTimeDdMmYyyy(value) || 'Chưa cập nhật';
 }
 function toLocalDateTime(value?: string): string {
   if (!value) return '';
@@ -66,7 +66,7 @@ function getInitialForm(lot: PcnSampleLot, route: PcnSampleRoute, request?: Outb
 }
 
 function Input({ label, value, onChange, required = false, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; required?: boolean; type?: string }) {
-  return <label className="block"><span className="mb-1 block text-[9px] font-black uppercase tracking-wide text-slate-500">{label}{required ? ' *' : ''}</span><input type={type} required={required} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[11px] outline-none focus:border-indigo-400" /></label>;
+  return <label className="block"><span className="mb-1 block text-[9px] font-black uppercase tracking-wide text-slate-500">{label}{required ? ' *' : ''}</span>{type === 'datetime-local' ? <PgdcnDateTimeInput required={required} value={value} onChange={onChange} className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[11px] outline-none focus:border-indigo-400" /> : <input type={type} required={required} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[11px] outline-none focus:border-indigo-400" />}</label>;
 }
 
 export function PcnSampleHandoverModal({ lot, route, request, canEdit, onSaveHandover, onOpenDocuments, onClose }: { lot: PcnSampleLot; route: PcnSampleRoute; request?: OutboundLabRequest; canEdit?: boolean; onSaveHandover?: (details: PcnSampleHandoverDetails) => Promise<void>; onOpenDocuments: (kind: 'SAMPLE_HANDOVER' | 'SAMPLE_RETURN', routeId: string) => void; onClose: () => void }) {

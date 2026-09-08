@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateTimeDdMmYyyy } from '../utils/formatter';
+
 import { useMemo } from 'react';
 import { Bell, Check, CheckCheck, Inbox, X } from 'lucide-react';
 
@@ -19,9 +21,7 @@ interface PgdcnNotificationDropdownProps {
 }
 
 function timeLabel(value: string): string {
-  const timestamp = Date.parse(value);
-  if (!Number.isFinite(timestamp)) return 'Vừa cập nhật';
-  return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(timestamp);
+  return formatDateTimeDdMmYyyy(value) || 'Vừa cập nhật';
 }
 
 function canMutateNotifications(user: UserAccount | null): boolean {

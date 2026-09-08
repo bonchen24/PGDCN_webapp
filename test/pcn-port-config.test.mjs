@@ -15,7 +15,6 @@ test('PCN uses native Windows development port 1357 and Docker production port 2
   const dockerCompose = read('docker-compose.yml');
   const supabaseCompose = read('docker-compose.supabase.yml');
   const compose = read('docker-compose.pcn.yml');
-  const viteConfig = read('vite.config.ts');
   const deployScript = read('deploy.sh');
   const readme = read('README.md');
   const design = read('design.md');
@@ -31,7 +30,6 @@ test('PCN uses native Windows development port 1357 and Docker production port 2
   assert.match(supabaseCompose, /- ['"]2357:2357['"]/);
   assert.match(compose, /^      PORT: 2357$/m);
   assert.match(compose, /- ['"]2357:2357['"]/);
-  assert.match(viteConfig, /port:\s*1357/);
   assert.match(deployScript, /localhost:2357/);
   assert.match(readme, /localhost:2357/);
   assert.match(readme, /localhost:1357/);
@@ -67,7 +65,6 @@ test('PCN uses native Windows development port 1357 and Docker production port 2
     dockerCompose,
     supabaseCompose,
     compose,
-    viteConfig,
     deployScript,
     readme,
     design: designForPcnPortCheck,
