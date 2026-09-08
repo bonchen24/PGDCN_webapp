@@ -42,6 +42,7 @@ type PgdcnAppShellProps = {
   initialPcnDossierId?: string;
   initialPcnDossierTab?: PcnDossierDetailTab;
   initialPcnDossierNodeId?: string;
+  initialPcnDraftingOpen?: boolean;
   initialPcnDraftDossierId?: string;
   initialPcnDraftRequirementId?: string;
   initialPcnDraftNodeId?: string;
@@ -82,7 +83,7 @@ const getSharedTargetForPgdSection = (section: PgdSection): PgdcnNavigationTarge
   return undefined;
 };
 
-export default function PgdcnAppShell({ initialDomain = 'department', initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId, initialPcnDraftDossierId, initialPcnDraftRequirementId, initialPcnDraftNodeId, initialPcnDraftKind }: PgdcnAppShellProps) {
+export default function PgdcnAppShell({ initialDomain = 'department', initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPcnDraftRequirementId, initialPcnDraftNodeId, initialPcnDraftKind }: PgdcnAppShellProps) {
   const router = useRouter();
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const setCurrentUser = usePcnSessionStore((state) => state.setCurrentUser);
@@ -91,7 +92,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   const pgd = usePgdStore();
   const [sessionChecked, setSessionChecked] = useState(false);
   const [activeTarget, setActiveTarget] = useState<PgdcnNavigationTarget>(() => initialDomain === 'PCN'
-    ? { domain: 'PCN', section: initialPcnDraftDossierId ? 'drafting' : 'proposals' }
+    ? { domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : 'proposals' }
     : initialDomain === 'PGD' ? { domain: 'PGD', section: 'requests' } : { domain: 'department', section: 'department-dashboard' });
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -101,9 +102,9 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   const [focusedPgdRequestId, setFocusedPgdRequestId] = useState<string>();
 
   useEffect(() => {
-    if (initialDomain === 'PCN') setActiveTarget({ domain: 'PCN', section: initialPcnDraftDossierId ? 'drafting' : 'proposals' });
+    if (initialDomain === 'PCN') setActiveTarget({ domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : 'proposals' });
     else if (initialDomain === 'PGD') setActiveTarget({ domain: 'PGD', section: 'requests' });
-  }, [initialDomain, initialPcnDraftDossierId]);
+  }, [initialDomain, initialPcnDraftingOpen, initialPcnDraftDossierId]);
 
   useEffect(() => {
     let cancelled = false;

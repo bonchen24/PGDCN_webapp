@@ -913,6 +913,7 @@ Hiển thị trong Màn hình Nhật Ký Hoạt Động & Sổ Tổng Hợp (`Su
 - Modal **Cài đặt DOCX** của PCN và PGD cũng dùng cùng contract: overlay có `role=dialog`, panel `flex min-h-0 max-h` cùng chiều rộng chuẩn, header `shrink-0`, body `mobile-scroll-y`/`min-h-0`, nút đóng tối thiểu 44px và focus ring. Nội dung quản trị giữ đúng domain/API riêng, nhưng không được khác cách nhóm, khoảng cách hoặc khả năng cuộn trên mobile.
 - Readiness phải kiểm tra đúng template đang chọn và snapshot nguồn hiện hành; không tự điền dữ liệu thiếu bằng suy đoán, không coi bản nháp là tài liệu chính thức, không tự đổi lifecycle hồ sơ. Output chỉ hiển thị sau khi API trả asset hợp lệ; lỗi PDF/DOCX hoặc thiếu capability phải giữ state `BLOCKED`/`ERROR` và không tạo link tải giả.
 - Responsive: panel/form dùng cột đơn dưới `640px`, các nhóm trường được phép cuộn dọc độc lập, mã hồ sơ/tên file được xuống dòng hoặc truncate có title, control/action đạt target tối thiểu khoảng 44px và có focus-visible. Text giao diện phải giữ UTF-8 và font fallback có đầy đủ glyph tiếng Việt; không dùng chuỗi mojibake (`Ã`, `Ä`, `áº`) trong source hoặc UI.
+- Entry route `/pgdcn/pcn/drafting` phải mở thẳng workspace Soạn thảo tài liệu PCN ngay cả khi chưa có query context; khi có `dossierId`/`requirementId`/`node`/loại tài liệu thì chỉ hydrate context vào workspace, không làm thay đổi lifecycle hồ sơ.
 
 ---
 

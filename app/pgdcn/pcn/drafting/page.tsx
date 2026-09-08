@@ -22,6 +22,7 @@ function getDraftKind(value: string | string[] | undefined): PcnDraftFormKind | 
 export default function PcnDraftingPage({ searchParams }: { searchParams?: { dossierId?: string | string[]; requirementId?: string | string[]; node?: string | string[]; kind?: string | string[] } }) {
   return <PgdcnAppShell
     initialDomain="PCN"
+    initialPcnDraftingOpen={true}
     initialPcnDraftDossierId={scalar(searchParams?.dossierId)}
     initialPcnDraftRequirementId={scalar(searchParams?.requirementId)}
     initialPcnDraftNodeId={scalar(searchParams?.node)}

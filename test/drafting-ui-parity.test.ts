@@ -11,6 +11,8 @@ const pgdDrafting = read('components/PgdDraftingWorkspaceView.tsx');
 const pgdGeneration = read('components/PgdDocumentGenerationPanel.tsx');
 const pcnSettings = read('components/PcnDocxSettingsModal.tsx');
 const pgdSettings = read('components/PgdDocxSettingsModal.tsx');
+const draftingRoute = read('app/pgdcn/pcn/drafting/page.tsx');
+const appShell = read('components/PgdcnAppShell.tsx');
 
 test('PCN and PGD drafting workspaces share the PCN three-zone anatomy', () => {
   for (const source of [pcnDrafting, pgdDrafting]) {
@@ -42,4 +44,9 @@ test('PCN and PGD DOCX settings use the same mobile modal contract', () => {
 
 test('drafting parity sources keep Vietnamese text UTF-8 clean', () => {
   assert.doesNotMatch(`${pcnDrafting}\n${pgdDrafting}\n${pcnSettings}\n${pgdSettings}`, /(?:Ã.|Ä.|áº|Â.)/);
+});
+test('direct PCN drafting route opens the drafting workspace without context', () => {
+  assert.match(draftingRoute, /initialPcnDraftingOpen=\{true\}/);
+  assert.match(appShell, /initialPcnDraftingOpen\?: boolean/);
+  assert.match(appShell, /initialPcnDraftingOpen \|\| initialPcnDraftDossierId \? 'drafting' : 'proposals'/);
 });
