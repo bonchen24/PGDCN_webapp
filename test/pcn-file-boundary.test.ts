@@ -37,7 +37,7 @@ test('PCN upload boundary allows only client-owned attachment sources', () => {
 test('PCN issuance UI exposes the attachment boundary without embedding file bytes', () => {
   assert.match(issuanceSource, /onAttachFile/);
   assert.match(issuanceSource, /fileAssetIds/);
-  assert.match(issuanceSource, /Tải file/);
+  assert.match(issuanceSource, /Tải tệp/);
   assert.doesNotMatch(issuanceSource, /arrayBuffer\(\)|readAsDataURL/);
 });
 

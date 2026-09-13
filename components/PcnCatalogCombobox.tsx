@@ -18,7 +18,6 @@ export type PcnCatalogComboboxProps = {
   value: string;
   options: readonly PcnCatalogOption[];
   onChange: (value: string) => void;
-  placeholder?: string;
   required?: boolean;
   disabled?: boolean;
   invalid?: boolean;
@@ -33,7 +32,6 @@ export function PcnCatalogCombobox({
   value,
   options,
   onChange,
-  placeholder = 'Chọn một giá trị...',
   required = false,
   disabled = false,
   invalid = false,
@@ -150,7 +148,7 @@ export function PcnCatalogCombobox({
           role="combobox"
           type="text"
           value={inputValue}
-          placeholder={placeholder}
+
           required={required}
           disabled={disabled}
           aria-label={hideLabel ? label : undefined}
@@ -168,7 +166,7 @@ export function PcnCatalogCombobox({
             setIsOpen(true);
           }}
           onKeyDown={handleKeyDown}
-          className="min-h-11 w-full rounded-md border border-slate-200 bg-white py-2 pl-8 pr-20 text-[11px] outline-none transition-colors placeholder:text-slate-400 focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:bg-slate-50"
+          className="min-h-11 w-full rounded-md border border-slate-200 bg-white py-2 pl-8 pr-20 text-[11px] outline-none transition-colors focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:bg-slate-50"
         />
         <div className="absolute inset-y-0 right-0 flex items-center">
           {value && !disabled && <button type="button" aria-label={`Xóa ${label}`} onClick={() => { onChange(''); setInputValue(''); setIsOpen(false); inputRef.current?.focus(); }} className="mobile-touch-target text-slate-400 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">

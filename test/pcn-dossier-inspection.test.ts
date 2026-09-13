@@ -80,7 +80,7 @@ test('visual checklist is exposed in dossier detail without replacing the upload
   assert.match(detailView, /Kiểm tra trực quan hồ sơ/);
   assert.match(detailView, /Mục đã có/);
   assert.match(detailView, /Còn thiếu/);
-  assert.match(detailView, /Mở file/);
+  assert.match(detailView, /Mở tệp/);
   assert.match(detailView, /PcnFilePreviewButton/);
   assert.match(detailView, /step\.stationScore/);
   assert.match(detailView, /inspection\.stations/);
@@ -88,7 +88,7 @@ test('visual checklist is exposed in dossier detail without replacing the upload
   assert.match(detailView, /open=\{step\.key === activeWorkflowNodeKey\}/);
   assert.match(detailView, /Bước hiện tại mở sẵn/);
   assert.match(previewView, /Xem nhanh/);
-  assert.match(previewView, /private boundary/);
+  assert.match(previewView, /vùng riêng tư/);
   assert.match(detailView, /item\.currentVersion\.uploadedBy/);
   assert.match(detailView, /Người tải/);
   assert.match(detailView, /formatDateTime\(item\.currentVersion\.uploadedAt\)/);

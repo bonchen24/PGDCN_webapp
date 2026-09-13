@@ -24,6 +24,26 @@ test('PYC modal keeps send feedback visible instead of closing silently', () => 
   assert.match(modalSource, /lastErrorMessage/);
 });
 
+test('PYC modal exposes the complete editable sample-line fields', () => {
+  assert.match(modalSource, /Nhãn hiệu/);
+  assert.match(modalSource, /Đơn vị/);
+  assert.match(modalSource, /Ghi chú mẫu/);
+  assert.match(modalSource, /brand: event\.target\.value/);
+  assert.match(modalSource, /unit: event\.target\.value/);
+  assert.match(modalSource, /notes: event\.target\.value/);
+  assert.match(modalSource, /data-testid="pyc-draft-summary"/);
+  assert.match(modalSource, /dòng.*mẫu/);
+  assert.match(modalSource, /chưa có PTN/);
+});
+
+test('PYC modal blocks invalid or duplicate line data before mutation', () => {
+  assert.match(modalSource, /Số lượng phải lớn hơn 0/);
+  assert.match(modalSource, /Mã lô .* bị trùng trong PYC tổng/);
+  assert.match(modalSource, /Mã mẫu .* bị trùng trong PYC tổng/);
+  assert.match(modalSource, /lineDataIssues/);
+  assert.doesNotMatch(modalSource, /labCodes: \['PERFORMANCE'\]/);
+});
+
 test('sample operations passes canonical routes to the PYC modal', () => {
   assert.match(operationsSource, /<PcnSampleRequestBundleModal[\s\S]*sampleRoutes=\{sampleRoutes\}/);
 });

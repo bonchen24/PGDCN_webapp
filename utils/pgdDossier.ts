@@ -2,6 +2,8 @@ import { PGD_COLLECTIONS, PGD_DOMAIN, type PgdDossierChecklistItem, type PgdProd
 import type { PgdDocumentTemplateKind } from './pgdDocumentTemplates.ts';
 import type { PgdOperationalStationKey } from './pgdWorkflow.ts';
 
+// Intake sample snapshots retain sampleCode, description, quantity, unit, disposition, and sealNumber.
+
 export type PgdDossierRequirementGroup =
   | 'REQUEST'
   | 'COMMERCIAL_CUSTOMS'

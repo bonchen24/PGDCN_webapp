@@ -336,11 +336,11 @@ export function buildPcnApprovalReview(input: PcnApprovalReviewInput): { criteri
   const documentQuality = byId.get('DOCUMENT_QUALITY')!;
   const typography = (input.documentTexts || []).map((entry) => ({ entry, message: findTypographyAnomaly(entry) })).find((item) => item.message);
   if (typography?.message) {
-    applyFinding(documentQuality, createFinding('DOCUMENT_QUALITY', 'TYPOGRAPHIC_ANOMALY', `${typography.message} Nguồn: ${typography.entry.fileName}.`, [textEvidence(typography.entry, 'documents')], { suggestedAction: 'Mở file gốc để sửa hoặc xác nhận đây chỉ là định dạng hợp lệ.' }), 'WARNING', 'ATTENTION', 'Phát hiện dấu hiệu định dạng/chính tả cần người dùng kiểm tra trong file gốc.');
+    applyFinding(documentQuality, createFinding('DOCUMENT_QUALITY', 'TYPOGRAPHIC_ANOMALY', `${typography.message} Nguồn: ${typography.entry.fileName}.`, [textEvidence(typography.entry, 'documents')], { suggestedAction: 'Mở tệp gốc để sửa hoặc xác nhận đây chỉ là định dạng hợp lệ.' }), 'WARNING', 'ATTENTION', 'Phát hiện dấu hiệu định dạng/chính tả cần người dùng kiểm tra trong tệp gốc.');
   }
   const lowConfidence = (input.documentTexts || []).find((entry) => typeof entry.confidence === 'number' && entry.confidence < 0.7);
   if (lowConfidence) {
-    applyFinding(documentQuality, createFinding('DOCUMENT_QUALITY', 'OCR_CONFIDENCE_LOW', `Nội dung OCR của ${lowConfidence.fileName} có độ tin cậy thấp.`, [textEvidence(lowConfidence, 'documents')], { confidence: lowConfidence.confidence, suggestedAction: 'Mở file gốc để kiểm tra thủ công.' }), 'WARNING', 'ATTENTION', 'Một phần nội dung OCR cần được kiểm tra thủ công.');
+    applyFinding(documentQuality, createFinding('DOCUMENT_QUALITY', 'OCR_CONFIDENCE_LOW', `Nội dung OCR của ${lowConfidence.fileName} có độ tin cậy thấp.`, [textEvidence(lowConfidence, 'documents')], { confidence: lowConfidence.confidence, suggestedAction: 'Mở tệp gốc để kiểm tra thủ công.' }), 'WARNING', 'ATTENTION', 'Một phần nội dung OCR cần được kiểm tra thủ công.');
   }
   for (const file of input.unreadableFiles || []) {
     applyFinding(
@@ -350,7 +350,7 @@ export function buildPcnApprovalReview(input: PcnApprovalReviewInput): { criteri
         'FILE_NOT_READABLE',
         `Chưa đọc được ${file.fileName}; cần đối chiếu thủ công.`,
         [{ assetId: file.assetId, fileName: file.fileName, tab: file.tab }],
-        { detail: file.reason, suggestedAction: 'Mở file gốc trong Tài liệu hồ sơ để kiểm tra nội dung và bổ sung bản PDF/DOCX nếu cần.' },
+        { detail: file.reason, suggestedAction: 'Mở tệp gốc trong Tài liệu hồ sơ để kiểm tra nội dung và bổ sung bản PDF/DOCX nếu cần.' },
       ),
       'NOT_EVALUABLE',
       'ATTENTION',

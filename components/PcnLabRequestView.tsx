@@ -26,6 +26,7 @@ import { getPcnDossierCustomerSnapshot } from '../utils/pcnDossierPolicy';
 import { getPcnSampleRouteSnapshotForItem, isPcnSampleRouteAssignedToItem } from '../utils/pcnSampleFlow';
 import PcnCatalogCombobox from './PcnCatalogCombobox';
 import PcnLabRequestDetailModal from './PcnLabRequestDetailModal';
+import { PgdcnDateInput } from './PgdcnDateInput';
 
 function makeId(): string {
   return `lab-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`}`;
@@ -52,9 +53,12 @@ function statusLabel(status: OutboundLabRequest['status']): string {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const normalizedLabel = label.replace(/\s*\*\s*$/, '').trim();
+  const childProps = React.isValidElement(children) ? children.props as { required?: boolean } : undefined;
+  const isRequired = Boolean(childProps?.required) || normalizedLabel !== label;
   return (
     <label className="block">
-      <span className="mb-1 block text-[10px] font-black text-slate-500">{label}</span>
+      <span className="mb-1 block text-[10px] font-black text-slate-500">{normalizedLabel}{isRequired && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span>
       <div className="[&_input]:w-full [&_input]:rounded-md [&_input]:border [&_input]:border-slate-200 [&_input]:px-2.5 [&_input]:py-1.5 [&_input]:text-[11px] [&_input]:outline-none [&_input]:focus:border-emerald-400 [&_select]:w-full [&_select]:rounded-md [&_select]:border [&_select]:border-slate-200 [&_select]:bg-white [&_select]:px-2.5 [&_select]:py-1.5 [&_select]:text-[11px] [&_textarea]:w-full [&_textarea]:rounded-md [&_textarea]:border [&_textarea]:border-slate-200 [&_textarea]:px-2.5 [&_textarea]:py-1.5 [&_textarea]:text-[11px]">
         {children}
       </div>
@@ -145,7 +149,7 @@ export function PcnLabRequestView({
     });
   const lotOptions = dossierLots.map((lot) => ({
     value: lot.id,
-    label: `${lot.lotCode} — ${lot.sampleName}${sampleItems.filter((item) => item.sampleLotId === lot.id).length > 0 ? ` · ${sampleItems.filter((item) => item.sampleLotId === lot.id).length} mẫu/model` : ''}`,
+    label: `${lot.lotCode} — ${lot.sampleName}${sampleItems.filter((item) => item.sampleLotId === lot.id).length > 0 ? ` · ${sampleItems.filter((item) => item.sampleLotId === lot.id).length} mẫu/kiểu loại` : ''}`,
     searchText: [lot.id, lot.lotCode, lot.sampleName, lot.model, lot.brand].filter(Boolean).join(' '),
   }));
   const routeOptions = lotRoutes.map((route) => ({
@@ -269,7 +273,7 @@ export function PcnLabRequestView({
               <PcnCatalogCombobox id="pcn-lab-request-dossier" label="Hồ sơ chứng nhận" hideLabel required value={form.dossierId} onChange={(value) => {
                 const dossier = dossiers.find((item) => item.id === value);
                 setForm({ ...form, dossierId: value, fieldCode: getPcnLabFieldSelection(dossier?.fieldCodes || [], form.fieldCode), sampleLotId: '', sampleRouteId: '' });
-              }} options={dossierOptions} placeholder={dossierOptions.length > 0 ? 'Tìm mã hồ sơ hoặc khách hàng...' : 'Chưa có hồ sơ'} />
+              }} options={dossierOptions} />
             </Field>
             <Field label="Lĩnh vực *">
               <select value={form.fieldCode} onChange={(event) => setForm({ ...form, fieldCode: event.target.value })} disabled={!form.dossierId}>
@@ -277,25 +281,25 @@ export function PcnLabRequestView({
                 {availableFields.map((field) => <option key={field.code} value={field.code}>{field.name}</option>)}
               </select>
             </Field>
-            <Field label="Số PYC"><input value={form.pycNumber} onChange={(event) => setForm({ ...form, pycNumber: event.target.value })} placeholder="Tự sinh nếu bỏ trống" /></Field>
+            <Field label="Số PYC"><input value={form.pycNumber} onChange={(event) => setForm({ ...form, pycNumber: event.target.value })} /></Field>
           </div>
               <div className="grid gap-2 md:grid-cols-3">
             <Field label="Phòng thử nghiệm nhận *"><select required value={form.laboratoryName} onChange={(event) => setForm({ ...form, laboratoryName: event.target.value })}><option value="">Chọn phòng thử nghiệm</option>{laboratoryNeedsReview && <option value={form.laboratoryName}>Giá trị hiện tại cần rà soát: {form.laboratoryName}</option>}{PCN_SAMPLE_LAB_OPTIONS.map((option) => <option key={option.code} value={option.name}>{option.name}</option>)}</select></Field>
-            <Field label="Hạn trả KQTN"><input type="date" value={form.targetDate} onChange={(event) => setForm({ ...form, targetDate: event.target.value })} /></Field>
-            <Field label="Chỉ tiêu/tiêu chuẩn"><input value={form.criteria} onChange={(event) => setForm({ ...form, criteria: event.target.value })} /></Field>
+              <Field label="Hạn trả KQTN"><PgdcnDateInput value={form.targetDate} onChange={(value) => setForm({ ...form, targetDate: value })} /></Field>
+              <Field label="Chỉ tiêu/tiêu chuẩn"><input value={form.criteria} onChange={(event) => setForm({ ...form, criteria: event.target.value })} /></Field>
           </div>
               <div className="grid gap-2 md:grid-cols-2">
             <Field label="Lô mẫu PCN *">
-              <PcnCatalogCombobox id="pcn-lab-request-lot" label="Lô mẫu PCN" hideLabel required value={form.sampleLotId} onChange={(value) => setForm({ ...form, sampleLotId: value, sampleRouteId: '' })} options={lotOptions} placeholder={lotOptions.length > 0 ? 'Tìm mã lô, mẫu hoặc model...' : 'Chưa có lô mẫu'} disabled={!form.dossierId} />
+              <PcnCatalogCombobox id="pcn-lab-request-lot" label="Lô mẫu PCN" hideLabel required value={form.sampleLotId} onChange={(value) => setForm({ ...form, sampleLotId: value, sampleRouteId: '' })} options={lotOptions} disabled={!form.dossierId} />
             </Field>
             <Field label="Tuyến phòng thử *">
               <PcnCatalogCombobox id="pcn-lab-request-route" label="Tuyến phòng thử" hideLabel required value={form.sampleRouteId} onChange={(value) => {
                 const route = lotRoutes.find((item) => item.id === value);
                 setForm({ ...form, sampleRouteId: value, laboratoryName: route?.labName || form.laboratoryName });
-              }} options={routeOptions} placeholder={routeOptions.length > 0 ? 'Tìm phòng thử hoặc trạng thái tuyến...' : 'Chưa có tuyến phòng thử'} disabled={!form.sampleLotId} />
+              }} options={routeOptions} disabled={!form.sampleLotId} />
             </Field>
           </div>
-              <Field label="Ghi chú giao nhận"><textarea rows={2} value={form.handoverNote} onChange={(event) => setForm({ ...form, handoverNote: event.target.value })} placeholder="Thông tin mẫu, niêm phong hoặc yêu cầu giao nhận" /></Field>
+              <Field label="Ghi chú giao nhận"><textarea rows={2} value={form.handoverNote} onChange={(event) => setForm({ ...form, handoverNote: event.target.value })} /></Field>
             </div>
             <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-white px-4 py-3">
               <button type="button" onClick={resetForm} disabled={saving} className="rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-600 disabled:opacity-40">Hủy</button>

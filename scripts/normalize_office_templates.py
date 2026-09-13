@@ -634,6 +634,9 @@ def container_has_page_field(container):
 
 def ensure_header_page_number(header):
     """Add one centered PAGE field without disturbing logo/header tables."""
+    # Normalization is rerunnable. Remove stale or duplicated PAGE fields first
+    # so a second pass cannot stack another page number in the same header.
+    remove_page_fields(header)
     if container_has_page_field(header):
         return
     first_paragraph = header.paragraphs[0] if header.paragraphs else None

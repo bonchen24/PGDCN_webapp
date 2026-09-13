@@ -23,8 +23,10 @@ test('PGD workspace has its own shell/sidebar and does not import PCN catalog st
   assert.match(read('components/PgdSidebar.tsx'), /PGD/);
   assert.match(workspace, /usePgdStore/);
   assert.match(read('store-pgd.ts'), /fetchPgdBootstrap|\/api\/pgd/);
-  assert.doesNotMatch(workspace, /PCN_CERTIFICATION_FIELD_CODES|QC20|usePcnStore/);
-  assert.match(workspace, /PgdWorkflowMap/);
+  assert.doesNotMatch(workspace, /PCN_CERTIFICATION_FIELD_CODES|usePcnStore/);
+  assert.match(workspace, /PGD_GROUP_LABELS|pgd-selected-group-code/);
+  assert.match(workspace, /PgdDossierFlow/);
+  assert.match(workspace, /PgdDossierStepWorkPanel/);
   assert.match(read('components/PgdWorkflowMap.tsx'), /PcnArchifyWorkflowEmbed/);
   assert.match(workspace, /getPgdOperationalStepAccess/);
   assert.match(workspace, /validatePgdResultValues/);
@@ -37,13 +39,14 @@ test('PGD and PCN navigation are visible as distinct department workspaces', () 
   const landing = read('app/pgdcn/page.tsx');
   assert.match(landing, /pgdcn\/pcn/);
   assert.match(landing, /pgdcn\/pgd/);
-  assert.match(read('components/PcnSidebar.tsx'), /PHÒNG GIÁM ĐỊNH - CHỨNG NHẬN/);
+  assert.match(read('components/PcnSidebar.tsx'), /PHÒNG GIÁM ĐỊNH, CHỨNG NHẬN, PHÁT TRIỂN THỊ TRƯỜNG/);
   assert.match(read('components/PgdSidebar.tsx'), /PHÒNG GIÁM ĐỊNH/);
 });
 
 test('PGD keeps the shared reader read-only while preserving native evidence and document regions', () => {
   const workspace = read('components/PgdWorkspace.tsx');
-  assert.match(workspace, /<PgdWorkflowMap status=\{request\.status\} evidence=\{context\} \/>/);
+  assert.match(workspace, /<PgdDossierFlow status=\{request\.status\} evidence=\{context\}/);
+  assert.match(workspace, /<PgdDossierStepWorkPanel/);
   assert.doesNotMatch(workspace, /onStartTask|onCompleteTask|onReturnTask/);
   assert.match(workspace, /PgdCaseEvidencePanel/);
   assert.match(workspace, /PgdSourceFormsPanel/);

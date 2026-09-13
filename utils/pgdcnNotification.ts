@@ -6,6 +6,7 @@ import type {
   NotificationEntityType,
   UserAccount,
 } from '../types.ts';
+import { isOrganizationLeader } from './pcnRbac.ts';
 
 export type PgdcnNotificationNavigationTarget =
   | { domain: 'PCN'; section: 'proposals' | 'operations' | 'lab-operations' | 'drafting'; recordId: string }
@@ -108,15 +109,10 @@ export function mergePgdcnNotifications(
 }
 
 const isManager = (user: UserAccount): boolean => {
-  const position = normalizeIdentity(user.position);
   return user.role === 'admin'
     || user.systemRole === 'admin'
-    || user.departmentRoleCode === 'LEADERSHIP'
-    || user.pgdRole === 'PGD_MANAGER'
-    || position.includes('quan ly')
-    || position.includes('truong phong')
-    || position.includes('pho')
-    || position.includes('lanh dao');
+    || isOrganizationLeader(user)
+    || user.pgdRole === 'PGD_MANAGER';
 };
 
 export function canViewPgdcnNotification(

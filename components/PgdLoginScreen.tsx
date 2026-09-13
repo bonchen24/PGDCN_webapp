@@ -33,7 +33,7 @@ export default function PgdLoginScreen() {
       <div className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-7 shadow-sm">
         <div className="flex flex-col items-center gap-2"><img src="/icons/iemm-logo-32.png" alt="IEMM • TVCI" className="h-16 w-16 rounded-xl border border-slate-200/20 bg-white p-1.5" /><span className="text-[10px] font-semibold uppercase tracking-wide text-blue-300">IEMM • TVCI</span></div>
         <h1 className="mt-6 text-center text-2xl font-semibold text-white">Không gian giám định</h1>
-        <p className="mt-2 text-center text-sm text-slate-400">Phòng Giám định - Chứng nhận • Phiên PGD riêng</p>
+        <p className="mt-2 text-center text-sm text-slate-400">Phòng Giám định, Chứng nhận, Phát triển thị trường • Phiên PGD riêng</p>
         <form className="mt-8 space-y-5" onSubmit={submit}>
           <div>
             <label htmlFor="pgd-username" className="mb-2 block text-sm font-medium text-slate-200">Tên đăng nhập</label>

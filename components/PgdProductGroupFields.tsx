@@ -30,7 +30,7 @@ function ProductField({
   required?: boolean;
   onChange: (value: string) => void;
 }) {
-  return <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">{label}{required ? ' *' : ''}</span><input required={required} type={type} min={type === 'number' ? 0 : undefined} step={type === 'number' ? (step ?? 1) : undefined} value={value ?? ''} onChange={(event) => onChange(event.target.value)} className={inputClassName} /></label>;
+  return <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">{label}{required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span><input required={required} aria-required={required || undefined} type={type} min={type === 'number' ? 0 : undefined} step={type === 'number' ? (step ?? 1) : undefined} value={value ?? ''} onChange={(event) => onChange(event.target.value)} className={inputClassName} /></label>;
 }
 
 function ProductTextArea({
@@ -44,7 +44,7 @@ function ProductTextArea({
   required?: boolean;
   onChange: (value: string) => void;
 }) {
-  return <label className="block md:col-span-2"><span className="mb-1 block text-[10px] font-black text-slate-500">{label}{required ? ' *' : ''}</span><textarea required={required} rows={2} value={value || ''} onChange={(event) => onChange(event.target.value)} className={inputClassName} /></label>;
+  return <label className="block md:col-span-2"><span className="mb-1 block text-[10px] font-black text-slate-500">{label}{required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span><textarea required={required} aria-required={required || undefined} rows={2} value={value || ''} onChange={(event) => onChange(event.target.value)} className={inputClassName} /></label>;
 }
 
 export default function PgdProductGroupFields({
@@ -57,10 +57,10 @@ export default function PgdProductGroupFields({
 }: PgdProductGroupFieldsProps) {
   if (productGroup === 'MACHINERY_LINE') {
     return <section className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3" aria-label="Thông tin máy móc / dây chuyền">
-      <div className="mb-2 flex flex-wrap items-start justify-between gap-2"><div><h2 className="text-xs font-black text-indigo-950">Thông tin máy móc / dây chuyền</h2><p className="mt-1 text-[10px] leading-4 text-indigo-800">Nhập theo hồ sơ kỹ thuật, model/serial, tình trạng và mức độ đầy đủ của máy. Tính đồng bộ là bằng chứng riêng khi áp dụng QT-GĐ-12.</p></div><span className="rounded-full border border-indigo-200 bg-white px-2 py-1 text-[9px] font-black text-indigo-700">GĐ-MAY-01</span></div>
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-2"><div><h2 className="text-xs font-black text-indigo-950">Thông tin máy móc / dây chuyền</h2><p className="mt-1 text-[10px] leading-4 text-indigo-800">Nhập theo hồ sơ kỹ thuật, kiểu loại/số sê-ri, tình trạng và mức độ đầy đủ của máy. Tính đồng bộ là bằng chứng riêng khi áp dụng QT-GĐ-12.</p></div><span className="rounded-full border border-indigo-200 bg-white px-2 py-1 text-[9px] font-black text-indigo-700">GĐ-MAY-01</span></div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <ProductField label="Loại máy / thiết bị" required value={machinery.machineType} onChange={(value) => onMachineryChange('machineType', value)} />
-        <ProductField label="Model máy" required value={machinery.model} onChange={(value) => onMachineryChange('model', value)} />
+        <ProductField label="Kiểu loại máy" required value={machinery.model} onChange={(value) => onMachineryChange('model', value)} />
         <ProductField label="Số serial / nhận dạng" required value={machinery.serialNumber} onChange={(value) => onMachineryChange('serialNumber', value)} />
         <ProductField label="Năm sản xuất" required type="number" value={machinery.manufacturingYear} onChange={(value) => onMachineryChange('manufacturingYear', value ? Number(value) : undefined)} />
         <ProductField label="Mức độ đầy đủ / phụ kiện" value={machinery.completeness} onChange={(value) => onMachineryChange('completeness', value)} />

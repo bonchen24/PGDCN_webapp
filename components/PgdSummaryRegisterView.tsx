@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import type { PcnUserAccount } from '../types';
 import {
   PGD_ASSESSMENT_METHOD_OPTIONS,
+  PGD_GROUP_LABELS,
   PGD_WORKFLOW_STATES,
   type PgdInspectionRequest,
   type PgdInspectionRequestEditPatch,
@@ -56,7 +57,8 @@ const columns: SummaryGridColumn[] = [
   { id: 'requesterPhone', label: 'ĐT người yêu cầu', width: 135, editable: true },
   { id: 'requesterEmail', label: 'Email người yêu cầu', width: 180, editable: true },
   { id: 'productGroup', label: 'Nhóm SP', width: 135 },
-  { id: 'catalogItemId', label: 'Mã catalog', width: 130 },
+  { id: 'pgdGroupCode', label: 'Nhóm NV PGD', width: 180 },
+  { id: 'catalogItemId', label: 'Mã danh mục', width: 130 },
   { id: 'productName', label: 'Tên sản phẩm', width: 190, editable: true },
   { id: 'productCode', label: 'Mã sản phẩm', width: 130, editable: true },
   { id: 'brand', label: 'Nhãn hiệu', width: 140, editable: true },
@@ -72,7 +74,7 @@ const columns: SummaryGridColumn[] = [
   { id: 'steelLotSize', label: 'Quy mô lô thép', width: 120 },
   { id: 'steelSameGradeMultiProduct', label: 'Nhiều SP cùng mác', width: 135 },
   { id: 'machineType', label: 'Loại máy', width: 140 },
-  { id: 'machineModel', label: 'Model máy', width: 140 },
+  { id: 'machineModel', label: 'Kiểu loại máy', width: 140 },
   { id: 'machineSerialNumber', label: 'Số máy', width: 130 },
   { id: 'manufacturingYear', label: 'Năm SX', width: 90 },
   { id: 'coalType', label: 'Loại than', width: 130 },
@@ -146,7 +148,7 @@ export default function PgdSummaryRegisterView(props: Props) {
     certificates: props.certificates,
   }), [props.assignments, props.certificates, props.labRequests, props.labResults, props.reports, props.requests, props.samples]);
   const ownerNames = useMemo(() => new Map(props.users.map((user) => [user.username, user.name || 'Người dùng hệ thống'])), [props.users]);
-  const rows = useMemo(() => rawRows.map((row) => ({ ...row, displayCells: { ownerUsername: row.cells.ownerUsername ? ownerNames.get(String(row.cells.ownerUsername)) : undefined } })), [ownerNames, rawRows]);
+  const rows = useMemo(() => rawRows.map((row) => ({ ...row, displayCells: { pgdGroupCode: row.cells.pgdGroupCode === 'QC20' ? PGD_GROUP_LABELS.QC20 : row.cells.pgdGroupCode, ownerUsername: row.cells.ownerUsername ? ownerNames.get(String(row.cells.ownerUsername)) : undefined } })), [ownerNames, rawRows]);
   const configuredColumns = useMemo(() => columns.map((column) => column.id === 'ownerUsername' ? { ...column, options: [{ value: '', label: 'Chưa phân công' }, ...userOptions(props.users)] } : column), [props.users]);
   const filterRows = useMemo(() => (items: typeof rows) => items.filter((row) => (group === 'ALL' || row.cells.productGroup === group) && (status === 'ALL' || row.cells.status === status) && (ownerFilter === 'ALL' || (ownerFilter === 'ASSIGNED' ? Boolean(row.cells.ownerUsername) : !row.cells.ownerUsername))), [group, ownerFilter, status]);
 
@@ -168,5 +170,5 @@ export default function PgdSummaryRegisterView(props: Props) {
     <select aria-label="Lọc phân công Sổ tổng hợp PGD" value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value as typeof ownerFilter)} className="min-w-0 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="ALL">Tất cả chủ hồ sơ</option><option value="ASSIGNED">Đã phân công</option><option value="UNASSIGNED">Chưa phân công</option></select>
   </>;
 
-  return <div className="space-y-4 bg-slate-50/60 p-3 md:p-5"><PgdcnPageHeader eyebrow="Quản lý PGD" title="Sổ tổng hợp PGD" description="Mỗi dòng là một hồ sơ PGD, mỗi cột là một trường dữ liệu. Các Cell được phép chỉnh sửa trực tiếp theo đúng ranh giới hồ sơ." /><PgdcnDossierSummaryGrid domain="PGD" columns={configuredColumns} rows={rows} currentUsername={props.currentUsername} canEdit={props.canEdit} filterRows={filterRows} filterControls={filterControls} onOpenRow={props.onOpenRequest} onCommitCell={commitCell} searchPlaceholder="Tìm mã PYC, số đăng ký, khách hàng, sản phẩm, chứng từ..." emptyTitle="Không có hồ sơ PGD phù hợp" emptyDescription="Hãy điều chỉnh từ khóa, nhóm sản phẩm hoặc trạng thái." /></div>;
+  return <div className="space-y-4 bg-slate-50/60 p-3 md:p-5"><PgdcnPageHeader eyebrow="Quản lý PGD" title="Sổ tổng hợp PGD" description="Mỗi dòng là một hồ sơ PGD, mỗi cột là một trường dữ liệu. Các ô được phép chỉnh sửa trực tiếp theo đúng ranh giới hồ sơ." /><PgdcnDossierSummaryGrid domain="PGD" columns={configuredColumns} rows={rows} currentUsername={props.currentUsername} canEdit={props.canEdit} filterRows={filterRows} filterControls={filterControls} onOpenRow={props.onOpenRequest} onCommitCell={commitCell} searchPlaceholder="Tìm mã PYC, số đăng ký, khách hàng, sản phẩm, chứng từ..." emptyTitle="Không có hồ sơ PGD phù hợp" emptyDescription="Hãy điều chỉnh từ khóa, nhóm sản phẩm hoặc trạng thái." /></div>;
 }

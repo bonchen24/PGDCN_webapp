@@ -20,12 +20,13 @@ test('PGD sidebar exposes management pages, not operational stations', () => {
   }
 });
 
-test('PGD dossier detail uses a PCN-style full-screen focus workspace', () => {
+test('PGD dossier detail uses a native full-screen focus workspace', () => {
   const workspace = read('components/PgdWorkspace.tsx');
   assert.match(workspace, /data-testid="pgd-dossier-focus-shell"/);
   assert.match(workspace, /aria-label={`Không gian làm việc hồ sơ PGD/);
-  assert.match(workspace, /PgdWorkflowMap/);
-  assert.match(read('components/PgdWorkflowMap.tsx'), /PcnArchifyWorkflowEmbed/);
+  assert.match(workspace, /PgdDossierFlow/);
+  assert.match(workspace, /PgdDossierStepWorkPanel/);
+  assert.doesNotMatch(workspace, /PgdWorkflowMap/);
   assert.doesNotMatch(workspace, /role="dialog" aria-modal="true" aria-label={`Chi tiết hồ sơ/);
   assert.match(workspace, /max-h-\[100dvh\]|h-\[100dvh\]/);
 });

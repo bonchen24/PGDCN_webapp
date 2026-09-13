@@ -6,10 +6,11 @@ import type {
   PgdInspectionReport,
   PgdInspectionRequest,
   PgdInspectionRequestInput,
+  PgdInspectionRequestCreateInput,
+  PgdSample,
   PgdLabRequest,
   PgdLabResult,
   PgdResultTemplate,
-  PgdSample,
   PgdInspectionStatus,
   PgdTransitionContext,
   PgdCatalogItem,
@@ -240,9 +241,12 @@ export async function deletePgdInspection(requestId: string, reason: string, con
   return payload as { deleted: true; requestId: string; requestCode: string };
 }
 
-export async function createPgdInspection(input: PgdInspectionRequestInput): Promise<PgdInspectionRequest> {
+export async function createPgdInspection(input: PgdInspectionRequestCreateInput): Promise<{ request: PgdInspectionRequest; samples: PgdSample[] }> {
   const payload = await request('/api/pgd/requests', json(input));
-  return payload.request as PgdInspectionRequest;
+  return {
+    request: payload.request as PgdInspectionRequest,
+    samples: Array.isArray(payload.samples) ? payload.samples as PgdSample[] : [],
+  };
 }
 
 export async function updatePgdInspectionRequest(requestId: string, patch: Partial<PgdInspectionRequestInput>): Promise<PgdInspectionRequest> {
@@ -250,8 +254,8 @@ export async function updatePgdInspectionRequest(requestId: string, patch: Parti
   return payload.request as PgdInspectionRequest;
 }
 
-export async function transitionPgdInspection(requestId: string, status: PgdInspectionStatus, context: PgdTransitionContext = {}): Promise<PgdInspectionRequest> {
-  const payload = await request(`/api/pgd/requests/${encodeURIComponent(requestId)}/transition`, json({ status, context }));
+export async function transitionPgdInspection(requestId: string, status: PgdInspectionStatus, context: PgdTransitionContext = {}, reason?: string): Promise<PgdInspectionRequest> {
+  const payload = await request(`/api/pgd/requests/${encodeURIComponent(requestId)}/transition`, json({ status, context, ...(reason?.trim() ? { reason: reason.trim() } : {}) }));
   return payload.request as PgdInspectionRequest;
 }
 

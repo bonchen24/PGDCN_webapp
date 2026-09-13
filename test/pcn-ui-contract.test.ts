@@ -133,7 +133,7 @@ test('PCN intake form restores server validation issues beside the affected fiel
 test('PCN intake displays server-owned proposal-code allocation without a manual code field', () => {
   const source = fs.readFileSync(workspacePath, 'utf8');
 
-  assert.match(source, /server|máy chủ/i);
+  assert.match(source, /hệ thống tự cấp|server|máy chủ/i);
   assert.match(source, /PCN-YYMMDD-TT/);
   assert.doesNotMatch(source, /reviewPcnCodes\(form\.fieldCodes, form\.proposalCode\)/);
   assert.doesNotMatch(source, /placeholder="Ví dụ: 0665/);
@@ -179,7 +179,7 @@ test('PYC workbench exposes the generated-document lineage and dossier shortcut'
 test('PCN document preflight exposes a read-only source snapshot before generation', () => {
   const documentPanel = fs.readFileSync(new URL('../components/PcnDocumentGenerationPanel.tsx', import.meta.url), 'utf8');
 
-  assert.match(documentPanel, /Snapshot nguồn/);
+  assert.match(documentPanel, /Snapshot nguồn|Dữ liệu nguồn/);
   assert.match(documentPanel, /preflight\.proposalCode/);
   assert.match(documentPanel, /preflight\.dossierCode/);
   assert.match(documentPanel, /preflight\.customerName/);

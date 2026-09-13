@@ -108,8 +108,8 @@ export default function PcnLoginScreen() {
                   onChange={(event) => setUsername(event.target.value)}
                   aria-invalid={hasUsernameError}
                   aria-describedby={hasUsernameError ? 'pcn-login-error' : undefined}
-                  className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                  placeholder="Tên đăng nhập..."
+                  className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-3 text-sm text-white transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+
                 />
               </div>
             </div>
@@ -145,8 +145,8 @@ export default function PcnLoginScreen() {
                   required
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-12 text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                  placeholder="Mật khẩu của bạn"
+                  className="block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-10 pr-12 text-sm text-white transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+
                 />
                 <button
                   type="button"

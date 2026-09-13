@@ -5,9 +5,10 @@ import { useMemo, useState } from 'react';
 import type { CertificationDossier, CertificationProposal, IssuancePackage, PcnCertificationField, PcnDocumentRequirement, PcnDossierDocument, PcnSampleLot, PcnSampleRoute, PcnUserAccount, OutboundLabRequest, ReturnedTestResult, UserAccount } from '../types';
 import { getPcnDossierOperatorDenial } from '../utils/pcnDossierAssignment';
 import { isPcnSystemManager } from '../utils/pcnRbac';
-import { buildPcnOperationsRegisterRows, getPcnSummaryCellUpdate } from '../utils/pcnOperationsRegister';
+import { buildPcnOperationsRegisterRows, filterPcnOperationsRegisterRows, getPcnSummaryCellUpdate } from '../utils/pcnOperationsRegister';
 import type { SummaryGridColumn, SummaryGridRow } from '../utils/summaryRegister';
 import PgdcnDossierSummaryGrid from './PgdcnDossierSummaryGrid';
+import PcnDossierQueueView from './PcnDossierQueueView';
 import { PgdcnPageHeader } from './PgdcnUiPrimitives';
 
 type Props = {
@@ -42,7 +43,7 @@ const columns: SummaryGridColumn[] = [
   { id: 'customerEmail', label: 'Email KH', width: 180, editable: true },
   { id: 'productName', label: 'Tên sản phẩm', width: 190, editable: true },
   { id: 'productType', label: 'Loại sản phẩm', width: 145, editable: true },
-  { id: 'model', label: 'Model', width: 130, editable: true },
+  { id: 'model', label: 'Kiểu loại', width: 130, editable: true },
   { id: 'brand', label: 'Nhãn hiệu', width: 140, editable: true },
   { id: 'specifications', label: 'Thông số', width: 220, inputType: 'textarea', editable: true },
   { id: 'manufacturer', label: 'Nhà SX', width: 170, editable: true },
@@ -80,6 +81,7 @@ function userOptions(users: PcnUserAccount[]) {
 }
 
 export default function PcnOperationsRegisterView(props: Props) {
+  const [viewMode, setViewMode] = useState<'QUEUE' | 'DATA'>('QUEUE');
   const [completeness, setCompleteness] = useState<'ALL' | 'INCOMPLETE' | 'COMPLETE'>('ALL');
   const [assignment, setAssignment] = useState<'ALL' | 'ASSIGNED' | 'UNASSIGNED'>('ALL');
   const [fieldCode, setFieldCode] = useState('');
@@ -149,6 +151,13 @@ export default function PcnOperationsRegisterView(props: Props) {
       && (status === 'ALL' || source.dossierStatus === status)
       && (year === 'ALL' || (source.receivedAt && source.receivedAt.slice(0, 4) === year));
   }), [assignment, completeness, fieldCode, registerRows, status, year]);
+  const queueRows = useMemo(() => filterPcnOperationsRegisterRows(registerRows, {
+    completeness,
+    assignment,
+    fieldCode: fieldCode || undefined,
+    status: status === 'ALL' ? undefined : status as CertificationDossier['status'],
+    year: year === 'ALL' ? undefined : year,
+  }), [assignment, completeness, fieldCode, registerRows, status, year]);
 
   const commitCell = async (rowId: string, columnId: string, rawValue: string) => {
     const dossier = dossierById.get(rowId);
@@ -177,5 +186,18 @@ export default function PcnOperationsRegisterView(props: Props) {
     <select aria-label="Lọc năm Sổ tổng hợp PCN" value={year} onChange={(event) => setYear(event.target.value)} className="min-w-0 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="ALL">Tất cả năm</option>{Array.from(new Set(registerRows.map((row) => row.receivedAt?.slice(0, 4)).filter(Boolean))).sort().reverse().map((value) => <option key={value} value={value}>{value}</option>)}</select>
   </>;
 
-  return <div className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5"><PgdcnPageHeader eyebrow="Quản lý PCN" title="Sổ tổng hợp PCN" description="Mỗi dòng là một bộ hồ sơ PCN, mỗi cột là một trường dữ liệu. Cell được phép chỉnh sửa trực tiếp theo đúng ranh giới Đề nghị hoặc Hồ sơ." /><PgdcnDossierSummaryGrid domain="PCN" columns={configuredColumns} rows={rows} currentUsername={props.currentUsername} canEdit={props.canEdit} canEditRow={canEditRow} filterRows={filterRows} filterControls={filterControls} onOpenRow={(rowId) => { const dossier = dossierById.get(rowId); if (dossier) props.onOpenDossier(dossier, 'documents'); }} onCommitCell={commitCell} searchPlaceholder="Tìm mã đề nghị, mã hồ sơ, khách hàng, sản phẩm, lĩnh vực..." emptyTitle="Không có hồ sơ PCN phù hợp" emptyDescription="Hãy điều chỉnh từ khóa hoặc các bộ lọc Sổ tổng hợp." /></div>;
+  return (
+    <div className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5">
+      <PgdcnPageHeader eyebrow="Quản lý PCN" title="Sổ tổng hợp PCN" description="Bắt đầu từ hàng đợi công việc; chuyển sang Sổ dữ liệu khi cần rà soát hoặc chỉnh sửa nhiều cột." />
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-2" role="tablist" aria-label="Chế độ xem Sổ tổng hợp PCN">
+        <div className="flex flex-wrap gap-2">
+          <button type="button" role="tab" aria-selected={viewMode === 'QUEUE'} className={`mobile-touch-target min-h-11 rounded-lg px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${viewMode === 'QUEUE' ? 'bg-blue-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`} onClick={() => setViewMode('QUEUE')}>Hàng đợi hồ sơ</button>
+          <button type="button" role="tab" aria-selected={viewMode === 'DATA'} className={`mobile-touch-target min-h-11 rounded-lg px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${viewMode === 'DATA' ? 'bg-blue-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`} onClick={() => setViewMode('DATA')}>Sổ dữ liệu</button>
+        </div>
+        <p className="px-2 text-xs text-slate-500">{viewMode === 'QUEUE' ? `${queueRows.length} hồ sơ theo bộ lọc` : `${rows.length} dòng dữ liệu`}</p>
+      </div>
+      {viewMode === 'QUEUE' ? <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-5" aria-label="Bộ lọc hàng đợi hồ sơ">{filterControls}</div> : null}
+      {viewMode === 'QUEUE' ? <PcnDossierQueueView rows={queueRows} onOpenDossier={(dossierId) => { const dossier = dossierById.get(dossierId); if (dossier) props.onOpenDossier(dossier, 'documents'); }} /> : <PgdcnDossierSummaryGrid domain="PCN" columns={configuredColumns} rows={rows} currentUsername={props.currentUsername} canEdit={props.canEdit} canEditRow={canEditRow} filterRows={filterRows} filterControls={filterControls} onOpenRow={(rowId) => { const dossier = dossierById.get(rowId); if (dossier) props.onOpenDossier(dossier, 'documents'); }} onCommitCell={commitCell} searchPlaceholder="Tìm mã đề nghị, mã hồ sơ, khách hàng, sản phẩm, lĩnh vực..." emptyTitle="Không có hồ sơ PCN phù hợp" emptyDescription="Hãy điều chỉnh từ khóa hoặc các bộ lọc Sổ tổng hợp." />}
+    </div>
+  );
 }

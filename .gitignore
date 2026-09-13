@@ -44,3 +44,7 @@ dist/*.bak
 
 # Generated DOCX guide renders are QA-only artefacts.
 docs/user-guide-render*/
+
+# Archify renderer scratch directories are created beside the workspace and
+# removed after each render; ignore leftovers from interrupted runs.
+.pcn-archify-*/

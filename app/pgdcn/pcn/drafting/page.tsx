@@ -1,6 +1,6 @@
 import PgdcnAppShell from '../../../../components/PgdcnAppShell';
 import type { PcnDraftFormKind } from '../../../../types';
-import { getPcnNodeDocumentGenerationKind } from '../../../../utils/pcnDossierNodeWork';
+import { getPcnNodeDocumentGenerationKind, getPcnNodeDraftFormKind } from '../../../../utils/pcnDossierNodeWork';
 
 const draftKinds = new Set<PcnDraftFormKind>([
   'PROPOSAL_FORM', 'DOSSIER_COVER', 'ASSIGNMENT_FORM', 'EVALUATION_PLAN', 'FIELD_INSPECTION',
@@ -15,6 +15,8 @@ function scalar(value: string | string[] | undefined): string | undefined {
 function getDraftKind(value: string | string[] | undefined): PcnDraftFormKind | undefined {
   const candidate = scalar(value);
   if (!candidate) return undefined;
+  const draftKind = getPcnNodeDraftFormKind(candidate);
+  if (draftKind) return draftKind;
   const generatedKind = getPcnNodeDocumentGenerationKind(candidate);
   return generatedKind && draftKinds.has(generatedKind as PcnDraftFormKind) ? generatedKind as PcnDraftFormKind : undefined;
 }

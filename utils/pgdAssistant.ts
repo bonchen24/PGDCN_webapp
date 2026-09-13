@@ -290,7 +290,7 @@ export function buildPgdAssistantReview(input: PgdAssistantReviewInput): PgdAssi
       evidence: [{ assetId: file.assetId, fileName: file.fileName, ...(file.documentId ? { documentId: file.documentId } : {}), ...(file.documentType ? { documentType: file.documentType } : {}), tab: file.tab }],
     });
     target.status = 'NOT_EVALUABLE';
-    target.summary = 'Một phần tài liệu chưa đọc được; cần người phụ trách đối chiếu file gốc.';
+    target.summary = 'Một phần tài liệu chưa đọc được; cần người phụ trách đối chiếu tệp gốc.';
   }
 
   return { domain: 'PGD', requestId: request.id, readOnly: true, criteria, summary: summarize(criteria) };

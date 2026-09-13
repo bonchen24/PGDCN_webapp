@@ -70,7 +70,7 @@ function TemplateNodeCard({
       onClick={() => (connecting ? onCompleteConnection() : onSelect())}
     >
       <div className="flex items-start justify-between gap-2">
-        <button type="button" className="min-h-11 flex-1 text-left" {...listeners} aria-label={`Kéo node ${node.label}`}>
+        <button type="button" className="min-h-11 flex-1 text-left" {...listeners} aria-label={`Kéo bước ${node.label}`}>
           <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">{KIND_LABELS[node.kind]}</span>
           <span className="mt-1 block text-sm font-semibold text-slate-800">{node.label || 'Node chưa đặt tên'}</span>
         </button>
@@ -106,7 +106,7 @@ function CanvasDropZone({ laneId, column, nodes, props }: { laneId: string; colu
             onDelete={() => props.onDeleteNode(node.id)}
           />
         ))}
-        {nodes.length === 0 && <button type="button" className="min-h-11 w-full rounded-lg border border-dashed border-slate-300 text-xs text-slate-400" onClick={() => props.onAddNode('DOCUMENT_TASK', laneId, column)}>+ Thêm node</button>}
+        {nodes.length === 0 && <button type="button" className="min-h-11 w-full rounded-lg border border-dashed border-slate-300 text-xs text-slate-400" onClick={() => props.onAddNode('DOCUMENT_TASK', laneId, column)}>+ Thêm bước</button>}
       </div>
     </div>
   );

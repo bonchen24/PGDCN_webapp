@@ -127,6 +127,16 @@ function derivePlaceholderKeys(cells: readonly PgdTemplateCell[], requiredOnly =
     .sort((left, right) => left.localeCompare(right));
 }
 
+/** Internal authoring hint for generated forms; HTML inputs intentionally do not render it. */
+export function getPgdTemplateCellPlaceholder(cell: Pick<PgdTemplateCell, 'label' | 'type' | 'validation'>): string {
+  const label = String(cell.label || 'trường dữ liệu').trim().toLocaleLowerCase('vi-VN');
+  if (cell.validation?.options?.length) return `Chọn ${label}`;
+  if (cell.type === 'DATE') return `Nhập ${label} (dd/mm/yyyy)`;
+  if (cell.type === 'NUMBER') return `Nhập ${label}`;
+  if (cell.type === 'BOOLEAN') return `Chọn ${label}`;
+  return `Nhập ${label}`;
+}
+
 function cloneTemplate(template: PgdDocumentTemplate): PgdDocumentTemplate {
   const cells = template.cells.map(cloneCell);
   return {
@@ -149,6 +159,33 @@ export function getPgdTemplateCellsForProductGroup(
   return template.cells
     .filter((cell) => cell.active !== false && (!cell.productGroups?.length || cell.productGroups.includes(productGroup)))
     .map(cloneCell);
+}
+
+/**
+ * Keep the authoring form aligned with the physical DOCX layout.
+ * Sections retain their first appearance order, then cells follow row/column
+ * coordinates with the original declaration as a stable final tie-breaker.
+ */
+export function orderPgdTemplateCells<T extends Pick<PgdTemplateCell, 'sectionCode' | 'row' | 'column'>>(
+  cells: readonly T[],
+): T[] {
+  const sectionOrder = new Map<string, number>();
+  cells.forEach((cell, index) => {
+    const sectionCode = String(cell.sectionCode || 'identity');
+    if (!sectionOrder.has(sectionCode)) sectionOrder.set(sectionCode, index);
+  });
+
+  return cells
+    .map((cell, index) => ({ cell, index }))
+    .sort((left, right) => {
+      const leftSection = sectionOrder.get(String(left.cell.sectionCode || 'identity')) ?? left.index;
+      const rightSection = sectionOrder.get(String(right.cell.sectionCode || 'identity')) ?? right.index;
+      return leftSection - rightSection
+        || Number(left.cell.row || 0) - Number(right.cell.row || 0)
+        || Number(left.cell.column || 0) - Number(right.cell.column || 0)
+        || left.index - right.index;
+    })
+    .map(({ cell }) => cell);
 }
 
 export function normalizePgdTemplateCells(cells: readonly PgdTemplateCellInput[]): PgdTemplateCell[] {
@@ -353,7 +390,7 @@ const sharedCells = {
   ],
   machinery: [
     cell({ key: 'machineryType', label: 'Loại máy / thiết bị', sectionCode: 'machinery', row: 1, column: 8, type: 'TEXT', required: false, binding: 'request.productDetails.machinery.machineType', productGroups: ['MACHINERY_LINE'] }),
-    cell({ key: 'machineryModel', label: 'Model máy', sectionCode: 'machinery', row: 2, column: 8, type: 'TEXT', required: false, binding: 'request.productDetails.machinery.model', productGroups: ['MACHINERY_LINE'] }),
+    cell({ key: 'machineryModel', label: 'Kiểu loại máy', sectionCode: 'machinery', row: 2, column: 8, type: 'TEXT', required: false, binding: 'request.productDetails.machinery.model', productGroups: ['MACHINERY_LINE'] }),
     cell({ key: 'machinerySerialNumber', label: 'Số serial / nhận dạng', sectionCode: 'machinery', row: 3, column: 8, type: 'TEXT', required: false, binding: 'request.productDetails.machinery.serialNumber', productGroups: ['MACHINERY_LINE'] }),
     cell({ key: 'machineryManufacturingYear', label: 'Năm sản xuất', sectionCode: 'machinery', row: 4, column: 8, type: 'NUMBER', required: false, binding: 'request.productDetails.machinery.manufacturingYear', productGroups: ['MACHINERY_LINE'] }),
     cell({ key: 'machineryTechnicalParameters', label: 'Thông số kỹ thuật', sectionCode: 'machinery', row: 5, column: 8, type: 'TEXT', required: false, binding: 'request.productDetails.machinery.technicalParameters', productGroups: ['MACHINERY_LINE'] }),
@@ -616,7 +653,7 @@ export function validatePgdDocumentTemplate(template: Partial<PgdDocumentTemplat
   if (!['INTAKE_REQUEST', 'ASSIGNMENT', 'INSPECTION_PLAN', 'FIELD_INSPECTION', 'SAMPLE_TAKING', 'LAB_REQUEST', 'INSPECTION_REPORT', 'DECISION', 'INSPECTION_CERTIFICATE', 'DOSSIER_COVER', 'CASE_TIMELINE', 'FIELD_ACTIVITY_LOG', 'LAB_RESULT_REVIEW', 'INSPECTION_MINUTES', 'SAMPLE_HANDOVER'].includes(String(template.kind || ''))) issues.push('Loại template PGD không hợp lệ.');
   if (!Array.isArray(template.productGroups) || template.productGroups.length === 0 || template.productGroups.some((item) => !ALL_PRODUCT_GROUPS.includes(item as PgdProductGroup))) issues.push('Nhóm sản phẩm của template không hợp lệ.');
   if (!Array.isArray(template.formats) || template.formats.length === 0 || template.formats.some((format) => !['DOCX', 'PDF'].includes(String(format)))) issues.push('Định dạng template phải là DOCX hoặc PDF.');
-  if (template.fileName !== undefined && (!String(template.fileName || '').trim() || /[\\/]/.test(String(template.fileName)))) issues.push('Template cần có tên file DOCX tương đối, không chứa thư mục.');
+  if (template.fileName !== undefined && (!String(template.fileName || '').trim() || /[\\/]/.test(String(template.fileName)))) issues.push('Mẫu cần có tên tệp DOCX tương đối, không chứa thư mục.');
   if (template.placeholderKeys !== undefined && (!Array.isArray(template.placeholderKeys) || template.placeholderKeys.some((key) => !/^[a-z][a-zA-Z0-9_]*$/.test(String(key))))) issues.push('Danh sách placeholder DOCX không hợp lệ.');
   if (template.requiredPlaceholderKeys !== undefined && (!Array.isArray(template.requiredPlaceholderKeys) || template.requiredPlaceholderKeys.some((key) => !/^[a-z][a-zA-Z0-9_]*$/.test(String(key))))) issues.push('Danh sách placeholder bắt buộc DOCX không hợp lệ.');
   if (!String(template.sourceFormLabel || '').trim()) issues.push('Template cần ghi nhận tên biểu mẫu nghiệp vụ đã chuẩn hóa.');

@@ -56,6 +56,18 @@ test('PCN intake rejects invalid quantity and duplicate field codes', () => {
   assert.deepEqual(result.issues.map((issue) => issue.field), ['quantity', 'fieldCodes']);
 });
 
+test('PCN intake rejects a steel/QCVN20 source even when a PCN field is selected', () => {
+  const result = validatePcnProposalIntake({
+    ...validProposal,
+    productName: 'Sản phẩm thép không gỉ theo hồ sơ nguồn 183.10A',
+    productType: 'Thép không gỉ',
+    specifications: 'QCVN 20:2019/BKHCN và Sửa đổi 1:2021',
+  });
+
+  assert.equal(result.valid, false);
+  assert.equal(result.issues.some((issue) => issue.field === 'productType' && issue.message.includes('PGD')), true);
+});
+
 test('PCN intake indexes validation messages by the exact form field', () => {
   const result = validatePcnProposalIntake({ customerSnapshot: {}, fieldCodes: [] });
   const messages = indexPcnIntakeValidationIssues(result.issues);

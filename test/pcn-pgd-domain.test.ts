@@ -75,7 +75,9 @@ test('PGD catalog owns the stainless-steel inspection scope without a PCN field 
   assert.ok(DEFAULT_PGD_CATALOG.some((item) => item.productGroup === 'MACHINERY_LINE'));
   assert.ok(DEFAULT_PGD_CATALOG.some((item) => item.productGroup === 'COAL'));
   assert.ok(DEFAULT_PGD_CATALOG.some((item) => item.productGroup === 'OTHER'));
-  assert.equal(DEFAULT_PGD_CATALOG.some((item) => JSON.stringify(item).toUpperCase().includes('QC20')), false);
+  const stainlessSteel = DEFAULT_PGD_CATALOG.find((item) => item.id === 'STEEL_LOT_INSPECTION');
+  assert.equal(stainlessSteel?.groupCode, 'QC20');
+  assert.equal(stainlessSteel?.code, 'GĐ-THEP-KG');
   assert.equal(PGD_COLLECTIONS.requests, 'pgdInspectionRequests');
   assert.equal(PGD_COLLECTIONS.certificates, 'pgdInspectionCertificates');
   assert.equal(DEFAULT_PGD_CATALOG.find((item) => item.id === 'STEEL_LOT_INSPECTION')?.code, 'GĐ-THEP-KG');

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import type { PcnUserAccount } from '../types';
+import { ORGANIZATION_MANAGEMENT_ROLE_OPTIONS, PROFESSIONAL_ROLE_OPTIONS } from '../types';
 import type { PgdSection } from './PgdSidebar';
 import type { PcnSection } from '../utils/pcnNavigation';
 import { canViewSystemSettings } from '../utils/systemSettingsPolicy';
@@ -80,6 +81,8 @@ export default function PgdcnSidebar({
   const canManageSettings = canViewSystemSettings(currentUser);
   const canManageDossierTemplates = scopes.some((scope) => scope === 'PCN' || scope === 'PGD')
     && (isPcnSystemManager(currentUser) || ['PGD_ADMIN', 'PGD_MANAGER'].includes(String(currentUser.pgdRole || '').toUpperCase()));
+  const managementLabel = ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.find((role) => role.code === currentUser.managementRoleCode)?.name || 'Chưa phân công chức danh';
+  const professionalLabel = (currentUser.professionalRoleCodes || []).map((code) => PROFESSIONAL_ROLE_OPTIONS.find((role) => role.code === code)?.name || code).join(', ');
 
   useEffect(() => {
     if (activeTarget.domain === 'PCN') setPcnOpen(true);
@@ -106,11 +109,11 @@ export default function PgdcnSidebar({
   return <aside className={`app-compact-sidebar fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-800 bg-slate-950 text-slate-200 shadow-sm lg:static lg:translate-x-0 ${collapsed ? 'lg:w-16' : 'lg:w-64'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
     <div className={`flex h-16 items-center border-b border-slate-800 p-4 ${expanded ? 'gap-3' : 'justify-center'}`}>
       <img src="/icons/iemm-logo-32.png" alt="IEMM • TVCI" className="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-0.5" />
-      {expanded && <div className="min-w-0"><div className="truncate text-xs font-black uppercase tracking-wide text-white">IEMM • TVCI</div><div className="mt-1 truncate text-[9px] font-bold leading-none tracking-widest text-slate-400">PHÒNG GIÁM ĐỊNH - CHỨNG NHẬN</div></div>}
+      {expanded && <div className="min-w-0"><div className="truncate text-xs font-black uppercase tracking-wide text-white">IEMM • TVCI</div><div className="mt-1 truncate text-[9px] font-bold leading-none tracking-widest text-slate-400">PHÒNG GIÁM ĐỊNH, CHỨNG NHẬN, PHÁT TRIỂN THỊ TRƯỜNG</div></div>}
       <button type="button" onClick={onCloseMobile} aria-label="Đóng menu phòng" className="mobile-touch-target ml-auto rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:hidden"><X aria-hidden="true" size={18} /></button>
     </div>
 
-    <nav className="mobile-scroll-y flex-1 space-y-0.5 overflow-y-auto px-2 py-3" aria-label="Menu Phòng Giám định - Chứng nhận">
+    <nav className="mobile-scroll-y flex-1 space-y-0.5 overflow-y-auto px-2 py-3" aria-label="Menu Phòng Giám định, Chứng nhận, Phát triển thị trường">
       {renderSharedButton('Tổng quan phòng', LayoutDashboard, { domain: 'department', section: 'department-dashboard' })}
       {renderSharedButton('Khách hàng', Building2, { domain: 'department', section: 'customers' })}
       {renderSharedButton('Trợ lý AI', Bot, { domain: 'department', section: 'assistant' })}
@@ -131,7 +134,7 @@ export default function PgdcnSidebar({
 
     <div className={`shrink-0 border-t border-slate-800 p-2 ${expanded ? 'space-y-1' : ''}`}>
       <button type="button" onClick={onToggle} aria-label={expanded ? 'Thu gọn menu' : 'Mở rộng menu'} className={`mobile-touch-target hidden min-h-9 w-full items-center rounded-lg text-left text-[10px] font-bold text-slate-400 transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:flex ${expanded ? 'gap-2 px-2' : 'justify-center'}`} title={expanded ? 'Thu gọn menu' : 'Mở rộng menu'}><Menu aria-hidden="true" size={15} />{expanded && 'Thu gọn menu'}</button>
-      <button type="button" onClick={onOpenPersonalSettings} aria-label="Mở thiết lập cá nhân" className={`mobile-touch-target flex min-h-9 w-full items-center rounded-lg text-left transition-colors hover:bg-slate-800/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${expanded ? 'gap-2 p-1' : 'justify-center p-1'}`}><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs font-black uppercase text-slate-200">{currentUser.name.split(' ').pop()?.slice(0, 2) || 'PG'}</span>{expanded && <div className="min-w-0 flex-1"><div className="truncate text-xs font-black text-slate-200">{currentUser.name}</div><div className="mt-1 truncate text-[9px] text-slate-500">{currentUser.systemRole || currentUser.role}</div></div>}</button>
+      <button type="button" onClick={onOpenPersonalSettings} aria-label="Mở thiết lập cá nhân" className={`mobile-touch-target flex min-h-9 w-full items-center rounded-lg text-left transition-colors hover:bg-slate-800/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${expanded ? 'gap-2 p-1' : 'justify-center p-1'}`}><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs font-black uppercase text-slate-200">{currentUser.name.split(' ').pop()?.slice(0, 2) || 'PG'}</span>{expanded && <div className="min-w-0 flex-1"><div className="truncate text-xs font-black text-slate-200">{currentUser.name}</div><div className="mt-1 truncate text-[9px] text-slate-500">{managementLabel} · {currentUser.systemRole || currentUser.role}</div>{professionalLabel && <div className="truncate text-[9px] text-violet-300">{professionalLabel}</div>}</div>}</button>
       {expanded && <button type="button" onClick={onLogout} className="mobile-touch-target flex min-h-9 w-full items-center gap-2 rounded-lg px-2.5 text-[10px] font-bold text-slate-400 transition-colors hover:bg-rose-500/10 hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"><LogOut aria-hidden="true" size={14} /> Đăng xuất</button>}
     </div>
   </aside>;

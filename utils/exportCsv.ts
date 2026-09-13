@@ -38,7 +38,7 @@ export const exportAllToCSV = (
     'Mã mẫu EMC 1',
     'Mã mẫu EMC 2',
     'Chủng loại',
-    'Model',
+    'Kiểu loại',
     'Thương hiệu',
     'Số lượng',
     'Khách hàng',

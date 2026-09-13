@@ -69,3 +69,20 @@ test('PCN OCR settings keep PaddleOCR as the only primary provider and describe 
   assert.match(view, /fallback|dự phòng/i);
   assert.doesNotMatch(view, /option value="GEMINI"/);
 });
+
+test('personal AI settings explain separate project quota and verify the selected provider model', () => {
+  const panel = read('components/PcnPersonalSettingsPanel.tsx');
+  const api = read('utils/pcnPersonalSettingsApi.ts');
+  const server = read('server.ts');
+  const design = read('design.md');
+  assert.match(panel, /Google AI Studio/);
+  assert.match(panel, /quota/i);
+  assert.match(panel, /Kiểm tra kết nối.*(model|mô hình)/i);
+  assert.match(panel, /selectedModelAvailable|modelAvailable/);
+  assert.match(api, /checkPcnGeminiModels/);
+  assert.match(api, /selectedModelAvailable/);
+  assert.match(server, /personalOnly: DATABASE_PROFILE === ['"]pcn['"]/);
+  assert.match(server, /selectedModelAvailable/);
+  assert.match(server, /credentialScope/);
+  assert.match(design, /quota.*project|project.*quota/i);
+});

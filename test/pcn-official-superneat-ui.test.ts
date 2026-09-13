@@ -129,7 +129,7 @@ test('focused PCN controls and modal surfaces keep touch, focus and scroll contr
 
 test('PCN document links keep visible focus and mobile touch affordances', () => {
   const links = [
-    ['../components/PcnResultDetailModal.tsx', ['Mở file KQTN']],
+    ['../components/PcnResultDetailModal.tsx', ['Mở tệp KQTN']],
     ['../components/PcnLabRequestDetailModal.tsx', ['Mở PYC DOCX', 'Mở PYC PDF']],
   ] as const;
 

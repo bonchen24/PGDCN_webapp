@@ -1,8 +1,8 @@
 'use client';
 
-import { formatDateDdMmYyyy } from '../utils/formatter';
+import { formatDateDdMmYyyy, parseDdMmYyyy, parseDdMmYyyyTime } from '../utils/formatter';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Activity,
@@ -31,6 +31,7 @@ import { PcnUserManagementView } from './PcnUserManagementView';
 import PcnSettingsView from './PcnSettingsView';
 import PcnPersonalSettingsPanel from './PcnPersonalSettingsPanel';
 import PcnOcrPanel from './PcnOcrPanel';
+import PgdcnWindowsWorkflowModal from './PgdcnWindowsWorkflowModal';
 import PcnCatalogCombobox, { type PcnCatalogOption } from './PcnCatalogCombobox';
 import { PcnNotificationDropdown } from './PcnNotificationDropdown';
 import { PcnWorkQueueView } from './PcnWorkQueueView';
@@ -45,15 +46,18 @@ import PcnSidebar, { PCN_SECTION_ICONS } from './PcnSidebar';
 import { usePcnStore } from '../store-pcn';
 import { usePcnSessionStore } from '../utils/pcnSessionState';
 import { clearPcnSession, getPcnSession } from '../utils/pcnAuthApi';
-import type { AppNotification, CertificationDossier, CertificationProposal, PcnDossierStatus, PcnCertificationField } from '../types';
+import { ORGANIZATION_MANAGEMENT_ROLE_OPTIONS, PROFESSIONAL_ROLE_OPTIONS } from '../types';
+import type { AppNotification, CertificationDossier, CertificationProposal, PcnDossierStatus, PcnProposalStatus, PcnCertificationField } from '../types';
 import type { PcnProposalUpdateInput } from '../utils/pcnProposalApi';
 import { PcnIntakeApiError } from '../utils/pcnIntakeApi';
 import { formatPcnIntakeValidationIssues, indexPcnIntakeValidationIssues, validatePcnProposalIntake } from '../utils/pcnIntakePolicy';
 import { getPcnDashboardMetrics } from '../utils/pcnReporting';
 import { canViewNotification } from '../utils/notificationEvents';
+import { canManageSystemUsers, canViewSystemSettings } from '../utils/systemSettingsPolicy';
 import { downloadPcnDossierPackage } from '../utils/pcnDossierPackageApi';
 import { getPcnNotificationDossierTab } from '../utils/pcnDossierNavigation';
 import { PCN_MOBILE_NAVIGATION, type PcnSection } from '../utils/pcnNavigation';
+import { PgdcnDateInput } from './PgdcnDateInput';
 
 const sectionLabels: Record<PcnSection, string> = {
   dashboard: 'Tổng quan',
@@ -89,6 +93,31 @@ const statusLabels: Record<PcnDossierStatus, string> = {
   CANCELLED: 'Đã hủy',
   ON_HOLD: 'Tạm dừng',
 };
+
+const proposalStatusLabels: Record<PcnProposalStatus, string> = {
+  DRAFT: 'Bản nháp',
+  RECEIVED: 'Đã tiếp nhận',
+  REJECTED: 'Từ chối',
+  CONVERTED: 'Đã chuyển hồ sơ',
+};
+
+function todayPcnDateInputValue(): string {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+function proposalDateInputValue(value?: string): string {
+  const normalized = String(value || '').trim();
+  return /^\d{4}-\d{2}-\d{2}/.test(normalized) ? normalized.slice(0, 10) : '';
+}
+
+function isValidPcnDateInput(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return false;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return date.getFullYear() === Number(match[1]) && date.getMonth() === Number(match[2]) - 1 && date.getDate() === Number(match[3]);
+}
 
 const statusClasses: Record<PcnDossierStatus, string> = {
   DRAFT: 'bg-slate-100 text-slate-600 border-slate-200',
@@ -175,7 +204,7 @@ function PcnDashboard({
     <div className="pcn-page-surface min-w-0 space-y-3 bg-slate-50/60 p-2.5 pb-4 md:p-4 mobile-safe-bottom">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Phòng Giám định - Chứng nhận • PCN</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Phòng Giám định, Chứng nhận, Phát triển thị trường • PCN</p>
           <h1 className="mt-0.5 text-lg font-black tracking-tight text-slate-900 md:text-xl">Tổng quan hồ sơ chứng nhận</h1>
           <p className="mt-0.5 text-[10px] text-slate-500">Theo dõi Đề nghị, Lĩnh vực, PYC liên phòng và phát hành.</p>
         </div>
@@ -253,41 +282,15 @@ function EmptyState({ title, description, action, onAction }: { title: string; d
 function ProposalRegisterRow({ proposal, dossier, canEdit, onOpenDossier, onEdit }: { proposal: CertificationProposal; dossier: CertificationDossier; canEdit: boolean; onOpenDossier: () => void; onEdit?: () => void }) {
   const proposalEditingAllowed = Boolean(onEdit && ['INTAKE_REVIEW', 'AWAITING_DOCUMENTS'].includes(dossier.status));
   return (
-    <article className="group overflow-hidden rounded-xl border border-indigo-200 bg-indigo-50 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md">
-      <div className="border-b border-indigo-100 bg-white/80 p-3">
-        <div className="flex items-start gap-2">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-100 text-indigo-700"><FilePlus2 size={16} /></span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <h2 className="truncate font-mono text-xs font-black uppercase tracking-wide text-slate-900">{proposal.proposalCode}</h2>
-              <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-black ${statusClasses[dossier.status]}`}>{statusLabels[dossier.status]}</span>
-            </div>
-            <p className="mt-1 truncate text-[10px] font-bold text-slate-600">Hồ sơ: <span className="font-mono text-slate-800">{dossier.dossierCode}</span></p>
-          </div>
-          <span className="shrink-0 rounded-md border border-indigo-100 bg-indigo-50 px-1.5 py-1 text-[9px] font-black text-indigo-700">{proposal.fieldCodes.length} lĩnh vực</span>
-        </div>
-      </div>
-      <div className="space-y-2.5 p-3">
-        <div>
-          <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400">Khách hàng</span>
-          <p className="mt-0.5 truncate text-[11px] font-black text-slate-800" title={proposal.customerSnapshot.name}>{proposal.customerSnapshot.name || 'Chưa gắn khách hàng'}</p>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="min-w-0"><span className="block text-[9px] font-black uppercase tracking-wider text-slate-400">Sản phẩm</span><p className="mt-0.5 truncate text-[10px] font-bold text-slate-700" title={proposal.productName}>{proposal.productName || 'Chưa có sản phẩm'}</p></div>
-          <div className="min-w-0"><span className="block text-[9px] font-black uppercase tracking-wider text-slate-400">Model / nhãn hiệu</span><p className="mt-0.5 truncate text-[10px] font-bold text-slate-700" title={[proposal.model, proposal.brand].filter(Boolean).join(' / ')}>{[proposal.model, proposal.brand].filter(Boolean).join(' / ') || 'Chưa có thông tin'}</p></div>
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {proposal.fieldCodes.length > 0 ? proposal.fieldCodes.map((code) => <span key={code} className="rounded border border-white bg-white/80 px-1.5 py-0.5 text-[9px] font-black text-slate-600">{code}</span>) : <span className="text-[9px] font-bold text-amber-700">Chưa xác định Lĩnh vực</span>}
-        </div>
-      </div>
-      <div className="flex items-center justify-between gap-2 border-t border-indigo-100 bg-white/60 px-3 py-2.5">
-        <span className="text-[9px] font-bold text-slate-400">Tiếp nhận {formatDateDdMmYyyy(proposal.receivedAt) || 'Chưa cập nhật'}</span>
-        <div className="flex shrink-0 gap-1.5">
-          <button type="button" onClick={onOpenDossier} className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-1.5 text-[9px] font-black text-white hover:bg-indigo-500"><FolderOpen size={12} /> Mở hồ sơ chuẩn</button>
-          {canEdit && proposalEditingAllowed && <button type="button" onClick={onEdit} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[9px] font-bold text-slate-600 hover:border-emerald-300 hover:text-emerald-700">Sửa Đề nghị</button>}
-        </div>
-      </div>
-    </article>
+    <tr className="align-top transition-colors hover:bg-indigo-50/40">
+      <th scope="row" className="sticky left-0 z-[1] bg-white px-3 py-3 text-left font-normal"><span className="font-mono text-xs font-black uppercase tracking-wide text-slate-900">{proposal.proposalCode}</span><span className="mt-1 block font-mono text-[10px] text-slate-600">{dossier.dossierCode}</span></th>
+      <td className="px-3 py-3"><span className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-black ${statusClasses[dossier.status]}`}>{statusLabels[dossier.status]}</span></td>
+      <td className="max-w-[220px] px-3 py-3 text-sm font-bold text-slate-800"><span className="line-clamp-2" title={proposal.customerSnapshot.name}>{proposal.customerSnapshot.name || 'Chưa gắn khách hàng'}</span></td>
+      <td className="max-w-[220px] px-3 py-3"><p className="truncate text-sm font-bold text-slate-800" title={proposal.productName}>{proposal.productName || 'Chưa có sản phẩm'}</p><p className="mt-1 truncate text-xs text-slate-500" title={[proposal.model, proposal.brand].filter(Boolean).join(' / ')}>{[proposal.model, proposal.brand].filter(Boolean).join(' / ') || 'Chưa có kiểu loại / nhãn hiệu'}</p></td>
+      <td className="px-3 py-3"><div className="flex max-w-[170px] flex-wrap gap-1">{proposal.fieldCodes.length > 0 ? proposal.fieldCodes.map((code) => <span key={code} className="rounded border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700">{code}</span>) : <span className="text-[9px] font-bold text-amber-700">Chưa xác định</span>}</div></td>
+      <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-600">{formatDateDdMmYyyy(proposal.receivedAt) || 'Chưa cập nhật'}</td>
+      <td className="px-3 py-3 text-right"><div className="flex min-w-[180px] justify-end gap-1.5"><button type="button" onClick={onOpenDossier} className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-[10px] font-black text-white hover:bg-indigo-500"><FolderOpen size={12} aria-hidden="true" /> Mở hồ sơ chuẩn</button>{canEdit && proposalEditingAllowed && <button type="button" onClick={onEdit} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:border-emerald-300 hover:text-emerald-700">Sửa Đề nghị</button>}</div></td>
+    </tr>
   );
 }
 
@@ -309,21 +312,27 @@ type PcnProposalForm = {
   manufacturer: string;
   manufacturerAddress: string;
   quantity: string;
+  receivedAt: string;
   fieldCodes: string[];
 };
 
 function ProposalView({ fields, proposals, dossiers, customers, canEdit, initialDossierId, initialFieldCode, openFormRequest, onSave, onUpdateProposal, onOpenDossier }: { fields: PcnCertificationField[]; proposals: CertificationProposal[]; dossiers: CertificationDossier[]; customers: Array<{ name: string; address?: string; customerCode?: string; taxId?: string; phone?: string; email?: string; contactPerson?: string }>; canEdit: boolean; initialDossierId?: string; initialFieldCode?: string; openFormRequest?: number; onSave: (proposal: CertificationProposal) => Promise<void>; onUpdateProposal: (proposalId: string, updates: PcnProposalUpdateInput) => Promise<void>; onOpenDossier: (dossier: CertificationDossier) => void }) {
   const [openForm, setOpenForm] = useState(false);
+  const [proposalMinimized, setProposalMinimized] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingProposal, setEditingProposal] = useState<CertificationProposal>();
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PcnDossierStatus | ''>('');
   const [fieldFilter, setFieldFilter] = useState(initialFieldCode || '');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const proposalFormRef = useRef<HTMLFormElement>(null);
+  // Kept as a named focus anchor for the proposal modal contract; the shared Windows primitive owns the visible close control.
+  const proposalCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const emptyForm = () => ({
     channel: 'DIRECT' as CertificationProposal['channel'], customerName: '', customerId: '', address: '', warehouseAddress: '',
     contactPerson: '', taxId: '', phone: '', email: '', productName: '', model: '', brand: '', productType: '', specifications: '',
-    manufacturer: '', manufacturerAddress: '', quantity: '1', fieldCodes: [],
+    manufacturer: '', manufacturerAddress: '', quantity: '1', receivedAt: todayPcnDateInputValue(), fieldCodes: [],
   });
   const [form, setForm] = useState<PcnProposalForm>(emptyForm());
   const customerOptions = useMemo<PcnCatalogOption[]>(() => customers.flatMap((customer) => {
@@ -339,16 +348,45 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
     ? { value: customerValue, label: `Giá trị hiện tại cần rà soát: ${form.customerName || customerValue}`, description: 'Giá trị cũ được giữ nguyên để bạn đối chiếu với Danh sách khách hàng.', disabled: true }
     : undefined;
   const reset = () => { setForm(emptyForm()); setEditingProposal(undefined); setValidationErrors({}); };
+  const rememberFormFocus = () => {
+    const activeElement = document.activeElement;
+    returnFocusRef.current = activeElement instanceof HTMLElement ? activeElement : null;
+  };
+  const focusFirstInvalidProposalField = () => {
+    window.requestAnimationFrame(() => proposalFormRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+  };
+  const openProposalForm = () => {
+    rememberFormFocus();
+    reset();
+    setOpenForm(true);
+    setProposalMinimized(false);
+  };
+  const closeProposalForm = () => {
+    const focusTarget = returnFocusRef.current;
+    returnFocusRef.current = null;
+    reset();
+    setOpenForm(false);
+    setProposalMinimized(false);
+    window.requestAnimationFrame(() => focusTarget?.focus());
+  };
 
   useEffect(() => {
     if (!openFormRequest) return;
+    rememberFormFocus();
     setForm(emptyForm());
     setEditingProposal(undefined);
     setValidationErrors({});
     setOpenForm(true);
+    setProposalMinimized(false);
   }, [openFormRequest]);
 
+  useEffect(() => {
+    if (!openForm) return;
+    return undefined;
+  }, [openForm]);
+
   const openEdit = (proposal: CertificationProposal) => {
+    rememberFormFocus();
     setEditingProposal(proposal);
     setForm({
       channel: proposal.channel,
@@ -368,9 +406,11 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
       manufacturer: proposal.manufacturer || '',
       manufacturerAddress: proposal.manufacturerAddress || '',
       quantity: String(proposal.quantity || 1),
+      receivedAt: proposalDateInputValue(proposal.receivedAt),
       fieldCodes: proposal.fieldCodes,
     });
     setOpenForm(true);
+    setProposalMinimized(false);
   };
 
   const handleCustomerSelection = (value: string) => {
@@ -384,6 +424,7 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
   const applyProposalOcr = (ocrFields: Record<string, string>) => {
     const allowedFieldCodes = new Set(fields.map((field) => field.code));
     const recognizedFieldCodes = String(ocrFields.fieldCodes || '').split(/[,;\s]+/).map((code) => code.trim().toUpperCase()).filter((code) => allowedFieldCodes.has(code as any));
+    const receivedAt = parseDdMmYyyyTime(String(ocrFields.receivedAt || '').trim()) || parseDdMmYyyy(String(ocrFields.receivedAt || '').trim());
     setForm((previous) => ({
       ...previous,
       ...(ocrFields.customerName ? { customerName: ocrFields.customerName } : {}),
@@ -401,6 +442,7 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
       ...(ocrFields.manufacturer ? { manufacturer: ocrFields.manufacturer } : {}),
       ...(ocrFields.manufacturerAddress ? { manufacturerAddress: ocrFields.manufacturerAddress } : {}),
       ...(ocrFields.quantity && Number(ocrFields.quantity) > 0 ? { quantity: String(Math.round(Number(ocrFields.quantity))) } : {}),
+      ...(receivedAt ? { receivedAt } : {}),
       ...(recognizedFieldCodes.length > 0 ? { fieldCodes: recognizedFieldCodes } : {}),
     }));
     toast.success('Đã điền bản nháp OCR vào form; hãy kiểm tra trước khi tạo Đề nghị.');
@@ -427,9 +469,13 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
       quantity: form.quantity,
       fieldCodes: form.fieldCodes,
     });
-    if (!intakeValidation.valid) {
-      setValidationErrors(indexPcnIntakeValidationIssues(intakeValidation.issues));
-      toast.error(formatPcnIntakeValidationIssues(intakeValidation.issues));
+    const receivedAtError = isValidPcnDateInput(form.receivedAt) ? undefined : 'Ngày tiếp nhận phải là ngày hợp lệ.';
+    if (!intakeValidation.valid || receivedAtError) {
+      const nextValidationErrors = indexPcnIntakeValidationIssues(intakeValidation.issues);
+      if (receivedAtError) nextValidationErrors.receivedAt = receivedAtError;
+      setValidationErrors(nextValidationErrors);
+      focusFirstInvalidProposalField();
+      toast.error([formatPcnIntakeValidationIssues(intakeValidation.issues), receivedAtError].filter(Boolean).join(' '));
       return;
     }
     const customerSnapshot = { name: form.customerName.trim(), address: form.address.trim(), taxId: form.taxId.trim() || undefined, phone: form.phone.trim() || undefined, email: form.email.trim() || undefined, contactPerson: form.contactPerson.trim() || undefined };
@@ -462,16 +508,16 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
           productName: form.productName.trim(), model: form.model.trim() || undefined, brand: form.brand.trim() || undefined,
           productType: form.productType.trim() || undefined, specifications: form.specifications.trim() || undefined,
           manufacturer: form.manufacturer.trim() || undefined, manufacturerAddress: form.manufacturerAddress.trim() || undefined, quantity: Math.max(1, Number(form.quantity) || 1), fieldCodes: form.fieldCodes,
-          receivedAt: now, createdAt: now, updatedAt: now,
+          receivedAt: form.receivedAt, createdAt: now, updatedAt: now,
         };
         await onSave(proposal);
         toast.success('Đã tạo Đề nghị và bộ hồ sơ.');
       }
-      reset();
-      setOpenForm(false);
+      closeProposalForm();
     } catch (error: any) {
       if (error instanceof PcnIntakeApiError && error.issues.length > 0) {
         setValidationErrors(indexPcnIntakeValidationIssues(error.issues));
+        focusFirstInvalidProposalField();
       }
       toast.error(error?.message || 'Không thể lưu Đề nghị.');
     } finally {
@@ -502,19 +548,33 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
 
   return (
     <div className="pcn-page-surface min-w-0 p-3 md:p-5 space-y-4 mobile-safe-bottom bg-slate-50/60">
-      <div className="flex items-start justify-between gap-3"><div><h1 className="text-xl font-black text-slate-900">Quản lý Đề nghị</h1><p className="text-[11px] text-slate-500 mt-1">Mỗi thẻ là một Đề nghị và một bộ hồ sơ liên kết. PYC chỉ phát sinh khi cần kết nối phòng thử nghiệm khác.</p></div>{!openForm && canEdit && <button onClick={() => { reset(); setOpenForm(true); }} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white"><Plus size={14} /> Tạo Đề nghị</button>}</div>
-      {openForm && <div data-testid="pcn-proposal-form-modal" className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-2 md:p-6" role="dialog" aria-modal="true" aria-labelledby="pcn-proposal-modal-title"><form onSubmit={submit} className="my-2 flex max-h-[calc(100dvh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-emerald-200 bg-slate-50 shadow-2xl md:my-4 md:max-h-[calc(100dvh-2rem)]">
-<div className="flex items-center justify-between">
-<div>
-<h2 id="pcn-proposal-modal-title" className="text-sm font-black text-slate-800">{editingProposal ? 'Sửa thông tin Đề nghị' : 'Thông tin Đề nghị / bộ hồ sơ'}</h2>{editingProposal && <p className="mt-1 text-[10px] text-amber-700">Chỉ sửa được ở giai đoạn đầu vào; mã Đề nghị và Lĩnh vực được giữ nguyên.</p>}</div>
-<button type="button" aria-label="Đóng modal Đề nghị PCN" onClick={() => { reset(); setOpenForm(false); }} disabled={saving} className="mobile-touch-target rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-40">
-<X size={16} />
-</button>
-</div>
-<div data-testid="pcn-proposal-modal-body" className="mobile-scroll-y min-h-0 flex-1 space-y-3 overflow-y-auto p-3 md:p-4"><PcnOcrPanel context="proposal" onApply={applyProposalOcr} disabled={saving} />
-<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="flex items-start justify-between gap-3"><div><h1 className="text-xl font-black text-slate-900">Quản lý Đề nghị</h1><p className="text-[11px] text-slate-500 mt-1">Mỗi dòng là một Đề nghị và một bộ hồ sơ liên kết. PYC chỉ phát sinh khi cần kết nối phòng thử nghiệm khác.</p></div>{!openForm && canEdit && <button onClick={openProposalForm} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white"><Plus size={14} /> Tạo Đề nghị</button>}</div>
+      {openForm && <>{/* data-testid="pcn-proposal-form-modal" aria-labelledby="pcn-proposal-modal-title" data-testid="pcn-proposal-modal-body" data-testid="pcn-proposal-modal-footer" focus-visible:ring */}<PgdcnWindowsWorkflowModal
+        open={openForm}
+        minimized={proposalMinimized}
+        title={editingProposal ? 'Sửa thông tin Đề nghị' : 'Thông tin Đề nghị / bộ hồ sơ'}
+        eyebrow="PCN · Tiếp nhận hồ sơ"
+        description="Soạn Đề nghị trực tiếp trên app. Tệp kéo thả chỉ tạo bản nháp OCR; dữ liệu phải được kiểm tra trước khi lưu."
+        contextLabel="Đề nghị PCN"
+        accent="emerald"
+        testId="pcn-proposal-form-modal"
+        bodyTestId="pcn-proposal-modal-body"
+        footerTestId="pcn-proposal-modal-footer"
+        titleId="pcn-proposal-modal-title"
+        busy={saving}
+        onClose={closeProposalForm}
+        onMinimize={() => setProposalMinimized(true)}
+        onRestore={() => setProposalMinimized(false)}
+        footer={<div className="flex w-full flex-wrap justify-end gap-2"><button type="button" onClick={closeProposalForm} disabled={saving} className="min-h-10 rounded-lg border border-slate-200 px-3 text-[10px] font-bold text-slate-600 disabled:opacity-40">Hủy</button><button type="submit" form="pcn-proposal-form" disabled={saving} aria-busy={saving} className="min-h-10 rounded-lg bg-emerald-600 px-3 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : editingProposal ? 'Lưu thay đổi' : 'Tạo Đề nghị & bộ hồ sơ'}</button></div>}
+      >
+        <form id="pcn-proposal-form" ref={proposalFormRef} onSubmit={submit} className="space-y-3 p-3 md:p-4">
+          <PcnOcrPanel context="proposal" onApply={applyProposalOcr} disabled={saving} />
+<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
 <Field label="Mã Đề nghị">
-<div className="rounded-md border border-indigo-100 bg-indigo-50/60 px-2.5 py-2 text-[10px] font-bold text-indigo-700">Server tự cấp theo dạng PCN-YYMMDD-TT khi lưu</div>
+<div className="rounded-md border border-indigo-100 bg-indigo-50/60 px-2.5 py-2 text-[10px] font-bold text-indigo-700">Hệ thống tự cấp theo dạng PCN-YYMMDD-TT khi lưu</div>
+</Field>
+<Field label="Trạng thái Đề nghị">
+<div className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10px] font-bold text-slate-700" aria-live="polite">{editingProposal ? proposalStatusLabels[editingProposal.status] : 'Đã tiếp nhận · chờ hệ thống chuyển hồ sơ'}</div>
 </Field>
 <Field label="Kênh tiếp nhận">
 <select value={form.channel} onChange={(event) => setForm({ ...form, channel: event.target.value as CertificationProposal['channel'] })}>
@@ -524,83 +584,93 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
 <option value="OTHER">Khác</option>
 </select>
 </Field>
-<Field label="Số lượng mẫu *" error={validationErrors.quantity}>
-<input type="number" min="1" value={form.quantity} aria-invalid={Boolean(validationErrors.quantity)} onChange={(event) => setForm({ ...form, quantity: event.target.value })} />
+<Field label="Số lượng mẫu *" error={validationErrors.quantity} errorId="pcn-proposal-error-quantity">
+<input id="pcn-proposal-quantity" type="number" min="1" step="1" inputMode="numeric" required value={form.quantity} aria-invalid={Boolean(validationErrors.quantity)} aria-describedby={validationErrors.quantity ? 'pcn-proposal-error-quantity' : undefined} onChange={(event) => setForm({ ...form, quantity: event.target.value })} />
+</Field>
+<Field label="Ngày tiếp nhận *" error={validationErrors.receivedAt} errorId="pcn-proposal-error-received-at">
+<PgdcnDateInput id="pcn-proposal-received-at" value={form.receivedAt} readOnly={Boolean(editingProposal)} required aria-required="true" aria-invalid={Boolean(validationErrors.receivedAt)} aria-describedby={validationErrors.receivedAt ? 'pcn-proposal-error-received-at' : undefined} onChange={(value) => setForm({ ...form, receivedAt: value })} />
 </Field>
 </div>
 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-2">
-<Field label="Khách hàng *" error={validationErrors['customerSnapshot.name']}>
-<PcnCatalogCombobox id="pcn-customer" label="Khách hàng *" hideLabel value={customerValue} options={customerOptions} unmatchedOption={legacyCustomerOption} onChange={handleCustomerSelection} required invalid={Boolean(validationErrors['customerSnapshot.name'])} aria-invalid={Boolean(validationErrors['customerSnapshot.name'])} disabled={saving} placeholder="Tìm mã hoặc tên khách hàng..." />
+<Field label="Khách hàng *" error={validationErrors['customerSnapshot.name']} errorId="pcn-proposal-error-customer-name">
+<PcnCatalogCombobox id="pcn-customer" label="Khách hàng *" hideLabel value={customerValue} options={customerOptions} unmatchedOption={legacyCustomerOption} onChange={handleCustomerSelection} required invalid={Boolean(validationErrors['customerSnapshot.name'])} aria-invalid={Boolean(validationErrors['customerSnapshot.name'])} disabled={saving} />
 </Field>
-<Field label="Địa chỉ khách hàng *" error={validationErrors['customerSnapshot.address']}>
-<input value={form.address} aria-invalid={Boolean(validationErrors['customerSnapshot.address'])} onChange={(event) => setForm({ ...form, address: event.target.value })} />
+<Field label="Địa chỉ khách hàng *" error={validationErrors['customerSnapshot.address']} errorId="pcn-proposal-error-customer-address">
+<input id="pcn-proposal-customer-address" required value={form.address} aria-invalid={Boolean(validationErrors['customerSnapshot.address'])} aria-describedby={validationErrors['customerSnapshot.address'] ? 'pcn-proposal-error-customer-address' : undefined} onChange={(event) => setForm({ ...form, address: event.target.value })} />
 </Field>
 </div>
 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-<Field label="Người liên hệ hoặc Mã số thuế *" error={validationErrors['customerSnapshot.contactPerson']}>
-<input value={form.contactPerson} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} onChange={(event) => setForm({ ...form, contactPerson: event.target.value })} />
+<Field label="Người liên hệ hoặc Mã số thuế *" error={validationErrors['customerSnapshot.contactPerson']} errorId="pcn-proposal-error-customer-contact">
+<input id="pcn-proposal-contact" required={!form.taxId.trim()} value={form.contactPerson} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} aria-describedby={validationErrors['customerSnapshot.contactPerson'] ? 'pcn-proposal-error-customer-contact' : undefined} onChange={(event) => setForm({ ...form, contactPerson: event.target.value })} />
 </Field>
-<Field label="Mã số thuế">
-<input value={form.taxId} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} onChange={(event) => setForm({ ...form, taxId: event.target.value })} />
+<Field label="Mã số thuế" error={validationErrors['customerSnapshot.contactPerson']} errorId="pcn-proposal-error-customer-tax-id">
+<input id="pcn-proposal-tax-id" required={!form.contactPerson.trim()} value={form.taxId} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} aria-describedby={validationErrors['customerSnapshot.contactPerson'] ? 'pcn-proposal-error-customer-contact' : undefined} onChange={(event) => setForm({ ...form, taxId: event.target.value })} />
 </Field>
 <Field label="Điện thoại">
-<input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
+<input id="pcn-proposal-phone" type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
 </Field>
 <Field label="Email">
-<input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+<input id="pcn-proposal-email" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
 </Field>
 </div>
-<Field label="Địa chỉ/kho liên quan *" error={validationErrors.warehouseAddress}>
-<input value={form.warehouseAddress} aria-invalid={Boolean(validationErrors.warehouseAddress)} onChange={(event) => setForm({ ...form, warehouseAddress: event.target.value })} />
+<Field label="Địa chỉ/kho liên quan *" error={validationErrors.warehouseAddress} errorId="pcn-proposal-error-warehouse-address">
+<input id="pcn-proposal-warehouse-address" required value={form.warehouseAddress} aria-invalid={Boolean(validationErrors.warehouseAddress)} aria-describedby={validationErrors.warehouseAddress ? 'pcn-proposal-error-warehouse-address' : undefined} onChange={(event) => setForm({ ...form, warehouseAddress: event.target.value })} />
 </Field>
 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-<Field label="Tên sản phẩm *" error={validationErrors.productName}>
-<input value={form.productName} aria-invalid={Boolean(validationErrors.productName)} onChange={(event) => setForm({ ...form, productName: event.target.value })} />
+<Field label="Tên sản phẩm *" error={validationErrors.productName} errorId="pcn-proposal-error-product-name">
+<input id="pcn-proposal-product-name" required value={form.productName} aria-invalid={Boolean(validationErrors.productName)} aria-describedby={validationErrors.productName ? 'pcn-proposal-error-product-name' : undefined} onChange={(event) => setForm({ ...form, productName: event.target.value })} />
 </Field>
-<Field label="Kiểu/loại sản phẩm *" error={validationErrors.productType}>
-<input value={form.productType} aria-invalid={Boolean(validationErrors.productType)} onChange={(event) => setForm({ ...form, productType: event.target.value })} />
+<Field label="Kiểu/loại sản phẩm *" error={validationErrors.productType} errorId="pcn-proposal-error-product-type">
+<input id="pcn-proposal-product-type" required value={form.productType} aria-invalid={Boolean(validationErrors.productType)} aria-describedby={validationErrors.productType ? 'pcn-proposal-error-product-type' : undefined} onChange={(event) => setForm({ ...form, productType: event.target.value })} />
 </Field>
-<Field label="Model *" error={validationErrors.model}>
-<input value={form.model} aria-invalid={Boolean(validationErrors.model)} onChange={(event) => setForm({ ...form, model: event.target.value })} />
+<Field label="Kiểu loại *" error={validationErrors.model} errorId="pcn-proposal-error-model">
+<input id="pcn-proposal-model" required value={form.model} aria-invalid={Boolean(validationErrors.model)} aria-describedby={validationErrors.model ? 'pcn-proposal-error-model' : undefined} onChange={(event) => setForm({ ...form, model: event.target.value })} />
 </Field>
-<Field label="Nhãn hiệu *" error={validationErrors.brand}>
-<input value={form.brand} aria-invalid={Boolean(validationErrors.brand)} onChange={(event) => setForm({ ...form, brand: event.target.value })} />
+<Field label="Nhãn hiệu *" error={validationErrors.brand} errorId="pcn-proposal-error-brand">
+<input id="pcn-proposal-brand" required value={form.brand} aria-invalid={Boolean(validationErrors.brand)} aria-describedby={validationErrors.brand ? 'pcn-proposal-error-brand' : undefined} onChange={(event) => setForm({ ...form, brand: event.target.value })} />
 </Field>
 </div>
 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-<Field label="Nhà sản xuất *" error={validationErrors.manufacturer}>
-<input value={form.manufacturer} onChange={(event) => setForm({ ...form, manufacturer: event.target.value })} />
+<Field label="Nhà sản xuất *" error={validationErrors.manufacturer} errorId="pcn-proposal-error-manufacturer">
+<input id="pcn-proposal-manufacturer" required value={form.manufacturer} aria-invalid={Boolean(validationErrors.manufacturer)} aria-describedby={validationErrors.manufacturer ? 'pcn-proposal-error-manufacturer' : undefined} onChange={(event) => setForm({ ...form, manufacturer: event.target.value })} />
 </Field>
 <Field label="Địa chỉ nhà sản xuất">
-<input value={form.manufacturerAddress} onChange={(event) => setForm({ ...form, manufacturerAddress: event.target.value })} />
+<input id="pcn-proposal-manufacturer-address" value={form.manufacturerAddress} onChange={(event) => setForm({ ...form, manufacturerAddress: event.target.value })} />
 </Field>
-<Field label="Thông số kỹ thuật / mô tả *" error={validationErrors.specifications}>
-<textarea rows={2} value={form.specifications} aria-invalid={Boolean(validationErrors.specifications)} onChange={(event) => setForm({ ...form, specifications: event.target.value })} />
+<Field label="Thông số kỹ thuật / mô tả *" error={validationErrors.specifications} errorId="pcn-proposal-error-specifications">
+<textarea id="pcn-proposal-specifications" rows={2} required value={form.specifications} aria-invalid={Boolean(validationErrors.specifications)} aria-describedby={validationErrors.specifications ? 'pcn-proposal-error-specifications' : undefined} onChange={(event) => setForm({ ...form, specifications: event.target.value })} />
 </Field>
 </div>
 <div>
-<div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Lĩnh vực *</div>
+<div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Lĩnh vực <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></div>
 <div className="flex flex-wrap gap-2">{fields.map((field) => <label key={field.code} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold cursor-pointer ${form.fieldCodes.includes(field.code) ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}>
-<input type="checkbox" checked={form.fieldCodes.includes(field.code)} aria-invalid={Boolean(validationErrors.fieldCodes)} disabled={Boolean(editingProposal)} onChange={(event) => setForm({ ...form, fieldCodes: event.target.checked ? [...form.fieldCodes, field.code] : form.fieldCodes.filter((code) => code !== field.code) })} />{field.name}{field.scopeStatus === 'NEEDS_PCN_CONFIRMATION' && <span className="rounded bg-amber-50 px-1 py-0.5 text-[8px] font-black text-amber-700">xác nhận phạm vi</span>}</label>)}</div>{validationErrors.fieldCodes && <p role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{validationErrors.fieldCodes}</p>}</div>
-<div data-testid="pcn-proposal-modal-footer" className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-white px-3 py-3 md:px-4">
-<button type="button" onClick={() => { reset(); setOpenForm(false); }} disabled={saving} className="rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-600 disabled:opacity-40">Hủy</button>
-<button type="submit" disabled={saving} aria-busy={saving} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : editingProposal ? 'Lưu thay đổi' : 'Tạo Đề nghị & bộ hồ sơ'}</button>
-</div>
-</div></form></div>}
+<input type="checkbox" checked={form.fieldCodes.includes(field.code)} aria-invalid={Boolean(validationErrors.fieldCodes)} aria-describedby={validationErrors.fieldCodes ? 'pcn-proposal-error-field-codes' : undefined} disabled={Boolean(editingProposal)} onChange={(event) => setForm({ ...form, fieldCodes: event.target.checked ? [...form.fieldCodes, field.code] : form.fieldCodes.filter((code) => code !== field.code) })} />{field.name}{field.scopeStatus === 'NEEDS_PCN_CONFIRMATION' && <span className="rounded bg-amber-50 px-1 py-0.5 text-[8px] font-black text-amber-700">xác nhận phạm vi</span>}</label>)}</div>{validationErrors.fieldCodes && <p id="pcn-proposal-error-field-codes" role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{validationErrors.fieldCodes}</p>}</div>
+<section aria-labelledby="pcn-proposal-domain-boundaries" className="rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 text-[10px] text-indigo-900">
+<h3 id="pcn-proposal-domain-boundaries" className="font-black">Dữ liệu bổ sung theo đúng vùng nghiệp vụ</h3>
+<p className="mt-1 leading-4">Đơn vị mẫu sẽ được ghi trong thông tin lô/mẫu sau khi hồ sơ được tiếp nhận; biểu mẫu Đề nghị không yêu cầu nhập đơn vị riêng.</p>
+<p className="mt-1 leading-4">Lĩnh vực được xác nhận ngay tại đây; tiêu chuẩn và phương thức chứng nhận được chốt trong phần Tổng quan hồ sơ.</p>
+<p className="mt-1 leading-4">Tài liệu, chứng cứ và ghi chú vận hành được bổ sung tại checklist hồ sơ sau khi tạo Đề nghị.</p>
+<p className="mt-1 leading-4">Trạng thái do hệ thống quản lý theo quy trình; biểu mẫu không cho phép tự đổi trạng thái.</p>
+</section>
+</form>
+      </PgdcnWindowsWorkflowModal></>}
       <div data-testid="pcn-proposal-filters" className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-[minmax(0,1fr)_190px_170px_auto] md:items-center">
-        <label className="block"><span className="sr-only">Tìm Đề nghị</span><input aria-label="Tìm Đề nghị" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã, khách hàng, sản phẩm, model..." className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px] outline-none focus:border-emerald-400" /></label>
-        <select aria-label="Lọc trạng thái hồ sơ" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as PcnDossierStatus | '')} className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="">Tất cả trạng thái</option>{Object.entries(statusLabels).map(([status, label]) => <option key={status} value={status}>{label}</option>)}</select>
-        <select aria-label="Lọc Lĩnh vực" value={fieldFilter} onChange={(event) => setFieldFilter(event.target.value)} className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="">Tất cả Lĩnh vực</option>{fields.map((field) => <option key={field.code} value={field.code}>{field.name}</option>)}</select>
+        <label className="block"><span className="mb-1 block text-[9px] font-black text-slate-600">Tìm Đề nghị</span><input aria-label="Tìm Đề nghị" value={query} onChange={(event) => setQuery(event.target.value)} className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px] outline-none focus:border-emerald-400" /></label>
+        <label className="block"><span className="mb-1 block text-[9px] font-black text-slate-600">Trạng thái</span><select aria-label="Lọc trạng thái hồ sơ" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as PcnDossierStatus | '')} className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="">Tất cả trạng thái</option>{Object.entries(statusLabels).map(([status, label]) => <option key={status} value={status}>{label}</option>)}</select></label>
+        <label className="block"><span className="mb-1 block text-[9px] font-black text-slate-600">Lĩnh vực</span><select aria-label="Lọc Lĩnh vực" value={fieldFilter} onChange={(event) => setFieldFilter(event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="">Tất cả Lĩnh vực</option>{fields.map((field) => <option key={field.code} value={field.code}>{field.name}</option>)}</select></label>
         <div className="flex items-center justify-end text-[10px] font-bold text-slate-500">{visibleProposals.length}/{proposals.length} Đề nghị</div>
       </div>
       {initialDossierId && <div className="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[10px] font-bold text-indigo-800">Đang tập trung hồ sơ: {dossiers.find((dossier) => dossier.id === initialDossierId)?.dossierCode || initialDossierId}</div>}
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{proposals.length === 0 ? <EmptyState title="Chưa có Đề nghị" description="Tiếp nhận Đề nghị từ khách hàng để tạo bộ hồ sơ chứng nhận." action={canEdit ? 'Tạo Đề nghị' : undefined} onAction={canEdit ? () => { reset(); setOpenForm(true); } : undefined} /> : visibleProposals.length === 0 ? <EmptyState title="Không tìm thấy Đề nghị" description="Thử đổi từ khóa hoặc bộ lọc trạng thái/Lĩnh vực." /> : visibleProposals.map((proposal) => { const dossier = dossiers.find((item) => item.id === proposal.dossierId || item.proposalId === proposal.id); return dossier ? <ProposalRegisterRow key={proposal.id} proposal={proposal} dossier={dossier} canEdit={canEdit} onOpenDossier={() => onOpenDossier(dossier)} onEdit={() => openEdit(proposal)} /> : <div key={proposal.id} className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[10px] text-amber-800">Đề nghị <b>{proposal.proposalCode}</b> chưa có bộ hồ sơ liên kết.</div>; })}</div>
+      {proposals.length === 0 ? <EmptyState title="Chưa có Đề nghị" description="Tiếp nhận Đề nghị từ khách hàng để tạo bộ hồ sơ chứng nhận." action={canEdit ? 'Tạo Đề nghị' : undefined} onAction={canEdit ? openProposalForm : undefined} /> : visibleProposals.length === 0 ? <EmptyState title="Không tìm thấy Đề nghị" description="Thử đổi từ khóa hoặc bộ lọc trạng thái/Lĩnh vực." /> : <div className="mobile-scroll-x min-w-0 overflow-x-auto rounded-xl border border-slate-200 bg-white"><table aria-label="Danh sách Đề nghị PCN" className="w-full min-w-[980px] border-collapse text-left text-[10px]"><caption className="sr-only">Danh sách Đề nghị PCN và hồ sơ liên kết</caption><thead className="bg-slate-50 text-[10px] font-black uppercase tracking-wide text-slate-500"><tr><th scope="col" className="sticky left-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-3">Mã Đề nghị</th><th scope="col" className="border-b border-slate-200 px-3 py-3">Mã hồ sơ</th><th scope="col" className="border-b border-slate-200 px-3 py-3">Trạng thái</th><th scope="col" className="border-b border-slate-200 px-3 py-3">Khách hàng</th><th scope="col" className="border-b border-slate-200 px-3 py-3">Sản phẩm / kiểu loại</th><th scope="col" className="border-b border-slate-200 px-3 py-3">Lĩnh vực</th><th scope="col" className="border-b border-slate-200 px-3 py-3">Tiếp nhận</th><th scope="col" className="border-b border-slate-200 px-3 py-3 text-right">Thao tác</th></tr></thead><tbody className="divide-y divide-slate-100">{visibleProposals.map((proposal) => { const dossier = dossiers.find((item) => item.id === proposal.dossierId || item.proposalId === proposal.id); return dossier ? <ProposalRegisterRow key={proposal.id} proposal={proposal} dossier={dossier} canEdit={canEdit} onOpenDossier={() => onOpenDossier(dossier)} onEdit={() => openEdit(proposal)} /> : <tr key={proposal.id}><td colSpan={8} className="px-3 py-3 text-[10px] text-amber-800">Đề nghị <b>{proposal.proposalCode}</b> chưa có bộ hồ sơ liên kết.</td></tr>; })}</tbody></table></div>}
     </div>
   );
 }
 
-function Field({ label, error, hideLabel = false, children }: { label: string; error?: string; hideLabel?: boolean; children: React.ReactNode }) {
-  return <label className="block">{!hideLabel && <span className="block text-[10px] font-black text-slate-500 mb-1">{label}</span>}<div className={`[&_input]:w-full [&_input]:rounded-md [&_input]:border [&_input]:px-2.5 [&_input]:py-1.5 [&_input]:text-[11px] [&_input]:outline-none [&_input]:focus:border-emerald-400 [&_select]:w-full [&_select]:rounded-md [&_select]:border [&_select]:bg-white [&_select]:px-2.5 [&_select]:py-1.5 [&_select]:text-[11px] [&_textarea]:w-full [&_textarea]:rounded-md [&_textarea]:border [&_textarea]:px-2.5 [&_textarea]:py-1.5 [&_textarea]:text-[11px] [&_textarea]:outline-none ${error ? '[&_input]:border-rose-300 [&_select]:border-rose-300 [&_textarea]:border-rose-300 [&_input]:bg-rose-50/40 [&_select]:bg-rose-50/40 [&_textarea]:bg-rose-50/40' : '[&_input]:border-slate-200 [&_select]:border-slate-200 [&_textarea]:border-slate-200'}`}>{children}</div>{error && <p role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{error}</p>}</label>;
+function Field({ label, required, error, errorId, hideLabel = false, children }: { label: string; required?: boolean; error?: string; errorId?: string; hideLabel?: boolean; children: React.ReactNode }) {
+  const normalizedLabel = label.replace(/\s*\*\s*$/, '');
+  const childProps = React.isValidElement(children) ? children.props as { required?: boolean } : undefined;
+  const isRequired = required ?? (Boolean(childProps?.required) || normalizedLabel !== label);
+  return <label className="block">{!hideLabel && <span className="block text-[10px] font-black text-slate-500 mb-1">{normalizedLabel}{isRequired && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span>}<div className={`[&_input]:w-full [&_input]:rounded-md [&_input]:border [&_input]:px-2.5 [&_input]:py-1.5 [&_input]:text-[11px] [&_input]:outline-none [&_input]:focus:border-emerald-400 [&_select]:w-full [&_select]:rounded-md [&_select]:border [&_select]:bg-white [&_select]:px-2.5 [&_select]:py-1.5 [&_select]:text-[11px] [&_textarea]:w-full [&_textarea]:rounded-md [&_textarea]:border [&_textarea]:px-2.5 [&_textarea]:py-1.5 [&_textarea]:text-[11px] [&_textarea]:outline-none ${error ? '[&_input]:border-rose-300 [&_select]:border-rose-300 [&_textarea]:border-rose-300 [&_input]:bg-rose-50/40 [&_select]:bg-rose-50/40 [&_textarea]:bg-rose-50/40' : '[&_input]:border-slate-200 [&_select]:border-slate-200 [&_textarea]:border-slate-200'}`}>{children}</div>{error && <p id={errorId} role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{error}</p>}</label>;
 }
 
 export type PcnWorkspaceProps = {
@@ -767,7 +837,8 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
       toast.error(error?.message || 'Không thể tải bộ hồ sơ PCN.');
     }
   };
-  const isPcnAdmin = currentUser.systemRole === 'admin' || currentUser.role === 'admin';
+  const isPcnAdmin = canManageSystemUsers(currentUser);
+  const canViewPcnSettings = canViewSystemSettings(currentUser);
   const canMutatePcn = currentUser.systemRole !== 'viewer' && currentUser.role !== 'viewer';
   const pcnUnreadNotificationCount = pcn.notifications.filter((notification) => !notification.read && canViewNotification(notification, currentUser)).length;
   const claimPcnDossier = async (dossier: CertificationDossier) => {
@@ -840,20 +911,22 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
   ) : activeSection === 'lab-operations' ? (
     <PcnLabOperationsView dossiers={pcn.dossiers} proposals={pcn.proposals} sampleLots={pcn.sampleLots} sampleItems={pcn.sampleItems} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} sampleRequestBundles={pcn.sampleRequestBundles} returnedResults={pcn.returnedResults} canEdit={canMutatePcn} onSaveBundle={pcn.saveSampleRequestBundle} onSendBundle={pcn.sendSampleRequestBundle} onRetryBundleDispatch={pcn.retrySampleRequestBundleDispatch} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'drafting' ? (
-    <PcnDraftingWorkspaceView proposals={pcn.proposals} dossiers={pcn.dossiers} templates={pcn.templates} onUploadTemplate={pcn.uploadPcnTemplate} onReviewTemplate={pcn.reviewPcnTemplate} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} initialDossierId={initialDraftDossierId} initialRequirementId={initialDraftRequirementId} initialNodeId={initialDraftNodeId} initialKind={initialDraftKind} onToast={(message, type) => type === 'error' ? toast.error(message) : toast.success(message)} />
+    <PcnDraftingWorkspaceView proposals={pcn.proposals} dossiers={pcn.dossiers} templates={pcn.templates} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} onUploadTemplate={pcn.uploadPcnTemplate} onReviewTemplate={pcn.reviewPcnTemplate} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} initialDossierId={initialDraftDossierId} initialRequirementId={initialDraftRequirementId} initialNodeId={initialDraftNodeId} initialKind={initialDraftKind} onToast={(message, type) => type === 'error' ? toast.error(message) : toast.success(message)} />
   ) : activeSection === 'assistant' ? (
     <PcnAssistantView dossiers={pcn.dossiers} proposals={pcn.proposals} requirements={pcn.documentRequirements} documents={pcn.dossierDocuments} labRequests={pcn.labRequests} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} returnedResults={pcn.returnedResults} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'customers' ? (
     <PcnCustomersManagementView initialSearchQuery={customerSearchQuery} />
   ) : activeSection === 'activityLogs' ? (
     <ActivityLogView currentUser={currentUser} systemUsers={pcn.users} />
-  ) : activeSection === 'settings' && isPcnAdmin ? (
+  ) : activeSection === 'settings' && canViewPcnSettings ? (
     <PcnSettingsView currentUser={currentUser} templates={pcn.templates} onUploadTemplate={pcn.uploadPcnTemplate} onReviewTemplate={pcn.reviewPcnTemplate} />
   ) : activeSection === 'users' && isPcnAdmin ? (
     <PcnUserManagementView users={pcn.users} roles={pcn.departmentRoles} fields={pcn.fields} currentUser={currentUser} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
   ) : null;
   const systemRoleLabel = currentUser.systemRole || currentUser.role;
-  const departmentRoleLabel = currentUser.departmentRoleCode || 'Chưa phân công';
+  const managementRoleLabel = ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.find((role) => role.code === currentUser.managementRoleCode)?.name || 'Chưa phân công chức danh quản lý';
+  const professionalRoleLabel = (currentUser.professionalRoleCodes || []).map((code) => PROFESSIONAL_ROLE_OPTIONS.find((role) => role.code === code)?.name || code).join(', ') || 'Chưa gán vai trò chuyên môn';
+  const departmentRoleLabel = `${managementRoleLabel} • ${professionalRoleLabel}`;
   return (
     <>
       <div className={embedded ? 'flex h-full min-h-0 w-full min-w-0 flex-col' : 'pcn-compact flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800'}>

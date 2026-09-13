@@ -13,7 +13,7 @@ test('workflow template management is a manager/admin surface with revision and 
   assert.match(view, /onPublishWorkflowTemplate/);
   assert.match(view, /onRetireWorkflowTemplate/);
   assert.match(view, /nodes|transitions/);
-  assert.match(view, /Chỉ Admin hoặc Quản lý PCN/);
+  assert.match(view, /Chỉ Quản trị viên hoặc Quản lý PCN/);
 });
 
 test('shared Hồ sơ mẫu workspace owns the workflow catalog and manager-only actions', () => {

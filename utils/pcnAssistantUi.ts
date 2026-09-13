@@ -36,7 +36,7 @@ export function classifyPcnAssistantError(input: PcnAssistantErrorInput): PcnAss
     return {
       kind: 'EMPTY_DOCUMENT',
       title: 'File chưa có nội dung văn bản để đọc',
-      action: 'Mở file bằng chứng để kiểm tra nội dung.',
+      action: 'Mở tệp bằng chứng để kiểm tra nội dung.',
       detail: detailFromMessage(message),
     };
   }

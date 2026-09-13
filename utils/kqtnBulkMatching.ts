@@ -126,14 +126,14 @@ export function matchKqtnBulkFile(
         candidateId: modelBrandMatches[0].id,
         confidence: 'medium',
         needsManualSelection: false,
-        reason: 'Khớp chính xác model và hãng; mã hóa chưa được xác định.',
+      reason: 'Khớp chính xác kiểu loại và hãng; mã hóa chưa được xác định.',
       };
     }
     if (modelMatches.length > 1) {
       return {
         confidence: 'low',
         needsManualSelection: true,
-        reason: 'Model khớp nhiều đầu mẫu, cần người dùng chọn.',
+        reason: 'Kiểu loại khớp nhiều đầu mẫu, cần người dùng chọn.',
       };
     }
     if (modelMatches.length === 1) {
@@ -141,7 +141,7 @@ export function matchKqtnBulkFile(
         candidateId: modelMatches[0].id,
         confidence: 'low',
         needsManualSelection: true,
-        reason: 'Chỉ khớp model; cần người dùng rà soát đầu mẫu.',
+        reason: 'Chỉ khớp kiểu loại; cần người dùng rà soát đầu mẫu.',
       };
     }
   }

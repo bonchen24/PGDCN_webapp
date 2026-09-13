@@ -112,7 +112,7 @@ export default function PcnSidebar({
     >
       <div className={`flex h-16 items-center border-b border-slate-800 p-4 ${showExpandedLabels ? 'gap-3' : 'justify-center'}`}>
         <img src="/icons/iemm-logo-32.png" alt="IEMM • TVCI" className="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-0.5" />
-        {showExpandedLabels && <div className="min-w-0"><div className="truncate text-xs font-black uppercase tracking-wide text-white">IEMM • TVCI</div><div className="mt-1 truncate text-[9px] font-bold leading-none tracking-widest text-emerald-400">PHÒNG GIÁM ĐỊNH - CHỨNG NHẬN</div></div>}
+        {showExpandedLabels && <div className="min-w-0"><div className="truncate text-xs font-black uppercase tracking-wide text-white">IEMM • TVCI</div><div className="mt-1 truncate text-[9px] font-bold leading-none tracking-widest text-emerald-400">PHÒNG GIÁM ĐỊNH, CHỨNG NHẬN, PHÁT TRIỂN THỊ TRƯỜNG</div></div>}
         <button type="button" className="ml-auto text-slate-400 lg:hidden" aria-label="Đóng menu PCN" onClick={onCloseMobileMenu}><X size={18} /></button>
       </div>
 

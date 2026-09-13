@@ -62,7 +62,9 @@ test('QC4 official data mapping is linked to dossier context and issuance fields
     ten_cong_ty: 'Công ty A',
     dia_chi_ct: 'Hà Nội',
     so_dang_ky: 'GCN-0665/2026',
+    so_gcn: 'GCN-0665/2026',
     ngay_cap_CN: '28/08/2026',
+    ngay_cap_gcn: '28/08/2026',
   });
 });
 
@@ -111,6 +113,19 @@ test('DOCX renderer replaces QC4 delimiters and preserves the template package',
   assert.match(xml, /GCN-0665\/2026/);
   assert.match(xml, /Dây điện hạ thế/);
   assert.match(xml, /Công ty A/);
+  assert.doesNotMatch(xml, /\[\[/);
+});
+
+test('official mapper supplies canonical certificate and decision aliases', () => {
+  const certificate = buildPcnOfficialTemplateData({ context, issuance, documentKind: 'CERTIFICATE' });
+  const decision = buildPcnOfficialTemplateData({ context, issuance, documentKind: 'DECISION' });
+  assert.equal(certificate.so_gcn, issuance.issuanceNumber);
+  assert.equal(certificate.ngay_cap_gcn, '28/08/2026');
+  assert.equal(decision.so_quyet_dinh, issuance.issuanceNumber);
+  assert.equal(decision.ngay_qd, '28/08/2026');
+
+  const rendered = renderPcnOfficialDocx(makeTemplate(['so_gcn', 'ngay_cap_gcn', 'so_quyet_dinh', 'ngay_qd']), { ...certificate, ...decision });
+  const xml = new PizZip(rendered).file('word/document.xml')!.asText();
   assert.doesNotMatch(xml, /\[\[/);
 });
 

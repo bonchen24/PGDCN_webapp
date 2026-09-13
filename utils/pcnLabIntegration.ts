@@ -314,7 +314,7 @@ export function buildPcnLabDispatchPayload(input: PcnLabDispatchInput): PcnLabDi
       pcnSampleItemId: required(item.id, 'Mã mẫu/model PCN'),
       sampleCode: required(item.sampleCode, 'Mã mẫu'),
       sampleType: required(item.sampleType, 'Loại mẫu'),
-      model: required(item.model, 'Model'),
+      model: required(item.model, 'Kiểu loại'),
       quantity: item.quantity,
       ...(optional(item.brand) ? { brand: optional(item.brand) } : {}),
       ...(optional(item.unit) ? { unit: optional(item.unit) } : {}),

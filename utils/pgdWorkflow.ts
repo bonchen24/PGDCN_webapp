@@ -12,6 +12,7 @@ import {
   type PgdResultValue,
   type PgdTransitionContext,
 } from './pgdDomain.ts';
+import { isOrganizationLeader } from './pcnRbac.ts';
 
 export type PgdOperationalStationKey =
   | 'INTAKE_CAPABILITY'
@@ -76,12 +77,12 @@ export function getPgdPostSignatureMutationDenial(status: PgdInspectionStatus): 
 
 export function getPgdAssignmentApprovalDenial(
   status: PgdInspectionAssignment['status'],
-  user: { role?: string; systemRole?: string; pgdRole?: string } = {},
+  user: { role?: string; systemRole?: string; managementRoleCode?: import('../types.ts').OrganizationManagementRoleCode; departmentRoleCode?: string; pgdRole?: string } = {},
 ): string | null {
   if (status !== 'APPROVED') return null;
   const systemRole = String(user.systemRole || user.role || '').trim().toLowerCase();
   const pgdRole = String(user.pgdRole || '').trim().toUpperCase();
-  if (systemRole === 'admin' || ['PGD_ADMIN', 'PGD_MANAGER'].includes(pgdRole)) return null;
+  if (systemRole === 'admin' || isOrganizationLeader(user) || ['PGD_ADMIN', 'PGD_MANAGER'].includes(pgdRole)) return null;
   return 'Chỉ Admin hoặc Quản lý có scope PGD mới được phê duyệt phân công PGD.';
 }
 

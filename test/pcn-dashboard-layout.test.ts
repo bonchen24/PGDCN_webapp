@@ -26,11 +26,12 @@ test('PCN dashboard places the employee KPI and field cards in one responsive su
   assert.match(dashboard, /data-testid="pcn-dashboard-summary-grid"[\s\S]*data-testid="pcn-dashboard-fields"/);
 });
 
-test('PCN dossier cards stay inside the mobile width and wrap long identifiers', () => {
+test('PCN dossier tables stay inside the mobile width and expose stable row identity', () => {
   assert.match(dashboard, /data-testid="pcn-dashboard-work-surface" className="min-w-0/);
-  assert.match(pipeline, /<article className="min-w-0 w-full overflow-hidden/);
+  assert.match(pipeline, /<table aria-label="Bảng hồ sơ theo lưu trình"/);
+  assert.match(pipeline, /mobile-scroll-x[\s\S]*overflow-x-auto/);
   assert.match(pipeline, /break-all font-mono/);
-  assert.match(pipeline, /mt-3 min-w-0 w-full grid/);
+  assert.match(pipeline, /<th scope="row"/);
 });
 
 // --- End of pcn-dashboard-layout.test.ts ---

@@ -21,7 +21,7 @@ test('classifies empty DOCX text and keeps the file name', () => {
   });
   assert.equal(result.kind, 'EMPTY_DOCUMENT');
   assert.match(result.detail || '', /Dấu mềm\.docx/);
-  assert.equal(result.action, 'Mở file bằng chứng để kiểm tra nội dung.');
+  assert.equal(result.action, 'Mở tệp bằng chứng để kiểm tra nội dung.');
 });
 
 test('uses a safe retry message for unknown assistant failures', () => {

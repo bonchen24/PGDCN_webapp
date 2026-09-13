@@ -64,6 +64,7 @@ export function PcnDossierAssignmentControl({
       nextUsername: currentUser.username,
       actorUsername: currentUser.username,
       actorSystemRole: currentUser.systemRole || currentUser.role,
+      actorManagementRoleCode: currentUser.managementRoleCode,
       actorDepartmentRoleCode: currentUser.departmentRoleCode,
     }) || getPcnDossierAssignmentDenial({
       assignmentLabel: 'Người thực hiện',
@@ -104,9 +105,9 @@ export function PcnDossierAssignmentControl({
           options={assignmentOptions}
           unmatchedOption={unmatchedOwnerOption}
           disabled={disabled || saving}
-          placeholder={assignmentOptions.length > 0 ? 'Chưa gán người thực hiện · chọn nhân viên' : 'Chưa có nhân viên phù hợp'}
+
         />
-        <p className="mt-1 text-[9px] text-emerald-700">Admin/Quản lý chọn nhân viên đang hoạt động trong phòng và đúng phạm vi Lĩnh vực.</p>
+        <p className="mt-1 text-[9px] text-emerald-700">Quản trị viên/Quản lý chọn nhân viên đang hoạt động trong phòng và đúng phạm vi lĩnh vực.</p>
       </div>
     );
   }
@@ -114,7 +115,7 @@ export function PcnDossierAssignmentControl({
   return (
     <div data-testid="pcn-dossier-assignment-control" className={compact ? 'min-w-0 flex-1' : 'mt-3'}>
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className={`inline-flex min-h-8 items-center rounded-full border px-2 py-1 text-[10px] font-black ${ownerUsername ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`} title={ownerUsername ? 'Chỉ người được gắn tên hoặc Admin/Quản lý được thao tác hồ sơ.' : 'Hồ sơ đang chờ nhân viên trong phòng tự nhận hoặc được Admin/Quản lý phân công.'}>
+        <span className={`inline-flex min-h-8 items-center rounded-full border px-2 py-1 text-[10px] font-black ${ownerUsername ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`} title={ownerUsername ? 'Chỉ người được gắn tên hoặc Quản trị viên/Quản lý được thao tác hồ sơ.' : 'Hồ sơ đang chờ nhân viên trong phòng tự nhận hoặc được Quản trị viên/Quản lý phân công.'}>
           {ownerUsername ? `Người thực hiện: ${getPcnUserDisplayName(ownerUsername, users)}` : 'Chưa gán người thực hiện'}
         </span>
         {!ownerUsername && onClaim && (
@@ -129,7 +130,7 @@ export function PcnDossierAssignmentControl({
           </button>
         )}
       </div>
-      {!ownerUsername && !onClaim && <p className="mt-1 text-[9px] text-slate-500">Chờ Admin/Quản lý phân công hoặc nhân viên trong phòng nhận hồ sơ.</p>}
+      {!ownerUsername && !onClaim && <p className="mt-1 text-[9px] text-slate-500">Chờ Quản trị viên/Quản lý phân công hoặc nhân viên trong phòng nhận hồ sơ.</p>}
       {ownerUsername && currentUser && ownerUsername.toLowerCase() !== currentUser.username.trim().toLowerCase() && <p className="mt-1 text-[9px] text-slate-500">Hồ sơ đã gắn người khác; bạn chỉ được thao tác hồ sơ đã gắn tên mình.</p>}
     </div>
   );

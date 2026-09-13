@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 import {
+  formatPcnDossierCode,
   formatPcnProposalCode,
   formatPcnSampleLotCode,
   resequencePcnProposalCodes,
@@ -12,6 +13,11 @@ import {
 test('formats PCN proposal codes with a Vietnam date and two-digit daily serial', () => {
   assert.equal(formatPcnProposalCode(1, '2026-09-04T17:00:00.000Z'), 'PCN-260905-01');
   assert.equal(formatPcnProposalCode(99, '2026-09-05T16:59:59.000Z'), 'PCN-260905-99');
+});
+
+test('derives a complete dossier code from the server-assigned proposal code', () => {
+  assert.equal(formatPcnDossierCode('PCN-260913-01', '2026-09-13T02:00:00.000Z'), 'HS-2026-PCN-260913-01');
+  assert.throws(() => formatPcnDossierCode('', '2026-09-13T02:00:00.000Z'), /proposal code/i);
 });
 
 test('formats PCN sample-lot codes with a four-digit yearly serial', () => {
@@ -67,6 +73,7 @@ test('PCN intake allocates proposal codes in a locked daily sequence owned by th
   const intake = server.slice(server.indexOf("app.post('/api/pcn/intake'"), server.indexOf("app.post('/api/pcn/proposals/:proposalId'"));
 
   assert.match(intake, /formatPcnProposalCode/);
+  assert.match(intake, /formatPcnDossierCode\(proposalCode, proposalReceivedAt\)/);
   assert.match(intake, /getPcnVietnamDateKey/);
   assert.match(intake, /pcn-proposal-sequence/);
   assert.match(intake, /MAX\(CAST\(substring\(data->>'proposalCode'/);
@@ -84,6 +91,22 @@ test('PCN sample-lot creation allocates yearly lot codes in a locked server sequ
   assert.match(sampleLots, /lotCode: existingLot\.lotCode/);
 });
 
+test('identifier migration repairs only incomplete generated dossier codes', async () => {
+  const { buildPcnIdentifierMigrationPlan } = await import('../scripts/migratePcnIdentifiers.ts');
+  const plan = buildPcnIdentifierMigrationPlan(
+    [{ documentId: 'proposal-1', data: { proposalCode: 'PCN-260913-01', receivedAt: '2026-09-13T00:00:00.000Z' } }],
+    [],
+    [
+      { documentId: 'dossier-1', data: { proposalId: 'proposal-1', dossierCode: 'HS-2026-', createdAt: '2026-09-13T00:00:00.000Z' } },
+      { documentId: 'dossier-2', data: { proposalId: 'proposal-1', dossierCode: 'QC4-2026-0665', createdAt: '2026-09-13T00:00:00.000Z' } },
+    ],
+  );
+  assert.deepEqual(plan.dossiers, [
+    { documentId: 'dossier-1', oldCode: 'HS-2026-', newCode: 'HS-2026-PCN-260913-01' },
+    { documentId: 'dossier-2', oldCode: 'QC4-2026-0665', newCode: 'QC4-2026-0665' },
+  ]);
+});
+
 test('PCN identifier migration is explicit, transactional, and keeps technical ids', () => {
   const migrationPath = new URL('../scripts/migratePcnIdentifiers.ts', import.meta.url);
   const migration = fs.readFileSync(migrationPath, 'utf8');
@@ -93,6 +116,7 @@ test('PCN identifier migration is explicit, transactional, and keeps technical i
   assert.match(migration, /BEGIN/);
   assert.match(migration, /COMMIT/);
   assert.match(migration, /UPDATE app_documents/);
+  assert.match(migration, /certificationDossiers/);
   assert.match(migration, /--apply/);
   assert.match(migration, /--confirm=/);
   assert.doesNotMatch(migration, /DELETE FROM app_documents/);

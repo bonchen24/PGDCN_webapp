@@ -2,21 +2,27 @@
 
 import React, { useMemo, useState } from 'react';
 
-import type { PcnDossierDocument } from '../types';
+import type { PcnDossierDocument, UserAccount } from '../types';
 import type {
   PcnDossierNodeBusinessFact,
   PcnDossierNodeDocumentItem,
   PcnDossierNodeWorkProjection,
 } from '../utils/pcnDossierNodeWork';
+import { getPcnNodeDocumentGenerationKind } from '../utils/pcnDossierNodeWork';
 import { getPcnFileUrl } from '../utils/pcnFileApi';
 
 export interface PcnDossierNodeWorkPanelProps {
   projection: PcnDossierNodeWorkProjection;
+  panelId?: string;
   taskId?: string;
   documents?: readonly PcnDossierDocument[];
+  currentUser?: UserAccount;
   canEdit?: boolean;
   onStartTask?: (taskId: string) => Promise<void>;
   onCompleteTask?: (taskId: string, expectedCycleNo?: number) => Promise<void>;
+  onReturnTask?: (taskId: string, input: { targetNodeId: string; reason: string }) => Promise<void>;
+  returnTargets?: Array<{ id: string; label: string }>;
+  onOpenDocuments?: () => void;
   onUploadDocument?: (requirementId: string, file: File) => Promise<void>;
   onCreateFromForm?: (requirementId: string) => void | Promise<void>;
   onOpenDrafting?: (item: PcnDossierNodeDocumentItem) => string | undefined;
@@ -51,7 +57,7 @@ function actionLabel(action: PcnDossierNodeDocumentItem['actions'][number]): str
     case 'VIEW': return 'Xem tài liệu';
     case 'REPLACE': return 'Thay phiên bản';
     case 'REMOVE_CURRENT': return 'Xóa tài liệu hiện tại';
-    case 'UPLOAD': return 'Upload tài liệu';
+    case 'UPLOAD': return 'Tải tài liệu';
     case 'CREATE_FROM_FORM': return 'Tạo theo biểu mẫu';
     case 'CLEAR_WAIVER': return 'Bỏ trạng thái bỏ qua';
   }
@@ -63,11 +69,16 @@ function documentRecord(documents: readonly PcnDossierDocument[], item: PcnDossi
 
 export function PcnDossierNodeWorkPanel({
   projection,
+  panelId,
   taskId,
   documents = [],
+  currentUser,
   canEdit = false,
   onStartTask,
   onCompleteTask,
+  onReturnTask,
+  returnTargets = [],
+  onOpenDocuments,
   onUploadDocument,
   onCreateFromForm,
   onOpenDrafting,
@@ -80,10 +91,15 @@ export function PcnDossierNodeWorkPanel({
 }: PcnDossierNodeWorkPanelProps) {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [waiverReasons, setWaiverReasons] = useState<Record<string, string>>({});
+  const [showReturnForm, setShowReturnForm] = useState(false);
+  const [returnTargetId, setReturnTargetId] = useState(returnTargets[0]?.id || '');
+  const [returnReason, setReturnReason] = useState('');
 
   const documentByRequirementId = useMemo(() => new Map(documents.map((document) => [document.requirementId, document])), [documents]);
   const canStart = Boolean(taskId && onStartTask && ['READY', 'RETURNED'].includes(projection.status));
   const canContinue = Boolean(taskId && onCompleteTask && projection.canContinue);
+  const canReturn = Boolean(taskId && onReturnTask && canEdit && returnTargets.length > 0 && ['IN_PROGRESS', 'WAITING', 'RETURNED', 'COMPLETED'].includes(projection.status));
+  const currentRole = currentUser?.professionalRoleCodes?.join(', ') || currentUser?.position || currentUser?.systemRole || 'Người xử lý hồ sơ';
 
   async function run(key: string, callback: () => Promise<void>) {
     setBusyKey(key);
@@ -108,6 +124,7 @@ export function PcnDossierNodeWorkPanel({
     const reason = waiverReasons[item.requirementId] || '';
     const editable = canEdit && projection.isEditable;
     const draftingHref = editable ? onOpenDrafting?.(item) : undefined;
+    const canGenerateAndAttach = Boolean(getPcnNodeDocumentGenerationKind(item.code));
 
     return (
       <li key={item.requirementId} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm" data-testid={`pcn-node-document-${item.requirementId}`}>
@@ -116,7 +133,7 @@ export function PcnDossierNodeWorkPanel({
             <p className="font-medium text-slate-900">{item.label}</p>
             <p className="mt-1 text-xs text-slate-500">{item.required ? 'Bắt buộc' : 'Tùy chọn'} · {DOCUMENT_STATUS_LABELS[item.status]}</p>
             {item.status === 'WAIVED' && item.waiverReason ? <p className="mt-2 text-xs text-amber-700">Lý do: {item.waiverReason}</p> : null}
-            {projection.requiresReworkOnMutation ? <p className="mt-2 text-xs text-violet-700">Cập nhật mục này sẽ tạo vòng xử lý lại và đánh dấu các node sau cần rà soát.</p> : null}
+            {projection.requiresReworkOnMutation ? <p className="mt-2 text-xs text-violet-700">Cập nhật mục này sẽ tạo vòng xử lý lại và đánh dấu các bước sau cần rà soát.</p> : null}
           </div>
           {item.status === 'PRESENT' && version ? (
             <a className="shrink-0 text-xs font-medium text-blue-700 hover:underline" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer">
@@ -146,18 +163,18 @@ export function PcnDossierNodeWorkPanel({
               <input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} />
             </label>
           ) : null}
-          {item.actions.includes('CREATE_FROM_FORM') && editable && (onGenerateAndAttach || onCreateFromForm) ? (
+          {item.actions.includes('CREATE_FROM_FORM') && draftingHref ? (
+            <a href={draftingHref} target="_blank" rel="noreferrer" title="Tạo DOCX từ biểu mẫu" aria-label="Soạn thảo tài liệu, tạo DOCX từ biểu mẫu" className="mobile-touch-target inline-flex min-h-11 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+              Soạn thảo tài liệu
+            </a>
+          ) : null}
+          {item.actions.includes('CREATE_FROM_FORM') && canGenerateAndAttach && editable && (onGenerateAndAttach || onCreateFromForm) ? (
             <button type="button" className="min-h-10 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100" disabled={busyKey === `generate:${item.requirementId}`} onClick={() => void run(`generate:${item.requirementId}`, async () => {
               if (onGenerateAndAttach) await onGenerateAndAttach(item.requirementId);
               else await onCreateFromForm!(item.requirementId);
             })}>
               {busyKey === `generate:${item.requirementId}` ? 'Đang tạo và gắn…' : (onGenerateAndAttach ? 'Tạo & gắn tài liệu' : actionLabel('CREATE_FROM_FORM'))}
             </button>
-          ) : null}
-          {item.actions.includes('CREATE_FROM_FORM') && draftingHref ? (
-            <a href={draftingHref} target="_blank" rel="noreferrer" className="mobile-touch-target inline-flex min-h-11 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
-              Tạo DOCX
-            </a>
           ) : null}
           {item.actions.includes('CLEAR_WAIVER') && editable && onClearWaiver ? (
             <button type="button" className="min-h-10 rounded-md border border-amber-200 px-3 py-2 text-xs font-medium text-amber-800 hover:bg-amber-50" disabled={busyKey === `clear-waiver:${item.requirementId}`} onClick={() => void run(`clear-waiver:${item.requirementId}`, () => onClearWaiver(item.requirementId))}>
@@ -174,7 +191,7 @@ export function PcnDossierNodeWorkPanel({
               className="mt-2 min-h-20 w-full rounded-md border border-amber-200 bg-white p-2 text-sm text-slate-900 outline-none focus:border-amber-500"
               value={reason}
               onChange={(event) => setWaiverReasons((current) => ({ ...current, [item.requirementId]: event.target.value }))}
-              placeholder="Nhập lý do và kế hoạch bổ sung sau"
+
             />
             <button
               type="button"
@@ -191,10 +208,10 @@ export function PcnDossierNodeWorkPanel({
   }
 
   return (
-    <aside className="flex min-h-0 flex-col rounded-xl border border-slate-200 bg-slate-50 shadow-sm" data-testid="pcn-node-work-panel" aria-label={`Công việc node ${projection.nodeLabel}`}>
+    <aside id={panelId} role="tabpanel" className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200 bg-slate-50 shadow-sm" data-testid="pcn-node-work-panel" aria-label={`Công việc bước ${projection.nodeLabel}`}>
       <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white p-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Công việc theo node</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Công việc theo bước</p>
           <h2 className="mt-1 text-lg font-semibold text-slate-950">{projection.nodeLabel}</h2>
           <p className="mt-1 text-xs text-slate-500">{STATUS_LABELS[projection.status]} · Vòng {projection.cycleNo} · {projection.documents.length - projection.unresolvedRequiredCount}/{projection.documents.length} mục đã xử lý</p>
         </div>
@@ -211,13 +228,22 @@ export function PcnDossierNodeWorkPanel({
         </div>
       ) : null}
 
+      <section data-testid="pcn-dossier-review-summary" className="grid gap-2 border-b border-slate-200 bg-emerald-50/50 px-4 py-3 text-xs sm:grid-cols-3" aria-label="Soát xét hồ sơ PCN">
+        <div><p className="font-semibold uppercase tracking-wide text-emerald-800">Soát xét hồ sơ</p><p className="mt-1 font-semibold text-slate-800">{projection.unresolvedRequiredCount ? `Còn ${projection.unresolvedRequiredCount} mục bắt buộc` : 'Checklist hiện không thiếu mục bắt buộc'}</p></div>
+        <div><p className="font-semibold uppercase tracking-wide text-emerald-800">Vai trò hiện tại</p><p className="mt-1 font-semibold text-slate-800">{currentRole}</p><p className="text-slate-500">{currentUser?.username || 'Phiên hồ sơ'}</p></div>
+        <div><p className="font-semibold uppercase tracking-wide text-emerald-800">Bàn giao kế tiếp</p><p className="mt-1 font-semibold text-slate-800">Người soát xét / Quản lý PCN</p><p className="text-slate-500">Chỉ hoàn tất sau khi tài liệu đã được xác nhận.</p></div>
+      </section>
+
       <div className="min-h-0 space-y-4 overflow-y-auto p-4">
         <section>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-slate-900">Tài liệu và hồ sơ liên quan</h3>
-            <span className="text-xs text-slate-500">{projection.documents.length} mục</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">{projection.documents.length} mục</span>
+              {onOpenDocuments ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" onClick={onOpenDocuments}>Mở toàn bộ tài liệu</button> : null}
+            </div>
           </div>
-          {projection.documents.length > 0 ? <ul className="mt-3 space-y-3">{projection.documents.map(renderDocument)}</ul> : <p className="mt-3 rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-500">Node này không có đầu mục tài liệu.</p>}
+          {projection.documents.length > 0 ? <ul className="mt-3 space-y-3">{projection.documents.map(renderDocument)}</ul> : <p className="mt-3 rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-500">Bước này không có đầu mục tài liệu.</p>}
         </section>
 
         {projection.businessFacts.length > 0 ? (
@@ -237,10 +263,28 @@ export function PcnDossierNodeWorkPanel({
           </section>
         ) : null}
 
-        {(canStart || canContinue) ? (
+        {(canStart || canContinue || canReturn) ? (
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-4">
             {canStart ? <button type="button" className="min-h-10 rounded-md border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50" disabled={busyKey === 'start'} onClick={() => void run('start', () => onStartTask!(taskId!))}>Bắt đầu xử lý</button> : null}
-            {canContinue ? <button type="button" className="min-h-10 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50" disabled={busyKey === 'continue'} onClick={() => void run('continue', () => onCompleteTask!(taskId!, projection.cycleNo))}>Tiếp tục</button> : null}
+            {canReturn ? <button type="button" className="min-h-10 rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50" disabled={busyKey === 'return'} onClick={() => setShowReturnForm((current) => !current)}>Trả về</button> : null}
+            {canContinue ? <button type="button" title="Tiếp tục sang bước kế tiếp" aria-label="Hoàn tất bước, tiếp tục sang bước kế tiếp" className="min-h-10 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50" disabled={busyKey === 'continue'} onClick={() => void run('continue', () => onCompleteTask!(taskId!, projection.cycleNo))}>Hoàn tất bước</button> : null}
+          </div>
+        ) : null}
+
+        {showReturnForm && canReturn ? (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 p-3" data-testid="pcn-node-return-form">
+            <p className="text-sm font-semibold text-rose-950">Trả hồ sơ về bước cần xử lý</p>
+            <label className="mt-3 block text-xs font-semibold text-rose-950" htmlFor={`pcn-return-target-${projection.nodeId}`}>Bước nhận lại</label>
+            <select id={`pcn-return-target-${projection.nodeId}`} className="mt-1 min-h-11 w-full rounded-md border border-rose-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500" value={returnTargetId} onChange={(event) => setReturnTargetId(event.target.value)}>
+              <option value="">Chọn bước nhận lại</option>
+              {returnTargets.map((target) => <option key={target.id} value={target.id}>{target.label}</option>)}
+            </select>
+            <label className="mt-3 block text-xs font-semibold text-rose-950" htmlFor={`pcn-return-reason-${projection.nodeId}`}>Lý do trả lại</label>
+            <textarea id={`pcn-return-reason-${projection.nodeId}`} className="mt-1 min-h-20 w-full rounded-md border border-rose-200 bg-white p-2 text-sm text-slate-900 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} />
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              <button type="button" className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowReturnForm(false)}>Hủy</button>
+              <button type="button" className="min-h-10 rounded-md bg-rose-700 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-50" disabled={!returnTargetId || !returnReason.trim() || busyKey === 'return'} onClick={() => void run('return', async () => { await onReturnTask!(taskId!, { targetNodeId: returnTargetId, reason: returnReason.trim() }); setShowReturnForm(false); setReturnReason(''); })}>Xác nhận trả về</button>
+            </div>
           </div>
         ) : null}
       </div>

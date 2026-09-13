@@ -7,6 +7,7 @@ import type {
   PgdLabResult,
   PgdSample,
 } from './pgdDomain';
+import { getPgdGroupCodeForCatalogItem } from './pgdDomain';
 import type { SummaryGridRow } from './summaryRegister';
 
 export interface PgdSummaryRegisterInput {
@@ -64,6 +65,7 @@ export function buildPgdSummaryRegisterRows(input: PgdSummaryRegisterInput): Sum
         requesterPhone: request.requester.phone,
         requesterEmail: request.requester.email,
         productGroup: request.productGroup,
+        pgdGroupCode: request.pgdGroupCode ?? getPgdGroupCodeForCatalogItem(request.catalogItemId),
         catalogItemId: request.catalogItemId,
         productName: request.productName,
         productCode: request.productCode,

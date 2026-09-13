@@ -1434,6 +1434,32 @@ export const DEFAULT_TESTER = INITIAL_TESTERS[0].name;
 export type UserRole = 'admin' | 'tester' | 'staff' | 'viewer' | 'guest' | 'office_clerk';
 
 export type DepartmentScope = 'PCN' | 'PGD';
+export type OrganizationManagementRoleCode =
+  | 'CENTER_DIRECTOR'
+  | 'CENTER_DEPUTY_DIRECTOR'
+  | 'DEPARTMENT_HEAD'
+  | 'DEPARTMENT_DEPUTY'
+  | 'NONE';
+
+export type ProfessionalRoleCode =
+  | 'INSPECTION_EXPERT'
+  | 'CERTIFICATION_EXPERT'
+  | 'DOCUMENT_CLERK';
+
+export const ORGANIZATION_MANAGEMENT_ROLE_OPTIONS: Array<{ code: OrganizationManagementRoleCode; name: string }> = [
+  { code: 'NONE', name: 'Không giữ chức danh quản lý' },
+  { code: 'CENTER_DIRECTOR', name: 'Giám đốc Trung tâm' },
+  { code: 'CENTER_DEPUTY_DIRECTOR', name: 'Phó giám đốc Trung tâm' },
+  { code: 'DEPARTMENT_HEAD', name: 'Trưởng phòng' },
+  { code: 'DEPARTMENT_DEPUTY', name: 'Phó phòng' },
+];
+
+export const PROFESSIONAL_ROLE_OPTIONS: Array<{ code: ProfessionalRoleCode; name: string }> = [
+  { code: 'INSPECTION_EXPERT', name: 'Chuyên gia giám định' },
+  { code: 'CERTIFICATION_EXPERT', name: 'Chuyên gia chứng nhận' },
+  { code: 'DOCUMENT_CLERK', name: 'Văn thư hồ sơ' },
+];
+
 export type PgdDepartmentRoleCode =
   | 'PGD_ADMIN'
   | 'PGD_MANAGER'
@@ -1518,6 +1544,8 @@ export interface UserAccount {
   phone?: string;
   email?: string;
   systemRole?: PcnSystemRole;
+  managementRoleCode?: OrganizationManagementRoleCode;
+  professionalRoleCodes?: ProfessionalRoleCode[];
   departmentRoleCode?: PcnDepartmentRoleCode;
   fieldCodes?: PcnCertificationFieldCode[];
   active?: boolean;
@@ -1529,6 +1557,8 @@ export interface UserAccount {
 export interface PcnUserAccount extends UserAccount {
   role: PcnSystemRole;
   systemRole: PcnSystemRole;
+  managementRoleCode?: OrganizationManagementRoleCode;
+  professionalRoleCodes?: ProfessionalRoleCode[];
   departmentRoleCode: PcnDepartmentRoleCode;
   fieldCodes: PcnCertificationFieldCode[];
   active: boolean;

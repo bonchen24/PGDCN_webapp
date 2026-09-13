@@ -43,15 +43,15 @@ test('system settings puts personnel assignment and password operations in one s
 test('system-settings policy recognizes admin and managers but not ordinary staff', () => {
   const source = read('../utils/systemSettingsPolicy.ts');
   assert.match(source, /systemRole/);
-  assert.match(source, /departmentRoleCode/);
-  assert.match(source, /PGD_MANAGER/);
+  assert.match(source, /managementRoleCode|isOrganizationLeader/);
+  assert.doesNotMatch(source, /PGD_MANAGER/);
   assert.match(source, /canManageSystemUsers/);
 });
 
 test('system-settings policy allows only admin or assigned manager to maintain personnel', () => {
   assert.equal(canManageSystemUsers({ role: 'admin', systemRole: 'admin' }), true);
   assert.equal(canManageSystemUsers({ role: 'staff', systemRole: 'staff', departmentRoleCode: 'LEADERSHIP' }), true);
-  assert.equal(canManageSystemUsers({ role: 'staff', systemRole: 'staff', pgdRole: 'PGD_MANAGER' }), true);
+  assert.equal(canManageSystemUsers({ role: 'staff', systemRole: 'staff', pgdRole: 'PGD_MANAGER' }), false);
   assert.equal(canManageSystemUsers({ role: 'staff', systemRole: 'staff', position: 'Nhân viên' }), false);
 });
 

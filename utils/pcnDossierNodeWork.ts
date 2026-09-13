@@ -10,6 +10,7 @@ import type {
   OutboundLabRequest,
   ReturnedTestResult,
   PcnGeneratedDocumentKind,
+  PcnDraftFormKind,
 } from '../types.ts';
 import type { PcnWorkflowRuntimeNode } from './pcnWorkflowRuntime.ts';
 import type { PcnWorkflowNodeDefinition } from '../types.ts';
@@ -37,8 +38,23 @@ const NODE_FORM_KIND_BY_REQUIREMENT_CODE: Readonly<Partial<Record<string, PcnGen
   LAB_REQUEST: 'LAB_REQUEST',
 };
 
+const NODE_DRAFT_FORM_KIND_BY_REQUIREMENT_CODE: Readonly<Partial<Record<string, PcnDraftFormKind>>> = {
+  PROPOSAL: 'PROPOSAL_FORM',
+  COMMERCIAL: 'COMMERCIAL',
+  ASSIGNMENT_FORM: 'ASSIGNMENT_FORM',
+  EVALUATION_PLAN: 'EVALUATION_PLAN',
+  FIELD_INSPECTION: 'FIELD_INSPECTION',
+  SAMPLE_CODING: 'SAMPLE_CODING',
+  SAMPLE_HANDOVER: 'SAMPLE_HANDOVER',
+  LAB_REQUEST: 'LAB_REQUEST',
+};
+
 export function getPcnNodeDocumentGenerationKind(requirementCode: string): PcnGeneratedDocumentKind | undefined {
   return NODE_FORM_KIND_BY_REQUIREMENT_CODE[String(requirementCode || '').trim().toUpperCase()];
+}
+
+export function getPcnNodeDraftFormKind(requirementCode: string): PcnDraftFormKind | undefined {
+  return NODE_DRAFT_FORM_KIND_BY_REQUIREMENT_CODE[String(requirementCode || '').trim().toUpperCase()];
 }
 
 export interface PcnDossierNodeBusinessFact {
@@ -190,6 +206,7 @@ function documentItem(
     };
   }
   const generationKind = getPcnNodeDocumentGenerationKind(requirement.code);
+  const draftFormKind = getPcnNodeDraftFormKind(requirement.code);
   return {
     kind: 'DOCUMENT_REQUIREMENT',
     requirementId: requirement.id,
@@ -197,7 +214,7 @@ function documentItem(
     label: requirement.name,
     required: requirement.required,
     status: 'MISSING',
-    actions: ['UPLOAD', ...(generationKind ? ['CREATE_FROM_FORM' as const] : []), 'WAIVE'],
+    actions: ['UPLOAD', ...(generationKind || draftFormKind ? ['CREATE_FROM_FORM' as const] : []), 'WAIVE'],
   };
 }
 

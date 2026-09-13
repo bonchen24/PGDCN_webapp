@@ -69,7 +69,7 @@ export function inspectPgdTemplateSource(template: Pick<PgdDocumentTemplate, 'fi
       placeholderKeys: sourceKeys,
       missingPlaceholderKeys: missing,
       extraPlaceholderKeys: extra,
-      ...(missing.length > 0 || extra.length > 0 ? { message: 'Placeholder trong metadata không khớp với file DOCX nguồn.' } : {}),
+      ...(missing.length > 0 || extra.length > 0 ? { message: 'Trường dữ liệu trong siêu dữ liệu không khớp với tệp DOCX nguồn.' } : {}),
     };
   } catch (error: any) {
     return {
@@ -78,7 +78,7 @@ export function inspectPgdTemplateSource(template: Pick<PgdDocumentTemplate, 'fi
       placeholderKeys: [],
       missingPlaceholderKeys: expectedKeys,
       extraPlaceholderKeys: [],
-      message: `Không đọc được file DOCX nguồn: ${error?.message || String(error)}`,
+      message: `Không đọc được tệp DOCX nguồn: ${error?.message || String(error)}`,
     };
   }
 }

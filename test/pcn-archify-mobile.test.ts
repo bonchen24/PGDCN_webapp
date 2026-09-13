@@ -5,6 +5,7 @@ import test from 'node:test';
 const embedSource = fs.readFileSync(new URL('../components/PcnArchifyWorkflowEmbed.tsx', import.meta.url), 'utf8');
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
 const dossierSource = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
+const workflowPanelSource = fs.readFileSync(new URL('../components/PcnDossierWorkflowPanel.tsx', import.meta.url), 'utf8');
 const pgdWorkspaceSource = fs.readFileSync(new URL('../components/PgdWorkspace.tsx', import.meta.url), 'utf8');
 const appShellSource = fs.readFileSync(new URL('../components/PgdcnAppShell.tsx', import.meta.url), 'utf8');
 const pgdMapSource = fs.readFileSync(new URL('../components/PgdWorkflowMap.tsx', import.meta.url), 'utf8');
@@ -36,4 +37,9 @@ test('PGD does not fall back to a dark full-screen surface around the reader', (
 
 test('read-only diagram views cannot render the mutation dock', () => {
   assert.match(embedSource, /diagramType === 'workflow' && domain === 'pcn'/);
+});
+
+test('PCN dossier detail keeps the Archify reader out of the native workflow parent', () => {
+  assert.doesNotMatch(workflowPanelSource, /PcnArchifyWorkflowEmbed/);
+  assert.match(dossierSource, /PcnDossierWorkflowPanel/);
 });

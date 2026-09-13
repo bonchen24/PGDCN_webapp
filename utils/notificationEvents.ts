@@ -14,6 +14,7 @@ import {
   KQTNRecord,
 } from '../types';
 import { getUserFullName } from './userIdentity';
+import { isOrganizationLeader } from './pcnRbac';
 
 export interface NotificationDraft extends Omit<AppNotification, 'id' | 'createdAt' | 'read'> {
   id?: string;
@@ -258,12 +259,7 @@ export const buildNotification = (
 
 export const isAdminUser = (user: UserAccount | null | undefined): boolean => {
   if (!user) return false;
-  const position = String(user.position || '').toLowerCase();
-  return user.role === 'admin' ||
-    position.includes('quản lý') ||
-    position.includes('trưởng phòng') ||
-    position.includes('phó') ||
-    position.includes('lãnh đạo');
+  return user.role === 'admin' || user.systemRole === 'admin' || isOrganizationLeader(user) || user.pgdRole === 'PGD_MANAGER';
 };
 
 export const canViewNotification = (

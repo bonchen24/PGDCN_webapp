@@ -107,8 +107,8 @@ test('PCN template settings use the existing in-place surface for upload, downlo
   assert.match(settings, /PcnTemplateReviewAction/);
   assert.match(settings, /Yêu cầu chỉnh sửa/);
   assert.doesNotMatch(modal, /mapping|placeholder|annotatePcnTemplate|onReviewTemplate|onAnnotateTemplate/i);
-  assert.match(modal, /Tải xuống file hiện tại/);
-  assert.match(modal, /ghi đè file hiện tại/);
+  assert.match(modal, /Tải xuống tệp hiện tại/);
+  assert.match(modal, /ghi đè tệp hiện tại/);
   assert.doesNotMatch(`${settings}\n${modal}`, /DocxSettingsModal|ReportGeneratorView/);
 });
 

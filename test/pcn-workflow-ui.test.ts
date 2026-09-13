@@ -6,13 +6,13 @@ function read(relativePath: string): string {
   return fs.readFileSync(new URL(`../${relativePath}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 }
 
-test('dossier workflow UI renders the saved graph instead of assuming five stations', () => {
+test('dossier workflow UI renders the saved native flow instead of assuming five stations', () => {
   const panel = read('components/PcnDossierWorkflowPanel.tsx');
   assert.match(panel, /getPcnWorkflowForDossier/);
-  assert.match(panel, /PcnArchifyWorkflowEmbed/);
-  assert.match(panel, /workflow\.nodes\.filter/);
+  assert.match(panel, /PcnDossierFlow/);
+  assert.match(panel, /runtime\.nodes/);
   assert.match(panel, /workflowTasks/);
-  assert.doesNotMatch(panel, /ArrowDown/);
+  assert.doesNotMatch(panel, /PcnArchifyWorkflowEmbed/);
 });
 
 test('dashboard dossier cards surface the dynamic node instead of a fixed station label', () => {
@@ -35,7 +35,7 @@ test('dossier detail wires workflow tasks and keeps the legacy graphic as fallba
   assert.match(source, /PcnWorkflowMap/);
 });
 
-test('dossier detail passes record context, task callbacks, and the native document opener to Archify', () => {
+test('dossier detail passes record context, task callbacks, and the native document opener', () => {
   const source = read('components/PcnDossierDetailView.tsx');
   assert.match(source, /dossier=\{dossier\}/);
   assert.match(source, /onStartTask=\{onStartWorkflowTask\}/);
@@ -46,11 +46,11 @@ test('dossier detail passes record context, task callbacks, and the native docum
 });
 
 test('workflow panel offers document-aware action controls and return-to-node handling', () => {
-  const panel = read('components/PcnArchifyWorkflowEmbed.tsx');
+  const panel = read('components/PcnDossierNodeWorkPanel.tsx');
   assert.match(panel, /onStartTask/);
   assert.match(panel, /onCompleteTask/);
   assert.match(panel, /onReturnTask/);
-  assert.match(panel, /returnTargetNodeId/);
-  assert.match(panel, /Tài liệu node/);
-  assert.match(panel, /selectedStatus/);
+  assert.match(panel, /returnTargetId/);
+  assert.match(panel, /Mở toàn bộ tài liệu/);
+  assert.match(panel, /selectedProjection|projection/);
 });

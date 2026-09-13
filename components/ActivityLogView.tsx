@@ -272,12 +272,12 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
               </select>
             </label>
             <label className="relative col-span-2 md:col-span-2">
-              <span className="sr-only">Tìm kiếm</span>
+              <span className="mb-1 block text-[10px] font-black text-slate-600">Tìm kiếm nhật ký</span>
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} aria-hidden="true" />
               <input
                 value={filters.search}
                 onChange={event => updateFilter('search', event.target.value)}
-                placeholder="Tìm mô tả, mã phiếu, biên bản..."
+
                 className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-xs outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 sm:min-h-9"
               />
             </label>
@@ -288,7 +288,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
               {isUserFilterOpen && (
                 <div className="absolute left-0 top-12 z-30 w-full min-w-[260px] rounded-xl border border-slate-200 bg-white p-2.5 shadow-xl">
                   <div className="flex gap-1.5">
-                    <input value={userSearch} onChange={event => setUserSearch(event.target.value)} placeholder="Tìm người dùng..." className="min-h-9 min-w-0 flex-1 rounded-lg border border-slate-200 px-2 text-xs outline-none focus:border-emerald-400" />
+                    <input aria-label="Tìm người dùng trong nhật ký" value={userSearch} onChange={event => setUserSearch(event.target.value)} className="min-h-9 min-w-0 flex-1 rounded-lg border border-slate-200 px-2 text-xs outline-none focus:border-emerald-400" />
                     <button type="button" onClick={() => setSelectedActors([])} className="whitespace-nowrap rounded-lg border border-slate-200 px-2 text-[10px] font-black uppercase text-slate-500">Bỏ chọn tất cả</button>
                   </div>
                   <button type="button" onClick={() => setSelectedActors(userOptions.map(user => user.username))} className="mt-1.5 text-[10px] font-black uppercase text-emerald-700">Chọn tất cả</button>

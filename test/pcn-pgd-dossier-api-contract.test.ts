@@ -83,6 +83,17 @@ test('PGD dossier edit is a scoped allowlist mutation with audit traceability', 
   assert.match(workspace, /Sửa thông tin hồ sơ/);
 });
 
+test('PGD artifact linkages cast identifier values before building JSONB', () => {
+  const server = read('server.ts');
+  assert.match(server, /jsonb_build_object\('assignmentId', \$2::text\)/);
+  assert.match(server, /jsonb_build_object\('fieldInspectionId', \$2::text\)/);
+  assert.match(server, /jsonb_build_object\('inspectionPlanId', \$2::text\)/);
+  assert.match(server, /jsonb_build_object\('labResultReviewId', \$2::text\)/);
+  assert.match(server, /jsonb_build_object\('dossierIndexId', \$2::text\)/);
+  assert.match(server, /jsonb_build_object\('status', 'RESULT_RECEIVED', 'resultId', \$2::text\)/);
+  assert.match(server, /jsonb_build_object\('handedOverAt', \$2::text, 'laboratoryName', \$3::text\)/);
+});
+
 test('PGD dossier upload tracks the private object for rollback after a later transaction failure', () => {
   const server = read('server.ts');
   assert.match(server, /uploadedObjectPath/);

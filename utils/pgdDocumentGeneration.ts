@@ -220,7 +220,7 @@ function requestBoundValues(input: PgdDocumentContextInput): Record<string, unkn
     const latest = [...labRequests].sort((left, right) => (right.handover?.sentAt || '').localeCompare(left.handover?.sentAt || '') || right.id.localeCompare(left.id))[0];
     bound.laboratoryName = latest.laboratoryName;
     bound.laboratoryCode = latest.laboratoryCode || '';
-    bound.senderUnit = latest.senderUnit || 'Phòng Giám định - Chứng nhận';
+    bound.senderUnit = latest.senderUnit || 'Phòng Giám định, Chứng nhận, Phát triển thị trường';
     bound.sentAt = latest.handover?.sentAt;
     bound.sender = latest.handover?.senderUsername;
     bound.receiver = latest.handover?.receiverName;

@@ -261,7 +261,7 @@ export function toPcnOperationsRegisterCsv(rows: PcnOperationsRegisterRow[]): st
     'Địa chỉ',
     'Số lượng mẫu',
     'Sản phẩm',
-    'Model',
+    'Kiểu loại',
     'Nhãn hiệu',
     'Tiêu chuẩn',
     'Trưởng đoàn đánh giá',

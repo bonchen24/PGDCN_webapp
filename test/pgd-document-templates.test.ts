@@ -9,6 +9,9 @@ import {
   normalizePgdCellValues,
   validatePgdCellValues,
   snapshotPgdDocumentTemplate,
+  normalizePgdDocumentTemplate,
+  validatePgdDocumentTemplate,
+  isPgdDocumentTemplateRecordAllowed,
   type PgdDocumentTemplate,
 } from '../utils/pgdDocumentTemplates.ts';
 
@@ -140,4 +143,23 @@ test('PGD template snapshots are immutable copies with a captured version and ti
   assert.notEqual(snapshot.cells, template.cells);
   assert.notEqual(snapshot.cells[0], template.cells[0]);
   assert.equal((snapshot as unknown as PgdDocumentTemplate).active, undefined);
+});
+
+test('PGD required placeholder metadata hydrates the matching cell and rejects orphan keys', () => {
+  const base = getPgdDocumentTemplate('INTAKE_REQUEST', 'STEEL_METAL')!;
+  const key = base.cells[0].key;
+  const candidate = {
+    ...base,
+    placeholderKeys: [key],
+    requiredPlaceholderKeys: [key],
+    cells: base.cells.map((cell) => ({ ...cell, required: false })),
+  };
+  const normalized = normalizePgdDocumentTemplate(candidate);
+  assert.equal(normalized.cells.find((cell) => cell.key === key)?.required, true);
+  assert.ok(normalized.placeholderKeys.includes(key));
+  assert.ok(normalized.requiredPlaceholderKeys.includes(key));
+
+  const orphan = { ...candidate, requiredPlaceholderKeys: ['notARealCell'] };
+  assert.equal(isPgdDocumentTemplateRecordAllowed(orphan), false);
+  assert.ok(validatePgdDocumentTemplate(orphan).some((issue) => /không có cell nhập liệu tương ứng/.test(issue)));
 });

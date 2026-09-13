@@ -6,6 +6,14 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-10 — Chuẩn hóa ngày tháng hành chính trong báo cáo
+
+- Đã thống nhất phạm vi thay đổi chỉ áp dụng cho câu ngày tháng hành chính tiếng Việt trong báo cáo (`Hà Nội, ngày … tháng … năm …`); formatter ngày dùng toàn hệ thống `dd/mm/yyyy` không thay đổi.
+- Quy tắc mới: ngày một chữ số luôn thêm `0` (`ngày 01`); tháng 1 và 2 thêm `0` (`tháng 01`, `tháng 02`); tháng 3–12 không thêm số 0 (`tháng 3` … `tháng 12`). Phần tiếng Anh vẫn dùng tên tháng đầy đủ như `August 8, 2026`.
+- Đã cập nhật SSoT `design.md`, formatter `lib/reportFormatting.ts`, cùng regression tests tại `test/report-formatting.test.ts` và `test/report-docx-metadata.test.ts`.
+- Verification: test báo cáo **9/9 pass**, full `npm test` **846/846 pass**, `npm run typecheck` pass và `git diff --check` pass (chỉ còn cảnh báo line-ending LF/CRLF của Git).
+- Thay đổi có sẵn trước đó tại `lib/reportDocxImageMapping.ts` được giữ nguyên; không ghi secret hoặc dữ liệu hồ sơ thật vào Memory/Obsidian.
+
 ## Cập nhật 2026-09-07 — Đóng hồ sơ khi chuyển workspace và deploy production mới nhất
 
 - Quy tắc UX mới: khi đang ở route canonical `/pgdcn/pcn/dossiers/{dossierId}`, mọi thao tác chuyển sang workspace khác phải đóng hồ sơ standalone, xóa focus/tab/node tạm thời và thay URL bằng entry canonical `/pgdcn/`, `/pgdcn/pcn` hoặc `/pgdcn/pgd`; không giữ dossier detail overlay trong workspace đích.
@@ -732,6 +740,14 @@ Description: Persistent project memory and verified deployment observations for 
 - UI PGD dùng cùng pattern card/timeline với PCN: tiêu chí trực tiếp, badge Đạt/Cảnh báo/Lỗi/Chưa đủ căn cứ, nút mở dẫn chứng và kết quả read-only.
 - Verification: focused PGD assistant **8/8 pass**, full suite **746/746 pass**, lint/build pass, Docker Desktop production container `pcn_webapp-webapp` chạy port `2357`, `/api/health` trả HTTP 200.
 - Không tạo bản sao Obsidian/obs vì `design.md` vẫn là nguồn chuẩn duy nhất; Memory được lưu tại file này.
+
+## Cập nhật 2026-09-13 — Compact UI và triển khai production PGDCN
+
+- Đã cập nhật `design.md` với quy tắc thứ tự trường theo template DOCX: section theo lần xuất hiện, sau đó `row`, `column` và thứ tự khai báo ổn định; desktop ưu tiên 4–5 cột, mobile một cột; bảng rộng cuộn ngang nội bộ; vẫn giữ nhãn tiếng Việt, dấu `*` đỏ, lỗi inline, focus và touch target.
+- PGD document authoring dùng `orderPgdTemplateCells`, bố cục form compact 2/4/5 cột, bảng chiếm toàn hàng; PCN operational forms dùng `getPcnOperationalFormFieldOrder` cho từng loại biểu mẫu, modal rộng hơn và grid 4 cột; Sổ tổng hợp dùng `min-w-[1400px]` và padding hàng gọn.
+- Verification: test mục tiêu **4/4 pass**, `npm test` **905/905 pass**, `npm run typecheck` pass, `npm run build` pass, `git diff --check` pass (chỉ cảnh báo chuyển LF/CRLF của Git).
+- Docker Desktop production đã build/recreate bằng `docker compose --env-file .env --env-file E:\CODING\TVCI_APP\supabase-docker\.env -f docker-compose.pcn.yml up --build -d`. Image `pcn_webapp-webapp:latest` digest `sha256:5bb68885f63b33d2c553d1b7a0fc723d8f98931343f86b32562cdfee0c7e2a69`; container `pcn_webapp-webapp` đang `running`, publish `0.0.0.0:2357->2357/tcp`.
+- Smoke test production: `/api/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200; log container xác nhận PostgreSQL kết nối thành công và schema khởi tạo thành công. `/api/db/health` yêu cầu phiên PGDCN nên trả 401 khi gọi không đăng nhập, không phải lỗi kết nối DB.
 
 ## Files quan trọng
 

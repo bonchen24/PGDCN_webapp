@@ -48,7 +48,10 @@ export function buildPcnOfficialTemplateData(input: {
     ten_cong_ty: clean(context.customerName),
     dia_chi_ct: clean(context.customerAddress),
     so_dang_ky: clean(issuance.issuanceNumber),
+    so_gcn: clean(issuance.issuanceNumber),
+    so_quyet_dinh: clean(issuance.issuanceNumber),
     ngay_cap_CN: formatAdministrativeDate(issuance.issuedAt),
+    ngay_cap_gcn: formatAdministrativeDate(issuance.issuedAt),
     ngay_qd: formatAdministrativeDate(issuance.issuedAt),
   };
 
@@ -58,7 +61,9 @@ export function buildPcnOfficialTemplateData(input: {
       ten_cong_ty: shared.ten_cong_ty,
       dia_chi_ct: shared.dia_chi_ct,
       so_dang_ky: shared.so_dang_ky,
+      so_gcn: shared.so_gcn,
       ngay_cap_CN: shared.ngay_cap_CN,
+      ngay_cap_gcn: shared.ngay_cap_gcn,
     };
   }
   if (documentKind === 'DECISION') {
@@ -68,7 +73,9 @@ export function buildPcnOfficialTemplateData(input: {
       ten_cong_ty: shared.ten_cong_ty,
       dia_chi_ct: shared.dia_chi_ct,
       ngay_cap_CN: shared.ngay_cap_CN,
+      ngay_cap_gcn: shared.ngay_cap_gcn,
       ngay_qd: shared.ngay_qd,
+      so_quyet_dinh: shared.so_quyet_dinh,
     };
   }
 

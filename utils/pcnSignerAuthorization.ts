@@ -1,4 +1,5 @@
 import type { PcnSignerDelegation, PcnUserAccount } from '../types.ts';
+import { isOrganizationLeader } from './pcnRbac.ts';
 
 export type PcnSignerMode = 'DIRECT' | 'DELEGATED' | 'NONE';
 
@@ -24,6 +25,27 @@ export interface PcnAuthorizedSignerOption {
   mode: Exclude<PcnSignerMode, 'NONE'>;
   delegationId?: string;
   validUntil?: string;
+}
+
+export function getPcnSignerActorDenial(input: {
+  actorUsername: string;
+  signerUsername: string;
+  authorization: Pick<PcnSignerAuthorization, 'authorized' | 'mode' | 'delegation'>;
+}): string | null {
+  if (!input.authorization.authorized || input.authorization.mode === 'NONE') {
+    return 'Người ký chưa được xác thực hợp lệ.';
+  }
+  const actorUsername = normalizeUsername(input.actorUsername);
+  const signerUsername = normalizeUsername(input.signerUsername);
+  if (input.authorization.mode === 'DIRECT') {
+    return actorUsername === signerUsername
+      ? null
+      : 'Chỉ chính người ký trực tiếp mới được cấp số; tài khoản khác phải có ủy quyền hợp lệ.';
+  }
+  const delegateUsername = normalizeUsername(input.authorization.delegation?.delegateUsername);
+  return delegateUsername && delegateUsername === actorUsername
+    ? null
+    : 'Chỉ người được ủy quyền đúng tài khoản mới được cấp số; không được giả danh người ký.';
 }
 
 function normalizeUsername(value: string | undefined): string {
@@ -54,7 +76,7 @@ export function getPcnSignerAuthorization(input: PcnSignerAuthorizationInput): P
   const issuedAt = Date.parse(input.issuedAt);
   if (!Number.isFinite(issuedAt)) return { authorized: false, mode: 'NONE', reason: 'Ngày cấp không hợp lệ để kiểm tra thời hạn ủy quyền.' };
 
-  if (signer.departmentRoleCode === 'LEADERSHIP') {
+  if (isOrganizationLeader(signer)) {
     return { authorized: true, mode: 'DIRECT', reason: 'Người ký trực tiếp thuộc danh mục lãnh đạo PCN.', user: signer };
   }
 
@@ -68,7 +90,7 @@ export function getPcnSignerAuthorization(input: PcnSignerAuthorizationInput): P
       const fieldMatches = delegationFields.some((code) => requestedFields.includes(code));
       return Boolean(
         grantor?.active
-        && grantor.departmentRoleCode === 'LEADERSHIP'
+        && isOrganizationLeader(grantor)
         && approver?.active
         && approver.systemRole === 'admin'
         && hasFieldScope(signer, delegationFields)

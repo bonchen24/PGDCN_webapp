@@ -25,14 +25,14 @@ function useDisplayDraft(value: string | null | undefined, format: (input: strin
   return { draft, setDraft, focused, setFocused };
 }
 
-export function PgdcnDateInput({ value, onChange, placeholder = 'dd/mm/yyyy', onBlur, onFocus, ...props }: DateInputProps) {
+export function PgdcnDateInput({ value, onChange, onBlur, onFocus, ...props }: DateInputProps) {
   const display = useDisplayDraft(value, formatDateDdMmYyyy);
   return (
     <input
       {...props}
       type="text"
       inputMode="numeric"
-      placeholder={placeholder}
+
       value={display.draft}
       onFocus={(event) => {
         display.setFocused(true);
@@ -59,14 +59,14 @@ export function PgdcnDateInput({ value, onChange, placeholder = 'dd/mm/yyyy', on
   );
 }
 
-export function PgdcnDateTimeInput({ value, onChange, placeholder = 'dd/mm/yyyy HH:mm', onBlur, onFocus, ...props }: DateInputProps) {
+export function PgdcnDateTimeInput({ value, onChange, onBlur, onFocus, ...props }: DateInputProps) {
   const display = useDisplayDraft(value, formatDateTimeDdMmYyyy);
   return (
     <input
       {...props}
       type="text"
       inputMode="numeric"
-      placeholder={placeholder}
+
       value={display.draft}
       onFocus={(event) => {
         display.setFocused(true);

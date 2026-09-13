@@ -26,7 +26,7 @@ test('DOCX settings is a local modal and not shared system settings', () => {
   assert.match(generation, /onOpenSettings/);
   assert.match(workspace, /PgdDocxSettingsModal/);
   assert.match(source, /PcnSettingsView/);
-  assert.match(source, /Template DOCX PCN/);
+  assert.match(source, /Mẫu DOCX chính thức|Template DOCX PCN/);
   assert.doesNotMatch(source, /PgdTemplateSettingsWorkspace|Template DOCX PGD/);
   assert.doesNotMatch(shell, /pgdTemplates=\{pgd\.documentTemplates\}/);
 });

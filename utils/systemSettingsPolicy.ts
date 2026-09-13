@@ -3,22 +3,18 @@
 // Description: Separates system settings access for Admin and operational Managers
 
 import type { UserAccount } from '../types';
+import { isOrganizationLeader } from './pcnRbac';
 
 type SystemSettingsUser = Partial<UserAccount> & {
   'Chức vụ'?: string;
 };
-
-const normalizedPosition = (user?: SystemSettingsUser | null): string =>
-  String(user?.position || user?.['Chức vụ'] || '').trim().toLowerCase();
 
 export const isSystemSettingsAdmin = (user?: SystemSettingsUser | null): boolean =>
   user?.systemRole === 'admin' || user?.role === 'admin';
 
 export const isSystemSettingsManager = (user?: SystemSettingsUser | null): boolean => {
   if (isSystemSettingsAdmin(user)) return false;
-  if (user?.departmentRoleCode === 'LEADERSHIP' || user?.pgdRole === 'PGD_MANAGER') return true;
-  const position = normalizedPosition(user);
-  return position.includes('quản lý') || position.includes('trưởng phòng');
+  return isOrganizationLeader(user);
 };
 
 export const canViewSystemSettings = (user?: SystemSettingsUser | null): boolean =>

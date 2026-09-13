@@ -286,7 +286,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   ) : activeTarget.domain === 'department' && activeTarget.section === 'dossier-templates' ? (
     <PgdcnDossierTemplateManagementView currentUser={currentUser} pcnTemplates={pcn.workflowTemplates} pcnRequirements={pcn.documentRequirements} pgdTemplates={pgd.workflowTemplates} pgdRequirements={PGD_TEMPLATE_REQUIREMENTS} onCreatePcnWorkflowTemplate={pcn.createWorkflowTemplate} onUpdatePcnWorkflowTemplate={pcn.updateWorkflowTemplate} onCreatePcnWorkflowRevision={pcn.createWorkflowRevision} onPublishPcnWorkflowTemplate={pcn.publishWorkflowTemplate} onRetirePcnWorkflowTemplate={pcn.retireWorkflowTemplate} onCreatePgdWorkflowTemplate={pgd.createWorkflowTemplate} onUpdatePgdWorkflowTemplate={pgd.updateWorkflowTemplate} onCreatePgdWorkflowRevision={pgd.createWorkflowRevision} onPublishPgdWorkflowTemplate={pgd.publishWorkflowTemplate} onRetirePgdWorkflowTemplate={pgd.retireWorkflowTemplate} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'system-settings' ? (
-    <PgdcnSystemSettingsView currentUser={currentUser} users={systemUsers} roles={pcn.departmentRoles} fields={pcn.fields} pcnTemplates={pcn.templates} onUploadPcnTemplate={pcn.uploadPcnTemplate} onReviewPcnTemplate={pcn.reviewPcnTemplate} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
+    <PgdcnSystemSettingsView currentUser={currentUser} users={systemUsers} roles={pcn.departmentRoles} fields={pcn.fields} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'activityLogs' ? (
     <ActivityLogView currentUser={currentUser} systemUsers={systemUsers} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'assistant' ? (
@@ -306,7 +306,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Mở menu phòng" className="mobile-touch-target rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
             <Menu aria-hidden="true" size={18} />
           </button>
-          <div className="min-w-0"><div className="truncate text-[10px] font-black uppercase tracking-wider text-slate-700">IEMM • TVCI · {getActiveContextLabel(activeTarget)}</div><div className="truncate text-xs font-bold text-slate-500">Phòng Giám định - Chứng nhận · một phiên, hai lĩnh vực</div></div>
+          <div className="min-w-0"><div className="truncate text-[10px] font-black uppercase tracking-wider text-slate-700">IEMM • TVCI · {getActiveContextLabel(activeTarget)}</div><div className="truncate text-xs font-bold text-slate-500">Phòng Giám định, Chứng nhận, Phát triển thị trường · một phiên, hai lĩnh vực đang vận hành</div></div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <PgdcnNotificationDropdown isOpen={notificationOpen} onToggle={handleToggleNotifications} onClose={() => setNotificationOpen(false)} notifications={notifications} currentUser={currentUser} onMarkRead={handleMarkNotificationRead} onMarkAllRead={handleMarkAllNotificationsRead} onClear={handleClearNotifications} onSelect={handleNotificationSelect} />

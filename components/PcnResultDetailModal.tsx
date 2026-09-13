@@ -100,8 +100,8 @@ export default function PcnResultDetailModal({
             <div className="text-[10px] font-black text-indigo-800">Bằng chứng OCR KQTN</div>
             {result.ocrEvidence ? <div className="mt-2 grid gap-2 md:grid-cols-4">
               <Detail label="Nhà cung cấp" value={result.ocrEvidence.provider} />
-              <Detail label="File scan" value={result.ocrEvidence.sourceFileName} />
-              <Detail label="Trang đọc" value={result.ocrEvidence.sourcePage || 'Toàn file'} />
+              <Detail label="Bản quét" value={result.ocrEvidence.sourceFileName} />
+              <Detail label="Trang đọc" value={result.ocrEvidence.sourcePage || 'Toàn tệp'} />
               <Detail label="Độ tin cậy" value={`${Math.round(result.ocrEvidence.confidence * 100)}%`} />
               <Detail label="Thời điểm xác nhận" value={formatDate(result.ocrEvidence.confirmedAt)} />
               <Detail label="Người xác nhận" value={result.ocrEvidence.confirmedBy} />
@@ -109,8 +109,8 @@ export default function PcnResultDetailModal({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-[10px]">
-            {result.fileAssetId ? <a href={getPcnFileUrl(result.fileAssetId)} target="_blank" rel="noreferrer" className="mobile-touch-target min-h-11 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 font-black text-indigo-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1">Mở file KQTN</a> : <span className="font-bold text-slate-500">Chưa gắn file báo cáo KQTN</span>}
-            {hasIssues && <span className="font-bold text-rose-700">Không cho ghi đè file khi còn lỗi integrity.</span>}
+            {result.fileAssetId ? <a href={getPcnFileUrl(result.fileAssetId)} target="_blank" rel="noreferrer" className="mobile-touch-target min-h-11 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 font-black text-indigo-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1">Mở tệp KQTN</a> : <span className="font-bold text-slate-500">Chưa gắn tệp báo cáo KQTN</span>}
+            {hasIssues && <span className="font-bold text-rose-700">Không cho ghi đè tệp khi còn lỗi integrity.</span>}
           </div>
         </div>
 

@@ -230,7 +230,7 @@ const ALLOWED_CONDITIONS = new Set<string>([
 
 export function validateDossierTemplateEditorModel(model: DossierTemplateEditorModel): DossierTemplateEditorValidationResult {
   const errors: string[] = [];
-  if (!['PCN', 'PGD'].includes(model?.domain)) errors.push('Model phải có domain hợp lệ.');
+  if (!['PCN', 'PGD'].includes(model?.domain)) errors.push('Mô hình phải có lĩnh vực hợp lệ.');
   if (!String(model?.id || '').trim()) errors.push('Bộ hồ sơ mẫu phải có id.');
   if (!String(model?.code || '').trim()) errors.push('Bộ hồ sơ mẫu phải có mã.');
   if (!String(model?.name || '').trim()) errors.push('Bộ hồ sơ mẫu phải có tên.');

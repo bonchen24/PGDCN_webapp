@@ -15,7 +15,33 @@ export interface ReportDocxImageMappingInput {
   combinedLabelImage?: string;
 }
 
-export type ReportDocxImageSlots = Record<`anh_${1 | 2 | 3 | 4 | 5 | 6}`, string>;
+export type ReportDocxImageSlots = Record<`anh_${1 | 2 | 3 | 4 | 5 | 6}`, string> & {
+  anh_1_1?: string;
+  anh_1_2?: string;
+  anh_1_3?: string;
+  anh_1_4?: string;
+  anh_1_5?: string;
+  anh_1_6?: string;
+  anh_tem_1?: string;
+  anh_tem_2?: string;
+  anh_tem_3?: string;
+  anh_tem_4?: string;
+  anh_tem_5?: string;
+  anh_tem_6?: string;
+  has_anh_1_1?: boolean;
+  has_anh_1_2?: boolean;
+  has_anh_1_3?: boolean;
+  has_anh_1_4?: boolean;
+  has_anh_1_5?: boolean;
+  has_anh_1_6?: boolean;
+  has_anh_tem_1?: boolean;
+  has_anh_tem_2?: boolean;
+  has_anh_tem_3?: boolean;
+  has_anh_tem_4?: boolean;
+  has_anh_tem_5?: boolean;
+  has_anh_tem_6?: boolean;
+  [key: string]: any;
+};
 
 const MAX_LABEL_COMPOSITE_HEIGHT = 1200;
 const LABEL_GAP = 16;
@@ -54,12 +80,13 @@ const getSupportingImages = (input: ReportDocxImageMappingInput): string[] => {
   const sampleImages = input.standardId === 'emc_dieu_hoa'
     ? [asImage(images.sample), asImage(images.sample2)]
     : [asImage(images.sample) || asImage(input.productPhoto1)];
-  return [
+  const supportingImages = [
     ...sampleImages,
     asImage(images.setupVoltage),
     asImage(images.setupPower),
     ...(input.standardId === 'emc_dieu_hoa' ? [] : [asImage(images.setupRadiated)]),
-  ].filter(Boolean);
+  ];
+  return input.standardId === 'emc_dieu_hoa' ? supportingImages : supportingImages.filter(Boolean);
 };
 
 export const buildReportDocxImageSlots = (input: ReportDocxImageMappingInput): ReportDocxImageSlots => {
@@ -67,7 +94,7 @@ export const buildReportDocxImageSlots = (input: ReportDocxImageMappingInput): R
   const combinedLabelImage = asImage(input.combinedLabelImage) || labelImages[0] || '';
   const values = [combinedLabelImage, ...getSupportingImages(input)].slice(0, 6);
 
-  return {
+  const slots: any = {
     anh_1: values[0] || '',
     anh_2: values[1] || '',
     anh_3: values[2] || '',
@@ -75,6 +102,16 @@ export const buildReportDocxImageSlots = (input: ReportDocxImageMappingInput): R
     anh_5: values[4] || '',
     anh_6: values[5] || '',
   };
+
+  for (let i = 1; i <= 6; i++) {
+    const img = labelImages[i - 1] || '';
+    slots[`anh_1_${i}`] = img;
+    slots[`anh_tem_${i}`] = img;
+    slots[`has_anh_1_${i}`] = Boolean(img);
+    slots[`has_anh_tem_${i}`] = Boolean(img);
+  }
+
+  return slots;
 };
 
 interface DecodedImage {

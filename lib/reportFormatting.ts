@@ -61,7 +61,7 @@ export const formatBilingualReportDate = (value: unknown): string => {
   const parts = parseReportDate(value);
   if (!parts) return '';
   const day = String(parts.day).padStart(2, '0');
-  const month = String(parts.month).padStart(2, '0');
+  const month = parts.month <= 2 ? String(parts.month).padStart(2, '0') : String(parts.month);
   const englishDate = formatReportEnglishDate(value);
   return `Hà Nội, ngày ${day} tháng ${month} năm ${parts.year} (Hanoi, ${englishDate})`;
 };

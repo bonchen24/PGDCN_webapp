@@ -23,6 +23,7 @@ import { buildPcnReturnedResult } from '../utils/pcnResultPolicy';
 import PcnCatalogCombobox from './PcnCatalogCombobox';
 import PcnOcrPanel from './PcnOcrPanel';
 import PcnResultDetailModal from './PcnResultDetailModal';
+import { PgdcnDateInput } from './PgdcnDateInput';
 
 function makeId(): string {
   return `result-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`}`;
@@ -185,7 +186,7 @@ export function PcnResultReturnView({
         try {
           await onAttachFile(result.id, resultFile);
         } catch (error: any) {
-          toast.error(error?.message || 'KQTN đã lưu nhưng chưa gắn được file scan; hãy mở card để gắn lại.');
+          toast.error(error?.message || 'KQTN đã lưu nhưng chưa gắn được tệp quét; hãy mở card để gắn lại.');
           reset();
           setOpenForm(false);
           return;
@@ -208,9 +209,9 @@ export function PcnResultReturnView({
     setUploadingResultId(resultId);
     try {
       await onAttachFile(resultId, file);
-      toast.success('Đã gắn file KQTN vào Storage riêng của PCN.');
+      toast.success('Đã gắn tệp KQTN vào vùng lưu trữ riêng của PCN.');
     } catch (error: any) {
-      toast.error(error?.message || 'Không thể gắn file KQTN');
+      toast.error(error?.message || 'Không thể gắn tệp KQTN');
     } finally {
       setUploadingResultId(undefined);
     }
@@ -262,20 +263,20 @@ export function PcnResultReturnView({
             <div className="min-h-0 flex-1 mobile-scroll-y space-y-3 overflow-y-auto p-3 md:p-4">
           <PcnOcrPanel context="result" onApply={applyResultOcr} onFileSelected={selectResultFile} disabled={saving} />
           <div className="grid gap-2 md:grid-cols-3">
-            <label className="block md:col-span-2"><span className="mb-1 block text-[10px] font-black text-slate-500">PYC gửi PTN *</span><PcnCatalogCombobox id="pcn-result-return-request" label="PYC gửi PTN" hideLabel required value={form.labRequestId} onChange={(value) => setForm({ ...form, labRequestId: value })} options={requestOptions} placeholder={requestOptions.length > 0 ? 'Tìm số PYC, phòng thử hoặc khách hàng...' : 'Chưa có PYC phù hợp'} /></label>
-            <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Vòng KQTN *</span><input type="number" min="1" required value={form.round} onChange={(event) => setForm({ ...form, round: event.target.value })} className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" /></label>
+            <label className="block md:col-span-2"><span className="mb-1 block text-[10px] font-black text-slate-500">PYC gửi PTN <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span><PcnCatalogCombobox id="pcn-result-return-request" label="PYC gửi PTN" hideLabel required value={form.labRequestId} onChange={(value) => setForm({ ...form, labRequestId: value })} options={requestOptions} /></label>
+            <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Vòng KQTN <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span><input type="number" min="1" required value={form.round} onChange={(event) => setForm({ ...form, round: event.target.value })} className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" /></label>
           </div>
           <div className="grid gap-2 md:grid-cols-3">
-            <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Kết quả *</span><select value={form.outcome} onChange={(event) => setForm({ ...form, outcome: event.target.value as ReturnedTestResult['outcome'] })} className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="PASS">Đạt</option><option value="FAIL">Không đạt</option><option value="PENDING">Chưa xác định / chờ OCR</option></select></label>
-            <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Ngày nhận *</span><input type="date" required value={form.receivedAt} onChange={(event) => setForm({ ...form, receivedAt: event.target.value })} className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" /></label>
+            <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Kết quả <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span><select value={form.outcome} onChange={(event) => setForm({ ...form, outcome: event.target.value as ReturnedTestResult['outcome'] })} className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="PASS">Đạt</option><option value="FAIL">Không đạt</option><option value="PENDING">Chưa xác định / chờ OCR</option></select></label>
+            <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Ngày nhận <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span><PgdcnDateInput required aria-required="true" value={form.receivedAt} onChange={(value) => setForm({ ...form, receivedAt: value })} className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" /></label>
             <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Số báo cáo KQTN</span><input value={form.reportNumber} onChange={(event) => setForm({ ...form, reportNumber: event.target.value })} className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" /></label>
           </div>
           <div className="grid gap-2 md:grid-cols-2">
             <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Tình trạng mẫu</span><select value={form.sampleIssueType} onChange={(event) => setForm({ ...form, sampleIssueType: event.target.value as PcnSampleIssueType | '' })} className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="">Không có vấn đề</option><option value="MISMATCH">Không khớp Đề nghị</option><option value="DAMAGED">Hư hỏng</option><option value="INSUFFICIENT">Không đủ mẫu</option><option value="MISSING_DOCUMENT">Thiếu hồ sơ/mẫu</option><option value="OTHER">Khác</option></select></label>
-            <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Mô tả vấn đề mẫu</span><input value={form.sampleIssueDescription} onChange={(event) => setForm({ ...form, sampleIssueDescription: event.target.value })} placeholder="Ghi rõ lý do để xử lý khắc phục" className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" /></label>
+            <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Mô tả vấn đề mẫu</span><input value={form.sampleIssueDescription} onChange={(event) => setForm({ ...form, sampleIssueDescription: event.target.value })} className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" /></label>
           </div>
           <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Ghi chú</span><textarea rows={2} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" /></label>
-          <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Bản scan KQTN do PTN cấp *</span><input required type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,image/*" onChange={(event) => selectResultFile(event.currentTarget.files?.[0])} className="mt-1 w-full text-[10px] text-slate-500" /><span className="mt-1 block text-[10px] text-slate-400">Bản scan sẽ được lưu private trên Storage và là nguồn đối chứng; OCR chỉ trích xuất dữ liệu nháp cần xác nhận.</span></label>
+          <label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Bản scan KQTN do PTN cấp <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span><input required type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,image/*" onChange={(event) => selectResultFile(event.currentTarget.files?.[0])} className="mt-1 w-full text-[10px] text-slate-500" /><span className="mt-1 block text-[10px] text-slate-400">Bản scan sẽ được lưu trong vùng lưu trữ riêng và là nguồn đối chứng; OCR chỉ trích xuất dữ liệu nháp cần xác nhận.</span></label>
             </div>
             <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-white px-4 py-3"><button type="button" onClick={() => { reset(); setOpenForm(false); }} disabled={saving} className="rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-600 disabled:opacity-40">Hủy</button><button type="submit" disabled={!canEdit || saving} aria-busy={saving} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu tiếp nhận KQTN'}</button></div>
           </form>
@@ -310,9 +311,9 @@ export function PcnResultReturnView({
                   <p className="text-[10px] text-slate-500">{request?.laboratoryName || 'PTN'}{field ? ` • ${field.name}` : ''} • Vòng {result.round}</p>
                   {result.sampleIssue && <p className="mt-1 text-[10px] font-bold text-rose-600">Vấn đề mẫu: {result.sampleIssue.description}</p>}
                   {result.notes && <p className="mt-1 text-[10px] text-slate-500">{result.notes}</p>}
-                  {hasIntegrityIssues && <div role="alert" className="mt-2 rounded-lg border border-rose-200 bg-rose-50/70 px-2.5 py-2 text-[10px] text-rose-800"><p className="font-black">Thông tin cần người có quyền rà soát</p><p className="mt-1">{integrityIssues.map((issue) => issue.message).join(' ')}</p><p className="mt-1 font-bold">Giữ nguyên bản ghi để truy vết; tạm thời không cho gắn hoặc ghi đè file.</p></div>}
+                  {hasIntegrityIssues && <div role="alert" className="mt-2 rounded-lg border border-rose-200 bg-rose-50/70 px-2.5 py-2 text-[10px] text-rose-800"><p className="font-black">Thông tin cần người có quyền rà soát</p><p className="mt-1">{integrityIssues.map((issue) => issue.message).join(' ')}</p><p className="mt-1 font-bold">Giữ nguyên bản ghi để truy vết; tạm thời không cho gắn hoặc ghi đè tệp.</p></div>}
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-2 text-right text-[10px] text-slate-400"><span>Ngày nhận<br /><b className="text-slate-600">{formatDate(result.receivedAt)}</b></span><button type="button" onClick={() => setSelectedResultId(result.id)} className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1.5 font-bold text-indigo-700 hover:bg-indigo-100">Chi tiết KQTN</button>{hasIntegrityIssues ? <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1.5 font-bold text-rose-700">Không gắn file</span> : result.fileAssetId ? <a href={getPcnFileUrl(result.fileAssetId)} target="_blank" rel="noreferrer" className="font-bold text-indigo-600 underline underline-offset-2">Mở file KQTN</a> : canEdit && !hasIntegrityIssues ? <label className={`inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 font-bold text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 ${uploadingResultId === result.id ? 'pointer-events-none opacity-50' : ''}`}><Upload size={12} /> {uploadingResultId === result.id ? 'Đang tải...' : 'Gắn file'}<input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" disabled={!canEdit || uploadingResultId === result.id} onChange={(event) => void attachResultFile(event, result.id)} /></label> : null}</div>
+                <div className="flex flex-wrap items-center justify-end gap-2 text-right text-[10px] text-slate-400"><span>Ngày nhận<br /><b className="text-slate-600">{formatDate(result.receivedAt)}</b></span><button type="button" onClick={() => setSelectedResultId(result.id)} className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1.5 font-bold text-indigo-700 hover:bg-indigo-100">Chi tiết KQTN</button>{hasIntegrityIssues ? <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1.5 font-bold text-rose-700">Không gắn tệp</span> : result.fileAssetId ? <a href={getPcnFileUrl(result.fileAssetId)} target="_blank" rel="noreferrer" className="font-bold text-indigo-600 underline underline-offset-2">Mở tệp KQTN</a> : canEdit && !hasIntegrityIssues ? <label className={`inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 font-bold text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 ${uploadingResultId === result.id ? 'pointer-events-none opacity-50' : ''}`}><Upload size={12} /> {uploadingResultId === result.id ? 'Đang tải...' : 'Gắn tệp'}<input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" disabled={!canEdit || uploadingResultId === result.id} onChange={(event) => void attachResultFile(event, result.id)} /></label> : null}</div>
               </div>
             </div>
           );

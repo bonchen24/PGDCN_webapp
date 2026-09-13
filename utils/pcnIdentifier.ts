@@ -55,6 +55,22 @@ export function formatPcnProposalCode(serial: number, date: PcnDateInput = new D
   return `PCN-${getPcnVietnamDateKey(date)}-${String(serial).padStart(2, '0')}`;
 }
 
+/**
+ * Build the dossier code after the server has allocated the proposal code.
+ * Intake forms intentionally do not let the browser choose this identifier;
+ * keeping the derivation here makes retries and UI projections deterministic.
+ */
+export function formatPcnDossierCode(proposalCode: string, date: PcnDateInput = new Date()): string {
+  const normalizedProposalCode = String(proposalCode || '').trim();
+  if (!normalizedProposalCode) throw new Error('PCN dossier code requires a proposal code.');
+  const safeProposalCode = normalizedProposalCode
+    .replace(/[^a-zA-Z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(-48);
+  if (!safeProposalCode) throw new Error('PCN proposal code is not usable for a dossier code.');
+  return `HS-${getPcnVietnamYearKey(date)}-${safeProposalCode}`;
+}
+
 export function formatPcnSampleLotCode(serial: number, date: PcnDateInput = new Date()): string {
   assertSerial(serial, 1, 9999, 'PCN sample-lot');
   return `CN ${String(serial).padStart(4, '0')}-${getPcnVietnamYearKey(date).slice(-2)}`;

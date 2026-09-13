@@ -8,6 +8,7 @@ import type {
   PgdInspectionRequest,
   PgdInspectionReport,
   PgdInspectionRequestInput,
+  PgdInspectionRequestCreateInput,
   PgdLabRequest,
   PgdLabResult,
   PgdResultTemplate,
@@ -89,10 +90,10 @@ interface PgdStoreState {
   error?: string;
   reset: () => void;
   load: (force?: boolean) => Promise<void>;
-  createRequest: (input: PgdInspectionRequestInput) => Promise<PgdInspectionRequest>;
+  createRequest: (input: PgdInspectionRequestCreateInput) => Promise<PgdInspectionRequest>;
   updateRequest: (requestId: string, patch: Partial<PgdInspectionRequestInput>) => Promise<PgdInspectionRequest>;
   deleteRequest: (requestId: string, reason: string, confirmationCode: string) => Promise<Awaited<ReturnType<typeof deletePgdInspection>>>;
-  transitionRequest: (requestId: string, status: PgdInspectionStatus, context?: PgdTransitionContext) => Promise<PgdInspectionRequest>;
+  transitionRequest: (requestId: string, status: PgdInspectionStatus, context?: PgdTransitionContext, reason?: string) => Promise<PgdInspectionRequest>;
   saveAssignment: (assignment: PgdInspectionAssignment) => Promise<PgdInspectionAssignment>;
   saveFieldInspection: (inspection: PgdFieldInspection) => Promise<PgdFieldInspection>;
   saveInspectionPlan: (plan: PgdInspectionPlan) => Promise<PgdInspectionPlan>;
@@ -155,9 +156,12 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
     }
   },
   createRequest: async (input) => {
-    const request = await createPgdInspection(input);
-    mergeRequest(set, request);
-    return request;
+    const result = await createPgdInspection(input);
+    mergeRequest(set, result.request);
+    if (result.samples.length > 0) {
+      set((state) => ({ samples: [...state.samples.filter((sample) => !result.samples.some((created) => created.id === sample.id)), ...result.samples] }));
+    }
+    return result.request;
   },
   updateRequest: async (requestId, patch) => {
     const request = await updatePgdInspectionRequest(requestId, patch);
@@ -187,8 +191,8 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
     }));
     return deleted;
   },
-  transitionRequest: async (requestId, status, context) => {
-    const request = await transitionPgdInspection(requestId, status, context);
+  transitionRequest: async (requestId, status, context, reason) => {
+    const request = await transitionPgdInspection(requestId, status, context, reason);
     mergeRequest(set, request);
     return request;
   },

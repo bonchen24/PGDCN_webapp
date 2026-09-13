@@ -1,4 +1,5 @@
 import type { PcnApprovalDecision, PcnApprovalStep, PcnDepartmentRoleCode, PcnUserAccount } from '../types.ts';
+import { isOrganizationLeader } from './pcnRbac.ts';
 
 export const PCN_APPROVAL_ROLES = ['Lãnh đạo'] as const;
 export const PCN_LEADERSHIP_APPROVAL_ROLE = PCN_APPROVAL_ROLES[0];
@@ -21,7 +22,7 @@ function normalizeFieldCodes(values: unknown): string[] {
  */
 export function getPcnApprovalDecisionDenial(
   step: Pick<PcnApprovalStep, 'role' | 'assigneeUsername'>,
-  actor: Pick<PcnUserAccount, 'username' | 'active' | 'systemRole' | 'role' | 'departmentRoleCode' | 'fieldCodes'> | undefined,
+  actor: Pick<PcnUserAccount, 'username' | 'active' | 'systemRole' | 'role' | 'departmentRoleCode' | 'managementRoleCode' | 'fieldCodes'> | undefined,
   dossierFieldCodes: string[] = [],
 ): string | null {
   if (!actor) return 'Không tìm thấy tài khoản PCN đang đăng nhập trong danh sách nhân sự.';
@@ -34,7 +35,7 @@ export function getPcnApprovalDecisionDenial(
 
   const allowedDepartmentCodes = APPROVAL_ROLE_DEPARTMENT_CODES[step.role];
   if (!allowedDepartmentCodes) return 'Vai trò bước phê duyệt chưa có quy tắc chức vụ được xác nhận.';
-  if (!allowedDepartmentCodes.includes(actor.departmentRoleCode)) return 'Chức vụ PCN hiện tại không phù hợp với bước phê duyệt này.';
+  if (!isOrganizationLeader(actor) && !allowedDepartmentCodes.includes(actor.departmentRoleCode)) return 'Chức vụ PCN hiện tại không phù hợp với bước phê duyệt này.';
 
   const requiredFields = normalizeFieldCodes(dossierFieldCodes);
   const actorFields = normalizeFieldCodes(actor.fieldCodes);

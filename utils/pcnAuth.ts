@@ -8,9 +8,14 @@ import type {
   UserAccount,
   DepartmentScope,
   PgdDepartmentRoleCode,
+  OrganizationManagementRoleCode,
+  ProfessionalRoleCode,
 } from '../types.ts';
 import { PCN_CERTIFICATION_FIELD_CODES } from '../types.ts';
 import { getCanonicalUserKey, getUserFullName, normalizeUserKey } from './userIdentity.ts';
+import { getProfessionalRoleCodes, normalizeManagementRole } from './pcnOrganization.ts';
+
+export { getProfessionalRoleCodes, normalizeManagementRole } from './pcnOrganization.ts';
 
 export interface PcnUserRow {
   documentId: string;
@@ -64,7 +69,11 @@ export function getDepartmentScopes(data: Record<string, unknown> | undefined, s
     ? data.departmentScopes.filter(isDepartmentScope)
     : [];
   if (configured.length > 0) return Array.from(new Set(configured));
-  return systemRole === 'admin' ? ['PCN', 'PGD'] : ['PCN'];
+  const managementRole = normalizeManagementRole(data);
+  if (systemRole === 'admin' || ['CENTER_DIRECTOR', 'CENTER_DEPUTY_DIRECTOR', 'DEPARTMENT_HEAD', 'DEPARTMENT_DEPUTY'].includes(managementRole)) {
+    return ['PCN', 'PGD'];
+  }
+  return ['PCN'];
 }
 
 export function getPgdRole(data: Record<string, unknown> | undefined): PgdDepartmentRoleCode | undefined {
@@ -106,6 +115,8 @@ export function withPcnUserRoleAliases(
   systemRole: PcnSystemRole,
   departmentRoleCode: PcnDepartmentRoleCode,
   fieldCodes: PcnCertificationFieldCode[],
+  managementRoleCode: OrganizationManagementRoleCode = 'NONE',
+  professionalRoleCodes: ProfessionalRoleCode[] = [],
 ): Record<string, unknown> {
   return {
     ...data,
@@ -114,6 +125,8 @@ export function withPcnUserRoleAliases(
     'Loại tài khoản': systemRole,
     'Phân quyền': systemRole,
     'Vai trò': systemRole,
+    managementRoleCode,
+    professionalRoleCodes: Array.from(new Set(professionalRoleCodes)),
     departmentRoleCode,
     fieldCodes: Array.from(new Set(fieldCodes)),
     active: data.active !== false,
@@ -174,11 +187,15 @@ export function toPcnUserAccount(row: PcnUserRow): PcnUserAccount {
   const email = stringValue(userData.email || userData['Email']);
   const departmentScopes = getDepartmentScopes(userData, systemRole);
   const pgdRole = getPgdRole(userData);
+  const managementRoleCode = normalizeManagementRole(userData);
+  const professionalRoleCodes = getProfessionalRoleCodes(userData);
   return {
     username: getCanonicalUserKey(row.documentId, userData),
     name: getUserFullName(userData),
     role: systemRole,
     systemRole,
+    managementRoleCode,
+    professionalRoleCodes,
     departmentRoleCode: normalizePcnDepartmentRole(userData),
     fieldCodes: getPcnFieldCodes(userData),
     active: userData.active !== false && userData.isActive !== false,
@@ -202,12 +219,17 @@ export function mapDdtAccountToPcnUser(account: UserAccount): Record<string, unk
   const departmentRoleCode: PcnDepartmentRoleCode = username === 'luongxuanhung' || String(account.position || '').toLowerCase().includes('trưởng phòng')
     ? 'LEADERSHIP'
     : 'UNASSIGNED';
+  const managementRoleCode = account.managementRoleCode
+    || (String(account.position || '').toLocaleLowerCase('vi-VN').includes('phó') ? 'DEPARTMENT_DEPUTY' : 'NONE');
+  const professionalRoleCodes = account.professionalRoleCodes || [];
   return {
     id: username,
     username,
     name: String(account.name || '').trim(),
     role: systemRole,
     systemRole,
+    managementRoleCode,
+    professionalRoleCodes,
     departmentRoleCode,
     fieldCodes: Array.isArray(account.fieldCodes) ? account.fieldCodes : [],
     active: true,
@@ -251,11 +273,15 @@ export function verifyPcnSessionToken(token: string, secret: string, now = Date.
     const systemRole = normalizePcnSystemRole(user as unknown as Record<string, unknown>);
     const departmentScopes = getDepartmentScopes(user as unknown as Record<string, unknown>, systemRole);
     const pgdRole = getPgdRole(user as unknown as Record<string, unknown>);
+    const managementRoleCode = normalizeManagementRole(user as unknown as Record<string, unknown>);
+    const professionalRoleCodes = getProfessionalRoleCodes(user as unknown as Record<string, unknown>);
     return {
       username: stringValue(user.username),
       name: stringValue(user.name),
       role: systemRole,
       systemRole,
+      managementRoleCode,
+      professionalRoleCodes,
       departmentRoleCode: normalizePcnDepartmentRole(user as unknown as Record<string, unknown>),
       fieldCodes: getPcnFieldCodes(user as unknown as Record<string, unknown>),
       active: user.active !== false,

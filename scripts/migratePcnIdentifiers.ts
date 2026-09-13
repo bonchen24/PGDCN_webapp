@@ -9,6 +9,7 @@ import type { PoolClient } from 'pg';
 import { buildActivityLog } from '../utils/activityLog.ts';
 import { initDbSchema, pool } from '../utils/db.js';
 import {
+  formatPcnDossierCode,
   resequencePcnProposalCodes,
   resequencePcnSampleLotCodes,
 } from '../utils/pcnIdentifier.ts';
@@ -26,6 +27,14 @@ interface StoredDocument<T extends Record<string, unknown> = Record<string, unkn
 interface IdentifierMigrationPlan {
   proposals: Array<{ documentId: string; oldCode: string; newCode: string }>;
   lots: Array<{ documentId: string; oldCode: string; newCode: string }>;
+  dossiers: Array<{ documentId: string; oldCode: string; newCode: string }>;
+}
+
+interface MigrationProposalRecord {
+  id: string;
+  proposalCode: string;
+  receivedAt?: string;
+  createdAt?: string;
 }
 
 function parseArguments(argv: string[]): { apply: boolean; confirmation: string } {
@@ -47,13 +56,36 @@ async function readCollection<T extends Record<string, unknown>>(collectionName:
 export function buildPcnIdentifierMigrationPlan(
   proposals: StoredDocument[],
   lots: StoredDocument[],
+  dossiers: StoredDocument[] = [],
 ): IdentifierMigrationPlan {
-  const proposalRecords = proposals.map((document) => ({ ...document.data, id: document.documentId, proposalCode: String(document.data.proposalCode || '') }));
+  const proposalRecords: MigrationProposalRecord[] = proposals.map((document) => ({
+    id: document.documentId,
+    proposalCode: String(document.data.proposalCode || ''),
+    receivedAt: typeof document.data.receivedAt === 'string' ? document.data.receivedAt : undefined,
+    createdAt: typeof document.data.createdAt === 'string' ? document.data.createdAt : undefined,
+  }));
   const lotRecords = lots.map((document) => ({ ...document.data, id: document.documentId, lotCode: String(document.data.lotCode || '') }));
   const nextProposals = resequencePcnProposalCodes(proposalRecords);
   const nextLots = resequencePcnSampleLotCodes(lotRecords);
   const proposalById = new Map(nextProposals.map((record) => [record.id, record.proposalCode]));
   const lotById = new Map(nextLots.map((record) => [record.id, record.lotCode]));
+  const proposalDateById = new Map(proposalRecords.map((record) => [record.id, String(record.receivedAt || record.createdAt || '')]));
+
+  const dossierPlan = dossiers.map((document) => {
+    const oldCode = String(document.data.dossierCode || '');
+    const proposalId = String(document.data.proposalId || '');
+    const proposalCode = proposalById.get(proposalId) || '';
+    const timestamp = String(document.data.createdAt || proposalDateById.get(proposalId) || '');
+    let newCode = oldCode;
+    if (/^HS-\d{4}-?$/.test(oldCode) && proposalCode && timestamp) {
+      try {
+        newCode = formatPcnDossierCode(proposalCode, timestamp);
+      } catch {
+        newCode = oldCode;
+      }
+    }
+    return { documentId: document.documentId, oldCode, newCode };
+  });
 
   return {
     proposals: proposals.map((document) => ({
@@ -66,6 +98,7 @@ export function buildPcnIdentifierMigrationPlan(
       oldCode: String(document.data.lotCode || ''),
       newCode: lotById.get(document.documentId) || '',
     })),
+    dossiers: dossierPlan,
   };
 }
 
@@ -73,7 +106,7 @@ async function updateIdentifier(
   client: PoolClient,
   collectionName: string,
   documentId: string,
-  fieldName: 'proposalCode' | 'lotCode',
+  fieldName: 'proposalCode' | 'lotCode' | 'dossierCode',
   value: string,
 ): Promise<void> {
   await client.query(
@@ -92,11 +125,17 @@ async function writePlan(client: PoolClient, plan: IdentifierMigrationPlan): Pro
   for (const item of plan.lots) {
     await updateIdentifier(client, 'pcnSampleLots', item.documentId, 'lotCode', `__pcn_migration_lot__${item.documentId}`);
   }
+  for (const item of plan.dossiers) {
+    await updateIdentifier(client, 'certificationDossiers', item.documentId, 'dossierCode', `__pcn_migration_dossier__${item.documentId}`);
+  }
   for (const item of plan.proposals) {
     await updateIdentifier(client, 'certificationProposals', item.documentId, 'proposalCode', item.newCode);
   }
   for (const item of plan.lots) {
     await updateIdentifier(client, 'pcnSampleLots', item.documentId, 'lotCode', item.newCode);
+  }
+  for (const item of plan.dossiers) {
+    await updateIdentifier(client, 'certificationDossiers', item.documentId, 'dossierCode', item.newCode);
   }
 }
 
@@ -113,6 +152,7 @@ async function writeMigrationAudit(client: PoolClient, plan: IdentifierMigration
     changes: [
       { field: 'proposalCount', before: plan.proposals.length, after: plan.proposals.length },
       { field: 'sampleLotCount', before: plan.lots.length, after: plan.lots.length },
+      { field: 'dossierCount', before: plan.dossiers.filter((item) => item.oldCode !== item.newCode).length, after: plan.dossiers.filter((item) => item.oldCode !== item.newCode).length },
     ],
     source: 'IMPORT',
   });
@@ -130,19 +170,22 @@ export async function runPcnIdentifierMigration(argv = process.argv.slice(2)): P
   if (config.profile !== 'pcn') throw new Error('Migration mã PCN bị từ chối: hãy chạy với APP_PROFILE=pcn.');
 
   await initDbSchema();
-  const [proposals, lots] = await Promise.all([
+  const [proposals, lots, dossiers] = await Promise.all([
     readCollection('certificationProposals'),
     readCollection('pcnSampleLots'),
+    readCollection('certificationDossiers'),
   ]);
-  const plan = buildPcnIdentifierMigrationPlan(proposals, lots);
+  const plan = buildPcnIdentifierMigrationPlan(proposals, lots, dossiers);
   console.log(JSON.stringify({
     mode: options.apply ? 'APPLY_REQUESTED' : 'DRY_RUN',
     profile: config.profile,
     database: config.database,
     proposalCount: plan.proposals.length,
     sampleLotCount: plan.lots.length,
+    dossierCount: plan.dossiers.length,
     proposals: plan.proposals,
     lots: plan.lots,
+    dossiers: plan.dossiers,
   }, null, 2));
 
   if (!options.apply) {
@@ -165,7 +208,7 @@ export async function runPcnIdentifierMigration(argv = process.argv.slice(2)): P
   } finally {
     client.release();
   }
-  console.log(JSON.stringify({ mode: 'APPLIED', proposalCount: plan.proposals.length, sampleLotCount: plan.lots.length }, null, 2));
+  console.log(JSON.stringify({ mode: 'APPLIED', proposalCount: plan.proposals.length, sampleLotCount: plan.lots.length, dossierCount: plan.dossiers.length }, null, 2));
 }
 
 const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : '';

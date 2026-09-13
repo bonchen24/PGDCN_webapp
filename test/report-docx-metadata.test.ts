@@ -18,7 +18,7 @@ test('maps sealStamp into the legacy codingNumber placeholder', () => {
 
   assert.equal(metadata.sealStamp, 'IEMM-8891');
   assert.equal(metadata.codingNumber, 'IEMM-8891');
-  assert.equal(metadata.reportDate, 'Hà Nội, ngày 18 tháng 08 năm 2026 (Hanoi, August 18, 2026)');
+  assert.equal(metadata.reportDate, 'Hà Nội, ngày 18 tháng 8 năm 2026 (Hanoi, August 18, 2026)');
 });
 
 test('normalizes missing OCR report fields to N/A', () => {

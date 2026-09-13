@@ -18,7 +18,7 @@ test('PCN and PGD drafting workspaces share the PCN three-zone anatomy', () => {
   for (const source of [pcnDrafting, pgdDrafting]) {
     assert.match(source, /pcn-page-surface/);
     assert.match(source, /xl:grid-cols-\[250px_minmax\(0,1fr\)_270px\]/);
-    assert.match(source, /Kết quả sinh file|Kết quả sinh gần nhất/);
+    assert.match(source, /Kết quả sinh tệp|Kết quả sinh gần nhất/);
   }
   assert.match(`${pcnDrafting}\n${pgdGeneration}`, /sticky bottom-0/);
   assert.match(`${pcnDrafting}\n${pgdGeneration}`, /mobile-touch-target/);

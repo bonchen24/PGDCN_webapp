@@ -87,7 +87,7 @@ export default function PgdSidebar({
     <aside className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-slate-950 text-slate-200 shadow-2xl transition-all duration-300 lg:static lg:translate-x-0 ${collapsed ? 'lg:w-16' : 'lg:w-64'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className={`flex h-16 items-center border-b border-slate-800 p-4 ${expanded ? 'gap-3' : 'justify-center'}`}>
         <img src="/icons/iemm-logo-32.png" alt="IEMM • TVCI" className="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-0.5" />
-        {expanded && <div className="min-w-0"><div className="truncate text-xs font-black uppercase tracking-wide text-white">IEMM • TVCI</div><div className="mt-1 truncate text-[9px] font-bold leading-none tracking-widest text-blue-300">PHÒNG GIÁM ĐỊNH - CHỨNG NHẬN</div></div>}
+        {expanded && <div className="min-w-0"><div className="truncate text-xs font-black uppercase tracking-wide text-white">IEMM • TVCI</div><div className="mt-1 truncate text-[9px] font-bold leading-none tracking-widest text-blue-300">PHÒNG GIÁM ĐỊNH, CHỨNG NHẬN, PHÁT TRIỂN THỊ TRƯỜNG</div></div>}
         <button type="button" onClick={onCloseMobile} aria-label="Đóng menu PGD" className="ml-auto text-slate-400 lg:hidden"><X size={18} /></button>
       </div>
 

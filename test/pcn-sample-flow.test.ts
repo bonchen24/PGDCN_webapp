@@ -325,6 +325,18 @@ test('sample lot input displays server-owned yearly lot-code allocation', () => 
   assert.doesNotMatch(sampleFlowSource, /reviewPcnCodes/);
 });
 
+test('sample lot form mirrors required inputs with red stars and visible labels', () => {
+  assert.match(sampleFlowSource, /function RequiredMarker/);
+  assert.match(sampleFlowSource, /Số lượng mẫu <RequiredMarker \/>/);
+  assert.match(sampleFlowSource, /Loại mẫu\/(model|kiểu loại) đầu tiên <RequiredMarker \/>/);
+  assert.match(sampleFlowSource, /Kiểu loại đầu tiên <RequiredMarker \/>/);
+  assert.match(sampleFlowSource, /required type="number" min="1"/);
+  assert.doesNotMatch(sampleFlowSource, /placeholder=/);
+  assert.match(sampleFlowSource, /Ghi chú/);
+  assert.match(sampleFlowSource, /aria-required="true"/);
+  assert.match(sampleFlowSource, /text-rose-600/);
+});
+
 test('sample flow events carry a traceable route transition', () => {
   const event = buildPcnSampleFlowEvent({
     id: 'flow-1',

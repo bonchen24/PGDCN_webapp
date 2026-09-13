@@ -34,12 +34,14 @@ test('PGD DOCX pack contains source-derived forms, not the generic Cell/Giá tr�
     const filePath = path.join(root, 'templates', 'pgd', template.fileName);
     assert.equal(fs.existsSync(filePath), true, `missing ${template.fileName}`);
     const xml = new PizZip(fs.readFileSync(filePath)).file('word/document.xml')?.asText() || '';
+    const headerXml = new PizZip(fs.readFileSync(filePath)).file('word/header1.xml')?.asText() || '';
     const visibleText = xml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').toLocaleUpperCase('vi-VN');
     for (const expected of EXPECTED_LAYOUT[template.code] || []) {
       assert.match(visibleText, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), `${template.code} missing ${expected}`);
     }
     assert.doesNotMatch(visibleText, /TRƯỜNG THÔNG TIN\s+NỘI DUNG NHẬP LIỆU/);
     assert.ok((xml.match(/<w:tbl[ >]/g) || []).length >= 2, `${template.code} needs multiple business tables`);
+    assert.ok((headerXml.match(/<w:instrText[^>]*>\s*PAGE\s*<\/w:instrText>/gi) || []).length <= 1, `${template.code} must not repeat the PAGE field in its header`);
     assert.deepEqual(extractPcnTemplatePlaceholderKeys(fs.readFileSync(filePath)), [...template.placeholderKeys].sort((left, right) => left.localeCompare(right)));
   }
 });

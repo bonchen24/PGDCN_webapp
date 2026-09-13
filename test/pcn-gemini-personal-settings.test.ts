@@ -47,11 +47,16 @@ test('PCN OCR and assistant resolve the personal key on the server session', () 
   assert.match(serverSource, /await getPcnStoredGeminiModel/);
   assert.doesNotMatch(assistantSource, /X-Gemini-API-Key|geminiApiKey/);
   assert.doesNotMatch(ocrSource, /X-Gemini-API-Key|geminiApiKey/);
+  assert.match(serverSource, /personalCredentialRequired = options\.personalOnly === true \|\| DATABASE_PROFILE === ['"]pcn['"]/);
+  assert.match(serverSource, /requestApiKey = personalCredentialRequired \? undefined/);
+  assert.match(serverSource, /resolvedApiKey = personalCredentialRequired\s*\n?\s*\? personalApiKey/);
 });
 
 test('personal Gemini settings never enter PCN audit or API response as raw key', () => {
   assert.match(serverSource, /geminiApiKeyEncrypted/);
   assert.match(serverSource, /geminiApiKeyHint|maskPcnGeminiApiKey/);
+  assert.match(serverSource, /geminiConfigured: previousSettings\.geminiApiKeyConfigured/);
+  assert.match(serverSource, /geminiConfigured: nextSettings\.geminiApiKeyConfigured/);
   assert.doesNotMatch(serverSource, /changes:\s*\[[\s\S]{0,300}geminiApiKey/i);
 });
 

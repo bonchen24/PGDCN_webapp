@@ -26,6 +26,14 @@ function addRequiredIssue(issues: PcnIntakeValidationIssue[], value: unknown, fi
   if (!text(value)) issues.push({ field, message });
 }
 
+function isPgdSteelSource(proposal: Record<string, unknown>): boolean {
+  const sourceText = [proposal.productName, proposal.productType, proposal.specifications, proposal.model]
+    .map(text)
+    .join(' ')
+    .toLocaleLowerCase('vi-VN');
+  return /qcvn\s*20(?:\s*:\s*2019)?|th[eế]p\s+kh[oô]ng\s+g[iỉ]|stainless\s+steel|\binox\b/.test(sourceText);
+}
+
 /**
  * Validate the fields that must be complete before a new PCN proposal/dossier
  * is committed. The function deliberately accepts unknown input so the same
@@ -44,10 +52,17 @@ export function validatePcnProposalIntake(input: unknown): PcnIntakeValidationRe
   addRequiredIssue(issues, proposal.warehouseAddress, 'warehouseAddress', 'Địa chỉ/kho liên quan là bắt buộc.');
   addRequiredIssue(issues, proposal.productName, 'productName', 'Tên sản phẩm là bắt buộc.');
   addRequiredIssue(issues, proposal.productType, 'productType', 'Kiểu/loại sản phẩm là bắt buộc.');
-  addRequiredIssue(issues, proposal.model, 'model', 'Model là bắt buộc.');
+  addRequiredIssue(issues, proposal.model, 'model', 'Kiểu loại là bắt buộc.');
   addRequiredIssue(issues, proposal.brand, 'brand', 'Nhãn hiệu là bắt buộc.');
   addRequiredIssue(issues, proposal.specifications, 'specifications', 'Thông số kỹ thuật là bắt buộc.');
   addRequiredIssue(issues, proposal.manufacturer, 'manufacturer', 'Nhà sản xuất là bắt buộc.');
+
+  if (isPgdSteelSource(proposal)) {
+    issues.push({
+      field: 'productType',
+      message: 'Nguồn mô tả thép không gỉ hoặc QCVN 20 thuộc miền PGD; không được tiếp nhận trong PCN.',
+    });
+  }
 
   const quantity = typeof proposal.quantity === 'number' || typeof proposal.quantity === 'string'
     ? Number(proposal.quantity)

@@ -19,7 +19,7 @@ test('PGD document client exposes DOCX template management and generation endpoi
 
 test('PGD UI exposes DOCX template management and document generation modules', () => {
   const documentPanel = read('components/PgdDocumentGenerationPanel.tsx');
-  assert.match(documentPanel, /Quản trị template DOCX PGD/);
+  assert.match(documentPanel, /Quản trị mẫu DOCX PGD/);
   assert.match(documentPanel, /placeholder/);
   assert.match(documentPanel, /Sinh DOCX|Sinh PDF/);
   assert.match(documentPanel, /DECISION: 'Quyết định PGD'/);
@@ -57,8 +57,8 @@ test('PGD settings expose the packaged DOCX source and its placeholder inspectio
   assert.match(panel, /sourceInspection/);
   assert.match(panel, /missingPlaceholderKeys/);
   assert.match(panel, /extraPlaceholderKeys/);
-  assert.match(panel, /Thiếu placeholder/);
-  assert.match(panel, /Thừa placeholder/);
+  assert.match(panel, /Thiếu trường dữ liệu trong tệp DOCX/);
+  assert.match(panel, /Có trường chưa được cấu hình/);
   assert.match(panel, /Tải DOCX nguồn/);
   assert.match(panel, /PgdTableFieldEditor/);
   assert.match(tableEditor, /Thêm dòng/);

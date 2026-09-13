@@ -20,8 +20,23 @@ test('formats a Vietnamese report date with an English month name', () => {
 
 test('formats the bilingual report date without numeric English date fields', () => {
   assert.equal(
-    formatBilingualReportDate('2026-08-18'),
-    'Hà Nội, ngày 18 tháng 08 năm 2026 (Hanoi, August 18, 2026)',
+    formatBilingualReportDate('2026-08-08'),
+    'Hà Nội, ngày 08 tháng 8 năm 2026 (Hanoi, August 8, 2026)',
+  );
+});
+
+test('pads single-digit report days and only pads Vietnamese months January and February', () => {
+  assert.equal(
+    formatBilingualReportDate('2026-01-01'),
+    'Hà Nội, ngày 01 tháng 01 năm 2026 (Hanoi, January 1, 2026)',
+  );
+  assert.equal(
+    formatBilingualReportDate('2026-02-02'),
+    'Hà Nội, ngày 02 tháng 02 năm 2026 (Hanoi, February 2, 2026)',
+  );
+  assert.equal(
+    formatBilingualReportDate('2026-03-03'),
+    'Hà Nội, ngày 03 tháng 3 năm 2026 (Hanoi, March 3, 2026)',
   );
 });
 

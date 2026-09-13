@@ -1,5 +1,6 @@
-import type { CustomerRef } from '../types.ts';
+import type { CustomerRef, OrganizationManagementRoleCode, ProfessionalRoleCode } from '../types.ts';
 import type { PgdDocumentTemplateSnapshot } from './pgdDocumentTemplates.ts';
+import { isOrganizationLeader } from './pcnRbac.ts';
 
 export const PGD_DOMAIN = 'pgd' as const;
 
@@ -53,6 +54,30 @@ export type PgdAssessmentMethod = typeof PGD_ASSESSMENT_METHOD_OPTIONS[number]['
 export type PgdProductGroup = 'STEEL_METAL' | 'MACHINERY_LINE' | 'COAL' | 'OTHER';
 export const PGD_V1_PRODUCT_GROUPS = ['STEEL_METAL', 'MACHINERY_LINE', 'COAL', 'OTHER'] as const satisfies readonly PgdProductGroup[];
 export type PgdV1ProductGroup = typeof PGD_V1_PRODUCT_GROUPS[number];
+
+export interface PgdSampleTypeOption {
+  id: string;
+  label: string;
+  productGroups: readonly PgdProductGroup[];
+}
+
+/** Catalog of common sample labels. The intake UI may still accept a custom label. */
+export const PGD_SAMPLE_TYPE_OPTIONS = [
+  { id: 'STEEL_COIL', label: 'Thép cuộn', productGroups: ['STEEL_METAL'] },
+  { id: 'STEEL_SHEET', label: 'Thép tấm / thép lá', productGroups: ['STEEL_METAL'] },
+  { id: 'STEEL_BAR', label: 'Thép thanh / thép hình', productGroups: ['STEEL_METAL'] },
+  { id: 'MACHINERY_LINE', label: 'Dây chuyền / máy móc', productGroups: ['MACHINERY_LINE'] },
+  { id: 'MACHINERY_EQUIPMENT', label: 'Thiết bị cơ khí', productGroups: ['MACHINERY_LINE'] },
+  { id: 'COAL_LUMP', label: 'Than cục', productGroups: ['COAL'] },
+  { id: 'COAL_FINE', label: 'Than cám', productGroups: ['COAL'] },
+  { id: 'OTHER_GOODS', label: 'Mẫu hàng hóa khác', productGroups: ['OTHER'] },
+] as const satisfies readonly PgdSampleTypeOption[];
+
+export type PgdInspectionGroupCode = 'QC20';
+export const PGD_QC20_GROUP_CODE: PgdInspectionGroupCode = 'QC20';
+export const PGD_GROUP_LABELS: Record<PgdInspectionGroupCode, string> = {
+  QC20: 'QC20 · Thép không gỉ / QCVN 20',
+};
 export type PgdInspectionProfileCode =
   | 'QUANTITY_WEIGHT'
   | 'CONDITION_ORIGIN'
@@ -143,6 +168,8 @@ export interface PgdCatalogItem {
   code: string;
   name: string;
   productGroup: PgdProductGroup;
+  /** Stable PGD grouping code; distinct from the profile routing code and PCN field code. */
+  groupCode?: PgdInspectionGroupCode;
   /** Stable application routing key; legacy persisted catalog rows may omit it. */
   profileCode?: PgdInspectionProfileCode;
   inspectionTypes: string[];
@@ -168,6 +195,10 @@ export const PGD_STEEL_STANDARD_REFS = [
   'QCVN 20:2019/BKHCN',
   'Sửa đổi 1:2021 QCVN 20:2019/BKHCN',
 ] as const;
+
+export function isPgdInspectionGroupCode(value: unknown): value is PgdInspectionGroupCode {
+  return value === PGD_QC20_GROUP_CODE;
+}
 
 const PGD_REQUEST_CODE_PATTERN = /^PGD-(\d{6})-(\d{2})$/;
 
@@ -206,6 +237,7 @@ export const DEFAULT_PGD_CATALOG: readonly PgdCatalogItem[] = [
     code: PGD_STEEL_CATALOG_ITEM_CODE,
     name: 'Giám định lô thép / kim loại theo tiêu chuẩn áp dụng',
     productGroup: 'STEEL_METAL',
+    groupCode: PGD_QC20_GROUP_CODE,
     profileCode: 'STEEL_STANDARD_COMPLIANCE',
     inspectionTypes: ['VISUAL_DIMENSIONAL', 'QUANTITY_WEIGHT', 'CHEMICAL', 'MECHANICAL'],
     methodOptions: [
@@ -451,9 +483,15 @@ export function isPgdCatalogItemAllowed(catalogItemId: string, catalog: readonly
   return catalog.some((item) => item.domain === PGD_DOMAIN
     && item.active
     && item.id === normalizedId
+    && (!item.groupCode || (isPgdInspectionGroupCode(item.groupCode) && item.groupCode === PGD_QC20_GROUP_CODE && item.code === PGD_STEEL_CATALOG_ITEM_CODE))
     && (item.productGroup !== 'STEEL_METAL' || PGD_STEEL_CATALOG_ITEM_CODES.includes(item.code as typeof PGD_STEEL_CATALOG_ITEM_CODES[number]))
     && !/QC20/i.test(`${item.id} ${item.code} ${item.name}`)
     && item.methodOptions.every((method) => !/QC20/i.test(`${method.code} ${method.name}`)));
+}
+
+export function getPgdGroupCodeForCatalogItem(catalogItemId: string, catalog: readonly PgdCatalogItem[] = DEFAULT_PGD_CATALOG): PgdInspectionGroupCode | undefined {
+  const item = catalog.find((candidate) => candidate.domain === PGD_DOMAIN && candidate.active && candidate.id === String(catalogItemId || '').trim());
+  return item?.groupCode;
 }
 
 /** Runtime catalog for the approved v1 rollout, covering every source-derived PGD group. */
@@ -467,7 +505,14 @@ export function getPgdActiveCatalog(catalog: readonly PgdCatalogItem[] = DEFAULT
  */
 export function mergePgdCatalogDefaults(catalog: readonly PgdCatalogItem[] = []): PgdCatalogItem[] {
   const byId = new Map(DEFAULT_PGD_CATALOG.map((item) => [item.id, clone(item)]));
-  for (const item of catalog) byId.set(item.id, clone(item));
+  for (const item of catalog) {
+    const baseline = byId.get(item.id);
+    byId.set(item.id, clone({
+      ...baseline,
+      ...item,
+      ...(baseline?.groupCode && item.groupCode === undefined ? { groupCode: baseline.groupCode } : {}),
+    }));
+  }
   return Array.from(byId.values());
 }
 
@@ -478,8 +523,10 @@ export function isPgdCatalogRecordAllowed(value: unknown): value is PgdCatalogIt
     && typeof item.id === 'string'
     && typeof item.code === 'string'
     && typeof item.name === 'string'
+    && (item.groupCode === undefined || isPgdInspectionGroupCode(item.groupCode))
     && !/QC20/i.test(`${item.id} ${item.code} ${item.name}`)
     && ['STEEL_METAL', 'MACHINERY_LINE', 'COAL', 'OTHER'].includes(String(item.productGroup || ''))
+    && (!item.groupCode || (item.groupCode === PGD_QC20_GROUP_CODE && item.code === PGD_STEEL_CATALOG_ITEM_CODE))
     && (item.productGroup !== 'STEEL_METAL' || PGD_STEEL_CATALOG_ITEM_CODES.includes(item.code as typeof PGD_STEEL_CATALOG_ITEM_CODES[number]))
     && Array.isArray(item.defaultStandards)
     && item.active === true
@@ -640,6 +687,8 @@ export interface PgdInspectionRequestInput {
   receivedByUsername?: string;
   customerSnapshot: PgdCustomerSnapshot;
   productGroup: PgdProductGroup;
+  /** Snapshot of the PGD business group; this is not a PCN field code. */
+  pgdGroupCode?: PgdInspectionGroupCode;
   catalogItemId: string;
   productName: string;
   productCode?: string;
@@ -673,6 +722,32 @@ export interface PgdInspectionRequestInput {
   status?: PgdInspectionStatus;
 }
 
+export interface PgdIntakeSampleDraft {
+  id?: string;
+  sampleCode: string;
+  catalogOptionId?: string;
+  sampleTypeLabel: string;
+  customLabel?: string;
+  description?: string;
+  quantity: number;
+  unit?: string;
+  disposition: PgdSampleDisposition;
+  sealNumber?: string;
+  sampleSize?: string;
+  lotQuantity?: number;
+  lotUnit?: string;
+  sampledAt?: string;
+  samplingLocation?: string;
+  sampledByUsername?: string;
+  laboratoryName?: string;
+  note?: string;
+}
+
+/** Create-only envelope; draft sample rows are persisted in the same transaction as the request. */
+export interface PgdInspectionRequestCreateInput extends PgdInspectionRequestInput {
+  sampleDrafts?: PgdIntakeSampleDraft[];
+}
+
 export interface PgdInspectionRequest extends Omit<PgdInspectionRequestInput, 'status' | 'documentPointers' | 'requestCode'> {
   domain: typeof PGD_DOMAIN;
   requestCode: string;
@@ -693,6 +768,10 @@ export interface PgdInspectionRequest extends Omit<PgdInspectionRequestInput, 's
   deletedAt?: string;
   deletedBy?: string;
   deletionReason?: string;
+  /** Latest reasoned exception branch; the full history remains in PGD activity logs. */
+  exceptionReason?: string;
+  exceptionAt?: string;
+  exceptionByUsername?: string;
 }
 
 export type PgdInspectionRequestEditPatch = Partial<Pick<PgdInspectionRequestInput,
@@ -829,6 +908,9 @@ export interface PgdSample {
   domain: typeof PGD_DOMAIN;
   requestId: string;
   sampleCode: string;
+  catalogOptionId?: string;
+  sampleTypeLabel?: string;
+  customLabel?: string;
   description: string;
   quantity: number;
   unit?: string;
@@ -848,6 +930,70 @@ export interface PgdSample {
   destroyedByUsername?: string;
   destructionNote?: string;
   note?: string;
+}
+
+export function validatePgdIntakeSampleDraft(draft: Partial<PgdIntakeSampleDraft>, index = 0): PgdValidationIssue[] {
+  const prefix = `sampleDrafts[${index}]`;
+  const issues: PgdValidationIssue[] = [];
+  if (!String(draft.sampleCode || '').trim()) issues.push({ field: `${prefix}.sampleCode`, message: 'Cần nhập mã mẫu.' });
+  if (!String(draft.sampleTypeLabel || draft.description || '').trim()) issues.push({ field: `${prefix}.sampleTypeLabel`, message: 'Cần nhập tên hoặc mô tả mẫu.' });
+  if (!Number.isFinite(Number(draft.quantity)) || Number(draft.quantity) <= 0) issues.push({ field: `${prefix}.quantity`, message: 'Số lượng mẫu phải lớn hơn 0.' });
+  if (!String(draft.unit || '').trim()) issues.push({ field: `${prefix}.unit`, message: 'Cần nhập đơn vị mẫu.' });
+  if (!['LAB', 'RETAINED'].includes(String(draft.disposition || ''))) issues.push({ field: `${prefix}.disposition`, message: 'Phân loại mẫu không hợp lệ.' });
+  if (draft.disposition === 'LAB' && !String(draft.laboratoryName || '').trim()) issues.push({ field: `${prefix}.laboratoryName`, message: 'Mẫu gửi PTN cần có tên phòng thử nghiệm.' });
+  if (draft.disposition === 'RETAINED' && !String(draft.sealNumber || '').trim()) issues.push({ field: `${prefix}.sealNumber`, message: 'Mẫu lưu cần có số niêm phong.' });
+  if (draft.catalogOptionId && !PGD_SAMPLE_TYPE_OPTIONS.some((option) => option.id === draft.catalogOptionId)) {
+    issues.push({ field: `${prefix}.catalogOptionId`, message: 'Loại mẫu không có trong danh mục PGD.' });
+  }
+  return issues;
+}
+
+export function validatePgdIntakeSampleDrafts(drafts: readonly Partial<PgdIntakeSampleDraft>[] = []): PgdValidationIssue[] {
+  const issues = drafts.flatMap((draft, index) => validatePgdIntakeSampleDraft(draft, index));
+  const seen = new Map<string, number>();
+  drafts.forEach((draft, index) => {
+    const code = String(draft.sampleCode || '').trim().toLocaleUpperCase();
+    if (!code) return;
+    const previous = seen.get(code);
+    if (previous !== undefined) issues.push({ field: `sampleDrafts[${index}].sampleCode`, message: `Mã mẫu trùng với dòng ${previous + 1}.` });
+    else seen.set(code, index);
+  });
+  return issues;
+}
+
+export function createPgdSampleFromIntakeDraft(
+  requestId: string,
+  draft: PgdIntakeSampleDraft,
+  actorUsername?: string,
+  now = new Date().toISOString(),
+): PgdSample {
+  const option = PGD_SAMPLE_TYPE_OPTIONS.find((candidate) => candidate.id === draft.catalogOptionId);
+  const label = String(draft.customLabel || draft.sampleTypeLabel || draft.description || option?.label || '').trim();
+  const sampleCode = String(draft.sampleCode || '').trim();
+  const id = String(draft.id || '').trim() || `pgd-sample-${globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`}`;
+  return {
+    id,
+    domain: PGD_DOMAIN,
+    requestId,
+    sampleCode,
+    ...(option ? { catalogOptionId: option.id } : {}),
+    sampleTypeLabel: label,
+    ...(draft.customLabel ? { customLabel: String(draft.customLabel).trim() } : {}),
+    description: String(draft.description || label).trim(),
+    quantity: Number(draft.quantity),
+    ...(String(draft.unit || '').trim() ? { unit: String(draft.unit).trim() } : {}),
+    disposition: draft.disposition,
+    ...(String(draft.sealNumber || '').trim() ? { sealNumber: String(draft.sealNumber).trim() } : {}),
+    ...(String(draft.sampleSize || '').trim() ? { sampleSize: String(draft.sampleSize).trim() } : {}),
+    ...(draft.lotQuantity !== undefined ? { lotQuantity: Number(draft.lotQuantity) } : {}),
+    ...(String(draft.lotUnit || '').trim() ? { lotUnit: String(draft.lotUnit).trim() } : {}),
+    ...(String(draft.sampledAt || '').trim() ? { sampledAt: String(draft.sampledAt).trim() } : { sampledAt: now }),
+    ...(String(draft.samplingLocation || '').trim() ? { samplingLocation: String(draft.samplingLocation).trim() } : {}),
+    ...(String(draft.sampledByUsername || actorUsername || '').trim() ? { sampledByUsername: String(draft.sampledByUsername || actorUsername).trim() } : {}),
+    ...(String(draft.laboratoryName || '').trim() ? { laboratoryName: String(draft.laboratoryName).trim() } : {}),
+    ...(draft.disposition === 'RETAINED' ? { retentionStatus: 'ACTIVE' as const } : {}),
+    ...(String(draft.note || '').trim() ? { note: String(draft.note).trim() } : {}),
+  };
 }
 
 export interface PgdLabRequest {
@@ -1084,6 +1230,8 @@ export function validatePgdIntake(input: Partial<PgdInspectionRequestInput>, cat
   }
   if (!isPgdCatalogItemAllowed(String(input.catalogItemId || ''), catalog)) issues.push({ field: 'catalogItemId', message: 'Loại hình không thuộc catalog PGD hoặc đã bị loại khỏi miền PGD.' });
   const catalogItem = catalog.find((item) => item.id === String(input.catalogItemId || '').trim() && item.domain === PGD_DOMAIN && item.active);
+  if (input.pgdGroupCode !== undefined && !isPgdInspectionGroupCode(input.pgdGroupCode)) issues.push({ field: 'pgdGroupCode', message: 'Nhóm nghiệp vụ PGD không hợp lệ.' });
+  if (catalogItem?.groupCode && input.pgdGroupCode !== undefined && input.pgdGroupCode !== catalogItem.groupCode) issues.push({ field: 'pgdGroupCode', message: 'Nhóm nghiệp vụ PGD không khớp loại hình đã chọn.' });
   const isQcvnSteelProfile = catalogItem?.productGroup === 'STEEL_METAL' && catalogItem.code === PGD_STEEL_CATALOG_ITEM_CODE;
   const isSteelMetal = catalogItem?.productGroup === 'STEEL_METAL';
   if (catalogItem && catalogItem.productGroup !== input.productGroup) issues.push({ field: 'productGroup', message: 'Loại hình giám định không khớp nhóm sản phẩm PGD.' });
@@ -1192,6 +1340,7 @@ export function validatePgdIntake(input: Partial<PgdInspectionRequestInput>, cat
 export interface PgdAssignmentUserSnapshot {
   username: string;
   active?: boolean;
+  managementRoleCode?: OrganizationManagementRoleCode;
   departmentScopes?: string[];
   pgdRole?: string;
 }
@@ -1218,7 +1367,7 @@ export function validatePgdAssignment(
     const user = byUsername.get(reviewerUsername);
     const scopes = new Set((user?.departmentScopes || []).map((scope) => String(scope).trim().toUpperCase()));
     const role = String(user?.pgdRole || '').toUpperCase();
-    if (!user || user.active === false || !scopes.has('PGD') || !['PGD_ADMIN', 'PGD_MANAGER', 'PGD_TECHNICAL'].includes(role)) {
+    if (!user || user.active === false || !scopes.has('PGD') || (!isOrganizationLeader(user) && !['PGD_ADMIN', 'PGD_MANAGER', 'PGD_TECHNICAL'].includes(role))) {
       issues.push({ field: 'technicalReviewerUsername', message: `Nhân sự ${reviewerUsername} không phù hợp để soát xét kỹ thuật PGD.` });
     }
   }
@@ -1250,10 +1399,13 @@ export function createPgdInspectionRequest(input: PgdInspectionRequestInput, now
   const issues = validatePgdIntake(input, catalog);
   if (issues.length > 0) throw new Error(`Dữ liệu PYC PGD chưa đủ: ${issues.map((issue) => issue.field).join(', ')}`);
   const registryMetadata = normalizePgdRegistryMetadata(input.registryMetadata);
+  const catalogItem = catalog.find((item) => item.id === String(input.catalogItemId || '').trim() && item.domain === PGD_DOMAIN && item.active);
+  const pgdGroupCode = input.pgdGroupCode || catalogItem?.groupCode;
   return {
     ...clone(input),
     requestCode: String(input.requestCode).trim(),
     domain: PGD_DOMAIN,
+    ...(pgdGroupCode ? { pgdGroupCode } : {}),
     ...(registryMetadata ? { registryMetadata } : {}),
     status: 'DRAFT',
     documentPointers: clone(input.documentPointers || []),
@@ -1332,13 +1484,12 @@ export function getPgdTransitionDenial(
 export function getPgdApprovalDenial(
   currentStatus: PgdInspectionStatus,
   approvalRole: PgdApprovalRole,
-  user: { role?: string; systemRole?: string; departmentRoleCode?: string; pgdRole?: string } = {},
+  user: PgdMutationUser = {},
 ): string | null {
   if (currentStatus !== approvalRole) return 'Bước phê duyệt không khớp trạng thái hồ sơ PGD.';
   const systemRole = String(user.systemRole || user.role || '').trim().toLowerCase();
-  const departmentRole = String(user.departmentRoleCode || '').trim().toUpperCase();
   const pgdRole = String(user.pgdRole || '').trim().toUpperCase();
-  if (systemRole === 'admin' || departmentRole === 'LEADERSHIP' || pgdRole === 'PGD_ADMIN' || pgdRole === 'PGD_MANAGER') return null;
+  if (systemRole === 'admin' || isOrganizationLeader(user) || pgdRole === 'PGD_ADMIN' || pgdRole === 'PGD_MANAGER') return null;
   if (approvalRole === 'TECHNICAL_REVIEW' && pgdRole === 'PGD_TECHNICAL') return null;
   return approvalRole === 'TECHNICAL_REVIEW'
     ? 'Tài khoản không có phạm vi phê duyệt chuyên môn PGD.'
@@ -1492,6 +1643,8 @@ export type PgdMutationOperation = 'write' | 'delete';
 export interface PgdMutationUser {
   role?: string;
   systemRole?: string;
+  managementRoleCode?: OrganizationManagementRoleCode;
+  professionalRoleCodes?: ProfessionalRoleCode[];
   departmentRoleCode?: string;
   position?: string;
   departmentScopes?: string[];
@@ -1503,9 +1656,7 @@ const PGD_DOSSIER_EDIT_LOCKED_STATUSES = new Set<PgdInspectionStatus>(['SIGNED',
 export function isPgdSystemManager(user: PgdMutationUser = {}): boolean {
   const systemRoles = [user.systemRole, user.role].map((value) => String(value || '').trim().toLowerCase());
   if (systemRoles.includes('admin')) return true;
-  if (String(user.departmentRoleCode || '').trim().toUpperCase() === 'LEADERSHIP') return true;
-  const position = String(user.position || '').trim().toLocaleLowerCase('vi-VN');
-  return position.includes('quản lý') || position.includes('trưởng phòng');
+  return isOrganizationLeader(user);
 }
 
 /** PGD operational managers may see the action surface, but mutation guards remain authoritative. */

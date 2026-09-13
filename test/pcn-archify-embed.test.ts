@@ -12,9 +12,9 @@ test('both domains embed the upstream Archify reader and keep the PCN action bri
   assert.match(source, /event\.origin !== window\.location\.origin/);
   assert.match(source, /source !== 'pcn-archify'/);
   assert.match(source, /pcn-archify-action-dock/);
-  assert.match(source, /Bắt đầu node/);
-  assert.match(source, /Hoàn tất node/);
-  assert.match(source, /Trả về node/);
+  assert.match(source, /Bắt đầu bước/);
+  assert.match(source, /Hoàn tất bước/);
+  assert.match(source, /Trả về bước/);
   assert.doesNotMatch(source, /ArrowDown/);
 });
 
@@ -64,8 +64,8 @@ test('diagram query validation is applied after a hydration-safe workflow defaul
   assert.doesNotMatch(source, /useState<ArchifyDiagramType>\(initialDiagramType\)/);
 });
 
-test('PCN workflow panel authorizes Archify edges from active transition IDs', () => {
-  assert.match(panelSource, /workflow\.transitions\.filter\(\(transition\) => activeNodeIds\.has\(transition\.fromNodeId\) && activeNodeIds\.has\(transition\.toNodeId\)\)/);
-  assert.match(panelSource, /transition\.id/);
-  assert.match(panelSource, /edgeIds=\{edgeIds\}/);
+test('PCN workflow panel uses the native flow instead of the Archify embed', () => {
+  assert.doesNotMatch(panelSource, /PcnArchifyWorkflowEmbed/);
+  assert.doesNotMatch(panelSource, /edgeIds/);
+  assert.match(panelSource, /PcnDossierFlow/);
 });

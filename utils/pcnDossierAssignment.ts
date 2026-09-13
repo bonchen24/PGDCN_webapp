@@ -2,6 +2,9 @@
 // OS support: Web/Node
 // Description: Browser-safe policy for assigning PCN dossier operators
 
+import type { OrganizationManagementRoleCode } from '../types.ts';
+import { isOrganizationLeader } from './pcnRbac.ts';
+
 export interface PcnDossierAssignmentUser {
   username: string;
   name?: string;
@@ -25,6 +28,7 @@ export interface PcnOwnerAssignmentAuthorityInput {
   nextUsername?: string;
   actorUsername?: string;
   actorSystemRole?: string;
+  actorManagementRoleCode?: OrganizationManagementRoleCode;
   actorDepartmentRoleCode?: string;
 }
 
@@ -127,9 +131,11 @@ export function getPcnOwnerAssignmentAuthorityDenial(input: PcnOwnerAssignmentAu
 
   const actorUsername = normalizeUsername(input.actorUsername);
   const systemRole = String(input.actorSystemRole || '').trim().toLowerCase();
-  const departmentRoleCode = String(input.actorDepartmentRoleCode || '').trim().toUpperCase();
   if (systemRole === 'viewer') return 'Tài khoản viewer không được điều phối chủ hồ sơ.';
-  if (systemRole === 'admin' || departmentRoleCode === 'LEADERSHIP') return null;
+  if (systemRole === 'admin' || isOrganizationLeader({
+    managementRoleCode: input.actorManagementRoleCode,
+    departmentRoleCode: input.actorDepartmentRoleCode,
+  })) return null;
   if (!nextUsername && currentUsername) return 'Chỉ Admin hoặc Lãnh đạo mới được bỏ chủ hồ sơ đã phân công.';
   if (!currentUsername && actorUsername === nextUsername) return null;
 

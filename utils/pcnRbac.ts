@@ -2,6 +2,9 @@
 // OS support: Web/Node
 // Description: Server-side PCN collection mutation policy
 
+import type { OrganizationManagementRoleCode, ProfessionalRoleCode } from '../types.ts';
+import { getProfessionalRoleCodes, normalizeManagementRole } from './pcnOrganization.ts';
+
 export type PcnMutationOperation = 'write' | 'delete';
 export type PcnMutationRole = 'admin' | 'staff' | 'viewer';
 
@@ -10,6 +13,8 @@ export interface PcnClientUserRole {
   role?: string;
   systemRole?: string;
   position?: string;
+  managementRoleCode?: OrganizationManagementRoleCode;
+  professionalRoleCodes?: ProfessionalRoleCode[];
   departmentRoleCode?: string;
   pgdRole?: string;
   departmentScopes?: string[];
@@ -24,22 +29,42 @@ const PCN_DOSSIER_HARD_DELETABLE_STATUSES = new Set([
   'ON_HOLD',
 ]);
 
+export function getOrganizationManagementRole(user: PcnClientUserRole | null | undefined): OrganizationManagementRoleCode {
+  return normalizeManagementRole(user as Record<string, unknown> | undefined);
+}
+
+export function isCenterLeader(user: PcnClientUserRole | null | undefined): boolean {
+  const role = getOrganizationManagementRole(user);
+  return role === 'CENTER_DIRECTOR' || role === 'CENTER_DEPUTY_DIRECTOR';
+}
+
+export function isDepartmentLeader(user: PcnClientUserRole | null | undefined): boolean {
+  const role = getOrganizationManagementRole(user);
+  return role === 'DEPARTMENT_HEAD' || role === 'DEPARTMENT_DEPUTY';
+}
+
+export function isOrganizationLeader(user: PcnClientUserRole | null | undefined): boolean {
+  return isCenterLeader(user) || isDepartmentLeader(user);
+}
+
+export function hasProfessionalRole(
+  user: PcnClientUserRole | null | undefined,
+  role: ProfessionalRoleCode,
+): boolean {
+  return getProfessionalRoleCodes(user as Record<string, unknown> | undefined).includes(role);
+}
+
 /** System-level manager authority shared by the PCN and PGD workspaces. */
 export function isPcnSystemManager(user: PcnClientUserRole | null | undefined): boolean {
   if (!user) return false;
   if (user.systemRole === 'admin' || user.role === 'admin') return true;
-  if (String(user.departmentRoleCode || '').trim().toUpperCase() === 'LEADERSHIP') return true;
-  const position = String(user.position || '').trim().toLocaleLowerCase('vi-VN');
-  return position.includes('quản lý') || position.includes('trưởng phòng');
+  return isOrganizationLeader(user);
 }
 
 export function isPcnPersonnelManager(user: PcnClientUserRole | null | undefined): boolean {
   if (!user) return false;
   if (user.systemRole === 'admin' || user.role === 'admin') return true;
-  return user.departmentRoleCode === 'LEADERSHIP'
-    || user.pgdRole === 'PGD_MANAGER'
-    || String(user.position || '').toLocaleLowerCase('vi-VN').includes('quản lý')
-    || String(user.position || '').toLocaleLowerCase('vi-VN').includes('trưởng phòng');
+  return isOrganizationLeader(user);
 }
 
 /**

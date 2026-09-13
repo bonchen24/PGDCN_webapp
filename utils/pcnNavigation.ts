@@ -31,7 +31,8 @@ export const PCN_WORKSPACE_NAVIGATION: readonly PcnSection[] = [
 
 /**
  * Activity logs are available to every authenticated PCN account while
- * personnel management and settings remain Admin-only.
+ * personnel management and settings are reserved for Admin or organizational
+ * leaders with the corresponding management scope.
  */
 export const PCN_MORE_NAVIGATION_GROUPS: readonly PcnNavigationGroup[] = [
   {

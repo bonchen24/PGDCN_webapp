@@ -13,6 +13,7 @@ import type { PgdDossierDocument, PgdDossierRequirement, PgdDossierRequirementGr
 import { getPgdDossierDocumentDownloadUrl } from '../utils/pgdApi';
 import { getPgdOperationalStepAccess } from '../utils/pgdWorkflow';
 import PgdDossierOperationsPanel from './PgdDossierOperationsPanel';
+import { PgdcnDateInput } from './PgdcnDateInput';
 
 const REQUIREMENT_GROUP_LABELS: Record<PgdDossierRequirementGroup, string> = {
   REQUEST: 'Tiếp nhận yêu cầu',
@@ -282,10 +283,10 @@ export default ({
                               className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2 text-[9px] font-black text-emerald-700 hover:bg-emerald-50"
                             >
                               <Download size={12} />
-                              Tải file
+                              Tải tệp
                             </a>
                           ) : (
-                            <span className="text-[9px] font-bold text-slate-400">Chỉ có metadata</span>
+                            <span className="text-[9px] font-bold text-slate-400">Chỉ có thông tin tệp</span>
                           )}
                         </div>
                       ) : (
@@ -302,7 +303,7 @@ export default ({
         <form onSubmit={submit} className="mt-3 rounded-lg border border-blue-100 bg-blue-50/50 p-3">
           <div className="grid gap-2 md:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-[9px] font-black text-slate-500">Checklist / requirementCode</span>
+              <span className="mb-1 block text-[9px] font-black text-slate-500">Checklist / requirementCode<span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span>
               <select
                 aria-label="Chọn checklist hồ sơ PGD"
                 value={form.requirementCode}
@@ -310,18 +311,20 @@ export default ({
                 disabled={!canMutate || !editable || busy}
                 className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-bold outline-none focus:border-blue-400"
               >
-                <option value="">Chọn checklist...</option>
+                <option value="">Chọn checklist hồ sơ PGD...</option>
                 {requirements.map((requirement) => (
                   <option key={requirement.code} value={requirement.code} disabled={!requirementAccess.get(requirement.code)?.editable}>{requirement.code} · {requirement.title}{requirementAccess.get(requirement.code)?.editable ? '' : ' · Đang khóa'}</option>
                 ))}
               </select>
             </label>
             <label className="block">
-              <span className="mb-1 block text-[9px] font-black text-slate-500">Tiêu đề chứng từ</span>
+              <span className="mb-1 block text-[9px] font-black text-slate-500">Tiêu đề chứng từ<span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span>
               <input
                 aria-label="Tiêu đề chứng từ PGD"
                 value={form.title}
                 onChange={(event) => updateForm('title', event.target.value)}
+                required
+
                 disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
                 className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400"
               />
@@ -332,17 +335,18 @@ export default ({
                 aria-label="Số chứng từ PGD"
                 value={form.documentNumber}
                 onChange={(event) => updateForm('documentNumber', event.target.value)}
+
                 disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
                 className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400"
               />
             </label>
             <label className="block">
               <span className="mb-1 block text-[9px] font-black text-slate-500">Ngày chứng từ</span>
-              <input
-                type="date"
+              <PgdcnDateInput
                 aria-label="Ngày chứng từ PGD"
                 value={form.documentDate}
-                onChange={(event) => updateForm('documentDate', event.target.value)}
+                onChange={(value) => updateForm('documentDate', value)}
+
                 disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
                 className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400"
               />
@@ -354,15 +358,16 @@ export default ({
                 aria-label="Ghi chú chứng từ PGD"
                 value={form.note}
                 onChange={(event) => updateForm('note', event.target.value)}
+
                 disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
                 className="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-[10px] outline-none focus:border-blue-400"
               />
             </label>
             <label className="block md:col-span-2">
-              <span className="mb-1 block text-[9px] font-black text-slate-500">File đính kèm tùy chọn</span>
+              <span className="mb-1 block text-[9px] font-black text-slate-500">Tệp đính kèm tùy chọn</span>
               <input
                 type="file"
-                aria-label="Tải file chứng từ PGD"
+                aria-label="Tải tệp chứng từ PGD"
                 onChange={(event) => updateForm('file', event.target.files?.[0] || null)}
                 ref={fileInputRef}
                 disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
@@ -371,7 +376,7 @@ export default ({
             </label>
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[9px] text-slate-500">Có thể lưu metadata trước khi Storage private sẵn sàng; khi có file, liên kết tải dùng download URL riêng của dossier.</p>
+            <p className="text-[9px] text-slate-500">Có thể lưu thông tin tệp trước khi vùng lưu trữ riêng sẵn sàng; khi có tệp, liên kết tải sẽ dùng đường dẫn riêng của hồ sơ.</p>
             <button
               type="submit"
               title="Lưu chứng từ dossier PGD"

@@ -121,7 +121,7 @@ export function buildSampleRequestBundleMappingPreview(
           { key: 'fieldCode', label: 'Lĩnh vực', value: line.fieldCode || 'Theo hồ sơ' },
           { key: 'sampleLotId', label: 'Lô mẫu PCN', value: line.lotCode },
           { key: 'sampleCode', label: 'Mã mẫu PCN', value: line.sampleCode },
-          { key: 'model', label: 'Model', value: line.model },
+          { key: 'model', label: 'Kiểu loại', value: line.model },
           { key: 'quantity', label: 'Số lượng', value: `${line.quantity} ${line.unit || 'mẫu'}` },
           { key: 'sampleRouteId', label: 'Tuyến mẫu', value: route?.id || routeId || (line.sampleItemId ? 'Thiếu tuyến' : 'Tạo mới khi lưu') },
           { key: 'targetDate', label: 'Hạn trả KQTN', value: draft.targetDate || 'Chưa nhập' },

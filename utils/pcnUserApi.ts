@@ -5,6 +5,8 @@ import type {
   PcnUserAccount,
   DepartmentScope,
   PgdDepartmentRoleCode,
+  OrganizationManagementRoleCode,
+  ProfessionalRoleCode,
 } from '../types.ts';
 
 export interface PcnDepartmentRole {
@@ -19,6 +21,8 @@ export interface PcnUserInput {
   username: string;
   name: string;
   systemRole: PcnSystemRole;
+  managementRoleCode?: OrganizationManagementRoleCode;
+  professionalRoleCodes?: ProfessionalRoleCode[];
   departmentRoleCode: PcnDepartmentRoleCode;
   fieldCodes: PcnCertificationFieldCode[];
   active: boolean;

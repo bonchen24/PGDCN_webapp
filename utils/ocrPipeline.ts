@@ -45,7 +45,7 @@ export async function runPaddleFirstWithGeminiFallback<T>(
       return { provider: 'PADDLEOCR', value: paddleValue };
     }
   } catch {
-    // Paddle failure is the only condition that permits the Gemini fallback.
+    // Paddle failure or an unusable result are the only conditions that permit the Gemini fallback.
   }
 
   return { provider: 'GEMINI', value: await options.gemini() };

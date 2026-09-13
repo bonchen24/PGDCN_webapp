@@ -472,7 +472,7 @@ test('PCN Word/PDF generation exposes a context-bound lineage summary', () => {
   assert.equal(missingPdf.status, 'MISSING_PDF');
   assert.match(panel, /getPcnGeneratedDocumentLineageSummary/);
   assert.match(panel, /Đủ Word \+ PDF/);
-  assert.match(panel, /Khác context/);
+  assert.match(panel, /Khác ngữ cảnh dữ liệu/);
 });
 
 test('PCN generated documents stay in private Storage and expose a dedicated UI action', () => {
@@ -509,7 +509,7 @@ test('PCN generated documents stay in private Storage and expose a dedicated UI 
   assert.match(detail, /getPcnDossierStationGenerationKind/);
   assert.match(detail, /onGenerate=\{onGenerateDocuments\}/);
   assert.match(panel, /buildPcnDossierDocumentContext|contextHash/);
-  assert.match(panel, /Mở file/);
+  assert.match(panel, /Mở tệp/);
   assert.match(panel, /PcnFilePreviewButton/);
   assert.match(panel, /generatedAt/);
   assert.match(panel, /Phiếu tóm tắt Đề nghị/);
@@ -570,7 +570,7 @@ test('PCN generation binds file creation to the preflight context hash', () => {
   assert.match(generationApi, /expectedContextHash/);
   assert.match(store, /expectedContextHash/);
   assert.match(panel, /preflight\.contextHash/);
-  assert.match(panel, /Context đã thay đổi/);
+  assert.match(panel, /ngữ cảnh dữ liệu đã thay đổi/);
 });
 
 test('PCN operational forms preserve the same dossier context in Word and PDF', async () => {

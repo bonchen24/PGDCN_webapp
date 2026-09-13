@@ -6,6 +6,7 @@ import type {
   PcnDossierStationKey,
   PcnGeneratedDocument,
   PcnGeneratedDocumentKind,
+  PcnDraftFormKind,
   PcnHistoricalFileKind,
 } from '../types.ts';
 import { PCN_CERTIFICATION_FIELD_CODES } from './pcnWorkflow.ts';
@@ -162,6 +163,24 @@ export function getPcnGeneratedDocumentRequirementCode(kind: PcnGeneratedDocumen
     SAMPLE_HANDOVER: 'SAMPLE_HANDOVER',
     SAMPLE_RETURN: 'SAMPLE_RETURN',
     LAB_REQUEST: 'LAB_REQUEST',
+  };
+  return mapping[kind];
+}
+
+/** Draft-workspace forms use the same checklist contract when they are explicitly confirmed. */
+export function getPcnDraftFormRequirementCode(kind: PcnDraftFormKind): string | undefined {
+  const mapping: Partial<Record<PcnDraftFormKind, string>> = {
+    PROPOSAL_FORM: 'PROPOSAL',
+    COMMERCIAL: 'COMMERCIAL',
+    ASSIGNMENT_FORM: 'ASSIGNMENT_FORM',
+    EVALUATION_PLAN: 'EVALUATION_PLAN',
+    FIELD_INSPECTION: 'FIELD_INSPECTION',
+    SAMPLE_TAKING: 'SAMPLE_HANDOVER',
+    SAMPLE_CODING: 'SAMPLE_CODING',
+    SAMPLE_HANDOVER: 'SAMPLE_HANDOVER',
+    LAB_REQUEST: 'LAB_REQUEST',
+    CERTIFICATION_RESULT: 'CERTIFICATION_RESULT',
+    CLIENT_PACKAGE: 'CLIENT_PACKAGE',
   };
   return mapping[kind];
 }

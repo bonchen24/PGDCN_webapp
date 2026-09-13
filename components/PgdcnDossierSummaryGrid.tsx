@@ -179,7 +179,7 @@ export default function PgdcnDossierSummaryGrid({
       const nextColumn = nextCell ? columns.find((column) => column.id === nextCell.columnId) : undefined;
       setEditValue(nextRow && nextColumn ? summaryCellText(nextRow.cells[nextColumn.id]) : '');
     } catch (error) {
-      setCellError(error instanceof Error ? error.message : 'Không thể lưu Cell.');
+      setCellError(error instanceof Error ? error.message : 'Không thể lưu ô dữ liệu.');
     } finally {
       committingRef.current = false;
       setSavingRowId(null);
@@ -247,11 +247,13 @@ export default function PgdcnDossierSummaryGrid({
     <div data-testid="dossier-summary-grid" className="space-y-3">
       <div data-testid="dossier-summary-toolbar" className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm lg:grid-cols-[minmax(0,1fr)_repeat(5,minmax(7rem,auto))] lg:items-center">
         <div className="min-w-0">
+          <label htmlFor={`summary-grid-search-${domain}`} className="mb-1 block text-[10px] font-black text-slate-600">Tìm kiếm Sổ tổng hợp {domain}</label>
           <input
+            id={`summary-grid-search-${domain}`}
             aria-label={`Tìm Sổ tổng hợp ${domain}`}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={searchPlaceholder}
+
             className="min-h-9 w-full min-w-0 rounded-lg border border-slate-200 px-3 py-2 text-[11px] outline-none focus:border-emerald-400"
           />
         </div>
@@ -264,7 +266,7 @@ export default function PgdcnDossierSummaryGrid({
       </div>
 
       {showColumnConfig && <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-        <div className="mb-2 text-[10px] font-black uppercase tracking-wide text-slate-500">Cấu hình Cell · kéo để sắp xếp</div>
+        <div className="mb-2 text-[10px] font-black uppercase tracking-wide text-slate-500">Cấu hình cột · kéo để sắp xếp</div>
         <div className="flex flex-wrap gap-2">
           {columns.map((column) => <label key={column.id} draggable onDragStart={() => setDraggedColumnId(column.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedColumnId) reorderColumns(draggedColumnId, column.id); setDraggedColumnId(null); }} className="inline-flex cursor-move items-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-bold text-slate-600">
             <GripVertical size={12} className="text-slate-400" />
@@ -279,22 +281,22 @@ export default function PgdcnDossierSummaryGrid({
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-max text-left text-[11px]">
+          <table className="w-full min-w-[1400px] text-left text-[11px]">
             <thead className="bg-slate-50 text-[9px] font-black uppercase tracking-wide text-slate-500">
               <tr>
-                {visibleColumns.map((column, index) => <th key={column.id} style={{ width: column.width, minWidth: column.width }} className={`relative whitespace-nowrap border-b border-slate-200 px-3 py-2 ${column.sticky || index === 0 ? 'sticky left-0 z-10 bg-slate-50' : ''}`}>{column.label}<span role="separator" aria-label={`Đổi độ rộng cột ${column.label}`} onMouseDown={(event) => startResize(event, column)} className={`absolute right-0 top-0 h-full w-1.5 cursor-col-resize ${resizingColumnId === column.id ? 'bg-emerald-400' : 'hover:bg-emerald-200'}`} /></th>)}
-                <th className="sticky right-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2 text-right">Hồ sơ</th>
+                {visibleColumns.map((column, index) => <th key={column.id} style={{ width: column.width, minWidth: column.width }} className={`relative whitespace-nowrap border-b border-slate-200 px-2 py-1.5 ${column.sticky || index === 0 ? 'sticky left-0 z-10 bg-slate-50' : ''}`}>{column.label}<span role="separator" aria-label={`Đổi độ rộng cột ${column.label}`} onMouseDown={(event) => startResize(event, column)} className={`absolute right-0 top-0 h-full w-1.5 cursor-col-resize ${resizingColumnId === column.id ? 'bg-emerald-400' : 'hover:bg-emerald-200'}`} /></th>)}
+                <th className="sticky right-0 z-10 border-b border-slate-200 bg-slate-50 px-2 py-1.5 text-right">Hồ sơ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {pageRows.map((row) => <tr key={row.id} className="hover:bg-emerald-50/30">
                 {visibleColumns.map((column, index) => {
                   const isEditing = editingCell?.rowId === row.id && editingCell.columnId === column.id;
-                  return <td key={column.id} onClick={() => !isEditing && startEdit(row, column)} className={`max-w-[280px] border-slate-100 px-3 py-2 align-top ${column.sticky || index === 0 ? 'sticky left-0 z-[1] bg-white' : ''} ${column.editable && isRowEditable(row.id) ? 'cursor-text' : ''}`}>
+                  return <td key={column.id} onClick={() => !isEditing && startEdit(row, column)} className={`max-w-[280px] border-slate-100 px-2 py-1.5 align-top ${column.sticky || index === 0 ? 'sticky left-0 z-[1] bg-white' : ''} ${column.editable && isRowEditable(row.id) ? 'cursor-text' : ''}`}>
                     {isEditing ? renderEditor(row, column) : <div title={summaryCellText(row.displayCells?.[column.id] ?? row.cells[column.id])} className={`${column.id === 'requestCode' || column.id === 'dossierCode' ? 'font-mono font-black text-slate-800' : 'font-medium text-slate-700'} max-w-[260px] whitespace-pre-wrap break-words`}>{summaryCellText(row.displayCells?.[column.id] ?? row.cells[column.id]) || <span className="text-slate-300">—</span>}</div>}
                   </td>;
                 })}
-                <td className="sticky right-0 z-[1] bg-white px-3 py-2 text-right"><button type="button" onClick={() => onOpenRow(row.id)} className="whitespace-nowrap rounded-md border border-slate-200 px-2 py-1.5 text-[9px] font-black text-emerald-700 hover:border-emerald-300">Mở hồ sơ</button>{savingRowId === row.id && <div className="mt-1 text-[9px] text-amber-600">Đang lưu…</div>}</td>
+                <td className="sticky right-0 z-[1] bg-white px-2 py-1.5 text-right"><button type="button" onClick={() => onOpenRow(row.id)} className="whitespace-nowrap rounded-md border border-slate-200 px-2 py-1.5 text-[9px] font-black text-emerald-700 hover:border-emerald-300">Mở hồ sơ</button>{savingRowId === row.id && <div className="mt-1 text-[9px] text-amber-600">Đang lưu…</div>}</td>
               </tr>)}
             </tbody>
           </table>
@@ -312,7 +314,7 @@ export default function PgdcnDossierSummaryGrid({
           </div>
         </div>
       </div>
-      {canEdit && pageRows.some((row) => isRowEditable(row.id)) && <div className="text-[10px] text-slate-500">Cell cho phép sửa: bấm vào ô, Enter/Tab để lưu, Esc để hủy. Máy chủ sẽ trả lại bản ghi sau khi lưu.</div>}
+      {canEdit && pageRows.some((row) => isRowEditable(row.id)) && <div className="text-[10px] text-slate-500">Ô dữ liệu cho phép sửa: bấm vào ô, Enter/Tab để lưu, Esc để hủy. Máy chủ sẽ trả lại bản ghi sau khi lưu.</div>}
     </div>
   );
 }

@@ -59,7 +59,7 @@ test('PGD drafting follows the compact PCN workspace without duplicate selectors
   assert.match(drafting, /PcnCatalogCombobox/);
   assert.match(drafting, /xl:grid-cols-\[250px_minmax\(0,1fr\)_270px\]/);
   assert.match(drafting, /Bản đã lưu/);
-  assert.match(drafting, /Kết quả sinh file/);
+  assert.match(drafting, /Kết quả sinh tệp/);
   assert.equal((drafting.match(/<PcnCatalogCombobox/g) || []).length, 1);
   assert.doesNotMatch(drafting, /Hồ sơ PGD cần soạn tài liệu/);
   assert.match(drafting, /aria-label="Loại tài liệu PGD"/);

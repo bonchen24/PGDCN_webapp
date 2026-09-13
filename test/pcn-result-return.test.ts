@@ -117,10 +117,18 @@ test('KQTN receipt requires the PTN scan and confirmed OCR draft before commit',
   assert.match(ocrSource, /Xác nhận điền bản nháp/);
   assert.match(resultViewSource, /ocrConfirmed/);
   assert.match(resultViewSource, /Bản scan KQTN/);
-  assert.match(resultViewSource, /KQTN đã lưu nhưng chưa gắn được file[\s\S]*return;/);
+  assert.match(resultViewSource, /KQTN đã lưu nhưng chưa gắn được tệp quét[\s\S]*return;/);
   assert.match(resultViewSource, /ocrEvidence/);
   assert.match(serverSource, /normalizePcnOcrEvidence/);
   assert.match(serverSource, /confirmedBy: actor\.username/);
+});
+
+test('PCN OCR dropzone remains keyboard accessible as well as drag-and-drop', () => {
+  const ocrSource = fs.readFileSync(new URL('../components/PcnOcrPanel.tsx', import.meta.url), 'utf8');
+  assert.match(ocrSource, /role="button"/);
+  assert.match(ocrSource, /tabIndex=\{disabled \? -1 : 0\}/);
+  assert.match(ocrSource, /event\.key === "Enter"/);
+  assert.match(ocrSource, /inputRef\.current\?\.click\(\)/);
 });
 
 test('returned-result UI surfaces malformed runtime records without offering file mutation', () => {
