@@ -48,6 +48,7 @@ type PgdcnAppShellProps = {
   initialPcnDraftNodeId?: string;
   initialPcnDraftKind?: import('../types').PcnDraftFormKind;
   initialPgdDraftingOpen?: boolean;
+  initialPgdRequestId?: string;
   initialPgdDraftRequestId?: string;
   initialPgdDraftRequirementCode?: string;
   initialPgdDraftTemplateKind?: import('../utils/pgdDocumentTemplates').PgdDocumentTemplateKind;
@@ -72,6 +73,7 @@ const getActiveContextLabel = (target: PgdcnNavigationTarget): string => {
   }
   if (target.section === 'requests') return 'Hồ sơ PYC';
   if (target.section === 'operations') return 'Sổ tổng hợp';
+  if (target.section === 'sample-operations') return 'Sổ quản lý mẫu';
   return 'Soạn thảo tài liệu';
 };
 
@@ -87,7 +89,7 @@ const getSharedTargetForPgdSection = (section: PgdSection): PgdcnNavigationTarge
   return undefined;
 };
 
-export default function PgdcnAppShell({ initialDomain = 'department', initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPcnDraftRequirementId, initialPcnDraftNodeId, initialPcnDraftKind, initialPgdDraftingOpen, initialPgdDraftRequestId, initialPgdDraftRequirementCode, initialPgdDraftTemplateKind }: PgdcnAppShellProps) {
+export default function PgdcnAppShell({ initialDomain = 'department', initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPcnDraftRequirementId, initialPcnDraftNodeId, initialPcnDraftKind, initialPgdDraftingOpen, initialPgdRequestId, initialPgdDraftRequestId, initialPgdDraftRequirementCode, initialPgdDraftTemplateKind }: PgdcnAppShellProps) {
   const router = useRouter();
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const setCurrentUser = usePcnSessionStore((state) => state.setCurrentUser);
@@ -103,12 +105,18 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   const [personalSettingsOpen, setPersonalSettingsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [focusedPgdRequestId, setFocusedPgdRequestId] = useState<string>();
+  const [focusedPgdRequestId, setFocusedPgdRequestId] = useState<string | undefined>(initialPgdRequestId);
 
   useEffect(() => {
     if (initialDomain === 'PCN') setActiveTarget({ domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : 'proposals' });
     else if (initialDomain === 'PGD') setActiveTarget({ domain: 'PGD', section: initialPgdDraftingOpen ? 'templates' : 'requests' });
   }, [initialDomain, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPgdDraftingOpen]);
+
+  useEffect(() => {
+    if (!initialPgdRequestId) return;
+    setFocusedPgdRequestId(initialPgdRequestId);
+    setActiveTarget({ domain: 'PGD', section: 'requests' });
+  }, [initialPgdRequestId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,7 +180,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     setFocusedPgdRequestId(undefined);
     setActiveTarget(target);
     setMobileOpen(false);
-    if (initialPcnDossierId) {
+    if (initialPcnDossierId || initialPgdRequestId) {
       router.replace(target.domain === 'department' ? '/pgdcn' : target.domain === 'PCN' ? '/pgdcn/pcn' : '/pgdcn/pgd');
     }
   };
@@ -262,7 +270,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     setActiveTarget({ domain: 'PGD', section: 'requests' });
     setMobileOpen(false);
     if (!requestId) return;
-    setFocusedPgdRequestId(requestId);
+    router.push(`/pgdcn/pgd/dossiers/${encodeURIComponent(requestId)}`);
   };
   const openPcnWorkspace = () => {
     setFocusedPgdRequestId(undefined);
@@ -298,7 +306,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   ) : activeTarget.domain === 'PCN' ? (
     <PcnWorkspace embedded initialSection={activeTarget.section as PcnSection} initialDossierId={initialPcnDossierId} initialDossierTab={initialPcnDossierTab} initialDossierNodeId={initialPcnDossierNodeId} initialDraftDossierId={initialPcnDraftDossierId} initialDraftRequirementId={initialPcnDraftRequirementId} initialDraftNodeId={initialPcnDraftNodeId} initialDraftKind={initialPcnDraftKind} standaloneDossier={Boolean(initialPcnDossierId)} onActiveSectionChange={openPcnSection} />
   ) : (
-    <PgdWorkspace embedded initialSection={activeTarget.section as PgdSection} initialRequestId={focusedPgdRequestId} initialDraftingOpen={Boolean(initialPgdDraftingOpen)} initialDraftRequestId={initialPgdDraftRequestId} initialDraftRequirementCode={initialPgdDraftRequirementCode} initialDraftTemplateKind={initialPgdDraftTemplateKind} onRequestClose={() => setFocusedPgdRequestId(undefined)} onActiveSectionChange={openPgdSection} />
+    <PgdWorkspace embedded initialSection={activeTarget.section as PgdSection} initialRequestId={focusedPgdRequestId} initialDraftingOpen={Boolean(initialPgdDraftingOpen)} initialDraftRequestId={initialPgdDraftRequestId} initialDraftRequirementCode={initialPgdDraftRequirementCode} initialDraftTemplateKind={initialPgdDraftTemplateKind} onRequestClose={() => { setFocusedPgdRequestId(undefined); if (initialPgdRequestId) router.replace('/pgdcn/pgd'); }} onActiveSectionChange={openPgdSection} />
   );
 
   return <div className="app-compact flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800">

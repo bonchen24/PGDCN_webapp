@@ -262,8 +262,8 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
               {isFiltersOpen ? 'Thu gọn' : 'Mở bộ lọc'}
             </button>
           </div>
-          <div className={`${isFiltersOpen ? 'grid' : 'hidden'} grid-cols-2 gap-2 md:grid md:grid-cols-8`} role="search" aria-label="Bộ lọc nhật ký">
-            <label className="col-span-2 md:col-span-1">
+          <div className={`${isFiltersOpen ? 'pgdcn-toolbar-nowrap' : 'hidden'}`} role="search" aria-label="Bộ lọc nhật ký">
+            <label className="pgdcn-toolbar-filter">
               <span className="sr-only">Miền nghiệp vụ</span>
               <select value={filters.domain} onChange={event => updateFilter('domain', event.target.value as ActivityLogDomain | 'ALL')} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold outline-none focus:border-emerald-400 sm:min-h-9" aria-label="Miền nghiệp vụ">
                 <option value="ALL">Tất cả</option>
@@ -271,7 +271,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
                 <option value="PGD">PGD · Giám định</option>
               </select>
             </label>
-            <label className="relative col-span-2 md:col-span-2">
+            <label className="pgdcn-toolbar-search relative">
               <span className="mb-1 block text-[10px] font-black text-slate-600">Tìm kiếm nhật ký</span>
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} aria-hidden="true" />
               <input
@@ -281,7 +281,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
                 className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-xs outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 sm:min-h-9"
               />
             </label>
-            <div className="relative col-span-2 md:col-span-2">
+            <div className="pgdcn-toolbar-filter relative">
               <button type="button" onClick={() => setIsUserFilterOpen(previous => !previous)} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-left text-xs font-semibold text-slate-600 outline-none transition hover:border-emerald-300 sm:min-h-9">
                 {selectedActors.length > 0 ? `Đã chọn ${selectedActors.length} người` : 'Chọn người dùng'}
               </button>
@@ -303,14 +303,14 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
                 </div>
               )}
             </div>
-            <label className="col-span-1 md:col-span-1">
+            <label className="pgdcn-toolbar-filter">
               <span className="sr-only">Hành động</span>
               <select value={filters.action} onChange={event => updateFilter('action', event.target.value as ActivityLogAction | '')} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none focus:border-emerald-400 sm:min-h-9">
                 <option value="">Hành động</option>
                 {Object.entries(activityActionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
-            <label className="col-span-1 md:col-span-1">
+            <label className="pgdcn-toolbar-filter">
               <span className="sr-only">Đối tượng</span>
               <select value={filters.entityType} onChange={event => updateFilter('entityType', event.target.value as ActivityLogEntityType | '')} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none focus:border-emerald-400 sm:min-h-9">
                 <option value="">Đối tượng</option>

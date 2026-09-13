@@ -56,6 +56,7 @@ const PCN_ITEMS: Array<{ section: PcnSection; label: string; icon: ElementType }
 const PGD_ITEMS: Array<{ section: PgdSection; label: string; icon: ElementType }> = [
   { section: 'requests', label: 'Hồ sơ PYC', icon: ClipboardList },
   { section: 'operations', label: 'Sổ tổng hợp', icon: ClipboardCheck },
+  { section: 'sample-operations', label: 'Sổ quản lý mẫu', icon: FlaskConical },
   { section: 'templates', label: 'Soạn thảo tài liệu', icon: FilePenLine },
 ];
 

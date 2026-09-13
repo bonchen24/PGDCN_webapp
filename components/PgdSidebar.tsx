@@ -16,13 +16,14 @@ import {
 
 import type { PcnUserAccount } from '../types';
 
-export type PgdSection = 'dashboard' | 'requests' | 'operations' | 'preparation' | 'field' | 'labs' | 'results' | 'templates';
+export type PgdSection = 'dashboard' | 'requests' | 'operations' | 'sample-operations' | 'preparation' | 'field' | 'labs' | 'results' | 'templates';
 export type PgdEntrySection = PgdSection | 'intake';
 
 export const PGD_SECTION_LABELS: Record<PgdSection, string> = {
   dashboard: 'Tổng quan PGD',
   requests: 'Hồ sơ PYC',
   operations: 'Sổ tổng hợp',
+  'sample-operations': 'Sổ quản lý mẫu',
   preparation: 'Chuẩn bị & Phân công',
   field: 'Hiện trường & Lấy mẫu',
   labs: 'PTN & Kết quả',
@@ -34,6 +35,7 @@ export const PGD_SECTION_ICONS: Record<PgdSection, ElementType> = {
   dashboard: LayoutDashboard,
   requests: ClipboardList,
   operations: ClipboardCheck,
+  'sample-operations': FlaskConical,
   preparation: FilePlus2,
   field: ClipboardCheck,
   labs: FlaskConical,
@@ -63,7 +65,7 @@ export default function PgdSidebar({
   onLogout,
 }: PgdSidebarProps) {
   const expanded = !collapsed || mobileOpen;
-  const mainSections: PgdSection[] = ['dashboard', 'requests', 'operations', 'templates'];
+  const mainSections: PgdSection[] = ['dashboard', 'requests', 'operations', 'sample-operations', 'templates'];
   const renderButton = (section: PgdSection) => {
     const Icon = PGD_SECTION_ICONS[section];
     const isActive = activeSection === section;

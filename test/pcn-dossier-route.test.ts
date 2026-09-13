@@ -36,5 +36,5 @@ test('closing the standalone dossier route clears the selected dossier before re
 
 test('switching workspace navigation from a standalone dossier replaces the dossier route', () => {
   const shell = read('components/PgdcnAppShell.tsx');
-  assert.match(shell, /if \(initialPcnDossierId\) \{\n      router\.replace\(target\.domain === 'department' \? '\/pgdcn' : target\.domain === 'PCN' \? '\/pgdcn\/pcn' : '\/pgdcn\/pgd'\);\n    \}/);
+  assert.match(shell, /if \(initialPcnDossierId \|\| initialPgdRequestId\) \{\n      router\.replace\(target\.domain === 'department' \? '\/pgdcn' : target\.domain === 'PCN' \? '\/pgdcn\/pcn' : '\/pgdcn\/pgd'\);\n    \}/);
 });

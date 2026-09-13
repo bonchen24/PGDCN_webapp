@@ -70,7 +70,7 @@ test('dossier detail exposes the graphic workflow and controlled reviewer/deadli
   assert.match(source, /buildPcnDossierStationChecklist/);
   assert.match(source, /stationChecklist/);
   assert.match(source, /Tài liệu tại bước/);
-  assert.match(source, /Mở checklist/);
+  assert.match(source, /Xem danh sách tài liệu/);
   assert.match(source, /Phương thức chứng nhận/);
   assert.match(source, /value=\{method\}/);
   assert.match(source, /option value="METHOD_1"/);

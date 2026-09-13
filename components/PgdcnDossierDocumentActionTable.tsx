@@ -38,7 +38,7 @@ export default function PgdcnDossierDocumentActionTable({ rows, testId, emptyLab
               <th scope="col" className="w-36 border-b border-slate-200 px-3 py-2">Bước</th>
               <th scope="col" className="border-b border-slate-200 px-3 py-2">Tài liệu cần có</th>
               <th scope="col" className="w-28 border-b border-slate-200 px-3 py-2">Trạng thái</th>
-              <th scope="col" className="w-56 border-b border-slate-200 px-3 py-2">Hành động</th>
+              <th scope="col" className="w-40 border-b border-slate-200 px-3 py-2">Hành động</th>
             </tr>
           </thead>
           <tbody>

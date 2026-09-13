@@ -96,36 +96,110 @@
     --pcn-surface-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
     --pcn-scrollbar-thumb: #94a3b8;
     --pcn-scrollbar-track: transparent;
+    --app-font-scale: 1.1;
   }
 
-  /* Compact density applies to the authenticated app shell only. */
-  .app-compact {
-    font-size: 0.8125rem;
+  /* Compact density and a readable 10% type lift apply to authenticated app surfaces. */
+  .app-compact,
+  .pcn-compact {
+    font-size: calc(0.8125rem * var(--app-font-scale));
   }
 
-  .app-compact .text-xs {
-    font-size: 0.6875rem !important;
+  .app-compact .text-xs,
+  .pcn-compact .text-xs {
+    font-size: calc(0.6875rem * var(--app-font-scale)) !important;
     line-height: 1.2 !important;
   }
 
-  .app-compact .text-sm {
-    font-size: 0.75rem !important;
+  .app-compact .text-sm,
+  .pcn-compact .text-sm {
+    font-size: calc(0.75rem * var(--app-font-scale)) !important;
     line-height: 1.25 !important;
   }
 
-  .app-compact .text-base {
-    font-size: 0.8125rem !important;
+  .app-compact .text-base,
+  .pcn-compact .text-base {
+    font-size: calc(0.8125rem * var(--app-font-scale)) !important;
     line-height: 1.3 !important;
   }
 
-  .app-compact .text-lg {
-    font-size: 0.9375rem !important;
+  .app-compact .text-lg,
+  .pcn-compact .text-lg {
+    font-size: calc(0.9375rem * var(--app-font-scale)) !important;
     line-height: 1.25 !important;
   }
 
-  .app-compact .text-xl {
-    font-size: 1.0625rem !important;
+  .app-compact .text-xl,
+  .pcn-compact .text-xl {
+    font-size: calc(1.0625rem * var(--app-font-scale)) !important;
     line-height: 1.2 !important;
+  }
+
+  .app-compact [class~="text-[8px]"],
+  .pcn-compact [class~="text-[8px]"] {
+    font-size: calc(0.5rem * var(--app-font-scale)) !important;
+  }
+
+  .app-compact [class~="text-[9px]"],
+  .pcn-compact [class~="text-[9px]"] {
+    font-size: calc(0.5625rem * var(--app-font-scale)) !important;
+  }
+
+  .app-compact [class~="text-[10px]"],
+  .pcn-compact [class~="text-[10px]"] {
+    font-size: calc(0.625rem * var(--app-font-scale)) !important;
+  }
+
+  .app-compact [class~="text-[11px]"],
+  .pcn-compact [class~="text-[11px]"] {
+    font-size: calc(0.6875rem * var(--app-font-scale)) !important;
+  }
+
+  /* Search/filter bars stay one row; narrow screens scroll this small region, not the app shell. */
+  .pgdcn-toolbar-nowrap {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 0.5rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--pcn-scrollbar-thumb) var(--pcn-scrollbar-track);
+  }
+
+  .pgdcn-toolbar-nowrap > * {
+    min-width: 9.5rem;
+    flex: 0 0 9.5rem;
+  }
+
+  .pgdcn-toolbar-nowrap > .pgdcn-toolbar-search {
+    min-width: 16rem;
+    flex: 1 1 22rem;
+  }
+
+  .pgdcn-toolbar-nowrap > .pgdcn-toolbar-filter {
+    min-width: 10rem;
+    flex: 0 0 10rem;
+  }
+
+  .pgdcn-toolbar-nowrap > .pgdcn-toolbar-count,
+  .pgdcn-toolbar-nowrap > .pgdcn-toolbar-actions {
+    min-width: max-content;
+    flex: 0 0 auto;
+  }
+
+  .pgdcn-toolbar-nowrap > label,
+  .pgdcn-toolbar-nowrap > .pgdcn-toolbar-search,
+  .pgdcn-toolbar-nowrap > .pgdcn-toolbar-filter {
+    min-height: 2.75rem;
+  }
+
+  .pgdcn-toolbar-nowrap input,
+  .pgdcn-toolbar-nowrap select {
+    min-width: 0;
   }
 
   .app-compact [class~="gap-3"] {

@@ -245,8 +245,8 @@ export default function PgdcnDossierSummaryGrid({
 
   return (
     <div data-testid="dossier-summary-grid" className="space-y-3">
-      <div data-testid="dossier-summary-toolbar" className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm lg:grid-cols-[minmax(0,1fr)_repeat(5,minmax(7rem,auto))] lg:items-center">
-        <div className="min-w-0">
+      <div data-testid="dossier-summary-toolbar" className="pgdcn-toolbar-nowrap rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="pgdcn-toolbar-search min-w-0">
           <label htmlFor={`summary-grid-search-${domain}`} className="mb-1 block text-[10px] font-black text-slate-600">Tìm kiếm Sổ tổng hợp {domain}</label>
           <input
             id={`summary-grid-search-${domain}`}
@@ -258,7 +258,7 @@ export default function PgdcnDossierSummaryGrid({
           />
         </div>
         <div className="contents">{filterControls}</div>
-        <div className="flex items-center justify-between gap-2 text-[10px] font-bold text-slate-500 lg:justify-end">
+        <div className="pgdcn-toolbar-actions flex items-center justify-between gap-2 text-[10px] font-bold text-slate-500 lg:justify-end">
           <span>{filteredRows.length}/{rows.length} hồ sơ</span>
           <button type="button" onClick={() => setShowColumnConfig((value) => !value)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-2 hover:border-emerald-300 hover:text-emerald-700"><SlidersHorizontal size={13} /> Cột</button>
           <button type="button" onClick={exportCsv} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-2 hover:border-emerald-300 hover:text-emerald-700"><Download size={13} /> CSV</button>
@@ -292,8 +292,10 @@ export default function PgdcnDossierSummaryGrid({
               {pageRows.map((row) => <tr key={row.id} className="hover:bg-emerald-50/30">
                 {visibleColumns.map((column, index) => {
                   const isEditing = editingCell?.rowId === row.id && editingCell.columnId === column.id;
+                  const cellValue = summaryCellText(row.displayCells?.[column.id] ?? row.cells[column.id]);
+                  const isPcnDossierCode = domain === 'PCN' && column.id === 'dossierCode' && Boolean(cellValue);
                   return <td key={column.id} onClick={() => !isEditing && startEdit(row, column)} className={`max-w-[280px] border-slate-100 px-2 py-1.5 align-top ${column.sticky || index === 0 ? 'sticky left-0 z-[1] bg-white' : ''} ${column.editable && isRowEditable(row.id) ? 'cursor-text' : ''}`}>
-                    {isEditing ? renderEditor(row, column) : <div title={summaryCellText(row.displayCells?.[column.id] ?? row.cells[column.id])} className={`${column.id === 'requestCode' || column.id === 'dossierCode' ? 'font-mono font-black text-slate-800' : 'font-medium text-slate-700'} max-w-[260px] whitespace-pre-wrap break-words`}>{summaryCellText(row.displayCells?.[column.id] ?? row.cells[column.id]) || <span className="text-slate-300">—</span>}</div>}
+                    {isEditing ? renderEditor(row, column) : isPcnDossierCode ? <button type="button" onClick={(event) => { event.stopPropagation(); onOpenRow(row.id); }} aria-label={`Mở chi tiết hồ sơ ${cellValue}`} className="max-w-[260px] whitespace-pre-wrap break-words text-left font-mono font-black text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">{cellValue}</button> : <div title={cellValue} className={`${column.id === 'requestCode' || column.id === 'dossierCode' ? 'font-mono font-black text-slate-800' : 'font-medium text-slate-700'} max-w-[260px] whitespace-pre-wrap break-words`}>{cellValue || <span className="text-slate-300">—</span>}</div>}
                   </td>;
                 })}
                 <td className="sticky right-0 z-[1] bg-white px-2 py-1.5 text-right"><button type="button" onClick={() => onOpenRow(row.id)} className="whitespace-nowrap rounded-md border border-slate-200 px-2 py-1.5 text-[9px] font-black text-emerald-700 hover:border-emerald-300">Mở hồ sơ</button>{savingRowId === row.id && <div className="mt-1 text-[9px] text-amber-600">Đang lưu…</div>}</td>

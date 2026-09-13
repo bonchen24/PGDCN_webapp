@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { Eye, FileText, MoreHorizontal, Upload } from 'lucide-react';
 
 import type { PcnDossierDocument, UserAccount } from '../types';
 import type {
@@ -234,13 +235,13 @@ export function PcnDossierNodeWorkPanel({
         </th>
         <td className="border-b border-slate-100 px-3 py-2.5"><span className={`inline-flex min-h-7 items-center rounded-full border px-2 py-1 text-[9px] font-black ${statusClass}`}>{DOCUMENT_STATUS_LABELS[item.status]}</span></td>
         <td className="border-b border-slate-100 px-3 py-2.5">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {item.status === 'PRESENT' && version && item.actions.includes('VIEW') ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-md bg-blue-600 px-3 py-2 text-[10px] font-black text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer">Xem tài liệu</a> : null}
-            {item.status !== 'PRESENT' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} target="_blank" rel="noreferrer" title="Tạo DOCX từ biểu mẫu" aria-label="Soạn thảo tài liệu, tạo DOCX từ biểu mẫu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-md bg-emerald-600 px-3 py-2 text-[10px] font-black text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">Soạn thảo tài liệu</a> : null}
-            {item.status !== 'PRESENT' && item.actions.includes('UPLOAD') && editable ? <label className="mobile-touch-target dossier-action-compact inline-flex min-h-11 cursor-pointer items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black text-blue-700 hover:bg-blue-100">Tải tài liệu<input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
-            {item.status === 'PRESENT' && version ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-md border border-slate-200 px-2.5 py-2 text-[10px] font-bold text-slate-600 hover:bg-slate-50" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer">Mở tệp</a> : null}
+          <div className="flex flex-wrap items-center gap-1">
+            {item.status === 'PRESENT' && version && item.actions.includes('VIEW') ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Xem tài liệu" aria-label="Xem tài liệu"><Eye size={14} aria-hidden="true" /></a> : null}
+            {item.status !== 'PRESENT' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} target="_blank" rel="noreferrer" title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a> : null}
+            {item.status !== 'PRESENT' && item.actions.includes('UPLOAD') && editable ? <label className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 cursor-pointer items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100" title="Tải tài liệu" aria-label="Tải tài liệu"><Upload size={14} aria-hidden="true" /><input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
+            {item.status === 'PRESENT' && version ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Mở tệp" aria-label="Mở tệp"><FileText size={14} aria-hidden="true" /></a> : null}
             {(item.actions.includes('REPLACE') || item.actions.includes('REMOVE_CURRENT') || item.actions.includes('CREATE_FROM_FORM') || item.actions.includes('CLEAR_WAIVER') || item.actions.includes('WAIVE')) ? <details className="relative">
-              <summary className="mobile-touch-target dossier-action-compact inline-flex min-h-11 cursor-pointer list-none items-center rounded-md border border-slate-200 px-2.5 py-2 text-[10px] font-bold text-slate-600 hover:bg-slate-50">Thao tác khác</summary>
+              <summary className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 cursor-pointer list-none items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" title="Thao tác khác" aria-label="Thao tác khác"><MoreHorizontal size={14} aria-hidden="true" /></summary>
               <div className="absolute right-0 z-10 mt-1 flex min-w-48 flex-col gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
                 {item.actions.includes('REPLACE') && editable ? <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-2 text-[10px] font-bold text-blue-700">Thay phiên bản<input className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
                 {item.actions.includes('CREATE_FROM_FORM') && canGenerateAndAttach && editable && (onGenerateAndAttach || onCreateFromForm) ? <button type="button" className="min-h-10 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-left text-[10px] font-bold text-indigo-700" disabled={busyKey === `generate:${item.requirementId}`} onClick={() => void run(`generate:${item.requirementId}`, async () => { if (onGenerateAndAttach) await onGenerateAndAttach(item.requirementId); else await onCreateFromForm!(item.requirementId); })}>{busyKey === `generate:${item.requirementId}` ? 'Đang tạo và gắn…' : 'Tạo & gắn tài liệu'}</button> : null}
@@ -256,11 +257,11 @@ export function PcnDossierNodeWorkPanel({
   }
 
   return (
-    <aside id={panelId} role="tabpanel" className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200 bg-slate-50 shadow-sm" data-testid="pcn-node-work-panel" aria-label={`Công việc bước ${projection.nodeLabel}`}>
-      <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white p-4">
+    <aside id={panelId} role="tabpanel" className="flex min-h-0 min-w-0 flex-col rounded-xl border border-emerald-200 bg-white shadow-sm" data-testid="pcn-node-work-panel" aria-label={`Công việc bước ${projection.nodeLabel}`}>
+      <div className="flex items-start justify-between gap-3 border-b border-emerald-200 bg-white p-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Công việc theo bước</p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-950">{projection.nodeLabel}</h2>
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-600">Việc đang chọn</p>
+          <h2 className="mt-1 text-base font-black text-slate-950">{projection.nodeLabel}</h2>
           <p className="mt-1 text-xs text-slate-500">{STATUS_LABELS[projection.status]} · Vòng {projection.cycleNo} · {projection.documents.length - projection.unresolvedRequiredCount}/{projection.documents.length} mục đã xử lý</p>
         </div>
         {onClose ? <button type="button" className="min-h-10 rounded-md px-3 py-2 text-sm text-slate-500 hover:bg-slate-100" onClick={onClose} aria-label="Đóng panel">Đóng</button> : null}
@@ -282,7 +283,7 @@ export function PcnDossierNodeWorkPanel({
         <details className="text-slate-500"><summary className="cursor-pointer list-none font-semibold">Vai trò hiện tại</summary><span className="ml-1">{currentRole} · {currentUser?.username || 'Phiên hồ sơ'}</span></details>
       </section>
 
-      <div className="min-h-0 space-y-4 overflow-y-auto p-4">
+      <div className="min-h-0 space-y-4 p-4">
         <section>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-slate-900">Tài liệu và hồ sơ liên quan</h3>

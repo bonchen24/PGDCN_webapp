@@ -1493,7 +1493,7 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 - Trạng thái phải đọc được bằng chữ, tối thiểu gồm `Đã có`, `Chưa có`, `Đang soạn` hoặc `Đã bỏ qua`; màu chỉ là tín hiệu phụ. Tài liệu bắt buộc phải có dấu `*` đỏ hoặc nhãn bắt buộc.
 - Hành động phải nằm cùng dòng với tài liệu và chỉ hiển thị hành động phù hợp ngữ cảnh: xem/tải tài liệu đã có, soạn tài liệu hoặc mở vùng bổ sung khi còn thiếu. Liên kết `Soạn thảo tài liệu` mở một trang mới và truyền đủ ngữ cảnh hồ sơ, bước, mã yêu cầu và loại biểu mẫu.
 - Với tài liệu còn thiếu nhưng không có mẫu soạn thảo riêng, UI phải dùng nhãn dễ hiểu **Bổ sung tài liệu** và mở sẵn đúng loại tài liệu trong vùng nhập liệu; không dùng nhãn kỹ thuật **Mở checklist** ở từng dòng. Nút tổng quan dùng nhãn **Xem danh sách tài liệu**.
-- Nút trong cột `Hành động` dùng mật độ compact theo viewport: desktop cao khoảng 32px với padding nhỏ, mobile vẫn giữ vùng chạm tối thiểu khoảng 44px; không dùng cùng một kích thước lớn cho mọi màn hình.
+- Nút trong cột `Hành động` dùng mật độ compact theo viewport và ưu tiên icon theo ngữ nghĩa: desktop cao khoảng 32px với padding nhỏ, mobile vẫn giữ vùng chạm tối thiểu khoảng 44px; mỗi icon-only control bắt buộc có `title` và accessible name (`aria-label`), không dùng cùng một kích thước lớn cho mọi màn hình.
 - Mã kỹ thuật, vai trò bàn giao, mô tả dài và cảnh báo chi tiết không được chiếm mặt phẳng chính; đặt trong phần phụ có thể mở khi cần. Giữ một hành động chính rõ ràng cho mỗi dòng, touch target tối thiểu khoảng 44px, keyboard focus và bảng cuộn ngang nội bộ trên màn hình hẹp.
 - Đây là thay đổi projection/UI và điều hướng; không thêm collection, schema, API, lifecycle hoặc mutation mới.
 
@@ -1503,4 +1503,57 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 - Desktop phải ưu tiên đưa toàn bộ KPI của cùng một dải lên một hàng khi chiều rộng cho phép: Dashboard dùng chung 6 cột, Tổng quan PGD dùng 8 cột, Tổng quan PCN dùng 8 cột và mở rộng 10 cột ở màn hình rất rộng; hàng đợi/sổ vận hành dùng số cột bằng số KPI ở breakpoint desktop phù hợp. Tablet dùng 4 cột, mobile dùng 2 cột.
 - Card KPI compact dùng padding/gap nhỏ, chiều cao đồng đều khoảng 64–72px; không giảm cỡ chữ dưới mức đọc được, không thay đổi số liệu, collection, callback hoặc quyền. Vùng thao tác KPI (nếu có) vẫn giữ touch target theo chuẩn mobile.
 - Quy tắc này chỉ thay đổi layout và cách trình bày; không thêm metric, schema, API, lifecycle hoặc mutation mới.
+
+### 5A.12. Đồng bộ trang quản lý và chi tiết hồ sơ theo PGD — 2026-09-13
+
+- Các trang quản lý hồ sơ PCN và PGD dùng chung anatomy: `PgdcnPageHeader`/ngữ cảnh miền → bộ lọc/tìm kiếm → bộ chọn chế độ nếu có → bảng hàng đợi hoặc sổ dữ liệu. PCN giữ accent emerald, PGD giữ accent blue; không tạo thêm route hay collection.
+- Hàng đợi hai miền phải có cùng nhịp khoảng cách, tiêu đề nghiệp vụ, bảng cuộn ngang nội bộ, cột nhận diện/thao tác sticky và action mở đúng hồ sơ. Dữ liệu cột, bộ lọc, phân công và callback vẫn theo từng miền.
+- Chi tiết hồ sơ hai miền phải có cùng anatomy: header nhận diện (mã, trạng thái, chủ thể chính, hành động) → flow ngang có progress và trạng thái → panel “Việc đang chọn” → tóm tắt soát xét → bảng `Tài liệu cần hoàn thiện` → form nghiệp vụ/ngoại lệ → footer chuyển bước. PCN có thể giữ selector khu vực và module phát hành riêng nhưng phải nằm trong cùng nhịp thị giác.
+- Card flow, panel công việc, summary strip và action button dùng cùng spacing, chiều cao, focus ring và touch target; mobile chỉ xếp lại thứ tự hoặc cuộn ngang nội bộ, không tạo scroll lồng không cần thiết.
+- Đây là chuẩn hóa projection/UI/affordance theo PGD; không thay đổi lifecycle, schema, API, RBAC, dữ liệu hoặc quy tắc chuyển bước của PCN.
+
+### 5A.13. Progressive disclosure cho chi tiết PCN — 2026-09-13
+
+- Chi tiết PCN legacy dùng cùng nhịp đọc PGD: header/progress → việc đang chọn → tài liệu/hành động chính; toàn bộ các bước hồ sơ phải hiển thị trực tiếp để người dùng nắm ngay tiến độ, còn bộ hồ sơ, lịch sử, Đề nghị và thông tin vận hành vẫn có thể dùng disclosure khi phù hợp.
+- Dải các bước/lưu trình trong chi tiết PCN không được ẩn sau `details/summary`; từng bước hiển thị số thứ tự, nhãn, trạng thái và tiến độ, vẫn giữ đầy đủ thao tác chọn bước, deep-link và quyền hiện hành. Các checklist/tệp chi tiết không thuộc dải bước có thể tiếp tục dùng progressive disclosure.
+- Không lặp trạng thái/tài liệu cùng cấp nếu bảng `Tài liệu cần hoàn thiện` đã là bề mặt xử lý chính. Không thêm scroll dọc lồng; chỉ giữ scroll ngang cục bộ cho sơ đồ/bảng cần thiết.
+- Đây chỉ là progressive disclosure/layout; không thay đổi requirement, callback, API, lifecycle, schema, RBAC hay dữ liệu.
+
+### 5A.14. Cỡ chữ dùng chung và Sổ quản lý mẫu PGD — 2026-09-13
+
+- Typography của app tăng khoảng 10% theo một token/override dùng chung trên shell đã xác thực, ưu tiên mức đọc được cho nhãn, dữ liệu và trạng thái mà không dùng `zoom` để làm phình toàn bộ layout. Vùng bảng vẫn giữ cỡ chữ theo scale riêng và cuộn ngang nội bộ khi cần.
+- Sổ quản lý mẫu PCN giữ một dòng cho mỗi mẫu/model và mỗi cột PTN chỉ hiển thị trạng thái, mã nhận diện và kết quả ngắn trên mặt phẳng chính. Ngày nhận, thực thi, liên thông, tình trạng và retry nằm trong native `details/summary` đóng mặc định; không đổi dữ liệu hoặc callback gửi PTN.
+- PGD có mục điều hướng `Sổ quản lý mẫu` riêng, dùng `PgdSample` làm dòng chính và nối read-only tới hồ sơ PYC, PYC PTN và KQTN hiện hành. Mỗi dòng có mã mẫu, loại/mô tả, hồ sơ/khách hàng, số lượng, phân loại, PTN/trạng thái và hành động mở hồ sơ; không tạo collection/API/mutation mới.
+- Sổ mẫu PGD dùng cùng anatomy với PCN: tiêu đề theo miền → KPI compact → tìm kiếm/bộ lọc → bảng semantic cuộn ngang nội bộ; thông tin PTN dài dùng vùng đóng/mở tại ô chi tiết, không kéo nở chiều cao dòng mặc định.
+- Các thay đổi này là projection/UI/navigation; không thay đổi lifecycle, schema, API, RBAC, dữ liệu mẫu hoặc quy tắc tích hợp PTN.
+
+### 5A.15. Toolbar tìm kiếm và bộ lọc một hàng — 2026-09-13
+
+- Mọi toolbar có tìm kiếm và/hoặc bộ lọc trên các trang quản lý hồ sơ, sổ tổng hợp, sổ mẫu, quản trị bộ hồ sơ mẫu và nhật ký phải giữ các control trong cùng một hàng ngang ở desktop lẫn mobile.
+- Trên màn hình hẹp, toolbar dùng `flex-nowrap`/`min-w-max` và cuộn ngang nội bộ có chủ đích; không cho từng control tự rơi thành nhiều hàng và không tạo tràn ngang cho body/app shell. Nhãn vẫn gắn với control, thứ tự đọc và thứ tự tab giữ nguyên.
+- Input tìm kiếm chiếm phần không gian co giãn; select, bộ đếm, nút tải lại và hành động phụ giữ chiều rộng tối thiểu ổn định. Control có thể dùng chiều cao compact trên desktop nhưng vẫn giữ vùng chạm mobile tối thiểu theo chuẩn accessibility.
+- Không thay đổi logic query, filter, callback, dữ liệu hoặc quyền; đây là chuẩn hóa layout/progressive disclosure của toolbar dùng chung.
+
+### 5A.16. Shell và sidebar thống nhất cho trang chi tiết hồ sơ — 2026-09-13
+
+- Mọi trang chi tiết hồ sơ PCN và PGD phải được mở dưới shell PGDCN dùng chung, giữ sidebar miền tương ứng hiện hữu trên desktop và cơ chế menu/drawer hiện hữu trên mobile. Chi tiết không được trở thành một route trần hoặc một lớp phủ làm mất ngữ cảnh điều hướng.
+- Chi tiết PCN dùng route `/pgdcn/pcn/dossiers/:dossierId`; chi tiết PGD dùng route tương ứng `/pgdcn/pgd/dossiers/:requestId`. Route phải truyền đúng mã hồ sơ/PYC vào workspace và giữ nguyên tab, bước hoặc tài liệu deep-link nếu có.
+- Khi đóng/quay lại từ chi tiết, hệ thống trở về đúng sổ/ hàng đợi của miền (`/pgdcn/pcn` hoặc `/pgdcn/pgd`); sidebar vẫn giữ mục miền đang hoạt động. Điều hướng sidebar từ trang chi tiết phải thay route để không giữ trạng thái hồ sơ cũ.
+- Header shell và sidebar là bề mặt điều hướng duy nhất; không thêm sidebar lồng trong chi tiết, không tạo scroll dọc lồng không cần thiết. Main detail chịu trách nhiệm cuộn nội dung, sidebar chịu trách nhiệm cuộn menu.
+- Đây là chuẩn hóa route/shell/navigation và progressive disclosure; không thay đổi collection, schema, API, lifecycle, RBAC, dữ liệu hoặc các mutation nghiệp vụ.
+
+### 5A.17. Mã hồ sơ là lối tắt vào chi tiết PCN — 2026-09-13
+
+- Trong các bảng quản lý hồ sơ PCN, `Mã hồ sơ` phải là control có thể bấm; thao tác mở đúng route chi tiết `/pgdcn/pcn/dossiers/:dossierId` và giữ ngữ cảnh tab/bước mặc định của bảng.
+- Mã hồ sơ cần có tên accessible nêu rõ hành động mở chi tiết; nút `Mở hồ sơ` hiện hữu vẫn được giữ để không làm mất affordance trên các hàng dài hoặc màn hình hẹp.
+- Ô mã hồ sơ chỉ điều hướng, không khởi động chế độ sửa ô; các cột dữ liệu khác và quyền chỉnh sửa của Sổ dữ liệu giữ nguyên.
+- Đây là thay đổi affordance/navigation ở projection quản lý; không thay đổi dữ liệu, API, lifecycle, RBAC hoặc callback nghiệp vụ.
+
+### 5A.18. Progressive disclosure cho trang chi tiết hồ sơ PCN — 2026-09-13
+
+- Trang chi tiết phải trả lời ngay ba câu hỏi: hồ sơ nào, đang ở bước nào và cần làm gì tiếp theo. Header giữ mã hồ sơ, khách hàng/sản phẩm, trạng thái, cảnh báo thiếu hồ sơ và một hành động chính; nhóm thao tác quản trị/tải bộ hồ sơ là hành động phụ.
+- Vùng workflow-first ưu tiên công việc của bước đang chọn; sơ đồ/chi tiết phụ, bộ hồ sơ, lịch sử, Đề nghị và thông tin vận hành dùng disclosure đóng/mở, không chiếm chiều cao mặc định.
+- Các nút có nhãn ngắn, phân cấp một CTA chính mỗi vùng; visual compact nhưng vẫn giữ vùng chạm và focus ring đủ dùng, không dùng màu làm tín hiệu duy nhất.
+- Desktop giữ sidebar shell và vùng nội dung cuộn duy nhất; mobile ưu tiên thứ tự bước hiện tại → tài liệu còn thiếu → dữ liệu bổ sung, không tạo tràn ngang body.
+- Đây là thay đổi bố cục, phân cấp và progressive disclosure của projection chi tiết; không thay đổi dữ liệu, API, lifecycle, RBAC hay quyền thao tác.
 <!-- --- End of design.md --- -->

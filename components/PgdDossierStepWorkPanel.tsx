@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
+import { Eye, FileText, Upload } from 'lucide-react';
 
 import type { PcnUserAccount } from '../types';
 import type { PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
@@ -136,11 +137,11 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
     const checklistItem = request.dossierChecklist?.find((candidate) => candidate.requirementCode === item.code);
     const status = document ? 'Đã có' : checklistItem?.status === 'WAIVED' ? 'Đã bỏ qua' : 'Chưa có';
     const action = document?.fileAssetId ? (
-      <a href={getPgdDossierDocumentDownloadUrl(document.id)} target="_blank" rel="noreferrer" download={document.fileName} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-md bg-blue-600 px-3 py-2 text-[10px] font-black text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">Xem tài liệu</a>
+      <a href={getPgdDossierDocumentDownloadUrl(document.id)} target="_blank" rel="noreferrer" download={document.fileName} title="Xem tài liệu" aria-label="Xem tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Eye size={14} aria-hidden="true" /></a>
     ) : !document && checklistItem?.status !== 'WAIVED' && draftingHref && requirement?.code === item.code ? (
-      <a href={draftingHref} target="_blank" rel="noreferrer" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-md bg-emerald-600 px-3 py-2 text-[10px] font-black text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">Soạn thảo tài liệu</a>
+      <a href={draftingHref} target="_blank" rel="noreferrer" title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a>
     ) : !document && onOpenChecklist ? (
-      <button type="button" onClick={() => { setSelectedSupplementRequirementCode(item.code); onOpenChecklist?.(item.code); }} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black text-blue-700 hover:bg-blue-100">Bổ sung tài liệu</button>
+      <button type="button" onClick={() => { setSelectedSupplementRequirementCode(item.code); onOpenChecklist?.(item.code); }} title="Bổ sung tài liệu" aria-label="Bổ sung tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100"><Upload size={14} aria-hidden="true" /></button>
     ) : <span className="text-[10px] font-semibold text-slate-400">Đã ghi nhận</span>;
     return {
       id: item.code,

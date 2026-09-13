@@ -12,6 +12,13 @@ test('sample management surface is a cell ledger with laboratory-specific column
   assert.match(ledgerSource, /Sổ quản lý mẫu/);
 });
 
+test('laboratory cells keep long operational details collapsed by default', () => {
+  assert.match(ledgerSource, /data-testid=\{`lab-cell-\$\{labCode\}`\}/);
+  assert.match(ledgerSource, /<details[\s\S]*Xem chi tiết PTN/);
+  assert.match(ledgerSource, /Lịch thử|Thực thi/);
+  assert.match(ledgerSource, /Retry PTN/);
+});
+
 test('bundle modal supports same-customer source selection, editable codes and multi-lab checks', () => {
   assert.match(modalSource, /Cùng khách hàng/);
   assert.match(modalSource, /Mã lô/);

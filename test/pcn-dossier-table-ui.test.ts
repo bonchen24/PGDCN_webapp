@@ -28,6 +28,13 @@ test('PCN dossier queue renders rows with the existing search and dossier action
   assert.match(dossierQueue, /overflow-x-auto|mobile-scroll-x/);
 });
 
+test('PCN management opens dossier detail when the dossier code is clicked', () => {
+  const summaryGrid = read('components/PgdcnDossierSummaryGrid.tsx');
+  assert.match(summaryGrid, /domain === 'PCN' && column\.id === 'dossierCode'/);
+  assert.match(summaryGrid, /aria-label=\{`Mở chi tiết hồ sơ/);
+  assert.match(summaryGrid, /onOpenRow\(row\.id\)/);
+});
+
 test('PCN work queue and workflow projection render dossier tables while preserving assignment controls', () => {
   assert.match(workQueue, /<table[\s\S]*aria-label="Bảng hàng đợi cần xử lý"/);
   assert.match(workQueue, /<th[\s\S]*Ưu tiên/);

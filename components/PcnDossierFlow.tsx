@@ -134,11 +134,11 @@ export function PcnDossierFlow({ nodes, projections, selectedNodeId, onSelectNod
   }
 
   return (
-    <section className="min-w-0 space-y-3" data-testid="pcn-dossier-native-flow" aria-label="Tiến trình hồ sơ">
+    <section className="min-w-0 space-y-3" data-testid="pcn-dossier-native-flow" aria-label="Tiến trình hồ sơ PCN">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Tiến trình hồ sơ</p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-950">Làm theo từng bước, xử lý đúng việc</h2>
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-600">PCN · Tiến trình hồ sơ</p>
+          <h2 className="mt-1 text-base font-black text-slate-950">Xử lý từng việc theo đúng thứ tự</h2>
         </div>
         <p className="text-sm text-slate-600" aria-live="polite">Đang ở bước {currentIndex >= 0 ? currentIndex + 1 : '—'}/{nodes.length} · {resolvedSteps}/{nodes.length} bước đã xong · {currentStatus}</p>
       </div>
@@ -175,7 +175,7 @@ export function PcnDossierFlow({ nodes, projections, selectedNodeId, onSelectNod
                   disabled={disabled}
                   onClick={() => onSelectNode(node.id)}
                   onKeyDown={(event) => handleKeyDown(event, index)}
-                  className={`mobile-touch-target group flex min-h-[92px] w-[220px] flex-col justify-between rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-100/80 text-slate-400 opacity-70' : selected ? 'border-blue-500 bg-white shadow-sm ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30'}`}
+                  className={`mobile-touch-target group flex min-h-[106px] w-[218px] flex-col justify-between rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-100/80 text-slate-400 opacity-70' : selected ? 'border-emerald-500 bg-white shadow-sm ring-2 ring-emerald-100' : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/30'}`}
                 >
                   <span className="flex items-start justify-between gap-2">
                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm font-bold ${typeMeta.className}`}>{String(index + 1).padStart(2, '0')}</span>
