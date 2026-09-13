@@ -20,7 +20,7 @@ function isActionable(row: PcnOperationsRegisterRow): boolean {
 
 function metric(label: string, value: number, icon: typeof ClipboardList, className: string) {
   const Icon = icon;
-  return <div className={`rounded-xl border bg-white p-4 ${className}`}><div className="flex items-center justify-between gap-3"><span className="text-xs font-semibold text-slate-600">{label}</span><Icon size={18} aria-hidden="true" /></div><p className="mt-2 text-2xl font-bold text-slate-950">{value}</p></div>;
+  return <div className={`pgdcn-kpi-card ${className}`}><div className="min-w-0 flex-1"><span className="block truncate text-[10px] font-semibold text-slate-600" title={label}>{label}</span><p className="mt-0.5 text-xl font-bold leading-5 text-slate-950">{value}</p></div><Icon size={17} aria-hidden="true" /></div>;
 }
 
 export default function PcnDossierQueueView({ rows, onOpenDossier }: PcnDossierQueueViewProps) {

@@ -10,6 +10,7 @@ import type {
 } from '../utils/pcnDossierNodeWork';
 import { getPcnNodeDocumentGenerationKind } from '../utils/pcnDossierNodeWork';
 import { getPcnFileUrl } from '../utils/pcnFileApi';
+import PgdcnDossierDocumentActionTable from './PgdcnDossierDocumentActionTable';
 
 export interface PcnDossierNodeWorkPanelProps {
   projection: PcnDossierNodeWorkProjection;
@@ -207,6 +208,53 @@ export function PcnDossierNodeWorkPanel({
     );
   }
 
+  function renderDocumentRow(item: PcnDossierNodeDocumentItem) {
+    const document = documentByRequirementId.get(item.requirementId);
+    const version = item.currentVersionId && document
+      ? document.versions.find((candidate) => candidate.assetId === item.currentVersionId)
+      : undefined;
+    const inputId = `pcn-upload-${projection.nodeId}-${item.requirementId}`;
+    const reason = waiverReasons[item.requirementId] || '';
+    const editable = canEdit && projection.isEditable;
+    const draftingHref = editable ? onOpenDrafting?.(item) : undefined;
+    const canGenerateAndAttach = Boolean(getPcnNodeDocumentGenerationKind(item.code));
+    const statusClass = item.status === 'PRESENT'
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+      : item.status === 'WAIVED'
+        ? 'border-slate-200 bg-slate-100 text-slate-600'
+        : 'border-amber-200 bg-amber-50 text-amber-800';
+
+    return (
+      <tr key={item.requirementId} data-testid={`pcn-node-document-${item.requirementId}`}>
+        <td className="border-b border-slate-100 px-3 py-2.5 font-semibold text-slate-500">{projection.nodeLabel}</td>
+        <th scope="row" className="border-b border-slate-100 px-3 py-2.5 font-semibold text-slate-800">
+          {item.label}{item.required ? <span aria-hidden="true" className="ml-1 text-rose-600">*</span> : null}
+          {item.status === 'WAIVED' && item.waiverReason ? <p className="mt-1 text-[9px] font-normal text-amber-700">Lý do bỏ qua: {item.waiverReason}</p> : null}
+          {projection.requiresReworkOnMutation ? <p className="mt-1 text-[9px] font-normal text-violet-700">Cập nhật mục này sẽ yêu cầu rà soát lại các bước sau.</p> : null}
+        </th>
+        <td className="border-b border-slate-100 px-3 py-2.5"><span className={`inline-flex min-h-7 items-center rounded-full border px-2 py-1 text-[9px] font-black ${statusClass}`}>{DOCUMENT_STATUS_LABELS[item.status]}</span></td>
+        <td className="border-b border-slate-100 px-3 py-2.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {item.status === 'PRESENT' && version && item.actions.includes('VIEW') ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-md bg-blue-600 px-3 py-2 text-[10px] font-black text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer">Xem tài liệu</a> : null}
+            {item.status !== 'PRESENT' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} target="_blank" rel="noreferrer" title="Tạo DOCX từ biểu mẫu" aria-label="Soạn thảo tài liệu, tạo DOCX từ biểu mẫu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-md bg-emerald-600 px-3 py-2 text-[10px] font-black text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">Soạn thảo tài liệu</a> : null}
+            {item.status !== 'PRESENT' && item.actions.includes('UPLOAD') && editable ? <label className="mobile-touch-target dossier-action-compact inline-flex min-h-11 cursor-pointer items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black text-blue-700 hover:bg-blue-100">Tải tài liệu<input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
+            {item.status === 'PRESENT' && version ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-md border border-slate-200 px-2.5 py-2 text-[10px] font-bold text-slate-600 hover:bg-slate-50" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer">Mở tệp</a> : null}
+            {(item.actions.includes('REPLACE') || item.actions.includes('REMOVE_CURRENT') || item.actions.includes('CREATE_FROM_FORM') || item.actions.includes('CLEAR_WAIVER') || item.actions.includes('WAIVE')) ? <details className="relative">
+              <summary className="mobile-touch-target dossier-action-compact inline-flex min-h-11 cursor-pointer list-none items-center rounded-md border border-slate-200 px-2.5 py-2 text-[10px] font-bold text-slate-600 hover:bg-slate-50">Thao tác khác</summary>
+              <div className="absolute right-0 z-10 mt-1 flex min-w-48 flex-col gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+                {item.actions.includes('REPLACE') && editable ? <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-2 text-[10px] font-bold text-blue-700">Thay phiên bản<input className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
+                {item.actions.includes('CREATE_FROM_FORM') && canGenerateAndAttach && editable && (onGenerateAndAttach || onCreateFromForm) ? <button type="button" className="min-h-10 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-left text-[10px] font-bold text-indigo-700" disabled={busyKey === `generate:${item.requirementId}`} onClick={() => void run(`generate:${item.requirementId}`, async () => { if (onGenerateAndAttach) await onGenerateAndAttach(item.requirementId); else await onCreateFromForm!(item.requirementId); })}>{busyKey === `generate:${item.requirementId}` ? 'Đang tạo và gắn…' : 'Tạo & gắn tài liệu'}</button> : null}
+                {item.actions.includes('REMOVE_CURRENT') && editable ? <button type="button" className="min-h-10 rounded-md border border-rose-200 px-2.5 py-2 text-left text-[10px] font-bold text-rose-700" disabled={busyKey === `remove:${item.requirementId}`} onClick={() => onRemoveCurrent && void run(`remove:${item.requirementId}`, () => onRemoveCurrent(item.requirementId))}>Xóa tài liệu hiện tại</button> : null}
+                {item.actions.includes('CLEAR_WAIVER') && editable && onClearWaiver ? <button type="button" className="min-h-10 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-left text-[10px] font-bold text-amber-800" disabled={busyKey === `clear-waiver:${item.requirementId}`} onClick={() => void run(`clear-waiver:${item.requirementId}`, () => onClearWaiver(item.requirementId))}>Bỏ trạng thái bỏ qua</button> : null}
+                {item.actions.includes('WAIVE') && editable && onWaive ? <div className="rounded-md bg-amber-50 p-2"><label className="block text-[10px] font-bold text-amber-900" htmlFor={`pcn-waive-${projection.nodeId}-${item.requirementId}`}>Lý do bỏ qua</label><textarea id={`pcn-waive-${projection.nodeId}-${item.requirementId}`} className="mt-1 min-h-16 w-full rounded-md border border-amber-200 bg-white p-2 text-[10px] text-slate-900 outline-none focus:border-amber-500" value={reason} onChange={(event) => setWaiverReasons((current) => ({ ...current, [item.requirementId]: event.target.value }))} /><button type="button" className="mt-1 min-h-10 rounded-md bg-amber-600 px-2.5 py-2 text-[10px] font-bold text-white disabled:opacity-50" disabled={!reason.trim() || busyKey === `waive:${item.requirementId}`} onClick={() => void run(`waive:${item.requirementId}`, () => onWaive(item.requirementId, reason.trim()))}>Bỏ qua mục này</button></div> : null}
+              </div>
+            </details> : null}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
   return (
     <aside id={panelId} role="tabpanel" className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200 bg-slate-50 shadow-sm" data-testid="pcn-node-work-panel" aria-label={`Công việc bước ${projection.nodeLabel}`}>
       <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white p-4">
@@ -219,19 +267,19 @@ export function PcnDossierNodeWorkPanel({
       </div>
 
       {projection.blockedReason || projection.suggestions.length > 0 ? (
-        <div className="border-b border-slate-200 bg-amber-50 px-4 py-3" data-testid="pcn-node-suggestions">
-          <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">Gợi ý xử lý</p>
-          <ul className="mt-2 space-y-1 text-sm text-amber-900">
+        <details className="border-b border-slate-200 bg-amber-50" data-testid="pcn-node-suggestions">
+          <summary className="mobile-touch-target cursor-pointer list-none px-4 py-2.5 text-xs font-semibold text-amber-900">Gợi ý xử lý <span className="ml-1 font-normal text-amber-900/70">(mở khi cần)</span></summary>
+          <ul className="space-y-1 border-t border-amber-100 px-4 py-3 text-sm text-amber-900">
             {projection.blockedReason ? <li>{projection.blockedReason}</li> : null}
             {projection.suggestions.map((suggestion) => <li key={suggestion}>• {suggestion}</li>)}
           </ul>
-        </div>
+        </details>
       ) : null}
 
-      <section data-testid="pcn-dossier-review-summary" className="grid gap-2 border-b border-slate-200 bg-emerald-50/50 px-4 py-3 text-xs sm:grid-cols-3" aria-label="Soát xét hồ sơ PCN">
-        <div><p className="font-semibold uppercase tracking-wide text-emerald-800">Soát xét hồ sơ</p><p className="mt-1 font-semibold text-slate-800">{projection.unresolvedRequiredCount ? `Còn ${projection.unresolvedRequiredCount} mục bắt buộc` : 'Checklist hiện không thiếu mục bắt buộc'}</p></div>
-        <div><p className="font-semibold uppercase tracking-wide text-emerald-800">Vai trò hiện tại</p><p className="mt-1 font-semibold text-slate-800">{currentRole}</p><p className="text-slate-500">{currentUser?.username || 'Phiên hồ sơ'}</p></div>
-        <div><p className="font-semibold uppercase tracking-wide text-emerald-800">Bàn giao kế tiếp</p><p className="mt-1 font-semibold text-slate-800">Người soát xét / Quản lý PCN</p><p className="text-slate-500">Chỉ hoàn tất sau khi tài liệu đã được xác nhận.</p></div>
+      <section data-testid="pcn-dossier-review-summary" className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-slate-200 bg-emerald-50/50 px-4 py-3 text-xs" aria-label="Soát xét hồ sơ PCN">
+        <div><span className="mr-2 text-[9px] font-semibold uppercase tracking-wide text-emerald-800">Soát xét</span><strong className="text-slate-800">{projection.unresolvedRequiredCount ? `Còn ${projection.unresolvedRequiredCount} mục bắt buộc` : 'Không thiếu mục bắt buộc'}</strong></div>
+        <div><span className="mr-2 text-[9px] font-semibold uppercase tracking-wide text-emerald-800">Bước kế tiếp</span><strong className="text-slate-800">Người soát xét / Quản lý PCN</strong></div>
+        <details className="text-slate-500"><summary className="cursor-pointer list-none font-semibold">Vai trò hiện tại</summary><span className="ml-1">{currentRole} · {currentUser?.username || 'Phiên hồ sơ'}</span></details>
       </section>
 
       <div className="min-h-0 space-y-4 overflow-y-auto p-4">
@@ -240,15 +288,30 @@ export function PcnDossierNodeWorkPanel({
             <h3 className="text-sm font-semibold text-slate-900">Tài liệu và hồ sơ liên quan</h3>
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">{projection.documents.length} mục</span>
-              {onOpenDocuments ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" onClick={onOpenDocuments}>Mở toàn bộ tài liệu</button> : null}
+              {onOpenDocuments ? <button type="button" className="mobile-touch-target dossier-action-compact min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" onClick={onOpenDocuments}>Mở toàn bộ tài liệu</button> : null}
             </div>
           </div>
-          {projection.documents.length > 0 ? <ul className="mt-3 space-y-3">{projection.documents.map(renderDocument)}</ul> : <p className="mt-3 rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-500">Bước này không có đầu mục tài liệu.</p>}
+          <div className="mt-3">
+            <PgdcnDossierDocumentActionTable
+              testId="pcn-dossier-document-action-table"
+              rows={projection.documents.map((item) => ({
+                id: item.requirementId,
+                step: projection.nodeLabel,
+                title: item.label,
+                required: item.required,
+                status: DOCUMENT_STATUS_LABELS[item.status],
+                statusTone: item.status === 'PRESENT' ? 'success' : item.status === 'WAIVED' ? 'neutral' : 'warning',
+                action: null,
+              }))}
+              renderRow={(row) => renderDocumentRow(projection.documents.find((item) => item.requirementId === row.id)!)}
+            />
+          </div>
         </section>
 
         {projection.businessFacts.length > 0 ? (
-          <section>
-            <h3 className="text-sm font-semibold text-slate-900">Việc nghiệp vụ</h3>
+          <details className="rounded-lg border border-slate-200 bg-white">
+            <summary className="mobile-touch-target cursor-pointer list-none px-3 py-2.5 text-sm font-semibold text-slate-900">Việc nghiệp vụ <span className="ml-1 text-xs font-normal text-slate-500">({projection.businessFacts.length})</span></summary>
+            <section className="border-t border-slate-100 p-3">
             <ul className="mt-3 space-y-2">
               {projection.businessFacts.map((fact) => (
                 <li key={fact.id} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
@@ -260,7 +323,8 @@ export function PcnDossierNodeWorkPanel({
                 </li>
               ))}
             </ul>
-          </section>
+            </section>
+          </details>
         ) : null}
 
         {(canStart || canContinue || canReturn) ? (

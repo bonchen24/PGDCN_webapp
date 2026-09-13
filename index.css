@@ -383,10 +383,37 @@
     justify-content: center;
   }
 
+  /* Shared KPI strip: one compact row per card, with enough room for two columns on mobile. */
+  .pgdcn-kpi-card {
+    display: flex;
+    min-height: 4.25rem;
+    min-width: 0;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid rgb(226 232 240);
+    border-radius: 0.75rem;
+    background: #fff;
+    padding: 0.625rem;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  }
+
+  /* Row-level dossier actions stay compact on desktop while preserving mobile touch targets. */
+  .dossier-action-compact {
+    min-height: 2rem !important;
+    padding-block: 0.375rem !important;
+    padding-inline: 0.625rem !important;
+    font-size: 0.625rem !important;
+    line-height: 0.875rem !important;
+  }
+
   @media (max-width: 767px) {
     .mobile-touch-target {
       min-width: 2.75rem;
       min-height: 2.75rem;
+    }
+
+    .dossier-action-compact {
+      min-height: 2.75rem !important;
     }
   }
 

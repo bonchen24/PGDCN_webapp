@@ -47,6 +47,10 @@ type PgdcnAppShellProps = {
   initialPcnDraftRequirementId?: string;
   initialPcnDraftNodeId?: string;
   initialPcnDraftKind?: import('../types').PcnDraftFormKind;
+  initialPgdDraftingOpen?: boolean;
+  initialPgdDraftRequestId?: string;
+  initialPgdDraftRequirementCode?: string;
+  initialPgdDraftTemplateKind?: import('../utils/pgdDocumentTemplates').PgdDocumentTemplateKind;
 };
 
 const getScopes = (value: readonly DepartmentScope[] | undefined): DepartmentScope[] => Array.from(new Set((value || []).filter((scope): scope is DepartmentScope => scope === 'PCN' || scope === 'PGD')));
@@ -83,7 +87,7 @@ const getSharedTargetForPgdSection = (section: PgdSection): PgdcnNavigationTarge
   return undefined;
 };
 
-export default function PgdcnAppShell({ initialDomain = 'department', initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPcnDraftRequirementId, initialPcnDraftNodeId, initialPcnDraftKind }: PgdcnAppShellProps) {
+export default function PgdcnAppShell({ initialDomain = 'department', initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPcnDraftRequirementId, initialPcnDraftNodeId, initialPcnDraftKind, initialPgdDraftingOpen, initialPgdDraftRequestId, initialPgdDraftRequirementCode, initialPgdDraftTemplateKind }: PgdcnAppShellProps) {
   const router = useRouter();
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const setCurrentUser = usePcnSessionStore((state) => state.setCurrentUser);
@@ -93,7 +97,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   const [sessionChecked, setSessionChecked] = useState(false);
   const [activeTarget, setActiveTarget] = useState<PgdcnNavigationTarget>(() => initialDomain === 'PCN'
     ? { domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : 'proposals' }
-    : initialDomain === 'PGD' ? { domain: 'PGD', section: 'requests' } : { domain: 'department', section: 'department-dashboard' });
+    : initialDomain === 'PGD' ? { domain: 'PGD', section: initialPgdDraftingOpen ? 'templates' : 'requests' } : { domain: 'department', section: 'department-dashboard' });
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [personalSettingsOpen, setPersonalSettingsOpen] = useState(false);
@@ -103,8 +107,8 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
 
   useEffect(() => {
     if (initialDomain === 'PCN') setActiveTarget({ domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : 'proposals' });
-    else if (initialDomain === 'PGD') setActiveTarget({ domain: 'PGD', section: 'requests' });
-  }, [initialDomain, initialPcnDraftingOpen, initialPcnDraftDossierId]);
+    else if (initialDomain === 'PGD') setActiveTarget({ domain: 'PGD', section: initialPgdDraftingOpen ? 'templates' : 'requests' });
+  }, [initialDomain, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPgdDraftingOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -294,7 +298,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   ) : activeTarget.domain === 'PCN' ? (
     <PcnWorkspace embedded initialSection={activeTarget.section as PcnSection} initialDossierId={initialPcnDossierId} initialDossierTab={initialPcnDossierTab} initialDossierNodeId={initialPcnDossierNodeId} initialDraftDossierId={initialPcnDraftDossierId} initialDraftRequirementId={initialPcnDraftRequirementId} initialDraftNodeId={initialPcnDraftNodeId} initialDraftKind={initialPcnDraftKind} standaloneDossier={Boolean(initialPcnDossierId)} onActiveSectionChange={openPcnSection} />
   ) : (
-    <PgdWorkspace embedded initialSection={activeTarget.section as PgdSection} initialRequestId={focusedPgdRequestId} onRequestClose={() => setFocusedPgdRequestId(undefined)} onActiveSectionChange={openPgdSection} />
+    <PgdWorkspace embedded initialSection={activeTarget.section as PgdSection} initialRequestId={focusedPgdRequestId} initialDraftingOpen={Boolean(initialPgdDraftingOpen)} initialDraftRequestId={initialPgdDraftRequestId} initialDraftRequirementCode={initialPgdDraftRequirementCode} initialDraftTemplateKind={initialPgdDraftTemplateKind} onRequestClose={() => setFocusedPgdRequestId(undefined)} onActiveSectionChange={openPgdSection} />
   );
 
   return <div className="app-compact flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800">

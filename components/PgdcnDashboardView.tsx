@@ -58,11 +58,11 @@ const formatCount = (value: number): string => new Intl.NumberFormat('vi-VN').fo
 
 function Kpi({ label, value, icon: Icon, tone }: { label: string; value: number; icon: LucideIcon; tone: string }) {
   return (
-    <article className="flex min-h-[108px] min-w-0 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${tone}`}><Icon size={16} /></div>
-      <div className="mt-2 min-w-0">
-        <p className="line-clamp-2 text-[11px] font-bold leading-4 text-slate-500">{label}</p>
-        <p className="mt-1 text-2xl font-black tracking-tight text-slate-900">{formatCount(value)}</p>
+    <article className="pgdcn-kpi-card">
+      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tone}`}><Icon size={15} /></div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[10px] font-bold leading-4 text-slate-500" title={label}>{label}</p>
+        <p className="mt-0.5 text-xl font-black leading-5 tracking-tight text-slate-900">{formatCount(value)}</p>
       </div>
     </article>
   );

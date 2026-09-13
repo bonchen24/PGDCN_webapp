@@ -148,7 +148,7 @@ function makeId(prefix: string): string {
 
 function KpiCard({ label, value, icon: Icon, tone }: { label: string; value: number; icon: React.ElementType; tone: string }) {
   return (
-    <div className="flex min-h-[4.25rem] items-center gap-2 rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
+    <div className="pgdcn-kpi-card">
       <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${tone}`}><Icon size={15} /></div>
       <div className="min-w-0">
         <div className="truncate text-[9px] font-black uppercase leading-3 tracking-wide text-slate-400">{label}</div>

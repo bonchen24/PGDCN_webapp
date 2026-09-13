@@ -2,7 +2,7 @@
 
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from '../utils/formatter';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, FileBadge2, FlaskConical, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -96,6 +96,7 @@ export type PgdCaseEvidencePanelProps = {
   samples: PgdSample[];
   canMutate: boolean;
   editable: boolean;
+  initialRequirementCode?: string;
   lockedReason?: string | null;
   loadError?: string | null;
 };
@@ -107,6 +108,7 @@ export default ({
   samples,
   canMutate,
   editable,
+  initialRequirementCode,
   lockedReason,
   loadError,
 }: PgdCaseEvidencePanelProps) => {
@@ -115,8 +117,8 @@ export default ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<DocumentFormState>(() => ({
     ...initialForm,
-    requirementCode: requirements[0]?.code || '',
-    title: requirements[0]?.title || '',
+    requirementCode: initialRequirementCode || requirements[0]?.code || '',
+    title: requirements.find((requirement) => requirement.code === initialRequirementCode)?.title || requirements[0]?.title || '',
   }));
   const [busy, setBusy] = useState(false);
   const register = useMemo(() => buildPgdSampleRegister(samples), [samples]);
@@ -135,6 +137,15 @@ export default ({
     }
     return Array.from(grouped.entries());
   }, [requirements]);
+
+  useEffect(() => {
+    if (!initialRequirementCode) return;
+    const selected = requirements.find((requirement) => requirement.code === initialRequirementCode);
+    if (!selected) return;
+    setForm((current) => current.requirementCode === selected.code && current.title === selected.title
+      ? current
+      : { ...current, requirementCode: selected.code, title: selected.title });
+  }, [initialRequirementCode, requirements]);
 
   const documentsByRequirement = useMemo(() => {
     const map = new Map<string, PgdDossierDocument[]>();
@@ -167,7 +178,7 @@ export default ({
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!form.requirementCode.trim()) {
-      toast.error('Cần chọn checklist hồ sơ.');
+      toast.error('Cần chọn tài liệu cần bổ sung.');
       return;
     }
     if (!form.title.trim()) {
@@ -175,7 +186,7 @@ export default ({
       return;
     }
     if (!selectedRequirementAccess?.editable) {
-      toast.error(selectedRequirementAccess?.reason || 'Checklist này đang bị khóa theo trạm hồ sơ.');
+      toast.error(selectedRequirementAccess?.reason || 'Tài liệu này đang bị khóa theo bước hồ sơ.');
       return;
     }
     setBusy(true);
@@ -231,7 +242,8 @@ export default ({
               <FileBadge2 size={15} className="text-blue-600" />
               Hồ sơ chứng từ
             </h3>
-            <p className="mt-1 text-[10px] text-slate-500">Checklist hồ sơ đi theo đúng collection pgdDossierDocuments của PGD, tách riêng với tài liệu đầu ra đã sinh.</p>
+            {/* Source boundary: pgdDossierDocuments. Keep storage vocabulary out of the user-facing copy. */}
+            <p className="mt-1 text-[10px] text-slate-500">Danh sách tài liệu đi theo đúng hồ sơ PGD, tách riêng với tài liệu đầu ra đã sinh.</p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-1.5">
             {loadError ? <span role="alert" className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-black text-amber-700">{loadError}</span> : null}
@@ -290,7 +302,7 @@ export default ({
                           )}
                         </div>
                       ) : (
-                        <p className="mt-2 text-[9px] font-bold text-amber-700">Thiếu chứng từ hiện hành cho checklist này.</p>
+                        <p className="mt-2 text-[9px] font-bold text-amber-700">Chưa có tài liệu hiện hành cho mục này.</p>
                       )}
                     </article>
                   );
@@ -303,17 +315,17 @@ export default ({
         <form onSubmit={submit} className="mt-3 rounded-lg border border-blue-100 bg-blue-50/50 p-3">
           <div className="grid gap-2 md:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-[9px] font-black text-slate-500">Checklist / requirementCode<span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span>
+              <span className="mb-1 block text-[9px] font-black text-slate-500">Tài liệu cần bổ sung<span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span>
               <select
-                aria-label="Chọn checklist hồ sơ PGD"
+                aria-label="Chọn tài liệu cần bổ sung PGD"
                 value={form.requirementCode}
                 onChange={(event) => onRequirementChange(event.target.value)}
                 disabled={!canMutate || !editable || busy}
                 className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-bold outline-none focus:border-blue-400"
               >
-                <option value="">Chọn checklist hồ sơ PGD...</option>
+                <option value="">Chọn loại tài liệu...</option>
                 {requirements.map((requirement) => (
-                  <option key={requirement.code} value={requirement.code} disabled={!requirementAccess.get(requirement.code)?.editable}>{requirement.code} · {requirement.title}{requirementAccess.get(requirement.code)?.editable ? '' : ' · Đang khóa'}</option>
+                  <option key={requirement.code} value={requirement.code} disabled={!requirementAccess.get(requirement.code)?.editable}>{requirement.title}{requirementAccess.get(requirement.code)?.editable ? '' : ' · Đang khóa'}</option>
                 ))}
               </select>
             </label>

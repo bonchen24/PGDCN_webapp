@@ -1486,4 +1486,21 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 - Bảng tổng hợp hồ sơ giữ các cột nghiệp vụ trên một mặt phẳng rộng, cuộn ngang nội bộ khi cần, có cột nhận diện/thao tác sticky nếu đang có; padding hàng compact nhưng không làm mất tiêu đề, trạng thái, focus hoặc touch target.
 - Mật độ compact chỉ giảm khoảng cách và padding trình bày; vẫn giữ nhãn tiếng Việt, dấu `*` đỏ cho trường bắt buộc, lỗi inline, thứ tự tab hợp lý, focus ring và kích thước thao tác tối thiểu theo chuẩn accessibility. Không hiển thị placeholder kỹ thuật của DOCX trên UI.
 - Quy tắc này chỉ tác động layout và thứ tự hiển thị; không thay đổi schema, API, lifecycle, dữ liệu, mapping placeholder hoặc định dạng DOCX/PDF đầu ra.
+
+### 5A.10. Bảng việc tài liệu theo từng bước — 2026-09-13
+
+- Màn hình chi tiết hồ sơ PGD và PCN phải ưu tiên một bảng semantic “Tài liệu cần hoàn thiện”: mỗi dòng tương ứng một hồ sơ/tài liệu, có tối thiểu các cột `Bước`, `Tài liệu cần có`, `Trạng thái` và `Hành động`.
+- Trạng thái phải đọc được bằng chữ, tối thiểu gồm `Đã có`, `Chưa có`, `Đang soạn` hoặc `Đã bỏ qua`; màu chỉ là tín hiệu phụ. Tài liệu bắt buộc phải có dấu `*` đỏ hoặc nhãn bắt buộc.
+- Hành động phải nằm cùng dòng với tài liệu và chỉ hiển thị hành động phù hợp ngữ cảnh: xem/tải tài liệu đã có, soạn tài liệu hoặc mở vùng bổ sung khi còn thiếu. Liên kết `Soạn thảo tài liệu` mở một trang mới và truyền đủ ngữ cảnh hồ sơ, bước, mã yêu cầu và loại biểu mẫu.
+- Với tài liệu còn thiếu nhưng không có mẫu soạn thảo riêng, UI phải dùng nhãn dễ hiểu **Bổ sung tài liệu** và mở sẵn đúng loại tài liệu trong vùng nhập liệu; không dùng nhãn kỹ thuật **Mở checklist** ở từng dòng. Nút tổng quan dùng nhãn **Xem danh sách tài liệu**.
+- Nút trong cột `Hành động` dùng mật độ compact theo viewport: desktop cao khoảng 32px với padding nhỏ, mobile vẫn giữ vùng chạm tối thiểu khoảng 44px; không dùng cùng một kích thước lớn cho mọi màn hình.
+- Mã kỹ thuật, vai trò bàn giao, mô tả dài và cảnh báo chi tiết không được chiếm mặt phẳng chính; đặt trong phần phụ có thể mở khi cần. Giữ một hành động chính rõ ràng cho mỗi dòng, touch target tối thiểu khoảng 44px, keyboard focus và bảng cuộn ngang nội bộ trên màn hình hẹp.
+- Đây là thay đổi projection/UI và điều hướng; không thêm collection, schema, API, lifecycle hoặc mutation mới.
+
+### 5A.11. Dải KPI compact nhiều cột — 2026-09-13
+
+- Các dải KPI ở header Tổng quan, workspace, hàng đợi và sổ vận hành phải dùng cùng một anatomy compact: icon hoặc tín hiệu phụ nhỏ, nhãn tiếng Việt một dòng có truncate chủ đích và số liệu nổi bật; không dùng card xếp dọc cao gây kéo dài trang.
+- Desktop phải ưu tiên đưa toàn bộ KPI của cùng một dải lên một hàng khi chiều rộng cho phép: Dashboard dùng chung 6 cột, Tổng quan PGD dùng 8 cột, Tổng quan PCN dùng 8 cột và mở rộng 10 cột ở màn hình rất rộng; hàng đợi/sổ vận hành dùng số cột bằng số KPI ở breakpoint desktop phù hợp. Tablet dùng 4 cột, mobile dùng 2 cột.
+- Card KPI compact dùng padding/gap nhỏ, chiều cao đồng đều khoảng 64–72px; không giảm cỡ chữ dưới mức đọc được, không thay đổi số liệu, collection, callback hoặc quyền. Vùng thao tác KPI (nếu có) vẫn giữ touch target theo chuẩn mobile.
+- Quy tắc này chỉ thay đổi layout và cách trình bày; không thêm metric, schema, API, lifecycle hoặc mutation mới.
 <!-- --- End of design.md --- -->
