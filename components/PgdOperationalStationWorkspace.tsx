@@ -4,6 +4,7 @@ import { ArrowRight, ExternalLink } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import {
+  type PgdCatalogItem,
   type PgdInspectionRequest,
   type PgdTransitionContext,
 } from '../utils/pgdDomain';
@@ -14,6 +15,7 @@ import PgdWorkflowMap from './PgdWorkflowMap';
 export type PgdOperationalStationWorkspaceProps = {
   station: PgdOperationalStationKey;
   requests: PgdInspectionRequest[];
+  catalog?: readonly PgdCatalogItem[];
   selectedRequestId?: string;
   onSelectRequest: (requestId: string) => void;
   onOpenFullDossier: (requestId: string) => void;
@@ -38,14 +40,14 @@ function EmptySelection() {
   return <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm"><div className="text-sm font-black text-slate-700">Chưa chọn hồ sơ PGD</div><p className="mt-1 text-[11px] text-slate-400">Chọn một PYC ở bộ chọn phía trên để mở biểu mẫu của trạm.</p></div>;
 }
 
-export default function PgdOperationalStationWorkspace({ station, requests, selectedRequestId, onSelectRequest, onOpenFullDossier, children, getEvidence }: PgdOperationalStationWorkspaceProps) {
+export default function PgdOperationalStationWorkspace({ station, requests, catalog, selectedRequestId, onSelectRequest, onOpenFullDossier, children, getEvidence }: PgdOperationalStationWorkspaceProps) {
   const selectedRequest = requests.find((request) => request.id === selectedRequestId);
   const stationDefinition = getPgdOperationalStationByKey(station);
   const currentStatus = selectedRequest?.status;
 
   return <div className="space-y-3 p-3 md:p-5">
     <header className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">PGD · Trạm {stationDefinition.number}/5</div><h1 className="mt-1 text-xl font-black text-slate-900">{stationDefinition.title}</h1><p className="mt-1 max-w-3xl text-[11px] leading-5 text-slate-500">{stationDefinition.description} Mỗi PYC là một bộ hồ sơ; chọn hồ sơ trước rồi thực hiện biểu mẫu và bằng chứng tại trạm.</p></div><div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-[10px] font-bold text-blue-800">{requests.length} bộ hồ sơ PGD</div></header>
-    <div aria-label="Bộ chọn hồ sơ PGD"><PgdDossierSelector requests={requests} selectedRequestId={selectedRequestId} onSelect={onSelectRequest} /></div>
+    <div aria-label="Bộ chọn hồ sơ PGD"><PgdDossierSelector requests={requests} catalog={catalog} selectedRequestId={selectedRequestId} onSelect={onSelectRequest} /></div>
     {selectedRequest ? <>
       <PgdDossierSummary request={selectedRequest} />
       <PgdWorkflowMap status={selectedRequest.status} evidence={getEvidence(selectedRequest.id)} />

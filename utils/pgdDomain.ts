@@ -446,6 +446,14 @@ export const DEFAULT_PGD_CATALOG: readonly PgdCatalogItem[] = [
   },
 ];
 
+export function getPgdCatalogItemLabel(catalogItemId: unknown, catalog: readonly PgdCatalogItem[] = DEFAULT_PGD_CATALOG): string {
+  const normalizedId = String(catalogItemId || '').trim();
+  if (!normalizedId) return 'Chưa chọn loại hồ sơ';
+  const item = catalog.find((candidate) => candidate.id === normalizedId || candidate.code === normalizedId)
+    || DEFAULT_PGD_CATALOG.find((candidate) => candidate.id === normalizedId || candidate.code === normalizedId);
+  return item ? `${item.code} · ${item.name}` : normalizedId;
+}
+
 export interface PgdSteelTtlt58SamplingPlan {
   lotSizeMin: number;
   lotSizeMax: number;

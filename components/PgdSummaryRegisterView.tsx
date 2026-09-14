@@ -7,9 +7,11 @@ import {
   PGD_ASSESSMENT_METHOD_OPTIONS,
   PGD_GROUP_LABELS,
   PGD_WORKFLOW_STATES,
+  getPgdCatalogItemLabel,
   type PgdInspectionRequest,
   type PgdInspectionRequestEditPatch,
   type PgdInspectionRequestInput,
+  type PgdCatalogItem,
 } from '../utils/pgdDomain';
 import { buildPgdSummaryRegisterRows, getPgdSummaryCellUpdate } from '../utils/pgdSummaryRegister';
 import type { SummaryGridColumn } from '../utils/summaryRegister';
@@ -31,6 +33,7 @@ type Props = {
   labResults: Parameters<typeof buildPgdSummaryRegisterRows>[0]['labResults'];
   reports: Parameters<typeof buildPgdSummaryRegisterRows>[0]['reports'];
   certificates: Parameters<typeof buildPgdSummaryRegisterRows>[0]['certificates'];
+  catalog: PgdCatalogItem[];
   users: PcnUserAccount[];
   currentUsername?: string | null;
   canEdit: boolean;
@@ -58,7 +61,7 @@ const columns: SummaryGridColumn[] = [
   { id: 'requesterEmail', label: 'Email người yêu cầu', width: 180, editable: true },
   { id: 'productGroup', label: 'Nhóm SP', width: 135 },
   { id: 'pgdGroupCode', label: 'Nhóm NV PGD', width: 180 },
-  { id: 'catalogItemId', label: 'Mã danh mục', width: 130 },
+  { id: 'catalogItemId', label: 'Loại hồ sơ', width: 230 },
   { id: 'productName', label: 'Tên sản phẩm', width: 190, editable: true },
   { id: 'productCode', label: 'Mã sản phẩm', width: 130, editable: true },
   { id: 'brand', label: 'Nhãn hiệu', width: 140, editable: true },
@@ -138,6 +141,7 @@ export default function PgdSummaryRegisterView(props: Props) {
   const [group, setGroup] = useState<'ALL' | PgdInspectionRequestInput['productGroup']>('ALL');
   const [status, setStatus] = useState<'ALL' | PgdInspectionRequest['status']>('ALL');
   const [ownerFilter, setOwnerFilter] = useState<'ALL' | 'ASSIGNED' | 'UNASSIGNED'>('ALL');
+  const [catalogItemId, setCatalogItemId] = useState<'ALL' | string>('ALL');
   const rawRows = useMemo(() => buildPgdSummaryRegisterRows({
     requests: props.requests,
     assignments: props.assignments,
@@ -148,9 +152,9 @@ export default function PgdSummaryRegisterView(props: Props) {
     certificates: props.certificates,
   }), [props.assignments, props.certificates, props.labRequests, props.labResults, props.reports, props.requests, props.samples]);
   const ownerNames = useMemo(() => new Map(props.users.map((user) => [user.username, user.name || 'Người dùng hệ thống'])), [props.users]);
-  const rows = useMemo(() => rawRows.map((row) => ({ ...row, displayCells: { pgdGroupCode: row.cells.pgdGroupCode === 'QC20' ? PGD_GROUP_LABELS.QC20 : row.cells.pgdGroupCode, ownerUsername: row.cells.ownerUsername ? ownerNames.get(String(row.cells.ownerUsername)) : undefined } })), [ownerNames, rawRows]);
+  const rows = useMemo(() => rawRows.map((row) => ({ ...row, displayCells: { pgdGroupCode: row.cells.pgdGroupCode === 'QC20' ? PGD_GROUP_LABELS.QC20 : row.cells.pgdGroupCode, catalogItemId: getPgdCatalogItemLabel(row.cells.catalogItemId, props.catalog), ownerUsername: row.cells.ownerUsername ? ownerNames.get(String(row.cells.ownerUsername)) : undefined } })), [ownerNames, props.catalog, rawRows]);
   const configuredColumns = useMemo(() => columns.map((column) => column.id === 'ownerUsername' ? { ...column, options: [{ value: '', label: 'Chưa phân công' }, ...userOptions(props.users)] } : column), [props.users]);
-  const filterRows = useMemo(() => (items: typeof rows) => items.filter((row) => (group === 'ALL' || row.cells.productGroup === group) && (status === 'ALL' || row.cells.status === status) && (ownerFilter === 'ALL' || (ownerFilter === 'ASSIGNED' ? Boolean(row.cells.ownerUsername) : !row.cells.ownerUsername))), [group, ownerFilter, status]);
+  const filterRows = useMemo(() => (items: typeof rows) => items.filter((row) => (group === 'ALL' || row.cells.productGroup === group) && (status === 'ALL' || row.cells.status === status) && (catalogItemId === 'ALL' || row.cells.catalogItemId === catalogItemId) && (ownerFilter === 'ALL' || (ownerFilter === 'ASSIGNED' ? Boolean(row.cells.ownerUsername) : !row.cells.ownerUsername))), [catalogItemId, group, ownerFilter, status]);
 
   const commitCell = async (rowId: string, columnId: string, rawValue: string) => {
     const request = props.requests.find((item) => item.id === rowId);
@@ -166,6 +170,7 @@ export default function PgdSummaryRegisterView(props: Props) {
 
   const filterControls = <>
     <select aria-label="Lọc nhóm sản phẩm Sổ tổng hợp PGD" value={group} onChange={(event) => setGroup(event.target.value as typeof group)} className="pgdcn-toolbar-filter min-w-0 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="ALL">Tất cả nhóm</option>{Object.entries(PGD_PRODUCT_GROUP_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+    <select aria-label="Lọc loại hồ sơ Sổ tổng hợp PGD" value={catalogItemId} onChange={(event) => setCatalogItemId(event.target.value)} className="pgdcn-toolbar-filter min-w-0 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="ALL">Tất cả loại hồ sơ</option>{props.catalog.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name}</option>)}</select>
     <select aria-label="Lọc trạng thái Sổ tổng hợp PGD" value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="pgdcn-toolbar-filter min-w-0 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="ALL">Tất cả trạng thái</option>{PGD_WORKFLOW_STATES.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}</select>
     <select aria-label="Lọc phân công Sổ tổng hợp PGD" value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value as typeof ownerFilter)} className="pgdcn-toolbar-filter min-w-0 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px]"><option value="ALL">Tất cả chủ hồ sơ</option><option value="ASSIGNED">Đã phân công</option><option value="UNASSIGNED">Chưa phân công</option></select>
   </>;
