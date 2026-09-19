@@ -89,8 +89,8 @@ export default function PcnLoginScreen() {
           />
           <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">IEMM • TVCI</span>
         </div>
-        <h1 className="mt-6 text-center text-2xl font-semibold text-white">Hệ thống chứng nhận</h1>
-        <p className="mt-2 text-center text-sm text-slate-400">Giám định - Chứng nhận • Miền PCN (Phòng Chứng nhận)</p>
+        <h1 className="mt-6 text-center text-xl font-black uppercase tracking-wide text-white">Phòng Giám định - Chứng nhận và Phát triển thị trường</h1>
+        <p className="mt-2 text-center text-sm text-slate-400">Hệ thống chứng nhận & giám định chuyên ngành • Phòng Chứng nhận / PGDCN · TVCI</p>
 
         <div className="mt-8 rounded-xl border border-slate-700 bg-slate-900 px-6 py-8 shadow-sm">
           <form className="space-y-5" onSubmit={handleLogin}>

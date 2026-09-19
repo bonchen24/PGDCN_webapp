@@ -5,7 +5,8 @@ Description: File thiết kế chi tiết kiến trúc, dữ liệu, Frontend UI
 -->
 
 # DESIGN DOCUMENTATION - TVCI WEB APP
-## (PGDCN active profile: PCN + PGD và DDT legacy reference)
+## (Hệ Thống Quản Lý Vận Hành - Phòng Giám định - Chứng nhận và Phát triển thị trường)
+### (PGDCN active profile: PCN + PGD và DDT legacy reference)
 
 ---
 
@@ -47,7 +48,7 @@ Description: File thiết kế chi tiết kiến trúc, dữ liệu, Frontend UI
 
 ## 0. PGDCN ACTIVE PROFILE
 
-Phần này là lớp đặc tả đang có hiệu lực cho ứng dụng **Phòng Giám định, Chứng nhận, Phát triển thị trường thuộc Trung tâm TVCI**. Hiện tại hệ thống triển khai hai miền nghiệp vụ độc lập: **PCN — Chứng nhận** và **PGD — Giám định**; **Phát triển thị trường** được giữ là miền dự phòng, chưa có module, route, collection hoặc menu vận hành. Các mục mô tả DDT ở phía dưới được giữ lại làm legacy reference; khi có mâu thuẫn, quy tắc PGDCN active profile và yêu cầu người dùng hiện tại được ưu tiên.
+Phần này là lớp đặc tả đang có hiệu lực cho ứng dụng **Phòng Giám định - Chứng nhận và Phát triển thị trường thuộc Trung tâm Thử nghiệm - Kiểm định Công nghiệp (TVCI / IEMM)**. Đây là hệ thống vận hành thống nhất của toàn Phòng, hiện tại triển khai hai miền nghiệp vụ độc lập: **PCN — Chứng nhận** và **PGD — Giám định**; **Phát triển thị trường** là miền chức năng phát triển trực thuộc của Phòng. Hệ thống không chỉ phục vụ riêng một phân hệ mà bao hàm toàn bộ công tác quản lý của Phòng Giám định - Chứng nhận và Phát triển thị trường. Hiện tại hệ thống triển khai hai miền nghiệp vụ độc lập: **PCN — Chứng nhận** và **PGD — Giám định**; **Phát triển thị trường** được giữ là miền dự phòng, chưa có module, route, collection hoặc menu vận hành. Các mục mô tả DDT ở phía dưới được giữ lại làm legacy reference; khi có mâu thuẫn, quy tắc PGDCN active profile và yêu cầu người dùng hiện tại được ưu tiên.
 
 ### 0.0. Cơ cấu tổ chức và vai trò chồng lớp
 
@@ -622,6 +623,53 @@ Card Phiếu Yêu Cầu là thành phần giao diện trung tâm hiển thị th
 
 ---
 
+
+### 3.1.1. Card Hồ Sơ & Đề Nghị PCN/PGD (Dossier & Proposal Card - Kế thừa kiến trúc DdT RequestGroupCard)
+
+Để đồng bộ trải nghiệm với DDT_webapp, toàn bộ danh sách Đề nghị / Hồ sơ (ProposalView, PcnDossierQueueView, PgdDossierQueueView) của **Phòng Giám định - Chứng nhận và Phát triển thị trường** được chuyển đổi từ dạng bảng thuần sang **Card lưới 2 cột** (grid grid-cols-1 md:grid-cols-2 gap-4), hỗ trợ mở rộng nhanh (Accordion) để xem mẫu/tiến độ và thao tác mở hồ sơ chi tiết.
+
+`
++----------------------------------------------------------------------------------+
+| 📁 [ĐỀ NGHỊ: PCN-260919-01] [HỒ SƠ: CN-0025-26]   [CHỜ TIẾP NHẬN] [QC4] [2 MẪU]  |
+| Khách hàng: Công ty Cổ phần Cơ Điện Lạnh Asanzo                                  |
+| Sản phẩm: Máy Điều Hòa Không Khí Inverter • Model: K-12INV (Nagakawa)            |
+| 👤 Chủ hồ sơ: Nguyễn Văn A • 📅 Tiếp nhận: 19/09/2026                            |
+| ──────────────────────────────────────────────────────────────────────────────── |
+| Tiến độ hoàn thiện tài liệu: [██████████░░░░░░░░░░] 50%                          |
+| [ Mở hồ sơ ]   [ Sửa ]   [ ▾ Mở rộng xem 2 mẫu & tuyến PTN ]                    |
++----------------------------------------------------------------------------------+
+| VÙNG MỞ RỘNG (ACCORDION EXPANDED):                                               |
+|  ├─ Mẫu 1: K-12INV (SL: 1) -> Tuyến PTN: DDT (EMC - Đang thử) • KQTN: Chờ KQ     |
+|  ├─ Mẫu 2: K-12INV-O (SL: 1) -> Tuyến PTN: LABFTEE (Hiệu suất - Hoàn tất PASS)    |
+|  └─ Tài liệu còn thiếu: 1 mục (Biên bản kiểm tra thực địa)                       |
++----------------------------------------------------------------------------------+
+`
+
+#### Quy chuẩn cấu trúc thành phần (Anatomy):
+1. **Header Card**:
+   - Bên trái: Biểu tượng hồ sơ (FolderOpen / Award), Mã Đề nghị (ont-mono font-black text-slate-800 tracking-wider) và Mã Hồ sơ liên kết.
+   - Bên phải: Badge số lượng mẫu (ont-bold bg-slate-100 text-slate-600), Badge Lĩnh vực (QC4 / QC9 hoặc Nhóm sản phẩm PGD) và Badge Trạng thái hồ sơ.
+2. **Body Card**:
+   - Tên Khách hàng (customerName), Tên sản phẩm, Model, Hãng (rand).
+   - Tên chuyên gia / Chủ hồ sơ phụ trách (ownerUsername / ownerDisplayName) và Ngày tiếp nhận (
+eceivedAt).
+3. **Thanh tiến độ (Progress Indicator)**:
+   - Hiển thị tỷ lệ hoàn thiện các bước hoặc số lượng tài liệu bắt buộc đã nạp / còn thiếu (
+equiredDocumentPresent / requiredDocumentTotal).
+4. **Thanh thao tác & Accordion Toggle**:
+   - Nút chính **Mở hồ sơ** (mở chi tiết hồ sơ vào view/modal làm việc).
+   - Nút **Sửa đề nghị** (khi có quyền chỉnh sửa thông tin ban đầu).
+   - Nút **Mở rộng / Thu gọn** (isExpanded): Click vào header hoặc nút chevron mở vùng chi tiết ngay trong card mà không cần rời trang.
+5. **Vùng Accordion (Expanded Panel)**:
+   - Danh sách mẫu thử / model trong lô kèm trạng thái tuyến gửi phòng thử nội bộ (DDT, LABFTEE...).
+   - Trạng thái kết quả thử nghiệm sơ bộ (Chờ KQ / PASS / Cần thử lại).
+   - Danh sách tài liệu bắt buộc còn thiếu cần bổ sung.
+6. **Thanh lọc nhanh (Filter Chips Toolbar)**:
+   - Nằm trên đầu danh sách: Các nút chip bo góc 
+ounded-xl, tracking 	ext-[11px] font-black uppercase: Tất cả, QC4, QC9 (hoặc nhóm thép/máy móc/than của PGD), Tiếp nhận, Đang xử lý, Quá hạn, Hoàn thành.
+
+---
+
 ### 3.2. Card Mẫu Thử / Kho Mẫu (Sample Inventory Card)
 Nằm ở thanh Sidebar Kho Mẫu Vật Lý (`WarehouseSidebar.tsx`), hiển thị trạng thái thực tế của mẫu vật trong phòng lab.
 
@@ -1002,19 +1050,23 @@ Nhật ký đồng bộ và chẩn đoán PostgreSQL không hiển thị thành 
 
 ### 5.2. Tỷ lệ hiển thị giao diện toàn cục (Global UI Scale)
 
-- Toàn bộ giao diện web của ứng dụng phải hiển thị ở tỷ lệ **100%** theo kích thước CSS mặc định, bao gồm thanh điều hướng, bảng dữ liệu, card, form và modal.
-- Tỷ lệ này được áp dụng tại vùng mount React (`#root`) bằng CSS global; vùng chứa phải giữ `width: 100%` và `min-height: 100%` để không vượt viewport khi `html, body` khóa overflow.
+- Toàn bộ giao diện web của ứng dụng phải hiển thị ở tỷ lệ **100%** theo kích thước CSS mặc định chuẩn DdT (DDT_webapp), bao gồm thanh điều hướng, bảng dữ liệu, card, form và modal. Bỏ hoàn toàn các biến phóng đại font như --app-font-scale: 1.1.
+- Tỷ lệ này được áp dụng tại vùng mount React (#root) bằng CSS global; vùng chứa phải giữ zoom: 1, width: 100% và min-height: 100% để không vượt viewport khi html, body khóa overflow.
 - Nội dung cửa sổ in, biểu mẫu xuất báo cáo và các tài liệu DOCX/PDF không chịu ảnh hưởng bởi tỷ lệ UI này; các quy chuẩn kích thước in giữ nguyên theo từng module.
 - Không thay đổi token dữ liệu, kích thước ảnh báo cáo hoặc logic nghiệp vụ chỉ để phục vụ việc thu/phóng giao diện.
 - Đây là thay đổi **chỉ dành cho UI/CSS**; không được sửa dữ liệu, API, logic nghiệp vụ, điều hướng hoặc tích hợp hệ thống.
 
-### 5.2.1. Mật độ giao diện compact (Compact UI Density)
+### 5.2.1. Mật độ giao diện compact chuẩn DdT (Compact UI Density)
 
-- App shell sau đăng nhập dùng scope CSS trung tính `app-compact` để giảm gap, padding và font theo một bậc thống nhất; nhóm token `gap-3/4/6/8`, `space-y-3/4/6` và `p-3/4/6/8` được thu gọn; sidebar PGDCN dùng nhịp compact mặc định `space-y-0.5`, item desktop `min-h-9`, `gap-2`, padding ngang khoảng `px-2` đến `px-2.5`; `#root` vẫn giữ `zoom: 1`.
-- Compact áp dụng cho header, sidebar, toolbar, card, filter và vùng nội dung nghiệp vụ; mục tiêu là tăng lượng thông tin hiển thị mà không làm mất phân cấp thị giác.
-- Vùng thao tác mobile vẫn giữ touch target tối thiểu khoảng 44px; không dùng `transform: scale()` hoặc `zoom` để thu nhỏ hitbox.
-- `.report-form-compact`, canvas preview, nội dung in và file DOCX/PDF giữ typography/layout riêng, không bị global compact override.
-- Header phải hiển thị đúng nhãn theo `activeTab`, bao gồm `Nhật ký hệ thống`; thay đổi compact không làm đổi handler nghiệp vụ, schema, API hoặc format xuất.
+- App shell sau đăng nhập kế thừa hệ thống compact density của DDT_webapp (.app-compact, .pcn-compact, .ddt-compact):
+  - Kích thước chữ cơ sở: ont-size: 0.8125rem (13px), line-height: 1.3.
+  - Phân cấp typography: .text-xs: 0.6875rem (11px, line-height: 1.2), .text-sm: 0.75rem (12px, line-height: 1.25), .text-base: 0.8125rem, .text-lg: 0.9375rem, .text-xl: 1.0625rem.
+  - Nhịp thu gọn gap & padding đồng bộ DdT: gap-3 (0.5rem), gap-4 (0.625rem), gap-6 (0.875rem), gap-8 (1rem); p-3 (0.5rem), p-4 (0.625rem), p-6 (1rem), p-8 (1.25rem).
+  - Header compact: Chiều cao chuẩn 3.25rem (52px) thông qua .ddt-compact-header / .app-compact-header. Bổ sung nút toggle sidebar desktop (lg:flex) cạnh nút menu mobile, và badge breadcrumb bối cảnh chuẩn DdT: 	ext-xs font-black uppercase text-slate-700 tracking-widest bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200/50 shadow-3xs.
+  - Sidebar compact: Nền g-slate-900 border-slate-800, nhịp navigation item py-2.5 rounded-xl transition-all px-3.5 gap-3, tracking 	ext-[11px] uppercase tracking-wider font-bold. Footer người dùng gồm avatar bo tròn viền emerald, tên chuyên gia và cụm nút icon settings / logout riêng biệt.
+- Vùng thao tác mobile vẫn giữ touch target tối thiểu khoảng 44px; không dùng 	ransform: scale() hoặc zoom để thu nhỏ hitbox.
+- .report-form-compact, canvas preview, nội dung in và file DOCX/PDF giữ typography/layout riêng, không bị global compact override.
+- Header phải hiển thị đúng tên **Phòng Giám định - Chứng nhận và Phát triển thị trường** và nhãn bối cảnh theo ctiveTarget.
 
 ### 5.3. Chuẩn responsive cho mobile (Mobile Responsive Standard)
 

@@ -1,6 +1,6 @@
 {
-  "name": "Phòng Chứng nhận TVCI",
-  "description": "Hệ thống vận hành Đề nghị, bộ hồ sơ và phát hành chứng nhận của Phòng Chứng nhận TVCI",
+  "name": "Phòng Giám định - Chứng nhận và Phát triển thị trường TVCI",
+  "description": "Hệ thống quản lý vận hành của Phòng Giám định - Chứng nhận và Phát triển thị trường TVCI (IEMM)",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

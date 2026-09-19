@@ -3,8 +3,8 @@ import type { Metadata, Viewport } from 'next';
 import '../index.css';
 
 export const metadata: Metadata = {
-  title: 'Phòng Giám định - Chứng nhận - TVCI',
-  description: 'Hệ thống quản lý hồ sơ giám định và chứng nhận theo miền nghiệp vụ của Phòng Giám định - Chứng nhận TVCI; miền PCN là Phòng Chứng nhận.',
+  title: 'Phòng Giám định - Chứng nhận và Phát triển thị trường - TVCI',
+  description: 'Hệ thống quản lý vận hành của Phòng Giám định - Chứng nhận và Phát triển thị trường thuộc Trung tâm TVCI (IEMM); bao gồm hai phân hệ nghiệp vụ Chứng nhận (PCN) và Giám định (PGD).',
   manifest: '/manifest.json',
   icons: {
     icon: '/icons/iemm-logo-32.png',

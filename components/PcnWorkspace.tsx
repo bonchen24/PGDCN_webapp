@@ -15,6 +15,8 @@ import {
   FileWarning,
   FilePlus2,
   FolderOpen,
+  LayoutGrid,
+  List,
   Menu,
   Plus,
   Send,
@@ -43,11 +45,12 @@ import PcnDraftingWorkspaceView from './PcnDraftingWorkspaceView';
 import { ActivityLogView } from './ActivityLogView';
 import { PcnUserKpiTable } from './PcnUserKpiTable';
 import PcnSidebar, { PCN_SECTION_ICONS } from './PcnSidebar';
+import PcnDossierGroupCard from './PcnDossierGroupCard';
 import { usePcnStore } from '../store-pcn';
 import { usePcnSessionStore } from '../utils/pcnSessionState';
 import { clearPcnSession, getPcnSession } from '../utils/pcnAuthApi';
 import { ORGANIZATION_MANAGEMENT_ROLE_OPTIONS, PROFESSIONAL_ROLE_OPTIONS } from '../types';
-import type { AppNotification, CertificationDossier, CertificationProposal, PcnDossierStatus, PcnProposalStatus, PcnCertificationField } from '../types';
+import type { AppNotification, CertificationDossier, CertificationProposal, PcnDossierStatus, PcnProposalStatus, PcnCertificationField, PcnSampleLot, PcnSampleItem, PcnSampleRoute } from '../types';
 import type { PcnProposalUpdateInput } from '../utils/pcnProposalApi';
 import { PcnIntakeApiError } from '../utils/pcnIntakeApi';
 import { formatPcnIntakeValidationIssues, indexPcnIntakeValidationIssues, validatePcnProposalIntake } from '../utils/pcnIntakePolicy';
@@ -316,7 +319,38 @@ type PcnProposalForm = {
   fieldCodes: string[];
 };
 
-function ProposalView({ fields, proposals, dossiers, customers, canEdit, initialDossierId, initialFieldCode, openFormRequest, onSave, onUpdateProposal, onOpenDossier }: { fields: PcnCertificationField[]; proposals: CertificationProposal[]; dossiers: CertificationDossier[]; customers: Array<{ name: string; address?: string; customerCode?: string; taxId?: string; phone?: string; email?: string; contactPerson?: string }>; canEdit: boolean; initialDossierId?: string; initialFieldCode?: string; openFormRequest?: number; onSave: (proposal: CertificationProposal) => Promise<void>; onUpdateProposal: (proposalId: string, updates: PcnProposalUpdateInput) => Promise<void>; onOpenDossier: (dossier: CertificationDossier) => void }) {
+function ProposalView({
+  fields,
+  proposals,
+  dossiers,
+  sampleLots = [],
+  sampleItems = [],
+  sampleRoutes = [],
+  customers,
+  canEdit,
+  initialDossierId,
+  initialFieldCode,
+  openFormRequest,
+  onSave,
+  onUpdateProposal,
+  onOpenDossier,
+}: {
+  fields: PcnCertificationField[];
+  proposals: CertificationProposal[];
+  dossiers: CertificationDossier[];
+  sampleLots?: PcnSampleLot[];
+  sampleItems?: PcnSampleItem[];
+  sampleRoutes?: PcnSampleRoute[];
+  customers: Array<{ name: string; address?: string; customerCode?: string; taxId?: string; phone?: string; email?: string; contactPerson?: string }>;
+  canEdit: boolean;
+  initialDossierId?: string;
+  initialFieldCode?: string;
+  openFormRequest?: number;
+  onSave: (proposal: CertificationProposal) => Promise<void>;
+  onUpdateProposal: (proposalId: string, updates: PcnProposalUpdateInput) => Promise<void>;
+  onOpenDossier: (dossier: CertificationDossier) => void;
+}) {
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [openForm, setOpenForm] = useState(false);
   const [proposalMinimized, setProposalMinimized] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -546,9 +580,181 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
     });
   }, [dossierByProposalId, fieldFilter, initialDossierId, proposals, query, statusFilter]);
 
+  // Quick filter counts
+  const chipCounts = useMemo(() => {
+    const total = proposals.length;
+    let qc4 = 0;
+    let qc9 = 0;
+    let intake = 0;
+    let awaitingDocs = 0;
+    let completed = 0;
+
+    for (const p of proposals) {
+      if (p.fieldCodes.includes('QC4' as any)) qc4++;
+      if (p.fieldCodes.includes('QC9' as any)) qc9++;
+      const d = dossierByProposalId.get(p.id);
+      if (d) {
+        if (d.status === 'INTAKE_REVIEW') intake++;
+        else if (d.status === 'AWAITING_DOCUMENTS') awaitingDocs++;
+        else if (['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(d.status)) completed++;
+      }
+    }
+    return { total, qc4, qc9, intake, awaitingDocs, completed };
+  }, [proposals, dossierByProposalId]);
+
   return (
     <div className="pcn-page-surface min-w-0 p-3 md:p-5 space-y-4 mobile-safe-bottom bg-slate-50/60">
-      <div className="flex items-start justify-between gap-3"><div><h1 className="text-xl font-black text-slate-900">Quản lý Đề nghị</h1><p className="text-[11px] text-slate-500 mt-1">Mỗi dòng là một Đề nghị và một bộ hồ sơ liên kết. PYC chỉ phát sinh khi cần kết nối phòng thử nghiệm khác.</p></div>{!openForm && canEdit && <button onClick={openProposalForm} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white"><Plus size={14} /> Tạo Đề nghị</button>}</div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-black text-slate-900">Quản lý Đề nghị</h1>
+          <p className="text-xs text-slate-500 mt-0.5">Phòng Giám định - Chứng nhận và Phát triển thị trường · Giao diện hồ sơ dạng thẻ chuẩn phiếu kiểm tra DdT</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* View switcher */}
+          <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-3xs">
+            <button
+              type="button"
+              onClick={() => setViewMode('card')}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+                viewMode === 'card'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Xem dạng thẻ chuẩn DdT"
+            >
+              <LayoutGrid size={13} />
+              <span className="hidden sm:inline">Dạng thẻ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Xem bảng truyền thống"
+            >
+              <List size={13} />
+              <span className="hidden sm:inline">Dạng bảng</span>
+            </button>
+          </div>
+
+          {!openForm && canEdit && (
+            <button
+              onClick={openProposalForm}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-black text-white shadow-3xs hover:bg-emerald-700 transition-colors cursor-pointer"
+            >
+              <Plus size={14} /> Tạo Đề nghị
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* DdT Style Quick Filter Chips */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => { setStatusFilter(''); setFieldFilter(''); }}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
+            statusFilter === '' && fieldFilter === ''
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
+          }`}
+        >
+          Tất cả
+          <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
+            statusFilter === '' && fieldFilter === '' ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700'
+          }`}>
+            {chipCounts.total}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setFieldFilter(fieldFilter === 'QC4' ? '' : 'QC4'); }}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
+            fieldFilter === 'QC4'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300'
+          }`}
+        >
+          QC4
+          <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
+            fieldFilter === 'QC4' ? 'bg-indigo-700 text-indigo-100' : 'bg-indigo-50 text-indigo-700'
+          }`}>
+            {chipCounts.qc4}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setFieldFilter(fieldFilter === 'QC9' ? '' : 'QC9'); }}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
+            fieldFilter === 'QC9'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300'
+          }`}
+        >
+          QC9
+          <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
+            fieldFilter === 'QC9' ? 'bg-indigo-700 text-indigo-100' : 'bg-indigo-50 text-indigo-700'
+          }`}>
+            {chipCounts.qc9}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setStatusFilter(statusFilter === 'INTAKE_REVIEW' ? '' : 'INTAKE_REVIEW'); }}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
+            statusFilter === 'INTAKE_REVIEW'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'bg-white border border-slate-200 text-slate-600 hover:border-amber-300'
+          }`}
+        >
+          Tiếp nhận / Rà soát
+          <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
+            statusFilter === 'INTAKE_REVIEW' ? 'bg-amber-700 text-amber-100' : 'bg-amber-50 text-amber-700'
+          }`}>
+            {chipCounts.intake}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setStatusFilter(statusFilter === 'AWAITING_DOCUMENTS' ? '' : 'AWAITING_DOCUMENTS'); }}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
+            statusFilter === 'AWAITING_DOCUMENTS'
+              ? 'bg-rose-600 text-white shadow-xs'
+              : 'bg-white border border-slate-200 text-slate-600 hover:border-rose-300'
+          }`}
+        >
+          Chờ tài liệu
+          <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
+            statusFilter === 'AWAITING_DOCUMENTS' ? 'bg-rose-700 text-rose-100' : 'bg-rose-50 text-rose-700'
+          }`}>
+            {chipCounts.awaitingDocs}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setStatusFilter(statusFilter === 'APPROVED' ? '' : 'APPROVED'); }}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
+            statusFilter === 'APPROVED'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-white border border-slate-200 text-slate-600 hover:border-emerald-300'
+          }`}
+        >
+          Đã duyệt / Hoàn tất
+          <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
+            statusFilter === 'APPROVED' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-50 text-emerald-700'
+          }`}>
+            {chipCounts.completed}
+          </span>
+        </button>
+      </div>
       {openForm && <>{/* data-testid="pcn-proposal-form-modal" aria-labelledby="pcn-proposal-modal-title" data-testid="pcn-proposal-modal-body" data-testid="pcn-proposal-modal-footer" focus-visible:ring */}<PgdcnWindowsWorkflowModal
         open={openForm}
         minimized={proposalMinimized}
@@ -661,7 +867,73 @@ function ProposalView({ fields, proposals, dossiers, customers, canEdit, initial
         <div className="pgdcn-toolbar-count flex items-center justify-end text-[10px] font-bold text-slate-500">{visibleProposals.length}/{proposals.length} Đề nghị</div>
       </div>
       {initialDossierId && <div className="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[10px] font-bold text-indigo-800">Đang tập trung hồ sơ: {dossiers.find((dossier) => dossier.id === initialDossierId)?.dossierCode || initialDossierId}</div>}
-      {proposals.length === 0 ? <EmptyState title="Chưa có Đề nghị" description="Tiếp nhận Đề nghị từ khách hàng để tạo bộ hồ sơ chứng nhận." action={canEdit ? 'Tạo Đề nghị' : undefined} onAction={canEdit ? openProposalForm : undefined} /> : visibleProposals.length === 0 ? <EmptyState title="Không tìm thấy Đề nghị" description="Thử đổi từ khóa hoặc bộ lọc trạng thái/Lĩnh vực." /> : <div className="mobile-scroll-x min-w-0 overflow-x-auto rounded-xl border border-slate-200 bg-white"><table aria-label="Danh sách Đề nghị PCN" className="w-full min-w-[980px] border-collapse text-left text-[10px]"><caption className="sr-only">Danh sách Đề nghị PCN và hồ sơ liên kết</caption><thead className="bg-slate-50 text-[10px] font-black uppercase tracking-wide text-slate-500"><tr><th scope="col" className="sticky left-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-3">Mã Đề nghị</th><th scope="col" className="border-b border-slate-200 px-3 py-3">Mã hồ sơ</th><th scope="col" className="border-b border-slate-200 px-3 py-3">Trạng thái</th><th scope="col" className="border-b border-slate-200 px-3 py-3">Khách hàng</th><th scope="col" className="border-b border-slate-200 px-3 py-3">Sản phẩm / kiểu loại</th><th scope="col" className="border-b border-slate-200 px-3 py-3">Lĩnh vực</th><th scope="col" className="border-b border-slate-200 px-3 py-3">Tiếp nhận</th><th scope="col" className="border-b border-slate-200 px-3 py-3 text-right">Thao tác</th></tr></thead><tbody className="divide-y divide-slate-100">{visibleProposals.map((proposal) => { const dossier = dossiers.find((item) => item.id === proposal.dossierId || item.proposalId === proposal.id); return dossier ? <ProposalRegisterRow key={proposal.id} proposal={proposal} dossier={dossier} canEdit={canEdit} onOpenDossier={() => onOpenDossier(dossier)} onEdit={() => openEdit(proposal)} /> : <tr key={proposal.id}><td colSpan={8} className="px-3 py-3 text-[10px] text-amber-800">Đề nghị <b>{proposal.proposalCode}</b> chưa có bộ hồ sơ liên kết.</td></tr>; })}</tbody></table></div>}
+      {proposals.length === 0 ? (
+        <EmptyState title="Chưa có Đề nghị" description="Tiếp nhận Đề nghị từ khách hàng để tạo bộ hồ sơ chứng nhận." action={canEdit ? 'Tạo Đề nghị' : undefined} onAction={canEdit ? openProposalForm : undefined} />
+      ) : visibleProposals.length === 0 ? (
+        <EmptyState title="Không tìm thấy Đề nghị" description="Thử đổi từ khóa hoặc bộ lọc trạng thái/Lĩnh vực." />
+      ) : viewMode === 'card' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {visibleProposals.map((proposal) => {
+            const dossier = dossiers.find((item) => item.id === proposal.dossierId || item.proposalId === proposal.id);
+            return dossier ? (
+              <PcnDossierGroupCard
+                key={proposal.id}
+                proposal={proposal}
+                dossier={dossier}
+                sampleLots={sampleLots}
+                sampleItems={sampleItems}
+                sampleRoutes={sampleRoutes}
+                canEdit={canEdit}
+                onOpenDossier={() => onOpenDossier(dossier)}
+                onEdit={() => openEdit(proposal)}
+              />
+            ) : (
+              <div key={proposal.id} className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-800">
+                Đề nghị <b>{proposal.proposalCode}</b> chưa có bộ hồ sơ liên kết.
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mobile-scroll-x min-w-0 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <table aria-label="Danh sách Đề nghị PCN" className="w-full min-w-[980px] border-collapse text-left text-[10px]">
+            <caption className="sr-only">Danh sách Đề nghị PCN và hồ sơ liên kết</caption>
+            <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-wide text-slate-500">
+              <tr>
+                <th scope="col" className="sticky left-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-3">Mã Đề nghị</th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-3">Mã hồ sơ</th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-3">Trạng thái</th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-3">Khách hàng</th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-3">Sản phẩm / kiểu loại</th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-3">Lĩnh vực</th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-3">Tiếp nhận</th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-3 text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {visibleProposals.map((proposal) => {
+                const dossier = dossiers.find((item) => item.id === proposal.dossierId || item.proposalId === proposal.id);
+                return dossier ? (
+                  <ProposalRegisterRow
+                    key={proposal.id}
+                    proposal={proposal}
+                    dossier={dossier}
+                    canEdit={canEdit}
+                    onOpenDossier={() => onOpenDossier(dossier)}
+                    onEdit={() => openEdit(proposal)}
+                  />
+                ) : (
+                  <tr key={proposal.id}>
+                    <td colSpan={8} className="px-3 py-3 text-[10px] text-amber-800">
+                      Đề nghị <b>{proposal.proposalCode}</b> chưa có bộ hồ sơ liên kết.
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -905,7 +1177,22 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
       onAssignDossier={assignPcnDossier}
     />
   ) : activeSection === 'proposals' ? (
-    <ProposalView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} customers={pcn.customers} canEdit={canMutatePcn} initialDossierId={focusedDossierId} initialFieldCode={selectedField} openFormRequest={proposalFormRequest} onSave={(proposal) => pcn.addProposal(proposal)} onUpdateProposal={(proposalId, updates) => pcn.updateProposal(proposalId, updates)} onOpenDossier={openDossierAtCurrentStation} />
+    <ProposalView
+      fields={pcn.fields}
+      proposals={pcn.proposals}
+      dossiers={pcn.dossiers}
+      sampleLots={pcn.sampleLots}
+      sampleItems={pcn.sampleItems}
+      sampleRoutes={pcn.sampleRoutes}
+      customers={pcn.customers}
+      canEdit={canMutatePcn}
+      initialDossierId={focusedDossierId}
+      initialFieldCode={selectedField}
+      openFormRequest={proposalFormRequest}
+      onSave={(proposal) => pcn.addProposal(proposal)}
+      onUpdateProposal={(proposalId, updates) => pcn.updateProposal(proposalId, updates)}
+      onOpenDossier={openDossierAtCurrentStation}
+    />
   ) : activeSection === 'operations' ? (
     <PcnOperationsRegisterView fields={pcn.fields} proposals={pcn.proposals} dossiers={pcn.dossiers} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} issuancePackages={pcn.issuancePackages} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} users={pcn.users} currentUser={currentUser} currentUsername={currentUser.username} canEdit={canMutatePcn} onUpdateProposal={pcn.updateProposal} onUpdateDossier={pcn.updateDossier} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'lab-operations' ? (

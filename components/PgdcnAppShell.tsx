@@ -313,16 +313,31 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     <Toaster position="top-right" richColors />
     <PgdcnSidebar currentUser={currentUser} activeTarget={activeTarget} collapsed={collapsed} mobileOpen={mobileOpen} onToggle={() => setCollapsed((value) => !value)} onNavigate={navigate} onCloseMobile={() => setMobileOpen(false)} onOpenPersonalSettings={() => setPersonalSettingsOpen(true)} onLogout={handleLogout} />
     <div className="flex min-w-0 flex-1 flex-col">
-      <header className="app-compact-header flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5">
-        <div className="flex min-w-0 items-center gap-2">
-          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Mở menu phòng" className="mobile-touch-target rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
+      <header className="app-compact-header flex h-13 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-xs md:px-5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Mở menu phòng" className="mobile-touch-target rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
             <Menu aria-hidden="true" size={18} />
           </button>
-          <div className="min-w-0"><div className="truncate text-[10px] font-black uppercase tracking-wider text-slate-700">IEMM • TVCI · {getActiveContextLabel(activeTarget)}</div><div className="truncate text-xs font-bold text-slate-500">Phòng Giám định, Chứng nhận, Phát triển thị trường · một phiên, hai lĩnh vực đang vận hành</div></div>
+          <button type="button" onClick={() => setCollapsed((v) => !v)} aria-label="Thu gọn / Mở rộng thanh điều hướng" className="hidden lg:flex p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors cursor-pointer" title={collapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}>
+            <Menu aria-hidden="true" size={18} />
+          </button>
+          <div className="hidden lg:inline text-[11px] font-black uppercase text-slate-700 tracking-wider bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/60 shadow-3xs">
+            {getActiveContextLabel(activeTarget)}
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-[11px] font-black uppercase tracking-wider text-slate-800">
+              Phòng Giám định - Chứng nhận và Phát triển thị trường · TVCI
+            </div>
+            <div className="truncate text-[11px] font-medium text-slate-500">
+              Hệ thống điều hành & Mở hồ sơ kiểm định - chứng nhận chuyên ngành
+            </div>
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2.5">
           <PgdcnNotificationDropdown isOpen={notificationOpen} onToggle={handleToggleNotifications} onClose={() => setNotificationOpen(false)} notifications={notifications} currentUser={currentUser} onMarkRead={handleMarkNotificationRead} onMarkAllRead={handleMarkAllNotificationsRead} onClear={handleClearNotifications} onSelect={handleNotificationSelect} />
-          <div className="hidden text-[10px] font-bold text-slate-400 sm:block">{currentUser.username}</div>
+          <div className="hidden text-xs font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 sm:block">
+            {currentUser.username}
+          </div>
         </div>
       </header>
       <main className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">{content}</main>

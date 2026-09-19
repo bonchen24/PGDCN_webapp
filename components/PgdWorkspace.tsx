@@ -12,7 +12,12 @@ import {
   FileCheck2,
   FilePlus2,
   FlaskConical,
+  FolderOpen,
+  Layers,
+  LayoutGrid,
+  List,
   LockKeyhole,
+  Package,
   Menu,
   PackageCheck,
   RefreshCw,
@@ -672,7 +677,80 @@ function getPgdUserDisplayName(username: string | undefined, users: PcnUserAccou
 }
 
 function RequestCard({ request, users, onOpen }: { request: import('../utils/pgdDomain').PgdInspectionRequest; users: PcnUserAccount[]; onOpen: () => void }) {
-  return <button type="button" onClick={onOpen} className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm hover:border-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="flex flex-wrap items-center gap-1.5"><span className="font-mono text-xs font-black text-slate-900">{request.requestCode}</span><StatusBadge status={request.status} /></div><h3 className="mt-2 truncate text-sm font-black text-slate-800">{request.productName}</h3><p className="mt-1 truncate text-[10px] text-slate-500">{request.customerSnapshot.name} · {request.inspectionLocation}</p><p className="mt-1 truncate text-[9px] font-bold text-blue-700">Phụ trách: {getPgdUserDisplayName(request.ownerUsername, users)}</p></div><ArrowRight size={16} className="shrink-0 text-slate-300" /></div><div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-2 text-[9px]"><span><b className="block text-slate-400">Lô / nhận dạng</b><span className="font-bold text-slate-700">{request.lotCode || 'Chưa có'}</span></span><span><b className="block text-slate-400">Số lượng</b><span className="font-bold text-slate-700">{request.quantity} {request.unit || ''}</span></span><span><b className="block text-slate-400">Cập nhật</b><span className="font-bold text-slate-700">{formatDate(request.updatedAt)}</span></span></div></button>;
+  return (
+    <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all">
+      <div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+            <button
+              type="button"
+              onClick={onOpen}
+              className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-2.5 py-0.5 font-mono text-[11px] font-black text-white shadow-3xs hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <Layers size={11} className="text-blue-400" />
+              {request.requestCode}
+            </button>
+            {request.registryMetadata?.registrationNumber && (
+              <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                Số ngoài: {request.registryMetadata.registrationNumber}
+              </span>
+            )}
+          </div>
+          <StatusBadge status={request.status} />
+        </div>
+
+        <div className="mt-2.5 space-y-1">
+          <div className="flex items-start gap-1.5">
+            <Building2 size={13} className="mt-0.5 shrink-0 text-slate-400" />
+            <h3 className="line-clamp-1 text-xs font-black text-slate-800" title={request.customerSnapshot.name}>
+              {request.customerSnapshot.name}
+            </h3>
+          </div>
+          <div className="flex items-start gap-1.5 text-slate-600">
+            <Package size={12} className="mt-0.5 shrink-0 text-slate-400" />
+            <span className="line-clamp-1 text-xs font-semibold" title={request.productName}>
+              {request.productName}
+            </span>
+          </div>
+          {request.inspectionLocation && (
+            <p className="text-[11px] text-slate-500 truncate" title={request.inspectionLocation}>
+              Địa điểm: {request.inspectionLocation}
+            </p>
+          )}
+        </div>
+
+        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-2 text-[10px]">
+          <span>
+            <b className="block text-slate-400 font-medium">Lô nhận dạng</b>
+            <span className="font-bold text-slate-700 truncate block">{request.lotCode || 'Chưa có'}</span>
+          </span>
+          <span>
+            <b className="block text-slate-400 font-medium">Số lượng</b>
+            <span className="font-bold text-slate-700 truncate block">{request.quantity} {request.unit || ''}</span>
+          </span>
+          <span>
+            <b className="block text-slate-400 font-medium">Phương thức</b>
+            <span className="font-bold text-blue-700 truncate block font-mono">{request.method || '—'}</span>
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+        <div className="text-[11px] text-slate-500 truncate max-w-[150px]">
+          Phụ trách: <strong className="text-slate-700">{getPgdUserDisplayName(request.ownerUsername, users)}</strong>
+        </div>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-black text-white shadow-3xs hover:bg-blue-800 transition-colors cursor-pointer"
+        >
+          <FolderOpen size={13} />
+          Mở hồ sơ
+          <ArrowRight size={11} className="opacity-70" />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function formatRegistryDate(value?: string): string {
@@ -684,7 +762,126 @@ function registryDocumentNumber(request: PgdInspectionRequest, kind: PgdRegistry
 }
 
 function PgdRegisterTable({ requests, users, catalog, onOpen }: { requests: PgdInspectionRequest[]; users: PcnUserAccount[]; catalog: PgdCatalogItem[]; onOpen: (id: string) => void }) {
-  return <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm" aria-label="Sổ đăng ký PGD"><div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="text-sm font-black text-slate-800">Sổ đăng ký PGD</h2><p className="mt-0.5 text-[10px] text-slate-400">Danh sách hồ sơ phát sinh trong ứng dụng; mở dòng để lập biên bản và đóng gói.</p></div><span className="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-[9px] font-black text-blue-700">{requests.length} hồ sơ</span></div><div className="mt-3 overflow-x-auto rounded-xl border border-slate-100"><table className="min-w-[1400px] w-full text-left text-[10px]"><thead className="bg-slate-50 text-[9px] font-black uppercase tracking-wide text-slate-500"><tr><th className="px-2.5 py-2">Số đăng ký / PYC</th><th className="px-2.5 py-2">Ngày</th><th className="px-2.5 py-2">Khách hàng</th><th className="px-2.5 py-2">Loại hồ sơ</th><th className="px-2.5 py-2">Hàng hóa / lô</th><th className="px-2.5 py-2">SL / KL</th><th className="px-2.5 py-2">Địa điểm</th><th className="px-2.5 py-2">Phương thức</th><th className="px-2.5 py-2">Phụ trách</th><th className="px-2.5 py-2">Hợp đồng / HĐ</th><th className="px-2.5 py-2">Vận đơn / C/O</th><th className="px-2.5 py-2">Trạng thái</th></tr></thead><tbody className="divide-y divide-slate-100">{requests.map((request) => <tr key={request.id} className="bg-white hover:bg-blue-50/50"><td className="px-2.5 py-2"><button type="button" onClick={() => onOpen(request.id)} aria-label={`Mở hồ sơ ${request.requestCode}`} className="mobile-touch-target min-h-11 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"><div className="font-mono font-black text-blue-700">{request.requestCode}</div>{request.registryMetadata?.registrationNumber && <div className="mt-0.5 font-mono text-[9px] text-slate-400">Số ngoài: {request.registryMetadata.registrationNumber}</div>}</button></td><td className="whitespace-nowrap px-2.5 py-2 text-slate-600">{formatRegistryDate(request.registryMetadata?.receivedAt)}</td><td className="max-w-44 px-2.5 py-2"><div className="truncate font-bold text-slate-700" title={request.customerSnapshot.name}>{request.customerSnapshot.name}</div><div className="truncate text-[9px] text-slate-400">{request.customerSnapshot.contactPerson || '—'}</div></td><td className="max-w-56 px-2.5 py-2 text-slate-600"><div className="line-clamp-2 font-semibold" title={getPgdCatalogItemLabel(request.catalogItemId, catalog)}>{getPgdCatalogItemLabel(request.catalogItemId, catalog)}</div></td><td className="max-w-52 px-2.5 py-2"><div className="truncate font-bold text-slate-700" title={request.productName}>{request.productName}</div><div className="truncate text-[9px] text-slate-400">{request.lotCode || 'Chưa có lô'}</div></td><td className="whitespace-nowrap px-2.5 py-2 text-slate-600">{request.quantity} {request.unit || ''}{request.weight ? <div className="text-[9px] text-slate-400">{request.weight} {request.weightUnit || ''}</div> : null}</td><td className="max-w-40 px-2.5 py-2 text-slate-600"><div className="truncate" title={request.inspectionLocation}>{request.inspectionLocation}</div></td><td className="whitespace-nowrap px-2.5 py-2 font-mono text-[9px] text-blue-700">{request.method || '—'}</td><td className="px-2.5 py-2 font-mono text-[9px] text-slate-600">{request.ownerUsername || 'Chưa gán'}</td><td className="px-2.5 py-2 text-slate-600"><div>{registryDocumentNumber(request, 'CONTRACT')}</div><div className="text-[9px] text-slate-400">{registryDocumentNumber(request, 'INVOICE')}</div></td><td className="px-2.5 py-2 text-slate-600"><div>{registryDocumentNumber(request, 'BILL_OF_LADING')}</div><div className="text-[9px] text-slate-400">{registryDocumentNumber(request, 'CERTIFICATE_OF_ORIGIN')}</div></td><td className="px-2.5 py-2"><StatusBadge status={request.status} /></td></tr>)}{requests.length === 0 && <tr><td colSpan={12} className="px-3 py-10 text-center text-[11px] text-slate-400">Không có hồ sơ phù hợp.</td></tr>}</tbody></table></div></section>;
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm" aria-label="Sổ đăng ký PGD">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-black text-slate-800">Sổ đăng ký PGD</h2>
+          <p className="mt-0.5 text-[10px] text-slate-400">Danh sách hồ sơ phát sinh trong ứng dụng; mở dòng để lập biên bản và đóng gói.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* View switcher */}
+          <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-3xs">
+            <button
+              type="button"
+              onClick={() => setViewMode('card')}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+                viewMode === 'card'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Xem dạng thẻ chuẩn DdT"
+            >
+              <LayoutGrid size={13} />
+              <span className="hidden sm:inline">Dạng thẻ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Xem bảng truyền thống"
+            >
+              <List size={13} />
+              <span className="hidden sm:inline">Dạng bảng</span>
+            </button>
+          </div>
+          <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-700">
+            {requests.length} hồ sơ
+          </span>
+        </div>
+      </div>
+
+      {requests.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center text-xs font-semibold text-slate-500 mt-3">
+          Không có hồ sơ phù hợp.
+        </div>
+      ) : viewMode === 'card' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3">
+          {requests.map((request) => (
+            <RequestCard key={request.id} request={request} users={users} onOpen={() => onOpen(request.id)} />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-3 overflow-x-auto rounded-xl border border-slate-100">
+          <table className="min-w-[1400px] w-full text-left text-[10px]">
+            <thead className="bg-slate-50 text-[9px] font-black uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-2.5 py-2">Số đăng ký / PYC</th>
+                <th className="px-2.5 py-2">Ngày</th>
+                <th className="px-2.5 py-2">Khách hàng</th>
+                <th className="px-2.5 py-2">Loại hồ sơ</th>
+                <th className="px-2.5 py-2">Hàng hóa / lô</th>
+                <th className="px-2.5 py-2">SL / KL</th>
+                <th className="px-2.5 py-2">Địa điểm</th>
+                <th className="px-2.5 py-2">Phương thức</th>
+                <th className="px-2.5 py-2">Phụ trách</th>
+                <th className="px-2.5 py-2">Hợp đồng / HĐ</th>
+                <th className="px-2.5 py-2">Vận đơn / C/O</th>
+                <th className="px-2.5 py-2">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {requests.map((request) => (
+                <tr key={request.id} className="bg-white hover:bg-blue-50/50">
+                  <td className="px-2.5 py-2">
+                    <button type="button" onClick={() => onOpen(request.id)} aria-label={`Mở hồ sơ ${request.requestCode}`} className="mobile-touch-target min-h-11 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1">
+                      <div className="font-mono font-black text-blue-700">{request.requestCode}</div>
+                      {request.registryMetadata?.registrationNumber && <div className="mt-0.5 font-mono text-[9px] text-slate-400">Số ngoài: {request.registryMetadata.registrationNumber}</div>}
+                    </button>
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 text-slate-600">{formatRegistryDate(request.registryMetadata?.receivedAt)}</td>
+                  <td className="max-w-44 px-2.5 py-2">
+                    <div className="truncate font-bold text-slate-700" title={request.customerSnapshot.name}>{request.customerSnapshot.name}</div>
+                    <div className="truncate text-[9px] text-slate-400">{request.customerSnapshot.contactPerson || '—'}</div>
+                  </td>
+                  <td className="max-w-56 px-2.5 py-2 text-slate-600">
+                    <div className="line-clamp-2 font-semibold" title={getPgdCatalogItemLabel(request.catalogItemId, catalog)}>{getPgdCatalogItemLabel(request.catalogItemId, catalog)}</div>
+                  </td>
+                  <td className="max-w-52 px-2.5 py-2">
+                    <div className="truncate font-bold text-slate-700" title={request.productName}>{request.productName}</div>
+                    <div className="truncate text-[9px] text-slate-400">{request.lotCode || 'Chưa có lô'}</div>
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 text-slate-600">
+                    {request.quantity} {request.unit || ''}
+                    {request.weight ? <div className="text-[9px] text-slate-400">{request.weight} {request.weightUnit || ''}</div> : null}
+                  </td>
+                  <td className="max-w-40 px-2.5 py-2 text-slate-600">
+                    <div className="truncate" title={request.inspectionLocation}>{request.inspectionLocation}</div>
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 font-mono text-[9px] text-blue-700">{request.method || '—'}</td>
+                  <td className="px-2.5 py-2 font-mono text-[9px] text-slate-600">{request.ownerUsername || 'Chưa gán'}</td>
+                  <td className="px-2.5 py-2 text-slate-600">
+                    <div>{registryDocumentNumber(request, 'CONTRACT')}</div>
+                    <div className="text-[9px] text-slate-400">{registryDocumentNumber(request, 'INVOICE')}</div>
+                  </td>
+                  <td className="px-2.5 py-2 text-slate-600">
+                    <div>{registryDocumentNumber(request, 'BILL_OF_LADING')}</div>
+                    <div className="text-[9px] text-slate-400">{registryDocumentNumber(request, 'CERTIFICATE_OF_ORIGIN')}</div>
+                  </td>
+                  <td className="px-2.5 py-2"><StatusBadge status={request.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, standalone = false }: { request: import('../utils/pgdDomain').PgdInspectionRequest; currentUser: PcnUserAccount; onClose: () => void; onOpenDrafting?: (request: import('../utils/pgdDomain').PgdInspectionRequest, input: { templateKind: PgdDocumentTemplateKind; requirementCode: string }) => string | undefined; standalone?: boolean }) {
