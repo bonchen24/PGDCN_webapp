@@ -15,6 +15,7 @@ import type {
   ReturnedTestResult,
 } from '../types';
 import type {
+  PgdApprovalStep,
   PgdFieldInspection,
   PgdInspectionAssignment,
   PgdInspectionCertificate,
@@ -24,6 +25,8 @@ import type {
   PgdLabResult,
   PgdSample,
 } from '../utils/pgdDomain';
+import type { PgdCaseEvent, PgdFieldActivityLog, PgdInspectionPlan, PgdLabResultReview } from '../utils/pgdArtifacts';
+import { buildPgdBusinessTimeline, buildPgdSampleEvidence, resolvePgdEvidenceNextAction } from '../utils/pgdBusinessWorkspace';
 import { getPgdAssistantCandidates, PGD_ASSISTANT_CRITERION_DEFINITIONS, PGD_ASSISTANT_CRITERION_ORDER, type PgdAssistantCriterion, type PgdAssistantCriterionStatus, type PgdAssistantEvidence, type PgdAssistantReview } from '../utils/pgdAssistant';
 import { classifyPcnAssistantError, type PcnAssistantErrorView } from '../utils/pcnAssistantUi';
 import { getPgdDossierDocumentDownloadUrl, getPgdDocumentDownloadUrl } from '../utils/pgdApi';
@@ -47,7 +50,11 @@ type Props = {
   pgdLabResults: PgdLabResult[];
   pgdReports: PgdInspectionReport[];
   pgdCertificates: PgdInspectionCertificate[];
-  pgdApprovals: Array<{ requestId: string }>;
+  pgdApprovals: PgdApprovalStep[];
+  pgdInspectionPlans?: PgdInspectionPlan[];
+  pgdCaseEvents?: PgdCaseEvent[];
+  pgdFieldActivityLogs?: PgdFieldActivityLog[];
+  pgdLabResultReviews?: PgdLabResultReview[];
   onOpenPcn: (dossierId: string) => void;
   onOpenPgd: (requestId: string) => void;
   initialDomain?: 'PCN' | 'PGD';
@@ -91,6 +98,7 @@ function PgdAssistantPanel(props: Props) {
   const [runErrorDetail, setRunErrorDetail] = useState('');
   const [currentCriterion, setCurrentCriterion] = useState({ index: -1, title: '' });
   const [completedCriterionCount, setCompletedCriterionCount] = useState(0);
+  const [quickAnswer, setQuickAnswer] = useState('');
 
   useEffect(() => {
     setViewState('loading');
@@ -110,6 +118,24 @@ function PgdAssistantPanel(props: Props) {
     return candidates.filter((item) => [item.requestCode, item.customerName, item.productName, item.status].join(' ').toLocaleLowerCase('vi-VN').includes(normalized));
   }, [candidates, query]);
   const selectedRequest = props.pgdRequests.find((item) => item.id === selectedRequestId);
+  const selectedBusinessFacts = useMemo(() => selectedRequest ? ({
+    request: selectedRequest,
+    inspectionPlans: props.pgdInspectionPlans,
+    assignments: props.pgdAssignments,
+    fieldInspections: props.pgdFieldInspections,
+    caseEvents: props.pgdCaseEvents,
+    fieldActivityLogs: props.pgdFieldActivityLogs,
+    samples: props.pgdSamples,
+    labRequests: props.pgdLabRequests,
+    labResults: props.pgdLabResults,
+    labResultReview: props.pgdLabResultReviews?.find((item) => item.requestId === selectedRequest.id),
+    reports: props.pgdReports,
+    certificates: props.pgdCertificates,
+    approvals: props.pgdApprovals,
+  }) : undefined, [selectedRequest, props.pgdInspectionPlans, props.pgdAssignments, props.pgdFieldInspections, props.pgdCaseEvents, props.pgdFieldActivityLogs, props.pgdSamples, props.pgdLabRequests, props.pgdLabResults, props.pgdLabResultReviews, props.pgdReports, props.pgdCertificates, props.pgdApprovals]);
+  const selectedSampleEvidence = useMemo(() => selectedBusinessFacts ? buildPgdSampleEvidence(selectedBusinessFacts) : undefined, [selectedBusinessFacts]);
+  const selectedTimeline = useMemo(() => selectedBusinessFacts ? buildPgdBusinessTimeline(selectedBusinessFacts) : [], [selectedBusinessFacts]);
+  const selectedNextAction = useMemo(() => selectedBusinessFacts ? resolvePgdEvidenceNextAction(selectedBusinessFacts) : undefined, [selectedBusinessFacts]);
   const displayedCriteria = review?.criteria || criteria;
   const selectedEvidence = useMemo(() => {
     for (const criterion of displayedCriteria) {
@@ -235,6 +261,22 @@ function PgdAssistantPanel(props: Props) {
     if (selectedEvidence) openEvidence(selectedEvidence);
   };
 
+  const runQuickAction = (action: 'sessions' | 'samples' | 'results' | 'summary' | 'report') => {
+    if (!selectedRequest || !selectedSampleEvidence) return;
+    if (action === 'sessions') {
+      setQuickAnswer('Hồ sơ ' + selectedRequest.requestCode + ' có ' + props.pgdFieldInspections.filter((item) => item.requestId === selectedRequest.id).length + ' phiên hiện trường; timeline hiện có ' + selectedTimeline.length + ' sự kiện nghiệp vụ.');
+    } else if (action === 'samples') {
+      setQuickAnswer(selectedSampleEvidence.expectedUnits === undefined ? 'Chưa xác định số lượng mẫu dự kiến vì hồ sơ chưa có samplingLines.' : 'Dự kiến ' + selectedSampleEvidence.expectedUnits + ' đơn vị, đã lấy ' + selectedSampleEvidence.sampledUnits + '; còn ' + Math.max(0, selectedSampleEvidence.expectedUnits - selectedSampleEvidence.sampledUnits) + ' đơn vị cần lấy.');
+    } else if (action === 'results') {
+      setQuickAnswer('Có ' + selectedSampleEvidence.labRequestCount + ' PYC PTN, ' + selectedSampleEvidence.resultCount + ' kết quả đã nhận và ' + selectedSampleEvidence.pendingLabRequestCount + ' PYC còn chờ KQTN.');
+    } else if (action === 'summary') {
+      setQuickAnswer('Tóm tắt ' + selectedRequest.requestCode + ': ' + (selectedRequest.customerSnapshot.name || 'chưa có khách hàng') + ' · ' + (selectedRequest.productName || 'chưa có hàng hóa') + ' · trạng thái ' + selectedRequest.status + '. Next Action: ' + (selectedNextAction?.label || 'chưa xác định') + '.');
+    } else {
+      setQuickAnswer('Đã sẵn sàng mở vùng soạn báo cáo của hồ sơ; thao tác này chỉ mở workspace hiện hành.');
+    }
+    if (action === 'report') props.onOpenPgd(selectedRequest.id);
+  };
+
   return <section className="space-y-3" aria-label="Trợ lý AI Giám định PGD">
     <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -252,7 +294,7 @@ function PgdAssistantPanel(props: Props) {
         {viewState === 'loading' && <div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-50 p-3 text-[10px] text-slate-500" role="status" aria-live="polite"><Loader2 size={14} className="animate-spin" /> Đang tải danh sách hồ sơ PGD...</div>}
         {viewState !== 'loading' && <div className="mt-3 space-y-2">{filteredCandidates.map((candidate) => <label key={candidate.requestId} className={`block min-w-0 cursor-pointer rounded-lg border p-3 transition ${selectedRequestId === candidate.requestId ? 'border-blue-400 bg-blue-50/60' : 'border-slate-200 bg-white hover:border-blue-200'}`}><span className="flex items-start gap-2"><input type="radio" name="pgd-assistant-request" checked={selectedRequestId === candidate.requestId} onChange={() => selectRequest(candidate.requestId)} className="mobile-touch-target mt-0.5 h-4 w-4 accent-blue-600" /><span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-1.5"><span className="text-[11px] font-black text-slate-800">{candidate.requestCode}</span><span className="rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-blue-700">{candidate.status}</span></span><span className="mt-1 block text-[10px] text-slate-600">{candidate.customerName || 'Chưa có khách hàng'} · {candidate.productName || 'Chưa có hàng hóa'}</span></span></span></label>)}{filteredCandidates.length === 0 && <div className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-[10px] text-slate-500">Không có PYC PGD thuộc phạm vi trợ lý.</div>}</div>}
         {selectedRequest && <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/50 p-2.5" aria-label="Hồ sơ đang chọn"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[9px] font-black uppercase tracking-wide text-blue-700">Hồ sơ đang chọn</p><span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-bold text-blue-700">Chỉ đọc</span></div><p className="mt-1 text-xs font-black text-slate-900">{selectedRequest.requestCode}</p><p className="mt-1 text-[10px] text-slate-600">{selectedRequest.customerSnapshot.name || 'Chưa có khách hàng'} · {selectedRequest.productName || 'Chưa có hàng hóa'}</p></div>}
-        <div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" onClick={() => void startReview()} disabled={!selectedRequestId || running} className="mobile-touch-target inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-[10px] font-black text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"><Play size={13} /> {running ? 'Đang soát xét...' : 'Bắt đầu soát xét hồ sơ'}</button>{selectedRequest && <span className="text-[10px] text-slate-500">Đã chọn: <strong>{selectedRequest.requestCode}</strong>. Phiên chỉ đọc.</span>}</div>
+        {selectedRequest && selectedSampleEvidence && <section className="mt-3 rounded-lg border border-slate-200 bg-white p-2.5" data-testid="pgd-assistant-quick-actions" aria-labelledby="pgd-assistant-quick-actions-title"><div className="flex flex-wrap items-start justify-between gap-2"><div><h3 id="pgd-assistant-quick-actions-title" className="text-[10px] font-black uppercase tracking-wide text-slate-700">Quick actions · chỉ đọc</h3><p className="mt-1 text-[9px] leading-4 text-slate-500">Dùng projection hiện hành để trả lời nhanh, không thay đổi dữ liệu hồ sơ.</p></div><span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-600">{selectedNextAction?.label || 'Đang đọc dữ liệu'}</span></div><div className="mt-2 grid gap-1.5 sm:grid-cols-2"><button type="button" onClick={() => runQuickAction('sessions')} className="mobile-touch-target min-h-11 rounded-md border border-blue-200 bg-blue-50 px-2 text-left text-[9px] font-black text-blue-800">Tổng hợp phiên hiện trường</button><button type="button" onClick={() => runQuickAction('samples')} className="mobile-touch-target min-h-11 rounded-md border border-amber-200 bg-amber-50 px-2 text-left text-[9px] font-black text-amber-800">Còn mẫu chưa lấy?</button><button type="button" onClick={() => runQuickAction('results')} className="mobile-touch-target min-h-11 rounded-md border border-violet-200 bg-violet-50 px-2 text-left text-[9px] font-black text-violet-800">Còn KQTN chưa về?</button><button type="button" onClick={() => runQuickAction('summary')} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-slate-50 px-2 text-left text-[9px] font-black text-slate-800">Tóm tắt vụ giám định</button><button type="button" onClick={() => runQuickAction('report')} className="mobile-touch-target min-h-11 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-left text-[9px] font-black text-emerald-800 sm:col-span-2">Mở vùng soạn báo cáo</button></div>{quickAnswer && <p className="mt-2 rounded-md border border-blue-100 bg-blue-50/60 p-2 text-[10px] leading-4 text-blue-950" role="status" aria-live="polite">{quickAnswer}</p>}</section>}        <div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" onClick={() => void startReview()} disabled={!selectedRequestId || running} className="mobile-touch-target inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-[10px] font-black text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"><Play size={13} /> {running ? 'Đang soát xét...' : 'Bắt đầu soát xét hồ sơ'}</button>{selectedRequest && <span className="text-[10px] text-slate-500">Đã chọn: <strong>{selectedRequest.requestCode}</strong>. Phiên chỉ đọc.</span>}</div>
       </section>
       <section className="min-w-0 space-y-3">
         {viewState === 'running' && <div className="rounded-lg border border-blue-200 bg-white p-3" role="status" aria-live="polite"><div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-bold text-blue-800"><span>{currentCriterion.title ? `Đang soát xét tiêu chí ${currentCriterion.index + 1}/${PGD_ASSISTANT_CRITERIA_TOTAL}: ${currentCriterion.title}` : 'Đang chuẩn bị đọc bằng chứng...'}</span><span>Tiêu chí đã hoàn tất: {completedCriterionCount}/{PGD_ASSISTANT_CRITERIA_TOTAL}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-blue-100"><div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${Math.min(100, (completedCriterionCount / PGD_ASSISTANT_CRITERIA_TOTAL) * 100)}%` }} /></div></div>}

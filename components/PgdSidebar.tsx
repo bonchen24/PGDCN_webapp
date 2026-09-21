@@ -65,7 +65,7 @@ export default function PgdSidebar({
   onLogout,
 }: PgdSidebarProps) {
   const expanded = !collapsed || mobileOpen;
-  const mainSections: PgdSection[] = ['dashboard', 'requests', 'operations', 'sample-operations', 'templates'];
+  const mainSections: PgdSection[] = ['dashboard', 'requests', 'operations', 'sample-operations', 'preparation', 'field', 'labs', 'results', 'templates'];
   const renderButton = (section: PgdSection) => {
     const Icon = PGD_SECTION_ICONS[section];
     const isActive = activeSection === section;

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, Clock3, FileCheck2, FlaskConical, Lightbulb, MapPin, UserRound } from 'lucide-react';
 
 export type BusinessStatus = 'DONE' | 'IN_PROGRESS' | 'BLOCKED' | 'NOT_STARTED';
@@ -21,6 +21,9 @@ export type DossierBlocker = {
   id: string;
   title: string;
   reason: string;
+  severity?: 'HARD' | 'WARNING';
+  source?: string;
+  target?: string;
   actionLabel?: string;
   onAction?: () => void;
 };
@@ -41,7 +44,7 @@ export type DossierSuggestedAction = {
   reason: string;
   actionLabel: string;
   onAction: () => void;
-  tone?: 'neutral' | 'info' | 'warning' | 'success';
+  tone?: 'neutral' | 'info' | 'warning' | 'success' | 'danger';
 };
 
 export type DossierEvidenceGroup = {
@@ -59,7 +62,7 @@ export type DossierTimelineItem = {
   actor?: string;
   location?: string;
   detail?: string;
-  tone?: 'neutral' | 'info' | 'warning' | 'success';
+  tone?: 'neutral' | 'info' | 'warning' | 'success' | 'danger';
 };
 
 export type DossierFieldSession = {
@@ -79,6 +82,8 @@ export type DossierFieldSession = {
   onAction?: () => void;
 };
 
+export type DossierFieldSessionSummary = DossierFieldSession & { id: string; sessionCode?: string; endedAt?: string; activityType?: string };
+
 export type PgdcnDossierBusinessWorkspaceProps = {
   domain: 'PCN' | 'PGD';
   title?: string;
@@ -96,6 +101,9 @@ export type PgdcnDossierBusinessWorkspaceProps = {
   blockers?: DossierBlocker[];
   suggestedActions?: DossierSuggestedAction[];
   fieldSession?: DossierFieldSession;
+  fieldSessions?: DossierFieldSessionSummary[];
+  sampleSummary?: { expectedUnits?: number; sampledUnits: number; sampleCount: number; labRequestCount: number; resultCount: number; pendingLabRequestCount: number };
+  testSummary?: { requestCount: number; resultCount: number; pendingCount: number };
   evidenceTracker?: {
     title?: string;
     groups: DossierEvidenceGroup[];
@@ -130,6 +138,7 @@ const SUGGESTION_TONE_CLASS: Record<NonNullable<DossierSuggestedAction['tone']>,
   info: 'border-blue-200 bg-blue-50/60',
   warning: 'border-amber-200 bg-amber-50/70',
   success: 'border-emerald-200 bg-emerald-50/60',
+  danger: 'border-rose-200 bg-rose-50/70',
 };
 
 const TRACKER_TONE_CLASS: Record<NonNullable<DossierTrackerRow['stateTone']>, string> = {
@@ -145,6 +154,7 @@ const TIMELINE_TONE_CLASS: Record<NonNullable<DossierTimelineItem['tone']>, stri
   info: 'bg-blue-500',
   warning: 'bg-amber-500',
   success: 'bg-emerald-500',
+  danger: 'bg-rose-500',
 };
 
 function formatTimelineDate(value?: string): string {
@@ -188,27 +198,16 @@ function ContextualActions({ actions }: { actions: DossierSuggestedAction[] }) {
 
 function Tracker({ title, rows, emptyText, kind }: { title: string; rows: DossierTrackerRow[]; emptyText: string; kind: 'sample' | 'test' }) {
   const Icon = kind === 'sample' ? FlaskConical : FileCheck2;
-  return <details className="rounded-xl border border-slate-200 bg-white" data-testid={'dossier-' + kind + '-tracker'}>
-    <summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[10px] font-black text-slate-800">
-      <span className="flex items-center gap-2"><Icon size={14} className="text-blue-600" aria-hidden="true" />{title}</span>
-      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] text-slate-600">{rows.length} bản ghi</span>
-    </summary>
-    <div className="border-t border-slate-100 p-2.5">
-      {rows.length === 0 ? <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-[10px] text-slate-500">{emptyText}</p> : <div className="space-y-1.5">
-        {rows.slice(0, 8).map((row) => <article key={row.id} className="rounded-lg border border-slate-100 bg-slate-50/70 p-2">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0"><div className="font-mono text-[10px] font-black text-slate-800">{row.code}</div><div className="mt-0.5 text-[10px] font-bold text-slate-700">{row.title}</div></div>
-            <span className={'shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-black ' + TRACKER_TONE_CLASS[row.stateTone || 'neutral']}>{row.state}</span>
-          </div>
-          {row.meta ? <p className="mt-1 text-[9px] text-slate-500">{row.meta}</p> : null}
-          {row.detail ? <p className="mt-1 text-[9px] leading-4 text-slate-600">{row.detail}</p> : null}
-        </article>)}
-        {rows.length > 8 ? <p className="pt-1 text-[9px] font-bold text-slate-400">Đang hiển thị 8 bản ghi gần nhất; mở vùng nghiệp vụ để xem toàn bộ.</p> : null}
-      </div>}
-    </div>
-  </details>;
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(0);
+  const pageSize = 25;
+  const normalized = query.trim().toLocaleLowerCase('vi-VN');
+  const filteredRows = normalized ? rows.filter((row) => [row.code, row.title, row.state, row.meta, row.detail].filter(Boolean).join(' ').toLocaleLowerCase('vi-VN').includes(normalized)) : rows;
+  const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const safePage = Math.min(page, pageCount - 1);
+  const visibleRows = filteredRows.slice(safePage * pageSize, (safePage + 1) * pageSize);
+  return <details className="rounded-xl border border-slate-200 bg-white" data-testid={'dossier-' + kind + '-tracker'}><summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[10px] font-black text-slate-800"><span className="flex items-center gap-2"><Icon size={14} className="text-blue-600" aria-hidden="true" />{title}</span><span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] text-slate-600">{rows.length} bản ghi</span></summary><div className="border-t border-slate-100 p-2.5">{rows.length === 0 ? <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-[10px] text-slate-500">{emptyText}</p> : <><div className="mb-2 flex flex-nowrap items-center gap-2 overflow-x-auto pb-1"><input aria-label={`Tìm ${kind === 'sample' ? 'mẫu' : 'PYC PTN'}`} value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" placeholder="Tìm mã, trạng thái, PTN..." /><span className="shrink-0 text-[9px] text-slate-500">{filteredRows.length}/{rows.length}</span></div><div className="space-y-1.5">{visibleRows.map((row) => <article key={row.id} className="rounded-lg border border-slate-100 bg-slate-50/70 p-2"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><div className="font-mono text-[10px] font-black text-slate-800">{row.code}</div><div className="mt-0.5 text-[10px] font-bold text-slate-700">{row.title}</div></div><span className={'shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-black ' + TRACKER_TONE_CLASS[row.stateTone || 'neutral']}>{row.state}</span></div>{row.meta ? <p className="mt-1 text-[9px] text-slate-500">{row.meta}</p> : null}{row.detail ? <p className="mt-1 text-[9px] leading-4 text-slate-600">{row.detail}</p> : null}</article>)}</div>{pageCount > 1 ? <div className="mt-2 flex items-center justify-between gap-2 text-[9px] text-slate-500"><span>Trang {safePage + 1}/{pageCount}</span><div className="flex gap-1"><button type="button" disabled={safePage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))} className="mobile-touch-target rounded-md border border-slate-200 px-2 py-1 font-bold disabled:opacity-40">Trước</button><button type="button" disabled={safePage >= pageCount - 1} onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))} className="mobile-touch-target rounded-md border border-slate-200 px-2 py-1 font-bold disabled:opacity-40">Sau</button></div></div> : null}</>}</div></details>;
 }
-
 function EvidenceTracker({ title, groups, emptyText }: { title: string; groups: DossierEvidenceGroup[]; emptyText: string }) {
   const total = groups.reduce((sum, group) => sum + group.rows.length, 0);
   return <details className="rounded-xl border border-slate-200 bg-white" data-testid="dossier-evidence-tracker">
@@ -246,25 +245,25 @@ function EvidenceTracker({ title, groups, emptyText }: { title: string; groups: 
 }
 
 function Timeline({ title, items, emptyText }: { title: string; items: DossierTimelineItem[]; emptyText: string }) {
-  return <details className="rounded-xl border border-slate-200 bg-white" data-testid="dossier-event-timeline">
-    <summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[10px] font-black text-slate-800">
-      <span className="flex items-center gap-2"><Clock3 size={14} className="text-blue-600" aria-hidden="true" />{title}</span>
-      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] text-slate-600">{items.length} sự kiện</span>
-    </summary>
-    <div className="border-t border-slate-100 p-3">
-      {items.length === 0 ? <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-[10px] text-slate-500">{emptyText}</p> : <ol className="space-y-3">
-        {items.slice(0, 10).map((item) => <li key={item.id} className="relative pl-5">
-          <span className={'absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-white ' + TIMELINE_TONE_CLASS[item.tone || 'neutral']} aria-hidden="true" />
-          <div className="flex flex-wrap items-start justify-between gap-2"><div className="text-[10px] font-black text-slate-800">{item.title}</div><time className="text-[9px] text-slate-400" dateTime={item.occurredAt}>{formatTimelineDate(item.occurredAt)}</time></div>
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-slate-500"><span className="inline-flex items-center gap-1"><UserRound size={11} aria-hidden="true" />{item.actor || 'Chưa ghi nhận người thực hiện'}</span>{item.location ? <span className="inline-flex items-center gap-1"><MapPin size={11} aria-hidden="true" />{item.location}</span> : null}</div>
-          {item.detail ? <p className="mt-1 text-[9px] leading-4 text-slate-600">{item.detail}</p> : null}
-        </li>)}
-      </ol>}
-    </div>
-  </details>;
+  const [query, setQuery] = useState('');
+  const [showAll, setShowAll] = useState(false);
+  const filteredItems = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase('vi-VN');
+    return normalized ? items.filter((item) => [item.title, item.actor, item.location, item.detail].filter(Boolean).join(' ').toLocaleLowerCase('vi-VN').includes(normalized)) : items;
+  }, [items, query]);
+  const visibleItems = showAll ? filteredItems : filteredItems.slice(0, 10);
+  return <details className="rounded-xl border border-slate-200 bg-white" data-testid="dossier-event-timeline"><summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[10px] font-black text-slate-800"><span className="flex items-center gap-2"><Clock3 size={14} className="text-blue-600" aria-hidden="true" />{title}</span><span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] text-slate-600">{items.length} sự kiện</span></summary><div className="border-t border-slate-100 p-3">{items.length === 0 ? <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-[10px] text-slate-500">{emptyText}</p> : <><div className="mb-3 flex flex-nowrap items-center gap-2 overflow-x-auto pb-1"><input aria-label="Tìm sự kiện hồ sơ" value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" placeholder="Tìm sự kiện, người thực hiện..." /><span className="shrink-0 text-[9px] text-slate-500">{filteredItems.length}/{items.length}</span></div><ol className="space-y-3">{visibleItems.map((item) => <li key={item.id} className="relative pl-5"><span className={'absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-white ' + TIMELINE_TONE_CLASS[item.tone || 'neutral']} aria-hidden="true" /><div className="flex flex-wrap items-start justify-between gap-2"><div className="text-[10px] font-black text-slate-800">{item.title}</div><time className="text-[9px] text-slate-400" dateTime={item.occurredAt}>{formatTimelineDate(item.occurredAt)}</time></div><div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-slate-500"><span className="inline-flex items-center gap-1"><UserRound size={11} aria-hidden="true" />{item.actor || 'Chưa ghi nhận người thực hiện'}</span>{item.location ? <span className="inline-flex items-center gap-1"><MapPin size={11} aria-hidden="true" />{item.location}</span> : null}</div>{item.detail ? <p className="mt-1 text-[9px] leading-4 text-slate-600">{item.detail}</p> : null}</li>)}</ol>{filteredItems.length > 10 ? <button type="button" onClick={() => setShowAll((value) => !value)} className="mobile-touch-target mt-3 rounded-md border border-slate-200 px-2.5 py-1.5 text-[9px] font-black text-slate-700">{showAll ? 'Thu gọn' : `Xem thêm ${filteredItems.length - 10} sự kiện`}</button> : null}</>}</div></details>;
+}
+function FieldSessions({ sessions, onAction }: { sessions: DossierFieldSessionSummary[]; onAction?: () => void }) {
+  return <section className="rounded-xl border border-blue-200 bg-blue-50/50 p-3" data-testid="dossier-field-sessions" aria-labelledby="dossier-field-sessions-title"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-[9px] font-black uppercase tracking-wide text-blue-600">PGD · Field Sessions</p><h4 id="dossier-field-sessions-title" className="mt-1 text-xs font-black text-slate-900">Các phiên hiện trường</h4><p className="mt-1 text-[10px] leading-4 text-slate-600">Mỗi phiên là một bản ghi độc lập; dữ liệu cũ vẫn được chuẩn hóa để xem chung.</p></div><span className="rounded-full border border-blue-200 bg-white px-2 py-1 text-[9px] font-black text-blue-700">{sessions.length} phiên</span></div><div className="mt-3 grid gap-2 md:grid-cols-2">{sessions.map((session) => <article key={session.id} className="rounded-lg border border-blue-100 bg-white p-2.5"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="font-mono text-[10px] font-black text-slate-800">{session.sessionCode || session.id}</p><p className="mt-0.5 text-[10px] font-bold text-slate-700">{session.objectLabel || 'Chưa cập nhật đối tượng'}</p></div><span className={'rounded-full border px-2 py-0.5 text-[9px] font-black ' + TRACKER_TONE_CLASS[session.statusTone || 'neutral']}>{session.status}</span></div><div className="mt-2 grid gap-1 text-[9px] text-slate-600 sm:grid-cols-2"><span><CalendarDays size={11} className="mr-1 inline" aria-hidden="true" />{formatTimelineDate(session.occurredAt)}</span><span><MapPin size={11} className="mr-1 inline" aria-hidden="true" />{session.location || 'Chưa có địa điểm'}</span><span><UserRound size={11} className="mr-1 inline" aria-hidden="true" />{session.inspectors || 'Chưa có KTV'}</span><span>{session.quantity || 'Chưa có số lượng'}</span></div>{session.observations ? <p className="mt-2 text-[9px] leading-4 text-slate-600">{session.observations}</p> : null}</article>)}</div>{onAction ? <button type="button" onClick={onAction} className="mobile-touch-target mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 text-[10px] font-black text-blue-700 hover:bg-blue-100"><ArrowRight size={13} aria-hidden="true" />Thêm phiên hiện trường</button> : null}</section>;
 }
 
-export function PgdcnDossierBusinessWorkspace({ domain, title = 'Bản đồ hồ sơ nghiệp vụ', description = 'Một lớp nhìn theo công việc thật của hồ sơ; dữ liệu vẫn lấy từ các module hiện có.', nextAction, metrics, groups, blockers = [], suggestedActions = [], fieldSession, evidenceTracker, sampleTracker, testTracker, timeline }: PgdcnDossierBusinessWorkspaceProps) {
+function EvidenceSummary({ sampleSummary, testSummary }: { sampleSummary?: PgdcnDossierBusinessWorkspaceProps['sampleSummary']; testSummary?: PgdcnDossierBusinessWorkspaceProps['testSummary'] }) {
+  if (!sampleSummary && !testSummary) return null;
+  const expected = sampleSummary?.expectedUnits === undefined ? 'Chưa xác định' : String(sampleSummary.expectedUnits);
+  return <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" data-testid="dossier-evidence-summary"><div className="rounded-lg border border-slate-200 bg-white p-2.5"><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Mẫu dự kiến</div><div className="mt-1 text-lg font-black text-slate-800">{expected}</div></div><div className="rounded-lg border border-slate-200 bg-white p-2.5"><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Đã lấy</div><div className="mt-1 text-lg font-black text-blue-700">{sampleSummary?.sampledUnits ?? 0}</div></div><div className="rounded-lg border border-slate-200 bg-white p-2.5"><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">PYC / KQTN</div><div className="mt-1 text-lg font-black text-slate-800">{testSummary?.requestCount ?? sampleSummary?.labRequestCount ?? 0} / {testSummary?.resultCount ?? sampleSummary?.resultCount ?? 0}</div></div><div className="rounded-lg border border-slate-200 bg-white p-2.5"><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Còn chờ</div><div className="mt-1 text-lg font-black text-amber-700">{testSummary?.pendingCount ?? sampleSummary?.pendingLabRequestCount ?? 0}</div></div></section>;
+}
+export function PgdcnDossierBusinessWorkspace({ domain, title = 'Bản đồ hồ sơ nghiệp vụ', description = 'Một lớp nhìn theo công việc thật của hồ sơ; dữ liệu vẫn lấy từ các module hiện có.', nextAction, metrics, groups, blockers = [], suggestedActions = [], fieldSession, fieldSessions, sampleSummary, testSummary, evidenceTracker, sampleTracker, testTracker, timeline }: PgdcnDossierBusinessWorkspaceProps) {
   const accent = domain === 'PCN' ? 'indigo' : 'blue';
   return <section data-testid={'dossier-business-workspace-' + domain.toLowerCase()} className="space-y-3" aria-labelledby={'dossier-business-workspace-title-' + domain.toLowerCase()}>
     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -277,7 +276,9 @@ export function PgdcnDossierBusinessWorkspace({ domain, title = 'Bản đồ h�
     </section>
     {suggestedActions.length > 0 ? <ContextualActions actions={suggestedActions} /> : null}
     {blockers.length > 0 ? <section className="rounded-xl border border-rose-200 bg-rose-50/70 p-3" data-testid="dossier-hard-blockers" aria-labelledby="dossier-hard-blockers-title"><div className="flex items-start gap-2"><AlertTriangle size={16} className="mt-0.5 shrink-0 text-rose-600" aria-hidden="true" /><div><h4 id="dossier-hard-blockers-title" className="text-xs font-black text-rose-900">Điểm chặn cần xử lý</h4><p className="mt-1 text-[10px] leading-4 text-rose-800">Chỉ hiển thị thiếu hụt đang cản bước hoặc cần bằng chứng; không thay thế cảnh báo nghiệp vụ trong từng module.</p></div></div><div className="mt-2 space-y-1.5">{blockers.map((blocker) => <div key={blocker.id} className="rounded-lg border border-rose-100 bg-white/80 p-2"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-[10px] font-black text-slate-800">{blocker.title}</p><p className="mt-0.5 text-[9px] leading-4 text-slate-600">{blocker.reason}</p></div>{blocker.actionLabel && blocker.onAction ? <button type="button" onClick={blocker.onAction} className="mobile-touch-target min-h-10 rounded-md border border-rose-200 bg-white px-2.5 text-[9px] font-black text-rose-700 hover:bg-rose-50">{blocker.actionLabel}</button> : null}</div></div>)}</div></section> : <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-[10px] font-bold text-emerald-700" data-testid="dossier-no-hard-blockers"><CheckCircle2 size={14} aria-hidden="true" /> Chưa có điểm chặn cứng từ dữ liệu đang chiếu.</div>}
-    {fieldSession ? <section className="rounded-xl border border-blue-200 bg-blue-50/50 p-3" data-testid="dossier-field-session" aria-labelledby="dossier-field-session-title">
+    <EvidenceSummary sampleSummary={sampleSummary} testSummary={testSummary} />
+    {fieldSessions && fieldSessions.length > 0 ? <FieldSessions sessions={fieldSessions} onAction={fieldSession?.onAction} /> : null}
+    {fieldSession && !fieldSessions?.length ? <section className="rounded-xl border border-blue-200 bg-blue-50/50 p-3" data-testid="dossier-field-session" aria-labelledby="dossier-field-session-title">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div><p className="text-[9px] font-black uppercase tracking-wide text-blue-600">PGD · Field Session</p><h4 id="dossier-field-session-title" className="mt-1 text-xs font-black text-slate-900">Phiên hiện trường</h4><p className="mt-1 text-[10px] leading-4 text-slate-600">Một phiên ghi nhận có thời điểm, địa điểm, người thực hiện, đối tượng, quan sát, đo đạc, mẫu và bằng chứng.</p></div>
         <span className={'rounded-full border px-2 py-1 text-[9px] font-black ' + TRACKER_TONE_CLASS[fieldSession.statusTone || (fieldSession.exists ? 'info' : 'neutral')]}>{fieldSession.status}</span>

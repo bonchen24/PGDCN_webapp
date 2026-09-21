@@ -14,10 +14,10 @@ function outcomeLabel(outcome: ReturnedTestResult['outcome']): string {
 }
 
 const PCN_EVIDENCE_GROUP_LABELS: Record<string, string> = {
-  INTAKE: 'Đề nghị · thương mại · phân công',
-  LAB_ROUTING: 'Mẫu · bàn giao PTN',
-  TECHNICAL_REVIEW: 'KQTN · xem xét kỹ thuật',
-  ISSUANCE: 'Chứng nhận · quyết định',
+  INTAKE: 'Yêu cầu & phân công',
+  LAB_ROUTING: 'Mẫu & thử nghiệm',
+  TECHNICAL_REVIEW: 'Xem xét / thẩm xét',
+  ISSUANCE: 'Cấp chứng nhận',
   DELIVERY: 'Bàn giao khách hàng',
   ARCHIVE: 'Lưu trữ',
 };
@@ -167,12 +167,12 @@ export function PcnDossierBusinessWorkspace({
       emptyText: 'Chưa có checklist chứng từ trong hồ sơ này.',
     }}
     groups={[
-      { id: 'pcn-request', title: '1. Đề nghị / khách hàng', description: 'Đầu vào nghiệp vụ, khách hàng, sản phẩm và phạm vi chứng nhận.', status: proposal ? 'DONE' : 'BLOCKED', statusLabel: proposal ? 'Đã nhận diện' : 'Thiếu đầu vào', countLabel: proposal ? '1 Đề nghị' : 'Chưa có Đề nghị', meta: customerSnapshot?.name || 'Chưa gắn khách hàng', actionLabel: 'Xem tổng quan', onAction: () => onOpenTab('overview') },
-      { id: 'pcn-commercial', title: '2. Hàng hóa / thương mại', description: 'Hợp đồng, hóa đơn, packing list, vận đơn và bằng chứng gắn với lô hàng.', status: commercialRequirements.length === 0 ? 'NOT_STARTED' : missingRequiredCount > 0 ? 'IN_PROGRESS' : 'DONE', statusLabel: commercialRequirements.length === 0 ? 'Chưa định tuyến' : missingRequiredCount > 0 ? 'Đang rà soát' : 'Đã đủ theo checklist', countLabel: commercialRequirements.length + ' mục định tuyến', meta: 'Tách dữ liệu cấu trúc khỏi tệp hồ sơ', actionLabel: 'Mở tài liệu', onAction: () => onOpenTab('documents') },
+      { id: 'pcn-request', title: '1. Yêu cầu & phân công', description: 'Đầu vào nghiệp vụ, khách hàng, sản phẩm, phạm vi và người phụ trách hồ sơ.', status: proposal ? 'DONE' : 'BLOCKED', statusLabel: proposal ? 'Đã nhận diện' : 'Thiếu đầu vào', countLabel: proposal ? '1 Đề nghị' : 'Chưa có Đề nghị', meta: customerSnapshot?.name || 'Chưa gắn khách hàng', actionLabel: 'Xem tổng quan', onAction: () => onOpenTab('overview') },
+      { id: 'pcn-commercial', title: '2. Chứng từ lô hàng', description: 'Hợp đồng, hóa đơn, packing list, vận đơn và bằng chứng gắn với lô hàng.', status: commercialRequirements.length === 0 ? 'NOT_STARTED' : missingRequiredCount > 0 ? 'IN_PROGRESS' : 'DONE', statusLabel: commercialRequirements.length === 0 ? 'Chưa định tuyến' : missingRequiredCount > 0 ? 'Đang rà soát' : 'Đã đủ theo checklist', countLabel: commercialRequirements.length + ' mục định tuyến', meta: 'Tách dữ liệu cấu trúc khỏi tệp hồ sơ', actionLabel: 'Mở tài liệu', onAction: () => onOpenTab('documents') },
       { id: 'pcn-field', title: '3. Đánh giá hiện trường', description: 'Kế hoạch, phân công, biểu mẫu hiện trường và bằng chứng đánh giá.', status: dossier.operationalForms && Object.keys(dossier.operationalForms).length > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: dossier.operationalForms && Object.keys(dossier.operationalForms).length > 0 ? 'Có dữ liệu' : 'Chưa ghi nhận', countLabel: (dossier.operationalForms ? Object.keys(dossier.operationalForms).length : 0) + ' biểu mẫu', meta: ownerLabel, actionLabel: 'Mở bước hiện tại', onAction: onOpenCurrentStep },
       { id: 'pcn-testing', title: '4. Mẫu & thử nghiệm', description: 'Entity mẫu, tuyến PTN, bàn giao, kết quả và vị trí hiện tại.', status: results.length > 0 ? 'DONE' : labRequests.length > 0 || sampleLots.length > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: results.length > 0 ? 'Có KQTN' : labRequests.length > 0 || sampleLots.length > 0 ? 'Đang xử lý' : 'Chưa có mẫu', countLabel: sampleLots.length + ' lô · ' + labRequests.length + ' PYC · ' + results.length + ' KQTN', meta: openLabRequests.length > 0 ? openLabRequests.length + ' PYC đang mở' : 'Không có PYC đang mở', actionLabel: 'Mở mẫu & PYC', onAction: () => onOpenTab('lab') },
       { id: 'pcn-review', title: '5. Xem xét kỹ thuật', description: 'Kết luận, người soát xét, các bước phê duyệt chuyên môn và lịch sử xử lý.', status: approvalSteps.length > 0 || dossier.reviewerUsername ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: approvalSteps.some((step) => step.status === 'APPROVED') ? 'Đã có phê duyệt' : dossier.reviewerUsername ? 'Đã phân công' : 'Chưa phân công', countLabel: approvalSteps.length + ' bước phê duyệt', meta: dossier.reviewerUsername ? getPcnUserDisplayName(dossier.reviewerUsername, users) : 'Chưa có người soát xét', actionLabel: 'Mở vùng phê duyệt', onAction: () => onOpenTab('issuance') },
-      { id: 'pcn-issuance', title: '6. Phê duyệt & phát hành', description: 'Bộ trình duyệt, ký, cấp số, giao và lưu trữ chứng thư/quyết định.', status: issuance ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: issuance ? 'Có gói phát hành' : 'Chưa lập gói', countLabel: issuance ? '1 gói phát hành' : 'Chưa có gói phát hành', meta: issuance ? 'Trạng thái ' + issuance.status : 'Theo dõi từ bước hiện tại', actionLabel: 'Mở phát hành', onAction: () => onOpenTab('issuance') },
+      { id: 'pcn-issuance', title: '6. Cấp chứng nhận', description: 'Bộ trình duyệt, ký, cấp số, giao và lưu trữ chứng thư/quyết định.', status: issuance ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: issuance ? 'Có gói phát hành' : 'Chưa lập gói', countLabel: issuance ? '1 gói phát hành' : 'Chưa có gói phát hành', meta: issuance ? 'Trạng thái ' + issuance.status : 'Theo dõi từ bước hiện tại', actionLabel: 'Mở phát hành', onAction: () => onOpenTab('issuance') },
     ]}
     sampleTracker={{
       title: 'Sample Tracker · lô và tuyến PTN',

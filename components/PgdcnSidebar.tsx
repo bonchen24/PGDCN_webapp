@@ -9,9 +9,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   ClipboardList,
-  FilePlus2,
   FlaskConical,
-  FilePenLine,
   GitBranch,
   LayoutDashboard,
   LogOut,
@@ -46,20 +44,6 @@ type PgdcnSidebarProps = {
   onOpenPersonalSettings?: () => void;
   onLogout: () => void;
 };
-
-const PCN_ITEMS: Array<{ section: PcnSection; label: string; icon: ElementType }> = [
-  { section: 'proposals', label: 'Đề nghị', icon: FilePlus2 },
-  { section: 'operations', label: 'Sổ tổng hợp', icon: ClipboardList },
-  { section: 'lab-operations', label: 'Sổ quản lý mẫu', icon: FlaskConical },
-  { section: 'drafting', label: 'Soạn thảo tài liệu', icon: FilePenLine },
-];
-
-const PGD_ITEMS: Array<{ section: PgdSection; label: string; icon: ElementType }> = [
-  { section: 'requests', label: 'Hồ sơ PYC', icon: ClipboardList },
-  { section: 'operations', label: 'Sổ tổng hợp', icon: ClipboardCheck },
-  { section: 'sample-operations', label: 'Sổ quản lý mẫu', icon: FlaskConical },
-  { section: 'templates', label: 'Soạn thảo tài liệu', icon: FilePenLine },
-];
 
 const isTargetActive = (active: PgdcnNavigationTarget, target: PgdcnNavigationTarget): boolean => (
   active.domain === target.domain && active.section === target.section
@@ -158,6 +142,7 @@ export default function PgdcnSidebar({
           {expanded && <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">DỮ LIỆU</p>}
           {renderSharedButton('Khách hàng', Building2, { domain: 'department', section: 'customers' })}
           {scopes.includes('PCN') ? renderDomainButton('Sổ dữ liệu', ClipboardList, { domain: 'PCN', section: 'operations' }, 'pcn') : scopes.includes('PGD') ? renderDomainButton('Sổ dữ liệu', ClipboardCheck, { domain: 'PGD', section: 'operations' }, 'pgd') : null}
+          {scopes.includes('PGD') && renderDomainButton('Sổ quản lý mẫu', FlaskConical, { domain: 'PGD', section: 'sample-operations' }, 'pgd')}
         </div>
 
         <div>

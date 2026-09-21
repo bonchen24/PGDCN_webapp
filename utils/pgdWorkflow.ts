@@ -5,6 +5,7 @@
 import {
   getPgdTransitionDenial,
   type PgdFieldInspection,
+  type PgdFieldSession,
   type PgdInspectionAssignment,
   type PgdInspectionStatus,
   type PgdLabRequest,
@@ -253,17 +254,39 @@ export function buildPgdFieldInspection(
   const inspectorUsernames = Array.from(new Set(input.inspectorUsernames.map((username) => String(username).trim()).filter(Boolean)));
   if (inspectorUsernames.length === 0) throw new Error('Biên bản hiện trường PGD cần có giám định viên.');
   const nonconformities = (input.nonconformities || []).map((value) => String(value).trim()).filter(Boolean);
+  const completed = input.completed !== false;
+  const startedAt = String(input.startedAt || input.performedAt || '').trim() || input.performedAt;
+  const status = input.status || (completed ? 'COMPLETED' : 'DRAFT');
   return {
     ...input,
     domain: 'pgd',
     location,
     inspectorUsernames,
+    startedAt,
+    ...(input.endedAt ? { endedAt: String(input.endedAt).trim() } : {}),
+    ...(input.sessionCode ? { sessionCode: String(input.sessionCode).trim() } : {}),
+    ...(input.activityType ? { activityType: String(input.activityType).trim() } : {}),
+    ...(input.objectDescription ? { objectDescription: String(input.objectDescription).trim() } : {}),
+    ...(input.inspectedQuantity !== undefined ? { inspectedQuantity: input.inspectedQuantity } : {}),
+    ...(input.inspectedUnit ? { inspectedUnit: String(input.inspectedUnit).trim() } : {}),
     measurements: input.measurements ? { ...input.measurements } : undefined,
     nonconformities,
     inspectionResult: String(input.inspectionResult || '').trim() || undefined,
     customerRepresentative: String(input.customerRepresentative || '').trim() || undefined,
     sampleIds: Array.from(new Set(input.sampleIds.map((sampleId) => String(sampleId).trim()).filter(Boolean))),
-    completed: input.completed !== false,
+    status,
+    completed,
+  };
+}
+
+export function normalizePgdFieldSession(input: PgdFieldInspection): PgdFieldSession {
+  const completed = input.status === 'COMPLETED' || input.completed !== false;
+  return {
+    ...input,
+    startedAt: String(input.startedAt || input.performedAt || '').trim() || input.performedAt,
+    status: input.status || (completed ? 'COMPLETED' : 'DRAFT'),
+    completed,
+    sampleIds: Array.from(new Set((input.sampleIds || []).filter(Boolean))),
   };
 }
 

@@ -891,13 +891,22 @@ export interface PgdInspectionAssignment {
   updatedAt?: string;
 }
 
+export type PgdFieldSessionStatus = 'DRAFT' | 'COMPLETED' | 'CANCELLED';
+
 export interface PgdFieldInspection {
   id: string;
   domain: typeof PGD_DOMAIN;
   requestId: string;
   performedAt: string;
+  startedAt?: string;
+  endedAt?: string;
+  sessionCode?: string;
+  activityType?: string;
   location: string;
   inspectorUsernames: string[];
+  objectDescription?: string;
+  inspectedQuantity?: number;
+  inspectedUnit?: string;
   lotObservation?: string;
   packaging?: string;
   labeling?: string;
@@ -907,9 +916,12 @@ export interface PgdFieldInspection {
   customerRepresentative?: string;
   evidenceAssetIds?: string[];
   sampleIds: string[];
+  status?: PgdFieldSessionStatus;
   completed: boolean;
   note?: string;
 }
+
+export type PgdFieldSession = PgdFieldInspection;
 
 export interface PgdSample {
   id: string;
