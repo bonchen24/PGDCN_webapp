@@ -294,7 +294,7 @@ export async function savePgdDossierIndex(index: PgdDossierIndex): Promise<PgdDo
   return payload.index as PgdDossierIndex;
 }
 
-export async function splitPgdSample(input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string }): Promise<PgdSample[]> {
+export async function splitPgdSample(input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string; sampledAt?: string; samplingLocation?: string; sampledByUsername?: string; sampleSize?: string; lotQuantity?: number; lotUnit?: string }): Promise<PgdSample[]> {
   const payload = await request('/api/pgd/samples/split', json(input));
   return Array.isArray(payload.samples) ? payload.samples as PgdSample[] : [];
 }

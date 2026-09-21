@@ -7,6 +7,7 @@ import { buildPcnDossierInspection } from '../utils/pcnDossierInspection';
 import { getPcnDossierCustomerSnapshot } from '../utils/pcnDossierPolicy';
 import { getPcnActorDisplayName, getPcnUserDisplayName } from '../utils/pcnUserIdentity';
 import { getPcnDossierStatusLabel } from '../utils/pcnWorkflow';
+import { buildPcnBusinessBlockers, buildPcnSampleEvidence, buildPcnSectionCompleteness, buildPcnTestEvidence, getPcnBusinessSectionForRequirement, PCN_BUSINESS_SECTION_LABELS, resolvePcnEvidenceNextAction, type PcnBusinessFacts, type PcnBusinessSectionKey } from '../utils/pcnBusinessWorkspace';
 import PgdcnDossierBusinessWorkspace, { type DossierBlocker, type DossierEvidenceGroup, type DossierSuggestedAction } from './PgdcnDossierBusinessWorkspace';
 
 function outcomeLabel(outcome: ReturnedTestResult['outcome']): string {
@@ -23,22 +24,22 @@ const PCN_EVIDENCE_GROUP_LABELS: Record<string, string> = {
 };
 
 function buildPcnEvidenceGroups(requirements: PcnDocumentRequirement[], documents: PcnDossierDocument[], waivers: CertificationDossier['documentWaivers'], onOpenTab: (tab: 'overview' | 'documents' | 'lab' | 'issuance') => void): DossierEvidenceGroup[] {
-  const groups = new Map<string, DossierEvidenceGroup>();
-  const orderedStages = ['INTAKE', 'LAB_ROUTING', 'TECHNICAL_REVIEW', 'ISSUANCE', 'DELIVERY', 'ARCHIVE'];
+  const groups = new Map<PcnBusinessSectionKey, DossierEvidenceGroup>();
+  const orderedSections: PcnBusinessSectionKey[] = ['REQUEST', 'COMMERCIAL', 'FIELD', 'LAB', 'REVIEW', 'ISSUANCE', 'DELIVERY', 'ARCHIVE'];
   for (const requirement of [...requirements].sort((left, right) => left.sortOrder - right.sortOrder)) {
-    const stage = requirement.stages[0] || 'INTAKE';
+    const section = getPcnBusinessSectionForRequirement(requirement);
     const document = documents.find((item) => item.requirementId === requirement.id);
     const waiver = waivers?.[requirement.id];
     const currentVersion = document?.versions.find((version) => version.assetId === document.currentVersionId) || document?.versions[document.versions.length - 1];
     const present = document?.status === 'PRESENT';
     const state = waiver ? 'Được miễn' : present ? 'Có bản hiện hành' : requirement.required ? 'Thiếu bắt buộc' : 'Chưa có';
     const stateTone = waiver || present ? 'success' as const : requirement.required ? 'danger' as const : 'neutral' as const;
-    const action = stage === 'INTAKE'
-      ? { actionLabel: 'Mở tài liệu', onAction: () => onOpenTab('documents') }
-      : stage === 'LAB_ROUTING'
-        ? { actionLabel: 'Mở mẫu & PYC', onAction: () => onOpenTab('lab') }
-        : { actionLabel: 'Mở phát hành', onAction: () => onOpenTab('issuance') };
-    const group = groups.get(stage) || { id: stage.toLowerCase(), title: PCN_EVIDENCE_GROUP_LABELS[stage] || stage, ...action, rows: [] };
+    const action = section === 'LAB' || section === 'FIELD'
+      ? { actionLabel: section === 'LAB' ? 'Mở mẫu & PYC' : 'Mở bước hiện tại', onAction: () => section === 'LAB' ? onOpenTab('lab') : onOpenTab('overview') }
+      : section === 'ISSUANCE' || section === 'DELIVERY' || section === 'ARCHIVE'
+        ? { actionLabel: 'Mở phát hành', onAction: () => onOpenTab('issuance') }
+        : { actionLabel: 'Mở tài liệu', onAction: () => onOpenTab('documents') };
+    const group = groups.get(section) || { id: section.toLowerCase(), title: PCN_BUSINESS_SECTION_LABELS[section], ...action, rows: [] };
     group.rows.push({
       id: requirement.id,
       code: requirement.code,
@@ -46,13 +47,12 @@ function buildPcnEvidenceGroups(requirements: PcnDocumentRequirement[], document
       state,
       stateTone,
       meta: requirement.required ? 'Bắt buộc' : 'Không bắt buộc',
-      detail: currentVersion?.fileName || (present ? 'Có bản ghi tài liệu nhưng chưa có tên file hiện hành.' : requirement.description || 'Chưa có tài liệu hiện hành.'),
+      detail: currentVersion?.fileName || (present ? 'Có bản ghi tài liệu nhưng chưa có tên file hiện hành.' : waiver ? waivers?.[requirement.id]?.reason : requirement.description || 'Chưa có tài liệu hiện hành.'),
     });
-    groups.set(stage, group);
+    groups.set(section, group);
   }
-  return orderedStages.filter((stage) => groups.has(stage)).map((stage) => groups.get(stage)!);
+  return orderedSections.map((section) => groups.get(section) || { id: section.toLowerCase(), title: PCN_BUSINESS_SECTION_LABELS[section], rows: [], actionLabel: 'Mở tài liệu', onAction: () => onOpenTab(section === 'LAB' || section === 'FIELD' ? 'lab' : section === 'ISSUANCE' || section === 'DELIVERY' || section === 'ARCHIVE' ? 'issuance' : 'documents') }).filter((group) => group.rows.length > 0);
 }
-
 export type PcnDossierBusinessWorkspaceProps = {
   dossier: CertificationDossier;
   proposal?: CertificationProposal;
@@ -87,6 +87,7 @@ export function PcnDossierBusinessWorkspace({
   approvalSteps,
   issuance,
   sampleLots,
+  sampleItems = [],
   sampleRoutes,
   activityLogs,
   users,
@@ -108,86 +109,145 @@ export function PcnDossierBusinessWorkspace({
     documentWaivers: dossier.documentWaivers,
     compact: true,
   });
-  const commercialRequirements = requirements.filter((requirement) => /(hợp đồng|hóa đơn|invoice|packing|vận đơn|bill|c\/o|tờ khai)/i.test(requirement.name));
-  const openLabRequests = labRequests.filter((request) => !['RESULT_RETURNED', 'CANCELLED'].includes(request.status));
-  const businessBlockers: DossierBlocker[] = [];
-  if (missingRequiredCount > 0) businessBlockers.push({ id: 'pcn-required-documents', title: 'Thiếu tài liệu bắt buộc', reason: missingRequiredSummary || ('Còn ' + missingRequiredCount + ' tài liệu bắt buộc chưa hợp lệ.'), actionLabel: 'Mở checklist', onAction: () => onOpenTab('documents') });
-  if (openLabRequests.length > 0) businessBlockers.push({ id: 'pcn-open-lab-requests', title: 'PYC PTN chưa hoàn tất', reason: openLabRequests.length + ' PYC PTN còn đang chờ bàn giao, tiếp nhận hoặc trả kết quả.', actionLabel: 'Mở mẫu & PYC', onAction: () => onOpenTab('lab') });
-  if (!dossier.ownerUsername && ['ASSIGNMENT', 'EVALUATION', 'TECHNICAL_REVIEW'].includes(currentStationKey)) businessBlockers.push({ id: 'pcn-owner-missing', title: 'Chưa có chủ hồ sơ', reason: 'Cần phân công người chịu trách nhiệm trước khi xử lý tiếp bước hiện tại.', actionLabel: 'Mở bước hiện tại', onAction: onOpenCurrentStep });
-
-
-  const contextualActions: DossierSuggestedAction[] = [];
-  if (missingRequiredCount > 0) contextualActions.push({
-    id: 'pcn-review-before-technical-review',
-    title: 'Kiểm tra trước khi thẩm xét',
-    reason: 'Còn ' + missingRequiredCount + ' tài liệu bắt buộc cần xác nhận trong checklist.',
-    actionLabel: 'Mở checklist',
-    onAction: () => onOpenTab('documents'),
-    tone: 'warning',
-  });
-  if (sampleLots.length > 0 && labRequests.length === 0) contextualActions.push({
-    id: 'pcn-create-lab-request',
-    title: 'Lập PYC PTN từ lô mẫu',
-    reason: sampleLots.length + ' lô mẫu đã có nhưng chưa gắn PYC PTN.',
-    actionLabel: onOpenDocumentOutput ? 'Sinh PYC PTN' : 'Mở mẫu & PYC',
-    onAction: onOpenDocumentOutput ? () => onOpenDocumentOutput('LAB_REQUEST') : () => onOpenTab('lab'),
-    tone: 'info',
-  });
-  if (results.length > 0 && !issuance) contextualActions.push({
-    id: 'pcn-draft-evaluation-report',
-    title: 'Soạn dự thảo báo cáo đánh giá',
-    reason: results.length + ' KQTN đã có trong hồ sơ; có thể mở context sinh báo cáo để người dùng soát xét.',
-    actionLabel: onOpenDocumentOutput ? 'Sinh báo cáo' : 'Mở phát hành',
-    onAction: onOpenDocumentOutput ? () => onOpenDocumentOutput('EVALUATION_REPORT') : () => onOpenTab('issuance'),
-    tone: 'success',
-  });
+  const pcnFacts: PcnBusinessFacts = {
+    dossier,
+    proposal,
+    requirements,
+    documents,
+    sampleLots,
+    sampleItems,
+    sampleRoutes,
+    labRequests,
+    results,
+    approvalSteps,
+    issuance,
+    hasEvaluationReport: documents.some((document) => {
+      const requirement = requirements.find((candidate) => candidate.id === document.requirementId);
+      return requirement?.code === 'TEST_REPORT' && document.status === 'PRESENT';
+    }),
+  };
+  const sections = buildPcnSectionCompleteness(pcnFacts);
+  const sampleEvidence = buildPcnSampleEvidence(pcnFacts);
+  const testEvidence = buildPcnTestEvidence(pcnFacts);
+  const evidenceBlockers = buildPcnBusinessBlockers(pcnFacts);
+  const evidenceNextAction = resolvePcnEvidenceNextAction(pcnFacts);
+  const section = (key: PcnBusinessSectionKey) => sections.find((candidate) => candidate.key === key)!;
+  const openTarget = (target: string) => target === 'DOCUMENTS' ? onOpenTab('documents') : target === 'LAB' ? onOpenTab('lab') : target === 'ISSUANCE' || target === 'DELIVERY' || target === 'ARCHIVE' ? onOpenTab('issuance') : onOpenCurrentStep;
+  const blockers: DossierBlocker[] = evidenceBlockers.map((blocker) => ({
+    id: blocker.id,
+    title: blocker.title,
+    reason: blocker.reason,
+    severity: blocker.severity,
+    source: blocker.source,
+    target: blocker.target,
+    actionLabel: blocker.target === 'DOCUMENTS' ? 'Mở checklist' : blocker.target === 'LAB' ? 'Mở mẫu & PYC' : blocker.target === 'REVIEW' ? 'Mở xem xét' : 'Mở việc hiện tại',
+    onAction: () => openTarget(blocker.target),
+  }));
+  const contextualActions: DossierSuggestedAction[] = [
+    ...(evidenceBlockers.some((blocker) => blocker.target === 'DOCUMENTS') ? [{
+      id: 'pcn-missing-documents',
+      title: 'Hồ sơ còn thiếu',
+      reason: 'Kiểm tra các yêu cầu bắt buộc chưa có bản hiện hành hoặc miễn lệ.',
+      actionLabel: 'Mở checklist',
+      onAction: () => onOpenTab('documents'),
+      tone: 'warning' as const,
+    }] : []),
+    ...(sampleEvidence.rows.length > 0 ? [{
+      id: 'pcn-check-before-review',
+      title: 'Kiểm tra trước thẩm xét',
+      reason: 'Đối chiếu sample item, tuyến PYC và KQTN hiện hành trước khi kết luận.',
+      actionLabel: 'Mở mẫu & PYC',
+      onAction: () => onOpenTab('lab'),
+      tone: 'info' as const,
+    }] : []),
+    ...(sampleEvidence.pendingResultCount > 0 ? [{
+      id: 'pcn-missing-results',
+      title: 'KQTN còn thiếu',
+      reason: sampleEvidence.pendingResultCount + ' sample item chưa có đủ kết quả trả về.',
+      actionLabel: 'Mở KQTN',
+      onAction: () => onOpenTab('lab'),
+      tone: 'warning' as const,
+    }] : []),
+    ...(sampleEvidence.resultCount > 0 ? [{
+      id: 'pcn-evidence-summary',
+      title: 'Tóm tắt hồ sơ',
+      reason: sampleEvidence.resultCount + ' KQTN đã liên kết với ' + sampleEvidence.sampledSampleCount + ' sample item.',
+      actionLabel: 'Mở tổng quan',
+      onAction: () => onOpenTab('overview'),
+      tone: 'success' as const,
+    }] : []),
+    ...(sampleEvidence.resultCount > 0 && onOpenDocumentOutput && !pcnFacts.hasEvaluationReport ? [{
+      id: 'pcn-open-report',
+      title: 'Mở soạn báo cáo',
+      reason: 'KQTN đã có nhưng chưa có bản báo cáo đánh giá hiện hành.',
+      actionLabel: 'Sinh báo cáo',
+      onAction: () => onOpenDocumentOutput('EVALUATION_REPORT'),
+      tone: 'success' as const,
+    }] : []),
+  ];
+  const testingStatus = sampleEvidence.pendingResultCount > 0 ? 'IN_PROGRESS' : sampleEvidence.resultCount > 0 ? 'DONE' : sampleEvidence.sampledSampleCount > 0 ? 'IN_PROGRESS' : section('LAB').status;
+  const testingStatusLabel = sampleEvidence.pendingResultCount > 0 ? 'Còn thiếu KQTN' : sampleEvidence.resultCount > 0 ? 'Đã có KQTN' : sampleEvidence.sampledSampleCount > 0 ? 'Đang xử lý' : 'Chưa có mẫu';
   return <PgdcnDossierBusinessWorkspace
     domain="PCN"
     title="Bản đồ bộ hồ sơ PCN"
-    description="Từ Đề nghị và chứng từ đầu vào đến mẫu, KQTN, xem xét, phê duyệt và phát hành; mỗi nhóm chỉ là projection của dữ liệu đang có."
+    description="Ngữ cảnh → Next Action → Blocker → Dữ liệu hỗ trợ → Chi tiết; mỗi vùng là projection của entity hiện hành."
     nextAction={{
-      title: currentStationTitle,
-      reason: missingRequiredCount > 0 ? 'Bước hiện tại còn bằng chứng hồ sơ chưa hợp lệ.' : 'Đây là vùng công việc được xác định bởi trạng thái hồ sơ hiện tại.',
+      title: evidenceNextAction.label,
+      reason: evidenceNextAction.reason,
       owner: ownerLabel,
-      missing: missingRequiredCount > 0 ? missingRequiredCount + ' tài liệu bắt buộc' : 'Chưa ghi nhận thiếu hụt cứng',
+      missing: evidenceNextAction.relatedEntityIds.length > 0 ? evidenceNextAction.relatedEntityIds.length + ' bằng chứng liên quan' : missingRequiredCount > 0 ? missingRequiredSummary || missingRequiredCount + ' yêu cầu bắt buộc' : 'Chưa ghi nhận thiếu hụt cứng',
       actionLabel: 'Mở việc cần làm',
-      onAction: onOpenCurrentStep,
+      onAction: () => openTarget(evidenceNextAction.target),
     }}
     metrics={[
-      { id: 'pcn-documents', label: 'Tài liệu bắt buộc', value: inspection.summary.present + '/' + inspection.summary.requiredTotal, tone: missingRequiredCount > 0 ? 'warning' : 'success' },
-      { id: 'pcn-samples', label: 'Lô mẫu', value: sampleLots.length, tone: sampleLots.length > 0 ? 'info' : 'neutral' },
-      { id: 'pcn-lab-requests', label: 'PYC PTN', value: labRequests.length, tone: labRequests.length > 0 ? 'info' : 'neutral' },
-      { id: 'pcn-results', label: 'KQTN', value: results.length, tone: results.length > 0 ? 'success' : 'neutral' },
+      { id: 'pcn-documents', label: 'Tài liệu bắt buộc', value: inspection.summary.present + '/' + inspection.summary.requiredTotal, tone: evidenceBlockers.some((blocker) => blocker.target === 'DOCUMENTS') ? 'warning' : 'success' },
+      { id: 'pcn-sample-items', label: 'Sample item', value: sampleEvidence.sampledSampleCount, tone: sampleEvidence.sampledSampleCount > 0 ? 'info' : 'neutral' },
+      { id: 'pcn-lab-requests', label: 'PYC PTN', value: sampleEvidence.labRequestCount, tone: sampleEvidence.labRequestCount > 0 ? 'info' : 'neutral' },
+      { id: 'pcn-results', label: 'KQTN', value: sampleEvidence.resultCount + '/' + sampleEvidence.labRequestCount, tone: sampleEvidence.pendingResultCount > 0 ? 'warning' : sampleEvidence.resultCount > 0 ? 'success' : 'neutral' },
     ]}
-    blockers={businessBlockers}
+    blockers={blockers}
     suggestedActions={contextualActions}
     evidenceTracker={{
-      title: 'Evidence Tracker · bộ chứng từ hiện hành',
+      title: 'Evidence Tracker · theo nhóm nghiệp vụ',
       groups: buildPcnEvidenceGroups(requirements, documents, dossier.documentWaivers, onOpenTab),
       emptyText: 'Chưa có checklist chứng từ trong hồ sơ này.',
     }}
     groups={[
-      { id: 'pcn-request', title: '1. Yêu cầu & phân công', description: 'Đầu vào nghiệp vụ, khách hàng, sản phẩm, phạm vi và người phụ trách hồ sơ.', status: proposal ? 'DONE' : 'BLOCKED', statusLabel: proposal ? 'Đã nhận diện' : 'Thiếu đầu vào', countLabel: proposal ? '1 Đề nghị' : 'Chưa có Đề nghị', meta: customerSnapshot?.name || 'Chưa gắn khách hàng', actionLabel: 'Xem tổng quan', onAction: () => onOpenTab('overview') },
-      { id: 'pcn-commercial', title: '2. Chứng từ lô hàng', description: 'Hợp đồng, hóa đơn, packing list, vận đơn và bằng chứng gắn với lô hàng.', status: commercialRequirements.length === 0 ? 'NOT_STARTED' : missingRequiredCount > 0 ? 'IN_PROGRESS' : 'DONE', statusLabel: commercialRequirements.length === 0 ? 'Chưa định tuyến' : missingRequiredCount > 0 ? 'Đang rà soát' : 'Đã đủ theo checklist', countLabel: commercialRequirements.length + ' mục định tuyến', meta: 'Tách dữ liệu cấu trúc khỏi tệp hồ sơ', actionLabel: 'Mở tài liệu', onAction: () => onOpenTab('documents') },
-      { id: 'pcn-field', title: '3. Đánh giá hiện trường', description: 'Kế hoạch, phân công, biểu mẫu hiện trường và bằng chứng đánh giá.', status: dossier.operationalForms && Object.keys(dossier.operationalForms).length > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: dossier.operationalForms && Object.keys(dossier.operationalForms).length > 0 ? 'Có dữ liệu' : 'Chưa ghi nhận', countLabel: (dossier.operationalForms ? Object.keys(dossier.operationalForms).length : 0) + ' biểu mẫu', meta: ownerLabel, actionLabel: 'Mở bước hiện tại', onAction: onOpenCurrentStep },
-      { id: 'pcn-testing', title: '4. Mẫu & thử nghiệm', description: 'Entity mẫu, tuyến PTN, bàn giao, kết quả và vị trí hiện tại.', status: results.length > 0 ? 'DONE' : labRequests.length > 0 || sampleLots.length > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: results.length > 0 ? 'Có KQTN' : labRequests.length > 0 || sampleLots.length > 0 ? 'Đang xử lý' : 'Chưa có mẫu', countLabel: sampleLots.length + ' lô · ' + labRequests.length + ' PYC · ' + results.length + ' KQTN', meta: openLabRequests.length > 0 ? openLabRequests.length + ' PYC đang mở' : 'Không có PYC đang mở', actionLabel: 'Mở mẫu & PYC', onAction: () => onOpenTab('lab') },
-      { id: 'pcn-review', title: '5. Xem xét kỹ thuật', description: 'Kết luận, người soát xét, các bước phê duyệt chuyên môn và lịch sử xử lý.', status: approvalSteps.length > 0 || dossier.reviewerUsername ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: approvalSteps.some((step) => step.status === 'APPROVED') ? 'Đã có phê duyệt' : dossier.reviewerUsername ? 'Đã phân công' : 'Chưa phân công', countLabel: approvalSteps.length + ' bước phê duyệt', meta: dossier.reviewerUsername ? getPcnUserDisplayName(dossier.reviewerUsername, users) : 'Chưa có người soát xét', actionLabel: 'Mở vùng phê duyệt', onAction: () => onOpenTab('issuance') },
-      { id: 'pcn-issuance', title: '6. Cấp chứng nhận', description: 'Bộ trình duyệt, ký, cấp số, giao và lưu trữ chứng thư/quyết định.', status: issuance ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: issuance ? 'Có gói phát hành' : 'Chưa lập gói', countLabel: issuance ? '1 gói phát hành' : 'Chưa có gói phát hành', meta: issuance ? 'Trạng thái ' + issuance.status : 'Theo dõi từ bước hiện tại', actionLabel: 'Mở phát hành', onAction: () => onOpenTab('issuance') },
+      { id: 'pcn-request', title: '1. ' + PCN_BUSINESS_SECTION_LABELS.REQUEST, description: 'Đề nghị, phân công và dữ liệu đầu vào để xác định chủ hồ sơ.', status: proposal ? section('REQUEST').status : 'BLOCKED', statusLabel: proposal ? section('REQUEST').reason : 'Thiếu Đề nghị', countLabel: proposal ? '1 Đề nghị' : 'Chưa có Đề nghị', meta: customerSnapshot?.name || 'Chưa gắn khách hàng', actionLabel: 'Xem tổng quan', onAction: () => onOpenTab('overview') },
+      { id: 'pcn-commercial', title: '2. ' + PCN_BUSINESS_SECTION_LABELS.COMMERCIAL, description: 'Chứng từ thương mại/hải quan và tài liệu gắn với lô hàng.', status: section('COMMERCIAL').status, statusLabel: section('COMMERCIAL').reason, countLabel: section('COMMERCIAL').presentRequirements + '/' + section('COMMERCIAL').totalRequirements + ' mục', meta: 'Taxonomy requirement hiện hành', actionLabel: 'Mở tài liệu', onAction: () => onOpenTab('documents') },
+      { id: 'pcn-field', title: '3. ' + PCN_BUSINESS_SECTION_LABELS.FIELD, description: 'Kế hoạch, phân công và bằng chứng đánh giá tại hiện trường.', status: section('FIELD').status, statusLabel: section('FIELD').reason, countLabel: section('FIELD').presentRequirements + '/' + section('FIELD').totalRequirements + ' yêu cầu', meta: currentStationKey + ' · ' + ownerLabel, actionLabel: 'Mở bước hiện tại', onAction: onOpenCurrentStep },
+      { id: 'pcn-testing', title: '4. ' + PCN_BUSINESS_SECTION_LABELS.LAB, description: 'Sample item → route → PYC → PTN → KQTN theo từng mẫu.', status: testingStatus, statusLabel: testingStatusLabel, countLabel: sampleEvidence.sampledSampleCount + ' mẫu · ' + sampleEvidence.labRequestCount + ' PYC · ' + sampleEvidence.resultCount + ' KQTN', meta: sampleEvidence.pendingResultCount > 0 ? sampleEvidence.pendingResultCount + ' mẫu còn thiếu KQTN' : section('LAB').reason, actionLabel: 'Mở mẫu & PYC', onAction: () => onOpenTab('lab') },
+      { id: 'pcn-review', title: '5. ' + PCN_BUSINESS_SECTION_LABELS.REVIEW, description: 'Kết luận KQTN, người soát xét, phê duyệt chuyên môn và lịch sử xử lý.', status: section('REVIEW').status, statusLabel: evidenceNextAction.key === 'REVIEW' ? 'Cần đánh giá' : section('REVIEW').reason, countLabel: sampleEvidence.resultCount + ' KQTN · ' + approvalSteps.length + ' bước phê duyệt', meta: dossier.reviewerUsername ? getPcnUserDisplayName(dossier.reviewerUsername, users) : 'Chưa có người soát xét', actionLabel: 'Mở vùng phê duyệt', onAction: () => onOpenTab('issuance') },
+      { id: 'pcn-issuance', title: '6. ' + PCN_BUSINESS_SECTION_LABELS.ISSUANCE, description: 'Gói chứng nhận, quyết định, ký và cấp số.', status: section('ISSUANCE').status === 'DONE' || issuance ? 'IN_PROGRESS' : section('ISSUANCE').status, statusLabel: issuance ? 'Có gói phát hành' : section('ISSUANCE').reason, countLabel: issuance ? '1 gói phát hành' : section('ISSUANCE').totalRequirements + ' yêu cầu', meta: issuance ? 'Trạng thái ' + issuance.status : 'Theo dõi từ bước hiện tại', actionLabel: 'Mở phát hành', onAction: () => onOpenTab('issuance') },
+      { id: 'pcn-delivery', title: '7. ' + PCN_BUSINESS_SECTION_LABELS.DELIVERY, description: 'Bộ hồ sơ bàn giao khách hàng sau khi phát hành.', status: section('DELIVERY').status, statusLabel: section('DELIVERY').reason, countLabel: section('DELIVERY').presentRequirements + '/' + section('DELIVERY').totalRequirements + ' yêu cầu', meta: 'Chỉ hiện khi có requirement tương ứng', actionLabel: 'Mở phát hành', onAction: () => onOpenTab('issuance') },
+      { id: 'pcn-archive', title: '8. ' + PCN_BUSINESS_SECTION_LABELS.ARCHIVE, description: 'Bằng chứng lưu trữ và hoàn tất hồ sơ.', status: section('ARCHIVE').status, statusLabel: section('ARCHIVE').reason, countLabel: section('ARCHIVE').presentRequirements + '/' + section('ARCHIVE').totalRequirements + ' yêu cầu', meta: 'Chỉ hiện khi có evidence tương ứng', actionLabel: 'Mở phát hành', onAction: () => onOpenTab('issuance') },
     ]}
     sampleTracker={{
-      title: 'Sample Tracker · lô và tuyến PTN',
-      rows: sampleLots.map((lot) => {
-        const routes = sampleRoutes.filter((route) => lot.routeIds.includes(route.id));
-        return { id: lot.id, code: lot.lotCode, title: lot.sampleName + ' · ' + lot.quantity + ' ' + (lot.unit || ''), state: lot.currentLocation || lot.status, stateTone: lot.status === 'ISSUE' ? 'danger' : lot.status === 'CLOSED' ? 'success' : routes.length > 0 ? 'info' : 'neutral', meta: routes.length + ' tuyến PTN' + (lot.model ? ' · Model ' + lot.model : ''), detail: lot.notes };
-      }),
-      emptyText: 'Chưa có lô mẫu được ghi nhận cho hồ sơ này.',
+      title: 'Sample Tracker · sample item và tuyến PTN',
+      rows: sampleEvidence.rows.map((row) => ({
+        id: row.id,
+        code: row.sampleCode,
+        title: row.title,
+        state: row.state,
+        stateTone: row.stateTone,
+        lot: row.lotCode || 'Chưa có lô',
+        meta: [row.lotCode ? 'Lô ' + row.lotCode : '', row.routeLabels.join(', '), row.pycNumbers.join(', ')].filter(Boolean).join(' · '),
+        detail: row.resultIds.length > 0 ? 'KQTN: ' + row.resultIds.join(', ') : 'Chưa có đủ liên kết PYC/KQTN.',
+      })),
+      emptyText: 'Chưa có sample item/lô mẫu được ghi nhận cho hồ sơ này.',
     }}
     testTracker={{
-      title: 'Test Tracker · PYC và KQTN',
-      rows: labRequests.map((labRequest) => {
-        const result = results.find((item) => item.labRequestId === labRequest.id);
-        return { id: labRequest.id, code: labRequest.pycNumber, title: labRequest.laboratoryName, state: result ? 'Đã nhận KQTN' : labRequest.status, stateTone: result?.outcome === 'FAIL' ? 'danger' : result?.outcome === 'PASS' ? 'success' : result ? 'info' : 'warning', meta: labRequest.fieldCode + ' · ' + (result?.reportNumber || 'Chưa có số phiếu'), detail: result ? 'Kết quả: ' + outcomeLabel(result.outcome) : 'Đang chờ hoàn tất chuỗi bàn giao → PTN → trả KQTN.' };
-      }),
+      title: 'Test Tracker · PYC → KQTN',
+      rows: testEvidence.map((row) => ({
+        id: row.id,
+        code: row.pycNumber,
+        title: row.laboratoryName,
+        state: row.state,
+        stateTone: row.stateTone,
+        lot: row.sampleCodes.join(', '),
+        meta: [row.sampleCodes.join(', '), row.routeLabel].filter(Boolean).join(' · '),
+        detail: row.result ? 'KQTN: ' + (row.result.reportNumber || 'Đã nhận phiếu không số') + ' · ' + row.result.outcome : 'Chưa có kết quả liên kết.',
+      })),
       emptyText: 'Chưa có PYC PTN liên kết với hồ sơ này.',
     }}
     timeline={{
@@ -197,5 +257,4 @@ export function PcnDossierBusinessWorkspace({
     }}
   />;
 }
-
 export default PcnDossierBusinessWorkspace;

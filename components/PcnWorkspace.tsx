@@ -1201,7 +1201,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
   ) : activeSection === 'drafting' ? (
     <PcnDraftingWorkspaceView proposals={pcn.proposals} dossiers={pcn.dossiers} templates={pcn.templates} documentRequirements={pcn.documentRequirements} dossierDocuments={pcn.dossierDocuments} onUploadTemplate={pcn.uploadPcnTemplate} onReviewTemplate={pcn.reviewPcnTemplate} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} labRequests={pcn.labRequests} returnedResults={pcn.returnedResults} initialDossierId={initialDraftDossierId} initialRequirementId={initialDraftRequirementId} initialNodeId={initialDraftNodeId} initialKind={initialDraftKind} onToast={(message, type) => type === 'error' ? toast.error(message) : toast.success(message)} />
   ) : activeSection === 'assistant' ? (
-    <PcnAssistantView dossiers={pcn.dossiers} proposals={pcn.proposals} requirements={pcn.documentRequirements} documents={pcn.dossierDocuments} labRequests={pcn.labRequests} sampleLots={pcn.sampleLots} sampleRoutes={pcn.sampleRoutes} returnedResults={pcn.returnedResults} onOpenDossier={openDossierAtCurrentStation} />
+    <PcnAssistantView dossiers={pcn.dossiers} proposals={pcn.proposals} requirements={pcn.documentRequirements} documents={pcn.dossierDocuments} labRequests={pcn.labRequests} sampleLots={pcn.sampleLots} sampleItems={pcn.sampleItems} sampleRoutes={pcn.sampleRoutes} returnedResults={pcn.returnedResults} onOpenDossier={openDossierAtCurrentStation} />
   ) : activeSection === 'customers' ? (
     <PcnCustomersManagementView initialSearchQuery={customerSearchQuery} />
   ) : activeSection === 'activityLogs' ? (

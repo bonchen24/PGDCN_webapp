@@ -290,4 +290,24 @@ export function normalizePgdFieldSession(input: PgdFieldInspection): PgdFieldSes
   };
 }
 
+
+export type PgdLocalDateTimeFields = { date: string; time: string };
+
+/** Keep the datetime-local editor deterministic while preserving legacy ISO timestamps. */
+export function toPgdLocalDateTimeFields(value?: string): PgdLocalDateTimeFields {
+  if (!value) return { date: '', time: '' };
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return { date: String(value).slice(0, 10), time: String(value).slice(11, 16) };
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return { date: parsed.getFullYear() + '-' + pad(parsed.getMonth() + 1) + '-' + pad(parsed.getDate()), time: pad(parsed.getHours()) + ':' + pad(parsed.getMinutes()) };
+}
+
+/** Convert a user-entered local date/time into the ISO value persisted by PGD. */
+export function combinePgdLocalDateTime(date: string, time: string): string | undefined {
+  const normalizedDate = String(date || '').trim();
+  const normalizedTime = String(time || '').trim();
+  if (!normalizedDate || !normalizedTime) return undefined;
+  const parsed = new Date(normalizedDate + 'T' + normalizedTime);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+}
 // --- End of pgdWorkflow.ts ---

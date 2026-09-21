@@ -1533,12 +1533,13 @@ export function splitPgdSample(
     sampleSize?: string;
     lotQuantity?: number;
     lotUnit?: string;
+    sampledAt?: string;
   },
   now = new Date().toISOString(),
 ): { lab: PgdSample; retained: PgdSample } {
   if (!Number.isFinite(input.quantity) || input.quantity < 2) throw new Error('Mẫu PGD phải có đủ số lượng để tách phần PTN và mẫu lưu.');
   const labQuantity = Math.ceil(input.quantity / 2);
-  const sampledAt = new Date(now).toISOString();
+  const sampledAt = new Date(input.sampledAt || now).toISOString();
   const retainedUntilDate = new Date(sampledAt);
   retainedUntilDate.setUTCMonth(retainedUntilDate.getUTCMonth() + PGD_RETENTION_POLICY.retainedSampleMonths);
   const retainedUntil = retainedUntilDate.toISOString();

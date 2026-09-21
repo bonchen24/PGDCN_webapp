@@ -15,8 +15,8 @@ import { normalizePgdFieldSession } from './pgdWorkflow';
 export type PgdBusinessTone = 'neutral' | 'info' | 'warning' | 'success' | 'danger';
 export type PgdBusinessTimelineKind = 'CASE_EVENT' | 'FIELD_ACTIVITY' | 'FIELD_SESSION' | 'SAMPLE' | 'LAB_REQUEST' | 'LAB_RESULT' | 'RESULT_REVIEW' | 'REPORT' | 'APPROVAL' | 'CERTIFICATE';
 export type PgdBusinessTimelineItem = { id: string; sourceId: string; kind: PgdBusinessTimelineKind; title: string; occurredAt?: string; actor?: string; location?: string; detail?: string; tone: PgdBusinessTone };
-export type PgdSampleEvidenceRow = { id: string; sampleCode: string; title: string; quantity: number; unit?: string; location?: string; laboratoryName?: string; labRequestId?: string; resultId?: string; resultReportNumber?: string; state: string; stateTone: PgdBusinessTone };
-export type PgdSampleEvidenceSummary = { expectedUnits?: number; sampledUnits: number; sampleCount: number; labRequestCount: number; resultCount: number; sampledWithResultCount: number; pendingLabRequestCount: number; rows: PgdSampleEvidenceRow[] };
+export type PgdSampleEvidenceRow = { id: string; sampleCode: string; title: string; quantity: number; unit?: string; lotSummary?: string; location?: string; sessionId?: string; sessionCode?: string; sessionStartedAt?: string; laboratoryName?: string; labRequestId?: string; resultId?: string; resultReportNumber?: string; state: string; stateTone: PgdBusinessTone };
+export type PgdSampleEvidenceSummary = { expectedUnits?: number; sampledUnits: number; expectedSampleCount?: number; expectedSampleQuantity?: number; actualSampleCount: number; actualSampleQuantity: number; sampleCount: number; labRequestCount: number; resultCount: number; sampledWithResultCount: number; pendingLabRequestCount: number; rows: PgdSampleEvidenceRow[] };
 export type PgdBusinessBlocker = { id: string; title: string; reason: string; severity: 'HARD' | 'WARNING'; target: 'CURRENT_WORK' | 'DOCUMENTS' | 'ASSIGNMENT' | 'FIELD' | 'LAB_RESULTS' | 'REVIEW' | 'REPORT'; source: string };
 export type PgdEvidenceNextAction = PgdcnNextAction & { source: 'EVIDENCE' | 'STATUS_FALLBACK'; reason: string; target: PgdBusinessBlocker['target']; blockerIds: string[] };
 export type PgdBusinessFacts = {
@@ -39,7 +39,7 @@ export type PgdBusinessFacts = {
 function finiteQuantity(value: unknown): number { const quantity = Number(value); return Number.isFinite(quantity) && quantity > 0 ? quantity : 0; }
 function latestPlan(plans: readonly PgdInspectionPlan[], requestId: string): PgdInspectionPlan | undefined { return plans.filter((plan) => plan.requestId === requestId).sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')))[0]; }
 
-export function buildPgdSampleEvidence(input: Pick<PgdBusinessFacts, 'request' | 'inspectionPlans' | 'samples' | 'labRequests' | 'labResults'>): PgdSampleEvidenceSummary {
+export function buildPgdSampleEvidence(input: Pick<PgdBusinessFacts, 'request' | 'inspectionPlans' | 'fieldInspections' | 'samples' | 'labRequests' | 'labResults'>): PgdSampleEvidenceSummary {
   const requestId = input.request.id;
   const samples = (input.samples || []).filter((sample) => sample.requestId === requestId);
   const labRequests = (input.labRequests || []).filter((item) => item.requestId === requestId);
@@ -47,6 +47,12 @@ export function buildPgdSampleEvidence(input: Pick<PgdBusinessFacts, 'request' |
   const plan = latestPlan(input.inspectionPlans || [], requestId);
   const expectedLines = plan?.samplingLines;
   const expectedUnits = expectedLines && expectedLines.length > 0 ? expectedLines.reduce((sum, line) => sum + finiteQuantity(line.quantity), 0) : undefined;
+  const expectedSampleCount = expectedUnits;
+  const sessionBySampleId = new Map<string, ReturnType<typeof normalizePgdFieldSession>>();
+  for (const rawSession of (input.fieldInspections || []).filter((item) => item.requestId === requestId)) {
+    const session = normalizePgdFieldSession(rawSession);
+    for (const sampleId of session.sampleIds || []) sessionBySampleId.set(sampleId, session);
+  }
   const resultByLabRequest = new Map(labResults.map((result) => [result.labRequestId, result]));
   const requestBySample = new Map(labRequests.map((labRequest) => [labRequest.sampleId, labRequest]));
   const rows = samples.map((sample): PgdSampleEvidenceRow => {
@@ -54,10 +60,12 @@ export function buildPgdSampleEvidence(input: Pick<PgdBusinessFacts, 'request' |
     const result = labRequest ? resultByLabRequest.get(labRequest.id) : undefined;
     const state = result ? 'Đã có KQTN' : labRequest?.status === 'ISSUE' ? 'KQTN có vấn đề' : labRequest?.handover?.sentAt ? 'Đang chờ KQTN' : labRequest ? 'Đã lập PYC PTN' : sample.disposition === 'LAB' ? 'Chờ lập PYC PTN' : 'Mẫu lưu';
     const stateTone: PgdBusinessTone = result ? 'success' : labRequest?.status === 'ISSUE' ? 'danger' : labRequest ? 'warning' : 'neutral';
-    return { id: sample.id, sampleCode: sample.sampleCode, title: sample.description || sample.sampleTypeLabel || sample.sampleCode, quantity: finiteQuantity(sample.quantity), unit: sample.unit, location: sample.samplingLocation || input.request.inspectionLocation, laboratoryName: labRequest?.laboratoryName || sample.laboratoryName, labRequestId: labRequest?.id, resultId: result?.id, resultReportNumber: result?.reportNumber, state, stateTone };
+    const session = sessionBySampleId.get(sample.id);
+    return { id: sample.id, sampleCode: sample.sampleCode, title: sample.description || sample.sampleTypeLabel || sample.sampleCode, quantity: finiteQuantity(sample.quantity), unit: sample.unit, lotSummary: sample.lotQuantity === undefined ? undefined : String(sample.lotQuantity) + ' ' + (sample.lotUnit || sample.unit || ''), location: sample.samplingLocation || session?.location || input.request.inspectionLocation, sessionId: session?.id, sessionCode: session?.sessionCode, sessionStartedAt: session?.startedAt || session?.performedAt, laboratoryName: labRequest?.laboratoryName || sample.laboratoryName, labRequestId: labRequest?.id, resultId: result?.id, resultReportNumber: result?.reportNumber, state, stateTone };
   });
   const resultSampleIds = new Set(rows.filter((row) => row.resultId).map((row) => row.id));
-  return { expectedUnits, sampledUnits: rows.reduce((sum, row) => sum + row.quantity, 0), sampleCount: rows.length, labRequestCount: labRequests.length, resultCount: new Set(labResults.map((result) => result.id)).size, sampledWithResultCount: resultSampleIds.size, pendingLabRequestCount: labRequests.filter((item) => !resultByLabRequest.has(item.id) && item.status !== 'CLOSED').length, rows };
+  const actualSampleQuantity = rows.reduce((sum, row) => sum + row.quantity, 0);
+  return { expectedUnits, sampledUnits: actualSampleQuantity, expectedSampleCount, actualSampleCount: rows.length, actualSampleQuantity, sampleCount: rows.length, labRequestCount: labRequests.length, resultCount: new Set(labResults.map((result) => result.id)).size, sampledWithResultCount: resultSampleIds.size, pendingLabRequestCount: labRequests.filter((item) => !resultByLabRequest.has(item.id) && item.status !== 'CLOSED').length, rows };
 }
 
 function timelineItem(input: Omit<PgdBusinessTimelineItem, 'tone'> & { tone?: PgdBusinessTone }): PgdBusinessTimelineItem { return { ...input, tone: input.tone || 'info' }; }
@@ -96,7 +104,7 @@ export function resolvePgdEvidenceNextAction(input: PgdBusinessFacts): PgdEviden
   const summary = buildPgdSampleEvidence(input);
   const hardBlocker = blockers.find((blocker) => blocker.severity === 'HARD');
   if (hardBlocker) { const fallback = hardBlocker.target === 'DOCUMENTS' ? getPgdcnNextAction('PGD', input.request.status, { missingRequiredCount: input.missingRequiredCount }) : getPgdcnNextAction('PGD', input.request.status); const pendingCodes = hardBlocker.target === 'LAB_RESULTS' ? summary.rows.filter((row) => row.labRequestId && !row.resultId).map((row) => row.sampleCode).filter(Boolean) : []; const label = pendingCodes.length > 0 ? 'Tiếp nhận KQTN ' + pendingCodes.join(', ') : fallback.label; return { ...fallback, label, source: 'EVIDENCE', reason: hardBlocker.reason, target: hardBlocker.target, blockerIds: blockers.map((item) => item.id) }; }
-  if (summary.expectedUnits !== undefined && summary.sampledUnits < summary.expectedUnits) return { key: 'SAMPLE', label: 'Tiếp tục lấy mẫu', description: 'Tiếp tục ghi nhận các mẫu còn thiếu theo kế hoạch lấy mẫu.', source: 'EVIDENCE', reason: `${summary.sampledUnits}/${summary.expectedUnits} đơn vị mẫu đã ghi nhận.`, target: 'FIELD', blockerIds: blockers.map((item) => item.id) };
+  if (summary.expectedUnits !== undefined && summary.sampledUnits < summary.expectedUnits) return { key: 'SAMPLE', label: 'Tiếp tục lấy mẫu', description: 'Tiếp tục ghi nhận các mẫu còn thiếu theo kế hoạch lấy mẫu.', source: 'EVIDENCE', reason: summary.sampledUnits + '/' + summary.expectedUnits + ' đơn vị mẫu đã ghi nhận.', target: 'FIELD', blockerIds: blockers.map((item) => item.id) };
   if (summary.pendingLabRequestCount > 0) return { key: 'RESULTS', label: 'Tiếp nhận KQTN', description: 'Đối chiếu và tiếp nhận các kết quả còn thiếu từ PTN.', source: 'EVIDENCE', reason: `${summary.pendingLabRequestCount} PYC PTN chưa có kết quả liên kết.`, target: 'LAB_RESULTS', blockerIds: blockers.map((item) => item.id) };
   if (summary.resultCount > 0 && input.labResultReview?.status !== 'FINAL') return { key: 'REVIEW_RESULTS', label: 'Đánh giá kết quả thử nghiệm', description: 'Kiểm tra độ đầy đủ và kết luận trên các KQTN đã nhận.', source: 'EVIDENCE', reason: `${summary.resultCount} kết quả đã nhận nhưng chưa có bản xem xét cuối.`, target: 'REVIEW', blockerIds: blockers.map((item) => item.id) };
   if (summary.resultCount > 0 && !input.report && !input.certificate) return { key: 'REPORT', label: 'Soạn báo cáo', description: 'Tổng hợp bằng chứng hiện có để soạn báo cáo giám định.', source: 'EVIDENCE', reason: 'KQTN đã có nhưng chưa có báo cáo hoặc chứng thư.', target: 'REPORT', blockerIds: blockers.map((item) => item.id) };

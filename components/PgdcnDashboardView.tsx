@@ -9,7 +9,7 @@ import type { AppNotification, CertificationDossier, CertificationProposal, Depa
 import type { PgdInspectionRequest } from '../utils/pgdDomain';
 import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
 import type { PgdcnRecentRecord } from '../utils/pgdcnRecent';
-import { getPgdcnDashboardProjection, getPgdcnMyWorkProjection, type DashboardPipelineTone, type PgdcnDashboardDomainSummary, type PgdcnDashboardUpcomingItem, type PgdcnMyWorkItem, type PgdcnMyWorkProjection } from '../utils/pgdcnDashboard';
+import { getPgdcnDashboardProjection, getPgdcnMyWorkProjection, type DashboardPipelineTone, type PgdcnDashboardDomainSummary, type PgdcnDashboardUpcomingItem, type PgdcnMyWorkItem, type PgdcnMyWorkProjection, type PgdcnNextAction } from '../utils/pgdcnDashboard';
 
 type PgdcnDashboardViewProps = {
   scopes: readonly DepartmentScope[];
@@ -18,6 +18,7 @@ type PgdcnDashboardViewProps = {
   currentUser?: UserAccount;
   pcnProposals?: readonly CertificationProposal[];
   pcnWorkflowTasks?: readonly PcnDossierWorkflowTask[];
+  pcnEvidenceActions?: Readonly<Record<string, PgdcnNextAction>>;
   pgdAssignments?: readonly { requestId: string; leadInspectorUsername?: string; inspectorUsernames?: readonly string[]; technicalReviewerUsername?: string }[];
   notifications: readonly AppNotification[];
   onOpenPcn: (dossierId: string) => void;
@@ -253,8 +254,9 @@ function SharedNotifications({ notifications, onOpenNotifications, onSelectNotif
   );
 }
 
-export default function PgdcnDashboardView({ scopes, pcnDossiers, pgdRequests, notifications, onOpenPcn, onOpenPgd, onOpenPcnWorkspace, onOpenPgdWorkspace, onOpenNotifications, onSelectNotification, recentRecords = [] }: PgdcnDashboardViewProps) {
+export default function PgdcnDashboardView({ scopes, pcnDossiers, pcnEvidenceActions, pgdRequests, currentUser, pcnProposals, pcnWorkflowTasks, pgdAssignments, notifications, onOpenPcn, onOpenPgd, onOpenPcnWorkspace, onOpenPgdWorkspace, onOpenNotifications, onSelectNotification, recentRecords = [] }: PgdcnDashboardViewProps) {
   const projection = getPgdcnDashboardProjection({ scopes, pcnDossiers, pgdRequests });
+  const myWork = currentUser ? getPgdcnMyWorkProjection({ scopes, currentUser, pcnDossiers, pcnProposals, pcnWorkflowTasks, pcnEvidenceActions, pgdRequests, pgdAssignments }) : undefined;
   return (
     <section className="pcn-page-surface app-compact min-w-0 space-y-4 bg-slate-50 p-3 pb-5 md:p-4 mobile-safe-bottom" aria-label="Điều hành phòng PGDCN">
       <CommandHeader scopes={scopes} onOpenPcnWorkspace={onOpenPcnWorkspace} onOpenPgdWorkspace={onOpenPgdWorkspace} />
@@ -262,6 +264,7 @@ export default function PgdcnDashboardView({ scopes, pcnDossiers, pgdRequests, n
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(21rem,0.85fr)]"><AttentionQueue items={projection.attention} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} /><DomainPipeline summaries={projection.domainSummaries} onOpenPcnWorkspace={onOpenPcnWorkspace} onOpenPgdWorkspace={onOpenPgdWorkspace} /></div>
       <RecentItemsSection recentRecords={recentRecords} pcnDossiers={pcnDossiers} pgdRequests={pgdRequests} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} />
       <div className="grid min-w-0 gap-4 lg:grid-cols-2"><UpcomingMilestones items={projection.upcoming} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} /><SharedNotifications notifications={notifications} onOpenNotifications={onOpenNotifications} onSelectNotification={onSelectNotification} /></div>
+      {myWork ? <MyWorkSection projection={myWork} currentUser={currentUser} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} /> : null}
     </section>
   );
 }

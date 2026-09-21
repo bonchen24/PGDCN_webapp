@@ -105,7 +105,7 @@ interface PgdStoreState {
   saveDossierDocument: (requestId: string, input: Parameters<typeof savePgdDossierDocumentApi>[1]) => Promise<PgdDossierDocument>;
   assignOwner: (requestId: string, ownerUsername: string) => Promise<PgdInspectionRequest>;
   attachGeneratedDocument: (requestId: string, input: { documentId: string; requirementCode: string; title?: string }) => Promise<PgdDossierDocument>;
-  splitSample: (input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string }) => Promise<PgdSample[]>;
+  splitSample: (input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string; sampledAt?: string; samplingLocation?: string; sampledByUsername?: string; sampleSize?: string; lotQuantity?: number; lotUnit?: string }) => Promise<PgdSample[]>;
   destroySample: (sampleId: string, note: string) => Promise<PgdSample>;
   saveLabRequest: (labRequest: PgdLabRequest) => Promise<PgdLabRequest>;
   saveLabResult: (result: PgdLabResult) => Promise<PgdLabResult>;

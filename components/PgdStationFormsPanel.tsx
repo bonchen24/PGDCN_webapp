@@ -12,11 +12,14 @@ import {
   buildPgdLabResult,
   snapshotPgdResultTemplate,
   type PgdInspectionRequest,
+  type PgdSample,
 } from '../utils/pgdDomain';
 import type { PgdCellTableRow, PgdTemplateCell } from '../utils/pgdDocumentTemplates';
 import {
   buildPgdFieldInspection,
+  combinePgdLocalDateTime,
   getPgdOperationalStepAccess,
+  toPgdLocalDateTimeFields,
   type PgdOperationalStationKey,
 } from '../utils/pgdWorkflow';
 import { isOrganizationLeader, isPcnSystemManager } from '../utils/pcnRbac';
@@ -172,46 +175,227 @@ function PgdFieldInspectionForm({ request, currentUser, editable }: PgdStationPa
   const inspections = pgd.fieldInspections.filter((item) => item.requestId === request.id).sort((left, right) => String(right.startedAt || right.performedAt || '').localeCompare(String(left.startedAt || left.performedAt || '')));
   const samples = pgd.samples.filter((item) => item.requestId === request.id);
   const access = getPgdOperationalStepAccess({ status: request.status, targetStationKey: 'FIELD_SAMPLING' });
-  const defaultForm = { sessionCode: '', activityType: 'Kiểm tra hiện trường', objectDescription: request.productName, inspectedQuantity: String(request.quantity || ''), inspectedUnit: request.unit || '', lotObservation: 'Đã kiểm tra nhận dạng theo PYC.', packaging: 'Đã ghi nhận tại hiện trường.', labeling: request.lotCode ? `Số lô: ${request.lotCode}` : '', nonconformities: 'Không có', inspectionResult: 'Kết quả phù hợp với phạm vi giám định đã thống nhất.', customerRepresentative: '', note: 'Biên bản hiện trường được ghi nhận trên hồ sơ PGD.' };
+  const defaultForm = {
+    sessionCode: '',
+    activityType: 'Kiểm tra hiện trường',
+    date: '',
+    startedTime: '',
+    endedTime: '',
+    location: request.inspectionLocation || '',
+    objectDescription: request.productName,
+    inspectedQuantity: String(request.quantity || ''),
+    inspectedUnit: request.unit || '',
+    lotObservation: 'Đã kiểm tra nhận dạng theo PYC.',
+    packaging: 'Đã ghi nhận tại hiện trường.',
+    labeling: request.lotCode ? 'Số lô: ' + request.lotCode : '',
+    nonconformities: 'Không có',
+    inspectionResult: 'Kết quả phù hợp với phạm vi giám định đã thống nhất.',
+    customerRepresentative: '',
+    note: 'Biên bản hiện trường được ghi nhận trên hồ sơ PGD.',
+  };
   const [selectedInspectionId, setSelectedInspectionId] = useState('');
   const [newSession, setNewSession] = useState(inspections.length === 0);
   const [copying, setCopying] = useState(false);
   const activeInspection = newSession ? undefined : inspections.find((item) => item.id === selectedInspectionId) || inspections[0];
   const [form, setForm] = useState(defaultForm);
-  const [completed, setCompleted] = useState(true);
+  const [completed, setCompleted] = useState(false);
   const [measurementRows, setMeasurementRows] = useState<PgdCellTableRow[]>([]);
   const [sampleRows, setSampleRows] = useState<PgdCellTableRow[]>([{ description: request.productName, lotQuantity: request.quantity, quantity: 2, sampleSize: '', sampleCode: '', destination: 'LAB + Mẫu lưu', sealNumber: '', note: '' }]);
   const [busy, setBusy] = useState(false);
+  const sessionSampleIds = activeInspection?.sampleIds || [];
+  const sessionSamples = samples.filter((sample) => sessionSampleIds.includes(sample.id));
+
   useEffect(() => {
     if (!activeInspection) return;
-    setForm({ ...defaultForm, sessionCode: activeInspection.sessionCode || '', activityType: activeInspection.activityType || defaultForm.activityType, objectDescription: activeInspection.objectDescription || defaultForm.objectDescription, inspectedQuantity: activeInspection.inspectedQuantity === undefined ? defaultForm.inspectedQuantity : String(activeInspection.inspectedQuantity), inspectedUnit: activeInspection.inspectedUnit || defaultForm.inspectedUnit, lotObservation: activeInspection.lotObservation || '', packaging: activeInspection.packaging || '', labeling: activeInspection.labeling || '', nonconformities: (activeInspection.nonconformities || []).join('\n'), inspectionResult: activeInspection.inspectionResult || '', customerRepresentative: activeInspection.customerRepresentative || '', note: activeInspection.note || '' });
+    const started = toPgdLocalDateTimeFields(activeInspection.startedAt || activeInspection.performedAt);
+    const ended = toPgdLocalDateTimeFields(activeInspection.endedAt);
+    setForm({
+      ...defaultForm,
+      sessionCode: activeInspection.sessionCode || '',
+      activityType: activeInspection.activityType || defaultForm.activityType,
+      date: started.date,
+      startedTime: started.time,
+      endedTime: ended.time,
+      location: activeInspection.location || defaultForm.location,
+      objectDescription: activeInspection.objectDescription || defaultForm.objectDescription,
+      inspectedQuantity: activeInspection.inspectedQuantity === undefined ? defaultForm.inspectedQuantity : String(activeInspection.inspectedQuantity),
+      inspectedUnit: activeInspection.inspectedUnit || defaultForm.inspectedUnit,
+      lotObservation: activeInspection.lotObservation || '',
+      packaging: activeInspection.packaging || '',
+      labeling: activeInspection.labeling || '',
+      nonconformities: (activeInspection.nonconformities || []).join('\\n'),
+      inspectionResult: activeInspection.inspectionResult || '',
+      customerRepresentative: activeInspection.customerRepresentative || '',
+      note: activeInspection.note || '',
+    });
     setCompleted(activeInspection.completed !== false && activeInspection.status !== 'DRAFT');
     setMeasurementRows(Object.entries(activeInspection.measurements || {}).map(([item, value]) => ({ item, value: String(value), unit: '' })));
+    setSampleRows([]);
   }, [activeInspection?.id, request.id]);
+
   const update = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
-  const selectInspection = (value: string) => { if (value === '__new__') { setNewSession(true); setCopying(false); setForm(defaultForm); setMeasurementRows([]); setCompleted(true); return; } setNewSession(false); setCopying(false); setSelectedInspectionId(value); };
-  const copyInspection = () => { if (!activeInspection) return; setNewSession(true); setCopying(true); setCompleted(activeInspection.completed !== false); };
+
+  const selectInspection = (value: string) => {
+    if (value === '__new__') {
+      setSelectedInspectionId('');
+      setNewSession(true);
+      setCopying(false);
+      setForm(defaultForm);
+      setMeasurementRows([]);
+      setSampleRows([{ description: request.productName, lotQuantity: request.quantity, quantity: 2, sampleSize: '', sampleCode: '', destination: 'LAB + Mẫu lưu', sealNumber: '', note: '' }]);
+      setCompleted(false);
+      return;
+    }
+    setNewSession(false);
+    setCopying(false);
+    setSelectedInspectionId(value);
+  };
+
+  const copyInspection = () => {
+    if (!activeInspection) return;
+    setNewSession(true);
+    setCopying(true);
+    setForm((current) => ({
+      ...current,
+      sessionCode: '',
+      date: '',
+      startedTime: '',
+      endedTime: '',
+      location: activeInspection.location || current.location,
+      activityType: activeInspection.activityType || current.activityType,
+    }));
+    setMeasurementRows(Object.entries(activeInspection.measurements || {}).map(([item, value]) => ({ item, value: String(value), unit: '' })));
+    setSampleRows([]);
+    setCompleted(false);
+  };
+
   const saveInspection = async () => {
+    const startedAt = combinePgdLocalDateTime(form.date, form.startedTime);
+    const endedAt = completed ? combinePgdLocalDateTime(form.date, form.endedTime) : undefined;
+    if (!startedAt) { toast.error('Cần chọn ngày và giờ bắt đầu thực tế của phiên.'); return; }
+    if (completed && !endedAt) { toast.error('Phiên đã hoàn tất cần có giờ kết thúc thực tế.'); return; }
+    if (completed && endedAt && new Date(endedAt).getTime() < new Date(startedAt).getTime()) { toast.error('Giờ kết thúc không được trước giờ bắt đầu.'); return; }
+    if (!form.location.trim()) { toast.error('Cần nhập địa điểm thực tế của phiên.'); return; }
     setBusy(true);
     try {
-      const measurements = Object.fromEntries(measurementRows.map((row) => { const item = String(row.item || '').trim() || 'Ghi nhận'; const value = String(row.value || '').trim(); const unit = String(row.unit || '').trim(); return [item, unit && value ? `${value} ${unit}` : value]; }).filter(([, value]) => Boolean(String(value).trim())));
+      const measurements = Object.fromEntries(measurementRows.map((row) => {
+        const item = String(row.item || '').trim() || 'Ghi nhận';
+        const value = String(row.value || '').trim();
+        const unit = String(row.unit || '').trim();
+        return [item, unit && value ? value + ' ' + unit : value];
+      }).filter(([, value]) => Boolean(String(value).trim())));
       const id = !newSession && activeInspection ? activeInspection.id : newId('pgd-field');
-      const saved = buildPgdFieldInspection({ id, requestId: request.id, sessionCode: form.sessionCode || `PGD-${inspections.length + 1}`, activityType: form.activityType, performedAt: activeInspection?.performedAt || new Date().toISOString(), startedAt: activeInspection?.startedAt || new Date().toISOString(), endedAt: completed ? new Date().toISOString() : undefined, location: request.inspectionLocation, inspectorUsernames: pgd.assignments.find((item) => item.requestId === request.id)?.inspectorUsernames || [currentUser.username], objectDescription: form.objectDescription, inspectedQuantity: Number(form.inspectedQuantity) || undefined, inspectedUnit: form.inspectedUnit || undefined, lotObservation: form.lotObservation, packaging: form.packaging, labeling: form.labeling, measurements, nonconformities: form.nonconformities.split('\n'), inspectionResult: form.inspectionResult, customerRepresentative: form.customerRepresentative, sampleIds: samples.map((sample) => sample.id), status: completed ? 'COMPLETED' : 'DRAFT', completed, note: form.note });
+      const baseSampleIds = !newSession && activeInspection ? activeInspection.sampleIds || [] : [];
+      const assignment = pgd.assignments.find((item) => item.requestId === request.id);
+      const saved = buildPgdFieldInspection({
+        id,
+        requestId: request.id,
+        sessionCode: form.sessionCode || 'PGD-' + (inspections.length + 1),
+        activityType: form.activityType,
+        performedAt: startedAt,
+        startedAt,
+        endedAt,
+        location: form.location,
+        inspectorUsernames: assignment?.inspectorUsernames || [currentUser.username],
+        objectDescription: form.objectDescription,
+        inspectedQuantity: Number(form.inspectedQuantity) || undefined,
+        inspectedUnit: form.inspectedUnit || undefined,
+        lotObservation: form.lotObservation,
+        packaging: form.packaging,
+        labeling: form.labeling,
+        measurements,
+        nonconformities: form.nonconformities.split('\\n'),
+        inspectionResult: form.inspectionResult,
+        customerRepresentative: form.customerRepresentative,
+        sampleIds: baseSampleIds,
+        status: completed ? 'COMPLETED' : 'DRAFT',
+        completed,
+        note: form.note,
+      });
       await pgd.saveFieldInspection(saved);
-      setSelectedInspectionId(id); setNewSession(false); setCopying(false);
-      toast.success(copying ? 'Đã sao chép thành phiên hiện trường mới.' : 'Đã lưu biên bản kiểm tra tại hiện trường.');
-    } catch (error: any) { toast.error(error?.message || 'Không thể lưu biên bản hiện trường.'); } finally { setBusy(false); }
+
+      const createdSamples: PgdSample[] = [];
+      for (const row of sampleRows.filter((candidate) => String(candidate.description || '').trim() || String(candidate.quantity || '').trim())) {
+        const quantity = Number(row.quantity);
+        if (!Number.isFinite(quantity) || quantity < 2) throw new Error('Số lượng mỗi dòng mẫu phải từ 2 để tách PTN và mẫu lưu.');
+        const created = await pgd.splitSample({
+          requestId: request.id,
+          sampleCodePrefix: String(row.sampleCode || '').trim() || request.requestCode,
+          description: String(row.description || '').trim() || request.productName,
+          quantity,
+          unit: request.unit,
+          sampledAt: startedAt,
+          samplingLocation: form.location,
+          sampledByUsername: assignment?.leadInspectorUsername || currentUser.username,
+          sampleSize: String(row.sampleSize || '').trim() || undefined,
+          lotQuantity: Number(row.lotQuantity) || quantity,
+          lotUnit: request.unit,
+        });
+        createdSamples.push(...created);
+      }
+
+      const linkedSampleIds = Array.from(new Set([...baseSampleIds, ...createdSamples.map((sample) => sample.id)]));
+      if (linkedSampleIds.length !== baseSampleIds.length) {
+        await pgd.saveFieldInspection({ ...saved, sampleIds: linkedSampleIds });
+      }
+      setSelectedInspectionId(id);
+      setNewSession(false);
+      setCopying(false);
+      setSampleRows([]);
+      toast.success(copying ? 'Đã sao chép thành phiên hiện trường mới.' : createdSamples.length > 0 ? 'Đã lưu phiên và gắn ' + createdSamples.length + ' mẫu vào phiên.' : 'Đã lưu biên bản kiểm tra tại hiện trường.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể lưu biên bản hiện trường.');
+    } finally {
+      setBusy(false);
+    }
   };
-  const splitSample = async () => {
-    const rows = sampleRows.filter((row) => String(row.description || '').trim() || String(row.quantity || '').trim());
-    if (rows.length === 0) { toast.error('Cần nhập ít nhất một dòng lấy mẫu.'); return; }
-    setBusy(true);
-    try { for (const row of rows) { const quantity = Number(row.quantity); if (!Number.isFinite(quantity) || quantity < 2) throw new Error('Số lượng mỗi dòng mẫu phải từ 2 để tách PTN và mẫu lưu.'); await pgd.splitSample({ requestId: request.id, sampleCodePrefix: String(row.sampleCode || '').trim() || request.requestCode, description: String(row.description || '').trim() || request.productName, quantity, unit: request.unit }); } toast.success(`Đã tách ${rows.length} dòng mẫu gửi PTN và mẫu lưu.`); } catch (error: any) { toast.error(error?.message || 'Không thể tách mẫu.'); } finally { setBusy(false); }
-  };
+
   const canEdit = editable && access.editable;
-  return <div className="space-y-3"><div className="flex flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-blue-200 bg-blue-50/60 p-2" data-testid="pgd-field-session-toolbar"><label className="shrink-0 text-[10px] font-black text-blue-900" htmlFor="pgd-field-session-select">Phiên hiện trường</label><select id="pgd-field-session-select" value={newSession ? '__new__' : activeInspection?.id || ''} onChange={(event) => selectInspection(event.target.value)} disabled={!canEdit || busy} className="min-w-48 rounded-lg border border-blue-200 bg-white px-2 py-2 text-[10px] font-bold text-slate-700"><option value="__new__">+ Phiên mới</option>{inspections.map((item, index) => <option key={item.id} value={item.id}>{item.sessionCode || `Phiên ${inspections.length - index}`} · {item.location}</option>)}</select><button type="button" disabled={!canEdit || busy} onClick={() => selectInspection('__new__')} className="mobile-touch-target shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-black text-white">Thêm phiên</button><button type="button" disabled={!canEdit || busy || !activeInspection} onClick={copyInspection} className="mobile-touch-target shrink-0 rounded-lg border border-blue-300 bg-white px-3 py-2 text-[10px] font-black text-blue-700">Sao chép phiên</button>{copying ? <span className="shrink-0 text-[9px] font-bold text-blue-700">Đang tạo bản sao chưa lưu</span> : null}</div><StationSection title="Biên bản kiểm tra tại hiện trường" icon={<ClipboardCheck size={15} className="text-blue-600" />}><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Field label="Mã phiên"><input className={inputClass} disabled={!canEdit || busy} value={form.sessionCode} onChange={(event) => update('sessionCode', event.target.value)} /></Field><Field label="Loại hoạt động"><input className={inputClass} disabled={!canEdit || busy} value={form.activityType} onChange={(event) => update('activityType', event.target.value)} /></Field><Field label="Đối tượng kiểm tra" wide><input className={inputClass} disabled={!canEdit || busy} value={form.objectDescription} onChange={(event) => update('objectDescription', event.target.value)} /></Field><Field label="Số lượng kiểm tra"><input type="number" min="0" className={inputClass} disabled={!canEdit || busy} value={form.inspectedQuantity} onChange={(event) => update('inspectedQuantity', event.target.value)} /></Field><Field label="Đơn vị"><input className={inputClass} disabled={!canEdit || busy} value={form.inspectedUnit} onChange={(event) => update('inspectedUnit', event.target.value)} /></Field><Field label="Quan sát lô hàng"><textarea rows={2} className={inputClass} disabled={!canEdit || busy} value={form.lotObservation} onChange={(event) => update('lotObservation', event.target.value)} /></Field><Field label="Bao gói / bảo quản"><textarea rows={2} className={inputClass} disabled={!canEdit || busy} value={form.packaging} onChange={(event) => update('packaging', event.target.value)} /></Field><Field label="Nhãn / nhận dạng"><textarea rows={2} className={inputClass} disabled={!canEdit || busy} value={form.labeling} onChange={(event) => update('labeling', event.target.value)} /></Field><Field label="Đại diện khách hàng"><input className={inputClass} disabled={!canEdit || busy} value={form.customerRepresentative} onChange={(event) => update('customerRepresentative', event.target.value)} /></Field><Field label="Đo kiểm / kích thước" wide><PgdTableFieldEditor cell={PGD_MEASUREMENT_CELL} value={measurementRows} readOnly={!canEdit || busy} onChange={setMeasurementRows} /></Field><Field label="Điểm không phù hợp" wide><textarea rows={2} className={inputClass} disabled={!canEdit || busy} value={form.nonconformities} onChange={(event) => update('nonconformities', event.target.value)} /></Field><Field label="Kết quả hiện trường" wide><textarea rows={2} className={inputClass} disabled={!canEdit || busy} value={form.inspectionResult} onChange={(event) => update('inspectionResult', event.target.value)} /></Field></div><label className="mt-2 inline-flex min-h-10 items-center gap-2 text-[10px] font-bold text-slate-700"><input type="checkbox" checked={completed} onChange={(event) => setCompleted(event.target.checked)} disabled={!canEdit || busy} className="h-4 w-4 accent-blue-600" /> Đánh dấu phiên đã hoàn tất</label><div className="mt-2 flex justify-end"><button type="button" disabled={!canEdit || busy} onClick={() => void saveInspection()} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white disabled:opacity-50"><Save size={13} /> {copying ? 'Lưu phiên sao chép' : 'Lưu phiên hiện trường'}</button></div></StationSection><StationSection title="Tách LAB / Mẫu lưu" icon={<FlaskConical size={15} className="text-emerald-600" />}><p className="mt-1 text-[10px] text-slate-500">Mỗi PYC theo dõi riêng mẫu gửi LAB và mẫu lưu; thông tin niêm phong/bàn giao nằm trong sổ mẫu.</p><Field label="Bảng dòng lấy mẫu" wide><PgdTableFieldEditor cell={PGD_SAMPLE_LINE_CELL} value={sampleRows} readOnly={!canEdit || busy} onChange={setSampleRows} /></Field><div className="mt-2 flex justify-end"><button type="button" disabled={!canEdit || busy} onClick={() => void splitSample()} className="mobile-touch-target inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-[10px] font-black text-emerald-700 disabled:opacity-50"><Save size={13} /> Tách mẫu theo các dòng</button></div><div className="mt-2 flex flex-wrap gap-1.5">{samples.map((sample) => <span key={sample.id} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-bold text-slate-600">{sample.sampleCode} · {sample.disposition === 'LAB' ? 'LAB' : 'Mẫu lưu'} · {sample.quantity} {sample.unit || ''}</span>)}{samples.length === 0 && <span className="text-[9px] text-slate-400">Chưa có mẫu được tách.</span>}</div></StationSection></div>;
-}
-export function PgdFieldSamplingPanel(props: PgdStationPanelProps) {
+  const statusLabel = completed ? 'Đã hoàn tất' : form.date && form.startedTime ? 'Đang thực hiện' : 'Bản nháp';
+  return <div className="space-y-3">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/60 p-2" data-testid="pgd-field-session-toolbar">
+      <label className="shrink-0 text-[10px] font-black text-blue-900" htmlFor="pgd-field-session-select">Phiên hiện trường</label>
+      <select id="pgd-field-session-select" value={newSession ? '__new__' : activeInspection?.id || ''} onChange={(event) => selectInspection(event.target.value)} disabled={!canEdit || busy} className="min-w-48 max-w-full rounded-lg border border-blue-200 bg-white px-2 py-2 text-[10px] font-bold text-slate-700">
+        <option value="__new__">+ Phiên mới</option>
+        {inspections.map((item, index) => <option key={item.id} value={item.id}>{item.sessionCode || 'Phiên ' + (inspections.length - index)} · {item.location}</option>)}
+      </select>
+      <button type="button" disabled={!canEdit || busy} onClick={() => selectInspection('__new__')} className="mobile-touch-target shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-black text-white">THÊM PHIÊN HIỆN TRƯỜNG</button>
+      <button type="button" disabled={!canEdit || busy || !activeInspection} onClick={copyInspection} className="mobile-touch-target shrink-0 rounded-lg border border-blue-300 bg-white px-3 py-2 text-[10px] font-black text-blue-700">Sao chép phiên</button>
+      {copying ? <span className="shrink-0 text-[9px] font-bold text-blue-700">Đang tạo bản sao chưa lưu</span> : null}
+    </div>
+    <StationSection title="Biên bản kiểm tra tại hiện trường" icon={<ClipboardCheck size={15} className="text-blue-600" />}>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <Field label="Mã phiên"><input className={inputClass} disabled={!canEdit || busy} value={form.sessionCode} onChange={(event) => update('sessionCode', event.target.value)} /></Field>
+        <Field label="Loại hoạt động"><input className={inputClass} disabled={!canEdit || busy} value={form.activityType} onChange={(event) => update('activityType', event.target.value)} /></Field>
+        <Field label="Ngày thực tế" required><PgdcnDateInput className={inputClass} required disabled={!canEdit || busy} value={form.date} onChange={(value) => update('date', value)} /></Field>
+        <Field label="Giờ bắt đầu thực tế" required><input type="time" className={inputClass} required disabled={!canEdit || busy} value={form.startedTime} onChange={(event) => update('startedTime', event.target.value)} /></Field>
+        <Field label="Giờ kết thúc"><input type="time" className={inputClass} disabled={!canEdit || busy} value={form.endedTime} onChange={(event) => update('endedTime', event.target.value)} /></Field>
+        <Field label="Địa điểm thực tế" wide required><input className={inputClass} required disabled={!canEdit || busy} value={form.location} onChange={(event) => update('location', event.target.value)} /></Field>
+        <Field label="Đối tượng kiểm tra" wide><input className={inputClass} disabled={!canEdit || busy} value={form.objectDescription} onChange={(event) => update('objectDescription', event.target.value)} /></Field>
+        <Field label="Số lượng kiểm tra"><input type="number" min="0" className={inputClass} disabled={!canEdit || busy} value={form.inspectedQuantity} onChange={(event) => update('inspectedQuantity', event.target.value)} /></Field>
+        <Field label="Đơn vị"><input className={inputClass} disabled={!canEdit || busy} value={form.inspectedUnit} onChange={(event) => update('inspectedUnit', event.target.value)} /></Field>
+        <Field label="Quan sát lô hàng"><textarea rows={2} className={inputClass} disabled={!canEdit || busy} value={form.lotObservation} onChange={(event) => update('lotObservation', event.target.value)} /></Field>
+        <Field label="Bao gói / bảo quản"><textarea rows={2} className={inputClass} disabled={!canEdit || busy} value={form.packaging} onChange={(event) => update('packaging', event.target.value)} /></Field>
+        <Field label="Nhãn / nhận dạng"><textarea rows={2} className={inputClass} disabled={!canEdit || busy} value={form.labeling} onChange={(event) => update('labeling', event.target.value)} /></Field>
+        <Field label="Đại diện khách hàng"><input className={inputClass} disabled={!canEdit || busy} value={form.customerRepresentative} onChange={(event) => update('customerRepresentative', event.target.value)} /></Field>
+        <Field label="Đo kiểm / kích thước" wide><PgdTableFieldEditor cell={PGD_MEASUREMENT_CELL} value={measurementRows} readOnly={!canEdit || busy} onChange={setMeasurementRows} /></Field>
+        <Field label="Điểm không phù hợp" wide><textarea rows={2} className={inputClass} disabled={!canEdit || busy} value={form.nonconformities} onChange={(event) => update('nonconformities', event.target.value)} /></Field>
+        <Field label="Kết quả hiện trường" wide><textarea rows={2} className={inputClass} disabled={!canEdit || busy} value={form.inspectionResult} onChange={(event) => update('inspectionResult', event.target.value)} /></Field>
+        <Field label="Ghi chú" wide><textarea rows={2} className={inputClass} disabled={!canEdit || busy} value={form.note} onChange={(event) => update('note', event.target.value)} /></Field>
+      </div>
+      <label className="mt-2 inline-flex min-h-10 items-center gap-2 text-[10px] font-bold text-slate-700"><input type="checkbox" checked={completed} onChange={(event) => setCompleted(event.target.checked)} disabled={!canEdit || busy} className="h-4 w-4 accent-blue-600" /> Đánh dấu phiên đã hoàn tất <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px]">{statusLabel}</span></label>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="text-[9px] text-slate-500">{sessionSamples.length} mẫu đã gắn với phiên này · khi lưu sẽ tạo và liên kết các dòng mẫu mới.</span><button type="button" disabled={!canEdit || busy} onClick={() => void saveInspection()} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white disabled:opacity-50"><Save size={13} /> {copying ? 'Lưu phiên sao chép' : 'Lưu phiên & mẫu'}</button></div>
+    </StationSection>
+    <StationSection title="Mẫu lấy trong phiên" icon={<FlaskConical size={15} className="text-emerald-600" />}>
+      <p className="mt-1 text-[10px] leading-4 text-slate-500">Các dòng dưới đây được tạo thành cặp LAB / mẫu lưu và liên kết vào phiên sau khi lưu. Không dùng toàn bộ mẫu của PYC làm mẫu của phiên.</p>
+      <Field label="Bảng dòng lấy mẫu" wide><PgdTableFieldEditor cell={PGD_SAMPLE_LINE_CELL} value={sampleRows} readOnly={!canEdit || busy} onChange={setSampleRows} /></Field>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {sessionSamples.map((sample) => <span key={sample.id} className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[9px] font-bold text-emerald-700">{sample.sampleCode} · {sample.disposition === 'LAB' ? 'LAB' : 'Mẫu lưu'} · {sample.quantity} {sample.unit || ''}</span>)}
+        {sessionSamples.length === 0 && <span className="text-[9px] text-slate-400">Chưa có mẫu gắn với phiên này.</span>}
+      </div>
+    </StationSection>
+  </div>;
+}export function PgdFieldSamplingPanel(props: PgdStationPanelProps) {
   const { request } = props;
   const evidence = useDossierEvidence(request);
   return <div className="space-y-3"><PgdFieldInspectionForm {...props} /><PgdLabRequestForm {...props} /><PgdCaseEvidencePanel request={request} requirements={evidence.requirements} dossierDocuments={evidence.documents} samples={evidence.pgd.samples.filter((item) => item.requestId === request.id)} canMutate={props.editable} editable={props.editable} /><PgdSourceFormsPanel request={request} currentUser={props.currentUser} editable={props.editable} /></div>;

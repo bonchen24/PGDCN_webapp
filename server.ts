@@ -5351,6 +5351,12 @@ async function startServer() {
         description: String(input.description || ''),
         quantity: Number(input.quantity),
         unit: input.unit ? String(input.unit) : undefined,
+        sampledAt: input.sampledAt ? String(input.sampledAt) : undefined,
+        samplingLocation: input.samplingLocation ? String(input.samplingLocation) : undefined,
+        sampledByUsername: input.sampledByUsername ? String(input.sampledByUsername) : undefined,
+        sampleSize: input.sampleSize ? String(input.sampleSize) : undefined,
+        lotQuantity: input.lotQuantity === undefined ? undefined : Number(input.lotQuantity),
+        lotUnit: input.lotUnit ? String(input.lotUnit) : undefined,
       });
       const samples = [base.lab, base.retained];
       await withPgTransaction(async (client) => {

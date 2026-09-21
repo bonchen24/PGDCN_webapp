@@ -67,7 +67,7 @@ export function PgdDossierBusinessWorkspace({ request, onOpenCurrentWork, onOpen
   const checklist = request.dossierChecklist || [];
   const presentRequirementCodes = new Set([...checklist.filter((item) => item.status === 'PRESENT' || item.status === 'WAIVED').map((item) => item.requirementCode), ...dossierDocuments.map((document) => document.requirementCode)]);
   const missingRequired = requirements.filter((requirement) => requirement.required && !presentRequirementCodes.has(requirement.code));
-  const sampleEvidence = buildPgdSampleEvidence({ request, inspectionPlans: pgd.inspectionPlans, samples, labRequests, labResults });
+  const sampleEvidence = buildPgdSampleEvidence({ request, inspectionPlans: pgd.inspectionPlans, fieldInspections, samples, labRequests, labResults });
   const businessFacts = { request, inspectionPlans: pgd.inspectionPlans, assignments: pgd.assignments, fieldInspections, caseEvents: pgd.caseEvents, fieldActivityLogs: pgd.fieldActivityLogs, samples, labRequests, labResults, labResultReview, report, certificate, approvals: pgd.approvals, missingRequiredCount: missingRequired.length };
   const evidenceBlockers = buildPgdBusinessBlockers(businessFacts);
   const evidenceNextAction = resolvePgdEvidenceNextAction(businessFacts);
@@ -138,11 +138,34 @@ export function PgdDossierBusinessWorkspace({ request, onOpenCurrentWork, onOpen
     ]}
     sampleSummary={sampleEvidence}
     testSummary={{ requestCount: labRequests.length, resultCount: labResults.length, pendingCount: sampleEvidence.pendingLabRequestCount }}
-    sampleTracker={{ title: 'Sample Tracker · mã mẫu và vị trí', rows: sampleEvidence.rows.map((row) => ({ id: row.id, code: row.sampleCode, title: row.title, state: row.state, stateTone: row.stateTone, meta: [row.quantity + ' ' + (row.unit || ''), row.location, row.laboratoryName].filter(Boolean).join(' · '), detail: [row.labRequestId ? 'PYC ' + row.labRequestId : '', row.resultReportNumber ? 'Phiếu ' + row.resultReportNumber : ''].filter(Boolean).join(' · ') || 'Chưa có liên kết KQTN.' })), emptyText: 'Chưa có mẫu entity trong hồ sơ PGD.' }}
+    sampleTracker={{ title: 'Sample Tracker · mã mẫu và vị trí', rows: sampleEvidence.rows.map((row) => ({ id: row.id, code: row.sampleCode, title: row.title, state: row.state, stateTone: row.stateTone, session: row.sessionCode || 'Chưa gắn phiên', date: row.sessionStartedAt ? row.sessionStartedAt.slice(0, 10) : 'Chưa có ngày', lot: row.lotSummary || 'Chưa có thông tin lô', meta: [row.quantity + ' ' + (row.unit || ''), row.lotSummary ? 'Lô ' + row.lotSummary : '', row.sessionCode ? 'Phiên ' + row.sessionCode : '', row.location, row.laboratoryName].filter(Boolean).join(' · '), detail: [row.sessionStartedAt ? 'Lấy lúc ' + row.sessionStartedAt : '', row.labRequestId ? 'PYC ' + row.labRequestId : '', row.resultReportNumber ? 'Phiếu ' + row.resultReportNumber : ''].filter(Boolean).join(' · ') || 'Chưa có liên kết KQTN.' })), emptyText: 'Chưa có mẫu entity trong hồ sơ PGD.' }}
     testTracker={{ title: 'Test Tracker · PYC và KQTN', rows: labRequests.map((labRequest) => { const result = labResults.find((item) => item.labRequestId === labRequest.id); return { id: labRequest.id, code: labRequest.id, title: labRequest.laboratoryName, state: result ? 'Đã nhận KQTN' : labRequest.status, stateTone: result ? 'success' : 'warning', meta: labRequest.testItems.join(', '), detail: result ? (result.reportNumber || 'Đã nhận phiếu không số') + ' · ' + result.values.length + ' chỉ tiêu' : 'Chưa có kết quả liên kết.' }; }), emptyText: 'Chưa có yêu cầu PTN trong hồ sơ PGD.' }}
     fieldSession={{ exists: false, status: 'Chưa có phiên', actionLabel: 'Mở work panel', onAction: onOpenCurrentWork }}
-    fieldSessions={fieldInspections.map((raw) => { const session = normalizePgdFieldSession(raw); return { id: session.id, exists: true, sessionCode: session.sessionCode, status: session.status === 'COMPLETED' ? 'Đã hoàn tất' : session.status === 'CANCELLED' ? 'Đã hủy' : 'Đang ghi nhận', statusTone: session.status === 'COMPLETED' ? 'success' : session.status === 'CANCELLED' ? 'danger' : 'warning', occurredAt: session.startedAt || session.performedAt, location: session.location, inspectors: session.inspectorUsernames.join(', '), objectLabel: session.objectDescription || request.productName, quantity: session.inspectedQuantity ? session.inspectedQuantity + ' ' + (session.inspectedUnit || '') : request.quantity + ' ' + (request.unit || ''), observations: [session.lotObservation, session.packaging, session.labeling, session.inspectionResult].filter(Boolean).join(' · '), measurements: Object.entries(session.measurements || {}).map(([key, value]) => key + ': ' + value).join(' · '), sampleSummary: session.sampleIds.length + ' mẫu liên quan', evidenceSummary: (session.evidenceAssetIds?.length || 0) + ' bằng chứng' }; })}
-    timeline={{ title: 'Event Timeline / Work Log · toàn bộ hồ sơ', items: timelineItems, emptyText: 'Chưa có sự kiện nghiệp vụ nào được ghi nhận.' }}
+    fieldSessions={fieldInspections.map((raw) => {
+      const session = normalizePgdFieldSession(raw);
+      const sessionDate = session.startedAt ? session.startedAt.slice(0, 10) : undefined;
+      return {
+        id: session.id,
+        exists: true,
+        sessionCode: session.sessionCode,
+        activityType: session.activityType,
+        status: session.status === 'COMPLETED' ? 'Đã hoàn tất' : session.status === 'CANCELLED' ? 'Đã hủy' : 'Đang ghi nhận',
+        statusTone: session.status === 'COMPLETED' ? 'success' : session.status === 'CANCELLED' ? 'danger' : 'warning',
+        occurredAt: session.startedAt || session.performedAt,
+        endedAt: session.endedAt,
+        location: session.location,
+        inspectors: session.inspectorUsernames.join(', '),
+        objectLabel: session.objectDescription || request.productName,
+        quantity: session.inspectedQuantity ? session.inspectedQuantity + ' ' + (session.inspectedUnit || '') : request.quantity + ' ' + (request.unit || ''),
+        observations: [session.lotObservation, session.packaging, session.labeling, session.inspectionResult].filter(Boolean).join(' · '),
+        measurements: Object.entries(session.measurements || {}).map(([key, value]) => key + ': ' + value).join(' · '),
+        sampleSummary: session.sampleIds.length + ' mẫu liên quan',
+        sampleCount: session.sampleIds.length,
+        evidenceSummary: (session.evidenceAssetIds?.length || 0) + ' bằng chứng',
+        onView: onOpenCurrentWork,
+        onEdit: onOpenCurrentWork,
+      };
+    })}    timeline={{ title: 'Event Timeline / Work Log · toàn bộ hồ sơ', items: timelineItems, emptyText: 'Chưa có sự kiện nghiệp vụ nào được ghi nhận.' }}
   />;
 }
 export default PgdDossierBusinessWorkspace;
