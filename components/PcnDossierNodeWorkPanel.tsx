@@ -280,7 +280,7 @@ export function PcnDossierNodeWorkPanel({
       <section data-testid="pcn-dossier-review-summary" className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-slate-200 bg-emerald-50/50 px-4 py-3 text-xs" aria-label="Soát xét hồ sơ PCN">
         <div><span className="mr-2 text-[9px] font-semibold uppercase tracking-wide text-emerald-800">Soát xét</span><strong className="text-slate-800">{projection.unresolvedRequiredCount ? `Còn ${projection.unresolvedRequiredCount} mục bắt buộc` : 'Không thiếu mục bắt buộc'}</strong></div>
         <div><span className="mr-2 text-[9px] font-semibold uppercase tracking-wide text-emerald-800">Bước kế tiếp</span><strong className="text-slate-800">Người soát xét / Quản lý PCN</strong></div>
-        <details className="text-slate-500"><summary className="cursor-pointer list-none font-semibold">Vai trò hiện tại</summary><span className="ml-1">{currentRole} · {currentUser?.username || 'Phiên hồ sơ'}</span></details>
+        <details className="text-slate-500" data-testid="pcn-node-role-details" data-disclosure="advanced"><summary className="cursor-pointer list-none font-semibold">Vai trò hiện tại</summary><span className="ml-1">{currentRole} · {currentUser?.username || 'Phiên hồ sơ'}</span></details>
       </section>
 
       <div className="min-h-0 space-y-4 p-4">

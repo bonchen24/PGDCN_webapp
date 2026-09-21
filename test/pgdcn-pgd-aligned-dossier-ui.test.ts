@@ -43,4 +43,26 @@ test('PCN dossier detail follows the PGD focus surface and work-panel rhythm', (
   assert.match(workPanel, /min-h-0 space-y-4 p-4/);
 });
 
+test('workflow map stays secondary to current work on PCN and PGD dossier surfaces', () => {
+  const pcnWorkflow = read('../components/PcnDossierWorkflowPanel.tsx');
+  const pgdWorkspace = read('../components/PgdWorkspace.tsx');
+  assert.match(pcnWorkflow, /Việc cần làm:/);
+  assert.match(pcnWorkflow, /data-testid="pcn-workflow-map-disclosure"/);
+  assert.ok(pcnWorkflow.indexOf('<PcnDossierNodeWorkPanel') < pcnWorkflow.indexOf('data-testid="pcn-workflow-map-disclosure"'));
+  assert.match(pgdWorkspace, /data-testid="pgd-dossier-workflow-disclosure"/);
+  assert.ok(pgdWorkspace.indexOf('<PgdDossierStepWorkPanel request=') < pgdWorkspace.indexOf('data-testid="pgd-dossier-workflow-disclosure"'));
+});
+test('contextual assistant opens with the current dossier in both domains', () => {
+  const appShell = read('../components/PgdcnAppShell.tsx');
+  const pcnWorkflow = read('../components/PcnDossierDetailView.tsx');
+  const pgdWorkPanel = read('../components/PgdWorkspace.tsx');
+  const assistantShell = read('../components/PgdcnAssistantView.tsx');
+  const pcnAssistant = read('../components/PcnAssistantView.tsx');
+  assert.match(pcnWorkflow, /Trợ lý hồ sơ/);
+  assert.match(pgdWorkPanel, /Trợ lý hồ sơ/);
+  assert.ok(appShell.includes('initialDomain={assistantContext?.domain}'));
+  assert.match(assistantShell, /initialDossierId={props.initialPcnDossierId}/);
+  assert.match(assistantShell, /props.initialPgdRequestId/);
+  assert.ok(pcnAssistant.includes('initialDossierId?: string'));
+});
 // --- End of pgdcn-pgd-aligned-dossier-ui.test.ts ---

@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  AlertTriangle,
+  CheckCircle2,
   ArrowRight,
   ClipboardList,
   FileWarning,
@@ -16,14 +18,18 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
+
 export interface PgdDossierQueueRow {
   requestId: string;
   requestCode: string;
   customerName: string;
   productName: string;
+  status: string;
   statusLabel: string;
   currentStepNumber: number;
   currentStepLabel: string;
+  nextActionLabel?: string;
   requiredDocumentPresent: number;
   requiredDocumentTotal: number;
   missingRequiredCount: number;
@@ -154,9 +160,7 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
                         <Layers size={11} className="text-blue-400" />
                         {row.requestCode}
                       </button>
-                      <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] font-black text-slate-700">
-                        {row.statusLabel}
-                      </span>
+                      <PgdcnStatusBadge domain="PGD" status={row.status} label={row.statusLabel} />
                     </div>
 
                     {/* Customer and Product */}
@@ -184,7 +188,7 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
                         <span className="font-black text-blue-900">
                           Bước {row.currentStepNumber} · {row.currentStepLabel}
                         </span>
-                        <span className="text-[10px] font-semibold text-blue-700">Mở hồ sơ để tiếp tục</span>
+                        <span className="text-[10px] font-semibold text-blue-700">{row.nextActionLabel || 'Tiếp tục hồ sơ'}</span>
                       </div>
                     </div>
 
@@ -210,11 +214,11 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
                       </div>
                       {row.missingRequiredCount > 0 ? (
                         <p className="text-[10px] font-semibold text-amber-800">
-                          ⚠ Thiếu {row.missingRequiredCount} mục tài liệu bắt buộc
+                          <><AlertTriangle size={13} aria-hidden="true" /> Thiếu {row.missingRequiredCount} mục tài liệu bắt buộc</>
                         </p>
                       ) : (
                         <p className="text-[10px] font-semibold text-emerald-700">
-                          ✓ Đầy đủ tài liệu theo quy trình
+                          <><CheckCircle2 size={13} aria-hidden="true" /> Đầy đủ tài liệu theo quy trình</>
                         </p>
                       )}
                     </div>
@@ -263,14 +267,14 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
                       <div className="min-w-[150px]">
                         <button type="button" onClick={() => onOpenDossier(row.requestId)} className="mobile-touch-target min-h-11 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1">
                           <p className="font-mono text-xs font-bold text-blue-700">{row.requestCode}</p>
-                          <span className="mt-1 inline-flex rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">{row.statusLabel}</span>
+                          <PgdcnStatusBadge compact domain="PGD" status={row.status} label={row.statusLabel} />
                         </button>
                       </div>
                     </th>
                     <td className="max-w-[190px] px-3 py-3 align-top text-sm font-medium text-slate-900"><span className="line-clamp-2">{row.customerName || 'Chưa có khách hàng'}</span></td>
                     <td className="max-w-[190px] px-3 py-3 align-top text-sm text-slate-700"><span className="line-clamp-2">{row.productName || 'Chưa có đối tượng'}</span><span className="mt-1 block text-xs text-slate-500">{row.productGroup}</span></td>
                     <td className="max-w-[220px] px-3 py-3 align-top text-xs font-semibold text-slate-700"><span className="line-clamp-2">{row.catalogLabel}</span></td>
-                    <td className="px-3 py-3 align-top"><p className="font-semibold text-blue-900">Bước {row.currentStepNumber} · {row.currentStepLabel}</p><p className="mt-1 text-xs text-slate-500">Mở hồ sơ để tiếp tục</p></td>
+                    <td className="px-3 py-3 align-top"><p className="font-semibold text-blue-900">Bước {row.currentStepNumber} · {row.currentStepLabel}</p><p className="mt-1 text-xs text-slate-500">{row.nextActionLabel || 'Tiếp tục hồ sơ'}</p></td>
                     <td className="whitespace-nowrap px-3 py-3 align-top"><span className="font-semibold text-slate-900">{row.requiredDocumentPresent}/{row.requiredDocumentTotal}</span><p className="mt-1 text-xs text-slate-500">tài liệu bắt buộc</p></td>
                     <td className="max-w-[230px] px-3 py-3 align-top"><span className={row.missingRequiredCount > 0 ? 'font-semibold text-amber-800' : 'font-semibold text-emerald-700'}>{row.missingRequiredCount > 0 ? `Thiếu ${row.missingRequiredCount} mục` : 'Đủ tài liệu bắt buộc'}</span></td>
                     <td className="px-3 py-3 align-top text-sm text-slate-700">{row.ownerDisplayName || row.ownerUsername || 'Chưa phân công'}</td>

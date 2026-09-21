@@ -1,10 +1,11 @@
 'use client';
 
-import { Download, GripVertical, SlidersHorizontal } from 'lucide-react';
+import { BookmarkPlus, Download, GripVertical, Play, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { mergeColumnConfig, shouldPersistColumnConfig } from '../utils/columnConfigPersistence';
 import { summaryCellText, summaryRowsToCsv, type SummaryGridColumn, type SummaryGridRow } from '../utils/summaryRegister';
+import { readPgdcnSavedFilters, type PgdcnSavedFilter, type PgdcnSavedFilterSnapshot, upsertPgdcnSavedFilter, writePgdcnSavedFilters } from '../utils/pgdcnSavedFilters';
 
 type StoredColumn = SummaryGridColumn & { width: number; visible: boolean };
 
@@ -22,6 +23,7 @@ type Props = {
   searchPlaceholder?: string;
   emptyTitle?: string;
   emptyDescription?: string;
+  savedFilterState?: { values: Record<string, string>; onApply: (snapshot: PgdcnSavedFilterSnapshot) => void };
 };
 
 const DEFAULT_WIDTH = 148;
@@ -53,9 +55,13 @@ export default function PgdcnDossierSummaryGrid({
   searchPlaceholder = 'Tìm mã hồ sơ, khách hàng, sản phẩm...',
   emptyTitle = 'Không có hồ sơ phù hợp',
   emptyDescription = 'Hãy điều chỉnh từ khóa hoặc bộ lọc để xem lại Sổ tổng hợp.',
+  savedFilterState,
 }: Props) {
   const [columns, setColumns] = useState<StoredColumn[]>(() => normaliseColumns(defaultColumns));
   const [loadedUsername, setLoadedUsername] = useState<string | null>(null);
+  const [savedFilters, setSavedFilters] = useState<PgdcnSavedFilter[]>([]);
+  const [savedFilterName, setSavedFilterName] = useState('');
+  const [loadedFilterUsername, setLoadedFilterUsername] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number | 'ALL'>(50);
@@ -89,11 +95,36 @@ export default function PgdcnDossierSummaryGrid({
   }, [domain, currentUsername, defaultColumns]);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !currentUsername) {
+      setSavedFilters([]);
+      setLoadedFilterUsername(null);
+      return;
+    }
+    setSavedFilters(readPgdcnSavedFilters(domain, currentUsername));
+    setLoadedFilterUsername(currentUsername);
+  }, [domain, currentUsername]);
+
+  useEffect(() => {
     if (typeof window === 'undefined' || !shouldPersistColumnConfig(loadedUsername, currentUsername)) return;
     window.localStorage.setItem(columnStorageKey(domain, loadedUsername), JSON.stringify(
       columns.map(({ id, width, visible }) => ({ id, width, visible })),
     ));
   }, [columns, currentUsername, domain, loadedUsername]);
+
+  const saveCurrentFilter = () => {
+    if (!savedFilterState || !loadedFilterUsername) return;
+    const next = upsertPgdcnSavedFilter(savedFilters, savedFilterName, { query, values: savedFilterState.values });
+    setSavedFilters(next);
+    writePgdcnSavedFilters(domain, loadedFilterUsername, next);
+    setSavedFilterName('');
+  };
+
+  const deleteSavedFilter = (id: string) => {
+    if (!loadedFilterUsername) return;
+    const next = savedFilters.filter((filter) => filter.id !== id);
+    setSavedFilters(next);
+    writePgdcnSavedFilters(domain, loadedFilterUsername, next);
+  };
 
   const filteredRows = useMemo(() => {
     const source = filterRows ? filterRows(rows) : rows;
@@ -265,6 +296,29 @@ export default function PgdcnDossierSummaryGrid({
         </div>
       </div>
 
+      {savedFilterState && currentUsername && <div data-testid={`saved-filter-toolbar-${domain}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <label htmlFor={`saved-filter-name-${domain}`} className="text-[10px] font-black uppercase tracking-wide text-slate-600">Bộ lọc đã lưu</label>
+          <span className="text-[10px] font-bold text-slate-400">{savedFilters.length}/8</span>
+        </div>
+        {savedFilters.length > 0 && <div className="mt-2 flex flex-wrap gap-2">
+          {savedFilters.map((filter) => <span key={filter.id} className="inline-flex min-h-11 items-center overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <button type="button" onClick={() => { setQuery(filter.snapshot.query); savedFilterState?.onApply(filter.snapshot); }} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 px-3 text-[11px] font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500">
+              <Play size={12} aria-hidden="true" /> {filter.name}
+            </button>
+            <button type="button" onClick={() => deleteSavedFilter(filter.id)} aria-label={`Xóa bộ lọc đã lưu ${filter.name}`} className="mobile-touch-target inline-flex min-h-11 min-w-11 items-center justify-center border-l border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-rose-500">
+              <Trash2 size={13} aria-hidden="true" />
+            </button>
+          </span>)}
+        </div>}
+        <div className="mt-2 flex min-w-0 flex-col gap-2 sm:flex-row">
+          <input id={`saved-filter-name-${domain}`} aria-label={`Tên bộ lọc đã lưu Sổ tổng hợp ${domain}`} value={savedFilterName} onChange={(event) => setSavedFilterName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); saveCurrentFilter(); } }} placeholder="Ví dụ: Hồ sơ thiếu tài liệu" className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100" />
+          <button type="button" disabled={!savedFilterName.trim()} onClick={saveCurrentFilter} className="mobile-touch-target inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-[11px] font-black text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+            <BookmarkPlus size={14} aria-hidden="true" /> Lưu bộ lọc
+          </button>
+        </div>
+      </div>
+      }
       {showColumnConfig && <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <div className="mb-2 text-[10px] font-black uppercase tracking-wide text-slate-500">Cấu hình cột · kéo để sắp xếp</div>
         <div className="flex flex-wrap gap-2">

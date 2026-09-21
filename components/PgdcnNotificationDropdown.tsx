@@ -3,10 +3,10 @@
 import { formatDateTimeDdMmYyyy } from '../utils/formatter';
 
 import { useMemo } from 'react';
-import { Bell, Check, CheckCheck, Inbox, X } from 'lucide-react';
+import { ArrowRight, Bell, Check, CheckCheck, Inbox, X } from 'lucide-react';
 
 import type { AppNotification, UserAccount } from '../types';
-import { canViewPgdcnNotification, normalizePgdcnNotification } from '../utils/pgdcnNotification';
+import { canViewPgdcnNotification, getPgdcnNotificationActionLabel, normalizePgdcnNotification } from '../utils/pgdcnNotification';
 
 interface PgdcnNotificationDropdownProps {
   isOpen: boolean;
@@ -76,10 +76,11 @@ export function PgdcnNotificationDropdown({
         {visibleNotifications.length === 0 && <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-slate-400"><Inbox size={24} /><p className="text-[11px]">Chưa có thông báo phòng.</p></div>}
         {visibleNotifications.map((notification) => {
           const domainLabel = notification.domain === 'PGD' ? 'PGD' : 'PCN';
+          const actionLabel = getPgdcnNotificationActionLabel(notification);
           return <button
           key={notification.id}
           type="button"
-          aria-label={notification.read ? 'Đã đọc' : 'Đánh dấu đã đọc'}
+          aria-label={(notification.read ? 'Đã đọc' : 'Đánh dấu đã đọc') + ' · ' + actionLabel}
           onClick={() => selectNotification(notification)}
           className={`mobile-touch-target flex min-h-16 w-full min-w-0 items-start gap-2.5 border-b border-slate-100 px-3 py-2.5 text-left last:border-b-0 hover:bg-slate-50 ${notification.read ? '' : 'bg-emerald-50/50'}`}
         >

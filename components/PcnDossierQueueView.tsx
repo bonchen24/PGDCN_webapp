@@ -3,6 +3,7 @@
 import {
   ArrowRight,
   ClipboardList,
+  AlertTriangle,
   FileWarning,
   Search,
   UserRound,
@@ -18,6 +19,8 @@ import {
 import { useMemo, useState, type ReactNode } from 'react';
 
 import type { PcnOperationsRegisterRow } from '../utils/pcnOperationsRegister';
+import { getPgdcnDashboardStatusLabel } from '../utils/pgdcnDashboard';
+import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
 
 export interface PcnDossierQueueViewProps {
   rows: PcnOperationsRegisterRow[];
@@ -26,7 +29,7 @@ export interface PcnDossierQueueViewProps {
 }
 
 function statusLabel(value: string): string {
-  return value.replaceAll('_', ' ');
+  return getPgdcnDashboardStatusLabel('PCN', value);
 }
 
 function isActionable(row: PcnOperationsRegisterRow): boolean {
@@ -159,9 +162,7 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
                       </span>
                     </div>
 
-                    <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] font-black text-slate-700">
-                      {statusLabel(row.dossierStatus)}
-                    </span>
+                    <PgdcnStatusBadge domain="PCN" status={row.dossierStatus} label={statusLabel(row.dossierStatus)} />
                   </div>
 
                   {/* Customer and Product */}
@@ -210,11 +211,11 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
                     </div>
                     {row.missingRequiredCount > 0 ? (
                       <p className="text-[10px] font-semibold text-amber-800">
-                        ⚠ Thiếu {row.missingRequiredCount} mục tài liệu bắt buộc
+                        <><AlertTriangle size={13} aria-hidden="true" /> Thiếu {row.missingRequiredCount} mục tài liệu bắt buộc</>
                       </p>
                     ) : (
                       <p className="text-[10px] font-semibold text-emerald-700">
-                        ✓ Đầy đủ tài liệu theo quy trình
+                        <><CheckCircle2 size={13} aria-hidden="true" /> Đầy đủ tài liệu theo quy trình</>
                       </p>
                     )}
                   </div>
@@ -258,7 +259,7 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
                 {filteredRows.map((row) => (
                   <tr key={row.dossierId} className="align-top transition-colors hover:bg-blue-50/40">
                     <th scope="row" className="sticky left-0 z-[1] bg-white px-3 py-3 font-normal">
-                      <div className="min-w-[150px]"><button type="button" onClick={() => onOpenDossier(row.dossierId)} aria-label={`Mở chi tiết hồ sơ ${row.dossierCode}`} className="font-mono text-xs font-bold text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">{row.dossierCode}</button><p className="mt-1 text-xs text-slate-500">Đề nghị {row.registrationCode}</p><span className="mt-1 inline-flex rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">{statusLabel(row.dossierStatus)}</span></div>
+                      <div className="min-w-[150px]"><button type="button" onClick={() => onOpenDossier(row.dossierId)} aria-label={`Mở chi tiết hồ sơ ${row.dossierCode}`} className="font-mono text-xs font-bold text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">{row.dossierCode}</button><p className="mt-1 text-xs text-slate-500">Đề nghị {row.registrationCode}</p><PgdcnStatusBadge compact domain="PCN" status={row.dossierStatus} label={statusLabel(row.dossierStatus)} /></div>
                     </th>
                     <td className="max-w-[190px] px-3 py-3 align-top text-sm font-medium text-slate-900"><span className="line-clamp-2">{row.customerName || 'Chưa có khách hàng'}</span></td>
                     <td className="max-w-[190px] px-3 py-3 align-top text-sm text-slate-700"><span className="line-clamp-2">{row.productName || 'Chưa có sản phẩm'}</span></td>
@@ -266,7 +267,7 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
                     <td className="whitespace-nowrap px-3 py-3 align-top"><span className="font-semibold text-slate-900">{row.completenessScore}%</span><p className="mt-1 text-xs text-slate-500">{row.requiredDocumentPresent}/{row.requiredDocumentTotal} bắt buộc</p></td>
                     <td className="max-w-[230px] px-3 py-3 align-top"><span className={row.missingRequiredCount > 0 ? 'font-semibold text-amber-800' : 'font-semibold text-emerald-700'}>{row.missingRequiredCount > 0 ? `Thiếu ${row.missingRequiredCount} mục` : 'Đủ tài liệu bắt buộc'}</span></td>
                     <td className="px-3 py-3 align-top text-sm text-slate-700">{row.ownerUsername || 'Chưa phân công'}</td>
-                    <td className="px-3 py-3 align-top text-right"><button type="button" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center gap-1.5 rounded-md bg-blue-700 px-3 py-2 text-[10px] font-black text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" onClick={() => onOpenDossier(row.dossierId)}>Mở hồ sơ<ArrowRight size={14} aria-hidden="true" /></button></td>
+                    <td className="px-3 py-3 align-top text-right"><button type="button" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center gap-1.5 rounded-md bg-blue-700 px-3 py-2 text-[10px] font-black text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" onClick={() => onOpenDossier(row.dossierId)}>{row.stationActionLabel}<ArrowRight size={14} aria-hidden="true" /></button></td>
                   </tr>
                 ))}
               </tbody>

@@ -18,6 +18,7 @@ type Props = {
   sampleRoutes: PcnSampleRoute[];
   returnedResults: ReturnedTestResult[];
   onOpenDossier: (dossier: CertificationDossier, initialTab?: 'documents' | 'lab' | 'results' | 'issuance') => void;
+  initialDossierId?: string;
 };
 
 type ReviewEvent = {
@@ -91,6 +92,10 @@ export default function PcnAssistantView(props: Props) {
       .finally(() => { if (!cancelled) setLoadingCandidates(false); });
     return () => { cancelled = true; };
   }, [fieldCode]);
+
+  useEffect(() => {
+    if (props.initialDossierId && candidates.some((candidate) => candidate.dossierId === props.initialDossierId)) setSelectedDossierId(props.initialDossierId);
+  }, [candidates, props.initialDossierId]);
 
   const filteredCandidates = useMemo(() => {
     const query = candidateQuery.trim().toLocaleLowerCase('vi-VN');

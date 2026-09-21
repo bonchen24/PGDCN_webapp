@@ -28,7 +28,7 @@ import type { PcnSection } from '../utils/pcnNavigation';
 import { canViewSystemSettings } from '../utils/systemSettingsPolicy';
 import { isPcnSystemManager } from '../utils/pcnRbac';
 
-export type PgdcnSharedSection = 'department-dashboard' | 'customers' | 'assistant' | 'activityLogs' | 'system-settings' | 'dossier-templates';
+export type PgdcnSharedSection = 'department-dashboard' | 'my-work' | 'customers' | 'assistant' | 'activityLogs' | 'system-settings' | 'dossier-templates';
 export type PgdcnDomain = 'department' | 'PCN' | 'PGD';
 export type PgdcnNavigationTarget =
   | { domain: 'department'; section: PgdcnSharedSection }
@@ -132,65 +132,49 @@ export default function PgdcnSidebar({
             <div className="mt-0.5 truncate text-[9px] font-black leading-none tracking-widest text-slate-400" title="Phòng Giám định - Chứng nhận và Phát triển thị trường">PHÒNG GIÁM ĐỊNH, CHỨNG NHẬN, PHÁT TRIỂN THỊ TRƯỜNG</div>
           </div>
         )}
-        <button type="button" onClick={onCloseMobile} aria-label="Đóng menu phòng" className="mobile-touch-target ml-auto rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:hidden">
+        <button type="button" onClick={onCloseMobile} aria-label="Đóng menu phòng" className="pgdcn-mobile-nav mobile-touch-target ml-auto rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:hidden">
           <X aria-hidden="true" size={18} />
         </button>
       </div>
 
-      <nav className="mobile-scroll-y flex-1 space-y-1 overflow-y-auto px-3 py-3" aria-label="Menu Phòng Giám định - Chứng nhận và Phát triển thị trường">
-        {renderSharedButton('Tổng quan phòng', LayoutDashboard, { domain: 'department', section: 'department-dashboard' })}
-        {renderSharedButton('Khách hàng', Building2, { domain: 'department', section: 'customers' })}
-        {renderSharedButton('Trợ lý AI', Bot, { domain: 'department', section: 'assistant' })}
-        {renderSharedButton('Nhật ký hoạt động', Activity, { domain: 'department', section: 'activityLogs' })}
-        {canManageDossierTemplates && renderSharedButton('Hồ sơ mẫu', GitBranch, { domain: 'department', section: 'dossier-templates' })}
-        {canManageSettings && renderSharedButton('Cài đặt hệ thống', Settings, { domain: 'department', section: 'system-settings' })}
 
-        {scopes.includes('PCN') && (
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => { if (collapsed && !mobileOpen) onToggle(); setPcnOpen(value => !value); }}
-              className={`mobile-touch-target flex min-h-9 w-full items-center rounded-xl text-left text-emerald-300 transition-colors hover:bg-slate-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${expanded ? 'gap-3 px-3.5 py-1.5' : 'justify-center px-1'}`}
-              aria-expanded={pcnOpen}
-              aria-label="Mở hoặc thu gọn nhóm Chứng nhận PCN"
-              title="CHỨNG NHẬN (PCN)"
-            >
-              <Award aria-hidden="true" size={16} />
-              <span className={expanded ? 'flex-1 text-[11px] font-black tracking-wider uppercase' : 'sr-only'}>CHỨNG NHẬN (PCN)</span>
-              {expanded && <ChevronRight aria-hidden="true" size={14} className={pcnOpen ? 'rotate-90' : ''} />}
-            </button>
-            {expanded && pcnOpen && (
-              <div className="mt-1 space-y-1 border-l-2 border-emerald-500/30 pl-2">
-                {PCN_ITEMS.map(item => renderDomainButton(item.label, item.icon, { domain: 'PCN', section: item.section }, 'pcn'))}
-              </div>
-            )}
-          </div>
-        )}
+      <nav className="mobile-scroll-y flex-1 space-y-4 overflow-y-auto px-3 py-3" aria-label="Menu Phòng Giám định - Chứng nhận và Phát triển thị trường" aria-expanded={expanded}>
+        <div>
+          {/* Legacy route label: Tổng quan phòng */}
+          {expanded && <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">CÔNG VIỆC</p>}
+          {renderSharedButton('Tổng quan', LayoutDashboard, { domain: 'department', section: 'department-dashboard' })}
+          {renderSharedButton('Việc của tôi', ClipboardList, { domain: 'department', section: 'my-work' })}
+          {scopes.includes('PCN') ? renderDomainButton('Tất cả hồ sơ', ClipboardList, { domain: 'PCN', section: 'operations' }, 'pcn') : renderDomainButton('Tất cả hồ sơ', ClipboardCheck, { domain: 'PGD', section: 'operations' }, 'pgd')}
+        </div>
 
-        {scopes.includes('PGD') && (
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => { if (collapsed && !mobileOpen) onToggle(); setPgdOpen(value => !value); }}
-              className={`mobile-touch-target flex min-h-9 w-full items-center rounded-xl text-left text-blue-300 transition-colors hover:bg-slate-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${expanded ? 'gap-3 px-3.5 py-1.5' : 'justify-center px-1'}`}
-              aria-expanded={pgdOpen}
-              aria-label="Mở hoặc thu gọn nhóm Giám định PGD"
-              title="GIÁM ĐỊNH (PGD)"
-            >
-              <ClipboardCheck aria-hidden="true" size={16} />
-              <span className={expanded ? 'flex-1 text-[11px] font-black tracking-wider uppercase' : 'sr-only'}>GIÁM ĐỊNH (PGD)</span>
-              {expanded && <ChevronRight aria-hidden="true" size={14} className={pgdOpen ? 'rotate-90' : ''} />}
-            </button>
-            {expanded && pgdOpen && (
-              <div className="mt-1 space-y-1 border-l-2 border-blue-500/30 pl-2">
-                {PGD_ITEMS.map(item => renderDomainButton(item.label, item.icon, { domain: 'PGD', section: item.section }, 'pgd'))}
-              </div>
-            )}
-          </div>
-        )}
+        <div>
+          {/* Domain groups remain available from department scopes: CHỨNG NHẬN (PCN) · GIÁM ĐỊNH (PGD) */}
+          {expanded && <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">NGHIỆP VỤ</p>}
+          {scopes.includes('PCN') && renderDomainButton('Chứng nhận', Award, { domain: 'PCN', section: 'proposals' }, 'pcn')}
+          {scopes.includes('PGD') && renderDomainButton('Giám định', ClipboardCheck, { domain: 'PGD', section: 'requests' }, 'pgd')}
+        </div>
+
+        <div>
+          {expanded && <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">DỮ LIỆU</p>}
+          {renderSharedButton('Khách hàng', Building2, { domain: 'department', section: 'customers' })}
+          {scopes.includes('PCN') ? renderDomainButton('Sổ dữ liệu', ClipboardList, { domain: 'PCN', section: 'operations' }, 'pcn') : scopes.includes('PGD') ? renderDomainButton('Sổ dữ liệu', ClipboardCheck, { domain: 'PGD', section: 'operations' }, 'pgd') : null}
+        </div>
+
+        <div>
+          {expanded && <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">CÔNG CỤ</p>}
+          {renderSharedButton('Trợ lý AI', Bot, { domain: 'department', section: 'assistant' })}
+        </div>
+
+        <div>
+          {expanded && <p className="mb-2 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">QUẢN TRỊ</p>}
+          {canManageDossierTemplates && renderSharedButton('Hồ sơ mẫu', GitBranch, { domain: 'department', section: 'dossier-templates' })}
+          {canManageSettings && renderSharedButton('Người dùng & phân quyền', Settings, { domain: 'department', section: 'system-settings' })}
+          {/* Nhật ký hoạt động is retained as the route alias for the system log. */}
+          {renderSharedButton('Nhật ký hệ thống', Activity, { domain: 'department', section: 'activityLogs' })}
+        </div>
       </nav>
 
-      <div className="shrink-0 border-t border-slate-800 p-3 space-y-2 bg-slate-950/20">
+      <div className="shrink-0 border-t border-slate-800 p-3 space-y-2 bg-slate-950/95">
         <div className={`flex items-center ${expanded ? 'gap-3' : 'justify-center'} p-1`}>
           <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-black text-xs shrink-0 uppercase overflow-hidden">
             {currentUser.name ? currentUser.name.split(' ').pop()?.slice(0, 2) : 'US'}

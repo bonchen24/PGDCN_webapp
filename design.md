@@ -1361,7 +1361,26 @@ Toàn bộ Type định nghĩa hệ thống nằm ở file `/types.ts`.
 - Response của API `GET` PDF phải dùng `Content-Disposition` ASCII-safe: `filename` fallback không chứa ký tự điều khiển và `filename*` mã hóa UTF-8, để trình xem PDF nghiêm ngặt không từ chối file có tên tiếng Việt hoặc tên bị lỗi mã hóa.
 - Backup JSON chỉ lưu metadata PDF, không nhúng byte PDF. Backup đầy đủ phải gồm metadata `file_assets` và object PDF; restore phải khôi phục object trước khi xác nhận pointer hoạt động.
 
-<!-- --- End of design.md --- -->
+
+### 5A.19. Work-first P0 — Việc của tôi và Next Action — 2026-09-21
+
+- Dashboard sau đăng nhập phải ưu tiên projection **Việc của tôi** theo thứ tự: `Quá hạn` → `Cần làm hôm nay` → `Đang chờ tôi xử lý` → `Chờ phê duyệt` → `Gần đây` → `Đang chờ người khác`; **Tổng quan phòng** và pipeline theo miền nằm dưới lớp công việc cá nhân.
+- Projection cá nhân chỉ đọc từ dữ liệu hiện có: `currentUser`, `ownerUsername`, PCN workflow task assignment/runtime, PGD assignment/owner, trạng thái hiện tại và deadline. Không tạo schema, collection, API hoặc quyền mới; khi thiếu dữ liệu phân công phải hiển thị rõ **Chưa phân công** hoặc **Đang chờ người khác**, không tự suy diễn người xử lý.
+- Mỗi dòng việc/hồ sơ phải có đúng một **Next Action** nổi bật, nhãn lấy từ workflow hiện tại hoặc projection tài liệu thiếu. `Mở hồ sơ` chỉ là affordance phụ/click cả dòng; CTA chính phải dùng động từ nghiệp vụ như `Bổ sung hồ sơ`, `Phân công`, `Lập kế hoạch`, `Nhập kết quả hiện trường`, `Tiếp nhận KQTN`, `Soát xét`, `Trình phê duyệt`, `Ký & phát hành`, `Trả kết quả` hoặc `Lưu trữ`.
+- Chi tiết PCN và PGD dùng chung anatomy `mã hồ sơ → trạng thái → bước hiện tại → việc cần làm → CTA chính → dữ liệu/tài liệu liên quan → workflow → thông tin nâng cao`; chỉ một primary CTA cho bước hiện tại, action phụ đi vào vùng `Xem thêm`/progressive disclosure.
+- Sidebar shell dùng IA theo công việc: `Công việc` (Tổng quan, Việc của tôi, Tất cả hồ sơ), `Nghiệp vụ` (Chứng nhận, Giám định), `Dữ liệu` (Khách hàng, Sổ dữ liệu), `Công cụ` (Trợ lý AI), `Quản trị` (Hồ sơ mẫu, Người dùng & phân quyền, Nhật ký hệ thống, Cài đặt). Các mục chỉ dành cho quản trị phải ẩn theo RBAC hiện hành; entry point cũ vẫn phải được giữ qua local navigation/workspace.
+- Typography P0 không dùng 8–9px cho nội dung nghiệp vụ. Mức tối thiểu: body 14px, table data 13px, label/metadata 12px, badge 11px; page title 20–24px. Giữ compact spacing và vùng chạm mobile khoảng 44px, không dùng `zoom`/`transform: scale()`.
+- P0 chỉ thay đổi projection, layout, typography, navigation affordance và semantic status; giữ nguyên callback, route, API, collection, workflow transition, RBAC, inline edit, CSV, cấu hình cột, template và các sổ nâng cao. Work View là mặc định, Data View là lớp nâng cao.
+- Acceptance P0: người dùng mới nhìn Dashboard biết việc của mình, bấm đúng CTA, mở đúng hồ sơ, thấy bước hiện tại/thiếu gì/bước tiếp theo và không cần nhớ chuỗi menu kỹ thuật; phải kiểm tra typecheck, test liên quan, build và responsive 320/375/390/430px.
+
+### 5A.27. Contextual Automation Shortcuts — Phase 4 — 2026-09-21
+
+- Sau Next Action và trước điểm chặn, chi tiết PCN/PGD có thể hiển thị tối đa 3 “Gợi ý xử lý theo ngữ cảnh”. Gợi ý chỉ được dẫn xuất từ checklist, mẫu, PYC/KQTN, báo cáo/chứng thư, issuance và bước workflow hiện có; mỗi gợi ý nói rõ lý do/bằng chứng và có đúng một CTA.
+- Ưu tiên gợi ý theo chuỗi nghiệp vụ: kiểm tra bộ hồ sơ trước khi thẩm xét; mẫu đã có nhưng chưa có PYC thì mở/lập PYC PTN; PYC đã gửi nhưng chưa có KQTN thì theo dõi/tiếp nhận KQTN; KQTN đủ thì mở luồng soạn báo cáo/chứng thư hoặc xem xét trước khi phát hành. Không lặp lại Next Action đang hiển thị và không suy diễn từ tên tệp.
+- CTA “Sinh biểu mẫu”, “Soạn báo cáo”, “Mở việc” chỉ mở modal/route/tab/work panel hiện hữu với mã hồ sơ và context hiện tại. Hệ thống không tự sinh, lưu, chuyển trạng thái, phê duyệt hoặc tạo notification khi người dùng chưa bấm CTA; preflight, quyền sửa, RBAC và cổng nghiệp vụ hiện tại vẫn là nguồn quyết định.
+- Gợi ý phải dùng text + icon/tone, focus ring và vùng chạm tối thiểu 44px; phần mô tả ghi rõ đây là đề xuất để người dùng xác nhận. Khi không có điều kiện phù hợp thì không render khối rỗng. Không tạo schema, collection, persistence, API, workflow transition hoặc bản sao dữ liệu mới.
+- Acceptance: PCN/PGD render ổn định tối đa 3 gợi ý theo fixture; shortcut sinh PYC/báo cáo đi vào đúng surface hiện hữu; viewer vẫn chỉ xem; không có mutation trước CTA; mobile 320/375px không tràn ngang; typecheck, focused tests, full tests, build và diff check đạt.
+\n<!-- --- End of design.md --- -->
 
 ## 12. [RETIRED] NHẬP HỒ SƠ LỊCH SỬ TỪ BỘ PCN THAM CHIẾU
 
@@ -1609,4 +1628,58 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 - Các nút có nhãn ngắn, phân cấp một CTA chính mỗi vùng; visual compact nhưng vẫn giữ vùng chạm và focus ring đủ dùng, không dùng màu làm tín hiệu duy nhất.
 - Desktop giữ sidebar shell và vùng nội dung cuộn duy nhất; mobile ưu tiên thứ tự bước hiện tại → tài liệu còn thiếu → dữ liệu bổ sung, không tạo tràn ngang body.
 - Đây là thay đổi bố cục, phân cấp và progressive disclosure của projection chi tiết; không thay đổi dữ liệu, API, lifecycle, RBAC hay quyền thao tác.
+### 5A.20. Notification Action Model — 2026-09-21
+
+- Mỗi notification PCN/PGD hiển thị đủ sự kiện, đối tượng, thời điểm và đúng một nhãn hành động tiếp theo; nhãn được dẫn xuất từ entityType, action, entityId và route canonical hiện có, không thêm schema/collection/API.
+- Nhãn ưu tiên theo nghiệp vụ: Nhận việc, Bổ sung hồ sơ, Phân công, Nhập kết quả hiện trường, Lấy mẫu, Lập PYC PTN, Tiếp nhận KQTN, Soạn báo cáo, Soát xét, Trình phê duyệt, Ký & phát hành, Trả kết quả, Lưu trữ; fallback là Mở hồ sơ.
+- Dropdown chuông và card Thông báo phòng dùng cùng helper action-label và cùng callback navigation; không tạo một action model riêng cho dashboard. Click nhãn hoặc toàn dòng đều mở đúng surface theo getPgdcnNotificationNavigation.
+- Nhãn hành động là affordance đọc nhanh, không cấp thêm quyền; audience/scope, read/clear mutation và server boundary giữ nguyên. Notification không có entityId chỉ hiển thị Xem thông báo và không giả vờ mở hồ sơ.
+- Progressive disclosure: message là nội dung phụ; action label luôn nhìn thấy, metadata người giao/actor và chi tiết trạng thái có thể thu gọn hoặc để trong tooltip. Không dùng màu đơn độc để biểu đạt unread/status.
+- Acceptance: action-label deterministic theo fixture PCN/PGD, route hiện có không đổi, người không có quyền không thấy notification, action target có keyboard/focus/44px touch target, typecheck/test/build đạt.
+### 5A.21. Semantic Status System — 2026-09-21
+
+- Dùng PgdcnStatusBadge làm component trạng thái chung cho dashboard, queue và các projection Work View của PCN/PGD; API cũ label/tone vẫn tương thích.
+- Presentation được dẫn xuất từ domain + raw status hiện có, gồm label tiếng Việt, semantic tone và icon Lucide; màu không là tín hiệu duy nhất. Domain vẫn chỉ dùng badge/accent nhỏ PCN hoặc PGD.
+- Quy ước semantic: emerald = hoàn thành/thành công; blue = đang xử lý/active; amber = chờ/cần chú ý; rose = blocked/lỗi/quá hạn; slate = chưa xác định/inactive/read-only. Overdue/blocked được ưu tiên hơn tone status thông thường.
+- Queue truyền raw status hiện có để badge dùng cùng mapping; không đổi schema, API, persistence, RBAC, workflow transition hoặc callback. Label kỹ thuật chỉ còn là fallback khi status không nằm trong mapping.
+- Acceptance: dashboard và hai queue hiển thị cùng status presentation; trạng thái đọc được bằng text + icon, đạt contrast, responsive ở 320/375/390/430px; typecheck, test liên quan và build đạt.
+### 5A.22. Progressive Disclosure cho chi tiết hồ sơ — 2026-09-21
+
+- Chi tiết PCN/PGD giữ thứ tự ưu tiên: trạng thái → bước hiện tại → thiếu gì → Next Action/CTA → tài liệu/dữ liệu phục vụ bước; technical metadata chỉ là lớp sau.
+- Các vùng document lineage, lịch sử phiên/phiên bản, package/attachment summary, audit history, template/generation controls và exception detail không được cạnh tranh với primary CTA; dùng native `<details>/<summary>` accessible và mặc định đóng nếu không phải bằng chứng cần xử lý ngay.
+- Vùng “Thông tin nâng cao” phải có tên dễ hiểu, keyboard/focus và không làm mất deep link/CTA hiện hữu. Nội dung chỉ được ẩn về mặt presentation; không đổi payload, schema, API, persistence, RBAC, lifecycle hoặc mutation.
+- Acceptance: PCN document history/lineage và PGD advanced metadata collapsed-by-default; current-step checklist/exception action remains discoverable; mobile không tạo nested scroll/tràn ngang; tests/typecheck/build đạt.
+### 5A.23. Workflow UX: current step trước workflow map — 2026-09-21
+
+- Workflow rail/map là định hướng và bằng chứng tiến độ, không phải nội dung chính của màn hình xử lý. PCN/PGD phải ưu tiên vùng bước hiện tại, việc cần làm/Next Action và CTA hoàn tất trước; workflow map chi tiết đặt sau vùng công việc trong disclosure đóng mặc định.
+- Bước hiện tại được mở sẵn trong work panel; các bước đã hoàn tất vẫn có thể chọn để xem lại, bước bị khóa vẫn hiển thị muted và không thể thao tác. Nút chọn bước phải giữ keyboard semantics, focus ring và touch target hiện có.
+- Disclosure workflow chỉ thay đổi thứ tự hiển thị/state UI cục bộ; không đổi workflow transition, task, status, schema, API, persistence, RBAC hay callback mutation. Không được ẩn CTA hoàn tất của bước hiện tại.
+- Acceptance: người dùng nhìn thấy current step → Next Action → CTA trước map; map có nhãn “Xem tiến trình hồ sơ”, mobile không tạo tràn ngang ngoài vùng scroll rail; tests/typecheck/build đạt.
+
+
+### 5A.24. Contextual Assistant Entry — 2026-09-21
+
+- Chi tiết hồ sơ PCN/PGD phải có một entry phụ “Trợ lý hồ sơ” cạnh vùng công việc hiện tại; entry nói rõ trợ lý chỉ hỗ trợ/đọc bằng chứng, không tự phê duyệt, đổi trạng thái hoặc ghi ngược dữ liệu.
+- Khi mở từ chi tiết, trợ lý phải nhận sẵn domain và mã hồ sơ hiện tại, mở đúng chế độ PCN/PGD và không bắt người dùng tìm/chọn lại hồ sơ. Trợ lý vẫn giữ nút bắt đầu phiên soát xét và các cảnh báo/quyền hiện hành.
+- Contextual entry chỉ tái sử dụng màn hình, API review, route/navigation và dữ liệu hiện có; không thêm schema, collection, persistence, RBAC, workflow transition hoặc mutation nghiệp vụ mới.
+- Acceptance: từ chi tiết PCN/PGD có một thao tác để mở trợ lý đúng hồ sơ; domain và hồ sơ được chọn sẵn; người dùng vẫn phải chủ động bấm bắt đầu soát xét; keyboard/focus/touch target và trạng thái chỉ đọc được giữ nguyên.
+
+### 5A.25. Phase 3 Work Context — 2026-09-21
+
+- Dashboard hiển thị “Hồ sơ vừa mở” theo user bằng một danh sách local-scoped tối đa 6 mục; chỉ lưu domain, record id và thời điểm mở, sau đó resolve lại nhãn/trạng thái từ dữ liệu đang có. Mục stale hoặc không còn quyền được bỏ qua, không tạo bản ghi nghiệp vụ mới.
+- Data View PCN/PGD cho phép lưu, áp dụng và xóa named filter preset theo user/domain. Preset chỉ lưu query và giá trị các bộ lọc UI trong local storage; không lưu dữ liệu hồ sơ, không thay đổi filter mặc định, inline edit, CSV, cấu hình cột hoặc Work View.
+- Header app có “Tìm nhanh” mở bằng nút hoặc Ctrl/Cmd+K; palette chỉ tìm trong navigation, hồ sơ hiện có và hành động workspace hiện hành. Kết quả dùng callback/route hiện có, tôn trọng scope/RBAC, có keyboard navigation, Escape và focus management.
+- Acceptance: người dùng quay lại đúng hồ sơ vừa mở trong một thao tác; bộ lọc thường dùng được gọi lại mà không chọn lại từng control; tìm nhanh không tạo route/API/mutation mới và không che khuất focus.
+
+### 5A.26. Business Dossier Workspace — Phase 2/3 — 2026-09-21
+
+- PCN/PGD detail phải có một lớp “Bản đồ hồ sơ nghiệp vụ” sau current-step work panel: action/Next Action, các nhóm hồ sơ theo nghĩa nghiệp vụ, điểm chặn cứng, và các tracker vận hành. Đây là projection presentation dùng dữ liệu đã có; không thay thế màn hình checklist, mẫu/PYC PTN, KQTN, phê duyệt, chứng từ hoặc form hiện hành.
+- Nhóm PCN phải phản ánh tối thiểu: Đề nghị/khách hàng, hồ sơ hàng hóa-thương mại, đánh giá hiện trường, mẫu & thử nghiệm, xem xét kỹ thuật, phê duyệt & phát hành. Nhóm PGD phải phản ánh: PYC/khách hàng, phân công & năng lực, phiên hiện trường, mẫu & bàn giao PTN, KQTN, báo cáo/chứng thư.
+- Điểm chặn cứng chỉ được chiếu khi có bằng chứng từ dữ liệu hiện có (tài liệu bắt buộc thiếu, PYC/KQTN chưa hoàn tất, chưa phân công, hoặc cổng chuyển bước bị từ chối). Mỗi điểm chặn phải nói rõ lý do và CTA mở đúng vùng xử lý; không dùng cảnh báo màu như trang trí.
+- Sample Tracker/Test Tracker phải dùng entity hiện có và hiển thị mã mẫu/PYC, trạng thái, phòng thử nghiệm, kết quả hoặc vị trí hiện tại; không suy diễn bản ghi, không nhân bản sample/test schema. PGD Event Timeline/Work Log chỉ chiếu case event, field activity log, field inspection hoặc activity log hiện có; trạng thái rỗng phải nói rõ “chưa có dữ liệu”.
+- Các disclosure timeline/tracker dùng native details/summary, mặc định đóng để giữ density; current step, Next Action và hard blocker vẫn nhìn thấy.
+- PGD phải có Field Session card riêng bên cạnh Event Timeline: nếu đã có PgdFieldInspection thì hiển thị ngày/địa điểm/KTV/đối tượng/số lượng/quan sát/đo đạc/mẫu và bằng chứng; nếu chưa có thì hiển thị empty state cùng CTA mở work panel hiện hữu. CTA không tạo session mới ngoài callback/schema hiện có. Không tạo nested scroll, không đổi callback mutation, workflow transition, API, persistence, RBAC, schema hoặc dữ liệu tham chiếu bên ngoài.
+- Nguồn tham chiếu cho phase này là thư mục local do người dùng chỉ định: `C:/Users/HungX/Desktop/Hệ thống phần mềm phòng GĐCN`, thay cho Google Drive. Khi chuẩn hóa UI/UX, được phép đọc read-only các nhóm `Chứng nhận/QC4`, `Chứng nhận/QC9`, `Chứng nhận/QC20`, `Giám định máy móc`, `Giám định thép theo thông tư 58` và `Giám định ngoài` để đối chiếu tên trường, chuỗi chứng từ, mẫu/PYC, kết quả và cấu trúc hồ sơ. Đây chỉ là nguồn nghiên cứu; không watcher/import/runtime-resolve đường dẫn, không đưa tên khách hàng, chữ ký, ảnh, bytes hồ sơ, số liệu thật, dữ liệu phí/thanh toán hoặc liên kết GDrive vào seed, API, persistence hay UI vận hành.
+- Evidence Tracker phải chiếu ma trận bằng chứng gọn từ checklist/document entity hiện hữu, theo chuỗi thực tế đã đối chiếu: PYC/đơn đăng ký → thương mại → phân công/kế hoạch → hiện trường/lấy mẫu → PTN/KQTN → báo cáo/chứng nhận/quyết định → bàn giao/lưu trữ. Mỗi nhóm hiển thị số có/thiếu, trạng thái bằng text + tone, file hiện hành khi có và CTA quay về vùng xử lý; mặc định đóng bằng native details/summary, không hiển thị đường dẫn Desktop/GDrive, không tạo bản ghi hoặc schema mới.
+- Acceptance: người xử lý hiểu hồ sơ đang ở đâu, việc kế tiếp là gì, ai phụ trách, vì sao bị chặn và mở vùng nào để xử lý; mobile 320/375px không tràn ngang, keyboard/focus/touch target đạt chuẩn, PCN/PGD/role viewer vẫn giữ quyền hiện hành; typecheck, focused tests, full tests, build và diff check đạt.
 <!-- --- End of design.md --- -->

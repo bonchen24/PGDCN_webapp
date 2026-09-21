@@ -143,12 +143,13 @@ test('dossier detail provides a focused workspace and an obvious document supple
   assert.match(source, /'Đang khóa'|Chưa đến bước hiện tại/);
 });
 
-test('dossier document operations stay in one open detail region after visual inspection', () => {
+test('dossier document operations stay in one collapsed advanced detail region after visual inspection', () => {
   const source = fs.readFileSync(detailPath, 'utf8');
-  assert.match(source, /data-testid="pcn-document-history"/);
+  assert.match(source, /data-testid="pcn-document-history" data-disclosure="advanced"/);
   assert.match(source, /Chi tiết phiên và tải tài liệu/);
-  assert.match(source, /<details open data-testid="pcn-document-history"/);
-  assert.match(source, /Văn bản và nút tải hiển thị ngay/);
+  assert.doesNotMatch(source, /<details open data-testid="pcn-document-history"/);
+  assert.match(source, /Lịch sử phiên bản và nút tải · mở khi cần/);
+  assert.match(source, /history\.open = true/);
 });
 
 test('dossier detail keeps source-code review visible without mutating the operator value', () => {

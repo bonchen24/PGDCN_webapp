@@ -123,22 +123,12 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
         <div className="min-w-0">
           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Bước cần xử lý</p>
           <h2 className="mt-1 truncate text-base font-black text-slate-950">{currentNode?.label || 'Chưa xác định bước hiện tại'}</h2>
-          <p className="mt-1 max-w-3xl text-xs text-emerald-950/75">{currentAction}</p>
+          <p className="mt-1 max-w-3xl text-xs text-emerald-950/75"><span className="font-black">Việc cần làm:</span> {currentAction}</p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-1.5 text-[10px] font-black">
           <span className="rounded-full border border-emerald-200 bg-white px-2 py-1 text-emerald-700">{currentStatusLabel}</span>
           <span className={`rounded-full border px-2 py-1 ${currentMissingCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-white text-emerald-700'}`}>{currentMissingCount > 0 ? `Còn ${currentMissingCount} mục bắt buộc` : 'Đủ tài liệu bắt buộc'}</span>
           {currentNode && currentNode.id !== selectedNodeId ? <button type="button" onClick={() => selectNode(currentNode.id)} className="mobile-touch-target min-h-11 rounded-md bg-emerald-700 px-3 py-2 text-[10px] font-black text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">Mở bước này</button> : <span className="rounded-full border border-emerald-200 bg-white px-2 py-1 text-emerald-700">Đang mở</span>}
-        </div>
-      </section>
-
-      <section data-testid="pcn-workflow-map" className="rounded-xl border border-slate-200 bg-slate-50" aria-labelledby="pcn-workflow-map-title">
-        <div className="flex min-h-11 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2.5">
-          <h2 id="pcn-workflow-map-title" className="text-xs font-black text-slate-900">Các bước hồ sơ PCN</h2>
-          <span className="shrink-0 text-[10px] font-bold text-slate-500">{completedNodeCount}/{runtime.nodes.length} bước đã xong</span>
-        </div>
-        <div className="p-3">
-          <PcnDossierFlow nodes={runtime.nodes} projections={projections} selectedNodeId={selectedNodeId} onSelectNode={selectNode} />
         </div>
       </section>
 
@@ -167,6 +157,21 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600" id={selectedNode ? `pcn-node-panel-${selectedNode.id}` : undefined} role="tabpanel">Chọn một bước đang mở để xem công việc cần xử lý.</div>
       )}
+
+      <details data-testid="pcn-workflow-map-disclosure" className="rounded-xl border border-slate-200 bg-slate-50">
+        <summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-black text-slate-900">Xem tiến trình hồ sơ <span className="text-[10px] font-bold text-slate-500">{completedNodeCount}/{runtime.nodes.length} bước đã xong</span></summary>
+        <div className="border-t border-slate-200 p-3">
+      <section data-testid="pcn-workflow-map" className="rounded-xl border border-slate-200 bg-slate-50" aria-labelledby="pcn-workflow-map-title">
+        <div className="flex min-h-11 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2.5">
+          <h2 id="pcn-workflow-map-title" className="text-xs font-black text-slate-900">Các bước hồ sơ PCN</h2>
+          <span className="shrink-0 text-[10px] font-bold text-slate-500">{completedNodeCount}/{runtime.nodes.length} bước đã xong</span>
+        </div>
+        <div className="p-3">
+          <PcnDossierFlow nodes={runtime.nodes} projections={projections} selectedNodeId={selectedNodeId} onSelectNode={selectNode} />
+        </div>
+      </section>
+        </div>
+      </details>
     </div>
   );
 }

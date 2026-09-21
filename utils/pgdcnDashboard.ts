@@ -1,9 +1,17 @@
-import type { DepartmentScope } from '../types.ts';
+import type { CertificationDossier, CertificationProposal, DepartmentScope, PcnDossierWorkflowTask, UserAccount } from '../types.ts';
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from './formatter.ts';
 
 export type PgdcnDashboardDomain = 'PCN' | 'PGD';
 export type DashboardAttentionReason = 'WORK' | 'OVERDUE';
-export type DashboardPipelineTone = 'neutral' | 'info' | 'warning' | 'success' | 'critical';
+export type PgdcnStatusTone = 'neutral' | 'info' | 'warning' | 'success' | 'critical';
+export type DashboardPipelineTone = PgdcnStatusTone;
+
+export interface PgdcnStatusPresentation {
+  status: string;
+  label: string;
+  tone: PgdcnStatusTone;
+  description: string;
+}
 
 export interface PgdcnDashboardDossier {
   id: string;
@@ -179,6 +187,29 @@ export function getPgdcnDashboardStatusLabel(domain: PgdcnDashboardDomain, statu
   return STATUS_LABELS[domain][normalizedStatus] || 'Chưa xác định';
 }
 
+const STATUS_TONE_BY_STATUS: Record<string, PgdcnStatusTone> = {
+  DRAFT: 'warning', INTAKE_REVIEW: 'info', AWAITING_DOCUMENTS: 'warning', ASSIGNED: 'info',
+  PLAN_PENDING_APPROVAL: 'warning', FIELD_EVALUATION: 'info', AWAITING_SAMPLING: 'warning', SENT_TO_LAB: 'info',
+  AWAITING_RESULTS: 'warning', CORRECTIVE_ACTION: 'critical', TECHNICAL_REVIEW: 'info', WAITING_APPROVAL: 'warning',
+  APPROVED: 'success', ISSUED: 'success', DELIVERED: 'success', ARCHIVED: 'success', REJECTED: 'critical', CANCELLED: 'critical',
+  CAPABILITY_REVIEW: 'info', READY_TO_EXECUTE: 'info', PREPARING: 'info', FIELD_INSPECTION: 'info',
+  WAITING_LAB_RESULTS: 'warning', RESULTS_REVIEW: 'info', LEADERSHIP_APPROVAL: 'warning', SIGNED: 'success', RESULT_RETURNED: 'success',
+};
+
+const STATUS_TONE_DESCRIPTION: Record<PgdcnStatusTone, string> = {
+  neutral: 'Trạng thái chưa xác định hoặc chỉ đọc.',
+  info: 'Hồ sơ đang được xử lý.',
+  warning: 'Hồ sơ đang chờ hoặc cần chú ý.',
+  success: 'Hồ sơ đã hoàn tất hoặc đạt mốc thành công.',
+  critical: 'Hồ sơ đang bị chặn, lỗi hoặc cần xử lý ưu tiên.',
+};
+
+export function getPgdcnStatusPresentation(domain: PgdcnDashboardDomain, status: string | undefined): PgdcnStatusPresentation {
+  const normalizedStatus = getStatus(status);
+  const label = getPgdcnDashboardStatusLabel(domain, normalizedStatus);
+  const tone = STATUS_TONE_BY_STATUS[normalizedStatus] || 'neutral';
+  return { status: normalizedStatus, label, tone, description: label + '. ' + STATUS_TONE_DESCRIPTION[tone] };
+}
 const parseDateTimestamp = (value: string | undefined): number | undefined => {
   if (!value) return undefined;
   const rawValue = String(value).trim();
@@ -341,4 +372,30 @@ export function getPgdcnDashboardProjection(input: PgdcnDashboardInput): PgdcnDa
     ],
     upcoming,
   };
+}
+
+export type PgdcnWorkBucket = 'OVERDUE' | 'TODAY' | 'MY_TURN' | 'APPROVAL' | 'RECENT' | 'WAITING_OTHERS';
+export interface PgdcnNextAction { key: string; label: string; description: string; }
+export interface PgdcnMyWorkItem { domain: PgdcnDashboardDomain; id: string; label: string; customerName: string; productName?: string; status: string; statusLabel: string; currentStepLabel: string; nextAction: PgdcnNextAction; bucket: PgdcnWorkBucket; dueDate?: string; dueLabel?: string; ownerLabel: string; updatedAt?: string; isOverdue: boolean; }
+export interface PgdcnMyWorkProjection { items: PgdcnMyWorkItem[]; buckets: Record<Exclude<PgdcnWorkBucket, 'WAITING_OTHERS'>, PgdcnMyWorkItem[]>; waitingOthers: PgdcnMyWorkItem[]; }
+export interface PgdcnMyWorkInput { scopes: readonly DepartmentScope[]; currentUser: Pick<UserAccount, 'username' | 'role' | 'systemRole' | 'managementRoleCode' | 'departmentRoleCode'>; pcnDossiers: readonly CertificationDossier[]; pcnProposals?: readonly CertificationProposal[]; pcnWorkflowTasks?: readonly PcnDossierWorkflowTask[]; pgdRequests: readonly (PgdcnDashboardRequest & { customerSnapshot?: { name?: string }; productName?: string; ownerUsername?: string; targetDate?: string; updatedAt?: string; createdAt?: string })[]; pgdAssignments?: readonly { requestId: string; leadInspectorUsername?: string; inspectorUsernames?: readonly string[]; technicalReviewerUsername?: string }[]; now?: Date; }
+const ACTIVE_TASK_STATUSES = new Set(['READY', 'IN_PROGRESS', 'WAITING', 'RETURNED']);
+const actions: Record<PgdcnDashboardDomain, Record<string, [string, string, string]>> = { PCN: { DRAFT: ['SUPPLEMENT', 'Bổ sung hồ sơ', 'Hoàn thiện thông tin và tài liệu đầu vào.'], INTAKE_REVIEW: ['INTAKE', 'Tiếp nhận hồ sơ', 'Kiểm tra điều kiện tiếp nhận và xác nhận hồ sơ.'], AWAITING_DOCUMENTS: ['SUPPLEMENT', 'Bổ sung hồ sơ', 'Hoàn thiện tài liệu bắt buộc trước khi chuyển bước.'], ASSIGNED: ['PLAN', 'Lập kế hoạch', 'Xác lập kế hoạch và phân công xử lý tiếp theo.'], PLAN_PENDING_APPROVAL: ['APPROVE_PLAN', 'Trình phê duyệt kế hoạch', 'Rà soát và trình kế hoạch theo đúng thẩm quyền.'], FIELD_EVALUATION: ['FIELD', 'Nhập kết quả hiện trường', 'Ghi nhận bằng chứng và kết quả đánh giá hiện trường.'], AWAITING_SAMPLING: ['SAMPLE', 'Lấy mẫu', 'Thực hiện lấy mẫu và cập nhật biên bản liên quan.'], SENT_TO_LAB: ['LAB', 'Lập PYC PTN', 'Tạo và bàn giao yêu cầu thử nghiệm cho PTN.'], AWAITING_RESULTS: ['RESULTS', 'Tiếp nhận KQTN', 'Đối chiếu và tiếp nhận kết quả thử nghiệm.'], TECHNICAL_REVIEW: ['REVIEW', 'Soát xét', 'Kiểm tra tính đầy đủ và phù hợp của hồ sơ kỹ thuật.'], WAITING_APPROVAL: ['APPROVE', 'Trình phê duyệt', 'Trình hồ sơ đến cấp phê duyệt tiếp theo.'], APPROVED: ['ISSUE', 'Ký & phát hành', 'Hoàn tất phát hành theo quy trình chứng nhận.'], CORRECTIVE_ACTION: ['SUPPLEMENT', 'Bổ sung hồ sơ', 'Theo dõi và hoàn thiện hành động khắc phục.'] }, PGD: { DRAFT: ['SUPPLEMENT', 'Bổ sung hồ sơ', 'Hoàn thiện thông tin đầu vào của PYC.'], CAPABILITY_REVIEW: ['ASSIGN', 'Phân công', 'Xem xét năng lực và xác nhận người phụ trách.'], READY_TO_EXECUTE: ['PLAN', 'Lập kế hoạch', 'Chuẩn bị kế hoạch và lịch giám định.'], PREPARING: ['PLAN', 'Lập kế hoạch', 'Hoàn tất chuẩn bị trước khi ra hiện trường.'], FIELD_INSPECTION: ['FIELD', 'Nhập kết quả hiện trường', 'Ghi nhận kết quả và bằng chứng tại hiện trường.'], WAITING_LAB_RESULTS: ['RESULTS', 'Tiếp nhận KQTN', 'Đối chiếu và tiếp nhận kết quả từ PTN.'], RESULTS_REVIEW: ['REPORT', 'Soạn báo cáo', 'Tổng hợp kết quả và hoàn thiện báo cáo giám định.'], TECHNICAL_REVIEW: ['REVIEW', 'Soát xét', 'Kiểm tra tính đầy đủ và phù hợp của hồ sơ kỹ thuật.'], LEADERSHIP_APPROVAL: ['APPROVE', 'Trình phê duyệt', 'Trình hồ sơ đến cấp phê duyệt lãnh đạo.'], SIGNED: ['RETURN', 'Trả kết quả', 'Hoàn tất trả kết quả và chứng thư cho khách hàng.'], RESULT_RETURNED: ['ARCHIVE', 'Lưu trữ', 'Đóng hồ sơ và lưu trữ theo quy định.'] } };
+const PCN_APPROVAL_STATUSES = new Set(['TECHNICAL_REVIEW', 'WAITING_APPROVAL']);
+const PGD_APPROVAL_STATUSES = new Set(['TECHNICAL_REVIEW', 'LEADERSHIP_APPROVAL']);
+const PCN_CLOSED_FOR_WORK = new Set(['ISSUED', 'DELIVERED', 'ARCHIVED', 'CANCELLED']);
+const PGD_CLOSED_FOR_WORK = new Set(['SIGNED', 'RESULT_RETURNED', 'ARCHIVED', 'CANCELLED']);
+export function getPgdcnNextAction(domain: PgdcnDashboardDomain, status: string | undefined, options: { missingRequiredCount?: number } = {}): PgdcnNextAction { const normalized = getStatus(status); if ((options.missingRequiredCount || 0) > 0 && !['ARCHIVED', 'CANCELLED', 'ISSUED', 'SIGNED'].includes(normalized)) return { key: 'SUPPLEMENT', label: 'Bổ sung hồ sơ', description: 'Hoàn thiện tài liệu bắt buộc trước khi chuyển bước.' }; const value = actions[domain][normalized]; return value ? { key: value[0], label: value[1], description: value[2] } : { key: 'OPEN', label: 'Tiếp tục hồ sơ', description: 'Mở hồ sơ để xem bước hiện tại và thao tác phù hợp.' }; }
+const toUsername = (value: string | undefined): string => String(value || '').trim().toLocaleLowerCase('vi-VN');
+const toIsoDay = (value: Date | string): string => { const date = value instanceof Date ? value : new Date(value); return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : ''; };
+const getWorkBucket = (dueDate: string | undefined, status: string, domain: PgdcnDashboardDomain, updatedAt: string | undefined, now: Date): PgdcnWorkBucket => { if (isOverdueDate(dueDate, now)) return 'OVERDUE'; if (dueDate && toIsoDay(dueDate) === toIsoDay(now)) return 'TODAY'; if ((domain === 'PCN' ? PCN_APPROVAL_STATUSES : PGD_APPROVAL_STATUSES).has(status)) return 'APPROVAL'; const updated = parseDateTimestamp(updatedAt); return updated !== undefined && now.getTime() - updated <= 14 * 24 * 60 * 60 * 1000 ? 'RECENT' : 'MY_TURN'; };
+const sortWorkItems = (items: PgdcnMyWorkItem[]): PgdcnMyWorkItem[] => [...items].sort((left, right) => Number(right.isOverdue) - Number(left.isOverdue) || (parseDateTimestamp(left.dueDate) || Number.MAX_SAFE_INTEGER) - (parseDateTimestamp(right.dueDate) || Number.MAX_SAFE_INTEGER) || left.domain.localeCompare(right.domain) || left.label.localeCompare(right.label, 'vi'));
+export function getPgdcnMyWorkProjection(input: PgdcnMyWorkInput): PgdcnMyWorkProjection {
+  const now = input.now || new Date(); const username = toUsername(input.currentUser.username); const proposalById = new Map((input.pcnProposals || []).map((proposal) => [proposal.id, proposal])); const tasksByDossier = new Map<string, PcnDossierWorkflowTask[]>();
+  for (const task of input.pcnWorkflowTasks || []) { const current = tasksByDossier.get(task.dossierId) || []; current.push(task); tasksByDossier.set(task.dossierId, current); }
+  const assignmentsByRequest = new Map((input.pgdAssignments || []).map((assignment) => [assignment.requestId, assignment])); const mine: PgdcnMyWorkItem[] = []; const waitingOthers: PgdcnMyWorkItem[] = [];
+  const add = (item: PgdcnMyWorkItem, isMine: boolean) => (isMine ? mine : waitingOthers).push(item);
+  for (const dossier of input.scopes.includes('PCN') ? input.pcnDossiers : []) { const status = getStatus(dossier.status); if (PCN_CLOSED_FOR_WORK.has(status)) continue; const tasks = tasksByDossier.get(dossier.id) || []; const activeTask = [...tasks].filter((task) => ACTIVE_TASK_STATUSES.has(task.status)).sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0]; const proposal = proposalById.get(dossier.proposalId); const dueDate = dossier.targetDate; const item: PgdcnMyWorkItem = { domain: 'PCN', id: dossier.id, label: dossier.dossierCode, customerName: dossier.customerSnapshot?.name || proposal?.customerSnapshot.name || 'Chưa cập nhật', productName: proposal?.productName, status, statusLabel: getPgdcnDashboardStatusLabel('PCN', status), currentStepLabel: activeTask?.nodeId || getPgdcnDashboardStatusLabel('PCN', status), nextAction: getPgdcnNextAction('PCN', status), bucket: getWorkBucket(dueDate, status, 'PCN', dossier.updatedAt || dossier.createdAt, now), dueDate, dueLabel: dueDate ? formatDateLabel(dueDate) : undefined, ownerLabel: dossier.ownerUsername || 'Chưa phân công', updatedAt: dossier.updatedAt || dossier.createdAt, isOverdue: isOverdueDate(dueDate, now) }; add(item, toUsername(dossier.ownerUsername) === username || toUsername(activeTask?.assignedUsername) === username); }
+  for (const request of input.scopes.includes('PGD') ? input.pgdRequests : []) { const status = getStatus(request.status); if (PGD_CLOSED_FOR_WORK.has(status)) continue; const assignment = assignmentsByRequest.get(request.id); const assignedUsers = [request.ownerUsername, assignment?.leadInspectorUsername, assignment?.technicalReviewerUsername, ...(assignment?.inspectorUsernames || [])].map(toUsername); const dueDate = request.targetDate || request.inspectionScheduledAt; const item: PgdcnMyWorkItem = { domain: 'PGD', id: request.id, label: request.requestCode || request.id, customerName: request.customerSnapshot?.name || 'Chưa cập nhật', productName: request.productName, status, statusLabel: getPgdcnDashboardStatusLabel('PGD', status), currentStepLabel: getPgdcnDashboardStatusLabel('PGD', status), nextAction: getPgdcnNextAction('PGD', status), bucket: getWorkBucket(dueDate, status, 'PGD', request.updatedAt || request.createdAt, now), dueDate, dueLabel: dueDate ? formatDateLabel(dueDate) : undefined, ownerLabel: request.ownerUsername || assignment?.leadInspectorUsername || 'Chưa phân công', updatedAt: request.updatedAt || request.createdAt, isOverdue: isOverdueDate(dueDate, now) }; add(item, assignedUsers.includes(username)); }
+  const buckets = { OVERDUE: sortWorkItems(mine.filter((item) => item.bucket === 'OVERDUE')), TODAY: sortWorkItems(mine.filter((item) => item.bucket === 'TODAY')), MY_TURN: sortWorkItems(mine.filter((item) => item.bucket === 'MY_TURN')), APPROVAL: sortWorkItems(mine.filter((item) => item.bucket === 'APPROVAL')), RECENT: sortWorkItems(mine.filter((item) => item.bucket === 'RECENT')) }; return { items: sortWorkItems(mine), buckets, waitingOthers: sortWorkItems(waitingOthers).slice(0, 6) };
 }

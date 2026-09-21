@@ -8,6 +8,7 @@ import type { PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
 import type { PgdDossierDocument, PgdDossierRequirement } from '../utils/pgdDossier';
 import { getCurrentPgdDossierDocuments, getPgdDossierRequirementForTemplate } from '../utils/pgdDossier';
 import { getPgdDossierDocumentDownloadUrl } from '../utils/pgdApi';
+import { getPgdcnNextAction } from '../utils/pgdcnDashboard';
 import type { PgdDocumentTemplateKind } from '../utils/pgdDocumentTemplates';
 import type { PgdDossierFlowStepId } from './PgdDossierFlow';
 import PgdCaseEvidencePanel from './PgdCaseEvidencePanel';
@@ -116,6 +117,7 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
   const templateKind = STEP_DRAFTING[selectedStepId];
   const requirement = templateKind ? getPgdDossierRequirementForTemplate(templateKind, request.productGroup) : undefined;
   const missingRequiredCount = dossierRequirements.filter((item) => item.required && !dossierDocuments.some((document) => document.requirementCode === item.code)).length;
+  const nextAction = getPgdcnNextAction('PGD', request.status, { missingRequiredCount });
   const currentRole = currentUser.pgdRole || currentUser.position || currentUser.username;
   const [exceptionFormOpen, setExceptionFormOpen] = useState(false);
   const [exceptionStatus, setExceptionStatus] = useState<'REJECTED' | 'ON_HOLD'>('REJECTED');
@@ -196,7 +198,7 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-black text-white">{meta.number}</span><span className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600">Việc đang chọn</span></div>
           <h3 className="mt-2 text-base font-black text-slate-900">{meta.title}</h3>
-          <p className="mt-1 max-w-3xl text-[10px] leading-4 text-slate-500">{meta.description}</p>
+          <p className="mt-1 max-w-3xl text-[10px] leading-4 text-slate-500">{meta.description}</p><p className="mt-2 text-xs font-bold text-blue-800">Việc bạn cần làm: {nextAction.label}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           {draftingHref ? <a href={draftingHref} target="_blank" rel="noreferrer" className="mobile-touch-target dossier-action-compact inline-flex min-h-10 items-center rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white hover:bg-blue-500">Soạn thảo tài liệu</a> : null}
@@ -208,7 +210,7 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
       <section className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-[10px]" aria-label="Soát xét hồ sơ PGD">
         <div><span className="mr-2 text-[9px] font-black uppercase tracking-wide text-blue-700">Soát xét</span><strong className="text-slate-800">{missingRequiredCount ? `Còn ${missingRequiredCount} mục bắt buộc` : 'Không thiếu mục bắt buộc'}</strong></div>
         <div><span className="mr-2 text-[9px] font-black uppercase tracking-wide text-blue-700">Bước kế tiếp</span><strong className="text-slate-800">{NEXT_ROLE[selectedStepId]}</strong></div>
-        <details className="text-slate-500"><summary className="cursor-pointer list-none font-semibold">Vai trò hiện tại</summary><span className="ml-1">{currentRole} · {currentUser.username}</span></details>
+        <details className="text-slate-500" data-testid="pgd-dossier-role-details" data-disclosure="advanced"><summary className="cursor-pointer list-none font-semibold">Vai trò hiện tại</summary><span className="ml-1">{currentRole} · {currentUser.username}</span></details>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm" aria-label="Danh sách tài liệu cần hoàn thiện PGD">
@@ -219,14 +221,14 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
         <PgdcnDossierDocumentActionTable testId="pgd-dossier-document-action-table" rows={documentActionRows} />
       </section>
 
-      {exceptionAllowed ? <details className="rounded-xl border border-rose-100 bg-rose-50/50" data-testid="pgd-dossier-exception-review" aria-label="Xử lý ngoại lệ hồ sơ PGD">
+      {exceptionAllowed ? <details className="rounded-xl border border-rose-100 bg-rose-50/50" data-testid="pgd-dossier-exception-review" data-disclosure="advanced" aria-label="Xử lý ngoại lệ hồ sơ PGD">
         <summary className="mobile-touch-target cursor-pointer list-none px-3 py-2.5 text-[10px] font-black text-rose-800">Xử lý ngoại lệ <span className="ml-1 font-normal text-rose-900/70">(chỉ mở khi cần trả bổ sung hoặc tạm dừng)</span></summary>
         <div className="border-t border-rose-100 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><p className="text-[10px] leading-4 text-rose-900/80">Bắt buộc ghi lý do để người tiếp theo tiếp tục đúng ngữ cảnh.</p><div className="flex flex-wrap gap-1.5"><button type="button" onClick={() => { setExceptionStatus('REJECTED'); setExceptionFormOpen(true); }} disabled={exceptionBusy} className="mobile-touch-target min-h-10 rounded-lg border border-rose-200 bg-white px-2.5 text-[9px] font-black text-rose-700 disabled:opacity-50">Trả bổ sung</button><button type="button" onClick={() => { setExceptionStatus('ON_HOLD'); setExceptionFormOpen(true); }} disabled={exceptionBusy} className="mobile-touch-target min-h-10 rounded-lg border border-amber-200 bg-white px-2.5 text-[9px] font-black text-amber-800 disabled:opacity-50">Tạm dừng</button></div></div>
         {exceptionFormOpen && <div className="mt-2 rounded-lg border border-rose-200 bg-white p-2.5"><div className="text-[10px] font-black text-slate-800">{exceptionStatus === 'REJECTED' ? 'Trả bổ sung hồ sơ' : 'Tạm dừng hồ sơ'}</div><label className="mt-2 block" htmlFor="pgd-exception-reason"><span className="text-[9px] font-black text-slate-600">Lý do<span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span><textarea id="pgd-exception-reason" required aria-required="true" value={exceptionReason} onChange={(event) => setExceptionReason(event.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-rose-200 px-2.5 py-2 text-[10px] outline-none focus:border-rose-400" /></label><div className="mt-2 flex flex-wrap justify-end gap-1.5"><button type="button" onClick={() => setExceptionFormOpen(false)} disabled={exceptionBusy} className="min-h-10 rounded-lg border border-slate-200 px-3 text-[9px] font-bold text-slate-600">Hủy</button><button type="button" onClick={submitException} disabled={exceptionBusy || !exceptionReason.trim()} className="min-h-10 rounded-lg bg-rose-600 px-3 text-[9px] font-black text-white disabled:opacity-50">{exceptionBusy ? 'Đang ghi nhận...' : 'Xác nhận nhánh ngoại lệ'}</button></div></div>}
         </div>
       </details> : null}
 
-      <details className="rounded-xl border border-slate-200 bg-slate-50">
+      <details className="rounded-xl border border-slate-200 bg-slate-50" data-testid="pgd-dossier-advanced-workflow" data-disclosure="advanced">
         <summary className="mobile-touch-target cursor-pointer list-none px-3 py-2.5 text-[10px] font-black text-slate-800">Mở biểu mẫu nghiệp vụ của bước này <span className="ml-1 font-normal text-slate-500">({meta.title})</span></summary>
         <div className="border-t border-slate-200 p-3">{renderStep()}</div>
       </details>

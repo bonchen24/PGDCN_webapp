@@ -1,17 +1,24 @@
 'use client';
 
 import { formatDateDdMmYyyy } from '../utils/formatter';
+import { getPgdcnNotificationActionLabel } from '../utils/pgdcnNotification';
 
 import { AlertTriangle, ArrowRight, Award, Bell, Bot, CalendarClock, CheckCircle2, ClipboardCheck, FileCheck2, FolderOpen, Inbox, Plus, Timer, type LucideIcon } from 'lucide-react';
 
-import type { AppNotification, CertificationDossier, DepartmentScope } from '../types';
+import type { AppNotification, CertificationDossier, CertificationProposal, DepartmentScope, PcnDossierWorkflowTask, UserAccount } from '../types';
 import type { PgdInspectionRequest } from '../utils/pgdDomain';
-import { getPgdcnDashboardProjection, type DashboardPipelineTone, type PgdcnDashboardDomainSummary, type PgdcnDashboardUpcomingItem } from '../utils/pgdcnDashboard';
+import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
+import type { PgdcnRecentRecord } from '../utils/pgdcnRecent';
+import { getPgdcnDashboardProjection, getPgdcnMyWorkProjection, type DashboardPipelineTone, type PgdcnDashboardDomainSummary, type PgdcnDashboardUpcomingItem, type PgdcnMyWorkItem, type PgdcnMyWorkProjection } from '../utils/pgdcnDashboard';
 
 type PgdcnDashboardViewProps = {
   scopes: readonly DepartmentScope[];
   pcnDossiers: readonly CertificationDossier[];
   pgdRequests: readonly PgdInspectionRequest[];
+  currentUser?: UserAccount;
+  pcnProposals?: readonly CertificationProposal[];
+  pcnWorkflowTasks?: readonly PcnDossierWorkflowTask[];
+  pgdAssignments?: readonly { requestId: string; leadInspectorUsername?: string; inspectorUsernames?: readonly string[]; technicalReviewerUsername?: string }[];
   notifications: readonly AppNotification[];
   onOpenPcn: (dossierId: string) => void;
   onOpenPgd: (requestId: string) => void;
@@ -19,6 +26,7 @@ type PgdcnDashboardViewProps = {
   onOpenPgdWorkspace: () => void;
   onOpenNotifications: () => void;
   onSelectNotification: (notification: AppNotification) => void;
+  recentRecords?: readonly PgdcnRecentRecord[];
 };
 
 const DOMAIN_CONFIG = {
@@ -96,6 +104,29 @@ function CommandHeader({ scopes, onOpenPcnWorkspace, onOpenPgdWorkspace }: Pick<
   );
 }
 
+
+const WORK_BUCKET_LABELS: Record<string, string> = { OVERDUE: 'QUÁ HẠN', TODAY: 'CẦN LÀM HÔM NAY', MY_TURN: 'ĐANG CHỜ TÔI XỬ LÝ', APPROVAL: 'CHỜ PHÊ DUYỆT', RECENT: 'GẦN ĐÂY' };
+
+function WorkItemCard({ item, onOpenPcn, onOpenPgd }: { item: PgdcnMyWorkItem; onOpenPcn: (id: string) => void; onOpenPgd: (id: string) => void }) {
+  const isPcn = item.domain === 'PCN';
+  return <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><div className="flex min-w-0 flex-wrap items-center gap-2"><span className={'shrink-0 rounded-full px-2 py-1 text-[11px] font-black ' + (isPcn ? DOMAIN_CONFIG.PCN.badge : DOMAIN_CONFIG.PGD.badge)}>{item.domain}</span><b className="min-w-0 break-words text-sm font-black text-slate-900">{item.label}</b></div><p className="mt-2 break-words text-xs font-bold text-slate-700">{item.customerName}{item.productName ? ' · ' + item.productName : ''}</p></div><PgdcnStatusBadge domain={item.domain} status={item.status} label={item.statusLabel} /></div>
+    <div className="mt-3 grid min-w-0 gap-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 sm:grid-cols-2"><p className="min-w-0 break-words"><b className="text-slate-500">Bước hiện tại:</b> {item.currentStepLabel}</p><p className="min-w-0 break-words"><b className="text-slate-500">Hạn xử lý:</b> {item.dueLabel || 'Chưa đặt hạn'}</p></div>
+    <div className="mt-3 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="min-w-0 break-words text-xs text-slate-500">{item.nextAction.description}</p><button type="button" onClick={() => isPcn ? onOpenPcn(item.id) : onOpenPgd(item.id)} className={'mobile-touch-target inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-3 text-xs font-black text-white focus-visible:outline-none focus-visible:ring-2 ' + (isPcn ? 'bg-emerald-600 hover:bg-emerald-700 focus-visible:ring-emerald-300' : 'bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-300')} aria-label={item.nextAction.label + ' ' + item.label}>{item.nextAction.label}<ArrowRight size={15} /></button></div>
+  </article>;
+}
+
+function MyWorkSection({ projection, currentUser, onOpenPcn, onOpenPgd }: { projection: PgdcnMyWorkProjection; currentUser?: UserAccount; onOpenPcn: (id: string) => void; onOpenPgd: (id: string) => void }) {
+  const buckets = ['OVERDUE', 'TODAY', 'MY_TURN', 'APPROVAL', 'RECENT'] as const;
+  const name = currentUser?.name || currentUser?.username || 'bạn';
+  const count = buckets.reduce((total, bucket) => total + projection.buckets[bucket].length, 0);
+  return <section data-testid="pgdcn-dashboard-my-work" className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900 p-4 text-white shadow-sm">
+    <div className="flex min-w-0 flex-col justify-between gap-3 lg:flex-row lg:items-end"><div className="min-w-0"><p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">VIỆC CỦA TÔI</p><h2 className="mt-1 break-words text-xl font-black tracking-tight">Xin chào, {name}</h2><p className="mt-1 text-sm text-slate-300">Các hồ sơ đang cần bạn xử lý, ưu tiên theo hạn và lượt xử lý hiện tại.</p></div><div className="shrink-0 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2"><span className="block text-xs font-bold uppercase tracking-wide text-slate-400">Tổng việc cần xử lý</span><b className="mt-1 block text-2xl font-black text-white">{formatCount(count)}</b></div></div>
+    <div className="mt-4 space-y-4">{buckets.map((bucket) => { const items = projection.buckets[bucket]; if (!items.length) return null; return <div key={bucket}><div className="mb-2 flex items-center gap-2"><span className={'h-2 w-2 rounded-full ' + (bucket === 'OVERDUE' ? 'bg-rose-400' : bucket === 'APPROVAL' ? 'bg-violet-400' : 'bg-emerald-400')} /><h3 className="text-xs font-black uppercase tracking-wide text-slate-300">{WORK_BUCKET_LABELS[bucket]}</h3><span className="text-xs text-slate-500">{items.length}</span></div><div className="grid min-w-0 gap-3 xl:grid-cols-2">{items.map((item) => <WorkItemCard key={item.domain + '-' + item.id} item={item} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} />)}</div></div>; })}{count === 0 && <div className="rounded-xl border border-dashed border-slate-700 bg-slate-800/60 p-6 text-center"><CheckCircle2 className="mx-auto text-emerald-400" size={28} /><p className="mt-2 text-sm font-bold text-slate-200">Bạn không có hồ sơ nào cần xử lý ngay.</p><p className="mt-1 text-xs text-slate-400">Khi hồ sơ chuyển đến lượt của bạn, việc cần làm sẽ xuất hiện ở đây.</p></div>}</div>
+    {projection.waitingOthers.length > 0 && <details className="mt-4 rounded-xl border border-slate-700 bg-slate-800/60 p-3"><summary className="mobile-touch-target cursor-pointer list-none text-sm font-bold text-slate-200">Đang chờ người khác · {projection.waitingOthers.length} hồ sơ</summary><div className="mt-3 grid gap-2 md:grid-cols-2">{projection.waitingOthers.slice(0, 6).map((item) => <button key={item.domain + '-' + item.id} type="button" onClick={() => item.domain === 'PCN' ? onOpenPcn(item.id) : onOpenPgd(item.id)} className="mobile-touch-target min-h-11 rounded-lg border border-slate-700 px-3 py-2 text-left hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"><span className="text-xs font-black text-slate-200">{item.label}</span><span className="mt-1 block text-xs text-slate-400">{item.statusLabel} · {item.ownerLabel}</span></button>)}</div></details>}
+  </section>;
+}
+
 function AttentionQueue({ items, onOpenPcn, onOpenPgd }: Pick<PgdcnDashboardViewProps, 'onOpenPcn' | 'onOpenPgd'> & { items: ReturnType<typeof getPgdcnDashboardProjection>['attention'] }) {
   return (
     <section data-testid="pgdcn-dashboard-attention-queue" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -120,7 +151,7 @@ function AttentionQueue({ items, onOpenPcn, onOpenPgd }: Pick<PgdcnDashboardView
                   <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black ${isPcn ? DOMAIN_CONFIG.PCN.badge : DOMAIN_CONFIG.PGD.badge}`}>{item.domain}</span>
                   <b className="min-w-0 flex-1 break-words text-xs font-black text-slate-800">{item.label}</b>
                 </span>
-                <span className="mt-1 block break-words text-[10px] text-slate-500">{item.statusLabel} · {item.reason === 'OVERDUE' ? 'Quá hạn' : 'Đang chờ xử lý'}{item.dueLabel ? ` · ${item.dueLabel}` : ''}</span>
+                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5"><PgdcnStatusBadge compact domain={item.domain} status={item.status} label={item.statusLabel} tone={item.reason === 'OVERDUE' ? 'critical' : undefined} /><span className="text-[10px] text-slate-500">{item.reason === 'OVERDUE' ? 'Quá hạn' : 'Đang chờ xử lý'}{item.dueLabel ? ' · ' + item.dueLabel : ''}</span></div>
               </span>
               <ArrowRight size={16} className="shrink-0 text-slate-300 group-hover:text-slate-700" />
             </button>
@@ -172,12 +203,38 @@ function DomainPipeline({ summaries, onOpenPcnWorkspace, onOpenPgdWorkspace }: P
   );
 }
 
+function RecentItemsSection({ recentRecords, pcnDossiers, pgdRequests, onOpenPcn, onOpenPgd }: { recentRecords: readonly PgdcnRecentRecord[]; pcnDossiers: readonly CertificationDossier[]; pgdRequests: readonly PgdInspectionRequest[]; onOpenPcn: (id: string) => void; onOpenPgd: (id: string) => void }) {
+  const items = recentRecords.map((recent) => {
+    const openedAt = new Date(recent.openedAt);
+    if (recent.domain === 'PCN') {
+      const dossier = pcnDossiers.find((item) => item.id === recent.recordId);
+      if (!dossier) return null;
+      return { ...recent, label: dossier.dossierCode, description: dossier.customerSnapshot?.name || 'Hồ sơ chứng nhận', dateLabel: Number.isFinite(openedAt.getTime()) ? formatDateDdMmYyyy(openedAt) || 'Vừa mở' : 'Vừa mở' };
+    }
+    const request = pgdRequests.find((item) => item.id === recent.recordId);
+    if (!request) return null;
+    return { ...recent, label: request.requestCode, description: request.customerSnapshot.name || 'Hồ sơ giám định', dateLabel: Number.isFinite(openedAt.getTime()) ? formatDateDdMmYyyy(openedAt) || 'Vừa mở' : 'Vừa mở' };
+  }).filter(Boolean) as Array<PgdcnRecentRecord & { label: string; description: string; dateLabel: string }>;
+
+  return <section data-testid="pgdcn-dashboard-recent-items" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="flex items-start justify-between gap-2"><div><div className="flex items-center gap-2"><FolderOpen size={17} className="text-emerald-600" /><h2 className="text-base font-black text-slate-900">Hồ sơ vừa mở</h2></div><p className="mt-1 text-[11px] text-slate-500">Quay lại đúng hồ sơ gần nhất mà bạn đã làm việc.</p></div><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700">{items.length}/6</span></div>
+    <div className="mt-4 grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+      {items.map((item) => <button key={item.domain + '-' + item.recordId} type="button" onClick={() => item.domain === 'PCN' ? onOpenPcn(item.recordId) : onOpenPgd(item.recordId)} className="mobile-touch-target min-h-16 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-left hover:border-emerald-300 hover:bg-emerald-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+        <span className={`inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-black ${item.domain === 'PCN' ? DOMAIN_CONFIG.PCN.badge : DOMAIN_CONFIG.PGD.badge}`}>{item.domain}</span>
+        <span className="mt-1 block break-words text-xs font-black text-slate-800">{item.label}</span>
+        <span className="mt-1 block break-words text-[10px] text-slate-500">{item.description} · {item.dateLabel}</span>
+      </button>)}
+      {items.length === 0 && <div className="col-span-full rounded-xl border border-dashed border-slate-300 p-6 text-center"><FolderOpen size={22} className="mx-auto text-slate-300" aria-hidden="true" /><p className="mt-2 text-sm font-bold text-slate-700">Chưa có hồ sơ vừa mở.</p><p className="mt-1 text-xs text-slate-500">Hồ sơ bạn mở sẽ được giữ lại ở đây trên thiết bị này.</p></div>}
+    </div>
+  </section>;
+}
+
 function UpcomingMilestones({ items, onOpenPcn, onOpenPgd }: Pick<PgdcnDashboardViewProps, 'onOpenPcn' | 'onOpenPgd'> & { items: PgdcnDashboardUpcomingItem[] }) {
   return (
     <section data-testid="pgdcn-dashboard-upcoming" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2"><div><div className="flex items-center gap-2"><CalendarClock size={17} className="text-blue-500" /><h2 className="text-base font-black text-slate-900">Mốc sắp tới</h2></div><p className="mt-1 text-[11px] text-slate-500">Các hạn xử lý và lịch giám định gần nhất.</p></div><span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-black text-blue-700">{items.length}/5</span></div>
       <div className="mt-4 divide-y divide-slate-100">
-        {items.map((item) => <button key={`${item.domain}-${item.id}`} type="button" onClick={() => item.domain === 'PCN' ? onOpenPcn(item.id) : onOpenPgd(item.id)} aria-label={`Mở ${item.domain} ${item.label}`} className="mobile-touch-target flex min-h-16 w-full min-w-0 items-center gap-2 py-2 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-300"><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black ${item.domain === 'PCN' ? DOMAIN_CONFIG.PCN.badge : DOMAIN_CONFIG.PGD.badge}`}>{item.domain}</span><span className="min-w-0 flex-1"><b className="block break-words text-xs font-black text-slate-800">{item.label}</b><span className="mt-1 block break-words text-[10px] text-slate-500">{item.milestoneLabel} · {item.statusLabel}</span></span><span className="shrink-0 text-right"><b className="block whitespace-nowrap text-[10px] font-black text-slate-700">{item.dateLabel}</b><ArrowRight size={14} className="ml-auto mt-1 text-slate-300" /></span></button>)}
+        {items.map((item) => <button key={`${item.domain}-${item.id}`} type="button" onClick={() => item.domain === 'PCN' ? onOpenPcn(item.id) : onOpenPgd(item.id)} aria-label={`Mở ${item.domain} ${item.label}`} className="mobile-touch-target flex min-h-16 w-full min-w-0 items-center gap-2 py-2 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-300"><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black ${item.domain === 'PCN' ? DOMAIN_CONFIG.PCN.badge : DOMAIN_CONFIG.PGD.badge}`}>{item.domain}</span><span className="min-w-0 flex-1"><b className="block break-words text-xs font-black text-slate-800">{item.label}</b><span className="mt-1 block break-words text-[10px] text-slate-500">{item.milestoneLabel} · <PgdcnStatusBadge compact domain={item.domain} status={item.status} label={item.statusLabel} /></span></span><span className="shrink-0 text-right"><b className="block whitespace-nowrap text-[10px] font-black text-slate-700">{item.dateLabel}</b><ArrowRight size={14} className="ml-auto mt-1 text-slate-300" /></span></button>)}
         {items.length === 0 && <p className="py-8 text-center text-[11px] text-slate-400">Chưa có mốc sắp tới.</p>}
       </div>
     </section>
@@ -189,20 +246,21 @@ function SharedNotifications({ notifications, onOpenNotifications, onSelectNotif
     <section data-testid="pgdcn-dashboard-notifications" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex min-w-0 items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-2"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600"><Bell size={16} /></span><div className="min-w-0"><h2 className="text-base font-black text-slate-900">Thông báo phòng</h2><p className="mt-1 break-words text-[11px] text-slate-500">Một luồng chung cho PCN và PGD.</p></div></div><button type="button" onClick={onOpenNotifications} className="mobile-touch-target shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">Xem tất cả</button></div>
       <div className="mt-4 divide-y divide-slate-100">
-        {notifications.slice(0, 5).map((notification) => { const isPgd = notification.domain === 'PGD'; const date = new Date(notification.createdAt); const dateLabel = Number.isFinite(date.getTime()) ? formatDateDdMmYyyy(date) || 'Mới' : 'Mới'; return <button key={notification.id} type="button" onClick={() => onSelectNotification(notification)} aria-label={`Mở thông báo ${notification.title} · ${notification.read ? 'Đã đọc' : 'Chưa đọc'}`} className={`mobile-touch-target flex min-h-16 w-full min-w-0 items-start gap-2 py-2 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-300 ${notification.read ? '' : 'bg-slate-50'}`}><span className={`mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black ${isPgd ? DOMAIN_CONFIG.PGD.badge : DOMAIN_CONFIG.PCN.badge}`}>{isPgd ? 'PGD' : 'PCN'}</span><span className="min-w-0 flex-1"><b className="block break-words text-[11px] font-black text-slate-800">{notification.title}</b><span className="mt-1 block break-words text-[10px] text-slate-500">{notification.message}</span></span><span className="shrink-0 whitespace-nowrap text-[9px] text-slate-400">{dateLabel}</span></button>; })}
+        {notifications.slice(0, 5).map((notification) => { const isPgd = notification.domain === 'PGD'; const actionLabel = getPgdcnNotificationActionLabel(notification); const date = new Date(notification.createdAt); const dateLabel = Number.isFinite(date.getTime()) ? formatDateDdMmYyyy(date) || 'Mới' : 'Mới'; return <button key={notification.id} type="button" onClick={() => onSelectNotification(notification)} aria-label={`Mở thông báo ${notification.title} · ${notification.read ? 'Đã đọc' : 'Chưa đọc'}`} className={`mobile-touch-target flex min-h-16 w-full min-w-0 items-start gap-2 py-2 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-300 ${notification.read ? '' : 'bg-slate-50'}`}><span className={`mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black ${isPgd ? DOMAIN_CONFIG.PGD.badge : DOMAIN_CONFIG.PCN.badge}`}>{isPgd ? 'PGD' : 'PCN'}</span><span className="min-w-0 flex-1"><b className="block break-words text-[11px] font-black text-slate-800">{notification.title}</b><span className="mt-1 block break-words text-[10px] text-slate-500">{notification.message}</span><span className="mt-1 block text-xs font-black text-emerald-700">{actionLabel}</span></span><span className="shrink-0 whitespace-nowrap text-[9px] text-slate-400">{dateLabel}</span></button>; })}
         {notifications.length === 0 && <p className="py-8 text-center text-[11px] text-slate-400">Chưa có thông báo phòng.</p>}
       </div>
     </section>
   );
 }
 
-export default function PgdcnDashboardView({ scopes, pcnDossiers, pgdRequests, notifications, onOpenPcn, onOpenPgd, onOpenPcnWorkspace, onOpenPgdWorkspace, onOpenNotifications, onSelectNotification }: PgdcnDashboardViewProps) {
+export default function PgdcnDashboardView({ scopes, pcnDossiers, pgdRequests, notifications, onOpenPcn, onOpenPgd, onOpenPcnWorkspace, onOpenPgdWorkspace, onOpenNotifications, onSelectNotification, recentRecords = [] }: PgdcnDashboardViewProps) {
   const projection = getPgdcnDashboardProjection({ scopes, pcnDossiers, pgdRequests });
   return (
     <section className="pcn-page-surface app-compact min-w-0 space-y-4 bg-slate-50 p-3 pb-5 md:p-4 mobile-safe-bottom" aria-label="Điều hành phòng PGDCN">
       <CommandHeader scopes={scopes} onOpenPcnWorkspace={onOpenPcnWorkspace} onOpenPgdWorkspace={onOpenPgdWorkspace} />
       <div data-testid="pgdcn-dashboard-kpi-grid" className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-6"><Kpi label="Hồ sơ PCN" value={projection.kpis.pcnDossiers} icon={Award} tone="bg-emerald-50 text-emerald-600" /><Kpi label="Hồ sơ PGD" value={projection.kpis.pgdRequests} icon={ClipboardCheck} tone="bg-blue-50 text-blue-600" /><Kpi label="PCN cần xử lý" value={projection.kpis.pcnWork} icon={FolderOpen} tone="bg-amber-50 text-amber-600" /><Kpi label="PGD cần xử lý" value={projection.kpis.pgdWork} icon={FileCheck2} tone="bg-indigo-50 text-indigo-600" /><Kpi label="Hồ sơ cần AI hỗ trợ" value={projection.kpis.aiCandidates} icon={Bot} tone="bg-violet-50 text-violet-600" /><Kpi label="Quá hạn / cần chú ý" value={projection.kpis.attention} icon={AlertTriangle} tone="bg-rose-50 text-rose-600" /></div>
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(21rem,0.85fr)]"><AttentionQueue items={projection.attention} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} /><DomainPipeline summaries={projection.domainSummaries} onOpenPcnWorkspace={onOpenPcnWorkspace} onOpenPgdWorkspace={onOpenPgdWorkspace} /></div>
+      <RecentItemsSection recentRecords={recentRecords} pcnDossiers={pcnDossiers} pgdRequests={pgdRequests} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} />
       <div className="grid min-w-0 gap-4 lg:grid-cols-2"><UpcomingMilestones items={projection.upcoming} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} /><SharedNotifications notifications={notifications} onOpenNotifications={onOpenNotifications} onSelectNotification={onSelectNotification} /></div>
     </section>
   );

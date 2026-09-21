@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu } from 'lucide-react';
+import { Menu, Search } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { toast } from 'sonner';
 
@@ -13,6 +13,7 @@ import { usePcnStore } from '../store-pcn';
 import { usePgdStore } from '../store-pgd';
 import { clearPgdcnNotifications, fetchPgdcnNotifications, markAllPgdcnNotificationsRead, markPgdcnNotificationRead } from '../utils/pgdcnNotificationApi';
 import { getPgdcnNotificationNavigation } from '../utils/pgdcnNotification';
+import { readPgdcnRecentRecords, rememberPgdcnRecentRecord, writePgdcnRecentRecords, type PgdcnRecentRecord } from '../utils/pgdcnRecent';
 import { getPcnNotificationDossierTab } from '../utils/pcnDossierNavigation';
 import PcnLoginScreen from './PcnLoginScreen';
 import PcnWorkspace from './PcnWorkspace';
@@ -21,6 +22,7 @@ import { ActivityLogView } from './ActivityLogView';
 import PgdcnSidebar, { type PgdcnDomain, type PgdcnNavigationTarget } from './PgdcnSidebar';
 import PgdcnDashboardView from './PgdcnDashboardView';
 import PgdcnAssistantView from './PgdcnAssistantView';
+import PgdcnCommandPalette, { type PgdcnCommandRecord } from './PgdcnCommandPalette';
 import PgdcnCustomersView from './PgdcnCustomersView';
 import PgdcnSystemSettingsView from './PgdcnSystemSettingsView';
 import PgdcnDossierTemplateManagementView from './PgdcnDossierTemplateManagementView';
@@ -58,7 +60,9 @@ const getScopes = (value: readonly DepartmentScope[] | undefined): DepartmentSco
 
 const getActiveContextLabel = (target: PgdcnNavigationTarget): string => {
   if (target.domain === 'department') {
-    if (target.section === 'department-dashboard') return 'Tổng quan phòng';
+    /* Tổng quan phòng remains the canonical dashboard route label. */
+    if (target.section === 'department-dashboard') return 'Tổng quan';
+    if (target.section === 'my-work') return 'Việc của tôi';
     if (target.section === 'customers') return 'Khách hàng';
     if (target.section === 'assistant') return 'Trợ lý AI';
     if (target.section === 'activityLogs') return 'Nhật ký hoạt động';
@@ -105,7 +109,25 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   const [personalSettingsOpen, setPersonalSettingsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [assistantContext, setAssistantContext] = useState<{ domain: 'PCN' | 'PGD'; recordId: string }>();
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [recentRecords, setRecentRecords] = useState<PgdcnRecentRecord[]>([]);
   const [focusedPgdRequestId, setFocusedPgdRequestId] = useState<string | undefined>(initialPgdRequestId);
+
+  useEffect(() => {
+    setRecentRecords(readPgdcnRecentRecords(currentUser?.username));
+  }, [currentUser?.username]);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setCommandOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
 
   useEffect(() => {
     if (initialDomain === 'PCN') setActiveTarget({ domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : 'proposals' });
@@ -173,10 +195,29 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
 
   const systemUsers = useMemo(() => Array.from(new Map([...pgd.users, ...pcn.users].map((user) => [user.username, user])).values()), [pcn.users, pgd.users]);
 
+  const commandRecords = useMemo<PgdcnCommandRecord[]>(() => {
+    const records: PgdcnCommandRecord[] = [
+      ...(scopes.includes('PCN') ? pcn.dossiers.map((dossier) => ({ domain: 'PCN' as const, id: dossier.id, label: dossier.dossierCode, description: dossier.customerSnapshot?.name || 'Hồ sơ chứng nhận' })) : []),
+      ...(scopes.includes('PGD') ? pgd.requests.map((request) => ({ domain: 'PGD' as const, id: request.id, label: request.requestCode, description: request.customerSnapshot.name || 'Hồ sơ giám định' })) : []),
+    ];
+    const recentRank = new Map(recentRecords.map((item, index) => [item.domain + '-' + item.recordId, index]));
+    return records.sort((left, right) => (recentRank.get(left.domain + '-' + left.id) ?? 999) - (recentRank.get(right.domain + '-' + right.id) ?? 999)).slice(0, 80);
+  }, [pgd.requests, pcn.dossiers, recentRecords, scopes.join('|')]);
+
   if (!sessionChecked) return <div className="flex min-h-[100dvh] items-center justify-center bg-slate-50 text-xs font-bold text-slate-700">Đang xác thực phiên PGDCN...</div>;
   if (!currentUser) return <PcnLoginScreen />;
 
+  const rememberRecent = (domain: PgdcnRecentRecord['domain'], recordId: string) => {
+    if (!currentUser || !recordId) return;
+    setRecentRecords((current) => {
+      const next = rememberPgdcnRecentRecord(current, domain, recordId);
+      writePgdcnRecentRecords(currentUser.username, next);
+      return next;
+    });
+  };
+
   const navigate = (target: PgdcnNavigationTarget) => {
+    setAssistantContext(undefined);
     setFocusedPgdRequestId(undefined);
     setActiveTarget(target);
     setMobileOpen(false);
@@ -260,6 +301,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     setNotificationOpen(true);
   };
   const openPcnDossier = (dossierId: string, initialTab?: PcnDossierDetailTab) => {
+    setAssistantContext(undefined);
     setFocusedPgdRequestId(undefined);
     setMobileOpen(false);
     if (!dossierId) return;
@@ -267,6 +309,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     router.push(`/pgdcn/pcn/dossiers/${encodeURIComponent(dossierId)}${query}`);
   };
   const openPgdRequest = (requestId: string) => {
+    setAssistantContext(undefined);
     setActiveTarget({ domain: 'PGD', section: 'requests' });
     setMobileOpen(false);
     if (!requestId) return;
@@ -282,6 +325,19 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     setMobileOpen(false);
   };
 
+  const openPcnContextualAssistant = (dossierId: string) => {
+    if (!dossierId) return;
+    setAssistantContext({ domain: 'PCN', recordId: dossierId });
+    setActiveTarget({ domain: 'department', section: 'assistant' });
+    setMobileOpen(false);
+  };
+  const openPgdContextualAssistant = (requestId: string) => {
+    if (!requestId) return;
+    setAssistantContext({ domain: 'PGD', recordId: requestId });
+    setActiveTarget({ domain: 'department', section: 'assistant' });
+    setMobileOpen(false);
+  };
+
   const openPcnSection = (section: PcnSection) => {
     setActiveTarget(getSharedTargetForPcnSection(section) || { domain: 'PCN', section });
   };
@@ -291,8 +347,8 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     setActiveTarget(getSharedTargetForPgdSection(section) || { domain: 'PGD', section });
   };
 
-  const content = activeTarget.domain === 'department' && activeTarget.section === 'department-dashboard' ? (
-    <PgdcnDashboardView scopes={scopes} pcnDossiers={pcn.dossiers} pgdRequests={pgd.requests} notifications={notifications} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} onOpenNotifications={handleOpenNotifications} onSelectNotification={handleDashboardNotificationSelect} />
+  const content = activeTarget.domain === 'department' && (activeTarget.section === 'department-dashboard' || activeTarget.section === 'my-work') ? (
+    <PgdcnDashboardView scopes={scopes} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pcnWorkflowTasks={pcn.workflowTasks} pgdRequests={pgd.requests} pgdAssignments={pgd.assignments} currentUser={currentUser} notifications={notifications} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} onOpenNotifications={handleOpenNotifications} onSelectNotification={handleDashboardNotificationSelect} recentRecords={recentRecords} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'customers' ? (
     <PgdcnCustomersView scopes={scopes} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'dossier-templates' ? (
@@ -302,11 +358,11 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   ) : activeTarget.domain === 'department' && activeTarget.section === 'activityLogs' ? (
     <ActivityLogView currentUser={currentUser} systemUsers={systemUsers} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'assistant' ? (
-    <PgdcnAssistantView currentUser={currentUser} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pcnRequirements={pcn.documentRequirements} pcnDocuments={pcn.dossierDocuments} pcnLabRequests={pcn.labRequests} pcnSampleLots={pcn.sampleLots} pcnSampleRoutes={pcn.sampleRoutes} pcnReturnedResults={pcn.returnedResults} pgdRequests={pgd.requests} pgdAssignments={pgd.assignments} pgdFieldInspections={pgd.fieldInspections} pgdSamples={pgd.samples} pgdLabRequests={pgd.labRequests} pgdLabResults={pgd.labResults} pgdReports={pgd.reports} pgdCertificates={pgd.certificates} pgdApprovals={pgd.approvals} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} />
+    <PgdcnAssistantView currentUser={currentUser} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pcnRequirements={pcn.documentRequirements} pcnDocuments={pcn.dossierDocuments} pcnLabRequests={pcn.labRequests} pcnSampleLots={pcn.sampleLots} pcnSampleRoutes={pcn.sampleRoutes} pcnReturnedResults={pcn.returnedResults} pgdRequests={pgd.requests} pgdAssignments={pgd.assignments} pgdFieldInspections={pgd.fieldInspections} pgdSamples={pgd.samples} pgdLabRequests={pgd.labRequests} pgdLabResults={pgd.labResults} pgdReports={pgd.reports} pgdCertificates={pgd.certificates} pgdApprovals={pgd.approvals} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} initialDomain={assistantContext?.domain} initialPcnDossierId={assistantContext?.domain === 'PCN' ? assistantContext.recordId : undefined} initialPgdRequestId={assistantContext?.domain === 'PGD' ? assistantContext.recordId : undefined} />
   ) : activeTarget.domain === 'PCN' ? (
-    <PcnWorkspace embedded initialSection={activeTarget.section as PcnSection} initialDossierId={initialPcnDossierId} initialDossierTab={initialPcnDossierTab} initialDossierNodeId={initialPcnDossierNodeId} initialDraftDossierId={initialPcnDraftDossierId} initialDraftRequirementId={initialPcnDraftRequirementId} initialDraftNodeId={initialPcnDraftNodeId} initialDraftKind={initialPcnDraftKind} standaloneDossier={Boolean(initialPcnDossierId)} onActiveSectionChange={openPcnSection} />
+    <PcnWorkspace embedded initialSection={activeTarget.section as PcnSection} initialDossierId={initialPcnDossierId} initialDossierTab={initialPcnDossierTab} initialDossierNodeId={initialPcnDossierNodeId} initialDraftDossierId={initialPcnDraftDossierId} initialDraftRequirementId={initialPcnDraftRequirementId} initialDraftNodeId={initialPcnDraftNodeId} initialDraftKind={initialPcnDraftKind} standaloneDossier={Boolean(initialPcnDossierId)} onActiveSectionChange={openPcnSection} onOpenContextualAssistant={openPcnContextualAssistant} />
   ) : (
-    <PgdWorkspace embedded initialSection={activeTarget.section as PgdSection} initialRequestId={focusedPgdRequestId} initialDraftingOpen={Boolean(initialPgdDraftingOpen)} initialDraftRequestId={initialPgdDraftRequestId} initialDraftRequirementCode={initialPgdDraftRequirementCode} initialDraftTemplateKind={initialPgdDraftTemplateKind} onRequestClose={() => { setFocusedPgdRequestId(undefined); if (initialPgdRequestId) router.replace('/pgdcn/pgd'); }} onActiveSectionChange={openPgdSection} />
+    <PgdWorkspace embedded initialSection={activeTarget.section as PgdSection} initialRequestId={focusedPgdRequestId} initialDraftingOpen={Boolean(initialPgdDraftingOpen)} initialDraftRequestId={initialPgdDraftRequestId} initialDraftRequirementCode={initialPgdDraftRequirementCode} initialDraftTemplateKind={initialPgdDraftTemplateKind} onRequestClose={() => { setFocusedPgdRequestId(undefined); if (initialPgdRequestId) router.replace('/pgdcn/pgd'); }} onActiveSectionChange={openPgdSection} onOpenContextualAssistant={openPgdContextualAssistant} />
   );
 
   return <div className="app-compact flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800">
@@ -315,7 +371,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     <div className="flex min-w-0 flex-1 flex-col">
       <header className="app-compact-header flex h-13 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-xs md:px-5">
         <div className="flex min-w-0 items-center gap-2.5">
-          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Mở menu phòng" className="mobile-touch-target rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
+          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Mở menu phòng" className="pgdcn-mobile-nav mobile-safe-bottom mobile-touch-target rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
             <Menu aria-hidden="true" size={18} />
           </button>
           <button type="button" onClick={() => setCollapsed((v) => !v)} aria-label="Thu gọn / Mở rộng thanh điều hướng" className="hidden lg:flex p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors cursor-pointer" title={collapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}>
@@ -334,14 +390,16 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
+          <button type="button" onClick={() => setCommandOpen(true)} aria-label="Mở Tìm nhanh" className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"><Search size={15} aria-hidden="true" /><span className="hidden sm:inline">Tìm nhanh</span><kbd className="hidden rounded border border-slate-200 bg-slate-50 px-1 py-0.5 text-[9px] font-black text-slate-400 md:inline">Ctrl K</kbd></button>
           <PgdcnNotificationDropdown isOpen={notificationOpen} onToggle={handleToggleNotifications} onClose={() => setNotificationOpen(false)} notifications={notifications} currentUser={currentUser} onMarkRead={handleMarkNotificationRead} onMarkAllRead={handleMarkAllNotificationsRead} onClear={handleClearNotifications} onSelect={handleNotificationSelect} />
           <div className="hidden text-xs font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 sm:block">
             {currentUser.username}
           </div>
         </div>
       </header>
-      <main className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">{content}</main>
+      <main aria-live="polite" aria-label="Không gian làm việc PCN và PGD" className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">{content}</main>
     </div>
+<PgdcnCommandPalette open={commandOpen} scopes={scopes} records={commandRecords} onClose={() => setCommandOpen(false)} onNavigate={navigate} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} />
     <nav className="sr-only" aria-label="Điều hướng PGDCN">{activeTarget.domain}</nav>
     {personalSettingsOpen && <PcnPersonalSettingsPanel currentUser={currentUser} onClose={() => setPersonalSettingsOpen(false)} />}
   </div>;

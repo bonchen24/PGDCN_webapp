@@ -50,6 +50,9 @@ type Props = {
   pgdApprovals: Array<{ requestId: string }>;
   onOpenPcn: (dossierId: string) => void;
   onOpenPgd: (requestId: string) => void;
+  initialDomain?: 'PCN' | 'PGD';
+  initialPcnDossierId?: string;
+  initialPgdRequestId?: string;
 };
 
 const statusLabel: Record<PgdAssistantCriterionStatus, string> = { PASS: 'Đạt', WARNING: 'Cảnh báo', ERROR: 'Lỗi', NOT_EVALUABLE: 'Chưa đủ căn cứ' };
@@ -62,12 +65,16 @@ const statusClass: Record<PgdAssistantCriterionStatus, string> = {
 const PGD_ASSISTANT_CRITERIA_TOTAL = PGD_ASSISTANT_CRITERION_ORDER.length;
 
 export default function PgdcnAssistantView(props: Props) {
-  const [domain, setDomain] = useState<'PCN' | 'PGD'>('PCN');
+  const [domain, setDomain] = useState<'PCN' | 'PGD'>(props.initialDomain || 'PCN');
+
+  useEffect(() => {
+    if (props.initialDomain) setDomain(props.initialDomain);
+  }, [props.initialDomain]);
 
   return <div className="pcn-page-surface app-compact min-w-0 space-y-4 bg-slate-50/60 p-3 pb-5 md:p-5 mobile-safe-bottom" aria-live="polite">
     <header className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm"><ShieldCheck size={21} /></span><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">Trợ lý AI PGDCN</p><h1 className="mt-1 text-xl font-black text-slate-900">Soát xét hồ sơ theo hai lĩnh vực</h1><p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">AI hỗ trợ đọc bằng chứng và chỉ ra điểm cần đối chiếu cho Chứng nhận và Giám định. Kết quả chỉ để tham khảo, không phê duyệt, không đổi trạng thái hồ sơ.</p></div></header>
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Lĩnh vực hỗ trợ</span><button type="button" onClick={() => setDomain('PCN')} className={`mobile-touch-target rounded-lg px-3 py-2 text-[10px] font-black ${domain === 'PCN' ? 'bg-emerald-600 text-white' : 'border border-slate-200 bg-slate-50 text-slate-600'}`}>Chứng nhận (PCN)</button><button type="button" onClick={() => setDomain('PGD')} className={`mobile-touch-target rounded-lg px-3 py-2 text-[10px] font-black ${domain === 'PGD' ? 'bg-blue-600 text-white' : 'border border-slate-200 bg-slate-50 text-slate-600'}`}>Giám định (PGD)</button><span className="ml-auto rounded-full bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-600">Chế độ chỉ đọc</span></div>
-    {domain === 'PCN' ? <PcnAssistantView dossiers={props.pcnDossiers} proposals={props.pcnProposals} requirements={props.pcnRequirements} documents={props.pcnDocuments} labRequests={props.pcnLabRequests} sampleLots={props.pcnSampleLots} sampleRoutes={props.pcnSampleRoutes} returnedResults={props.pcnReturnedResults} onOpenDossier={(dossier) => props.onOpenPcn(dossier.id)} /> : <PgdAssistantPanel {...props} />}
+    {domain === 'PCN' ? <PcnAssistantView dossiers={props.pcnDossiers} proposals={props.pcnProposals} requirements={props.pcnRequirements} documents={props.pcnDocuments} labRequests={props.pcnLabRequests} sampleLots={props.pcnSampleLots} sampleRoutes={props.pcnSampleRoutes} returnedResults={props.pcnReturnedResults} initialDossierId={props.initialPcnDossierId} onOpenDossier={(dossier) => props.onOpenPcn(dossier.id)} /> : <PgdAssistantPanel {...props} />}
   </div>;
 }
 
@@ -92,6 +99,11 @@ function PgdAssistantPanel(props: Props) {
   }, [props.pgdRequests]);
 
   const candidates = useMemo(() => getPgdAssistantCandidates(props.pgdRequests), [props.pgdRequests]);
+  useEffect(() => {
+    if (!props.initialPgdRequestId || !candidates.some((item) => item.requestId === props.initialPgdRequestId)) return;
+    setSelectedRequestId(props.initialPgdRequestId);
+    setViewState('ready');
+  }, [candidates, props.initialPgdRequestId]);
   const filteredCandidates = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('vi-VN');
     if (!normalized) return candidates;

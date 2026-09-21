@@ -7,6 +7,7 @@ import type {
   UserAccount,
 } from '../types.ts';
 import { isOrganizationLeader } from './pcnRbac.ts';
+import { getPgdcnNextAction } from './pgdcnDashboard.ts';
 
 export type PgdcnNotificationNavigationTarget =
   | { domain: 'PCN'; section: 'proposals' | 'operations' | 'lab-operations' | 'drafting'; recordId: string }
@@ -133,6 +134,29 @@ export function canViewPgdcnNotification(
   return normalized.targetRole === 'staff'
     || normalized.targetRole === 'all'
     || (!normalized.targetRole && normalized.type === 'SYSTEM');
+}
+
+
+export function getPgdcnNotificationActionLabel(notification: AppNotification): string {
+  if (!notification.entityId) return 'Xem thông báo';
+  const entityType = notification.entityType;
+  if (notification.action === 'ASSIGNED' || entityType === 'PGD_ASSIGNMENT') return 'Nhận việc';
+  if (entityType === 'PCN_LAB_REQUEST' || entityType === 'PGD_LAB_REQUEST') return 'Lập PYC PTN';
+  if (entityType === 'PCN_RESULT' || entityType === 'PGD_LAB_RESULT') return 'Tiếp nhận KQTN';
+  if (entityType === 'PGD_FIELD_INSPECTION') return 'Nhập kết quả hiện trường';
+  if (entityType === 'PGD_SAMPLE') return 'Lấy mẫu';
+  if (entityType === 'PGD_REPORT') return 'Soạn báo cáo';
+  if (entityType === 'PGD_CERTIFICATE' || entityType === 'PCN_ISSUANCE') return 'Ký & phát hành';
+  if (entityType === 'PCN_APPROVAL' || entityType === 'PGD_APPROVAL') {
+    return getPgdcnNextAction(entityType === 'PCN_APPROVAL' ? 'PCN' : 'PGD', notification.nextStatus).label;
+  }
+  if (entityType === 'PCN_PROPOSAL' || entityType === 'PCN_DOSSIER' || entityType === 'PGD_REQUEST') {
+    if (notification.action === 'STATUS_CHANGED' && notification.nextStatus) {
+      return getPgdcnNextAction(entityType.startsWith('PCN_') ? 'PCN' : 'PGD', notification.nextStatus).label;
+    }
+    return 'Mở hồ sơ';
+  }
+  return 'Mở hồ sơ';
 }
 
 export function getPgdcnNotificationNavigation(notification: AppNotification): PgdcnNotificationNavigationTarget | null {
