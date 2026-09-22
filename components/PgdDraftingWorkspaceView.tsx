@@ -7,26 +7,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { PgdDocumentTemplateKind } from '../utils/pgdDocumentTemplates';
-import type { PgdGeneratedDocument, PgdInspectionRequest } from '../utils/pgdDomain';
+import type { PgdDraftWorkspace, PgdGeneratedDocument, PgdInspectionRequest } from '../utils/pgdDomain';
 import { getPgdStatusLabel } from '../utils/pgdDomain';
-import { getPgdDossierDocumentDownloadUrl, getPgdDocumentDownloadUrl } from '../utils/pgdApi';
+import { fetchPgdDraftWorkspaces, getPgdDossierDocumentDownloadUrl, getPgdDocumentDownloadUrl, savePgdDraftWorkspace } from '../utils/pgdApi';
 import { getPgdDocumentTemplates, type PgdDocumentTemplate, type PgdDocumentTemplateFormat } from '../utils/pgdDocumentTemplates';
-import { buildPgdDossierReturnRoute, sanitizeInternalReturnTo } from '../utils/draftingNavigation';
+import { buildPgdDossierReturnRoute, getPgdDossierStepForRequirement, sanitizeInternalReturnTo } from '../utils/draftingNavigation';
+import { getPgdDocumentRequirementCode, getPgdDocumentsForRequirement, hasPgdDeepContext, resolvePgdDraftingContext } from '../utils/pgdDrafting';
 import { usePgdStore } from '../store-pgd';
 import PcnCatalogCombobox, { type PcnCatalogOption } from './PcnCatalogCombobox';
 import PgdDocumentGenerationPanel, { PGD_DOCUMENT_KIND_LABELS } from './PgdDocumentGenerationPanel';
 import { DraftingContextStatusBar, DraftingHeader, DraftingOutputReviewShell, DraftingWorkflowOrientation } from './PgdcnDraftingPrimitives';
 import { getCurrentPgdDossierDocuments, getPgdDossierRequirementForTemplate, getPgdDossierRequirementStationKey, getPgdDossierRequirements } from '../utils/pgdDossier';
 
-export type PgdDraftSession = {
-  id: string;
-  requestId: string;
-  title: string;
-  templateId: string;
-  format: PgdDocumentTemplateFormat;
-  cellValues: Record<string, unknown>;
-  updatedAt: string;
-};
+export type PgdDraftSession = PgdDraftWorkspace;
 
 type PgdDraftSaveInput = Pick<PgdDraftSession, 'templateId' | 'format' | 'cellValues'> & { title?: string };
 
@@ -90,7 +83,7 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
   const [attachingDocumentId, setAttachingDocumentId] = useState<string>();
   const [routeReturnTo] = useState(() => typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('returnTo') || undefined : undefined);
 
-  const deepContextProvided = Boolean(initialRequestId || initialRequirementCode || initialTemplateKind);
+  const deepContextProvided = hasPgdDeepContext({ requestId: initialRequestId, requirementCode: initialRequirementCode, templateKind: initialTemplateKind });
   const contextLocked = deepContextProvided && !contextUnlocked;
   const catalogTemplates = useMemo(() => {
     const source = templates.length > 0 ? templates : getPgdDocumentTemplates();
@@ -114,28 +107,27 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
     }
     return [...byKind.values()];
   }, [availableTemplates]);
-  const activeDraft = drafts.find((draft) => draft.id === draftId);
-  const selectedTemplate = catalogTemplates.find((template) => template.id === templateId);
+  const activeDraft = drafts.find((draft) => draft.id === draftId && draft.requestId === requestId);
+  const resolvedContext = useMemo(() => resolvePgdDraftingContext({
+    request,
+    requirements,
+    templates: availableTemplates,
+    selectedRequirementCode,
+    templateId,
+    initialRequirementCode,
+    initialTemplateKind,
+    activeDraft,
+  }), [activeDraft, availableTemplates, initialRequirementCode, initialTemplateKind, request, requirements, selectedRequirementCode, templateId]);
+  const selectedTemplate = resolvedContext.selectedTemplate;
   const deepRequirement = initialRequirementCode ? requirements.find((item) => item.code === initialRequirementCode) : undefined;
   const deepTemplate = initialTemplateKind ? availableTemplates.find((template) => template.kind === initialTemplateKind) : undefined;
-  const deepRequirementTemplate = deepRequirement
-    ? availableTemplates.find((template) => getPgdDossierRequirementForTemplate(template.kind, request?.productGroup || 'OTHER')?.code === deepRequirement.code)
-    : undefined;
+  const deepRequirementTemplate = resolvedContext.requirementTemplate;
   const isDeepContextRequest = Boolean(request && (!initialRequestId || request.id === initialRequestId));
-  const deepContextUnavailable = Boolean(request && isDeepContextRequest && (
-    (Boolean(initialRequirementCode) && !deepRequirement)
-    || (Boolean(initialTemplateKind) && !deepTemplate)
-    || (Boolean(initialRequirementCode) && !deepRequirementTemplate)
-  ));
-  const selectedTemplateRequirementCode = request
-    ? getPgdDossierRequirementForTemplate((selectedTemplate?.kind || 'INTAKE_REQUEST') as PgdDocumentTemplateKind, request.productGroup)?.code
-    : undefined;
-  const activeRequirementCode = requirements.some((item) => item.code === selectedRequirementCode)
-    ? selectedRequirementCode
-    : selectedTemplateRequirementCode;
-  const selectedDocuments = useMemo(() => documents
-    .filter((document) => document.requestId === request?.id)
-    .sort((left, right) => right.generatedAt.localeCompare(left.generatedAt)), [documents, request?.id]);
+  const deepContextUnavailable = Boolean(request && isDeepContextRequest && resolvedContext.invalidDeepContext);
+  const activeRequirementCode = resolvedContext.activeRequirementCode;
+  const selectedDocuments = useMemo(() => request && activeRequirementCode
+    ? getPgdDocumentsForRequirement({ documents, requestId: request.id, requirementCode: activeRequirementCode, productGroup: request.productGroup })
+    : [], [activeRequirementCode, documents, request]);
   const attachedDocumentIds = useMemo(() => new Set(currentDossierDocuments.map((document) => document.originDocumentId).filter(Boolean)), [currentDossierDocuments]);
   const hasReviewOutput = selectedDocuments.length > 0;
   const documentUiState = !request
@@ -145,14 +137,14 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
       : hasReviewOutput
         ? 'READY · Đã sinh tài liệu'
         : selectedTemplate
-          ? activeDraft ? 'SAVED · Bản nháp trong phiên làm việc' : 'EDITING · Đang soạn'
+          ? activeDraft ? 'SAVED · Bản nháp đã lưu' : 'EDITING · Đang soạn'
           : 'EMPTY · Chưa có mẫu phù hợp';
   const draftingActiveStep: 1 | 2 | 3 | 4 = !request ? 1 : activeRequirementCode && currentDossierDocuments.some((document) => document.requirementCode === activeRequirementCode) ? 4 : hasReviewOutput ? 3 : 2;
   const draftingCompletedThrough: 0 | 1 | 2 | 3 | 4 = draftingActiveStep === 1 ? 0 : draftingActiveStep === 2 ? 1 : draftingActiveStep === 3 ? 2 : 3;
 
   const returnToDossier = () => {
     if (typeof window === 'undefined') return;
-    const target = sanitizeInternalReturnTo(initialReturnTo || routeReturnTo) || (request ? buildPgdDossierReturnRoute(request.id) : '/pgdcn/pgd');
+    const target = sanitizeInternalReturnTo(initialReturnTo || routeReturnTo) || (request ? buildPgdDossierReturnRoute(request.id, { step: activeRequirementCode ? getPgdDossierStepForRequirement(activeRequirementCode) : undefined }) : '/pgdcn/pgd');
     window.location.replace(target);
   };
 
@@ -181,6 +173,23 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
   }, [fetchDossierDocuments, request?.id]);
 
   useEffect(() => {
+    if (!request) {
+      setDrafts([]);
+      setDraftId(undefined);
+      return;
+    }
+    let cancelled = false;
+    setDrafts([]);
+    setDraftId(undefined);
+    void fetchPgdDraftWorkspaces(request.id).then((items) => {
+      if (!cancelled) setDrafts(items);
+    }).catch((error: any) => {
+      if (!cancelled) setChecklistError(error?.message || 'Không tải được bản nháp PGD đã lưu.');
+    });
+    return () => { cancelled = true; };
+  }, [request?.id]);
+
+  useEffect(() => {
     if (!initialRequestId) return;
     setRequestId(initialRequestId);
     setDraftId(undefined);
@@ -188,7 +197,7 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
     setTemplateId('');
     setSelectedRequirementCode(initialRequirementCode || '');
     setContextUnlocked(false);
-  }, [initialRequestId, initialRequirementCode]);
+  }, [initialRequestId, initialRequirementCode, initialTemplateKind]);
 
   useEffect(() => {
     if (!request || activeDraft || !isDeepContextRequest || contextUnlocked) return;
@@ -222,9 +231,19 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
     setRequestId(draft.requestId);
     setDraftTitle(draft.title);
     setTemplateId(draft.templateId);
+    setSelectedRequirementCode(draft.requirementCode);
   };
 
   const newDraft = () => {
+    if (hasPgdDeepContext({ requestId: initialRequestId, requirementCode: initialRequirementCode, templateKind: initialTemplateKind }) && request) {
+      const preservedTemplate = deepTemplate || deepRequirementTemplate || selectedTemplate;
+      setContextUnlocked(false);
+      setDraftId(undefined);
+      setDraftTitle('');
+      setTemplateId(preservedTemplate?.id || '');
+      setSelectedRequirementCode(initialRequirementCode || (preservedTemplate ? getPgdDossierRequirementForTemplate(preservedTemplate.kind, request.productGroup)?.code || '' : ''));
+      return;
+    }
     setContextUnlocked(true);
     setDraftId(undefined);
     setRequestId('');
@@ -264,27 +283,46 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
 
   const attachGenerated = async (document: PgdGeneratedDocument) => {
     if (!request) return;
-    const requirement = getPgdDossierRequirementForTemplate(document.kind as PgdDocumentTemplateKind, request.productGroup);
-    if (!requirement) throw new Error('Tài liệu này chưa có ánh xạ vào checklist PGD.');
-    await usePgdStore.getState().attachGeneratedDocument(request.id, { documentId: document.id, requirementCode: requirement.code });
+    const documentRequirementCode = getPgdDocumentRequirementCode(document, request.productGroup);
+    if (!documentRequirementCode) throw new Error('Tài liệu này chưa có ánh xạ vào checklist PGD.');
+    if (document.requestId !== request.id) throw new Error('Tài liệu không thuộc hồ sơ PGD đang mở; không thể gắn.');
+    if (!activeRequirementCode || documentRequirementCode !== activeRequirementCode) throw new Error(`Tài liệu thuộc mục ${documentRequirementCode}, không khớp mục hồ sơ đang mở ${activeRequirementCode || 'chưa xác định'}; không thể gắn.`);
+    await usePgdStore.getState().attachGeneratedDocument(request.id, { documentId: document.id, requirementCode: activeRequirementCode });
     toast.success(`Đã xác nhận ${document.fileName} vào bộ hồ sơ.`);
   };
 
-  const saveDraft = (input: PgdDraftSaveInput) => {
-    if (!request) return;
+  const saveDraft = async (input: PgdDraftSaveInput) => {
+    if (!request || !activeRequirementCode) return;
+    const template = catalogTemplates.find((candidate) => candidate.id === input.templateId);
+    if (!template) {
+      toast.error('Không thể lưu bản nháp vì template không còn trong catalog PGD.');
+      return;
+    }
     const nextDraft: PgdDraftSession = {
       id: draftId || makeDraftId(),
+      domain: 'pgd',
       requestId: request.id,
+      requirementCode: activeRequirementCode,
       title: input.title?.trim() || `${request.requestCode} · ${templateTitle(catalogTemplates.find((template) => template.id === input.templateId))}`,
       templateId: input.templateId,
+      templateKind: template.kind,
+      templateVersion: template.version,
       format: input.format,
       cellValues: input.cellValues,
+      createdAt: activeDraft?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      status: 'DRAFT',
     };
-    setDrafts((current) => [nextDraft, ...current.filter((draft) => draft.id !== nextDraft.id)]);
-    setDraftId(nextDraft.id);
-    setDraftTitle(nextDraft.title);
-    toast.success('Đã lưu bản nháp trong phiên làm việc; chưa lưu bền vững qua lần tải lại.');
+    try {
+      const saved = await savePgdDraftWorkspace(nextDraft);
+      setDrafts((current) => [saved, ...current.filter((draft) => draft.id !== saved.id)]);
+      setDraftId(saved.id);
+      setDraftTitle(saved.title);
+      toast.success('Đã lưu bản nháp PGD.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể lưu bản nháp PGD.');
+      throw error;
+    }
   };
 
   const reviewDocument = (documentId: string) => setReviewedDocumentIds((current) => current.includes(documentId) ? current : [...current, documentId]);
@@ -311,20 +349,20 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
     </>} />
     {request && <button type="button" onClick={returnToDossier} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-2 text-[12px] font-black text-blue-700 shadow-sm hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">Quay lại hồ sơ</button>}
     <DraftingWorkflowOrientation activeStep={draftingActiveStep} completedThrough={draftingCompletedThrough} accent="blue" testId="pgd-drafting-orientation" />
-    <DraftingContextStatusBar domain="PGD" testId="pgd-drafting-context-status" sourceLabel={request ? `${request.requestCode} · ${request.customerSnapshot.name}` : 'EMPTY · Chưa chọn PYC hoặc hồ sơ nguồn'} documentLabel={selectedTemplate ? `${selectedTemplate.name} · ${selectedTemplate.code} · v${selectedTemplate.version}` : 'Chưa có mẫu phù hợp'} statusLabel={request ? `Hồ sơ: ${getPgdStatusLabel(request.status)} · ${documentUiState}` : 'EMPTY · Chưa có bối cảnh'} description="Mã PYC, khách hàng, sản phẩm/đối tượng và trạng thái hồ sơ được giữ trong bối cảnh hiện tại." metadata={request ? <span className="max-w-full break-words rounded-md border border-blue-200 bg-white/80 px-2 py-1 text-blue-800">Sản phẩm / đối tượng: {request.productName}</span> : null} advancedMetadata={<><div><span className="text-slate-400">Mã mục hồ sơ:</span> <span className="font-mono text-slate-700">{activeRequirementCode || 'Chưa ánh xạ'}</span></div><div><span className="text-slate-400">Trạm nghiệp vụ:</span> <span className="font-mono text-slate-700">{activeRequirementCode ? getPgdDossierRequirementStationKey(activeRequirementCode) : 'Chưa xác định'}</span></div><div><span className="text-slate-400">Template:</span> <span className="font-mono text-slate-700">{selectedTemplate ? `${selectedTemplate.id} · v${selectedTemplate.version}` : 'Chưa chọn'}</span></div><div><span className="text-slate-400">Persistence:</span> <span className="font-bold text-slate-700">Bản nháp trong phiên làm việc</span> · không qua reload</div></>} />
+    <DraftingContextStatusBar domain="PGD" testId="pgd-drafting-context-status" sourceLabel={request ? `${request.requestCode} · ${request.customerSnapshot.name}` : 'EMPTY · Chưa chọn PYC hoặc hồ sơ nguồn'} documentLabel={selectedTemplate ? `${selectedTemplate.name} · ${selectedTemplate.code} · v${selectedTemplate.version}` : 'Chưa có mẫu phù hợp'} statusLabel={request ? `Hồ sơ: ${getPgdStatusLabel(request.status)} · ${documentUiState}` : 'EMPTY · Chưa có bối cảnh'} description="Mã PYC, khách hàng, sản phẩm/đối tượng và trạng thái hồ sơ được giữ trong bối cảnh hiện tại." metadata={request ? <span className="max-w-full break-words rounded-md border border-blue-200 bg-white/80 px-2 py-1 text-blue-800">Sản phẩm / đối tượng: {request.productName}</span> : null} advancedMetadata={<><div><span className="text-slate-400">Mã mục hồ sơ:</span> <span className="font-mono text-slate-700">{activeRequirementCode || 'Chưa ánh xạ'}</span></div><div><span className="text-slate-400">Trạm nghiệp vụ:</span> <span className="font-mono text-slate-700">{activeRequirementCode ? getPgdDossierRequirementStationKey(activeRequirementCode) : 'Chưa xác định'}</span></div><div><span className="text-slate-400">Template:</span> <span className="font-mono text-slate-700">{selectedTemplate ? `${selectedTemplate.id} · v${selectedTemplate.version}` : 'Chưa chọn'}</span></div><div><span className="text-slate-400">Persistence:</span> <span className="font-bold text-slate-700">Bản nháp đã lưu</span></div></>} />
 
     {/* PCN parity fallback remains a two-region grid: xl:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]. */}
     <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)]">
       <aside aria-label="Điều hướng tài liệu trong hồ sơ PGD" className="min-w-0 space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm xl:sticky xl:top-4">
         <div className="flex items-start justify-between gap-2"><div><h2 className="text-[13px] font-black text-slate-800">Bộ hồ sơ & tài liệu</h2><p className="mt-0.5 text-[11px] leading-4 text-slate-500">Điều hướng theo PYC, checklist và phiên soạn.</p></div>{request && <span className="shrink-0 rounded-full bg-blue-50 px-2 py-1 text-[11px] font-black text-blue-700">{currentDossierDocuments.length}/{requirements.length}</span>}</div>
-        <section aria-label="Phiên soạn PGD" className="rounded-lg border border-blue-100 bg-blue-50/50 p-2.5"><div className="flex items-center justify-between gap-2"><div><h3 className="text-[12px] font-black text-blue-950">Phiên soạn / Bản đã lưu</h3><p className="mt-0.5 text-[11px] text-blue-800">Bản nháp trong phiên làm việc</p></div><span className="rounded-full bg-white px-2 py-1 text-[11px] font-black text-blue-700">{drafts.length}</span></div>{drafts.length === 0 ? <p className="mt-2 rounded-lg border border-dashed border-blue-200 px-2.5 py-3 text-[11px] leading-4 text-blue-900/65">Chưa có bản nháp. Lưu để tiếp tục trong phiên này; dữ liệu không tự khôi phục sau reload.</p> : <div data-testid="pgd-drafting-session-drafts" className="mt-2 space-y-1.5">{drafts.map((draft) => <button type="button" key={draft.id} onClick={() => loadDraft(draft)} className={`mobile-touch-target min-h-11 w-full min-w-0 rounded-lg border p-2 text-left transition ${draft.id === draftId ? 'border-blue-300 bg-white' : 'border-blue-100 bg-white/70 hover:border-blue-300'}`}><div className="break-words text-[12px] font-black text-slate-700">{draft.title}</div><div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500"><span>{draft.format} · {formatWorkspaceDate(draft.updatedAt)}</span><span className="font-bold text-blue-700">Tiếp tục soạn</span></div></button>)}</div>}</section>
+        <section aria-label="Phiên soạn PGD" className="rounded-lg border border-blue-100 bg-blue-50/50 p-2.5"><div className="flex items-center justify-between gap-2"><div><h3 className="text-[12px] font-black text-blue-950">Phiên soạn / Bản đã lưu</h3><p className="mt-0.5 text-[11px] text-blue-800">Bản nháp đã lưu</p></div><span className="rounded-full bg-white px-2 py-1 text-[11px] font-black text-blue-700">{drafts.length}</span></div>{drafts.length === 0 ? <p className="mt-2 rounded-lg border border-dashed border-blue-200 px-2.5 py-3 text-[11px] leading-4 text-blue-900/65">Chưa có bản nháp đã lưu cho mục hồ sơ này.</p> : <div data-testid="pgd-drafting-session-drafts" className="mt-2 space-y-1.5">{drafts.map((draft) => <button type="button" key={draft.id} onClick={() => loadDraft(draft)} className={`mobile-touch-target min-h-11 w-full min-w-0 rounded-lg border p-2 text-left transition ${draft.id === draftId ? 'border-blue-300 bg-white' : 'border-blue-100 bg-white/70 hover:border-blue-300'}`}><div className="break-words text-[12px] font-black text-slate-700">{draft.title}</div><div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500"><span>{draft.format} · {formatWorkspaceDate(draft.updatedAt)}</span><span className="font-bold text-blue-700">Tiếp tục soạn</span></div></button>)}</div>}</section>
         <section data-testid="pgd-drafting-checklist" className="border-t border-slate-100 pt-3" aria-label="Checklist tài liệu PGD"><div className="flex items-start justify-between gap-2"><div><h3 className="text-[12px] font-black text-slate-800">Checklist tài liệu trong hồ sơ</h3><p className="mt-0.5 text-[11px] leading-4 text-slate-500">Chọn một tài liệu để mở đúng form và requirement.</p></div></div>{!request ? <p className="mt-2 rounded-lg border border-dashed border-slate-200 px-2.5 py-3 text-[11px] leading-4 text-slate-400">Chọn PYC/hồ sơ nguồn để nạp checklist.</p> : <div className="mt-2 space-y-1.5">{requirements.map((requirement) => {
           const currentDocument = currentDossierDocuments.find((document) => document.requirementCode === requirement.code);
           const checklistItem = checklistByCode.get(requirement.code);
           const status = currentDocument ? 'PRESENT' : checklistItem?.status === 'WAIVED' ? 'WAIVED' : 'MISSING';
           const matchingTemplate = availableTemplates.find((template) => getPgdDossierRequirementForTemplate(template.kind, request.productGroup)?.code === requirement.code);
           const selected = activeRequirementCode === requirement.code;
-          return <div key={requirement.code} className={`rounded-lg border p-2 ${selected ? 'border-blue-300 bg-blue-50/60' : 'border-slate-100 bg-slate-50/60'}`}><button type="button" onClick={() => selectRequirement(requirement.code)} disabled={contextLocked} className={`mobile-touch-target flex min-h-10 w-full items-start gap-2 text-left ${contextLocked ? 'cursor-not-allowed opacity-80' : ''}`} aria-current={selected ? 'step' : undefined}><span className={`mt-0.5 inline-flex shrink-0 rounded-md border px-1.5 py-1 text-[11px] font-black ${checklistStatusClass(status)}`}>{checklistStatusLabel(status)}</span><span className="min-w-0 flex-1"><span className="block break-words text-[12px] font-black text-slate-700">{requirement.title}{requirement.required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span></span></button><details className="mt-0.5 text-[11px] text-slate-500"><summary className="cursor-pointer text-[10px] font-bold text-slate-400">Thông tin kỹ thuật</summary><span className="font-mono">{requirement.code} · {getPgdDossierRequirementStationKey(requirement.code)}</span></details><div className="mt-1 flex flex-wrap items-center justify-between gap-1.5 pl-0.5 text-[11px]"><span className="text-slate-500">{matchingTemplate ? 'Soạn tài liệu' : 'Bổ sung tệp'}</span>{currentDocument?.fileAssetId && <a href={getPgdDossierDocumentDownloadUrl(currentDocument.id)} target="_blank" rel="noreferrer" download={currentDocument.fileName} className="font-black text-blue-700 underline">Xem tài liệu</a>}<span className={`font-bold ${status === 'PRESENT' ? 'text-emerald-700' : 'text-amber-700'}`}>{status === 'PRESENT' ? 'Xem tài liệu' : matchingTemplate ? 'Soạn tài liệu' : 'Bổ sung tệp'}</span></div></div>;
+          return <div key={requirement.code} className={`rounded-lg border p-2 ${selected ? 'border-blue-300 bg-blue-50/60' : 'border-slate-100 bg-slate-50/60'}`}><button type="button" onClick={() => selectRequirement(requirement.code)} disabled={contextLocked} className={`mobile-touch-target flex min-h-10 w-full items-start gap-2 text-left ${contextLocked ? 'cursor-not-allowed opacity-80' : ''}`} aria-current={selected ? 'step' : undefined}><span className={`mt-0.5 inline-flex shrink-0 rounded-md border px-1.5 py-1 text-[11px] font-black ${checklistStatusClass(status)}`}>{checklistStatusLabel(status)}</span><span className="min-w-0 flex-1"><span className="block break-words text-[12px] font-black text-slate-700">{requirement.title}{requirement.required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span></span></button><details className="mt-0.5 text-[11px] text-slate-500"><summary className="cursor-pointer text-[11px] font-bold text-slate-400">Thông tin kỹ thuật</summary><span className="font-mono">{requirement.code} · {getPgdDossierRequirementStationKey(requirement.code)}</span></details><div className="mt-1 flex flex-wrap items-center justify-between gap-1.5 pl-0.5 text-[11px]"><span className="text-slate-500">{matchingTemplate ? 'Soạn tài liệu' : 'Bổ sung tệp'}</span>{currentDocument?.fileAssetId && <a href={getPgdDossierDocumentDownloadUrl(currentDocument.id)} target="_blank" rel="noreferrer" download={currentDocument.fileName} className="font-black text-blue-700 underline">Xem tài liệu</a>}<span className={`font-bold ${status === 'PRESENT' ? 'text-emerald-700' : 'text-amber-700'}`}>{status === 'PRESENT' ? 'Xem tài liệu' : matchingTemplate ? 'Soạn tài liệu' : 'Bổ sung tệp'}</span></div></div>;
         })}</div>}{checklistError && <p role="alert" className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-bold text-amber-800">{checklistError}</p>}</section>
         {contextLocked && <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 px-2.5 py-2 text-[11px] leading-4 text-emerald-900"><p className="flex items-center gap-1 font-bold"><LockKeyhole size={13} aria-hidden="true" /> Context đã được mở sẵn từ hồ sơ / requirement.</p>{canMutate && <button type="button" onClick={() => setContextUnlocked(true)} className="mt-1 inline-flex min-h-9 items-center gap-1 font-black text-emerald-700 underline underline-offset-2"><UnlockKeyhole size={12} aria-hidden="true" /> Cho phép đổi bối cảnh</button>}</div>}
       </aside>

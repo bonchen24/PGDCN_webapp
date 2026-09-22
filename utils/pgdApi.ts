@@ -15,6 +15,7 @@ import type {
   PgdTransitionContext,
   PgdCatalogItem,
   PgdGeneratedDocument,
+  PgdDraftWorkspace,
   PgdCalibrationInstrument,
 } from './pgdDomain.ts';
 import type { CustomerRef, PcnUserAccount } from '../types.ts';
@@ -247,6 +248,26 @@ export async function createPgdInspection(input: PgdInspectionRequestCreateInput
     request: payload.request as PgdInspectionRequest,
     samples: Array.isArray(payload.samples) ? payload.samples as PgdSample[] : [],
   };
+}
+
+export async function fetchPgdDraftWorkspaces(requestId?: string): Promise<PgdDraftWorkspace[]> {
+  const query = requestId ? `?requestId=${encodeURIComponent(requestId)}` : '';
+  const payload = await request(`/api/pgd/drafts${query}`);
+  return Array.isArray(payload?.items) ? payload.items as PgdDraftWorkspace[] : [];
+}
+
+export async function savePgdDraftWorkspace(input: Partial<PgdDraftWorkspace> & {
+  requestId: string;
+  requirementCode: string;
+  title: string;
+  templateId: string;
+  templateKind: string;
+  templateVersion: string;
+  format: PgdDocumentTemplateFormat;
+  cellValues: Record<string, unknown>;
+}): Promise<PgdDraftWorkspace> {
+  const payload = await request('/api/pgd/drafts', json(input));
+  return payload.draft as PgdDraftWorkspace;
 }
 
 export async function updatePgdInspectionRequest(requestId: string, patch: Partial<PgdInspectionRequestInput>): Promise<PgdInspectionRequest> {

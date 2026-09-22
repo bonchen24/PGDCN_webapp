@@ -18,6 +18,7 @@ export const PGD_COLLECTIONS = {
   certificates: 'pgdInspectionCertificates',
   approvals: 'pgdApprovalSteps',
   documents: 'pgdDocuments',
+  drafts: 'pgdDraftWorkspaces',
   dossierDocuments: 'pgdDossierDocuments',
   activityLogs: 'pgdActivityLogs',
   inspectionPlans: 'pgdInspectionPlans',
@@ -666,6 +667,24 @@ export interface PgdGeneratedDocument {
   generatedAt: string;
   status: 'DRAFT' | 'ISSUED';
   lockedAt?: string;
+}
+
+export interface PgdDraftWorkspace {
+  id: string;
+  domain: typeof PGD_DOMAIN;
+  requestId: string;
+  requirementCode: string;
+  title: string;
+  templateId: string;
+  templateKind: string;
+  templateVersion: string;
+  format: 'DOCX' | 'PDF';
+  cellValues: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  status: 'DRAFT';
+  createdByUsername?: string;
+  updatedByUsername?: string;
 }
 
 export type PgdDossierChecklistStatus = 'MISSING' | 'PRESENT' | 'WAIVED';

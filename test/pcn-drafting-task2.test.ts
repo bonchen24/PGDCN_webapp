@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import { getPcnDraftFieldDefinitions, validatePcnDraftAction } from '../utils/pcnDrafting.ts';
+import { getPcnDraftFieldDefinitions, hasPcnDeepContext, validatePcnDraftAction } from '../utils/pcnDrafting.ts';
 
 const workspace = fs.readFileSync(new URL('../components/PcnDraftingWorkspaceView.tsx', import.meta.url), 'utf8');
 const primitives = fs.readFileSync(new URL('../components/PgdcnDraftingPrimitives.tsx', import.meta.url), 'utf8');
@@ -16,6 +16,12 @@ test('PCN drafting hydrates dossier, requirement, kind and template from deep co
   assert.match(workspace, /const nextRequirementId/);
   assert.match(workspace, /setContextLocked\(true\)/);
   assert.match(workspace, /getPcnOperationalTemplates/);
+});
+
+test('PCN kind-only routes remain unlocked while dossier routes preserve context', () => {
+  assert.equal(hasPcnDeepContext({ kind: 'PROPOSAL_FORM' }), false);
+  assert.equal(hasPcnDeepContext({ requirementId: 'requirement-1', kind: 'PROPOSAL_FORM' }), false);
+  assert.equal(hasPcnDeepContext({ dossierId: 'dossier-1', kind: 'PROPOSAL_FORM' }), true);
 });
 
 test('PCN drafting exposes exact Vietnamese missing labels with focus actions', () => {

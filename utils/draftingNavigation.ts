@@ -38,6 +38,18 @@ export function buildPgdDossierReturnRoute(
   return `/pgdcn/pgd/dossiers/${encodeRoutePart(requestId)}${query}`;
 }
 
+export function getPgdDossierStepForRequirement(requirementCode: string): string {
+  const code = requirementCode.trim().toUpperCase();
+  if (['REQUEST_PYC', 'REQUEST_SUPPORTING'].includes(code)) return 'intake';
+  if (['ASSIGNMENT_FORM', 'INSPECTION_PLAN', 'TECHNICAL_SPECIFICATION', 'MACHINERY_TECHNICAL_DOSSIER', 'COAL_TECHNICAL_OVERVIEW', 'COAL_QUALITY_SPECIFICATION', 'TECHNICAL_OVERVIEW'].includes(code)) return 'plan';
+  if (['FIELD_INSPECTION_MINUTES', 'FIELD_ACTIVITY_LOG', 'FIELD_SAMPLE_TAKING', 'MACHINERY_CONDITION_ASSESSMENT', 'MACHINERY_SYNCHRONIZATION_ASSESSMENT'].includes(code)) return 'field';
+  if (code === 'SAMPLE_HANDOVER_LAB') return 'lab-request';
+  if (['LAB_RESULT', 'LAB_RESULT_REVIEW'].includes(code)) return 'lab-result';
+  if (['INSPECTION_REPORT'].includes(code)) return 'report';
+  if (['DECISION', 'INSPECTION_CERTIFICATE', 'DOSSIER_COVER', 'ARCHIVE_INDEX'].includes(code)) return 'approval';
+  return 'intake';
+}
+
 export function buildPcnDraftingRoute(input: {
   dossierId: string;
   requirementId?: string;

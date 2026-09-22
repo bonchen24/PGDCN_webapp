@@ -25,11 +25,11 @@ test('PGD drafting lists exact missing labels and supports focus/scroll to a fie
   assert.match(generation, /collapsible defaultOpen=\{group\.missingCount > 0/);
 });
 
-test('PGD drafting labels session-local drafts truthfully when no durable draft API is used', () => {
-  assert.match(workspace, /Bản nháp trong phiên làm việc/);
-  assert.match(workspace, /chưa lưu bền vững qua lần tải lại/);
-  assert.match(workspace, /phiên làm việc/);
-  assert.doesNotMatch(workspace, /savePgdDraft|fetchPgdDraft/);
+test('PGD drafting persists drafts through the dedicated backend boundary', () => {
+  assert.match(workspace, /fetchPgdDraftWorkspaces/);
+  assert.match(workspace, /savePgdDraftWorkspace/);
+  assert.match(workspace, /Bản nháp đã lưu/);
+  assert.doesNotMatch(workspace, /không tự lưu qua reload/);
 });
 
 test('PGD drafting exposes READY/generated review state before attach', () => {

@@ -1,4 +1,8 @@
 import type { CertificationDossier, CertificationProposal, OutboundLabRequest, PcnDraftFormKind, PcnDraftWorkspace, PcnSampleLot, PcnSampleRoute, ReturnedTestResult } from '../types.ts';
+
+export function hasPcnDeepContext(input: { dossierId?: string; requirementId?: string; kind?: string }): boolean {
+  return Boolean(String(input.dossierId || '').trim());
+}
 import { getPcnOperationalTemplateForKind } from './pcnOperationalTemplateCatalog.ts';
 
 export interface PcnDraftFieldDefinition {

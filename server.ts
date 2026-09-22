@@ -157,6 +157,7 @@ import {
   type PgdResultTemplate,
   type PgdSample,
   type PgdGeneratedDocument,
+  type PgdDraftWorkspace,
   type PgdInspectionStatus,
   type PgdTransitionContext,
   type PgdCalibrationInstrument,
@@ -3337,6 +3338,112 @@ async function startServer() {
       });
     } catch (error: any) {
       res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.get('/api/pgd/drafts', async (req, res) => {
+    if (!requirePgdSession(req, res)) return;
+    const requestId = String(req.query.requestId || '').trim();
+    try {
+      const params: unknown[] = [PGD_COLLECTIONS.drafts];
+      const requestClause = requestId ? ` AND data->>'requestId' = $${params.push(requestId)}` : '';
+      const result = await pool.query(
+        `SELECT document_id, data
+           FROM app_documents
+          WHERE collection_name = $1
+            AND data->>'domain' = 'pgd'
+            AND COALESCE(data->>'status', 'DRAFT') = 'DRAFT'${requestClause}
+          ORDER BY updated_at DESC, document_id DESC`,
+        params,
+      );
+      res.json({ items: result.rows.map((row: any) => mapDocumentRow(row)) });
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  app.post('/api/pgd/drafts', async (req, res) => {
+    if (!requirePgdCollectionMutation(req, res, PGD_COLLECTIONS.drafts, 'write')) return;
+    const actor = getPgdSessionUser(req)!;
+    const input = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+    const requestId = String(input.requestId || '').trim();
+    const requirementCode = String(input.requirementCode || '').trim().toUpperCase();
+    const requestedTemplateId = String(input.templateId || '').trim();
+    const requestedTemplateKind = String(input.templateKind || '').trim().toUpperCase();
+    const requestedTemplateVersion = String(input.templateVersion || '').trim();
+    const format = String(input.format || '').trim().toUpperCase() as PgdDocumentTemplateFormat;
+    const title = String(input.title || '').trim().replace(/\s+/g, ' ').slice(0, 240);
+    const cellValues = input.cellValues && typeof input.cellValues === 'object' && !Array.isArray(input.cellValues) ? input.cellValues as Record<string, unknown> : undefined;
+    if (!requestId || !requirementCode || !requestedTemplateId || !title || !cellValues || !['DOCX', 'PDF'].includes(format)) {
+      res.status(400).json({ error: 'Bản nháp PGD cần requestId, requirementCode, tiêu đề, template, định dạng và cell values hợp lệ.' });
+      return;
+    }
+    try {
+      const draft = await withPgTransaction(async (client) => {
+        const requestResult = await client.query(
+          `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`,
+          [PGD_COLLECTIONS.requests, requestId],
+        );
+        if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD để lưu bản nháp.'), { statusCode: 404 });
+        const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
+        const requirement = getPgdDossierRequirements(request.productGroup).find((item) => item.code === requirementCode);
+        if (!requirement) throw Object.assign(new Error('Requirement của bản nháp không thuộc nhóm sản phẩm hồ sơ PGD.'), { statusCode: 400 });
+
+        const templateResult = await client.query(
+          `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`,
+          [PGD_COLLECTIONS.documentTemplates, requestedTemplateId],
+        );
+        const persistedTemplate = templateResult.rows[0] ? mapDocumentRow(templateResult.rows[0]) : undefined;
+        const template = persistedTemplate && isPgdDocumentTemplateRecordAllowed(persistedTemplate)
+          ? normalizePgdDocumentTemplate(persistedTemplate)
+          : getPgdDocumentTemplates().find((candidate) => candidate.id === requestedTemplateId);
+        if (!template || !template.active || template.status === 'RETIRED') throw Object.assign(new Error('Template PGD không còn hoạt động hoặc không tồn tại.'), { statusCode: 400 });
+        if ((requestedTemplateKind && requestedTemplateKind !== template.kind) || (requestedTemplateVersion && requestedTemplateVersion !== template.version)) {
+          throw Object.assign(new Error('Template bản nháp không còn tương thích với catalog hiện hành.'), { statusCode: 409 });
+        }
+        const mappedRequirement = getPgdDossierRequirementForTemplate(template.kind, request.productGroup);
+        if (!mappedRequirement || mappedRequirement.code !== requirement.code) throw Object.assign(new Error('Template bản nháp không khớp với requirement đang mở.'), { statusCode: 400 });
+        if (!template.formats.includes(format)) throw Object.assign(new Error(`Template ${template.code} không hỗ trợ định dạng ${format}.`), { statusCode: 400 });
+
+        const draftId = String(input.id || '').trim() || `pgd-draft-${randomUUID()}`;
+        const existingResult = await client.query(
+          `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1 FOR UPDATE`,
+          [PGD_COLLECTIONS.drafts, draftId],
+        );
+        const existing = existingResult.rows[0] ? mapDocumentRow(existingResult.rows[0]) as PgdDraftWorkspace : undefined;
+        if (existing && (existing.requestId !== requestId || existing.requirementCode !== requirement.code || existing.templateId !== template.id)) {
+          throw Object.assign(new Error('Không thể ghi đè bản nháp của hồ sơ, requirement hoặc template khác.'), { statusCode: 409 });
+        }
+        const now = new Date().toISOString();
+        const next: PgdDraftWorkspace = {
+          id: draftId,
+          domain: 'pgd',
+          requestId,
+          requirementCode: requirement.code,
+          title,
+          templateId: template.id,
+          templateKind: template.kind,
+          templateVersion: template.version,
+          format,
+          cellValues,
+          createdAt: existing?.createdAt || now,
+          updatedAt: now,
+          status: 'DRAFT',
+          ...(existing?.createdByUsername || actor.username ? { createdByUsername: existing?.createdByUsername || actor.username } : {}),
+          updatedByUsername: actor.username,
+        };
+        await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+             VALUES ($1, $2, $3::jsonb, CURRENT_TIMESTAMP)
+           ON CONFLICT (collection_name, document_id)
+           DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP`,
+          [PGD_COLLECTIONS.drafts, next.id, JSON.stringify(getDocumentPayload(next))],
+        );
+        return next;
+      });
+      res.status(200).json({ draft });
+    } catch (error: any) {
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
     }
   });
 

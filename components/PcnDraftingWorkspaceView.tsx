@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CertificationDossier, CertificationProposal, OutboundLabRequest, PcnDocumentRequirement, PcnDraftFormKind, PcnDraftWorkspace, PcnDossierDocument, PcnSampleLot, PcnSampleRoute, PcnTemplateDefinition, PcnTemplateReviewAction, ReturnedTestResult } from '../types';
 import { getPcnFileUrl } from '../utils/pcnFileApi';
 import { confirmPcnDraftOutput, fetchPcnDraftWorkspaces, generatePcnDraftWorkspace, savePcnDraftWorkspace } from '../utils/pcnDraftApi';
-import { buildPcnDraftSourceValues, getPcnDraftFieldDefinitions, getPcnDraftFieldSection, validatePcnDraftAction } from '../utils/pcnDrafting';
+import { buildPcnDraftSourceValues, getPcnDraftFieldDefinitions, getPcnDraftFieldSection, hasPcnDeepContext, validatePcnDraftAction } from '../utils/pcnDrafting';
 import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, getPcnDocumentRequirements, getPcnDraftFormRequirementCode } from '../utils/pcnDossierDocuments';
 import { buildPcnDossierInspection } from '../utils/pcnDossierInspection';
 import { getPcnDossierStatusLabel } from '../utils/pcnWorkflow';
@@ -107,7 +107,7 @@ export default function PcnDraftingWorkspaceView({ proposals, dossiers, template
   const [selectedRequirementId, setSelectedRequirementId] = useState(initialRequirementId || '');
   const [docxSettingsOpen, setDocxSettingsOpen] = useState(false);
   const [allowSourceEditing, setAllowSourceEditing] = useState(false);
-  const [contextLocked, setContextLocked] = useState(() => Boolean(initialDossierId || initialRequirementId || initialKind));
+  const [contextLocked, setContextLocked] = useState(() => hasPcnDeepContext({ dossierId: initialDossierId, requirementId: initialRequirementId, kind: initialKind }));
   const [routeReturnTo] = useState(() => typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('returnTo') || undefined : undefined);
   const hydratedSourceRef = useRef('');
 
@@ -208,7 +208,7 @@ export default function PcnDraftingWorkspaceView({ proposals, dossiers, template
     const requirementForKind = nextKind ? initialRequirements.find((requirement) => requirement.code === getPcnDraftFormRequirementCode(nextKind)) : undefined;
     const nextRequirementId = requirementFromProps?.id || requirementForKind?.id;
     if (nextRequirementId) setSelectedRequirementId(nextRequirementId);
-    if (initialDossierId || initialRequirementId || initialKind) setContextLocked(true);
+    if (hasPcnDeepContext({ dossierId: initialDossierId, requirementId: initialRequirementId, kind: initialKind })) setContextLocked(true);
   }, [documentRequirements, dossiers, initialDossierId, initialKind, initialRequirementId]);
 
   useEffect(() => {
@@ -246,6 +246,18 @@ export default function PcnDraftingWorkspaceView({ proposals, dossiers, template
   };
 
   const newDraft = () => {
+    if (hasPcnDeepContext({ dossierId: initialDossierId, requirementId: initialRequirementId, kind: initialKind }) && source.dossier) {
+      setDraftId(undefined);
+      setTitle('');
+      setValues(sourceValues);
+      setAttachedOutputIds([]);
+      setReviewedOutputIds([]);
+      setAllowSourceEditing(false);
+      setContextLocked(true);
+      setErrorMessage('');
+      setMessage('Đã mở bản soạn mới cho hồ sơ đang mở. Bối cảnh tài liệu được giữ nguyên.');
+      return;
+    }
     setDraftId(undefined);
     setTitle('');
     setSourceKey('');
