@@ -141,9 +141,9 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
     const action = document?.fileAssetId ? (
       <a href={getPgdDossierDocumentDownloadUrl(document.id)} target="_blank" rel="noreferrer" download={document.fileName} title="Xem tài liệu" aria-label="Xem tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Eye size={14} aria-hidden="true" /></a>
     ) : !document && checklistItem?.status !== 'WAIVED' && draftingHref && requirement?.code === item.code ? (
-      <a href={draftingHref} target="_blank" rel="noreferrer" title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a>
+      <a href={draftingHref} title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a>
     ) : !document && onOpenChecklist ? (
-      <button type="button" onClick={() => { setSelectedSupplementRequirementCode(item.code); onOpenChecklist?.(item.code); }} title="Bổ sung tài liệu" aria-label="Bổ sung tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100"><Upload size={14} aria-hidden="true" /></button>
+      <button type="button" onClick={() => { setSelectedSupplementRequirementCode(item.code); onOpenChecklist?.(item.code); }} title="Bổ sung tệp" aria-label="Bổ sung tệp" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100"><Upload size={14} aria-hidden="true" /></button>
     ) : <span className="text-[10px] font-semibold text-slate-400">Đã ghi nhận</span>;
     return {
       id: item.code,
@@ -201,7 +201,7 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
           <p className="mt-1 max-w-3xl text-[10px] leading-4 text-slate-500">{meta.description}</p><p className="mt-2 text-xs font-bold text-blue-800">Việc bạn cần làm: {nextAction.label}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          {draftingHref ? <a href={draftingHref} target="_blank" rel="noreferrer" className="mobile-touch-target dossier-action-compact inline-flex min-h-10 items-center rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white hover:bg-blue-500">Soạn thảo tài liệu</a> : null}
+          {draftingHref ? <a href={draftingHref} className="mobile-touch-target dossier-action-compact inline-flex min-h-10 items-center rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white hover:bg-blue-500">Soạn thảo tài liệu</a> : null}
           {onOpenChecklist ? <button type="button" onClick={() => onOpenChecklist()} className="mobile-touch-target dossier-action-compact inline-flex min-h-10 items-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-[10px] font-black text-blue-700 hover:bg-blue-100">Xem danh sách tài liệu</button> : null}
           {onOpenFullDossier ? <button type="button" onClick={onOpenFullDossier} className="mobile-touch-target inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:border-blue-300 hover:text-blue-700">Mở hồ sơ đầy đủ</button> : null}
         </div>

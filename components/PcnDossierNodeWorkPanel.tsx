@@ -59,7 +59,7 @@ function actionLabel(action: PcnDossierNodeDocumentItem['actions'][number]): str
     case 'VIEW': return 'Xem tài liệu';
     case 'REPLACE': return 'Thay phiên bản';
     case 'REMOVE_CURRENT': return 'Xóa tài liệu hiện tại';
-    case 'UPLOAD': return 'Tải tài liệu';
+    case 'UPLOAD': return 'Bổ sung tệp';
     case 'CREATE_FROM_FORM': return 'Tạo theo biểu mẫu';
     case 'CLEAR_WAIVER': return 'Bỏ trạng thái bỏ qua';
   }
@@ -166,7 +166,7 @@ export function PcnDossierNodeWorkPanel({
             </label>
           ) : null}
           {item.actions.includes('CREATE_FROM_FORM') && draftingHref ? (
-            <a href={draftingHref} target="_blank" rel="noreferrer" title="Tạo DOCX từ biểu mẫu" aria-label="Soạn thảo tài liệu, tạo DOCX từ biểu mẫu" className="mobile-touch-target inline-flex min-h-11 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+            <a href={draftingHref} title="Tạo DOCX từ biểu mẫu" aria-label="Soạn thảo tài liệu, tạo DOCX từ biểu mẫu" className="mobile-touch-target inline-flex min-h-11 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
               Soạn thảo tài liệu
             </a>
           ) : null}
@@ -237,8 +237,8 @@ export function PcnDossierNodeWorkPanel({
         <td className="border-b border-slate-100 px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-1">
             {item.status === 'PRESENT' && version && item.actions.includes('VIEW') ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Xem tài liệu" aria-label="Xem tài liệu"><Eye size={14} aria-hidden="true" /></a> : null}
-            {item.status !== 'PRESENT' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} target="_blank" rel="noreferrer" title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a> : null}
-            {item.status !== 'PRESENT' && item.actions.includes('UPLOAD') && editable ? <label className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 cursor-pointer items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100" title="Tải tài liệu" aria-label="Tải tài liệu"><Upload size={14} aria-hidden="true" /><input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
+            {item.status !== 'PRESENT' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a> : null}
+            {item.status !== 'PRESENT' && item.actions.includes('UPLOAD') && editable ? <label className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 cursor-pointer items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100" title="Bổ sung tệp" aria-label="Tải tài liệu"><Upload size={14} aria-hidden="true" /><input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
             {item.status === 'PRESENT' && version ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Mở tệp" aria-label="Mở tệp"><FileText size={14} aria-hidden="true" /></a> : null}
             {(item.actions.includes('REPLACE') || item.actions.includes('REMOVE_CURRENT') || item.actions.includes('CREATE_FROM_FORM') || item.actions.includes('CLEAR_WAIVER') || item.actions.includes('WAIVE')) ? <details className="relative">
               <summary className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 cursor-pointer list-none items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" title="Thao tác khác" aria-label="Thao tác khác"><MoreHorizontal size={14} aria-hidden="true" /></summary>

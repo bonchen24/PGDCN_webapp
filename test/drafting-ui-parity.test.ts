@@ -9,18 +9,29 @@ function read(relativePath: string): string {
 const pcnDrafting = read('components/PcnDraftingWorkspaceView.tsx');
 const pgdDrafting = read('components/PgdDraftingWorkspaceView.tsx');
 const pgdGeneration = read('components/PgdDocumentGenerationPanel.tsx');
+const sharedDraftingPrimitives = read('components/PgdcnDraftingPrimitives.tsx');
 const pcnSettings = read('components/PcnDocxSettingsModal.tsx');
 const pgdSettings = read('components/PgdDocxSettingsModal.tsx');
 const draftingRoute = read('app/pgdcn/pcn/drafting/page.tsx');
 const appShell = read('components/PgdcnAppShell.tsx');
 
-test('PCN and PGD drafting workspaces share the PCN three-zone anatomy', () => {
+test('PCN and PGD drafting workspaces share a responsive two-region drafting foundation', () => {
   for (const source of [pcnDrafting, pgdDrafting]) {
     assert.match(source, /pcn-page-surface/);
-    assert.match(source, /xl:grid-cols-\[250px_minmax\(0,1fr\)_270px\]/);
-    assert.match(source, /Kết quả sinh tệp|Kết quả sinh gần nhất/);
+    assert.match(source, /xl:grid-cols-\[minmax\(0,1fr\)_minmax\(18rem,22rem\)\]/);
+    assert.match(source, /DraftingOutputReviewShell|drafting-outputs/);
+    assert.match(source, /PgdcnDraftingPrimitives/);
+    assert.match(source, /testId=".*-drafting-orientation"/);
+    assert.doesNotMatch(source, /Workspace độc lập/);
   }
-  assert.match(`${pcnDrafting}\n${pgdGeneration}`, /sticky bottom-0/);
+  assert.match(sharedDraftingPrimitives, /DraftingHeader/);
+  assert.match(sharedDraftingPrimitives, /DraftingContextStatusBar/);
+  assert.match(sharedDraftingPrimitives, /DraftingReadinessPanel/);
+  assert.match(sharedDraftingPrimitives, /DraftingFieldSection/);
+  assert.match(sharedDraftingPrimitives, /DraftingStickyActionBar/);
+  assert.match(sharedDraftingPrimitives, /DraftingOutputReviewShell/);
+  for (const step of ['Chọn tài liệu', 'Kiểm tra dữ liệu', 'Sinh & soát', 'Gắn hồ sơ']) assert.match(sharedDraftingPrimitives, new RegExp(step));
+  assert.match(sharedDraftingPrimitives, /sticky bottom-0/);
   assert.match(`${pcnDrafting}\n${pgdGeneration}`, /mobile-touch-target/);
   assert.match(pcnDrafting, /data-testid="pcn-drafting-workspace"/);
   assert.match(pgdDrafting, /data-testid="pgd-drafting-workspace"/);
@@ -49,4 +60,14 @@ test('direct PCN drafting route opens the drafting workspace without context', (
   assert.match(draftingRoute, /initialPcnDraftingOpen=\{true\}/);
   assert.match(appShell, /initialPcnDraftingOpen\?: boolean/);
   assert.match(appShell, /initialPcnDraftingOpen \|\| initialPcnDraftDossierId \? 'drafting' : 'proposals'/);
+});
+
+test('direct drafting routes pass the return target into the shared shell', () => {
+  const pgdRoute = read('app/pgdcn/pgd/drafting/page.tsx');
+  assert.match(draftingRoute, /returnTo\?: string \| string\[\]/);
+  assert.match(draftingRoute, /initialPcnDraftReturnTo=\{scalar\(searchParams\?\.returnTo\)\}/);
+  assert.match(pgdRoute, /returnTo\?: string \| string\[\]/);
+  assert.match(pgdRoute, /initialPgdDraftReturnTo=\{scalar\(searchParams\?\.returnTo\)\}/);
+  assert.match(appShell, /initialPcnDraftReturnTo/);
+  assert.match(appShell, /initialPgdDraftReturnTo/);
 });

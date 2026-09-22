@@ -21,7 +21,7 @@ function getDraftKind(value: string | string[] | undefined): PcnDraftFormKind | 
   return generatedKind && draftKinds.has(generatedKind as PcnDraftFormKind) ? generatedKind as PcnDraftFormKind : undefined;
 }
 
-export default function PcnDraftingPage({ searchParams }: { searchParams?: { dossierId?: string | string[]; requirementId?: string | string[]; node?: string | string[]; kind?: string | string[] } }) {
+export default function PcnDraftingPage({ searchParams }: { searchParams?: { dossierId?: string | string[]; requirementId?: string | string[]; node?: string | string[]; kind?: string | string[]; returnTo?: string | string[] } }) {
   return <PgdcnAppShell
     initialDomain="PCN"
     initialPcnDraftingOpen={true}
@@ -29,5 +29,6 @@ export default function PcnDraftingPage({ searchParams }: { searchParams?: { dos
     initialPcnDraftRequirementId={scalar(searchParams?.requirementId)}
     initialPcnDraftNodeId={scalar(searchParams?.node)}
     initialPcnDraftKind={getDraftKind(searchParams?.kind)}
+    initialPcnDraftReturnTo={scalar(searchParams?.returnTo)}
   />;
 }

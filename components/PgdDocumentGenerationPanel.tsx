@@ -2,7 +2,7 @@
 
 import { formatDateTimeDdMmYyyy } from '../utils/formatter';
 
-import { AlertCircle, CheckCircle2, CircleDashed, Download, FileOutput, FileText, Loader2, Save, Sparkles } from 'lucide-react';
+import { CheckCircle2, Download, FileOutput, FileText, LockKeyhole, Save, Sparkles, UnlockKeyhole } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -23,6 +23,7 @@ import { getPgdTemplateSourceUrl } from '../utils/pgdApi';
 import { usePgdStore } from '../store-pgd';
 import type { PgdCaseEvent, PgdDossierIndex, PgdFieldActivityLog, PgdInspectionPlan, PgdLabResultReview } from '../utils/pgdArtifacts';
 import PgdTableFieldEditor from './PgdTableFieldEditor';
+import { DraftingContextStatusBar, DraftingFieldSection, DraftingOutputReviewShell, DraftingReadinessPanel, DraftingStickyActionBar } from './PgdcnDraftingPrimitives';
 import { PgdcnDateInput } from './PgdcnDateInput';
 
 type PgdDocumentGenerationPanelProps = {
@@ -35,6 +36,7 @@ type PgdDocumentGenerationPanelProps = {
   onSaveDraft?: (input: { templateId: string; format: PgdDocumentTemplateFormat; cellValues: Record<string, unknown> }) => void;
   onAttachGenerated?: (document: PgdGeneratedDocument) => Promise<void>;
   showTemplateSelector?: boolean;
+  showContextStatus?: boolean;
 };
 
 export const PGD_DOCUMENT_KIND_LABELS: Record<PgdDocumentTemplateKind, string> = {
@@ -212,7 +214,7 @@ function decodeBase64(value: string): Uint8Array {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
-type PgdDocumentState = 'EMPTY' | 'EDITING' | 'SAVED' | 'GENERATING' | 'READY' | 'BLOCKED' | 'ERROR';
+type PgdDocumentState = 'EMPTY' | 'EDITING' | 'SAVED' | 'GENERATING' | 'READY' | 'ATTACHED' | 'BLOCKED' | 'ERROR';
 
 const PGD_DOCUMENT_STATE_LABELS: Record<PgdDocumentState, string> = {
   EMPTY: 'Chưa chọn biểu mẫu',
@@ -220,17 +222,17 @@ const PGD_DOCUMENT_STATE_LABELS: Record<PgdDocumentState, string> = {
   SAVED: 'Đã lưu bản soạn',
   GENERATING: 'Đang sinh tài liệu',
   READY: 'Đã sẵn sàng',
+  ATTACHED: 'Đã gắn vào hồ sơ',
   BLOCKED: 'Cần bổ sung dữ liệu',
   ERROR: 'Có lỗi, cần thử lại',
 };
 
-function PgdDocumentStateSummary({ state, templateLabel, issueCount, issue, readinessIssues, fieldLabels }: { state: PgdDocumentState; templateLabel: string; issueCount: number; issue: string; readinessIssues: readonly PgdCellValidationIssue[]; fieldLabels: Readonly<Record<string, string>> }) {
-  const tone = state === 'READY' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : state === 'BLOCKED' ? 'border-amber-200 bg-amber-50 text-amber-900' : state === 'ERROR' ? 'border-rose-200 bg-rose-50 text-rose-900' : state === 'GENERATING' ? 'border-indigo-200 bg-indigo-50 text-indigo-900' : 'border-slate-200 bg-white text-slate-800';
-  const Icon = state === 'READY' ? CheckCircle2 : state === 'BLOCKED' || state === 'ERROR' ? AlertCircle : state === 'GENERATING' ? Loader2 : CircleDashed;
-  return <section data-testid="pgd-document-readiness" className={`rounded-xl border p-3 ${tone}`} aria-label="Trạng thái tài liệu PGD"><div className="flex items-start gap-2"><Icon size={16} className={state === 'GENERATING' ? 'animate-spin' : 'mt-0.5'} /><div className="min-w-0 flex-1"><div data-testid="pgd-document-state" aria-live="polite" className="text-[10px] font-black uppercase tracking-[0.12em]">{PGD_DOCUMENT_STATE_LABELS[state]}</div><p className="mt-1 text-[10px] leading-4">{state === 'EMPTY' ? 'Chọn loại biểu mẫu để bắt đầu từ dữ liệu hồ sơ PGD.' : state === 'BLOCKED' ? `Chưa thể sinh tệp: còn ${issueCount} trường cần kiểm tra.` : state === 'GENERATING' ? 'Đang tạo tệp từ dữ liệu đã kiểm tra. Vui lòng chờ kết quả.' : state === 'READY' ? 'Tệp vừa sinh đã sẵn sàng để tải lại hoặc đối chiếu.' : issue || 'Kiểm tra dữ liệu trước khi sinh DOCX/PDF.'}</p><div className="mt-2 flex flex-wrap gap-1.5 text-[9px] font-bold"><span className="max-w-full truncate rounded-md border border-current/15 bg-white/70 px-2 py-1" title={templateLabel}>Mẫu: {templateLabel}</span>{issueCount > 0 && <span className="rounded-md border border-amber-200 bg-white/80 px-2 py-1 text-amber-800">Còn {issueCount} mục cần kiểm tra</span>}</div>{state === 'BLOCKED' && readinessIssues.length > 0 && <ul data-testid="pgd-document-readiness-issues" aria-label="Các trường cần kiểm tra" className="mt-2 space-y-1 text-[10px] font-semibold">{readinessIssues.map((item) => <li key={`${item.key}-${item.code}`} className="rounded-md border border-amber-200/80 bg-white/70 px-2 py-1.5"><span className="text-amber-900">{fieldLabels[item.key] || 'Trường dữ liệu'}</span><span className="mx-1 text-amber-500">·</span>{item.message}</li>)}</ul>}</div></div></section>;
+function hasMeaningfulPgdCellValue(value: unknown): boolean {
+  if (value === null || value === undefined || value === '') return false;
+  return Array.isArray(value) ? value.length > 0 : true;
 }
 
-export default function PgdDocumentGenerationPanel({ request, templates, canMutate, initialTemplateId, initialFormat = 'DOCX', initialCellValues, onSaveDraft, onAttachGenerated, showTemplateSelector = true }: PgdDocumentGenerationPanelProps) {
+export default function PgdDocumentGenerationPanel({ request, templates, canMutate, initialTemplateId, initialFormat = 'DOCX', initialCellValues, onSaveDraft, onAttachGenerated, showTemplateSelector = true, showContextStatus = true }: PgdDocumentGenerationPanelProps) {
   const generateDocument = usePgdStore((state) => state.generateDocument);
   const inspectionPlan = usePgdStore((state) => state.inspectionPlans.find((item) => item.requestId === request.id));
   const caseEvents = usePgdStore((state) => state.caseEvents.filter((item) => item.requestId === request.id));
@@ -250,6 +252,9 @@ export default function PgdDocumentGenerationPanel({ request, templates, canMuta
   const [lastOutput, setLastOutput] = useState<{ fileName: string; url: string; mimeType: string; generatedAt: string } | null>(null);
   const [lastGeneratedDocument, setLastGeneratedDocument] = useState<PgdGeneratedDocument | null>(null);
   const [attachedGeneratedId, setAttachedGeneratedId] = useState<string | null>(null);
+  const [attaching, setAttaching] = useState(false);
+  const [reviewedOutput, setReviewedOutput] = useState(false);
+  const [allowSourceEditing, setAllowSourceEditing] = useState(false);
   const catalogTemplates = useMemo(() => {
     const source = templates.length > 0 ? templates : getPgdDocumentTemplates();
     return source.filter((template) => template.active && template.status !== 'RETIRED');
@@ -272,21 +277,50 @@ export default function PgdDocumentGenerationPanel({ request, templates, canMuta
     const placeholderKeys = new Set(template.placeholderKeys || template.cells.map((cell) => cell.key));
     return template.cells.filter((cell) => placeholderKeys.has(cell.key) && cell.active !== false);
   }, [template]);
+  const prefill: PgdDocumentPrefill = { inspectionPlan, caseEvents, fieldActivityLogs, fieldInspection, samples, labResults, labRequests, labResultReview, dossierIndex };
+  const sourceCellValues = useMemo(() => Object.fromEntries(formCells.map((cell) => [cell.key, initialValue(cell, request, prefill)])), [formCells, request, inspectionPlan, caseEvents, fieldActivityLogs, fieldInspection, samples, labResults, labRequests, labResultReview, dossierIndex]);
+  const draftCellKeys = useMemo(() => new Set(Object.keys(initialCellValues || {})), [initialCellValues]);
+  const sourceFieldKeys = useMemo(() => new Set(formCells.filter((cell) => !draftCellKeys.has(cell.key) && hasMeaningfulPgdCellValue(sourceCellValues[cell.key])).map((cell) => cell.key)), [draftCellKeys, formCells, sourceCellValues]);
+  const readinessIssues = useMemo(() => template ? validatePgdCellValues(template.cells, normalizePgdCellValues(template.cells, cellValues)) : [], [cellValues, template]);
+  const readinessIssueKeys = useMemo(() => new Set(readinessIssues.map((item) => item.key)), [readinessIssues]);
   const formCellGroups = useMemo(() => {
-    const groups = new Map<string, { key: string; label: string; cells: typeof formCells }>();
+    const groups = new Map<string, { key: string; label: string; cells: typeof formCells; missingCount: number; autoFilledCount: number }>();
     for (const cell of orderPgdTemplateCells(formCells)) {
       const key = cell.sectionCode || 'identity';
       const current = groups.get(key);
-      if (current) current.cells.push(cell);
-      else groups.set(key, { key, label: pgdDocumentSectionLabel(key), cells: [cell] });
+      if (current) {
+        current.cells.push(cell);
+        current.missingCount += readinessIssueKeys.has(cell.key) ? 1 : 0;
+        current.autoFilledCount += sourceFieldKeys.has(cell.key) ? 1 : 0;
+      } else groups.set(key, { key, label: pgdDocumentSectionLabel(key), cells: [cell], missingCount: readinessIssueKeys.has(cell.key) ? 1 : 0, autoFilledCount: sourceFieldKeys.has(cell.key) ? 1 : 0 });
     }
     return [...groups.values()];
-  }, [formCells]);
-  const prefill: PgdDocumentPrefill = { inspectionPlan, caseEvents, fieldActivityLogs, fieldInspection, samples, labResults, labRequests, labResultReview, dossierIndex };
-  const readinessIssues = useMemo(() => template ? validatePgdCellValues(template.cells, normalizePgdCellValues(template.cells, cellValues)) : [], [cellValues, template]);
+  }, [formCells, readinessIssueKeys, sourceFieldKeys]);
   const hasDraftValues = Object.values(cellValues).some((value) => Array.isArray(value) ? value.length > 0 : String(value ?? '').trim().length > 0);
-  const documentState: PgdDocumentState = busy ? 'GENERATING' : issue ? 'ERROR' : !template ? 'EMPTY' : readinessIssues.length > 0 ? 'BLOCKED' : lastOutput ? 'READY' : savedAt ? 'SAVED' : hasDraftValues ? 'EDITING' : 'EMPTY';
+  const documentState: PgdDocumentState = busy ? 'GENERATING' : issue ? 'ERROR' : attachedGeneratedId ? 'ATTACHED' : !template ? 'EMPTY' : readinessIssues.length > 0 ? 'BLOCKED' : lastOutput ? 'READY' : savedAt ? 'SAVED' : hasDraftValues ? 'EDITING' : 'EMPTY';
   const templateLabel = template ? `${template.code} · v${template.version}` : 'Chưa có mẫu';
+  const readinessIssueItems = readinessIssues.map((item) => ({ key: item.key, label: formCells.find((cell) => cell.key === item.key)?.label || 'Trường dữ liệu', message: item.message }));
+
+  const focusField = (key: string) => {
+    const field = document.getElementById(`pgd-document-${key}`) || document.querySelector<HTMLElement>(`[data-pgd-field="${key}"]`);
+    if (!field) return;
+    const details = field.closest('details');
+    if (details) details.open = true;
+    window.requestAnimationFrame(() => {
+      field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (typeof field.focus === 'function') field.focus({ preventScroll: true });
+    });
+  };
+
+  const focusFirstMissingField = () => {
+    const first = readinessIssueItems[0];
+    if (first) focusField(first.key);
+  };
+
+  const focusOutputReview = () => {
+    const output = document.getElementById('pgd-document-outputs');
+    output?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   useEffect(() => () => {
     if (lastOutput?.url) URL.revokeObjectURL(lastOutput.url);
@@ -312,11 +346,25 @@ export default function PgdDocumentGenerationPanel({ request, templates, canMuta
     setLastOutput(null);
     setLastGeneratedDocument(null);
     setAttachedGeneratedId(null);
+    setReviewedOutput(false);
   };
 
   const updateCell = (cell: PgdTemplateCell, value: unknown) => {
     setIssue('');
     setCellValues((current) => ({ ...current, [cell.key]: value }));
+  };
+
+  const attachGeneratedOutput = async () => {
+    if (!onAttachGenerated || !lastGeneratedDocument || !canMutate || attaching) return;
+    setAttaching(true);
+    try {
+      await onAttachGenerated(lastGeneratedDocument);
+      setAttachedGeneratedId(lastGeneratedDocument.id);
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể gắn tài liệu vào bộ hồ sơ.');
+    } finally {
+      setAttaching(false);
+    }
   };
 
   const generate = async () => {
@@ -336,6 +384,7 @@ export default function PgdDocumentGenerationPanel({ request, templates, canMuta
       setLastOutput({ fileName: result.document.fileName, url, mimeType: result.document.mimeType, generatedAt: new Date().toISOString() });
       setLastGeneratedDocument(result.document);
       setAttachedGeneratedId(null);
+      setReviewedOutput(false);
       setSavedAt(null);
       toast.success(`Đã sinh ${result.document.fileName}`);
       setIssue('');
@@ -347,21 +396,32 @@ export default function PgdDocumentGenerationPanel({ request, templates, canMuta
     }
   };
 
-  return <div data-testid="pgd-document-generation" className="space-y-3" aria-label="Sinh tài liệu PGD" aria-busy={busy}>
-    <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="flex items-center gap-2 text-xs font-black text-blue-950"><FileOutput size={15} className="text-blue-600" /> Sinh tài liệu PGD</h3><p className="mt-1 text-[10px] text-blue-800/70">Nhập phần dữ liệu còn thiếu; mẫu phù hợp sẽ được hệ thống tự ghép.</p></div><span className="rounded-full border border-blue-200 bg-white px-2 py-1 text-[9px] font-black text-blue-700">{request.productGroup}</span></div>
-    <PgdDocumentStateSummary state={documentState} templateLabel={templateLabel} issueCount={readinessIssues.length} issue={issue} readinessIssues={readinessIssues} fieldLabels={Object.fromEntries(formCells.map((cell) => [cell.key, cell.label]))} />
+  return <div data-testid="pgd-document-generation" className="space-y-4" aria-label="Sinh tài liệu PGD" aria-busy={busy}>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="flex items-center gap-2 text-[15px] font-black text-blue-950"><FileOutput size={17} className="text-blue-600" /> Sinh tài liệu PGD</h3><p className="mt-1 text-[13px] leading-5 text-blue-900/75">Nhập phần dữ liệu còn thiếu; mẫu phù hợp sẽ được hệ thống tự ghép.</p></div><span className="rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-black text-blue-700">{request.productGroup}</span></div>
+    {showContextStatus && <DraftingContextStatusBar domain="PGD" sourceLabel={`${request.requestCode} · ${request.customerSnapshot.name}`} documentLabel={template ? `${template.name} · ${templateLabel}` : templateLabel} statusLabel={PGD_DOCUMENT_STATE_LABELS[documentState]} description="Dữ liệu nguồn được điền theo hồ sơ hiện tại; thay đổi chỉ nằm trong bản soạn cho đến khi sinh thành công." metadata={<span className="max-w-full break-words rounded-md border border-blue-200 bg-white/80 px-2 py-1 text-blue-800">Sản phẩm / đối tượng: {request.productName}</span>} advancedMetadata={<><div><span className="text-slate-400">Nhóm sản phẩm:</span> <span className="font-mono text-slate-700">{request.productGroup}</span></div><div><span className="text-slate-400">Mã mẫu:</span> <span className="font-mono text-slate-700">{template?.id || 'Chưa chọn'}</span></div></>} />}
+    <DraftingReadinessPanel state={documentState} stateLabel={PGD_DOCUMENT_STATE_LABELS[documentState]} issueCount={readinessIssues.length} testId="pgd-document-readiness" stateTestId="pgd-document-state" onIssueClick={(item) => focusField(item.key)} message={documentState === 'EMPTY' ? 'Chọn loại biểu mẫu để bắt đầu từ dữ liệu hồ sơ PGD.' : documentState === 'BLOCKED' ? `Chưa thể sinh tệp: còn ${readinessIssues.length} trường cần kiểm tra.` : documentState === 'GENERATING' ? 'Đang tạo tệp từ dữ liệu đã kiểm tra. Vui lòng chờ kết quả.' : documentState === 'READY' ? 'Tệp vừa sinh đã sẵn sàng để tải lại hoặc đối chiếu.' : documentState === 'ATTACHED' ? 'Tài liệu đã được xác nhận và gắn vào đúng bộ hồ sơ.' : issue || 'Kiểm tra dữ liệu trước khi sinh DOCX/PDF.'} issues={readinessIssueItems} metadata={<span className="max-w-full break-words rounded-md border border-current/15 bg-white/70 px-2 py-1">Mẫu: {templateLabel}</span>} />
     <div className={showTemplateSelector ? 'mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_8rem]' : 'mt-3 grid gap-2 md:grid-cols-[8rem]'}>{showTemplateSelector && <label>
-<span className="mb-1 block text-[9px] font-black text-slate-500">Loại biểu mẫu</span>
-<select aria-label="Loại tài liệu PGD" value={template?.id || ''} onChange={(event) => selectTemplate(event.target.value)} className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-bold outline-none focus:border-blue-400">{availableTemplates.map((item) => <option key={item.id} value={item.id}>{PGD_DOCUMENT_KIND_LABELS[item.kind]} · {item.code} · v{item.version}</option>)}</select>
+<span className="mb-1 block text-[12px] font-black text-slate-500">Loại biểu mẫu</span>
+<select aria-label="Loại tài liệu PGD" value={template?.id || ''} onChange={(event) => selectTemplate(event.target.value)} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-[12px] font-bold outline-none focus:border-blue-400">{availableTemplates.map((item) => <option key={item.id} value={item.id}>{PGD_DOCUMENT_KIND_LABELS[item.kind]} · {item.code} · v{item.version}</option>)}</select>
 </label>}<label>
-<span className="mb-1 block text-[9px] font-black text-slate-500">Định dạng</span>
-<select aria-label="Định dạng tài liệu PGD" value={format} onChange={(event) => setFormat(event.target.value as PgdDocumentTemplateFormat)} className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-black outline-none focus:border-blue-400">{(template?.formats || ['DOCX', 'PDF']).map((item) => <option key={item} value={item}>{item}</option>)}</select>
+<span className="mb-1 block text-[12px] font-black text-slate-500">Định dạng</span>
+<select aria-label="Định dạng tài liệu PGD" value={format} onChange={(event) => setFormat(event.target.value as PgdDocumentTemplateFormat)} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-[12px] font-black outline-none focus:border-blue-400">{(template?.formats || ['DOCX', 'PDF']).map((item) => <option key={item} value={item}>{item}</option>)}</select>
 </label>
 </div>
-    {template && <div data-testid="pgd-document-field-sections" className="mt-3 space-y-2.5">{formCellGroups.map((group) => <fieldset key={group.key} data-testid={`pgd-document-section-${group.key}`} className="rounded-xl border border-slate-100 bg-slate-50/50 p-1"><legend className="px-1 text-[10px] font-black text-slate-700">{group.label}</legend><div className="grid min-w-0 gap-1.5 p-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">{group.cells.map((cell) => { const fieldId = `pgd-document-${cell.key}`; const requiredProps = { required: cell.required, 'aria-required': cell.required || undefined }; const cellLabel = <>{cell.label}{cell.required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}{cell.unit ? ` · ${cell.unit}` : ''}</>; return cell.type === 'TABLE' ? <fieldset key={cell.key} className="block min-w-0 sm:col-span-2 lg:col-span-4 xl:col-span-5 rounded-lg border border-slate-100 bg-white p-2"><legend className="px-1 text-[9px] font-black text-slate-600">{cellLabel}</legend><PgdTableFieldEditor cell={cell} value={cellValues[cell.key]} readOnly={!canMutate || busy} onChange={(value) => { setIssue(''); updateCell(cell, value); }} /></fieldset> : <label key={cell.key} htmlFor={fieldId} className="block min-w-0"><span className="mb-1 block text-[9px] font-black text-slate-600">{cellLabel}</span>{cell.type === 'BOOLEAN' ? <select id={fieldId} {...requiredProps} aria-label={`Giá trị ${cell.key}`} disabled={!canMutate || busy} value={scalarInputValue(cellValues[cell.key])} onChange={(event) => updateCell(cell, event.target.value)} className="min-h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400 disabled:bg-slate-100"><option value="">Chọn giá trị</option><option value="true">Có</option><option value="false">Không</option></select> : cell.validation?.options?.length ? <select id={fieldId} {...requiredProps} aria-label={`Giá trị ${cell.key}`} disabled={!canMutate || busy} value={scalarInputValue(cellValues[cell.key])} onChange={(event) => updateCell(cell, event.target.value)} className="min-h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400 disabled:bg-slate-100"><option value="">Chọn giá trị</option>{cell.validation.options.map((option) => <option key={option} value={option}>{option === 'METHOD_7' ? 'Phương thức 7' : option}</option>)}</select> : cell.type === 'DATE' ? <PgdcnDateInput id={fieldId} {...requiredProps} aria-label={`Giá trị ${cell.key}`} disabled={!canMutate || busy} value={scalarInputValue(cellValues[cell.key])} onChange={(value) => updateCell(cell, value)} className="min-h-9 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] outline-none focus:border-blue-400 disabled:bg-slate-100" /> : <input id={fieldId} {...requiredProps} aria-label={`Giá trị ${cell.key}`} disabled={!canMutate || busy} type={cell.type === 'NUMBER' ? 'number' : 'text'} value={scalarInputValue(cellValues[cell.key])} onChange={(event) => updateCell(cell, event.target.value)} className="min-h-9 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] outline-none focus:border-blue-400 disabled:bg-slate-100" />}</label>; })}</div></fieldset>)}</div>}
-    {issue && <p role="alert" className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[10px] font-bold text-amber-800">{issue}</p>}
-    <div data-testid="pgd-document-outputs" className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="flex items-center gap-2 text-[10px] font-black text-slate-800"><FileText size={14} className="text-blue-600" /> Kết quả sinh gần nhất</div>{lastOutput ? <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-white p-2"><div className="min-w-0"><div className="truncate text-[10px] font-black text-slate-700" title={lastOutput.fileName}>{lastOutput.fileName}</div><div className="mt-0.5 text-[9px] text-slate-500">{format} · {formatDateTimeDdMmYyyy(lastOutput.generatedAt) || 'Chưa cập nhật'}</div></div><div className="flex flex-wrap items-center gap-1.5"><a href={lastOutput.url} download={lastOutput.fileName} className="mobile-touch-target inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black text-blue-700 hover:bg-blue-100"><Download size={14} /> Tải lại</a>{onAttachGenerated && lastGeneratedDocument ? <button type="button" disabled={!canMutate || busy || attachedGeneratedId === lastGeneratedDocument.id} onClick={() => void onAttachGenerated(lastGeneratedDocument).then(() => setAttachedGeneratedId(lastGeneratedDocument.id))} className="mobile-touch-target inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-black text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60">{attachedGeneratedId === lastGeneratedDocument.id ? 'Đã xác nhận vào bộ hồ sơ' : 'Xác nhận vào bộ hồ sơ'}</button> : null}</div></div> : <p className="mt-1 text-[9px] text-slate-500">Chưa có tệp trong phiên này. Tệp chỉ xuất hiện sau khi server sinh thành công.</p>}</div>
-    <div className="mobile-safe-bottom sticky bottom-0 z-10 flex flex-col items-stretch justify-between gap-2 border-t border-blue-100 bg-white py-3 sm:flex-row sm:items-center"><div className="text-[9px] text-blue-800/70">Dữ liệu lấy từ hồ sơ PGD và mẫu phù hợp; bản soạn không tự đổi trạng thái hồ sơ.</div><div className="flex flex-wrap justify-end gap-2">{onSaveDraft && <button type="button" disabled={!canMutate || busy || !template} onClick={() => { onSaveDraft({ templateId: template?.id || '', format, cellValues }); setSavedAt(new Date().toISOString()); }} className="mobile-touch-target inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 text-[10px] font-black text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50" title={!template ? 'Chọn mẫu trước' : undefined}><Save size={14} /> Lưu bản soạn</button>}<button type="button" disabled={!canMutate || busy || !template || readinessIssues.length > 0} onClick={() => void generate()} className="mobile-touch-target inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50" title={readinessIssues.length > 0 ? 'Bổ sung các trường bắt buộc trước khi sinh' : undefined}><Sparkles size={14} />{busy ? 'Đang sinh...' : 'Sinh DOCX/PDF & tải tệp'}</button></div></div>
+    {template && <div data-testid="pgd-document-field-sections" className="mt-3 space-y-3">{allowSourceEditing ? null : <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[12px] text-slate-600"><span>Dữ liệu tự điền từ hồ sơ đang ở chế độ readonly; ưu tiên các trường còn thiếu.</span><button type="button" onClick={() => setAllowSourceEditing(true)} className="mobile-touch-target inline-flex min-h-10 items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[12px] font-black text-slate-700 hover:bg-slate-100"><LockKeyhole size={13} aria-hidden="true" /> Cho phép sửa dữ liệu nguồn</button></div>}{allowSourceEditing && <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-100 bg-blue-50/60 px-2.5 py-2 text-[12px] text-blue-900"><span>Đang cho phép hiệu chỉnh dữ liệu nguồn trong bản soạn này; hồ sơ gốc không đổi.</span><button type="button" onClick={() => setAllowSourceEditing(false)} className="mobile-touch-target inline-flex min-h-10 items-center gap-1 rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-[12px] font-black text-blue-700 hover:bg-blue-100"><UnlockKeyhole size={13} aria-hidden="true" /> Khóa lại dữ liệu nguồn</button></div>}{formCellGroups.map((group) => <DraftingFieldSection key={group.key} testId={`pgd-document-section-${group.key}`} title={group.label} collapsible defaultOpen={group.missingCount > 0 || group.autoFilledCount < group.cells.length} missingCount={group.missingCount}><div className="grid min-w-0 gap-1.5 p-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">{group.cells.map((cell) => { const fieldId = `pgd-document-${cell.key}`; const requiredProps = { required: cell.required, 'aria-required': cell.required || undefined, 'aria-invalid': readinessIssueKeys.has(cell.key) || undefined }; const cellLabel = <>{cell.label}{cell.required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}{cell.unit ? ` · ${cell.unit}` : ''}</>; const autoFilled = sourceFieldKeys.has(cell.key); const readOnly = autoFilled && !allowSourceEditing; const fieldClass = `min-h-11 w-full rounded-lg border px-2.5 py-2 text-[13px] outline-none focus:border-blue-400 focus-visible:ring-2 focus-visible:ring-blue-100 ${readinessIssueKeys.has(cell.key) ? 'border-amber-400 bg-amber-50/50' : 'border-slate-200'} ${readOnly ? 'cursor-default bg-slate-100 text-slate-600' : 'bg-white'}`; return cell.type === 'TABLE' ? <fieldset key={cell.key} id={fieldId} data-pgd-field={cell.key} tabIndex={-1} className={`block min-w-0 rounded-lg border border-slate-100 bg-white p-3 sm:col-span-2 lg:col-span-4 xl:col-span-5 ${readinessIssueKeys.has(cell.key) ? 'border-amber-300 bg-amber-50/30' : ''}`}><legend className="px-1 text-[12px] font-black text-slate-700">{cellLabel}</legend><PgdTableFieldEditor cell={cell} value={cellValues[cell.key]} readOnly={!canMutate || busy || readOnly} onChange={(value) => { setIssue(''); updateCell(cell, value); }} /></fieldset> : <label key={cell.key} htmlFor={fieldId} data-pgd-field={cell.key} className="block min-w-0 scroll-mt-24 scroll-mb-28"><span className="mb-1 block text-[12px] font-black text-slate-600">{cellLabel}</span>{cell.type === 'BOOLEAN' ? <select id={fieldId} {...requiredProps} aria-label={`Giá trị ${cell.key}`} disabled={!canMutate || busy || readOnly} value={scalarInputValue(cellValues[cell.key])} onChange={(event) => updateCell(cell, event.target.value)} className={fieldClass}><option value="">Chọn giá trị</option><option value="true">Có</option><option value="false">Không</option></select> : cell.validation?.options?.length ? <select id={fieldId} {...requiredProps} aria-label={`Giá trị ${cell.key}`} disabled={!canMutate || busy || readOnly} value={scalarInputValue(cellValues[cell.key])} onChange={(event) => updateCell(cell, event.target.value)} className={fieldClass}><option value="">Chọn giá trị</option>{cell.validation.options.map((option) => <option key={option} value={option}>{option === 'METHOD_7' ? 'Phương thức 7' : option}</option>)}</select> : cell.type === 'DATE' ? <PgdcnDateInput id={fieldId} {...requiredProps} readOnly={!canMutate || busy || readOnly} value={scalarInputValue(cellValues[cell.key])} onChange={(value) => updateCell(cell, value)} className={fieldClass} /> : <input id={fieldId} {...requiredProps} readOnly={!canMutate || busy || readOnly} type={cell.type === 'NUMBER' ? 'number' : 'text'} value={scalarInputValue(cellValues[cell.key])} onChange={(event) => updateCell(cell, event.target.value)} className={fieldClass} />}{autoFilled && <span className="mt-1 block text-[11px] leading-4 text-slate-500">{readOnly ? 'Tự điền từ hồ sơ · readonly' : 'Giá trị nguồn · đang cho phép hiệu chỉnh'}</span>}{readinessIssueKeys.has(cell.key) && <span className="mt-1 block text-[11px] font-bold leading-4 text-amber-800">Bắt buộc: {cell.label}.</span>}</label>; })}</div></DraftingFieldSection>)}</div>}
+    {issue && <p role="alert" className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[12px] font-bold text-amber-800">{issue}</p>}
+    {lastOutput && <DraftingOutputReviewShell testId="pgd-document-outputs" accent="blue" title="Review output · Soát xét trước khi gắn" description="Kiểm tra định danh, nguồn PYC và phiên bản mẫu trước khi xác nhận vào đúng mục hồ sơ.">
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 rounded-lg border border-blue-100 bg-blue-50/60 p-3"><div className="min-w-0"><div className="break-words text-[13px] font-black text-slate-800" title={lastOutput.fileName}>{lastOutput.fileName}</div><p className="mt-1 text-[11px] leading-4 text-blue-900">Nguồn: <b>{request.requestCode}</b> · khách hàng <b>{request.customerSnapshot.name}</b> · sản phẩm/đối tượng <b>{request.productName}</b>.</p><div className="mt-1 text-[11px] text-slate-500">{format} · {formatDateTimeDdMmYyyy(lastOutput.generatedAt) || 'Chưa cập nhật'} · template <span className="font-mono">{templateLabel}</span></div></div><span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-black text-emerald-800">{attachedGeneratedId === lastGeneratedDocument?.id ? 'ATTACHED · Đã gắn' : reviewedOutput ? 'CONFIRMED · Đã soát xét' : 'READY · Chờ soát xét'}</span></div>
+      <div className="mt-3 flex flex-wrap items-center gap-2"><a href={lastOutput.url} download={lastOutput.fileName} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] font-black text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Download size={15} aria-hidden="true" /> Tải lại</a>{!reviewedOutput && <button type="button" onClick={() => setReviewedOutput(true)} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-[12px] font-black text-teal-800 hover:bg-teal-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"><CheckCircle2 size={15} aria-hidden="true" /> Xác nhận đã soát xét</button>}{onAttachGenerated && lastGeneratedDocument && reviewedOutput && <button type="button" aria-label="Xác nhận vào bộ hồ sơ" disabled={!canMutate || busy || attaching || attachedGeneratedId === lastGeneratedDocument.id} onClick={() => void attachGeneratedOutput()} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-black text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">{attachedGeneratedId === lastGeneratedDocument.id ? 'ATTACHED · Đã gắn vào hồ sơ' : attaching ? 'Đang gắn…' : 'Xác nhận & gắn vào bộ hồ sơ'}</button>}{attachedGeneratedId === lastGeneratedDocument?.id && <span className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] font-black text-emerald-800"><CheckCircle2 size={15} aria-hidden="true" /> ATTACHED · Đã gắn đúng mục hồ sơ</span>}</div>
+    </DraftingOutputReviewShell>}
+    <DraftingStickyActionBar testId="pgd-document-actions" accent="blue" metadata="Dữ liệu lấy từ hồ sơ PGD và mẫu phù hợp; bản soạn không tự đổi trạng thái hồ sơ.">
+      {documentState === 'EMPTY' && <span className="inline-flex min-h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] font-bold text-slate-600">Chưa có mẫu phù hợp để bắt đầu</span>}
+      {documentState === 'BLOCKED' && <button type="button" onClick={focusFirstMissingField} disabled={readinessIssueItems.length === 0} className="mobile-touch-target inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-[13px] font-black text-white hover:bg-amber-500 disabled:opacity-50">Đi tới trường còn thiếu</button>}
+      {(documentState === 'EDITING' || documentState === 'SAVED' || documentState === 'ERROR') && <>{onSaveDraft && <button type="button" disabled={!canMutate || busy || !template} onClick={() => { onSaveDraft({ templateId: template?.id || '', format, cellValues }); setSavedAt(new Date().toISOString()); }} className="mobile-touch-target inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 text-[13px] font-black text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50" title={!template ? 'Chọn mẫu trước' : undefined}><Save size={15} aria-hidden="true" /> Lưu bản nháp</button>}<button type="button" disabled={!canMutate || busy || !template || readinessIssues.length > 0} onClick={() => void generate()} className="mobile-touch-target inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[13px] font-black text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50" title={readinessIssues.length > 0 ? 'Bổ sung các trường bắt buộc trước khi sinh' : undefined}><Sparkles size={15} aria-hidden="true" /> Lưu & sinh DOCX + PDF</button></>}
+      {documentState === 'GENERATING' && <button type="button" disabled className="mobile-touch-target inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-[13px] font-black text-white disabled:cursor-wait disabled:opacity-70"><Sparkles size={15} aria-hidden="true" /> Đang sinh tài liệu…</button>}
+      {documentState === 'READY' && <button type="button" onClick={focusOutputReview} className="mobile-touch-target inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[13px] font-black text-white hover:bg-blue-500"><CheckCircle2 size={15} aria-hidden="true" /> Review output</button>}
+      {documentState === 'ATTACHED' && <span className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] font-black text-emerald-800"><CheckCircle2 size={15} aria-hidden="true" /> ATTACHED · Đã gắn vào hồ sơ</span>}
+    </DraftingStickyActionBar>
   </div>;
 }
 
@@ -400,7 +460,7 @@ export default function PgdDocumentGenerationPanel({ request, templates, canMuta
    return (
      <div className="space-y-3 p-3 md:p-5">
        <header>
-         <div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">PGD · Mẫu DOCX</div>
+         <div className="text-[12px] font-black uppercase tracking-[0.18em] text-blue-600">PGD · Mẫu DOCX</div>
          <h1 className="mt-1 text-xl font-black text-slate-900">Quản trị mẫu DOCX PGD</h1>
          <p className="mt-1 max-w-3xl text-[11px] leading-5 text-slate-500">Quản lý tệp DOCX, trường dữ liệu và cấu hình ô của Phòng Giám định. Mẫu được dùng cho form nhập liệu và sinh tài liệu theo đúng bố cục DOCX.</p>
        </header>
@@ -408,13 +468,13 @@ export default function PgdDocumentGenerationPanel({ request, templates, canMuta
        <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
          <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
            <label>
-             <span className="mb-1 block text-[9px] font-black text-slate-500">Chọn mẫu DOCX</span>
-             <select value={selected?.id || ''} onChange={(event) => setSelectedId(event.target.value)} className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-bold outline-none focus:border-blue-400">
+             <span className="mb-1 block text-[11px] font-black text-slate-500">Chọn mẫu DOCX</span>
+             <select value={selected?.id || ''} onChange={(event) => setSelectedId(event.target.value)} className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[12px] font-bold outline-none focus:border-blue-400">
                {templates.map((template) => <option key={template.id} value={template.id}>{template.code} · {template.name} · v{template.version}</option>)}
              </select>
            </label>
            <div className="flex items-end">
-             <button type="button" disabled={!canMutate || busy || !draft} onClick={() => void save()} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white disabled:opacity-50"><Save size={13} />{busy ? 'Đang lưu...' : 'Lưu cấu hình mẫu'}</button>
+             <button type="button" disabled={!canMutate || busy || !draft} onClick={() => void save()} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[12px] font-black text-white disabled:opacity-50"><Save size={13} />{busy ? 'Đang lưu...' : 'Lưu cấu hình mẫu'}</button>
            </div>
          </div>
        </section>
@@ -423,18 +483,18 @@ export default function PgdDocumentGenerationPanel({ request, templates, canMuta
          <section className="space-y-3 rounded-2xl border border-blue-100 bg-blue-50/50 p-3">
            <div className="flex flex-wrap items-start justify-between gap-2">
              <div>
-               <div className="text-[10px] font-black text-blue-950">Tệp DOCX nguồn và trường dữ liệu</div>
-               <p className="mt-1 break-all text-[9px] font-mono text-blue-800/70">{draft.fileName}{sourceInspection?.byteSize ? ' · ' + sourceInspection.byteSize.toLocaleString('vi-VN') + ' byte' : ''}</p>
+               <div className="text-[12px] font-black text-blue-950">Tệp DOCX nguồn và trường dữ liệu</div>
+               <p className="mt-1 break-all text-[11px] font-mono text-blue-800/70">{draft.fileName}{sourceInspection?.byteSize ? ' · ' + sourceInspection.byteSize.toLocaleString('vi-VN') + ' byte' : ''}</p>
              </div>
-             <a href={getPgdTemplateSourceUrl(draft.id)} download={draft.fileName} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 text-[9px] font-black text-blue-700 hover:bg-blue-100">Tải DOCX nguồn</a>
+             <a href={getPgdTemplateSourceUrl(draft.id)} download={draft.fileName} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 text-[11px] font-black text-blue-700 hover:bg-blue-100">Tải DOCX nguồn</a>
            </div>
-           <div className={'inline-flex rounded-full border px-2 py-1 text-[9px] font-black ' + sourceStatusClass}>{sourceStatusLabel}</div>
-           {sourceInspection?.status !== 'READY' && sourceInspection?.message && <p role="alert" className="text-[9px] font-bold text-amber-800">{sourceInspection.message}</p>}
-           {sourceInspection?.missingPlaceholderKeys?.length ? <p className="break-all text-[9px] font-bold text-amber-800">Thiếu trường dữ liệu trong tệp DOCX: {sourceInspection.missingPlaceholderKeys.map((key) => draft.cells.find((cell) => cell.key === key)?.label || 'Trường chưa khai báo').join(', ')}</p> : null}
-           {sourceInspection?.extraPlaceholderKeys?.length ? <p className="break-all text-[9px] font-bold text-amber-800">Có trường chưa được cấu hình: {sourceInspection.extraPlaceholderKeys.map((key) => draft.cells.find((cell) => cell.key === key)?.label || 'Trường chưa khai báo').join(', ')}</p> : null}
-           <p className="text-[9px] leading-4 text-blue-800/70">Cấu hình trường được kiểm tra trực tiếp từ tệp DOCX; bố cục biểu mẫu nằm trong tệp nguồn.</p>
+           <div className={'inline-flex rounded-full border px-2 py-1 text-[11px] font-black ' + sourceStatusClass}>{sourceStatusLabel}</div>
+           {sourceInspection?.status !== 'READY' && sourceInspection?.message && <p role="alert" className="text-[11px] font-bold text-amber-800">{sourceInspection.message}</p>}
+           {sourceInspection?.missingPlaceholderKeys?.length ? <p className="break-all text-[11px] font-bold text-amber-800">Thiếu trường dữ liệu trong tệp DOCX: {sourceInspection.missingPlaceholderKeys.map((key) => draft.cells.find((cell) => cell.key === key)?.label || 'Trường chưa khai báo').join(', ')}</p> : null}
+           {sourceInspection?.extraPlaceholderKeys?.length ? <p className="break-all text-[11px] font-bold text-amber-800">Có trường chưa được cấu hình: {sourceInspection.extraPlaceholderKeys.map((key) => draft.cells.find((cell) => cell.key === key)?.label || 'Trường chưa khai báo').join(', ')}</p> : null}
+           <p className="text-[11px] leading-4 text-blue-800/70">Cấu hình trường được kiểm tra trực tiếp từ tệp DOCX; bố cục biểu mẫu nằm trong tệp nguồn.</p>
            <div className="flex flex-wrap gap-1.5">
-             {draft.cells.filter((cell) => placeholderKeys.includes(cell.key)).map((cell) => <span key={cell.key} className="rounded-md border border-blue-200 bg-white px-2 py-1 text-[9px] text-blue-800">{cell.label}</span>)}
+             {draft.cells.filter((cell) => placeholderKeys.includes(cell.key)).map((cell) => <span key={cell.key} className="rounded-md border border-blue-200 bg-white px-2 py-1 text-[11px] text-blue-800">{cell.label}</span>)}
            </div>
          </section>
        )}

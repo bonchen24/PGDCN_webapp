@@ -49,6 +49,8 @@ const isTargetActive = (active: PgdcnNavigationTarget, target: PgdcnNavigationTa
   active.domain === target.domain && active.section === target.section
 );
 
+/* Canonical PGD route labels: { section: 'requests', label: 'Hồ sơ PYC' } · { section: 'templates', label: 'Soạn thảo tài liệu' }. */
+
 export default function PgdcnSidebar({
   currentUser,
   activeTarget,

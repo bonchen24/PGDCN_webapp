@@ -17,12 +17,13 @@ function templateKind(value: string | string[] | undefined): PgdDocumentTemplate
   return candidate && TEMPLATE_KINDS.has(candidate as PgdDocumentTemplateKind) ? candidate as PgdDocumentTemplateKind : undefined;
 }
 
-export default function PgdDraftingPage({ searchParams }: { searchParams?: { requestId?: string | string[]; requirementCode?: string | string[]; templateKind?: string | string[] } }) {
+export default function PgdDraftingPage({ searchParams }: { searchParams?: { requestId?: string | string[]; requirementCode?: string | string[]; templateKind?: string | string[]; returnTo?: string | string[] } }) {
   return <PgdcnAppShell
     initialDomain="PGD"
     initialPgdDraftingOpen={true}
     initialPgdDraftRequestId={scalar(searchParams?.requestId)}
     initialPgdDraftRequirementCode={scalar(searchParams?.requirementCode)}
     initialPgdDraftTemplateKind={templateKind(searchParams?.templateKind)}
+    initialPgdDraftReturnTo={scalar(searchParams?.returnTo)}
   />;
 }

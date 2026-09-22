@@ -12,7 +12,7 @@ test('PGD drafting uses the PCN-style single-form workspace anatomy', () => {
   assert.match(workspace, /aria-label="Nguồn hồ sơ PGD"/);
   assert.match(workspace, /aria-label="Loại tài liệu PGD"/);
   assert.match(workspace, /Bản đã lưu/);
-  assert.match(workspace, /Kết quả sinh tệp/);
+  assert.match(workspace, /testId="pgd-drafting-outputs"|DraftingOutputReviewShell/);
   assert.doesNotMatch(generator, /aria-label="Loại template tài liệu PGD"/);
   assert.doesNotMatch(generator, /TEMPLATE_KIND_LABELS/);
 });

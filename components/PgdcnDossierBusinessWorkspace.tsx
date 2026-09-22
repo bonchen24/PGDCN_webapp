@@ -258,7 +258,7 @@ function Tracker({ title, rows, emptyText, kind }: { title: string; rows: Dossie
             <div className="mt-2 space-y-1.5">
               {group.rows.map((row) => <article key={row.id} className="rounded-lg border border-slate-100 bg-white p-2">
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0"><div className="font-mono text-[9px] font-black text-slate-500">{row.code}</div><div className="mt-0.5 text-[10px] font-bold text-slate-800">{row.title}</div></div>
+                  <div className="min-w-0"><div className="mt-0.5 text-[10px] font-bold text-slate-800">{row.title}</div><details className="mt-1 text-[9px] text-slate-400"><summary className="cursor-pointer font-bold">Thông tin kỹ thuật</summary><span className="font-mono">{row.code}</span></details></div>
                   <span className={'shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-black ' + TRACKER_TONE_CLASS[row.stateTone || 'neutral']}>{row.state}</span>
                 </div>
                 {row.meta ? <p className="mt-1 text-[9px] text-slate-500">{row.meta}</p> : null}
