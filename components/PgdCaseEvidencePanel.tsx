@@ -233,7 +233,7 @@ export default ({
   };
 
   return (
-    <section className="space-y-3">
+    <section className="min-w-0 space-y-3 [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 [&_*:focus-visible]:ring-blue-500">
       <PgdDossierOperationsPanel request={request} requirements={requirements} dossierDocuments={dossierDocuments} canMutate={canMutate} editable={editable} />
       <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -243,18 +243,18 @@ export default ({
               Hồ sơ chứng từ
             </h3>
             {/* Source boundary: pgdDossierDocuments. Keep storage vocabulary out of the user-facing copy. */}
-            <p className="mt-1 text-[10px] text-slate-500">Danh sách tài liệu đi theo đúng hồ sơ PGD, tách riêng với tài liệu đầu ra đã sinh.</p>
+            <p className="mt-1 text-[11px] text-slate-600">Danh sách tài liệu đi theo đúng hồ sơ PGD, tách riêng với tài liệu đầu ra đã sinh.</p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-1.5">
-            {loadError ? <span role="alert" className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-black text-amber-700">{loadError}</span> : null}
-            {lockedReason ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-black text-amber-700">{lockedReason}</span> : null}
+            {loadError ? <span role="alert" className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-700">{loadError}</span> : null}
+            {lockedReason ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-700">{lockedReason}</span> : null}
           </div>
         </div>
 
         <div className="mt-3 space-y-3">
           {groupedRequirements.map(([group, items]) => (
             <div key={group} className="rounded-lg border border-slate-100 bg-slate-50/80 p-2.5">
-              <div className="mb-2 text-[10px] font-black uppercase tracking-wide text-slate-500">{REQUIREMENT_GROUP_LABELS[group]}</div>
+              <div className="mb-2 text-[11px] font-black uppercase tracking-wide text-slate-500">{REQUIREMENT_GROUP_LABELS[group]}</div>
               <div className="space-y-2">
                 {items.map((requirement) => {
                   const documents = documentsByRequirement.get(requirement.code) || [];
@@ -264,11 +264,11 @@ export default ({
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-[10px] font-black text-slate-800">{requirement.title}</span>
+                            <span className="text-[11px] font-black text-slate-800">{requirement.title}</span>
                             <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-black ${requirement.required ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-500'}`}>{requirement.required ? 'Bắt buộc' : 'Tùy chọn'}</span>
                             <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black ${current ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>{current ? 'Đã có' : 'Thiếu'}</span>
                           </div>
-                          {requirement.description ? <p className="mt-1 text-[9px] text-slate-500">{requirement.description}</p> : null}
+                          {requirement.description ? <p className="mt-1 text-[11px] text-slate-600">{requirement.description}</p> : null}
                         </div>
                         <span className="font-mono text-[9px] text-slate-400">{requirement.code}</span>
                       </div>
@@ -292,7 +292,7 @@ export default ({
                               target="_blank"
                               rel="noreferrer"
                               title={`Tải ${current.fileName}`}
-                              className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2 text-[9px] font-black text-emerald-700 hover:bg-emerald-50"
+                              className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2 text-[11px] font-black text-emerald-700 hover:bg-emerald-50"
                             >
                               <Download size={12} />
                               Tải tệp
@@ -302,7 +302,7 @@ export default ({
                           )}
                         </div>
                       ) : (
-                        <p className="mt-2 text-[9px] font-bold text-amber-700">Chưa có tài liệu hiện hành cho mục này.</p>
+                        <p className="mt-2 text-[11px] font-bold text-amber-700">Chưa có tài liệu hiện hành cho mục này.</p>
                       )}
                     </article>
                   );
@@ -315,13 +315,13 @@ export default ({
         <form onSubmit={submit} className="mt-3 rounded-lg border border-blue-100 bg-blue-50/50 p-3">
           <div className="grid gap-2 md:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-[9px] font-black text-slate-500">Tài liệu cần bổ sung<span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span>
+              <span className="mb-1 block text-[11px] font-black text-slate-500">Tài liệu cần bổ sung<span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span>
               <select
                 aria-label="Chọn tài liệu cần bổ sung PGD"
                 value={form.requirementCode}
                 onChange={(event) => onRequirementChange(event.target.value)}
                 disabled={!canMutate || !editable || busy}
-                className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-bold outline-none focus:border-blue-400"
+                className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-bold outline-none focus:border-blue-400"
               >
                 <option value="">Chọn loại tài liệu...</option>
                 {requirements.map((requirement) => (
@@ -330,7 +330,7 @@ export default ({
               </select>
             </label>
             <label className="block">
-              <span className="mb-1 block text-[9px] font-black text-slate-500">Tiêu đề chứng từ<span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span>
+              <span className="mb-1 block text-[11px] font-black text-slate-500">Tiêu đề chứng từ<span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span>
               <input
                 aria-label="Tiêu đề chứng từ PGD"
                 value={form.title}
@@ -338,33 +338,33 @@ export default ({
                 required
 
                 disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
-                className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400"
+                className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] outline-none focus:border-blue-400"
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[9px] font-black text-slate-500">Số chứng từ</span>
+              <span className="mb-1 block text-[11px] font-black text-slate-500">Số chứng từ</span>
               <input
                 aria-label="Số chứng từ PGD"
                 value={form.documentNumber}
                 onChange={(event) => updateForm('documentNumber', event.target.value)}
 
                 disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
-                className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400"
+                className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] outline-none focus:border-blue-400"
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[9px] font-black text-slate-500">Ngày chứng từ</span>
+              <span className="mb-1 block text-[11px] font-black text-slate-500">Ngày chứng từ</span>
               <PgdcnDateInput
                 aria-label="Ngày chứng từ PGD"
                 value={form.documentDate}
                 onChange={(value) => updateForm('documentDate', value)}
 
                 disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
-                className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-[10px] outline-none focus:border-blue-400"
+                className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] outline-none focus:border-blue-400"
               />
             </label>
             <label className="block md:col-span-2">
-              <span className="mb-1 block text-[9px] font-black text-slate-500">Ghi chú</span>
+              <span className="mb-1 block text-[11px] font-black text-slate-500">Ghi chú</span>
               <textarea
                 rows={2}
                 aria-label="Ghi chú chứng từ PGD"
@@ -372,28 +372,28 @@ export default ({
                 onChange={(event) => updateForm('note', event.target.value)}
 
                 disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
-                className="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-[10px] outline-none focus:border-blue-400"
+                className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px] outline-none focus:border-blue-400"
               />
             </label>
             <label className="block md:col-span-2">
-              <span className="mb-1 block text-[9px] font-black text-slate-500">Tệp đính kèm tùy chọn</span>
+              <span className="mb-1 block text-[11px] font-black text-slate-500">Tệp đính kèm tùy chọn</span>
               <input
                 type="file"
                 aria-label="Tải tệp chứng từ PGD"
                 onChange={(event) => updateForm('file', event.target.files?.[0] || null)}
                 ref={fileInputRef}
                 disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
-                className="block min-h-10 w-full rounded-lg border border-dashed border-slate-300 bg-white px-2 py-2 text-[10px] text-slate-500"
+                className="block mobile-touch-target min-h-11 w-full rounded-lg border border-dashed border-slate-300 bg-white px-2 py-2 text-[11px] text-slate-500"
               />
             </label>
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[9px] text-slate-500">Có thể lưu thông tin tệp trước khi vùng lưu trữ riêng sẵn sàng; khi có tệp, liên kết tải sẽ dùng đường dẫn riêng của hồ sơ.</p>
+            <p className="text-[11px] text-slate-600">Có thể lưu thông tin tệp trước khi vùng lưu trữ riêng sẵn sàng; khi có tệp, liên kết tải sẽ dùng đường dẫn riêng của hồ sơ.</p>
             <button
               type="submit"
               title="Lưu chứng từ dossier PGD"
               disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? 'Đang lưu...' : 'Lưu chứng từ'}
             </button>
@@ -408,7 +408,7 @@ export default ({
               <FlaskConical size={15} className="text-blue-600" />
               Sổ mẫu
             </h3>
-            <p className="mt-1 text-[10px] text-slate-500">Theo dõi riêng Mẫu PTN và Mẫu lưu; hủy mẫu chỉ là mutation trạng thái, không xóa dòng khỏi sổ.</p>
+            <p className="mt-1 text-[11px] text-slate-600">Theo dõi riêng Mẫu PTN và Mẫu lưu; hủy mẫu chỉ là mutation trạng thái, không xóa dòng khỏi sổ.</p>
           </div>
           <div className="flex flex-wrap gap-1 text-[9px] font-black">
             <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">PTN {register.counts.lab}</span>
@@ -422,10 +422,10 @@ export default ({
           ['Mẫu lưu', register.retained],
         ] as const).map(([label, items]) => (
           <div key={label} className="mt-3">
-            <div className="mb-2 text-[10px] font-black uppercase tracking-wide text-slate-500">{label}</div>
+            <div className="mb-2 text-[11px] font-black uppercase tracking-wide text-slate-500">{label}</div>
             <div className="space-y-2">
               {items.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-[10px] text-slate-400">Chưa có {label.toLowerCase()} cho hồ sơ này.</div>
+                <div className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-[11px] text-slate-500">Chưa có {label.toLowerCase()} cho hồ sơ này.</div>
               ) : items.map((sample) => {
                 const canDestroy = sample.disposition === 'RETAINED'
                   && sample.retentionStatus !== 'DESTROYED'
@@ -436,10 +436,10 @@ export default ({
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-mono text-[10px] font-black text-slate-800">{sample.sampleCode}</span>
+                          <span className="font-mono text-[11px] font-black text-slate-800">{sample.sampleCode}</span>
                           <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-black ${sample.retentionStatus === 'DESTROYED' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>{sample.retentionStatus === 'DESTROYED' ? 'Đã hủy' : 'Đang theo dõi'}</span>
                         </div>
-                        <div className="mt-1 text-[10px] font-bold text-slate-700">{sample.description}</div>
+                        <div className="mt-1 text-[11px] font-bold text-slate-700">{sample.description}</div>
                       </div>
                       {canDestroy ? (
                         <button
@@ -447,14 +447,14 @@ export default ({
                           title={`Hủy mẫu ${sample.sampleCode}`}
                           disabled={!canMutate || !editable || busy || !sampleAccess.editable}
                           onClick={() => void destroySample(sample)}
-                          className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-rose-200 bg-white px-2 text-[9px] font-black text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-rose-200 bg-white px-2 text-[11px] font-black text-rose-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
                         >
                           <Trash2 size={12} />
                           Hủy mẫu
                         </button>
                       ) : null}
                     </div>
-                    <div className="mt-2 grid gap-2 text-[9px] text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="mt-2 grid gap-2 text-[11px] text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
                       <div><span className="block text-slate-400">Niêm phong</span><b className="text-slate-700">{sample.sealNumber || 'Chưa có'}</b></div>
                       <div><span className="block text-slate-400">Số lượng</span><b className="text-slate-700">{joinSampleQuantity(sample)}</b></div>
                       <div><span className="block text-slate-400">Cỡ mẫu / quy mô lô</span><b className="text-slate-700">{describeSampleScope(sample)}</b></div>

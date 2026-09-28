@@ -16,10 +16,10 @@ type PgdIntakeSampleTableProps = {
   disabled?: boolean;
 };
 
-const inputClassName = 'w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100';
+const inputClassName = 'mobile-touch-target min-h-11 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] outline-none focus-visible:border-blue-400 focus-visible:ring-2 focus-visible:ring-blue-100 disabled:bg-slate-100';
 
 function SampleField({ label, required = false, children }: { label: string; required?: boolean; children: ReactNode }) {
-  return <label className="block min-w-0"><span className="mb-1 block text-[9px] font-black text-slate-500">{label}{required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span>{children}</label>;
+  return <label className="block min-w-0"><span className="mb-1 block text-[11px] font-black text-slate-500">{label}{required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span>{children}</label>;
 }
 
 function defaultSample(index: number, productGroup: PgdProductGroup): PgdIntakeSampleDraft {
@@ -56,15 +56,15 @@ export default function PgdIntakeSampleTable({ productGroup, rows, onChange, dis
     <div className="flex flex-wrap items-start justify-between gap-2">
       <div>
         <h2 className="text-xs font-black text-slate-900">Bảng tổng hợp mẫu</h2>
-        <p className="mt-1 text-[10px] leading-4 text-slate-500">Chọn tên mẫu từ danh mục hoặc gõ <b>Mẫu khác</b> tùy chọn. Các dòng được lưu cùng PYC.</p>
+        <p className="mt-1 text-[11px] leading-4 text-slate-500">Chọn tên mẫu từ danh mục hoặc gõ <b>Mẫu khác</b> tùy chọn. Các dòng được lưu cùng PYC.</p>
       </div>
-      <button type="button" onClick={() => onChange([...rows, defaultSample(rows.length, productGroup)])} disabled={disabled} className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-[10px] font-black text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"><Plus size={13} aria-hidden="true" /> Thêm mẫu</button>
+      <button type="button" onClick={() => onChange([...rows, defaultSample(rows.length, productGroup)])} disabled={disabled} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-black text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"><Plus size={13} aria-hidden="true" /> Thêm mẫu</button>
     </div>
 
     <datalist id={sampleCatalogId}>{options.map((option) => <option key={option.id} value={option.label}>{option.id}</option>)}</datalist>
     <div className="mobile-scroll-x mt-3 overflow-x-auto rounded-lg border border-slate-200">
       <table className="w-full min-w-[1040px] border-collapse text-left" aria-label="Danh sách mẫu PGD">
-        <thead className="bg-slate-50 text-[9px] font-black uppercase tracking-wide text-slate-500">
+        <thead className="bg-slate-50 text-[11px] font-black uppercase tracking-wide text-slate-500">
           <tr>
             <th className="px-2 py-2">Mã mẫu <span className="text-rose-600">*</span></th>
             <th className="px-2 py-2">Tên/mô tả mẫu <span className="text-rose-600">*</span></th>
@@ -77,19 +77,19 @@ export default function PgdIntakeSampleTable({ productGroup, rows, onChange, dis
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 bg-white">
-          {rows.length === 0 && <tr><td colSpan={8} className="px-3 py-5 text-center text-[10px] text-slate-500">Chưa có mẫu. Bấm “Thêm mẫu” để lập bảng mẫu.</td></tr>}
+          {rows.length === 0 && <tr><td colSpan={8} className="px-3 py-5 text-center text-[11px] text-slate-500">Chưa có mẫu. Bấm “Thêm mẫu” để lập bảng mẫu.</td></tr>}
           {rows.map((row, index) => <tr key={row.id || `${row.sampleCode}-${index}`} className="align-top">
-            <td className="px-2 py-2"><input aria-label={`Mã mẫu dòng ${index + 1}`} required value={row.sampleCode} onChange={(event) => updateRow(index, { sampleCode: event.target.value })} className={`${inputClassName} ${duplicateCodes.has(String(row.sampleCode || '').trim().toLocaleUpperCase()) ? 'border-rose-400 bg-rose-50' : ''}`} disabled={disabled} />{duplicateCodes.has(String(row.sampleCode || '').trim().toLocaleUpperCase()) && <p role="alert" className="mt-1 text-[9px] font-bold text-rose-700">Mã mẫu trùng</p>}</td>
+            <td className="px-2 py-2"><input aria-label={`Mã mẫu dòng ${index + 1}`} required value={row.sampleCode} onChange={(event) => updateRow(index, { sampleCode: event.target.value })} className={`${inputClassName} ${duplicateCodes.has(String(row.sampleCode || '').trim().toLocaleUpperCase()) ? 'border-rose-400 bg-rose-50' : ''}`} disabled={disabled} />{duplicateCodes.has(String(row.sampleCode || '').trim().toLocaleUpperCase()) && <p role="alert" className="mt-1 text-[11px] font-bold text-rose-700">Mã mẫu trùng</p>}</td>
             <td className="px-2 py-2"><input aria-label={`Tên/mô tả mẫu dòng ${index + 1}`} required list={sampleCatalogId} value={row.sampleTypeLabel} onChange={(event) => updateSampleLabel(index, event.target.value)} className={inputClassName} disabled={disabled} /></td>
             <td className="px-2 py-2"><input aria-label={`Số lượng mẫu dòng ${index + 1}`} required type="number" min="0.001" step="any" value={row.quantity} onChange={(event) => updateRow(index, { quantity: Number(event.target.value) })} className={inputClassName} disabled={disabled} /></td>
             <td className="px-2 py-2"><input aria-label={`Đơn vị mẫu dòng ${index + 1}`} required value={row.unit || ''} onChange={(event) => updateRow(index, { unit: event.target.value })} className={inputClassName} disabled={disabled} /></td>
             <td className="px-2 py-2"><select aria-label={`Phân loại mẫu dòng ${index + 1}`} required value={row.disposition} onChange={(event) => updateRow(index, { disposition: event.target.value as PgdIntakeSampleDraft['disposition'] })} className={inputClassName} disabled={disabled}><option value="RETAINED">Mẫu lưu</option><option value="LAB">Gửi PTN</option></select></td>
             <td className="px-2 py-2"><SampleField label="Số niêm phong" required={row.disposition === 'RETAINED'}><input aria-label={`Số niêm phong dòng ${index + 1}`} required={row.disposition === 'RETAINED'} value={row.sealNumber || ''} onChange={(event) => updateRow(index, { sealNumber: event.target.value })} className={inputClassName} disabled={disabled} /></SampleField></td>
             <td className="px-2 py-2"><SampleField label="Tên PTN" required={row.disposition === 'LAB'}><input aria-label={`Tên PTN dòng ${index + 1}`} required={row.disposition === 'LAB'} value={row.laboratoryName || ''} onChange={(event) => updateRow(index, { laboratoryName: event.target.value })} className={inputClassName} disabled={disabled} /></SampleField></td>
-            <td className="px-2 py-2 text-center"><button type="button" aria-label={`Xóa mẫu dòng ${index + 1}`} title="Xóa mẫu" onClick={() => onChange(rows.filter((_, rowIndex) => rowIndex !== index))} disabled={disabled} className="mobile-touch-target inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-40"><Trash2 size={14} aria-hidden="true" /></button></td>
+            <td className="px-2 py-2 text-center"><button type="button" aria-label={`Xóa mẫu dòng ${index + 1}`} title="Xóa mẫu" onClick={() => onChange(rows.filter((_, rowIndex) => rowIndex !== index))} disabled={disabled} className="mobile-touch-target inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-40"><Trash2 size={14} aria-hidden="true" /></button></td>
           </tr>)}
         </tbody>
-        <tfoot className="border-t border-slate-200 bg-slate-50 text-[10px] font-black text-slate-700"><tr><td colSpan={2} className="px-2 py-2 text-right">Tổng số lượng</td><td className="px-2 py-2">{totalQuantity || 0}</td><td colSpan={5} className="px-2 py-2 text-slate-500">{rows.length} dòng mẫu</td></tr></tfoot>
+        <tfoot className="border-t border-slate-200 bg-slate-50 text-[11px] font-black text-slate-700"><tr><td colSpan={2} className="px-2 py-2 text-right">Tổng số lượng</td><td className="px-2 py-2">{totalQuantity || 0}</td><td colSpan={5} className="px-2 py-2 text-slate-500">{rows.length} dòng mẫu</td></tr></tfoot>
       </table>
     </div>
   </section>;

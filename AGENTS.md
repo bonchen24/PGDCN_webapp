@@ -21,3 +21,16 @@
 - Nếu yêu cầu trải qua nhiều miền, chỉ nạp các nhóm tương ứng; không nạp các phần còn lại nếu không cần.
 - Khi phạm vi chưa rõ, chỉ đọc mục lục và danh sách heading trước để chọn context, không nạp toàn bộ tài liệu.
 - Obsidian chỉ được dùng như bản tham chiếu cá nhân tùy chọn, không phải nguồn để Agent quyết định khi coding.
+
+## 4. NGÔN NGỮ GIAO TIẾP
+- **Luôn phản hồi bằng tiếng Việt** khi giao tiếp với người dùng.
+- Sử dụng tiếng Việt có dấu đầy đủ và chính xác.
+- Đảm bảo thông tin rõ ràng, dễ hiểu cho người dùng Việt Nam.
+
+## 5. QUY TẮC TƯƠNG TÁC
+- **Luôn diễn giải lại yêu cầu** của người dùng để đảm bảo hiểu đúng.
+- **Chỉ thực thi khi người dùng đồng ý** sau khi diễn giải.
+- Phần diễn giải chỉ dùng lời nói, đặt thêm câu hỏi nếu muốn biết thêm thông tin, không viết code.
+- Code chỉ được viết khi người dùng xác nhận đồng ý.
+- Người dùng viết "OK tiến hành đi" tức là sẽ thực thi công việc mà không hỏi gì thêm.
+

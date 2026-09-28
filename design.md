@@ -77,7 +77,7 @@ Phần này là lớp đặc tả đang có hiệu lực cho ứng dụng **Phò
 - Dữ liệu mác thép, kích thước, mã HS, lô hàng, nhà sản xuất/nhập khẩu, chứng từ hải quan và kết quả hóa học thuộc `PgdInspectionRequest.productDetails`/các entity PGD tương ứng. Checklist, mẫu biểu và snapshot của lô thép phải mang `domain = pgd`.
 - Không xóa dữ liệu cũ chỉ bằng thay đổi UI/code. Nếu gặp bản ghi PCN cũ có mã không còn active, projection phải báo **Lĩnh vực không còn thuộc PCN**, khóa mutation và giữ nguyên record để xử lý migration có kiểm soát sau này.
 - Danh sách khách hàng là danh mục PCN phải được giữ lại và sở hữu bản dữ liệu riêng sau migration/import có kiểm soát. Danh sách nhân sự PCN được nạp một lần từ nguồn roster được Admin PCN chỉ định (bao gồm bảng người dùng PCN đã được đối soát), có kiểm tra khóa định danh và trùng lặp; đây là import định danh có kiểm soát, không phải liên kết runtime với database DDT và không được nhập vào `customers`. Roster có thể bổ sung `email` và `phone` cho hồ sơ nhân sự; các trường này chỉ phục vụ liên hệ/hiển thị và không thay thế `username`, `systemRole`, `departmentRoleCode` hoặc phạm vi `fieldCodes` của PCN.
-- Màn hình đăng nhập PCN xác thực qua endpoint server-side và phiên HttpOnly riêng (`pcn_certification_session`); endpoint đọc `systemUsers` từ database PCN riêng để xác thực danh sách đã import/cấu hình. Không trả password về client, không sao chép credential DDT, không khởi tạo sync/session DDT. Các API dữ liệu PCN và file private chỉ cho phép truy cập khi phiên này còn hợp lệ. Màn hình này phải dùng asset nhận diện IEMM/TV-CI hiện hành (`/icons/iemm-logo-32.png`) cùng nhãn `IEMM • TVCI`, hiển thị nhãn ngắn `Giám định - Chứng nhận` trên phần mô tả đăng nhập, còn màn hình DDT giữ nhận diện riêng.
+- Màn hình đăng nhập PCN/PGDCN xác thực qua endpoint server-side và phiên HttpOnly riêng (`pcn_certification_session`); endpoint đọc `systemUsers` từ database PCN riêng để xác thực danh sách đã import/cấu hình. Không trả password về client, không sao chép credential DDT, không khởi tạo sync/session DDT. Các API dữ liệu PCN và file private chỉ cho phép truy cập khi phiên này còn hợp lệ. Màn hình này dùng asset nhận diện IEMM/TV-CI độ nét cao (`/icons/iemm-logo-192.png`) cùng nhãn `IEMM • TVCI`, tiêu đề `Phòng Giám định - Chứng nhận và Phát triển thị trường`, chân form bảo vệ riêng cho `PGDCN`, không giữ dòng phụ cũ về phòng chứng nhận, còn màn hình DDT giữ nhận diện riêng.
 
 ### 0.2. Luồng hồ sơ PCN
 
@@ -1052,7 +1052,7 @@ Nhật ký đồng bộ và chẩn đoán PostgreSQL không hiển thị thành 
 
 ### 5.2. Tỷ lệ hiển thị giao diện toàn cục (Global UI Scale)
 
-- Toàn bộ giao diện web của ứng dụng phải hiển thị ở tỷ lệ **100%** theo kích thước CSS mặc định chuẩn DdT (DDT_webapp), bao gồm thanh điều hướng, bảng dữ liệu, card, form và modal. Bỏ hoàn toàn các biến phóng đại font như --app-font-scale: 1.1.
+- Toàn bộ giao diện web của ứng dụng hiển thị theo tỷ lệ font gọn gàng **90%** (`--app-font-scale: 0.9`), giúp tối ưu mật độ hiển thị dữ liệu (compact enterprise density) cho bảng, dashboard, form và modal. Bật antialiasing chống dày chữ.
 - Tỷ lệ này được áp dụng tại vùng mount React (#root) bằng CSS global; vùng chứa phải giữ zoom: 1, width: 100% và min-height: 100% để không vượt viewport khi html, body khóa overflow.
 - Nội dung cửa sổ in, biểu mẫu xuất báo cáo và các tài liệu DOCX/PDF không chịu ảnh hưởng bởi tỷ lệ UI này; các quy chuẩn kích thước in giữ nguyên theo từng module.
 - Không thay đổi token dữ liệu, kích thước ảnh báo cáo hoặc logic nghiệp vụ chỉ để phục vụ việc thu/phóng giao diện.
@@ -1695,7 +1695,7 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 
 - Dashboard hiển thị “Hồ sơ vừa mở” theo user bằng một danh sách local-scoped tối đa 6 mục; chỉ lưu domain, record id và thời điểm mở, sau đó resolve lại nhãn/trạng thái từ dữ liệu đang có. Mục stale hoặc không còn quyền được bỏ qua, không tạo bản ghi nghiệp vụ mới.
 - Data View PCN/PGD cho phép lưu, áp dụng và xóa named filter preset theo user/domain. Preset chỉ lưu query và giá trị các bộ lọc UI trong local storage; không lưu dữ liệu hồ sơ, không thay đổi filter mặc định, inline edit, CSV, cấu hình cột hoặc Work View.
-- Header app có “Tìm nhanh” mở bằng nút hoặc Ctrl/Cmd+K; palette chỉ tìm trong navigation, hồ sơ hiện có và hành động workspace hiện hành. Kết quả dùng callback/route hiện có, tôn trọng scope/RBAC, có keyboard navigation, Escape và focus management.
+- Header app tinh gọn: bỏ nút “Tìm nhanh” trên header để ưu tiên không gian cho thông báo và thông tin người dùng.
 - Acceptance: người dùng quay lại đúng hồ sơ vừa mở trong một thao tác; bộ lọc thường dùng được gọi lại mà không chọn lại từng control; tìm nhanh không tạo route/API/mutation mới và không che khuất focus.
 
 ### 5A.26. Business Dossier Workspace — Phase 2/3 — 2026-09-21
@@ -1719,3 +1719,39 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 -- Blocker chỉ được tạo từ checklist, assignment, transition context hoặc entity workflow hiện hữu; mỗi blocker có lý do đọc được và CTA mở đúng vùng xử lý. PCN semantic grouping tái sử dụng taxonomy hiện hành và hiển thị nhãn nghiệp vụ, không lộ raw stage code.
 -- Contextual Assistant chỉ nhận projection read-only của dossier/current step/documents/missing requirements/samples/lab requests/results/blockers/next action. Quick actions chỉ tổng hợp hoặc điều hướng tới workspace/review hiện hữu; không thêm API AI, không phê duyệt, đổi trạng thái hoặc ghi dữ liệu.
 -- Nguồn tham chiếu nghiệp vụ là thư mục local `C:/Users/HungX/Desktop/Hệ thống phần mềm phòng GĐCN`; chỉ đọc để đối chiếu tên trường/chứng từ và không được trở thành dependency runtime, seed, import hoặc dữ liệu hiển thị.
+
+
+### 5A.32. Typography và keyboard focus cho shell dùng chung — 2026-09-27
+
+- Shell, primitives và shared/high-impact controls giữ phong cách Official / Superneat, compact spacing và bố cục mobile hiện hành; nội dung nghiệp vụ cần đọc hoặc quyết định, label, validation/error và CTA dùng tối thiểu 11px hoặc mức `text-xs` tương đương. Chỉ badge và metadata phụ thực sự mới giữ 9–10px.
+- Mọi control tương tác trong các bề mặt này phải có focus-visible ring rõ; trường không chỉ dựa vào đổi màu border. Trạng thái mở/đóng dùng `aria-expanded` trên control điều khiển, còn mục điều hướng hiện hành tiếp tục dùng `aria-current="page"`.
+- Điều chỉnh typography không làm tăng padding hoặc phá compact density; nội dung phải wrap/truncate theo contract hiện có và không tạo tràn ngang mobile.
+- Đây chỉ là thay đổi presentation/accessibility; không đổi business flow, API, schema, RBAC, workflow, callback hoặc dữ liệu.
+
+### 5A.33. Typography và accessibility cho modal/form nghiệp vụ PCN — 2026-09-27
+
+- Chi tiết hồ sơ, giao nhận mẫu, tạo PYC tổng và thiết lập cá nhân áp dụng cùng ngưỡng compact: nhãn, hướng dẫn, trạng thái cần quyết định, validation/error và CTA dùng tối thiểu 11px hoặc `text-xs`; chỉ mã/metadata phụ và badge phụ thực sự mới giữ 9–10px.
+- Mọi control tương tác trong các bề mặt này phải có focus-visible ring rõ, trực tiếp hoặc qua scope bao phủ control descendants; `outline-none`/đổi viền đơn thuần không đủ. Accessible name, liên kết lỗi, required, disabled và busy hiện hữu tiếp tục được bảo toàn.
+- Modal giữ `role="dialog"`, `aria-modal="true"` và tiêu đề được liên kết; header/footer luôn thao tác được trong viewport, phần nội dung dài cuộn độc lập. Control thao tác chính trên mobile giữ vùng chạm tối thiểu 44px.
+- Bảng mẫu PYC tiếp tục cuộn ngang bên trong modal, không làm tràn ngang body/page. Giữ mật độ compact và toàn bộ hành vi nghiệp vụ/API/schema/RBAC/workflow/callback/dữ liệu.
+
+### 5A.34. Tối ưu hóa UI/UX Cài đặt hệ thống & Quản trị nhân sự PGDCN — 2026-09-28
+
+- Tinh giản tầng header: loại bỏ sự trùng lặp 2 tầng header giữa `PgdcnSystemSettingsView` và `PcnUserManagementView`. `PgdcnSystemSettingsView` sở hữu header thanh thoát với icon, tiêu đề "Cài đặt hệ thống", tóm tắt quyền quản trị và tổng số nhân sự; `PcnUserManagementView` khi nhúng (`embedded`) tích hợp liền mạch, giải phóng chiều cao hiển thị.
+- Chuẩn hóa danh sách nhân sự sang Data Table trực quan:
+  - Cột Nhân sự: Avatar ký tự đầu, Họ và tên nổi bật (`text-xs font-bold text-slate-900`), `@username` mono mờ cùng thông tin liên hệ.
+  - Cột Chức danh & Hệ thống: Badge vai trò hệ thống, chức danh quản lý; các mục không phân công hiển thị gạch ngang `—` tinh tế thay cho các câu chữ phủ định lặp lại ("Chưa phân công...").
+  - Cột Phạm vi & Chuyên môn: Tag phạm vi phòng (PCN / PGD), role PGD và vai trò chuyên môn được gom nhóm dạng tag gọn.
+  - Cột Trạng thái: Badge trạng thái Đang hoạt động / Đã khóa trực quan.
+  - Cột Thao tác: Nhóm nút hành động nhỏ gọn (`Sửa`, `Reset mật khẩu`, `Xóa`), căn chỉnh thẳng hàng, bảo đảm đầy đủ mutation guards, disabled states và touch targets.
+- Thanh công cụ lọc & tìm kiếm: Tích hợp ô tìm kiếm có placeholder cùng các bộ lọc role hệ thống và chức danh quản lý, đi kèm nút "Thêm nhân sự" nổi bật.
+
+### 5A.35. Lộ trình chuyển đổi sang Thuần Next.js App Router (Full Next.js Migration) — 2026-09-28
+
+- **Mục tiêu**: Chuyển đổi toàn diện từ kiến trúc Express Custom Server ([server.ts](file:///e:/CODING/PGDCN_webapp/server.ts)) sang kiến trúc **Thuần Next.js App Router** (`app/api/**/route.ts`), chạy trực tiếp bằng `next dev` và `next start`.
+- **Nguyên tắc chuyển đổi**: Áp dụng mô hình **Strangler Fig Pattern** cuốn chiếu để bảo đảm hệ thống luôn trong trạng thái biên dịch và chạy được (`runnable`) ở mọi bước:
+  - Tầng dịch vụ lõi (`lib/server/`): Tách biệt độc lập logic kết nối DB pool (`lib/server/db.ts`), xác thực session/RBAC (`lib/server/auth.ts`) và chuẩn hóa phản hồi (`lib/server/response.ts`), không gắn chặt vào Express `req`/`res`.
+  - Cơ chế định tuyến chuyển tiếp: Express chuyển tiếp các route `/api/` chưa chuyển đổi hoặc đã chuyển đổi sang Next.js App Router thông qua `nextHandler(req, res)` cho đến khi hoàn tất 100%.
+  - Từng nhóm API lần lượt di chuyển: Auth & Người dùng -> Nghiệp vụ PCN/PGD -> Sinh tài liệu DOCX/PDF & AI -> Cập nhật test contract -> Xóa bỏ [server.ts](file:///e:/CODING/PGDCN_webapp/server.ts).
+
+

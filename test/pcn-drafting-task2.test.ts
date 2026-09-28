@@ -48,7 +48,7 @@ test('PCN drafting exposes READY/generated review before attach', () => {
   assert.match(workspace, /currentOutputs\.length > 0/);
   assert.match(workspace, /READY/);
   assert.match(workspace, /GENERATED/);
-  assert.match(workspace, /Review output/);
+  assert.match(workspace, /Soát xét tài liệu|Soát xét trước khi gắn/);
   assert.match(workspace, /data-testid="pcn-drafting-review-context"/);
   assert.match(workspace, /Xác nhận đã soát xét/);
   assert.match(workspace, /Xác nhận & gắn vào bộ hồ sơ/);

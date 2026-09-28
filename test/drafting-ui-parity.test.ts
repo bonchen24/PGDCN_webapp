@@ -35,7 +35,7 @@ test('PCN and PGD drafting workspaces share a responsive two-region drafting fou
   assert.match(`${pcnDrafting}\n${pgdGeneration}`, /mobile-touch-target/);
   assert.match(pcnDrafting, /data-testid="pcn-drafting-workspace"/);
   assert.match(pgdDrafting, /data-testid="pgd-drafting-workspace"/);
-  assert.match(pgdDrafting, /data-testid="pgd-drafting-readiness"/);
+  assert.match(pgdDrafting, /testId="pgd-drafting-readiness"/);
   assert.match(pgdDrafting, /mobile-safe-bottom/);
 });
 

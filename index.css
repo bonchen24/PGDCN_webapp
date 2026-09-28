@@ -1,8 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap');
+@import "tailwindcss";
+
 /* Author: Gemini */
 /* OS support: Web/Node */
 /* Description: Global Tailwind CSS v4 styling rules and custom color tokens */
-
-@import "tailwindcss";
 
 @theme {
   --font-sans: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -57,9 +58,18 @@
     overflow-x: hidden;
   }
 
+  body,
+  button,
+  input,
+  select,
+  textarea {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
   body {
     margin: 0;
-    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   #root {
@@ -96,10 +106,10 @@
     --pcn-surface-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
     --pcn-scrollbar-thumb: #94a3b8;
     --pcn-scrollbar-track: transparent;
-    --app-font-scale: 1.1;
+    --app-font-scale: 0.9;
   }
 
-  /* Compact density and a readable 10% type lift apply to authenticated app surfaces. */
+  /* Compact density and a clean 90% type scale apply to authenticated app surfaces. */
   .app-compact,
   .pcn-compact {
     font-size: calc(0.8125rem * var(--app-font-scale));
@@ -107,47 +117,47 @@
 
   .app-compact .text-xs,
   .pcn-compact .text-xs {
-    font-size: 0.8125rem !important;
-    line-height: 1.2 !important;
+    font-size: calc(0.75rem * var(--app-font-scale)) !important;
+    line-height: 1.25 !important;
   }
 
   .app-compact .text-sm,
   .pcn-compact .text-sm {
-    font-size: calc(0.75rem * var(--app-font-scale)) !important;
+    font-size: calc(0.8125rem * var(--app-font-scale)) !important;
     line-height: 1.25 !important;
   }
 
   .app-compact .text-base,
   .pcn-compact .text-base {
-    font-size: calc(0.8125rem * var(--app-font-scale)) !important;
+    font-size: calc(0.875rem * var(--app-font-scale)) !important;
     line-height: 1.3 !important;
   }
 
   .app-compact .text-lg,
   .pcn-compact .text-lg {
-    font-size: calc(0.9375rem * var(--app-font-scale)) !important;
+    font-size: calc(1rem * var(--app-font-scale)) !important;
     line-height: 1.25 !important;
   }
 
   .app-compact .text-xl,
   .pcn-compact .text-xl {
-    font-size: 1.25rem !important;
+    font-size: calc(1.25rem * var(--app-font-scale)) !important;
     line-height: 1.2 !important;
   }
 
   .app-compact [class~="text-[8px]"],
   .pcn-compact [class~="text-[8px]"] {
-    font-size: 0.6875rem !important;
+    font-size: calc(0.5rem * var(--app-font-scale)) !important;
   }
 
   .app-compact [class~="text-[9px]"],
   .pcn-compact [class~="text-[9px]"] {
-    font-size: 0.6875rem !important;
+    font-size: calc(0.5625rem * var(--app-font-scale)) !important;
   }
 
   .app-compact [class~="text-[10px]"],
   .pcn-compact [class~="text-[10px]"] {
-    font-size: 0.75rem !important;
+    font-size: calc(0.625rem * var(--app-font-scale)) !important;
   }
 
   .app-compact [class~="text-[11px]"],

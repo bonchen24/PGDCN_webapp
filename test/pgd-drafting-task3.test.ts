@@ -33,17 +33,17 @@ test('PGD drafting persists drafts through the dedicated backend boundary', () =
 });
 
 test('PGD drafting exposes READY/generated review state before attach', () => {
-  assert.match(workspace, /READY · Đã sinh tài liệu/);
-  assert.match(workspace, /Review-before-attach/);
+  assert.match(workspace, /Đã sinh, chờ soát xét/);
+  assert.match(workspace, /Soát xét trước khi gắn/);
   assert.match(workspace, /templateCode.*templateVersion/);
   assert.match(generation, /documentState === 'READY'/);
-  assert.match(generation, /Review output/);
+  assert.match(generation, /Soát xét tài liệu/);
 });
 
 test('PGD drafting exposes explicit review and attach success states', () => {
   assert.match(workspace, /Xác nhận đã soát xét/);
   assert.match(workspace, /Xác nhận & gắn vào bộ hồ sơ/);
-  assert.match(workspace, /ATTACHED · Đã gắn đúng mục hồ sơ/);
+  assert.match(workspace, /Đã gắn:/);
   assert.match(workspace, /pgd-drafting-attach-success/);
-  assert.match(generation, /ATTACHED · Đã gắn vào hồ sơ/);
+  assert.match(generation, /Đã gắn vào hồ sơ/);
 });

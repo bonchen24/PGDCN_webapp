@@ -1,0 +1,305 @@
+import { NextRequest } from 'next/server';
+import { withPgTransaction } from '@/lib/server/db';
+import { getPcnSessionUser, requirePcnMutation } from '@/lib/server/auth';
+import { jsonCreated, jsonError, jsonForbidden, jsonOk, jsonUnauthorized } from '@/lib/server/response';
+import { getDocumentPayload, mapDocumentRow } from '@/lib/server/collections';
+import { buildActivityLog, validateActivityLogPayload } from '@/lib/server/activity-logs';
+import { formatPcnIntakeValidationIssues, validatePcnProposalIntake } from '@/utils/pcnIntakePolicy';
+import { formatPcnDossierCode, formatPcnProposalCode, getPcnVietnamDateKey } from '@/utils/pcnIdentifier';
+import { selectPcnPublishedWorkflowTemplate, snapshotPcnWorkflowTemplate } from '@/utils/pcnWorkflowTemplate';
+import { buildPcnDossierChecklist } from '@/utils/pcnDossierDocuments';
+import { buildPcnWorkflowTaskSeed } from '@/utils/pcnWorkflowRuntime';
+import {
+  PcnDocumentRequirement,
+  PcnDossierDocument,
+  PcnDossierWorkflowTask,
+  PcnWorkflowTemplate,
+} from '@/types';
+
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: NextRequest) {
+  const actor = getPcnSessionUser(req);
+  if (!actor) {
+    return jsonUnauthorized('Phiên PCN không hợp lệ hoặc đã hết hạn.');
+  }
+  if (!requirePcnMutation(actor)) {
+    return jsonForbidden('Bạn không có quyền thực hiện thao tác trong PCN.');
+  }
+
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return jsonError('Invalid JSON payload', 400);
+  }
+
+  const proposal = body?.proposal;
+  const dossier = body?.dossier;
+  const proposalId = String(proposal?.id || '').trim();
+  const dossierId = String(dossier?.id || '').trim();
+  if (!proposalId || !dossierId || String(dossier?.proposalId || '').trim() !== proposalId) {
+    return jsonError('Đề nghị và hồ sơ phải có định danh hợp lệ và liên kết hai chiều.', 400);
+  }
+  if (
+    !Array.isArray(proposal?.fieldCodes) ||
+    proposal.fieldCodes.length === 0 ||
+    !Array.isArray(dossier?.fieldCodes) ||
+    dossier.fieldCodes.length === 0
+  ) {
+    return jsonError('Đề nghị phải có ít nhất một Lĩnh vực.', 400);
+  }
+  if (JSON.stringify([...proposal.fieldCodes].sort()) !== JSON.stringify([...dossier.fieldCodes].sort())) {
+    return jsonError('Lĩnh vực của Đề nghị và hồ sơ phải giống nhau.', 400);
+  }
+  const intakeProposal = proposal;
+  const intakeValidation = validatePcnProposalIntake(intakeProposal);
+  if (!intakeValidation.valid) {
+    return jsonError(formatPcnIntakeValidationIssues(intakeValidation.issues), 400, {
+      code: 'PCN_INTAKE_VALIDATION_FAILED',
+      issues: intakeValidation.issues,
+    });
+  }
+
+  try {
+    const result = await withPgTransaction(async (client) => {
+      const existingProposal = await client.query(
+        `SELECT document_id, data FROM app_documents
+         WHERE collection_name = 'certificationProposals'
+           AND document_id = $1
+         LIMIT 1 FOR UPDATE`,
+        [proposalId]
+      );
+      if (existingProposal.rows.length > 0) {
+        const storedProposal = mapDocumentRow(existingProposal.rows[0]) as Record<string, any>;
+        const linkedDossierId = String(storedProposal.dossierId || '').trim();
+        if (linkedDossierId && linkedDossierId !== dossierId) {
+          throw Object.assign(new Error('Mã Đề nghị đã liên kết với một hồ sơ khác.'), { statusCode: 409 });
+        }
+        const existingDossier = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'certificationDossiers' AND document_id = $1`,
+          [linkedDossierId || dossierId]
+        );
+        if (existingDossier.rows.length === 0) {
+          throw Object.assign(new Error('Đề nghị đã tồn tại nhưng thiếu hồ sơ liên kết.'), { statusCode: 409 });
+        }
+        const existingDocuments = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'dossierDocuments' AND data->>'dossierId' = $1
+           ORDER BY document_id`,
+          [String(existingDossier.rows[0].document_id)]
+        );
+        const existingWorkflowTasks = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = 'pcnDossierWorkflowTasks' AND data->>'dossierId' = $1
+           ORDER BY document_id`,
+          [String(existingDossier.rows[0].document_id)]
+        );
+        return {
+          proposal: storedProposal,
+          dossier: mapDocumentRow(existingDossier.rows[0]),
+          dossierDocuments: existingDocuments.rows.map((row: any) => mapDocumentRow(row)) as PcnDossierDocument[],
+          workflowTasks: existingWorkflowTasks.rows.map((row: any) => mapDocumentRow(row)) as PcnDossierWorkflowTask[],
+          activityLogs: [],
+          idempotent: true as const,
+        };
+      }
+
+      const now = new Date().toISOString();
+      const proposalReceivedAt = String(intakeProposal.receivedAt || now).trim();
+      const proposalDateKey = getPcnVietnamDateKey(proposalReceivedAt);
+      await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [
+        `pcn-proposal-sequence:${proposalDateKey}`,
+      ]);
+      const proposalSerialResult = await client.query(
+        `SELECT COALESCE(MAX(CAST(substring(data->>'proposalCode' FROM '^PCN-[0-9]{6}-([0-9]{2})$') AS INTEGER)), 0) AS last_serial
+           FROM app_documents
+          WHERE collection_name = $1
+            AND data->>'proposalCode' ~ $2`,
+        ['certificationProposals', `^PCN-${proposalDateKey}-[0-9]{2}$`]
+      );
+      const nextProposalSerial = Number(proposalSerialResult.rows[0]?.last_serial || 0) + 1;
+      if (nextProposalSerial > 99) {
+        throw Object.assign(
+          new Error(`Đã hết dãy mã Đề nghị PCN cho ngày ${proposalDateKey}.`),
+          { statusCode: 409 }
+        );
+      }
+      const proposalCode = formatPcnProposalCode(nextProposalSerial, proposalReceivedAt);
+      const dossierCode = formatPcnDossierCode(proposalCode, proposalReceivedAt);
+
+      const workflowTemplateResult = await client.query(
+        `SELECT document_id, data FROM app_documents
+         WHERE collection_name = 'pcnWorkflowTemplates'
+           AND data->>'status' = 'PUBLISHED'`
+      );
+      const workflowTemplates = workflowTemplateResult.rows.map(
+        (row: any) => mapDocumentRow(row) as PcnWorkflowTemplate
+      );
+      const workflowTemplate = selectPcnPublishedWorkflowTemplate(workflowTemplates, {
+        fieldCodes: Array.from(
+          new Set(proposal.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean))
+        ),
+        method: dossier.method,
+        dossierType: String(dossier.dossierType || '').trim() || undefined,
+      });
+      if (!workflowTemplate) {
+        throw Object.assign(
+          new Error('Chưa có template lưu trình PUBLISHED phù hợp với Lĩnh vực và phương thức của hồ sơ.'),
+          { statusCode: 409 }
+        );
+      }
+      const sessionUser = actor;
+      const workflowSnapshot = snapshotPcnWorkflowTemplate(workflowTemplate, {
+        capturedAt: now,
+        capturedBy: sessionUser?.username || 'SYSTEM',
+      });
+      const dossierFieldSet = new Set(
+        proposal.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean)
+      );
+      workflowSnapshot.nodes = workflowSnapshot.nodes.map((node) => ({
+        ...node,
+        requirementIds: node.requirementIds.filter((requirementId) => {
+          const prefix = String(requirementId).split('-')[0].toUpperCase();
+          return !['QC4', 'QC9'].includes(prefix) || dossierFieldSet.has(prefix);
+        }),
+      }));
+
+      const storedProposal = {
+        ...intakeProposal,
+        id: proposalId,
+        proposalCode,
+        status: 'CONVERTED',
+        dossierId,
+        fieldCodes: Array.from(
+          new Set(proposal.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean))
+        ),
+        receivedAt: proposalReceivedAt,
+        createdAt: proposal.createdAt || now,
+        updatedAt: now,
+      };
+      const storedDossier = {
+        ...dossier,
+        id: dossierId,
+        dossierCode,
+        proposalId,
+        status: 'INTAKE_REVIEW',
+        fieldCodes: storedProposal.fieldCodes,
+        workflowTemplateId: workflowTemplate.id,
+        workflowTemplateVersion: workflowTemplate.version,
+        workflowSnapshot,
+        labRequestIds: Array.isArray(dossier.labRequestIds) ? dossier.labRequestIds : [],
+        returnedResultIds: Array.isArray(dossier.returnedResultIds) ? dossier.returnedResultIds : [],
+        createdAt: dossier.createdAt || now,
+        updatedAt: now,
+      };
+
+      const proposalWrite = await client.query(
+        `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+         VALUES ('certificationProposals', $1, $2::jsonb, CURRENT_TIMESTAMP)
+         ON CONFLICT (collection_name, document_id) DO NOTHING
+         RETURNING document_id, data`,
+        [proposalId, JSON.stringify(getDocumentPayload(storedProposal))]
+      );
+      if (proposalWrite.rows.length === 0) {
+        throw Object.assign(new Error('Đề nghị vừa được tạo bởi một thao tác khác; vui lòng tải lại.'), { statusCode: 409 });
+      }
+
+      const dossierWrite = await client.query(
+        `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+         VALUES ('certificationDossiers', $1, $2::jsonb, CURRENT_TIMESTAMP)
+         ON CONFLICT (collection_name, document_id) DO NOTHING
+         RETURNING document_id, data`,
+        [dossierId, JSON.stringify(getDocumentPayload(storedDossier))]
+      );
+      if (dossierWrite.rows.length === 0) {
+        throw Object.assign(new Error('Mã hồ sơ vừa được tạo bởi một thao tác khác; vui lòng tải lại.'), { statusCode: 409 });
+      }
+
+      const requirementResult = await client.query(
+        `SELECT document_id, data FROM app_documents
+         WHERE collection_name = 'pcnDocumentRequirements'
+           AND COALESCE(data->>'active', 'true') = 'true'
+         ORDER BY COALESCE((data->>'sortOrder')::int, 999), document_id`
+      );
+      const requirements = requirementResult.rows.map(
+        (row: any) => mapDocumentRow(row) as PcnDocumentRequirement
+      );
+      const dossierDocuments = buildPcnDossierChecklist(dossierId, storedDossier.fieldCodes, requirements, now);
+      for (const document of dossierDocuments) {
+        await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('dossierDocuments', $1, $2::jsonb, CURRENT_TIMESTAMP)`,
+          [document.id, JSON.stringify(getDocumentPayload(document))]
+        );
+      }
+
+      const workflowTasks = buildPcnWorkflowTaskSeed(
+        workflowSnapshot,
+        dossierId,
+        sessionUser?.username || 'SYSTEM',
+        now
+      );
+      for (const task of workflowTasks) {
+        await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('pcnDossierWorkflowTasks', $1, $2::jsonb, CURRENT_TIMESTAMP)
+           ON CONFLICT (collection_name, document_id) DO NOTHING`,
+          [task.id, JSON.stringify(getDocumentPayload(task))]
+        );
+      }
+
+      const logs = [
+        buildActivityLog({
+          actorUsername: actor.username,
+          actorName: actor.name,
+          actorRole: actor.systemRole || actor.role,
+          action: 'CREATED',
+          entityType: 'PCN_PROPOSAL',
+          entityId: proposalId,
+          entityLabel: proposalCode,
+          summary: 'Tiếp nhận Đề nghị và tạo bộ hồ sơ chứng nhận',
+          source: 'UI',
+          createdAt: now,
+        }),
+        buildActivityLog({
+          actorUsername: actor.username,
+          actorName: actor.name,
+          actorRole: actor.systemRole || actor.role,
+          action: 'CREATED',
+          entityType: 'PCN_DOSSIER',
+          entityId: dossierId,
+          entityLabel: String(storedDossier.dossierCode || dossierId),
+          summary: 'Tạo bộ hồ sơ chứng nhận đồng thời với Đề nghị',
+          source: 'UI',
+          createdAt: now,
+        }),
+      ];
+      for (const log of logs) {
+        const validationError = validateActivityLogPayload(log);
+        if (validationError) throw new Error(validationError);
+        await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('activityLogs', $1, $2::jsonb, CURRENT_TIMESTAMP)
+           ON CONFLICT (collection_name, document_id) DO NOTHING`,
+          [log.id, JSON.stringify(getDocumentPayload(log))]
+        );
+      }
+
+      return {
+        proposal: mapDocumentRow(proposalWrite.rows[0]),
+        dossier: mapDocumentRow(dossierWrite.rows[0]),
+        dossierDocuments,
+        workflowTasks,
+        activityLogs: logs,
+        idempotent: false as const,
+      };
+    });
+    return result.idempotent ? jsonOk(result) : jsonCreated(result);
+  } catch (error: any) {
+    console.error('PCN intake error:', error);
+    const status = Number(error?.statusCode) || 500;
+    return jsonError(error?.message || String(error), status);
+  }
+}

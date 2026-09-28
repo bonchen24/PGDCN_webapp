@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu, Search } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { toast } from 'sonner';
 
@@ -381,17 +381,17 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     <div className="flex min-w-0 flex-1 flex-col">
       <header className="app-compact-header flex h-13 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-xs md:px-5">
         <div className="flex min-w-0 items-center gap-2.5">
-          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Mở menu phòng" className="pgdcn-mobile-nav mobile-safe-bottom mobile-touch-target rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
+          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Mở menu phòng" aria-expanded={mobileOpen} aria-controls="pgdcn-sidebar" className="pgdcn-mobile-nav mobile-safe-bottom mobile-touch-target rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
             <Menu aria-hidden="true" size={18} />
           </button>
-          <button type="button" onClick={() => setCollapsed((v) => !v)} aria-label="Thu gọn / Mở rộng thanh điều hướng" className="hidden lg:flex p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors cursor-pointer" title={collapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}>
+          <button type="button" onClick={() => setCollapsed((v) => !v)} aria-label="Thu gọn / Mở rộng thanh điều hướng" aria-expanded={!collapsed} aria-controls="pgdcn-sidebar" className="hidden lg:flex p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white" title={collapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}>
             <Menu aria-hidden="true" size={18} />
           </button>
-          <div className="hidden lg:inline text-[11px] font-black uppercase text-slate-700 tracking-wider bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/60 shadow-3xs">
+          <div className="hidden lg:inline text-[11px] font-semibold uppercase text-slate-700 tracking-wider bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/60 shadow-3xs">
             {getActiveContextLabel(activeTarget)}
           </div>
           <div className="min-w-0">
-            <div className="truncate text-[11px] font-black uppercase tracking-wider text-slate-800">
+            <div className="truncate text-xs font-semibold tracking-wide text-slate-800">
               Phòng Giám định - Chứng nhận và Phát triển thị trường · TVCI
             </div>
             <div className="truncate text-[11px] font-medium text-slate-500">
@@ -400,11 +400,19 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
-          <button type="button" onClick={() => setCommandOpen(true)} aria-label="Mở Tìm nhanh" className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"><Search size={15} aria-hidden="true" /><span className="hidden sm:inline">Tìm nhanh</span><kbd className="hidden rounded border border-slate-200 bg-slate-50 px-1 py-0.5 text-[9px] font-black text-slate-400 md:inline">Ctrl K</kbd></button>
           <PgdcnNotificationDropdown isOpen={notificationOpen} onToggle={handleToggleNotifications} onClose={() => setNotificationOpen(false)} notifications={notifications} currentUser={currentUser} onMarkRead={handleMarkNotificationRead} onMarkAllRead={handleMarkAllNotificationsRead} onClear={handleClearNotifications} onSelect={handleNotificationSelect} />
-          <div className="hidden text-xs font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 sm:block">
-            {currentUser.username}
-          </div>
+          <button
+            type="button"
+            onClick={() => setPersonalSettingsOpen(true)}
+            aria-label="Cài đặt cá nhân"
+            title="Cài đặt cá nhân"
+            className="hidden sm:flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1 text-xs text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+          >
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-700">
+              {currentUser.name ? currentUser.name.trim().split(/\s+/).pop()?.slice(0, 2).toUpperCase() : 'US'}
+            </div>
+            <span className="max-w-[150px] truncate font-medium text-slate-700">{currentUser.name || currentUser.username}</span>
+          </button>
         </div>
       </header>
       <main aria-live="polite" aria-label="Không gian làm việc PCN và PGD" className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">{content}</main>

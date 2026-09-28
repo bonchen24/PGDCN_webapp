@@ -83,14 +83,13 @@ export default function PcnLoginScreen() {
       <div className="mx-auto w-full max-w-md">
         <div className="flex flex-col items-center gap-2">
           <img
-            src="/icons/iemm-logo-32.png"
+            src="/icons/iemm-logo-192.png"
             alt="IEMM • TVCI"
             className="h-16 w-16 rounded-xl border border-slate-200/20 bg-white object-contain p-1.5"
           />
           <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">IEMM • TVCI</span>
         </div>
         <h1 className="mt-6 text-center text-xl font-black uppercase tracking-wide text-white">Phòng Giám định - Chứng nhận và Phát triển thị trường</h1>
-        <p className="mt-2 text-center text-sm text-slate-400">Hệ thống chứng nhận & giám định chuyên ngành • Phòng Chứng nhận / PGDCN · TVCI</p>
 
         <div className="mt-8 rounded-xl border border-slate-700 bg-slate-900 px-6 py-8 shadow-sm">
           <form className="space-y-5" onSubmit={handleLogin}>
@@ -170,7 +169,7 @@ export default function PcnLoginScreen() {
                 {isSubmitting && <Loader2 aria-hidden="true" size={14} className="animate-spin" />}
                 {isSubmitting ? 'Đang xác thực...' : 'Đăng nhập hệ thống'}
               </button>
-              <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-slate-500"><ShieldCheck aria-hidden="true" size={12} className="text-emerald-500" /> Phiên làm việc được bảo vệ riêng cho PCN</div>
+              <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-slate-500"><ShieldCheck aria-hidden="true" size={12} className="text-emerald-500" /> Phiên làm việc được bảo vệ riêng cho PGDCN</div>
             </div>
           </form>
         </div>

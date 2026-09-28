@@ -146,21 +146,21 @@ export function PcnDossierNodeWorkPanel({
 
         <div className="mt-3 flex flex-wrap gap-2">
           {item.actions.includes('VIEW') && version ? (
-            <a className="min-h-10 rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer">{actionLabel('VIEW')}</a>
+            <a className="mobile-touch-target min-h-11 rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer">{actionLabel('VIEW')}</a>
           ) : null}
           {item.actions.includes('REPLACE') && editable ? (
-            <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100">
+            <label className="inline-flex mobile-touch-target min-h-11 cursor-pointer items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
               {actionLabel('REPLACE')}
               <input className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} />
             </label>
           ) : null}
           {item.actions.includes('REMOVE_CURRENT') && editable ? (
-            <button type="button" className="min-h-10 rounded-md border border-rose-200 px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-50" disabled={busyKey === `remove:${item.requirementId}`} onClick={() => onRemoveCurrent && void run(`remove:${item.requirementId}`, () => onRemoveCurrent(item.requirementId))}>
+            <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-rose-200 px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-50" disabled={busyKey === `remove:${item.requirementId}`} onClick={() => onRemoveCurrent && void run(`remove:${item.requirementId}`, () => onRemoveCurrent(item.requirementId))}>
               {actionLabel('REMOVE_CURRENT')}
             </button>
           ) : null}
           {item.actions.includes('UPLOAD') && editable ? (
-            <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">
+            <label className="inline-flex mobile-touch-target min-h-11 cursor-pointer items-center rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
               {actionLabel('UPLOAD')}
               <input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} />
             </label>
@@ -171,7 +171,7 @@ export function PcnDossierNodeWorkPanel({
             </a>
           ) : null}
           {item.actions.includes('CREATE_FROM_FORM') && canGenerateAndAttach && editable && (onGenerateAndAttach || onCreateFromForm) ? (
-            <button type="button" className="min-h-10 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100" disabled={busyKey === `generate:${item.requirementId}`} onClick={() => void run(`generate:${item.requirementId}`, async () => {
+            <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100" disabled={busyKey === `generate:${item.requirementId}`} onClick={() => void run(`generate:${item.requirementId}`, async () => {
               if (onGenerateAndAttach) await onGenerateAndAttach(item.requirementId);
               else await onCreateFromForm!(item.requirementId);
             })}>
@@ -179,7 +179,7 @@ export function PcnDossierNodeWorkPanel({
             </button>
           ) : null}
           {item.actions.includes('CLEAR_WAIVER') && editable && onClearWaiver ? (
-            <button type="button" className="min-h-10 rounded-md border border-amber-200 px-3 py-2 text-xs font-medium text-amber-800 hover:bg-amber-50" disabled={busyKey === `clear-waiver:${item.requirementId}`} onClick={() => void run(`clear-waiver:${item.requirementId}`, () => onClearWaiver(item.requirementId))}>
+            <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-amber-200 px-3 py-2 text-xs font-medium text-amber-800 hover:bg-amber-50" disabled={busyKey === `clear-waiver:${item.requirementId}`} onClick={() => void run(`clear-waiver:${item.requirementId}`, () => onClearWaiver(item.requirementId))}>
               {actionLabel('CLEAR_WAIVER')}
             </button>
           ) : null}
@@ -197,7 +197,7 @@ export function PcnDossierNodeWorkPanel({
             />
             <button
               type="button"
-              className="mt-2 min-h-10 rounded-md bg-amber-600 px-3 py-2 text-xs font-medium text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-2 mobile-touch-target min-h-11 rounded-md bg-amber-600 px-3 py-2 text-xs font-medium text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!reason.trim() || busyKey === `waive:${item.requirementId}`}
               onClick={() => void run(`waive:${item.requirementId}`, () => onWaive(item.requirementId, reason.trim()))}
             >
@@ -230,24 +230,24 @@ export function PcnDossierNodeWorkPanel({
         <td className="border-b border-slate-100 px-3 py-2.5 font-semibold text-slate-500">{projection.nodeLabel}</td>
         <th scope="row" className="border-b border-slate-100 px-3 py-2.5 font-semibold text-slate-800">
           {item.label}{item.required ? <span aria-hidden="true" className="ml-1 text-rose-600">*</span> : null}
-          {item.status === 'WAIVED' && item.waiverReason ? <p className="mt-1 text-[9px] font-normal text-amber-700">Lý do bỏ qua: {item.waiverReason}</p> : null}
-          {projection.requiresReworkOnMutation ? <p className="mt-1 text-[9px] font-normal text-violet-700">Cập nhật mục này sẽ yêu cầu rà soát lại các bước sau.</p> : null}
+          {item.status === 'WAIVED' && item.waiverReason ? <p className="mt-1 text-[11px] font-normal text-amber-700">Lý do bỏ qua: {item.waiverReason}</p> : null}
+          {projection.requiresReworkOnMutation ? <p className="mt-1 text-[11px] font-normal text-violet-700">Cập nhật mục này sẽ yêu cầu rà soát lại các bước sau.</p> : null}
         </th>
         <td className="border-b border-slate-100 px-3 py-2.5"><span className={`inline-flex min-h-7 items-center rounded-full border px-2 py-1 text-[9px] font-black ${statusClass}`}>{DOCUMENT_STATUS_LABELS[item.status]}</span></td>
         <td className="border-b border-slate-100 px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-1">
-            {item.status === 'PRESENT' && version && item.actions.includes('VIEW') ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Xem tài liệu" aria-label="Xem tài liệu"><Eye size={14} aria-hidden="true" /></a> : null}
-            {item.status !== 'PRESENT' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a> : null}
-            {item.status !== 'PRESENT' && item.actions.includes('UPLOAD') && editable ? <label className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 cursor-pointer items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100" title="Bổ sung tệp" aria-label="Tải tài liệu"><Upload size={14} aria-hidden="true" /><input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
-            {item.status === 'PRESENT' && version ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Mở tệp" aria-label="Mở tệp"><FileText size={14} aria-hidden="true" /></a> : null}
+            {item.status === 'PRESENT' && version && item.actions.includes('VIEW') ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Xem tài liệu" aria-label="Xem tài liệu"><Eye size={14} aria-hidden="true" /></a> : null}
+            {item.status !== 'PRESENT' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a> : null}
+            {item.status !== 'PRESENT' && item.actions.includes('UPLOAD') && editable ? <label className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100" title="Bổ sung tệp" aria-label="Tải tài liệu"><Upload size={14} aria-hidden="true" /><input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
+            {item.status === 'PRESENT' && version ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Mở tệp" aria-label="Mở tệp"><FileText size={14} aria-hidden="true" /></a> : null}
             {(item.actions.includes('REPLACE') || item.actions.includes('REMOVE_CURRENT') || item.actions.includes('CREATE_FROM_FORM') || item.actions.includes('CLEAR_WAIVER') || item.actions.includes('WAIVE')) ? <details className="relative">
-              <summary className="mobile-touch-target dossier-action-compact inline-flex min-h-8 min-w-8 cursor-pointer list-none items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" title="Thao tác khác" aria-label="Thao tác khác"><MoreHorizontal size={14} aria-hidden="true" /></summary>
+              <summary className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 cursor-pointer list-none items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" title="Thao tác khác" aria-label="Thao tác khác"><MoreHorizontal size={14} aria-hidden="true" /></summary>
               <div className="absolute right-0 z-10 mt-1 flex min-w-48 flex-col gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
-                {item.actions.includes('REPLACE') && editable ? <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-2 text-[10px] font-bold text-blue-700">Thay phiên bản<input className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
-                {item.actions.includes('CREATE_FROM_FORM') && canGenerateAndAttach && editable && (onGenerateAndAttach || onCreateFromForm) ? <button type="button" className="min-h-10 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-left text-[10px] font-bold text-indigo-700" disabled={busyKey === `generate:${item.requirementId}`} onClick={() => void run(`generate:${item.requirementId}`, async () => { if (onGenerateAndAttach) await onGenerateAndAttach(item.requirementId); else await onCreateFromForm!(item.requirementId); })}>{busyKey === `generate:${item.requirementId}` ? 'Đang tạo và gắn…' : 'Tạo & gắn tài liệu'}</button> : null}
-                {item.actions.includes('REMOVE_CURRENT') && editable ? <button type="button" className="min-h-10 rounded-md border border-rose-200 px-2.5 py-2 text-left text-[10px] font-bold text-rose-700" disabled={busyKey === `remove:${item.requirementId}`} onClick={() => onRemoveCurrent && void run(`remove:${item.requirementId}`, () => onRemoveCurrent(item.requirementId))}>Xóa tài liệu hiện tại</button> : null}
-                {item.actions.includes('CLEAR_WAIVER') && editable && onClearWaiver ? <button type="button" className="min-h-10 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-left text-[10px] font-bold text-amber-800" disabled={busyKey === `clear-waiver:${item.requirementId}`} onClick={() => void run(`clear-waiver:${item.requirementId}`, () => onClearWaiver(item.requirementId))}>Bỏ trạng thái bỏ qua</button> : null}
-                {item.actions.includes('WAIVE') && editable && onWaive ? <div className="rounded-md bg-amber-50 p-2"><label className="block text-[10px] font-bold text-amber-900" htmlFor={`pcn-waive-${projection.nodeId}-${item.requirementId}`}>Lý do bỏ qua</label><textarea id={`pcn-waive-${projection.nodeId}-${item.requirementId}`} className="mt-1 min-h-16 w-full rounded-md border border-amber-200 bg-white p-2 text-[10px] text-slate-900 outline-none focus:border-amber-500" value={reason} onChange={(event) => setWaiverReasons((current) => ({ ...current, [item.requirementId]: event.target.value }))} /><button type="button" className="mt-1 min-h-10 rounded-md bg-amber-600 px-2.5 py-2 text-[10px] font-bold text-white disabled:opacity-50" disabled={!reason.trim() || busyKey === `waive:${item.requirementId}`} onClick={() => void run(`waive:${item.requirementId}`, () => onWaive(item.requirementId, reason.trim()))}>Bỏ qua mục này</button></div> : null}
+                {item.actions.includes('REPLACE') && editable ? <label className="inline-flex mobile-touch-target min-h-11 cursor-pointer items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-2 text-[11px] font-bold text-blue-700 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">Thay phiên bản<input className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
+                {item.actions.includes('CREATE_FROM_FORM') && canGenerateAndAttach && editable && (onGenerateAndAttach || onCreateFromForm) ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-left text-[11px] font-bold text-indigo-700" disabled={busyKey === `generate:${item.requirementId}`} onClick={() => void run(`generate:${item.requirementId}`, async () => { if (onGenerateAndAttach) await onGenerateAndAttach(item.requirementId); else await onCreateFromForm!(item.requirementId); })}>{busyKey === `generate:${item.requirementId}` ? 'Đang tạo và gắn…' : 'Tạo & gắn tài liệu'}</button> : null}
+                {item.actions.includes('REMOVE_CURRENT') && editable ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-rose-200 px-2.5 py-2 text-left text-[11px] font-bold text-rose-700" disabled={busyKey === `remove:${item.requirementId}`} onClick={() => onRemoveCurrent && void run(`remove:${item.requirementId}`, () => onRemoveCurrent(item.requirementId))}>Xóa tài liệu hiện tại</button> : null}
+                {item.actions.includes('CLEAR_WAIVER') && editable && onClearWaiver ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-left text-[11px] font-bold text-amber-800" disabled={busyKey === `clear-waiver:${item.requirementId}`} onClick={() => void run(`clear-waiver:${item.requirementId}`, () => onClearWaiver(item.requirementId))}>Bỏ trạng thái bỏ qua</button> : null}
+                {item.actions.includes('WAIVE') && editable && onWaive ? <div className="rounded-md bg-amber-50 p-2"><label className="block text-[11px] font-bold text-amber-900" htmlFor={`pcn-waive-${projection.nodeId}-${item.requirementId}`}>Lý do bỏ qua</label><textarea id={`pcn-waive-${projection.nodeId}-${item.requirementId}`} className="mt-1 min-h-16 w-full rounded-md border border-amber-200 bg-white p-2 text-[11px] text-slate-900 outline-none focus:border-amber-500" value={reason} onChange={(event) => setWaiverReasons((current) => ({ ...current, [item.requirementId]: event.target.value }))} /><button type="button" className="mt-1 mobile-touch-target min-h-11 rounded-md bg-amber-600 px-2.5 py-2 text-[11px] font-bold text-white disabled:opacity-50" disabled={!reason.trim() || busyKey === `waive:${item.requirementId}`} onClick={() => void run(`waive:${item.requirementId}`, () => onWaive(item.requirementId, reason.trim()))}>Bỏ qua mục này</button></div> : null}
               </div>
             </details> : null}
           </div>
@@ -257,14 +257,14 @@ export function PcnDossierNodeWorkPanel({
   }
 
   return (
-    <aside id={panelId} role="tabpanel" className="flex min-h-0 min-w-0 flex-col rounded-xl border border-emerald-200 bg-white shadow-sm" data-testid="pcn-node-work-panel" aria-label={`Công việc bước ${projection.nodeLabel}`}>
+    <aside id={panelId} role="tabpanel" className="flex min-h-0 min-w-0 flex-col rounded-xl border border-emerald-200 bg-white shadow-sm [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 [&_*:focus-visible]:ring-blue-500" data-testid="pcn-node-work-panel" aria-label={`Công việc bước ${projection.nodeLabel}`}>
       <div className="flex items-start justify-between gap-3 border-b border-emerald-200 bg-white p-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-600">Việc đang chọn</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.12em] text-emerald-600">Việc đang chọn</p>
           <h2 className="mt-1 text-base font-black text-slate-950">{projection.nodeLabel}</h2>
           <p className="mt-1 text-xs text-slate-500">{STATUS_LABELS[projection.status]} · Vòng {projection.cycleNo} · {projection.documents.length - projection.unresolvedRequiredCount}/{projection.documents.length} mục đã xử lý</p>
         </div>
-        {onClose ? <button type="button" className="min-h-10 rounded-md px-3 py-2 text-sm text-slate-500 hover:bg-slate-100" onClick={onClose} aria-label="Đóng panel">Đóng</button> : null}
+        {onClose ? <button type="button" className="mobile-touch-target min-h-11 rounded-md px-3 py-2 text-sm text-slate-500 hover:bg-slate-100" onClick={onClose} aria-label="Đóng panel">Đóng</button> : null}
       </div>
 
       {projection.blockedReason || projection.suggestions.length > 0 ? (
@@ -278,8 +278,8 @@ export function PcnDossierNodeWorkPanel({
       ) : null}
 
       <section data-testid="pcn-dossier-review-summary" className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-slate-200 bg-emerald-50/50 px-4 py-3 text-xs" aria-label="Soát xét hồ sơ PCN">
-        <div><span className="mr-2 text-[9px] font-semibold uppercase tracking-wide text-emerald-800">Soát xét</span><strong className="text-slate-800">{projection.unresolvedRequiredCount ? `Còn ${projection.unresolvedRequiredCount} mục bắt buộc` : 'Không thiếu mục bắt buộc'}</strong></div>
-        <div><span className="mr-2 text-[9px] font-semibold uppercase tracking-wide text-emerald-800">Bước kế tiếp</span><strong className="text-slate-800">Người soát xét / Quản lý PCN</strong></div>
+        <div><span className="mr-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">Soát xét</span><strong className="text-slate-800">{projection.unresolvedRequiredCount ? `Còn ${projection.unresolvedRequiredCount} mục bắt buộc` : 'Không thiếu mục bắt buộc'}</strong></div>
+        <div><span className="mr-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">Bước kế tiếp</span><strong className="text-slate-800">Người soát xét / Quản lý PCN</strong></div>
         <details className="text-slate-500" data-testid="pcn-node-role-details" data-disclosure="advanced"><summary className="cursor-pointer list-none font-semibold">Vai trò hiện tại</summary><span className="ml-1">{currentRole} · {currentUser?.username || 'Phiên hồ sơ'}</span></details>
       </section>
 
@@ -320,7 +320,7 @@ export function PcnDossierNodeWorkPanel({
                     <p className="font-medium text-slate-900">{fact.label}</p>
                     {fact.reason ? <p className="mt-1 text-xs text-slate-500">{fact.reason}</p> : <p className="mt-1 text-xs text-emerald-700">Đã ghi nhận</p>}
                   </div>
-                  {onOpenBusiness ? <button type="button" className="min-h-10 shrink-0 rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => onOpenBusiness(fact)}>{fact.actionLabel || 'Mở'}</button> : null}
+                  {onOpenBusiness ? <button type="button" className="mobile-touch-target min-h-11 shrink-0 rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => onOpenBusiness(fact)}>{fact.actionLabel || 'Mở'}</button> : null}
                 </li>
               ))}
             </ul>
@@ -330,9 +330,9 @@ export function PcnDossierNodeWorkPanel({
 
         {(canStart || canContinue || canReturn) ? (
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-4">
-            {canStart ? <button type="button" className="min-h-10 rounded-md border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50" disabled={busyKey === 'start'} onClick={() => void run('start', () => onStartTask!(taskId!))}>Bắt đầu xử lý</button> : null}
-            {canReturn ? <button type="button" className="min-h-10 rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50" disabled={busyKey === 'return'} onClick={() => setShowReturnForm((current) => !current)}>Trả về</button> : null}
-            {canContinue ? <button type="button" title="Tiếp tục sang bước kế tiếp" aria-label="Hoàn tất bước, tiếp tục sang bước kế tiếp" className="min-h-10 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50" disabled={busyKey === 'continue'} onClick={() => void run('continue', () => onCompleteTask!(taskId!, projection.cycleNo))}>Hoàn tất bước</button> : null}
+            {canStart ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50" disabled={busyKey === 'start'} onClick={() => void run('start', () => onStartTask!(taskId!))}>Bắt đầu xử lý</button> : null}
+            {canReturn ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50" disabled={busyKey === 'return'} onClick={() => setShowReturnForm((current) => !current)}>Trả về</button> : null}
+            {canContinue ? <button type="button" title="Tiếp tục sang bước kế tiếp" aria-label="Hoàn tất bước, tiếp tục sang bước kế tiếp" className="mobile-touch-target min-h-11 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50" disabled={busyKey === 'continue'} onClick={() => void run('continue', () => onCompleteTask!(taskId!, projection.cycleNo))}>Hoàn tất bước</button> : null}
           </div>
         ) : null}
 
@@ -347,8 +347,8 @@ export function PcnDossierNodeWorkPanel({
             <label className="mt-3 block text-xs font-semibold text-rose-950" htmlFor={`pcn-return-reason-${projection.nodeId}`}>Lý do trả lại</label>
             <textarea id={`pcn-return-reason-${projection.nodeId}`} className="mt-1 min-h-20 w-full rounded-md border border-rose-200 bg-white p-2 text-sm text-slate-900 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} />
             <div className="mt-3 flex flex-wrap justify-end gap-2">
-              <button type="button" className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowReturnForm(false)}>Hủy</button>
-              <button type="button" className="min-h-10 rounded-md bg-rose-700 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-50" disabled={!returnTargetId || !returnReason.trim() || busyKey === 'return'} onClick={() => void run('return', async () => { await onReturnTask!(taskId!, { targetNodeId: returnTargetId, reason: returnReason.trim() }); setShowReturnForm(false); setReturnReason(''); })}>Xác nhận trả về</button>
+              <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowReturnForm(false)}>Hủy</button>
+              <button type="button" className="mobile-touch-target min-h-11 rounded-md bg-rose-700 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-50" disabled={!returnTargetId || !returnReason.trim() || busyKey === 'return'} onClick={() => void run('return', async () => { await onReturnTask!(taskId!, { targetNodeId: returnTargetId, reason: returnReason.trim() }); setShowReturnForm(false); setReturnReason(''); })}>Xác nhận trả về</button>
             </div>
           </div>
         ) : null}

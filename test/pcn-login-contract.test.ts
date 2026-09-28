@@ -14,8 +14,8 @@ test('active PCN login uses only the PCN server session', () => {
 });
 
 test('PCN login reads its own system users without seeding or syncing DDT', () => {
-  assert.match(pcnLoginSource, /Hệ thống chứng nhận/);
-  assert.match(pcnLoginSource, /Phòng Chứng nhận/);
+  assert.match(pcnLoginSource, /Phòng Giám định - Chứng nhận và Phát triển thị trường/);
+  assert.match(pcnLoginSource, /Phiên làm việc được bảo vệ riêng cho PGDCN/);
   assert.doesNotMatch(pcnLoginSource, /fetchCollection|syncTwoWay|systemUsers|Phòng Điện - Điện tử/);
 });
 

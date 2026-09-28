@@ -223,14 +223,14 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
               <History className="shrink-0 text-emerald-600" size={20} aria-hidden="true" />
               <h1 className="truncate text-base font-black uppercase tracking-tight sm:text-lg">Nhật ký hoạt động</h1>
             </div>
-            <p className="mt-0.5 truncate text-[10px] font-medium text-slate-500 sm:text-xs">Theo dõi hoạt động Giám định và Chứng nhận trên toàn phòng.</p>
+            <p className="mt-0.5 truncate text-[11px] font-medium text-slate-500 sm:text-xs">Theo dõi hoạt động Giám định và Chứng nhận trên toàn phòng.</p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-500">{loadedLabel}</span>
             <button
               type="button"
               onClick={() => void loadFirstPage()}
-              className="mobile-touch-target inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-black uppercase text-slate-600 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700"
+              className="mobile-touch-target inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-black uppercase text-slate-600 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
               title="Tải lại nhật ký"
               aria-label="Làm mới nhật ký"
             >
@@ -240,7 +240,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
               type="button"
               onClick={() => exportActivityLogs(logs)}
               disabled={logs.length === 0}
-              className="mobile-touch-target inline-flex min-h-10 items-center gap-1 rounded-lg bg-emerald-600 px-2 text-[10px] font-black uppercase text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="mobile-touch-target inline-flex min-h-10 items-center gap-1 rounded-lg bg-emerald-600 px-2 text-[11px] font-black uppercase text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
               aria-label="Xuất CSV"
             >
               <Download size={14} aria-hidden="true" /><span className="hidden sm:inline">Xuất CSV</span>
@@ -250,14 +250,14 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
 
         <div className="rounded-xl border border-slate-200 bg-white/70 p-2">
           <div className="flex items-center justify-between gap-2 md:hidden">
-            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide text-slate-600">
+            <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide text-slate-600">
               <Filter size={14} className="text-emerald-600" aria-hidden="true" /> Bộ lọc
             </div>
             <button
               type="button"
               onClick={() => setIsFiltersOpen(previous => !previous)}
               aria-expanded={isFiltersOpen}
-              className="mobile-touch-target rounded-lg px-2 text-[10px] font-black uppercase text-emerald-700"
+              className="mobile-touch-target rounded-lg px-2 text-[11px] font-black uppercase text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
             >
               {isFiltersOpen ? 'Thu gọn' : 'Mở bộ lọc'}
             </button>
@@ -265,33 +265,33 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
           <div className={`${isFiltersOpen ? 'pgdcn-toolbar-nowrap' : 'hidden'}`} role="search" aria-label="Bộ lọc nhật ký">
             <label className="pgdcn-toolbar-filter">
               <span className="sr-only">Miền nghiệp vụ</span>
-              <select value={filters.domain} onChange={event => updateFilter('domain', event.target.value as ActivityLogDomain | 'ALL')} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold outline-none focus:border-emerald-400 sm:min-h-9" aria-label="Miền nghiệp vụ">
+              <select value={filters.domain} onChange={event => updateFilter('domain', event.target.value as ActivityLogDomain | 'ALL')} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold outline-none focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 sm:min-h-9" aria-label="Miền nghiệp vụ">
                 <option value="ALL">Tất cả</option>
                 <option value="PCN">PCN · Chứng nhận</option>
                 <option value="PGD">PGD · Giám định</option>
               </select>
             </label>
             <label className="pgdcn-toolbar-search relative">
-              <span className="mb-1 block text-[10px] font-black text-slate-600">Tìm kiếm nhật ký</span>
+              <span className="mb-1 block text-[11px] font-black text-slate-600">Tìm kiếm nhật ký</span>
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} aria-hidden="true" />
               <input
                 value={filters.search}
                 onChange={event => updateFilter('search', event.target.value)}
 
-                className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-xs outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 sm:min-h-9"
+                className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-xs outline-none transition focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 focus:ring-2 focus:ring-emerald-100 sm:min-h-9"
               />
             </label>
             <div className="pgdcn-toolbar-filter relative">
-              <button type="button" onClick={() => setIsUserFilterOpen(previous => !previous)} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-left text-xs font-semibold text-slate-600 outline-none transition hover:border-emerald-300 sm:min-h-9">
+              <button type="button" onClick={() => setIsUserFilterOpen(previous => !previous)} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-left text-xs font-semibold text-slate-600 outline-none transition hover:border-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 sm:min-h-9">
                 {selectedActors.length > 0 ? `Đã chọn ${selectedActors.length} người` : 'Chọn người dùng'}
               </button>
               {isUserFilterOpen && (
                 <div className="absolute left-0 top-12 z-30 w-full min-w-[260px] rounded-xl border border-slate-200 bg-white p-2.5 shadow-xl">
                   <div className="flex gap-1.5">
-                    <input aria-label="Tìm người dùng trong nhật ký" value={userSearch} onChange={event => setUserSearch(event.target.value)} className="min-h-9 min-w-0 flex-1 rounded-lg border border-slate-200 px-2 text-xs outline-none focus:border-emerald-400" />
-                    <button type="button" onClick={() => setSelectedActors([])} className="whitespace-nowrap rounded-lg border border-slate-200 px-2 text-[10px] font-black uppercase text-slate-500">Bỏ chọn tất cả</button>
+                    <input aria-label="Tìm người dùng trong nhật ký" value={userSearch} onChange={event => setUserSearch(event.target.value)} className="min-h-9 min-w-0 flex-1 rounded-lg border border-slate-200 px-2 text-xs outline-none focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1" />
+                    <button type="button" onClick={() => setSelectedActors([])} className="whitespace-nowrap rounded-lg border border-slate-200 px-2 text-[11px] font-black uppercase text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">Bỏ chọn tất cả</button>
                   </div>
-                  <button type="button" onClick={() => setSelectedActors(userOptions.map(user => user.username))} className="mt-1.5 text-[10px] font-black uppercase text-emerald-700">Chọn tất cả</button>
+                  <button type="button" onClick={() => setSelectedActors(userOptions.map(user => user.username))} className="mt-1.5 text-[11px] font-black uppercase text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">Chọn tất cả</button>
                   <div className="mt-1.5 max-h-48 space-y-0.5 overflow-y-auto border-t border-slate-100 pt-1.5">
                     {filteredUserOptions.map(user => (
                       <label key={user.username} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-emerald-50">
@@ -305,25 +305,25 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
             </div>
             <label className="pgdcn-toolbar-filter">
               <span className="sr-only">Hành động</span>
-              <select value={filters.action} onChange={event => updateFilter('action', event.target.value as ActivityLogAction | '')} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none focus:border-emerald-400 sm:min-h-9">
+              <select value={filters.action} onChange={event => updateFilter('action', event.target.value as ActivityLogAction | '')} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 sm:min-h-9">
                 <option value="">Hành động</option>
                 {Object.entries(activityActionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
             <label className="pgdcn-toolbar-filter">
               <span className="sr-only">Đối tượng</span>
-              <select value={filters.entityType} onChange={event => updateFilter('entityType', event.target.value as ActivityLogEntityType | '')} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none focus:border-emerald-400 sm:min-h-9">
+              <select value={filters.entityType} onChange={event => updateFilter('entityType', event.target.value as ActivityLogEntityType | '')} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 sm:min-h-9">
                 <option value="">Đối tượng</option>
                 {Object.entries(activityEntityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
             <label className="col-span-2 md:col-span-1">
               <span className="sr-only">Kỳ thống kê</span>
-              <select value={filters.period} onChange={event => updateFilter('period', event.target.value as ActivityPeriod)} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none focus:border-emerald-400 sm:min-h-9" aria-label="Kỳ thống kê">
+              <select value={filters.period} onChange={event => updateFilter('period', event.target.value as ActivityPeriod)} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 sm:min-h-9" aria-label="Kỳ thống kê">
                 {Object.entries(ACTIVITY_PERIOD_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
-            <button type="button" onClick={resetFilters} className="mobile-touch-target col-span-2 inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-[10px] font-black uppercase text-slate-500 hover:text-rose-600 md:col-span-1">
+            <button type="button" onClick={resetFilters} className="mobile-touch-target col-span-2 inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-black uppercase text-slate-500 hover:text-rose-600 md:col-span-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">
               <Filter size={14} aria-hidden="true" /> Xóa lọc
             </button>
           </div>
@@ -335,7 +335,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
       {error && (
         <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700" role="alert">
           <span className="flex items-center gap-2"><AlertCircle size={15} /> {error}</span>
-          <button type="button" onClick={() => void loadFirstPage()} className="font-black uppercase">Thử lại</button>
+          <button type="button" onClick={() => void loadFirstPage()} className="font-black uppercase focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">Thử lại</button>
         </div>
       )}
 
@@ -346,31 +346,31 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
           <div className="flex h-48 flex-col items-center justify-center gap-2 text-center text-slate-400"><History size={28} /><p className="text-xs font-bold">Chưa có hoạt động phù hợp với bộ lọc.</p></div>
         ) : (
           <>
-            <div className="hidden min-w-[850px] grid-cols-[90px_150px_150px_130px_150px_minmax(280px,1fr)] gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-wide text-slate-400 md:grid">
+            <div className="hidden min-w-[850px] grid-cols-[90px_150px_150px_130px_150px_minmax(280px,1fr)] gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-400 md:grid">
               <span>Miền</span><span>Thời gian</span><span>Người thực hiện</span><span>Hành động</span><span>Đối tượng</span><span>Mô tả</span>
             </div>
             <div className="divide-y divide-slate-100">
               {logs.map(log => (
-                <button key={log.id} type="button" onClick={() => setSelectedLog(log)} className="block w-full text-left transition hover:bg-emerald-50/50 focus:bg-emerald-50/50 focus:outline-none">
+                <button key={log.id} type="button" onClick={() => setSelectedLog(log)} className="block w-full text-left transition hover:bg-emerald-50/50 focus-visible:bg-emerald-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-inset">
                   <div className="hidden min-w-[850px] grid-cols-[90px_150px_150px_130px_150px_minmax(280px,1fr)] items-center gap-3 px-4 py-3 md:grid">
                     <span className={`inline-flex w-fit rounded-full px-2 py-1 text-[9px] font-black ${log.domain === 'PGD' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>{log.domain}</span>
                     <span className="text-[11px] font-semibold text-slate-500">{formatActivityTime(log.createdAt)}</span>
                     <span className="truncate text-xs font-bold text-slate-700">{log.actorName || 'Hệ thống'}</span>
-                    <span className="text-[10px] font-black uppercase text-emerald-700">{getActivityActionLabel(log.action)}</span>
-                    <span className="truncate text-[10px] font-bold text-slate-500">{getActivityEntityLabel(log.entityType)}</span>
+                    <span className="text-[11px] font-black uppercase text-emerald-700">{getActivityActionLabel(log.action)}</span>
+                    <span className="truncate text-[11px] font-bold text-slate-500">{getActivityEntityLabel(log.entityType)}</span>
                     <span className="truncate text-xs text-slate-700">{log.summary}</span>
                   </div>
                   <div className="flex flex-col gap-2 p-3 md:hidden">
-                    <div className="flex items-center justify-between gap-2"><span className={`rounded-full px-2 py-1 text-[9px] font-black ${log.domain === 'PGD' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>{log.domain}</span><span className="text-[10px] font-semibold text-slate-400">{formatActivityTime(log.createdAt)}</span><span className="text-[10px] font-black uppercase text-emerald-700">{getActivityActionLabel(log.action)}</span></div>
+                    <div className="flex items-center justify-between gap-2"><span className={`rounded-full px-2 py-1 text-[9px] font-black ${log.domain === 'PGD' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>{log.domain}</span><span className="text-[10px] font-semibold text-slate-400">{formatActivityTime(log.createdAt)}</span><span className="text-[11px] font-black uppercase text-emerald-700">{getActivityActionLabel(log.action)}</span></div>
                     <div className="text-xs font-bold text-slate-700">{log.summary}</div>
-                    <div className="flex flex-wrap gap-2 text-[10px] text-slate-500"><span>{log.actorName || 'Hệ thống'}</span><span>·</span><span>{getActivityEntityLabel(log.entityType)}</span></div>
+                    <div className="flex flex-wrap gap-2 text-[11px] text-slate-500"><span>{log.actorName || 'Hệ thống'}</span><span>·</span><span>{getActivityEntityLabel(log.entityType)}</span></div>
                   </div>
                 </button>
               ))}
             </div>
             {hasMore && (
               <div className="flex justify-center border-t border-slate-100 p-3">
-                <button type="button" onClick={() => void loadMore()} disabled={isLoading} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-200 px-4 text-[10px] font-black uppercase text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"><RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> Tải thêm</button>
+                <button type="button" onClick={() => void loadMore()} disabled={isLoading} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-200 px-4 text-[11px] font-black uppercase text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"><RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> Tải thêm</button>
               </div>
             )}
           </>
@@ -381,8 +381,8 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
         <div className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/40 p-2 backdrop-blur-sm md:items-center md:p-6" role="dialog" aria-modal="true" aria-label="Chi tiết nhật ký">
           <div className="flex max-h-[85dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-900 p-4 text-white">
-              <div><p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Chi tiết hoạt động</p><h2 className="mt-1 text-sm font-black">{selectedLog.summary}</h2></div>
-              <button type="button" onClick={() => setSelectedLog(null)} className="rounded-full p-2 hover:bg-white/10" aria-label="Đóng chi tiết"><X size={18} /></button>
+              <div><p className="text-[11px] font-black uppercase tracking-widest text-emerald-300">Chi tiết hoạt động</p><h2 className="mt-1 text-sm font-black">{selectedLog.summary}</h2></div>
+              <button type="button" onClick={() => setSelectedLog(null)} className="rounded-full p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1" aria-label="Đóng chi tiết"><X size={18} /></button>
             </div>
             <div className="min-h-0 overflow-y-auto p-4 text-xs text-slate-700">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -403,10 +403,10 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
                 </p>
               </div>
               <div className="mt-5">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Thay đổi dữ liệu</h3>
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">Thay đổi dữ liệu</h3>
                 {selectedLog.changes?.length ? (
                   <div className="mt-2 overflow-hidden rounded-xl border border-slate-200">
-                    <div className="grid grid-cols-3 gap-2 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-400"><span>Trường</span><span>Trước thay đổi</span><span>Sau thay đổi</span></div>
+                    <div className="grid grid-cols-3 gap-2 bg-slate-50 px-3 py-2 text-[11px] font-black uppercase text-slate-400"><span>Trường</span><span>Trước thay đổi</span><span>Sau thay đổi</span></div>
                     {selectedLog.changes.map(change => <div key={change.field} className="grid grid-cols-3 gap-2 border-t border-slate-100 px-3 py-2 text-[11px]"><span className="font-bold">{change.field}</span><span className="break-words text-rose-700">{JSON.stringify(change.before)}</span><span className="break-words text-emerald-700">{JSON.stringify(change.after)}</span></div>)}
                   </div>
                 ) : <p className="mt-2 text-xs text-slate-400">Không có diff chi tiết cho hoạt động này.</p>}

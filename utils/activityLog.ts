@@ -184,3 +184,60 @@ export const activityEntityLabels: Record<ActivityLogEntityType, string> = {
 };
 
 // --- End of activityLog.ts ---
+
+
+export const ACTIVITY_LOG_ACTIONS = new Set([
+  'CREATED',
+  'UPDATED',
+  'DELETED',
+  'STATUS_CHANGED',
+  'SCHEDULED',
+  'UNSCHEDULED',
+  'ASSIGNED',
+  'IMPORTED',
+  'RESTORED',
+  'CONFIGURED',
+]);
+
+export const ACTIVITY_LOG_ENTITY_TYPES = new Set([
+  'REQUEST',
+  'HANDOVER_DOC',
+  'KQTN_RECORD',
+  'SCHEDULE',
+  'PCN_PROPOSAL',
+  'PCN_DOSSIER',
+  'PCN_CUSTOMER',
+  'PCN_LAB_REQUEST',
+  'PCN_RESULT',
+  'PCN_APPROVAL',
+  'PCN_ISSUANCE',
+  'PCN_TEMPLATE',
+  'PCN_FIELD',
+  'PCN_USER',
+  'PCN_SIGNER_DELEGATION',
+  'PCN_QUALITY_DOCUMENT',
+  'PCN_DRAFT',
+  'PCN_SAMPLE_LOT',
+  'USER',
+  'CUSTOMER',
+  'PRODUCT',
+  'BRAND',
+  'SYSTEM_SETTINGS',
+  'SYSTEM',
+]);
+
+export const ACTIVITY_LOG_SOURCES = new Set(['UI', 'USER_REVIEW', 'IMPORT', 'RESTORE', 'SYSTEM']);
+
+export function validateActivityLogPayload(value: any): string | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return 'Activity log phải là object';
+  if (!String(value.id || '').trim()) return 'Activity log thiếu id';
+  const createdAt = String(value.createdAt || '').trim();
+  if (!createdAt) return 'Activity log thiếu createdAt';
+  if (!isValidActivityTimestamp(createdAt)) return 'Activity log có createdAt không hợp lệ';
+  if (!String(value.actorName || '').trim()) return 'Activity log thiếu actorName';
+  if (!ACTIVITY_LOG_ACTIONS.has(String(value.action))) return 'Activity log có action không hợp lệ';
+  if (!ACTIVITY_LOG_ENTITY_TYPES.has(String(value.entityType))) return 'Activity log có entityType không hợp lệ';
+  if (!String(value.summary || '').trim()) return 'Activity log thiếu summary';
+  if (!ACTIVITY_LOG_SOURCES.has(String(value.source))) return 'Activity log có source không hợp lệ';
+  return null;
+}
