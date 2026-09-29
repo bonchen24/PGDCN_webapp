@@ -821,7 +821,7 @@ function PgdRegisterTable({ requests, users, catalog, onOpen }: { requests: PgdI
           ))}
         </div>
       ) : (
-        <div className="mt-3 overflow-x-auto rounded-xl border border-slate-100">
+        <div className="mobile-scroll-x mt-3 overflow-x-auto rounded-xl border border-slate-100">
           <table className="min-w-[1400px] w-full text-left text-[11px]">
             <thead className="bg-slate-50 text-[11px] font-black uppercase tracking-wide text-slate-500">
               <tr>
@@ -1294,7 +1294,7 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
       <Toaster position="top-right" richColors />
       {!embedded && <PgdSidebar currentUser={currentUser} activeSection={activeSection} collapsed={collapsed} mobileOpen={mobileOpen} onToggle={() => setCollapsed((value) => !value)} onNavigate={openSection} onCloseMobile={() => setMobileOpen(false)} onLogout={logout} />}
       <div className={embedded ? 'min-w-0' : 'flex min-w-0 flex-1 flex-col'}>
-        {!embedded && <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5"><div className="flex min-w-0 items-center gap-2"><button type="button" onClick={() => setMobileOpen(true)} aria-label="Mở menu PGD" className="mobile-touch-target min-h-11 min-w-11 rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"><Menu size={18} /></button><div className="min-w-0"><div className="truncate text-[10px] font-black uppercase tracking-wider text-blue-600">IEMM • TVCI · {PGD_SECTION_LABELS[activeSection]}</div><div className="truncate text-xs font-bold text-slate-600">Phòng Giám định, Chứng nhận, Phát triển thị trường · Dữ liệu PGD riêng</div></div></div><div className="hidden items-center gap-2 text-[10px] font-bold text-slate-400 sm:flex"><CheckCircle2 size={14} className="text-emerald-500" /> Tài khoản: {currentUser.username}</div></header>}
+        {!embedded && <header className="flex h-13 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5"><div className="flex min-w-0 items-center gap-2"><button type="button" onClick={() => setMobileOpen(true)} aria-label="Mở menu PGD" className="mobile-touch-target min-h-11 min-w-11 rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"><Menu size={18} /></button><div className="min-w-0"><div className="truncate text-[10px] font-black uppercase tracking-wider text-blue-600">IEMM • TVCI · {PGD_SECTION_LABELS[activeSection]}</div><div className="truncate text-xs font-bold text-slate-600">Phòng Giám định, Chứng nhận, Phát triển thị trường · Dữ liệu PGD riêng</div></div></div><div className="hidden items-center gap-2 text-[10px] font-bold text-slate-400 sm:flex"><CheckCircle2 size={14} className="text-emerald-500" /> Tài khoản: {currentUser.username}</div></header>}
         <main className={embedded ? 'min-w-0' : 'mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto'}>
           {standaloneRequest && requestDetail ? requestDetail : <>
             {requestCreateAction}

@@ -22,7 +22,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body>
+        <div id="root">{children}</div>
+        <div id="portrait-only-message" aria-hidden="true">
+          <div className="max-w-sm rounded-2xl border border-emerald-200 bg-white p-6 text-center shadow-lg">
+            <h2 className="text-base font-bold text-slate-800">Vui lòng xoay dọc thiết bị</h2>
+            <p className="mt-2 text-xs text-slate-500">Ứng dụng TVCI Web App được tối ưu cho trải nghiệm màn hình dọc trên thiết bị di động.</p>
+          </div>
+        </div>
+      </body>
     </html>
   );
 }

@@ -3,7 +3,7 @@ import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from './formatter.ts';
 
 export type PgdcnDashboardDomain = 'PCN' | 'PGD';
 export type DashboardAttentionReason = 'WORK' | 'OVERDUE';
-export type PgdcnStatusTone = 'neutral' | 'info' | 'warning' | 'success' | 'critical';
+export type PgdcnStatusTone = 'neutral' | 'info' | 'warning' | 'success' | 'critical' | 'cyan' | 'indigo' | 'purple' | 'orange' | 'teal';
 export type DashboardPipelineTone = PgdcnStatusTone;
 
 export interface PgdcnStatusPresentation {
@@ -202,6 +202,11 @@ const STATUS_TONE_DESCRIPTION: Record<PgdcnStatusTone, string> = {
   warning: 'Hồ sơ đang chờ hoặc cần chú ý.',
   success: 'Hồ sơ đã hoàn tất hoặc đạt mốc thành công.',
   critical: 'Hồ sơ đang bị chặn, lỗi hoặc cần xử lý ưu tiên.',
+  cyan: 'Đã tiếp nhận mẫu.',
+  indigo: 'Đã lên lịch thực hiện.',
+  purple: 'Đang tiến hành thử nghiệm.',
+  orange: 'Đã nộp kết quả thử nghiệm.',
+  teal: 'Đã hoàn thành toàn bộ tuyến.',
 };
 
 export function getPgdcnStatusPresentation(domain: PgdcnDashboardDomain, status: string | undefined): PgdcnStatusPresentation {

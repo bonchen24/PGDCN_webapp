@@ -112,6 +112,17 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const logRequestSequence = useRef(0);
 
+  useEffect(() => {
+    if (!selectedLog) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedLog(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedLog]);
+
   const hasDepartmentScope = currentUser?.departmentScopes === undefined
     || (currentUser.departmentScopes || []).some(scope => scope === 'PCN' || scope === 'PGD');
   const canView = isActivityLogVisibleToUser(currentUser) && hasDepartmentScope;
@@ -378,11 +389,27 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
       </div>
 
       {selectedLog && (
-        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/40 p-2 backdrop-blur-sm md:items-center md:p-6" role="dialog" aria-modal="true" aria-label="Chi tiết nhật ký">
+        <div
+          className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/40 p-2 backdrop-blur-sm md:items-center md:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Chi tiết nhật ký"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedLog(null);
+          }}
+        >
           <div className="flex max-h-[85dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-900 p-4 text-white">
               <div><p className="text-[11px] font-black uppercase tracking-widest text-emerald-300">Chi tiết hoạt động</p><h2 className="mt-1 text-sm font-black">{selectedLog.summary}</h2></div>
-              <button type="button" onClick={() => setSelectedLog(null)} className="rounded-full p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1" aria-label="Đóng chi tiết"><X size={18} /></button>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setSelectedLog(null)}
+                className="mobile-touch-target rounded-full p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
+                aria-label="Đóng chi tiết"
+              >
+                <X size={18} />
+              </button>
             </div>
             <div className="min-h-0 overflow-y-auto p-4 text-xs text-slate-700">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

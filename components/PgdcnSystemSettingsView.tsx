@@ -6,6 +6,7 @@ import type { PcnCertificationField, PcnUserAccount, UserAccount } from '../type
 import type { PcnDepartmentRole, PcnUserInput } from '../utils/pcnUserApi';
 import { canManageSystemUsers, canViewSystemSettings } from '../utils/systemSettingsPolicy';
 import PcnUserManagementView from './PcnUserManagementView';
+import { BackupRestoreAdminPanel } from './BackupRestoreAdminPanel';
 
 type PgdcnSystemSettingsViewProps = {
   currentUser: PcnUserAccount;
@@ -21,6 +22,7 @@ type PgdcnSystemSettingsViewProps = {
 export default function PgdcnSystemSettingsView({ currentUser, users, roles, fields, onCreate, onUpdate, onDelete, onResetPassword }: PgdcnSystemSettingsViewProps) {
   const canView = canViewSystemSettings(currentUser);
   const canManage = canManageSystemUsers(currentUser);
+  const isAdmin = currentUser?.systemRole === 'admin';
 
   if (!canView) return <div className="pcn-page-surface min-w-0 p-5 text-sm font-bold text-rose-700">Tài khoản hiện tại không có quyền xem Cài đặt hệ thống.</div>;
 
@@ -49,6 +51,14 @@ export default function PgdcnSystemSettingsView({ currentUser, users, roles, fie
           </div>
         </div>
       </header>
+
+      {isAdmin && (
+        <section aria-labelledby="system-backup-heading">
+          <h2 id="system-backup-heading" className="sr-only">Sao lưu và phục hồi hệ thống</h2>
+          <BackupRestoreAdminPanel currentUser={currentUser as UserAccount} />
+        </section>
+      )}
+
       <section aria-labelledby="system-personnel-heading">
         <h2 id="system-personnel-heading" className="sr-only">Nhân sự &amp; tài khoản dùng chung</h2>
         <PcnUserManagementView

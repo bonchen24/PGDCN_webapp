@@ -13,6 +13,11 @@ const statusToneClass: Record<StateTone, string> = {
   success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
   warning: 'border-amber-200 bg-amber-50 text-amber-800',
   critical: 'border-rose-200 bg-rose-50 text-rose-800',
+  cyan: 'border-cyan-200 bg-cyan-50 text-cyan-800',
+  indigo: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+  purple: 'border-purple-200 bg-purple-50 text-purple-800',
+  orange: 'border-orange-200 bg-orange-50 text-orange-800',
+  teal: 'border-teal-200 bg-teal-50 text-teal-800',
 };
 
 const statusIcon: Record<StateTone, LucideIcon> = {
@@ -21,6 +26,11 @@ const statusIcon: Record<StateTone, LucideIcon> = {
   success: CheckCircle2,
   warning: Clock3,
   critical: AlertTriangle,
+  cyan: CircleDot,
+  indigo: CircleDot,
+  purple: Clock3,
+  orange: Clock3,
+  teal: CheckCircle2,
 };
 const stateIcon: Record<'loading' | 'empty' | 'error' | 'success', LucideIcon> = {
   loading: Loader2,

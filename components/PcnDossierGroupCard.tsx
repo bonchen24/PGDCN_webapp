@@ -101,7 +101,7 @@ export function PcnDossierGroupCard({
   const matchingLotIds = new Set(matchingLots.map((l) => l.id));
   const matchingItems = sampleItems.filter((item) => matchingLotIds.has(item.sampleLotId));
 
-  // Determine progress status percentage
+  // Calculate progress status percentage based on workflow status
   const getProgressPercentage = (status: PcnDossierStatus): number => {
     switch (status) {
       case 'DRAFT': return 10;
@@ -125,6 +125,7 @@ export function PcnDossierGroupCard({
 
   const progress = getProgressPercentage(dossier.status);
   const isDone = progress === 100;
+  const hasDocumentWaivers = Boolean(dossier.documentWaivers && Object.keys(dossier.documentWaivers).length > 0);
 
   return (
     <div
@@ -134,16 +135,18 @@ export function PcnDossierGroupCard({
           : 'border-slate-200'
       }`}
     >
-      {/* Top Card Header */}
+      {/* Top Card Header theo Mục 3.1.1: Icon FolderOpen, Mã Đề nghị text xám đậm */}
       <div className="p-3.5 pb-2.5">
         <div className="flex items-start justify-between gap-2">
-          {/* Codes and Primary Tag */}
+          {/* Mã Đề nghị và Mã Hồ sơ */}
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-2 py-0.5 font-mono text-[11px] font-black text-white shadow-3xs">
-                <Layers size={11} className="text-emerald-400" />
-                {proposal.proposalCode}
-              </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 text-slate-700">
+                <FolderOpen size={14} className="text-emerald-600 shrink-0" />
+                <span className="font-mono text-xs font-black tracking-wider text-slate-800">
+                  {proposal.proposalCode}
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={onOpenDossier}
@@ -152,14 +155,6 @@ export function PcnDossierGroupCard({
               >
                 {dossier.dossierCode}
               </button>
-              {proposal.fieldCodes.map((code) => (
-                <span
-                  key={code}
-                  className="rounded-md border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black tracking-wider text-indigo-700"
-                >
-                  {code}
-                </span>
-              ))}
             </div>
 
             {/* Customer Name */}
@@ -174,14 +169,27 @@ export function PcnDossierGroupCard({
             </div>
           </div>
 
-          {/* Status Badge */}
-          <span
-            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black tracking-tight ${
-              statusClasses[dossier.status]
-            }`}
-          >
-            {statusLabels[dossier.status]}
-          </span>
+          {/* Cụm bên phải: Badge SL mẫu, Badge Lĩnh vực và Badge Trạng thái */}
+          <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+            <span className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-black text-slate-600">
+              {matchingItems.length || matchingLots.length || 0} mẫu
+            </span>
+            {proposal.fieldCodes.map((code) => (
+              <span
+                key={code}
+                className="rounded-md border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black tracking-wider text-indigo-700"
+              >
+                {code}
+              </span>
+            ))}
+            <span
+              className={`rounded-full border px-2.5 py-0.5 text-[10px] font-black tracking-tight ${
+                statusClasses[dossier.status]
+              }`}
+            >
+              {statusLabels[dossier.status]}
+            </span>
+          </div>
         </div>
 
         {/* Product / Model Meta */}
@@ -245,42 +253,62 @@ export function PcnDossierGroupCard({
       {/* Accordion Detail Drawer */}
       {isExpanded && (
         <div className="border-t border-slate-100 bg-slate-50/70 p-3 text-[11px] text-slate-600">
-          <div className="font-black uppercase tracking-wider text-slate-500 text-[10px] mb-1.5">
-            Chi tiết mẫu & Thông số kỹ thuật
+          {hasDocumentWaivers && (
+            <div className="mb-2.5 rounded-lg border border-amber-200 bg-amber-50/80 p-2 text-[10px] text-amber-800">
+              <span className="font-black text-amber-900">Quyết định miễn giảm tài liệu:</span> {Object.keys(dossier.documentWaivers || {}).join(', ')}
+            </div>
+          )}
+
+          <div className="font-black uppercase tracking-wider text-slate-500 text-[10px] mb-1.5 flex items-center justify-between">
+            <span>Chi tiết mẫu & Thông số kỹ thuật</span>
+            <span className="text-[9px] font-bold text-slate-400">Trạng thái KQTN sơ bộ</span>
           </div>
 
           {matchingItems.length > 0 ? (
             <div className="space-y-1.5">
-              {matchingItems.map((item, idx) => (
-                <div
-                  key={item.id || idx}
-                  className="flex items-center justify-between rounded-md border border-slate-200/80 bg-white px-2 py-1 text-slate-700"
-                >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="font-mono text-[10px] font-black text-slate-500">
-                      #{item.sampleCode || idx + 1}
-                    </span>
-                    <span className="truncate font-semibold text-xs">{item.model || item.sampleType}</span>
+              {matchingItems.map((item, idx) => {
+                const itemRoutes = sampleRoutes.filter((r) => r.sampleLotId === item.sampleLotId);
+                const hasResult = itemRoutes.some((r) => r.status === 'RESULT_RETURNED' || r.status === 'CLOSED');
+                const isTesting = itemRoutes.some((r) => r.status === 'RECEIVED' || r.status === 'SENT');
+                const preliminaryOutcome = hasResult ? 'Đã có KQ' : isTesting ? 'Đang thử' : 'Chờ KQ';
+                return (
+                  <div
+                    key={item.id || idx}
+                    className="flex items-center justify-between rounded-md border border-slate-200/80 bg-white px-2 py-1 text-slate-700"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-mono text-[10px] font-black text-slate-500">
+                        #{item.sampleCode || idx + 1}
+                      </span>
+                      <span className="truncate font-semibold text-xs">{item.model || item.sampleType}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] text-slate-500">
+                        {item.quantity} {item.unit || 'mẫu'}
+                      </span>
+                      <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold border ${
+                        hasResult ? 'border-emerald-200 bg-emerald-50 text-emerald-800' :
+                        isTesting ? 'border-blue-200 bg-blue-50 text-blue-800' :
+                        'border-amber-200 bg-amber-50 text-amber-800'
+                      }`}>
+                        {preliminaryOutcome}
+                      </span>
+                      {item.testLabCodes && item.testLabCodes.length > 0 && (
+                        <div className="flex gap-1">
+                          {item.testLabCodes.map((lab) => (
+                            <span
+                              key={lab}
+                              className="rounded bg-sky-50 px-1 py-0.5 text-[8px] font-black text-sky-700 border border-sky-200"
+                            >
+                              {lab}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] text-slate-500">
-                      {item.quantity} {item.unit || 'mẫu'}
-                    </span>
-                    {item.testLabCodes && item.testLabCodes.length > 0 && (
-                      <div className="flex gap-1">
-                        {item.testLabCodes.map((lab) => (
-                          <span
-                            key={lab}
-                            className="rounded bg-sky-50 px-1 py-0.5 text-[8px] font-black text-sky-700 border border-sky-200"
-                          >
-                            {lab}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="rounded border border-slate-200/60 bg-white p-2">

@@ -1237,7 +1237,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
           onLogout={handleLogout}
         />}
         <div className={embedded ? 'flex h-full min-h-0 min-w-0 flex-1 flex-col' : 'flex min-w-0 flex-1 flex-col'}>
-          {!embedded && <header className="app-compact-header flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5">
+          {!embedded && <header className="app-compact-header flex h-13 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-sm md:px-5">
             <div className="flex min-w-0 items-center gap-2">
               <button
                 type="button"

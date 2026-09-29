@@ -61,6 +61,11 @@ const PIPELINE_TONE_CLASS: Record<DashboardPipelineTone, string> = {
   warning: 'bg-amber-400',
   success: 'bg-emerald-500',
   critical: 'bg-rose-500',
+  cyan: 'bg-cyan-500',
+  indigo: 'bg-indigo-500',
+  purple: 'bg-purple-500',
+  orange: 'bg-orange-500',
+  teal: 'bg-teal-500',
 };
 
 const formatCount = (value: number): string => new Intl.NumberFormat('vi-VN').format(value);

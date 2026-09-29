@@ -83,12 +83,13 @@ function UserBadge({ role }: { role: PcnSystemRole }) {
 }
 
 function managementRoleName(code?: OrganizationManagementRoleCode): string {
-  return ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.find((role) => role.code === code)?.name || 'Chưa phân công chức danh quản lý';
+  if (!code || code === 'NONE') return '';
+  return ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.find((role) => role.code === code)?.name || code;
 }
 
 function professionalRoleNames(codes?: ProfessionalRoleCode[]): string {
   const names = (codes || []).map((code) => PROFESSIONAL_ROLE_OPTIONS.find((role) => role.code === code)?.name || code);
-  return names.length ? names.join(', ') : 'Chưa gán vai trò chuyên môn';
+  return names.length ? names.join(', ') : '';
 }
 
 function getUserInitials(name: string): string {
@@ -146,6 +147,11 @@ export function PcnUserManagementView({
   const [saving, setSaving] = useState(false);
   const [resettingUsername, setResettingUsername] = useState<string>();
   const [deletingUsername, setDeletingUsername] = useState<string>();
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<PcnUserAccount | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<PcnUserAccount | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [pageSize, setPageSize] = useState<number | 'ALL'>(20);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const editable = canManageSystemUsers(currentUser);
   const visibleUsers = useMemo(() => {
@@ -157,6 +163,14 @@ export function PcnUserManagementView({
       return matchesQuery && matchesSystemRole && matchesManagementRole;
     });
   }, [managementRoleFilter, query, systemRoleFilter, users]);
+
+  const totalPages = pageSize === 'ALL' ? 1 : Math.max(1, Math.ceil(visibleUsers.length / pageSize));
+  const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+  const paginatedUsers = useMemo(() => {
+    if (pageSize === 'ALL') return visibleUsers;
+    const start = (safeCurrentPage - 1) * pageSize;
+    return visibleUsers.slice(start, start + pageSize);
+  }, [pageSize, safeCurrentPage, visibleUsers]);
 
   const openCreate = () => {
     setEditingUsername(null);
@@ -230,13 +244,13 @@ export function PcnUserManagementView({
     }
   };
 
-  const removeUser = async (user: PcnUserAccount) => {
-    if (deletingUsername || user.username === currentUser?.username) return;
-    if (typeof window === 'undefined' || !window.confirm(`Xóa tài khoản PGDCN ${user.name} (${user.username})? Dữ liệu hồ sơ nghiệp vụ vẫn được giữ nguyên.`)) return;
-    setDeletingUsername(user.username);
+  const executeDeleteUser = async () => {
+    if (!deleteConfirmUser || deletingUsername || deleteConfirmUser.username === currentUser?.username) return;
+    setDeletingUsername(deleteConfirmUser.username);
     try {
-      await onDelete(user.username);
-      toast.success(`Đã xóa tài khoản ${user.name}.`);
+      await onDelete(deleteConfirmUser.username);
+      toast.success(`Đã xóa tài khoản ${deleteConfirmUser.name}.`);
+      setDeleteConfirmUser(null);
     } catch (error: any) {
       toast.error(error?.message || 'Không thể xóa tài khoản PGDCN.');
     } finally {
@@ -244,20 +258,19 @@ export function PcnUserManagementView({
     }
   };
 
-  const resetPassword = async (user: PcnUserAccount) => {
-    if (resettingUsername === user.username) return;
-    const password = typeof window !== 'undefined'
-      ? window.prompt(`Nhập mật khẩu mới cho ${user.name} (ít nhất 8 ký tự):`, '')
-      : null;
-    if (password === null) return;
-    if (password.length < 8) {
+  const executeResetPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!resetPasswordUser || resettingUsername === resetPasswordUser.username) return;
+    if (newPassword.length < 8) {
       toast.error('Mật khẩu phải có ít nhất 8 ký tự.');
       return;
     }
-    setResettingUsername(user.username);
+    setResettingUsername(resetPasswordUser.username);
     try {
-      await onResetPassword(user.username, password);
-      toast.success(`Đã reset mật khẩu cho ${user.name}.`);
+      await onResetPassword(resetPasswordUser.username, newPassword);
+      toast.success(`Đã reset mật khẩu cho ${resetPasswordUser.name}.`);
+      setResetPasswordUser(null);
+      setNewPassword('');
     } catch (error: any) {
       toast.error(error?.message || 'Không thể reset mật khẩu.');
     } finally {
@@ -456,7 +469,7 @@ export function PcnUserManagementView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {visibleUsers.map((user) => {
+                {paginatedUsers.map((user) => {
                   const mRole = managementRoleName(user.managementRoleCode);
                   const pRoles = professionalRoleNames(user.professionalRoleCodes);
                   return (
@@ -549,21 +562,24 @@ export function PcnUserManagementView({
                               <Pencil size={12} /> Sửa
                             </button>
                             <button
-                              onClick={() => void resetPassword(user)}
+                              onClick={() => {
+                                setResetPasswordUser(user);
+                                setNewPassword('');
+                              }}
                               disabled={resettingUsername !== undefined || saving || deletingUsername !== undefined}
                               aria-busy={resettingUsername === user.username}
                               className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-bold text-amber-700 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-50 transition-colors"
                             >
-                              <KeyRound size={12} /> {resettingUsername === user.username ? 'Đang reset…' : 'Reset mật khẩu'}
+                              <KeyRound size={12} /> Reset mật khẩu
                             </button>
                             {user.username !== currentUser?.username && (
                               <button
-                                onClick={() => void removeUser(user)}
+                                onClick={() => setDeleteConfirmUser(user)}
                                 disabled={deletingUsername !== undefined || saving || resettingUsername !== undefined}
                                 aria-busy={deletingUsername === user.username}
                                 className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-wait disabled:opacity-50 transition-colors"
                               >
-                                <Trash2 size={12} /> {deletingUsername === user.username ? 'Đang xóa…' : 'Xóa'}
+                                <Trash2 size={12} /> Xóa
                               </button>
                             )}
                           </div>
@@ -576,7 +592,171 @@ export function PcnUserManagementView({
             </table>
           </div>
         )}
+
+        {/* Thanh phân trang Pagination */}
+        {visibleUsers.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-[11px]">
+            <div className="flex items-center gap-2 text-slate-500">
+              <span>Hiển thị:</span>
+              <select
+                aria-label="Số bản ghi trên mỗi trang"
+                value={pageSize}
+                onChange={(e) => {
+                  const val = e.target.value === 'ALL' ? 'ALL' : Number(e.target.value);
+                  setPageSize(val);
+                  setCurrentPage(1);
+                }}
+                className="mobile-touch-target min-h-9 rounded border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-emerald-400"
+              >
+                <option value={20}>20 / trang</option>
+                <option value={50}>50 / trang</option>
+                <option value={100}>100 / trang</option>
+                <option value="ALL">Tất cả</option>
+              </select>
+              <span>(Tổng {visibleUsers.length} tài khoản)</span>
+            </div>
+
+            {pageSize !== 'ALL' && totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={safeCurrentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="mobile-touch-target min-h-9 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:border-emerald-300 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Trước
+                </button>
+                <span className="px-2 text-xs font-bold text-slate-700">
+                  Trang {safeCurrentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={safeCurrentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="mobile-touch-target min-h-9 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:border-emerald-300 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Sau
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Modal Xác nhận Xóa Nhân sự */}
+      {deleteConfirmUser && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-user-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setDeleteConfirmUser(null);
+          }}
+        >
+          <div className="w-full max-w-md rounded-xl border border-rose-200 bg-white p-5 shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 id="delete-user-modal-title" className="text-sm font-black text-rose-700">
+                Xác nhận xóa tài khoản
+              </h3>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmUser(null)}
+                className="mobile-touch-target min-h-11 min-w-11 text-slate-400 hover:text-slate-700"
+                aria-label="Đóng hộp thoại"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="py-4 text-xs text-slate-600 leading-relaxed">
+              Bạn có chắc chắn muốn xóa tài khoản <b className="text-slate-800">{deleteConfirmUser.name}</b> (<code>@{deleteConfirmUser.username}</code>)?
+              <p className="mt-2 text-slate-500">Dữ liệu hồ sơ nghiệp vụ và lịch sử thao tác của nhân sự này vẫn được lưu trữ nguyên vẹn trên hệ thống.</p>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmUser(null)}
+                className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={deletingUsername === deleteConfirmUser.username}
+                onClick={() => void executeDeleteUser()}
+                className="mobile-touch-target min-h-11 rounded-lg bg-rose-600 px-4 py-2 text-xs font-black text-white hover:bg-rose-500 disabled:opacity-50"
+              >
+                {deletingUsername === deleteConfirmUser.username ? 'Đang xóa…' : 'Xác nhận xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Reset Mật khẩu */}
+      {resetPasswordUser && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-password-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setResetPasswordUser(null);
+          }}
+        >
+          <form
+            onSubmit={executeResetPassword}
+            className="w-full max-w-md rounded-xl border border-amber-200 bg-white p-5 shadow-xl"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 id="reset-password-modal-title" className="text-sm font-black text-amber-800">
+                Đặt lại mật khẩu nhân sự
+              </h3>
+              <button
+                type="button"
+                onClick={() => setResetPasswordUser(null)}
+                className="mobile-touch-target min-h-11 min-w-11 text-slate-400 hover:text-slate-700"
+                aria-label="Đóng hộp thoại"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="py-4 space-y-3">
+              <p className="text-xs text-slate-600">
+                Nhập mật khẩu mới cho <b className="text-slate-800">{resetPasswordUser.name}</b> (<code>@{resetPasswordUser.username}</code>):
+              </p>
+              <label className="block">
+                <span className="mb-1 block text-[11px] font-black text-slate-500">Mật khẩu mới (tối thiểu 8 ký tự) *</span>
+                <input
+                  type="password"
+                  required
+                  autoFocus
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Nhập mật khẩu mới..."
+                  className={inputClass}
+                />
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setResetPasswordUser(null)}
+                className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={resettingUsername === resetPasswordUser.username || newPassword.length < 8}
+                className="mobile-touch-target min-h-11 rounded-lg bg-amber-600 px-4 py-2 text-xs font-black text-white hover:bg-amber-500 disabled:opacity-50"
+              >
+                {resettingUsername === resetPasswordUser.username ? 'Đang lưu…' : 'Lưu mật khẩu'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

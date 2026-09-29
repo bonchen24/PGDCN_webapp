@@ -111,9 +111,9 @@ function displayUser(user: PcnUserAccount): string {
 
 function FormField({ label, field, error, wide, required = false, children }: { label: string; field: string; error?: string; wide?: boolean; required?: boolean; children: React.ReactNode }) {
   return <label className={`block min-w-0 ${wide ? 'lg:col-span-2' : ''}`}>
-    <span className="mb-1 block text-[9px] font-black uppercase tracking-wide text-slate-400">{label}{required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span>
+    <span className="mb-1 block text-xs font-bold text-slate-600">{label}{required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span>
     {children}
-    {error && <span className="mt-1 block text-[9px] font-bold text-rose-600">{error}</span>}
+    {error && <span className="mt-1 block text-[11px] font-bold text-rose-600">{error}</span>}
     <span className="sr-only">Mã trường {field}</span>
   </label>;
 }
@@ -148,7 +148,7 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
     });
   };
 
-  const controlClass = 'min-h-9 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-slate-100';
+  const controlClass = 'mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs md:text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-slate-100';
   const isRequired = (field: string) => FORM_REQUIRED_FIELDS[kind].includes(field);
   const text = (field: string, options?: { wide?: boolean; multiline?: boolean }) => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]} wide={options?.wide} required={isRequired(field)}>
     {options?.multiline ? <textarea required={isRequired(field)} aria-required={isRequired(field) || undefined} value={toLines(form[field])} onChange={(event) => setField(field, event.target.value)} rows={2} disabled={!canEdit || isSaving} className={controlClass} /> : <input required={isRequired(field)} aria-required={isRequired(field) || undefined} value={String(form[field] ?? '')} onChange={(event) => setField(field, event.target.value)} disabled={!canEdit || isSaving} className={controlClass} />}

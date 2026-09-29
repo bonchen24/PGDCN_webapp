@@ -107,6 +107,39 @@
     --pcn-scrollbar-thumb: #94a3b8;
     --pcn-scrollbar-track: transparent;
     --app-font-scale: 0.9;
+
+    --status-waiting-bg: #f8fafc;
+    --status-waiting-fg: #475569;
+    --status-inlab-bg: #eff6ff;
+    --status-inlab-fg: #1d4ed8;
+    --status-returned-bg: #f0fdf4;
+    --status-returned-fg: #15803d;
+    --status-overdue-bg: #fef2f2;
+    --status-overdue-fg: #b91c1c;
+
+    --tester-1-bg: #eff6ff;
+    --tester-1-fg: #1d4ed8;
+    --tester-2-bg: #ecfdf5;
+    --tester-2-fg: #047857;
+    --tester-3-bg: #fef3c7;
+    --tester-3-fg: #b45309;
+    --tester-4-bg: #f3e8ff;
+    --tester-4-fg: #7e22ce;
+    --tester-5-bg: #fce7f3;
+    --tester-5-fg: #be185d;
+    --tester-6-bg: #e0f2fe;
+    --tester-6-fg: #0369a1;
+    --tester-7-bg: #ffedd5;
+    --tester-7-fg: #c2410c;
+    --tester-8-bg: #f1f5f9;
+    --tester-8-fg: #334155;
+    --tester-other-bg: #f8fafc;
+    --tester-other-fg: #64748b;
+
+    --machine-inv-bg: #f0fdf4;
+    --machine-inv-fg: #15803d;
+    --machine-mono-bg: #f8fafc;
+    --machine-mono-fg: #334155;
   }
 
   /* Compact density and a clean 90% type scale apply to authenticated app surfaces. */
@@ -373,21 +406,15 @@
     }
   }
 
-  .mobile-safe-bottom {
-    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
-  }
-
-  /* Drafting action bars reserve the mobile nav space only on compact viewports. */
-  .drafting-sticky-action-bar {
-    padding-bottom: 0.75rem;
-  }
-
-  .drafting-focus-target {
-    scroll-margin-top: 6rem;
-    scroll-margin-bottom: calc(10rem + env(safe-area-inset-bottom));
-  }
-
   @media (max-width: 767px) {
+    .mobile-safe-bottom {
+      padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    }
+
+    .pgdcn-toolbar-nowrap {
+      flex-wrap: wrap !important;
+    }
+
     .drafting-sticky-action-bar {
       padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
     }

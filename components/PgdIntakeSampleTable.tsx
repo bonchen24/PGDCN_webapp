@@ -61,7 +61,6 @@ export default function PgdIntakeSampleTable({ productGroup, rows, onChange, dis
       <button type="button" onClick={() => onChange([...rows, defaultSample(rows.length, productGroup)])} disabled={disabled} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-black text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"><Plus size={13} aria-hidden="true" /> Thêm mẫu</button>
     </div>
 
-    <datalist id={sampleCatalogId}>{options.map((option) => <option key={option.id} value={option.label}>{option.id}</option>)}</datalist>
     <div className="mobile-scroll-x mt-3 overflow-x-auto rounded-lg border border-slate-200">
       <table className="w-full min-w-[1040px] border-collapse text-left" aria-label="Danh sách mẫu PGD">
         <thead className="bg-slate-50 text-[11px] font-black uppercase tracking-wide text-slate-500">
@@ -80,7 +79,32 @@ export default function PgdIntakeSampleTable({ productGroup, rows, onChange, dis
           {rows.length === 0 && <tr><td colSpan={8} className="px-3 py-5 text-center text-[11px] text-slate-500">Chưa có mẫu. Bấm “Thêm mẫu” để lập bảng mẫu.</td></tr>}
           {rows.map((row, index) => <tr key={row.id || `${row.sampleCode}-${index}`} className="align-top">
             <td className="px-2 py-2"><input aria-label={`Mã mẫu dòng ${index + 1}`} required value={row.sampleCode} onChange={(event) => updateRow(index, { sampleCode: event.target.value })} className={`${inputClassName} ${duplicateCodes.has(String(row.sampleCode || '').trim().toLocaleUpperCase()) ? 'border-rose-400 bg-rose-50' : ''}`} disabled={disabled} />{duplicateCodes.has(String(row.sampleCode || '').trim().toLocaleUpperCase()) && <p role="alert" className="mt-1 text-[11px] font-bold text-rose-700">Mã mẫu trùng</p>}</td>
-            <td className="px-2 py-2"><input aria-label={`Tên/mô tả mẫu dòng ${index + 1}`} required list={sampleCatalogId} value={row.sampleTypeLabel} onChange={(event) => updateSampleLabel(index, event.target.value)} className={inputClassName} disabled={disabled} /></td>
+            <td className="px-2 py-2">
+              <div className="space-y-1">
+                {options.length > 0 && (
+                  <select
+                    aria-label={`Chọn danh mục mẫu dòng ${index + 1}`}
+                    value={row.catalogOptionId || (row.customLabel ? '__custom__' : '')}
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      if (val === '__custom__') {
+                        updateRow(index, { catalogOptionId: undefined, customLabel: row.sampleTypeLabel || 'Mẫu khác' });
+                      } else {
+                        const opt = options.find((o) => o.id === val);
+                        if (opt) updateRow(index, { sampleTypeLabel: opt.label, catalogOptionId: opt.id, customLabel: undefined });
+                      }
+                    }}
+                    className="w-full rounded border border-slate-200 bg-slate-50 px-1.5 py-1 text-[10px] text-slate-700"
+                    disabled={disabled}
+                  >
+                    <option value="">-- Danh mục mẫu chuẩn --</option>
+                    {options.map((opt) => <option key={opt.id} value={opt.id}>{opt.label} ({opt.id})</option>)}
+                    <option value="__custom__">Mẫu khác</option>
+                  </select>
+                )}
+                <input aria-label={`Tên/mô tả mẫu dòng ${index + 1}`} required value={row.sampleTypeLabel} onChange={(event) => updateSampleLabel(index, event.target.value)} className={inputClassName} disabled={disabled} />
+              </div>
+            </td>
             <td className="px-2 py-2"><input aria-label={`Số lượng mẫu dòng ${index + 1}`} required type="number" min="0.001" step="any" value={row.quantity} onChange={(event) => updateRow(index, { quantity: Number(event.target.value) })} className={inputClassName} disabled={disabled} /></td>
             <td className="px-2 py-2"><input aria-label={`Đơn vị mẫu dòng ${index + 1}`} required value={row.unit || ''} onChange={(event) => updateRow(index, { unit: event.target.value })} className={inputClassName} disabled={disabled} /></td>
             <td className="px-2 py-2"><select aria-label={`Phân loại mẫu dòng ${index + 1}`} required value={row.disposition} onChange={(event) => updateRow(index, { disposition: event.target.value as PgdIntakeSampleDraft['disposition'] })} className={inputClassName} disabled={disabled}><option value="RETAINED">Mẫu lưu</option><option value="LAB">Gửi PTN</option></select></td>
