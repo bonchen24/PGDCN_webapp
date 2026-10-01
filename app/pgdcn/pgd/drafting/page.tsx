@@ -17,7 +17,19 @@ function templateKind(value: string | string[] | undefined): PgdDocumentTemplate
   return candidate && TEMPLATE_KINDS.has(candidate as PgdDocumentTemplateKind) ? candidate as PgdDocumentTemplateKind : undefined;
 }
 
-export default function PgdDraftingPage({ searchParams }: { searchParams?: { requestId?: string | string[]; requirementCode?: string | string[]; templateKind?: string | string[]; returnTo?: string | string[] } }) {
+type PgdDraftingPageParams = {
+  searchParams?: {
+    requestId?: string | string[];
+    requirementCode?: string | string[];
+    templateKind?: string | string[];
+    returnTo?: string | string[];
+  };
+};
+
+export default async function PgdDraftingPage(props: {
+  searchParams?: Promise<PgdDraftingPageParams['searchParams']>;
+}) {
+  const searchParams = props.searchParams ? await props.searchParams : undefined;
   return <PgdcnAppShell
     initialDomain="PGD"
     initialPgdDraftingOpen={true}

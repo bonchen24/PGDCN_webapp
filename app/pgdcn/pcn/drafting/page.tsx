@@ -21,7 +21,20 @@ function getDraftKind(value: string | string[] | undefined): PcnDraftFormKind | 
   return generatedKind && draftKinds.has(generatedKind as PcnDraftFormKind) ? generatedKind as PcnDraftFormKind : undefined;
 }
 
-export default function PcnDraftingPage({ searchParams }: { searchParams?: { dossierId?: string | string[]; requirementId?: string | string[]; node?: string | string[]; kind?: string | string[]; returnTo?: string | string[] } }) {
+type PcnDraftingPageParams = {
+  searchParams?: {
+    dossierId?: string | string[];
+    requirementId?: string | string[];
+    node?: string | string[];
+    kind?: string | string[];
+    returnTo?: string | string[];
+  };
+};
+
+export default async function PcnDraftingPage(props: {
+  searchParams?: Promise<PcnDraftingPageParams['searchParams']>;
+}) {
+  const searchParams = props.searchParams ? await props.searchParams : undefined;
   return <PgdcnAppShell
     initialDomain="PCN"
     initialPcnDraftingOpen={true}

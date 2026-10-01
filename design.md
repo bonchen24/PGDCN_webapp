@@ -1755,3 +1755,19 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
   - Từng nhóm API lần lượt di chuyển: Auth & Người dùng -> Nghiệp vụ PCN/PGD -> Sinh tài liệu DOCX/PDF & AI -> Cập nhật test contract -> Xóa bỏ [server.ts](file:///e:/CODING/PGDCN_webapp/server.ts).
 
 
+### 5A.38. Nâng cấp phiên bản Next.js 16.3.7 Stable (Turbopack Default) — 2026-09-30
+
+- **Phiên bản nâng cấp**: Nâng cấp framework Next.js lên bản stable mới nhất `next@16.3.7` (tag `latest`, không dùng canary/beta).
+- **Dependency Resolution**:
+  - Giữ vững `react` và `react-dom` ở phiên bản `^19.0.0` (và `@types/react`, `@types/react-dom` `^19.0.0`).
+  - Thiết lập chuẩn `overrides` trong `package.json` cho `lucide-react`, `sonner`, `use-sync-external-store` để liên kết đồng bộ peer dependencies với `$react` và `$react-dom`, giải quyết triệt để xung đột ERESOLVE mà không dùng `--force` hay `--legacy-peer-deps`.
+- **Đồng bộ Breaking Changes & App Router Compatibility**:
+  - `searchParams` bất đồng bộ: Cập nhật `PcnDraftingPage` (`app/pgdcn/pcn/drafting/page.tsx`) và `PgdDraftingPage` (`app/pgdcn/pgd/drafting/page.tsx`) để nhận `searchParams?: Promise<...>` và xử lý `await` an toàn trong môi trường Server Components của Next.js 16, đồng thời giữ nguyên hợp đồng kiểm thử tĩnh (`test/drafting-route-return-context.test.ts`).
+  - Turbopack Production Engine: Next.js 16 kích hoạt mặc định Turbopack cho `next build`. Build tối ưu thành công 100% (41/41 routes static & dynamic).
+  - Launchers & Docker Production: Bảo đảm tính tương thích của `scripts/run-next-dev.cjs` (`npm run dev:next`), `scripts/run-next-start.cjs` (`npm start`), và môi trường Docker Alpine `node:22-alpine` (`npm ci --include=dev`, `npm run build`), port 2357 hoạt động trơn tru.
+- **Kiểm chứng toàn diện**:
+  - `npm run typecheck`: 0 lỗi.
+  - `npm run test:pcn`: 944/944 pass.
+  - `npm run build`: Hoàn tất thành công với Turbopack.
+  - Runtime smoke test: Phản hồi HTTP 200 cho `/`, `/api/health`, `/api/db/health`, `/pgdcn/pcn`, `/pgdcn/pgd`, tĩnh assets CSS/images load chuẩn xác.
+  - Docker Production Container: Build và khởi chạy thành công trên nền Node 22 Alpine, không crash native dependencies (`@resvg/resvg-js`).

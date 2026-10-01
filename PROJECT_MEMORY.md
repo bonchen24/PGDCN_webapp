@@ -6,6 +6,22 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-09-30 — Nâng cấp toàn diện Next.js 16.3.7 Stable (Turbopack Default)
+
+- **Nâng cấp công nghệ**:
+  - `next@^16.3.7` (tag `latest`, không dùng canary/beta), `react@^19.0.0`, `react-dom@^19.0.0`, `@types/react@^19.0.0`, `@types/react-dom@^19.0.0`.
+  - Thiết lập chuẩn `overrides` trong `package.json` cho `lucide-react`, `sonner`, `use-sync-external-store` giải quyết triệt để peer dependency conflict với React 19 mà không dùng `--force` hay `--legacy-peer-deps`.
+- **Đồng bộ Breaking Changes & App Router**:
+  - Chuyển `PcnDraftingPage` (`app/pgdcn/pcn/drafting/page.tsx`) và `PgdDraftingPage` (`app/pgdcn/pgd/drafting/page.tsx`) sang xử lý `searchParams` bất đồng bộ (`await searchParams`), tương thích hoàn toàn với cơ chế Server Components của Next.js 16 mà vẫn bảo toàn hợp đồng kiểm thử tĩnh (`test/drafting-route-return-context.test.ts`).
+  - Next.js 16 mặc định sử dụng engine Turbopack cho `next build`.
+  - Giữ vững toàn bộ cấu hình `next.config.mjs` (`serverExternalPackages: ['@resvg/resvg-js']`, `.temp` isolation trên Windows) và các launcher scripts (`scripts/run-next-dev.cjs`, `scripts/run-next-start.cjs`).
+- **Kết quả kiểm chứng**:
+  - `npm run typecheck`: **0 lỗi**.
+  - `npm run test:pcn`: **944/944 pass**.
+  - `npm run build`: Hoàn thành thành công 100% với Next.js 16.3.7 Turbopack.
+  - Smoke test runtime (dev & prod): HTTP 200 cho `/`, `/pgdcn/pcn`, `/pgdcn/pgd`, `/api/health`, `/api/db/health`, static assets load ổn định.
+  - Docker Production Build: Container xây dựng và khởi chạy trơn tru trên `node:22-alpine` (cổng 2357).
+
 ## Cập nhật 2026-09-10 — Chuẩn hóa ngày tháng hành chính trong báo cáo
 
 - Đã thống nhất phạm vi thay đổi chỉ áp dụng cho câu ngày tháng hành chính tiếng Việt trong báo cáo (`Hà Nội, ngày … tháng … năm …`); formatter ngày dùng toàn hệ thống `dd/mm/yyyy` không thay đổi.

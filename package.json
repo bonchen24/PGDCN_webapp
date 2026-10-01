@@ -6,8 +6,12 @@
   "scripts": {
     "dev": "node ./scripts/native-dev-pcn.cjs",
     "dev:pcn": "node ./scripts/native-dev-pcn.cjs",
+    "dev:next": "node ./scripts/run-next-dev.cjs",
+    "dev:server": "node ./scripts/native-dev-pcn.cjs",
     "build": "next build",
-    "start": "node --require ./scripts/native-dev-preload.cjs ./node_modules/tsx/dist/cli.mjs server.ts",
+    "start": "node ./scripts/run-next-start.cjs",
+    "start:next": "node ./scripts/run-next-start.cjs",
+    "start:server": "node --require ./scripts/native-dev-preload.cjs ./node_modules/tsx/dist/cli.mjs server.ts",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:pcn",
@@ -48,12 +52,12 @@
     "mammoth": "^1.12.0",
     "motion": "^12.42.2",
     "multer": "^2.2.0",
-    "next": "^14.2.35",
+    "next": "^16.3.7",
     "pdf-lib": "^1.17.1",
     "pg": "^8.16.3",
     "pizzip": "3.1.7",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "sonner": "1.4.3",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
@@ -70,10 +74,22 @@
     "@types/multer": "^2.2.0",
     "@types/node": "^22.14.0",
     "@types/pg": "^8.15.5",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "esbuild": "^0.28.1",
     "tsx": "^4.22.5",
     "typescript": "~5.8.2"
+  },
+  "overrides": {
+    "lucide-react": {
+      "react": "$react"
+    },
+    "sonner": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    },
+    "use-sync-external-store": {
+      "react": "$react"
+    }
   }
 }
