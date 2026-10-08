@@ -5,7 +5,7 @@ import test from 'node:test';
 const personalPanelSource = fs.readFileSync(new URL('../components/PcnPersonalSettingsPanel.tsx', import.meta.url), 'utf8');
 const assistantSource = fs.readFileSync(new URL('../components/PcnAssistantView.tsx', import.meta.url), 'utf8');
 const ocrSource = fs.readFileSync(new URL('../components/PcnOcrPanel.tsx', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const personalApiSource = fs.readFileSync(new URL('../utils/pcnPersonalSettingsApi.ts', import.meta.url), 'utf8');
 const personalApiPath = new URL('../utils/pcnPersonalSettingsApi.ts', import.meta.url);
 const credentialsPath = new URL('../utils/pcnGeminiCredentials.ts', import.meta.url);

@@ -10,7 +10,7 @@ import {
 } from '../utils/pcnDossierPackage.ts';
 import { getPcnDossierPackageUrl } from '../utils/pcnDossierPackageApi.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const packageSource = fs.readFileSync(new URL('../utils/pcnDossierPackage.ts', import.meta.url), 'utf8');
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
 const detailSource = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');

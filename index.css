@@ -101,12 +101,24 @@
 }
 
 @layer components {
+  section[role="dialog"] > header > div:first-child > span[aria-hidden="true"] > span.text-sm.font-black {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+    overflow: hidden;
+    font-size: 0 !important;
+    line-height: 0;
+    background-color: currentColor;
+    -webkit-mask: var(--pgdcn-workflow-modal-file-icon) center / contain no-repeat;
+    mask: var(--pgdcn-workflow-modal-file-icon) center / contain no-repeat;
+  }
   :root {
     --pcn-focus-ring: #2563eb;
     --pcn-surface-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
     --pcn-scrollbar-thumb: #94a3b8;
     --pcn-scrollbar-track: transparent;
-    --app-font-scale: 0.9;
+    --app-font-scale: 1.0;
+    --pgdcn-workflow-modal-file-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z'/%3E%3Cpath d='M14 2v6h6'/%3E%3Cpath d='M8 13h8'/%3E%3Cpath d='M8 17h8'/%3E%3C/svg%3E");
 
     --status-waiting-bg: #f8fafc;
     --status-waiting-fg: #475569;
@@ -180,17 +192,17 @@
 
   .app-compact [class~="text-[8px]"],
   .pcn-compact [class~="text-[8px]"] {
-    font-size: calc(0.5rem * var(--app-font-scale)) !important;
+    font-size: max(0.6875rem, calc(0.5rem * var(--app-font-scale))) !important;
   }
 
   .app-compact [class~="text-[9px]"],
   .pcn-compact [class~="text-[9px]"] {
-    font-size: calc(0.5625rem * var(--app-font-scale)) !important;
+    font-size: max(0.6875rem, calc(0.5625rem * var(--app-font-scale))) !important;
   }
 
   .app-compact [class~="text-[10px]"],
   .pcn-compact [class~="text-[10px]"] {
-    font-size: calc(0.625rem * var(--app-font-scale)) !important;
+    font-size: max(0.6875rem, calc(0.625rem * var(--app-font-scale))) !important;
   }
 
   .app-compact [class~="text-[11px]"],
@@ -204,7 +216,7 @@
     min-width: 0;
     max-width: 100%;
     flex-wrap: nowrap;
-    align-items: flex-end;
+    align-items: center;
     gap: 0.5rem;
     overflow-x: auto;
     overscroll-behavior-x: contain;
@@ -229,9 +241,15 @@
   }
 
   .pgdcn-toolbar-nowrap > .pgdcn-toolbar-count,
-  .pgdcn-toolbar-nowrap > .pgdcn-toolbar-actions {
+  .pgdcn-toolbar-nowrap > .pgdcn-toolbar-actions,
+  .pgdcn-toolbar-nowrap > .pgdcn-toolbar-pills,
+  .pgdcn-toolbar-nowrap > .pgdcn-toolbar-group {
     min-width: max-content;
     flex: 0 0 auto;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.375rem;
   }
 
   .pgdcn-toolbar-nowrap > label,
@@ -386,13 +404,26 @@
     line-height: 1.4;
   }
 
-@media screen and (orientation: landscape) and (pointer: coarse) and (max-height: 600px) and (max-width: 1024px) {
+  /* Desktop protection: Never show mobile orientation prompt on desktop */
+  html.is-desktop #portrait-only-message,
+  :root.is-desktop #portrait-only-message,
+  @media (hover: hover) and (pointer: fine) {
+    #portrait-only-message {
+      display: none !important;
+    }
     #root {
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+  }
+
+  @media screen and (orientation: landscape) and (pointer: coarse) and (hover: none) and (max-height: 600px) and (max-width: 1024px) {
+    html:not(.is-desktop) #root {
       visibility: hidden;
       pointer-events: none;
     }
 
-    #portrait-only-message {
+    html:not(.is-desktop) #portrait-only-message {
       position: fixed;
       z-index: 2147483647;
       inset: 0;

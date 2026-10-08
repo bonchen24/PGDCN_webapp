@@ -19,6 +19,10 @@ import {
   List,
   Menu,
   Plus,
+  Search,
+  SlidersHorizontal,
+  ArrowUpDown,
+  ChevronDown,
   Send,
   ShieldCheck,
   UserRound,
@@ -351,6 +355,8 @@ function ProposalView({
   onOpenDossier: (dossier: CertificationDossier) => void;
 }) {
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [sortBy, setSortBy] = useState<'NEWEST' | 'LOT_DESC' | 'CODE_DESC'>('NEWEST');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [openForm, setOpenForm] = useState(false);
   const [proposalMinimized, setProposalMinimized] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -562,7 +568,7 @@ function ProposalView({
   const dossierByProposalId = useMemo(() => new Map(dossiers.map((dossier) => [dossier.proposalId, dossier])), [dossiers]);
   const visibleProposals = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
-    return proposals.filter((proposal) => {
+    const filtered = proposals.filter((proposal) => {
       const dossier = dossierByProposalId.get(proposal.id);
       if (initialDossierId && dossier?.id !== initialDossierId) return false;
       if (statusFilter && dossier?.status !== statusFilter) return false;
@@ -578,7 +584,19 @@ function ProposalView({
       ].filter(Boolean).join(' ').toLocaleLowerCase();
       return haystack.includes(normalizedQuery);
     });
-  }, [dossierByProposalId, fieldFilter, initialDossierId, proposals, query, statusFilter]);
+
+    return filtered.sort((a, b) => {
+      if (sortBy === 'LOT_DESC') {
+        const lotA = sampleLots?.find((l) => l.dossierId === a.dossierId)?.lotCode || '';
+        const lotB = sampleLots?.find((l) => l.dossierId === b.dossierId)?.lotCode || '';
+        return lotB.localeCompare(lotA);
+      }
+      if (sortBy === 'CODE_DESC') {
+        return (b.proposalCode || '').localeCompare(a.proposalCode || '');
+      }
+      return new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime();
+    });
+  }, [dossierByProposalId, fieldFilter, initialDossierId, proposals, query, statusFilter, sortBy, sampleLots]);
 
   // Quick filter counts
   const chipCounts = useMemo(() => {
@@ -586,28 +604,36 @@ function ProposalView({
     let qc4 = 0;
     let qc9 = 0;
     let intake = 0;
-    let awaitingDocs = 0;
+    let inProgress = 0;
+    let overdue = 0;
     let completed = 0;
+    const now = new Date();
 
     for (const p of proposals) {
       if (p.fieldCodes.includes('QC4' as any)) qc4++;
       if (p.fieldCodes.includes('QC9' as any)) qc9++;
       const d = dossierByProposalId.get(p.id);
       if (d) {
-        if (d.status === 'INTAKE_REVIEW') intake++;
-        else if (d.status === 'AWAITING_DOCUMENTS') awaitingDocs++;
+        if (d.status === 'INTAKE_REVIEW' || d.status === 'AWAITING_DOCUMENTS') intake++;
         else if (['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(d.status)) completed++;
+        else inProgress++;
+
+        if (d.targetDate && !['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(d.status)) {
+          const target = new Date(d.targetDate);
+          if (target < now) overdue++;
+        }
       }
     }
-    return { total, qc4, qc9, intake, awaitingDocs, completed };
+    return { total, qc4, qc9, intake, inProgress, overdue, completed };
   }, [proposals, dossierByProposalId]);
 
   return (
-    <div className="pcn-page-surface min-w-0 p-3 md:p-5 space-y-4 mobile-safe-bottom bg-slate-50/60">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="pcn-page-surface min-w-0 p-3 md:p-5 space-y-3.5 mobile-safe-bottom bg-slate-50/60">
+      {/* Title & Top Action */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-black text-slate-900">Quản lý Đề nghị</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Phòng Giám định - Chứng nhận và Phát triển thị trường · Giao diện hồ sơ dạng thẻ chuẩn phiếu kiểm tra DdT</p>
+          <p className="text-xs text-slate-500 mt-0.5">Phòng Giám định - Chứng nhận và Phát triển thị trường · Giao diện hồ sơ dạng thẻ chuẩn TVCI Lab</p>
         </div>
         <div className="flex items-center gap-2">
           {/* View switcher */}
@@ -620,7 +646,7 @@ function ProposalView({
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
-              title="Xem dạng thẻ chuẩn DdT"
+              title="Xem dạng thẻ chuẩn TVCI Lab"
             >
               <LayoutGrid size={13} />
               <span className="hidden sm:inline">Dạng thẻ</span>
@@ -643,117 +669,198 @@ function ProposalView({
           {!openForm && canEdit && (
             <button
               onClick={openProposalForm}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-black text-white shadow-3xs hover:bg-emerald-700 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-black text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
             >
-              <Plus size={14} /> Tạo Đề nghị
+              <Plus size={14} /> Nhận Phiếu / Tạo Đề nghị
             </button>
           )}
         </div>
       </div>
 
-      {/* DdT Style Quick Filter Chips */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => { setStatusFilter(''); setFieldFilter(''); }}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-            statusFilter === '' && fieldFilter === ''
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
-          }`}
-        >
-          Tất cả
-          <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
-            statusFilter === '' && fieldFilter === '' ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700'
-          }`}>
-            {chipCounts.total}
-          </span>
-        </button>
+      {/* Unified Search & Status Pills Filter Bar (TVCI Lab Standard) */}
+      <div data-testid="pcn-proposal-filters" className="pgdcn-toolbar-nowrap flex items-center gap-2">
+        {/* Search input with rounded-xl */}
+        <div className="pgdcn-toolbar-search relative flex-1 min-w-[240px] max-w-md">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          {!query && (
+            <span className="pointer-events-none absolute left-9 right-3 top-1/2 -translate-y-1/2 truncate text-xs text-slate-400">
+              Tìm mã PYC, số lô, mã hồ sơ, model, khách hàng...
+            </span>
+          )}
+          <input
+            type="text"
+            aria-label="Tìm Đề nghị"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 shadow-2xs"
+          />
+        </div>
 
-        <button
-          type="button"
-          onClick={() => { setFieldFilter(fieldFilter === 'QC4' ? '' : 'QC4'); }}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-            fieldFilter === 'QC4'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300'
-          }`}
-        >
-          QC4
-          <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
-            fieldFilter === 'QC4' ? 'bg-indigo-700 text-indigo-100' : 'bg-indigo-50 text-indigo-700'
-          }`}>
-            {chipCounts.qc4}
-          </span>
-        </button>
+        {/* Filter Pills - Single row */}
+        <div className="pgdcn-toolbar-pills flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => { setStatusFilter(''); setFieldFilter(''); }}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              statusFilter === '' && fieldFilter === ''
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            Tổng PYC
+            <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
+              statusFilter === '' && fieldFilter === '' ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {chipCounts.total}
+            </span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => { setFieldFilter(fieldFilter === 'QC9' ? '' : 'QC9'); }}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-            fieldFilter === 'QC9'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-300'
-          }`}
-        >
-          QC9
-          <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
-            fieldFilter === 'QC9' ? 'bg-indigo-700 text-indigo-100' : 'bg-indigo-50 text-indigo-700'
-          }`}>
-            {chipCounts.qc9}
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={() => { setStatusFilter(statusFilter === 'INTAKE_REVIEW' ? '' : 'INTAKE_REVIEW'); }}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              statusFilter === 'INTAKE_REVIEW'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            Chờ xử lý
+            <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
+              statusFilter === 'INTAKE_REVIEW' ? 'bg-amber-700 text-amber-100' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {chipCounts.intake}
+            </span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => { setStatusFilter(statusFilter === 'INTAKE_REVIEW' ? '' : 'INTAKE_REVIEW'); }}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-            statusFilter === 'INTAKE_REVIEW'
-              ? 'bg-amber-600 text-white shadow-xs'
-              : 'bg-white border border-slate-200 text-slate-600 hover:border-amber-300'
-          }`}
-        >
-          Tiếp nhận / Rà soát
-          <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
-            statusFilter === 'INTAKE_REVIEW' ? 'bg-amber-700 text-amber-100' : 'bg-amber-50 text-amber-700'
-          }`}>
-            {chipCounts.intake}
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={() => { setStatusFilter(statusFilter === 'SENT_TO_LAB' ? '' : 'SENT_TO_LAB'); }}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              statusFilter === 'SENT_TO_LAB'
+                ? 'bg-sky-600 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            Đang thử nghiệm
+            <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
+              statusFilter === 'SENT_TO_LAB' ? 'bg-sky-700 text-sky-100' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {chipCounts.inProgress}
+            </span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => { setStatusFilter(statusFilter === 'AWAITING_DOCUMENTS' ? '' : 'AWAITING_DOCUMENTS'); }}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-            statusFilter === 'AWAITING_DOCUMENTS'
-              ? 'bg-rose-600 text-white shadow-xs'
-              : 'bg-white border border-slate-200 text-slate-600 hover:border-rose-300'
-          }`}
-        >
-          Chờ tài liệu
-          <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
-            statusFilter === 'AWAITING_DOCUMENTS' ? 'bg-rose-700 text-rose-100' : 'bg-rose-50 text-rose-700'
-          }`}>
-            {chipCounts.awaitingDocs}
-          </span>
-        </button>
+          {chipCounts.overdue > 0 && (
+            <button
+              type="button"
+              onClick={() => { setStatusFilter(statusFilter === 'AWAITING_RESULTS' ? '' : 'AWAITING_RESULTS'); }}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                statusFilter === 'AWAITING_RESULTS'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'bg-white border border-rose-200 text-rose-700 hover:border-rose-300'
+              }`}
+            >
+              Quá hạn
+              <span className="rounded bg-rose-100 px-1.5 py-0.2 text-[10px] font-black text-rose-800">
+                {chipCounts.overdue}
+              </span>
+            </button>
+          )}
 
-        <button
-          type="button"
-          onClick={() => { setStatusFilter(statusFilter === 'APPROVED' ? '' : 'APPROVED'); }}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-            statusFilter === 'APPROVED'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'bg-white border border-slate-200 text-slate-600 hover:border-emerald-300'
-          }`}
-        >
-          Đã duyệt / Hoàn tất
-          <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-black ${
-            statusFilter === 'APPROVED' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-50 text-emerald-700'
-          }`}>
-            {chipCounts.completed}
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={() => { setFieldFilter(fieldFilter === 'QC4' ? '' : 'QC4'); }}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              fieldFilter === 'QC4'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            QC4
+            <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
+              fieldFilter === 'QC4' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {chipCounts.qc4}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setFieldFilter(fieldFilter === 'QC9' ? '' : 'QC9'); }}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              fieldFilter === 'QC9'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            QC9
+            <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
+              fieldFilter === 'QC9' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {chipCounts.qc9}
+            </span>
+          </button>
+
+          {/* Lọc nâng cao */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className={`inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                showAdvanced || (statusFilter && statusFilter !== 'INTAKE_REVIEW' && statusFilter !== 'SENT_TO_LAB')
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <SlidersHorizontal size={13} />
+              <span>Lọc nâng cao</span>
+              <ChevronDown size={13} className={`transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showAdvanced && (
+              <div className="absolute right-0 top-full z-30 mt-1.5 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg space-y-2.5">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Trạng thái hồ sơ</label>
+                  <select
+                    aria-label="Lọc trạng thái hồ sơ"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as PcnDossierStatus | '')}
+                    className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs outline-none"
+                  >
+                    <option value="">Tất cả trạng thái</option>
+                    {Object.entries(statusLabels).map(([status, label]) => (
+                      <option key={status} value={status}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Lĩnh vực</label>
+                  <select
+                    aria-label="Lọc Lĩnh vực"
+                    value={fieldFilter}
+                    onChange={(e) => setFieldFilter(e.target.value)}
+                    className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs outline-none"
+                  >
+                    <option value="">Tất cả Lĩnh vực</option>
+                    {fields.map((f) => (
+                      <option key={f.code} value={f.code}>{f.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sắp xếp */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none hover:border-slate-300 cursor-pointer shrink-0"
+          >
+            <option value="NEWEST">Mới nhất</option>
+            <option value="LOT_DESC">Số lô giảm dần</option>
+            <option value="CODE_DESC">Mã giảm dần</option>
+          </select>
+        </div>
       </div>
       {openForm && <>{/* data-testid="pcn-proposal-form-modal" aria-labelledby="pcn-proposal-modal-title" data-testid="pcn-proposal-modal-body" data-testid="pcn-proposal-modal-footer" focus-visible:ring */}<PgdcnWindowsWorkflowModal
         open={openForm}
@@ -860,12 +967,7 @@ function ProposalView({
 </section>
 </form>
       </PgdcnWindowsWorkflowModal></>}
-      <div data-testid="pcn-proposal-filters" className="pgdcn-toolbar-nowrap rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-        <label className="pgdcn-toolbar-search block"><span className="mb-1 block text-[9px] font-black text-slate-600">Tìm Đề nghị</span><input aria-label="Tìm Đề nghị" value={query} onChange={(event) => setQuery(event.target.value)} className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px] outline-none focus:border-emerald-400" /></label>
-        <label className="pgdcn-toolbar-filter block"><span className="mb-1 block text-[9px] font-black text-slate-600">Trạng thái</span><select aria-label="Lọc trạng thái hồ sơ" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as PcnDossierStatus | '')} className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="">Tất cả trạng thái</option>{Object.entries(statusLabels).map(([status, label]) => <option key={status} value={status}>{label}</option>)}</select></label>
-        <label className="pgdcn-toolbar-filter block"><span className="mb-1 block text-[9px] font-black text-slate-600">Lĩnh vực</span><select aria-label="Lọc Lĩnh vực" value={fieldFilter} onChange={(event) => setFieldFilter(event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"><option value="">Tất cả Lĩnh vực</option>{fields.map((field) => <option key={field.code} value={field.code}>{field.name}</option>)}</select></label>
-        <div className="pgdcn-toolbar-count flex items-center justify-end text-[10px] font-bold text-slate-500">{visibleProposals.length}/{proposals.length} Đề nghị</div>
-      </div>
+
       {initialDossierId && <div className="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[10px] font-bold text-indigo-800">Đang tập trung hồ sơ: {dossiers.find((dossier) => dossier.id === initialDossierId)?.dossierCode || initialDossierId}</div>}
       {proposals.length === 0 ? (
         <EmptyState title="Chưa có Đề nghị" description="Tiếp nhận Đề nghị từ khách hàng để tạo bộ hồ sơ chứng nhận." action={canEdit ? 'Tạo Đề nghị' : undefined} onAction={canEdit ? openProposalForm : undefined} />
@@ -967,7 +1069,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
   const clearCurrentUser = usePcnSessionStore((state) => state.clearCurrentUser);
   const pcn = usePcnStore();
   const resetPcn = usePcnStore((state) => state.reset);
-  const [pcnSessionChecked, setPcnSessionChecked] = useState(false);
+  const [pcnSessionChecked, setPcnSessionChecked] = useState(() => embedded || Boolean(usePcnSessionStore.getState().currentUser));
   const [activeSection, setActiveSection] = useState<PcnSection>(initialSection);
   const [selectedField, setSelectedField] = useState<string | undefined>();
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');

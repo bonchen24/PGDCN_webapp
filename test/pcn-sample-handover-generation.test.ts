@@ -21,7 +21,7 @@ import type {
   PcnSampleRoute,
 } from '../types.ts';
 
-const server = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const server = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const api = fs.readFileSync(new URL('../utils/pcnDocumentGenerationApi.ts', import.meta.url), 'utf8');
 const panel = fs.readFileSync(new URL('../components/PcnDocumentGenerationPanel.tsx', import.meta.url), 'utf8');
 const detail = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');

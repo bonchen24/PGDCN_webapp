@@ -26,7 +26,7 @@ test('inspector provides searchable checklist references and visual node actions
   assert.match(inspector, /Tìm tài liệu|Tìm kiếm/);
   assert.match(inspector, /type="checkbox"/);
   assert.match(inspector, /Nối tới/);
-  assert.match(inspector, /Xóa node/);
+  assert.match(inspector, /Xóa bước/);
   assert.match(inspector, /required/);
   assert.doesNotMatch(inspector, /<textarea/);
   assert.doesNotMatch(inspector, /JSON editor|JSON Editor/);
@@ -50,4 +50,21 @@ test('switching template models resets stale editor selection', () => {
   assert.match(editor, /modelKeyRef\.current !== modelKey/);
   assert.match(editor, /setSelectedNodeId\(undefined\)/);
   assert.match(editor, /setSelectedTransitionId\(undefined\)/);
+});
+test('canvas keeps horizontal scrolling on a local viewport around fixed-width content', () => {
+  assert.match(canvas, /<section[^>]*data-testid="pgdcn-dossier-template-canvas"[^>]*className="mobile-scroll-x min-w-0 max-w-full overflow-x-auto[^\"]*"/);
+  assert.match(canvas, /<div className="min-w-\[960px\] grid grid-cols-\[148px_repeat\(6,minmax\(150px,1fr\)\)\]/);
+  assert.doesNotMatch(canvas, /<section[^>]*data-testid="pgdcn-dossier-template-canvas"[^>]*className="[^\"]*min-w-\[960px\]/);
+});
+test('selected node inspector exposes lane and column placement controls', () => {
+  assert.match(inspector, /Vị trí trên lưu trình/);
+  assert.match(inspector, /const LANE_OPTIONS = \[[\s\S]*value: 'default'[\s\S]*value: 'intake'[\s\S]*value: 'preparation'[\s\S]*value: 'field'[\s\S]*value: 'lab'[\s\S]*value: 'review'[\s\S]*value: 'archive'/);
+  assert.match(inspector, /Vùng[\s\S]*<select[\s\S]*value=\{node\.laneId \|\| 'default'\}[\s\S]*LANE_OPTIONS\.map/);
+  assert.match(inspector, /Cột[\s\S]*<select[\s\S]*value=\{node\.column\}[\s\S]*>1<\/option>[\s\S]*>6<\/option>/);
+  assert.match(inspector, /props\.onChangeNode\(\{ laneId:/);
+  assert.match(inspector, /props\.onChangeNode\(\{ column:/);
+  assert.match(inspector, /Vùng[\s\S]*min-h-11/);
+  assert.match(inspector, /Cột[\s\S]*min-h-11/);
+  assert.match(inspector, /aria-label="Tìm tài liệu"/);
+  assert.match(inspector, /placeholder="Tìm tài liệu"/);
 });

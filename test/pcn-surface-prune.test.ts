@@ -35,7 +35,7 @@ test('PCN navigation contains active work projections plus Admin settings only',
 
 test('PCN runtime and server expose no Haimy or Cutover surface', () => {
   const workspace = read('components/PcnWorkspace.tsx');
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   const rbac = read('utils/pcnRbac.ts');
   assert.match(workspace, /Pcn(OperationsRegister|LabOperations|Assistant|DraftingWorkspace)View/);
   assert.doesNotMatch(workspace, /Pcn(Haimy|Cutover|Archive|Backup|DataIntegrity|AgentWorkspace|Historical)/);

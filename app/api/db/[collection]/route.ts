@@ -18,7 +18,7 @@ import {
 } from '../../../../lib/server/response.ts';
 
 type RouteContext = {
-  params: { collection: string } | Promise<{ collection: string }>;
+  params: Promise<{ collection: string }>;
 };
 
 export async function GET(request: NextRequest, context: RouteContext) {

@@ -1,26 +1,42 @@
 # AGENT INSTRUCTIONS & COMPLIANCE RULES
 
-## 1. NGUYÊN TẮC TỐI CAO (SINGLE SOURCE OF TRUTH)
-- **`design.md`** là tài liệu chuẩn duy nhất (Single Source of Truth) định nghĩa toàn bộ kiến trúc, dữ liệu, thiết kế giao diện (UI/UX Cards, Badge Tokens) và quy chuẩn mã nguồn cho dự án này.
-- Khi thực hiện bất kỳ yêu cầu phát triển hoặc chỉnh sửa nào, Agent **BẮT BUỘC** phải tham chiếu và tuân thủ tuyệt đối các quy định trong `design.md`.
+## 1. NGUYÊN TẮC CỐT LÕI (SSOT & PHẠM VI)
+- **`design.md`** là SSOT ở cấp thiết kế kiến trúc, nhưng **không phải dependency bắt buộc** của mọi Atomic Task.
+- Khẩu hiệu vận hành:
+  - `Local fix -> code first.`
+  - `System/design change -> consult design.md.`
+  - `Only persistent design decisions -> update design.md.`
 
-## 2. QUY TRÌNH PHÁT TRIỂN & CẬP NHẬT
-1. **Kiểm tra Spec**: Đối chiếu yêu cầu người dùng với `design.md`.
-2. **Cập nhật Document trước**: Nếu có thay đổi về luồng nghiệp vụ, schema hoặc UI, phải được người dùng xác nhận và cập nhật vào `design.md` trước.
-3. **Thực thi Code**: Sửa đổi code chuẩn xác theo `design.md`.
+## 2. QUY TRÌNH XỬ LÝ THEO PHẠM VI TASK
+1. **Atomic Task / Task cục bộ**:
+   - Xác định đúng phạm vi -> Đọc file code trực tiếp liên quan -> Sửa tối thiểu -> Test đúng phạm vi ảnh hưởng.
+   - Không đọc và không cập nhật `design.md`.
+2. **System Task / Thay đổi thiết kế**:
+   - Đối chiếu section liên quan trực tiếp trong `design.md`.
+   - Nếu có quyết định thiết kế lâu dài mới: Cập nhật `design.md`.
+   - Thực thi code theo chuẩn.
 
-## 3. CHÍNH SÁCH NẠP NGỮ CẢNH `design.md`
-- `design.md` vẫn là **nguồn chuẩn duy nhất**; không tạo hoặc duy trì một bản sao chuẩn thứ hai trong Obsidian.
-- Không đọc toàn bộ `design.md` theo mặc định. Trước tiên xác định phạm vi yêu cầu, tìm heading liên quan trong mục lục, rồi chỉ đọc mục đó và các mục phụ thuộc trực tiếp.
-- Định tuyến context mặc định:
-  - UI/UX, Card, Modal, Layout: mục 2–5.
-  - Data model, schema, persistence, API, RBAC, notification, backup: mục 6–7.
-  - Quy chuẩn mã nguồn: mục 8.
-  - DOCX, hình ảnh, PDF và KQTN: mục 9 và 11.
-  - Sync, local store và chẩn đoán dữ liệu: mục 10.
-- Nếu yêu cầu trải qua nhiều miền, chỉ nạp các nhóm tương ứng; không nạp các phần còn lại nếu không cần.
-- Khi phạm vi chưa rõ, chỉ đọc mục lục và danh sách heading trước để chọn context, không nạp toàn bộ tài liệu.
-- Obsidian chỉ được dùng như bản tham chiếu cá nhân tùy chọn, không phải nguồn để Agent quyết định khi coding.
+## 3. ĐIỀU KIỆN ĐỌC VÀ CẬP NHẬT `design.md`
+- **Chỉ đọc `design.md` khi task liên quan đến:**
+  1. Thay đổi kiến trúc hệ thống.
+  2. Thêm tính năng hoặc workflow mới.
+  3. Thay đổi logic nghiệp vụ/domain rule.
+  4. Thay đổi schema, model dữ liệu hoặc quan hệ dữ liệu quan trọng.
+  5. Thay đổi quy tắc mã hóa, trạng thái, quyền, routing.
+  6. Thay đổi shared component, shared UI contract hoặc pattern dùng chung.
+  7. Thay đổi template hoặc hành vi có ảnh hưởng nhiều module.
+  8. Yêu cầu hiện tại không đủ rõ và cần đối chiếu quyết định thiết kế đã chốt trước đó.
+- **Không đọc `design.md` cho các task cục bộ đã rõ yêu cầu:**
+  - Sửa CSS/layout, căn lề, wrap text, overflow.
+  - Sửa typo, label, text hiển thị.
+  - Sửa checkbox, modal, input cụ thể.
+  - Sửa bug trong một component/hàm đã xác định.
+  - Test hoặc sửa regression nhỏ; task chỉ tác động 1–2 file và không đổi contract hệ thống.
+- **Quy tắc nạp và cập nhật:**
+  - Chỉ đọc section liên quan trực tiếp, không đọc toàn bộ file.
+  - Không để nội dung cũ trong `design.md` lấn át yêu cầu mới nhất của người dùng. Nếu mâu thuẫn, ưu tiên yêu cầu mới và cập nhật lại `design.md` nếu là thay đổi thiết kế chính thức.
+  - **Không cập nhật `design.md` chỉ để ghi lại việc sửa bug hoặc hoàn thành task.** Chỉ cập nhật khi có quyết định thiết kế lâu dài.
+  - Obsidian chỉ là bản tham chiếu cá nhân tùy chọn, không phải nguồn quyết định khi coding.
 
 ## 4. NGÔN NGỮ GIAO TIẾP
 - **Luôn phản hồi bằng tiếng Việt** khi giao tiếp với người dùng.

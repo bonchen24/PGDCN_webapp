@@ -77,7 +77,7 @@ export default function PgdSidebar({
         aria-label={PGD_SECTION_LABELS[section]}
         aria-current={isActive ? 'page' : undefined}
         title={PGD_SECTION_LABELS[section]}
-        className={`group flex min-h-9 w-full items-center rounded-lg text-left transition-colors ${expanded ? 'gap-2 px-2.5' : 'justify-center px-1'} ${isActive ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-100'}`}
+        className={`group flex min-h-9 w-full items-center rounded-lg text-left transition-colors ${expanded ? 'gap-2 px-2.5' : 'justify-center px-1'} ${isActive ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-100'}`}
       >
         <Icon size={16} className={isActive ? 'text-white' : 'text-slate-400'} />
         {expanded && <span className="min-w-0 flex-1 truncate text-[11px] font-bold">{PGD_SECTION_LABELS[section]}</span>}

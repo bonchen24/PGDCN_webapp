@@ -10,6 +10,7 @@ import {
   PcnUserAccount,
   PcnWorkflowTemplate,
   IssuancePackage,
+  ReturnedTestResult,
 } from '@/types';
 import { getDocumentPayload, mapDocumentRow } from '@/lib/server/collections';
 import { isPcnSystemManager, isOrganizationLeader, getPcnDossierDeletionDenial } from '@/utils/pcnRbac';
@@ -104,4 +105,48 @@ export async function hardDeleteOwnedDocumentGraph(
   }
 
   return assets;
+}
+
+export async function assertPcnTechnicalReviewSubmissionReady(client: any, dossier: CertificationDossier): Promise<void> {
+  const requirementResult = await client.query(
+    `SELECT document_id, data FROM app_documents
+     WHERE collection_name = 'pcnDocumentRequirements'`,
+  );
+  const configuredRequirements = requirementResult.rows.map((row: any) => mapDocumentRow(row) as PcnDocumentRequirement);
+  const documentResult = await client.query(
+    `SELECT document_id, data FROM app_documents
+     WHERE collection_name = 'dossierDocuments' AND data->>'dossierId' = $1`,
+    [dossier.id],
+  );
+  const returnedResultResult = await client.query(
+    `SELECT document_id, data FROM app_documents
+     WHERE collection_name = 'returnedResults' AND data->>'dossierId' = $1`,
+    [dossier.id],
+  );
+  const hasConfirmedReturnedScan = returnedResultResult.rows.some((row: any) => {
+    const result = mapDocumentRow(row) as ReturnedTestResult;
+    return Boolean(result.fileAssetId && result.outcome !== 'PENDING' && result.isOfficial !== false);
+  });
+  const resolvedRequirementIds = hasConfirmedReturnedScan
+    ? getPcnDocumentRequirements(dossier.fieldCodes, configuredRequirements.length > 0 ? configuredRequirements : undefined)
+      .filter((requirement) => requirement.code === 'TEST_REPORT')
+      .map((requirement) => requirement.id)
+    : [];
+  const stageGateDenial = getPcnDossierStageGateDenial({
+    dossier,
+    nextStatus: 'WAITING_APPROVAL',
+    requirements: configuredRequirements.length > 0 ? configuredRequirements : undefined,
+    documents: documentResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierDocument),
+    documentWaivers: dossier.documentWaivers,
+    resolvedRequirementIds,
+  });
+  if (stageGateDenial) throw Object.assign(new Error(stageGateDenial), { statusCode: 409 });
+  const finalRequirements = getPcnDocumentRequirements(dossier.fieldCodes, configuredRequirements.length > 0 ? configuredRequirements : undefined)
+    .filter((requirement) => requirement.required && ['CERTIFICATE', 'DECISION'].includes(requirement.code));
+  const currentDocuments = documentResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierDocument);
+  const missingDraft = finalRequirements.find((requirement) => {
+    const document = currentDocuments.find((item) => item.requirementId === requirement.id);
+    return !(document?.status === 'PRESENT' && document.currentVersionId && document.versions.some((version) => version.assetId === document.currentVersionId));
+  });
+  if (missingDraft) throw Object.assign(new Error(`Phải có bản dự thảo ${missingDraft.code === 'CERTIFICATE' ? 'GCN' : 'QĐ'} trước khi trình bước 5.`), { statusCode: 409 });
 }

@@ -14,7 +14,7 @@ import {
 
 test('PCN template catalog is separate from the legacy DDT template catalog', () => {
   const source = fs.readFileSync(new URL('../utils/pcnTemplateCatalog.ts', import.meta.url), 'utf8');
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const panelSource = fs.readFileSync(new URL('../components/PcnDocumentGenerationPanel.tsx', import.meta.url), 'utf8');
 
   assert.ok(PCN_TEMPLATE_CATALOG.length >= 6);
@@ -45,7 +45,7 @@ test('PCN template import is exposed as a locked maintenance command', () => {
 });
 
 test('PCN template approval revalidates the complete private asset provenance', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const reviewRoute = serverSource.slice(
     serverSource.indexOf("app.post('/api/pcn/templates/:templateId/review'"),
     serverSource.indexOf("app.post('/api/pcn/templates/:templateId/annotate'"),

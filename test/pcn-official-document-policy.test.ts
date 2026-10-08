@@ -38,7 +38,7 @@ test('official source timestamp follows the newest issuance, dossier, or proposa
 });
 
 test('official generation has a session boundary, separate storage collections, and an explicit PDF capability gate', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const issuanceSource = fs.readFileSync(new URL('../components/PcnIssuanceView.tsx', import.meta.url), 'utf8');
 
   assert.match(serverSource, /\/api\/pcn\/issuance\/:issuanceId\/official-documents\/generate/);
@@ -59,7 +59,7 @@ test('official generation has a session boundary, separate storage collections, 
 });
 
 test('official generated pointers do not mutate issuance freshness metadata', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const generationRoute = serverSource.slice(
     serverSource.indexOf("app.post('/api/pcn/issuance/:issuanceId/official-documents/generate'"),
     serverSource.indexOf("app.post('/api/pcn/templates/import'"),
@@ -71,7 +71,7 @@ test('official generated pointers do not mutate issuance freshness metadata', ()
 });
 
 test('official generation serializes a package and scopes assets to the generated document', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const generationRoute = serverSource.slice(
     serverSource.indexOf("app.post('/api/pcn/issuance/:issuanceId/official-documents/generate'"),
     serverSource.indexOf("app.post('/api/pcn/templates/import'"),

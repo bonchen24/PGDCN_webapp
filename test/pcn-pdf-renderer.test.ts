@@ -22,7 +22,7 @@ test('official PDF renderer isolates each LibreOffice run with a temporary profi
 });
 
 test('official PDF route delegates to the renderer and never falls back to a hand-drawn PDF', () => {
-  const server = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const server = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const renderer = fs.readFileSync(new URL('../utils/pcnPdfRenderer.ts', import.meta.url), 'utf8');
   assert.match(server, /renderPcnDocxToPdf/);
   assert.match(renderer, /--headless/);
@@ -32,7 +32,7 @@ test('official PDF route delegates to the renderer and never falls back to a han
 });
 
 test('official PDF capability failures use a retryable 503 response', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const route = serverSource.slice(serverSource.indexOf("app.post('/api/pcn/issuance/:issuanceId/official-documents/generate'"), serverSource.indexOf("app.post('/api/pcn/templates/:templateId/review'"));
   assert.match(route, /normalizedMessage\.includes\(['"]chưa sẵn sàng['"]\)/);
   assert.match(route, /res\.status\(status\)\.json/);

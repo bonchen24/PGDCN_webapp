@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const schemaSource = fs.readFileSync(new URL('../sql/pcn-schema.sql', import.meta.url), 'utf8');
 
 test('bundle server boundary returns per-laboratory outcomes and preserves acknowledged dispatches', () => {

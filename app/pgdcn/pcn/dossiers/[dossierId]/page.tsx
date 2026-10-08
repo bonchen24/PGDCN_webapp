@@ -13,9 +13,17 @@ function getInitialNodeId(value: string | string[] | undefined): string | undefi
   return candidate && candidate.length <= 120 ? candidate : undefined;
 }
 
-export default function PcnDossierPage({ params, searchParams }: { params: { dossierId: string }; searchParams?: { tab?: string | string[]; node?: string | string[] } }) {
-  const initialDossierId = decodeURIComponent(params.dossierId);
-  const initialDossierTab = getInitialTab(searchParams?.tab);
-  const initialDossierNodeId = getInitialNodeId(searchParams?.node);
+export default async function PcnDossierPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ dossierId: string }>;
+  searchParams?: Promise<{ tab?: string | string[]; node?: string | string[] }>;
+}) {
+  const { dossierId } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const initialDossierId = decodeURIComponent(dossierId);
+  const initialDossierTab = getInitialTab(resolvedSearchParams?.tab);
+  const initialDossierNodeId = getInitialNodeId(resolvedSearchParams?.node);
   return <PgdcnAppShell initialDomain="PCN" initialPcnDossierId={initialDossierId} initialPcnDossierTab={initialDossierTab} initialPcnDossierNodeId={initialDossierNodeId} />;
 }

@@ -4,15 +4,21 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
+  ArrowUpDown,
   Bot,
   BadgeCheck,
   Building2,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   ClipboardCheck,
   ClipboardList,
+  Copy,
+  Edit3,
   FileCheck2,
   FilePlus2,
   FlaskConical,
+  Folder,
   FolderOpen,
   Layers,
   LayoutGrid,
@@ -21,9 +27,12 @@ import {
   Package,
   Menu,
   PackageCheck,
+  Plus,
+  Printer,
   RefreshCw,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
   Users,
   X,
 } from 'lucide-react';
@@ -680,78 +689,232 @@ function getPgdUserDisplayName(username: string | undefined, users: PcnUserAccou
   return users.find((user) => user.username.trim().toLowerCase() === normalized)?.name || username || 'Chưa phân công';
 }
 
-function RequestCard({ request, users, onOpen }: { request: import('../utils/pgdDomain').PgdInspectionRequest; users: PcnUserAccount[]; onOpen: () => void }) {
+function formatPgdDdMm(dateStr?: string): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month}`;
+}
+
+function RequestCard({
+  request,
+  users,
+  onOpen,
+}: {
+  request: import('../utils/pgdDomain').PgdInspectionRequest;
+  users: PcnUserAccount[];
+  onOpen: () => void;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const isDone = ['SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(request.status);
+  const sampleCount = request.quantity || 1;
+  const doneCount = isDone ? sampleCount : (request.status === 'LEADERSHIP_APPROVAL' ? sampleCount : 0);
+  const progressRatioLabel = isDone ? `${sampleCount}/${sampleCount} XONG` : `${doneCount}/${sampleCount} XONG`;
+  const progressPercent = isDone
+    ? 100
+    : request.status === 'LEADERSHIP_APPROVAL'
+    ? 80
+    : request.status === 'WAITING_LAB_RESULTS'
+    ? 60
+    : request.status === 'FIELD_INSPECTION'
+    ? 40
+    : request.status === 'CAPABILITY_REVIEW'
+    ? 20
+    : 10;
+
+  const receivedDdMm = formatPgdDdMm(request.registryMetadata?.receivedAt || request.createdAt);
+  const targetDdMm = formatPgdDdMm(request.inspectionScheduledAt);
+  const brandLabel = request.brand || (request.lotCode ? `LÔ: ${request.lotCode}` : '');
+
+  const handleCopyCode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(request.requestCode);
+      toast.success(`Đã sao chép mã ${request.requestCode}`);
+    }
+  };
+
   return (
-    <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all">
-      <div>
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-            <button
-              type="button"
-              onClick={onOpen}
-              className="mobile-touch-target min-h-11 inline-flex items-center gap-1 rounded-md bg-slate-900 px-2.5 py-0.5 font-mono text-[11px] font-black text-white shadow-3xs hover:bg-slate-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+    <div
+      data-testid="pgd-request-card"
+      onClick={() => setIsExpanded((prev) => !prev)}
+      className={`group relative flex flex-col justify-between rounded-2xl border bg-white p-3.5 shadow-2xs transition-all duration-200 cursor-pointer ${
+        isExpanded
+          ? 'border-blue-300 ring-2 ring-blue-100 shadow-md'
+          : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        {/* Compact Icon Box 24px */}
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded((prev) => !prev);
+          }}
+          className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 shadow-xs bg-slate-50 text-slate-500 border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors"
+          title={isExpanded ? 'Thu gọn' : 'Mở rộng tại chỗ'}
+        >
+          <FolderOpen size={11} strokeWidth={2.2} className="text-blue-600" />
+        </div>
+
+        {/* Info Column */}
+        <div className="min-w-0 flex-1">
+          {/* Top Line: Codes, Badges, and Action Toolbar */}
+          <div className="flex items-center justify-between gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onOpen(); }}
+                className="mobile-touch-target min-h-11 inline-flex items-center gap-1 font-black text-[11px] uppercase tracking-widest text-slate-800 font-mono tracking-tight hover:text-emerald-700 hover:underline transition-colors cursor-pointer"
+                title={`Mã PYC: ${request.requestCode}`}
+              >
+                {request.requestCode}
+              </button>
+
+              {request.registryMetadata?.registrationNumber ? (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onOpen(); }}
+                  className="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 font-mono text-[9px] font-bold text-blue-800 transition-colors hover:bg-blue-100"
+                  title={`Số ngoài: ${request.registryMetadata.registrationNumber}`}
+                >
+                  {request.registryMetadata.registrationNumber}
+                </button>
+              ) : request.catalogItemId ? (
+                <span className="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 font-mono text-[9px] font-bold text-blue-800">
+                  {request.catalogItemId}
+                </span>
+              ) : null}
+
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[8px] font-bold text-slate-600 border border-slate-200/50 shadow-xs">
+                {request.quantity} {request.unit || 'mẫu'}
+              </span>
+
+              {receivedDdMm && (
+                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[8px] font-bold text-slate-500 border border-slate-200/50 shadow-xs" title={`Ngày tiếp nhận: ${receivedDdMm}`}>
+                  {receivedDdMm}
+                </span>
+              )}
+
+              {targetDdMm && (
+                <span className="rounded border border-blue-100 bg-blue-50/80 px-1.5 py-0.5 text-[9px] font-black uppercase text-blue-700 shadow-xs" title={`Lịch hẹn/Hạn: ${targetDdMm}`}>
+                  {targetDdMm}
+                </span>
+              )}
+            </div>
+
+            {/* Quick Actions Icons */}
+            <div className="request-card-action-group flex items-center gap-0.5 shrink-0 bg-white p-0.5 rounded-lg border border-slate-100 shadow-xs">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onOpen(); }}
+                title="Mở hồ sơ chi tiết"
+                className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+              >
+                <Edit3 size={11} strokeWidth={2.2} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onOpen(); }}
+                title="In / Xem hồ sơ"
+                className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
+              >
+                <Printer size={11} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                title="Sao chép mã hồ sơ"
+                className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
+              >
+                <Copy size={11} strokeWidth={2} />
+              </button>
+              <div className="w-px h-3 bg-slate-200 mx-0.5" />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setIsExpanded((prev) => !prev); }}
+                title={isExpanded ? 'Thu gọn' : 'Mở rộng chi tiết'}
+                className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                {isExpanded ? <ChevronUp size={11} strokeWidth={2.5} /> : <ChevronDown size={11} strokeWidth={2.5} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Line 2: Customer / Company Name */}
+          <div className="mt-1">
+            <h3
+              onClick={(e) => { e.stopPropagation(); onOpen(); }}
+              className="cursor-pointer truncate text-[10px] font-bold text-slate-800 transition-colors hover:text-slate-900"
+              title={request.customerSnapshot.name}
             >
-              <Layers size={11} className="text-blue-400" />
-              {request.requestCode}
-            </button>
-            {request.registryMetadata?.registrationNumber && (
-              <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                Số ngoài: {request.registryMetadata.registrationNumber}
+              {request.customerSnapshot.name || 'CHƯA GẮN KHÁCH HÀNG'}
+            </h3>
+          </div>
+
+          {/* Line 3: Brand & Product info */}
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[9px] text-slate-600">
+            {brandLabel && (
+              <span className="rounded border border-blue-200/60 bg-blue-50 px-1.5 py-0.2 font-bold uppercase tracking-wider text-blue-900 text-[8px]">
+                {brandLabel}
+              </span>
+            )}
+            {request.productName && (
+              <span className="truncate text-slate-500 font-medium">
+                {request.productName}
               </span>
             )}
           </div>
-          <StatusBadge status={request.status} />
-        </div>
-
-        <div className="mt-2.5 space-y-1">
-          <div className="flex items-start gap-1.5">
-            <Building2 size={13} className="mt-0.5 shrink-0 text-slate-400" />
-            <h3 className="line-clamp-1 text-xs font-black text-slate-800" title={request.customerSnapshot.name}>
-              {request.customerSnapshot.name}
-            </h3>
-          </div>
-          <div className="flex items-start gap-1.5 text-slate-600">
-            <Package size={12} className="mt-0.5 shrink-0 text-slate-400" />
-            <span className="line-clamp-1 text-xs font-semibold" title={request.productName}>
-              {request.productName}
-            </span>
-          </div>
-          {request.inspectionLocation && (
-            <p className="text-[11px] text-slate-500 truncate" title={request.inspectionLocation}>
-              Địa điểm: {request.inspectionLocation}
-            </p>
-          )}
-        </div>
-
-        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-2 text-[11px]">
-          <span>
-            <b className="block text-slate-400 font-medium">Lô nhận dạng</b>
-            <span className="font-bold text-slate-700 truncate block">{request.lotCode || 'Chưa có'}</span>
-          </span>
-          <span>
-            <b className="block text-slate-400 font-medium">Số lượng</b>
-            <span className="font-bold text-slate-700 truncate block">{request.quantity} {request.unit || ''}</span>
-          </span>
-          <span>
-            <b className="block text-slate-400 font-medium">Phương thức</b>
-            <span className="font-bold text-blue-700 truncate block font-mono">{request.method || '—'}</span>
-          </span>
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
-        <div className="text-[11px] text-slate-500 truncate max-w-[150px]">
-          Phụ trách: <strong className="text-slate-700">{getPgdUserDisplayName(request.ownerUsername, users)}</strong>
+      {/* Accordion Detail Drawer */}
+      {isExpanded && (
+        <div className="mt-3 border-t border-slate-100 bg-slate-50/70 p-3 rounded-xl text-[11px] text-slate-600 space-y-2">
+          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <span>Chi tiết giám định & Thông tin lô</span>
+            <StatusBadge status={request.status} />
+          </div>
+
+          <div className="space-y-1.5 rounded-lg border border-slate-200/80 bg-white p-2.5">
+            <div className="flex items-start gap-1.5">
+              <Package size={13} className="mt-0.5 shrink-0 text-slate-400" />
+              <div>
+                <span className="font-bold text-slate-700">{request.productName}</span>
+                {request.lotCode && <span className="ml-1 text-slate-500 font-mono text-[10px]">(Lô: {request.lotCode})</span>}
+              </div>
+            </div>
+            {request.inspectionLocation && (
+              <p className="text-[11px] text-slate-500">
+                <b>Địa điểm:</b> {request.inspectionLocation}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 text-[10px]">
+              <span><b>Phương thức:</b> <span className="font-mono text-blue-700">{request.method || '—'}</span></span>
+              <span><b>Phụ trách:</b> <strong className="text-slate-700">{getPgdUserDisplayName(request.ownerUsername, users)}</strong></span>
+            </div>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onOpen}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-black text-white shadow-3xs hover:bg-blue-800 transition-colors cursor-pointer"
-        >
-          <FolderOpen size={13} />
-          Mở hồ sơ
-          <ArrowRight size={11} className="opacity-70" />
-        </button>
+      )}
+
+      {/* Row 4 (Bottom): Progress Bar & Status Text */}
+      <div className="mt-2.5 flex items-center justify-between gap-3 pt-1">
+        <div className="flex-1">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${
+                progressPercent > 0 ? 'bg-emerald-500' : 'bg-transparent'
+              }`}
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+        <span className="font-mono text-[11px] font-black text-slate-500 whitespace-nowrap">
+          {progressRatioLabel}
+        </span>
       </div>
     </div>
   );
@@ -765,49 +928,55 @@ function registryDocumentNumber(request: PgdInspectionRequest, kind: PgdRegistry
   return request.registryMetadata?.documents?.find((document) => document.kind === kind)?.number || '—';
 }
 
-function PgdRegisterTable({ requests, users, catalog, onOpen }: { requests: PgdInspectionRequest[]; users: PcnUserAccount[]; catalog: PgdCatalogItem[]; onOpen: (id: string) => void }) {
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+function PgdRegisterTable({
+  requests,
+  users,
+  catalog,
+  onOpen,
+  viewMode: controlledViewMode,
+  onViewModeChange,
+}: {
+  requests: PgdInspectionRequest[];
+  users: PcnUserAccount[];
+  catalog: PgdCatalogItem[];
+  onOpen: (id: string) => void;
+  viewMode?: 'card' | 'table';
+  onViewModeChange?: (mode: 'card' | 'table') => void;
+}) {
+  const [internalViewMode, setInternalViewMode] = useState<'card' | 'table'>('card');
+  const viewMode = controlledViewMode ?? internalViewMode;
+  const setViewMode = onViewModeChange ?? setInternalViewMode;
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm" aria-label="Sổ đăng ký PGD">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-black text-slate-800">Sổ đăng ký PGD</h2>
-          <p className="mt-0.5 text-[11px] text-slate-400">Danh sách hồ sơ phát sinh trong ứng dụng; mở dòng để lập biên bản và đóng gói.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* View switcher */}
-          <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-3xs">
-            <button
-              type="button"
-              onClick={() => setViewMode('card')}
-              className={`mobile-touch-target min-h-11 flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
-                viewMode === 'card'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Xem dạng thẻ chuẩn DdT"
-            >
-              <LayoutGrid size={13} />
-              <span className="hidden sm:inline">Dạng thẻ</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`mobile-touch-target min-h-11 flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
-                viewMode === 'table'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Xem bảng truyền thống"
-            >
-              <List size={13} />
-              <span className="hidden sm:inline">Dạng bảng</span>
-            </button>
-          </div>
-          <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-700">
-            {requests.length} hồ sơ
-          </span>
-        </div>
+    <section className="space-y-3" aria-label="Sổ đăng ký PGD">
+      <div className="sr-only">
+        <h2>Sổ đăng ký PGD</h2>
+        <p className="mt-0.5 text-[11px] text-slate-400">Danh sách hồ sơ phát sinh trong ứng dụng; mở dòng để lập biên bản và đóng gói.</p>
+        <button
+          type="button"
+          onClick={() => setViewMode('card')}
+          className={`mobile-touch-target min-h-11 flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+            viewMode === 'card'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+          title="Xem dạng thẻ chuẩn DdT"
+        >
+          <LayoutGrid size={13} />
+          <span>Dạng thẻ</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode('table')}
+          className={`mobile-touch-target min-h-11 flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+            viewMode === 'table'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+          title="Xem bảng truyền thống"
+        >
+          <List size={13} />
+          <span>Dạng bảng</span>
+        </button>
       </div>
 
       {requests.length === 0 ? (
@@ -1156,13 +1325,14 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
   const setCurrentUser = usePcnSessionStore((state) => state.setCurrentUser);
   const clearCurrentUser = usePcnSessionStore((state) => state.clearCurrentUser);
   const pgd = usePgdStore();
-  const [sessionChecked, setSessionChecked] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(() => embedded || Boolean(usePcnSessionStore.getState().currentUser));
   const [activeSection, setActiveSection] = useState<PgdSection>(initialDraftingOpen ? 'templates' : initialSection === 'intake' ? 'requests' : initialSection);
   const [intakeOpen, setIntakeOpen] = useState(initialSection === 'intake');
   const [intakeMinimized, setIntakeMinimized] = useState(false);
   const [intakeSaving, setIntakeSaving] = useState(false);
   const [docxSettingsOpen, setDocxSettingsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'QUEUE' | 'DATA'>('QUEUE');
+  const [registerViewMode, setRegisterViewMode] = useState<'card' | 'table'>('card');
   const [selectedRequestId, setSelectedRequestId] = useState<string>();
   const [draftingRequestId, setDraftingRequestId] = useState<string>();
   const [draftingRequirementCode, setDraftingRequirementCode] = useState<string>();
@@ -1178,6 +1348,8 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
   const [registerGroup, setRegisterGroup] = useState<'ALL' | PgdInspectionRequestInput['productGroup']>('ALL');
   const [registerCatalogItem, setRegisterCatalogItem] = useState<'ALL' | string>('ALL');
   const [registerStatus, setRegisterStatus] = useState<'ALL' | PgdInspectionStatus>('ALL');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [sortBy, setSortBy] = useState<'NEWEST' | 'OLDEST' | 'CODE'>('NEWEST');
   const hasPgdAccess = Boolean(currentUser && (isPgdSystemManager(currentUser) || currentUser.departmentScopes?.includes('PGD')));
 
   useEffect(() => {
@@ -1249,6 +1421,44 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
     };
   }), [pgd.catalog, pgd.users, visibleRequests]);
 
+  const pgdCounts = useMemo(() => {
+    const total = pgd.requests.length;
+    let pending = 0;
+    let inProgress = 0;
+    let done = 0;
+    let steel = 0;
+    let machinery = 0;
+    for (const req of pgd.requests) {
+      if (['DRAFT', 'CAPABILITY_REVIEW'].includes(req.status)) pending++;
+      else if (['FIELD_INSPECTION', 'WAITING_LAB_RESULTS', 'LEADERSHIP_APPROVAL'].includes(req.status)) inProgress++;
+      else if (['SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(req.status)) done++;
+
+      if (req.productGroup === 'STEEL_METAL') steel++;
+      else if (req.productGroup === 'MACHINERY_LINE') machinery++;
+    }
+    return { total, pending, inProgress, done, steel, machinery };
+  }, [pgd.requests]);
+
+  const sectionRequests = useMemo(() => {
+    const base = activeSection === 'requests' ? visibleRequests : pgd.requests;
+    const filtered = base.filter((request) => {
+      const matchGroup = registerGroup === 'ALL' || request.productGroup === registerGroup;
+      const matchCatalog = registerCatalogItem === 'ALL' || request.catalogItemId === registerCatalogItem;
+      const matchStatus = registerStatus === 'ALL' || request.status === registerStatus;
+      return matchGroup && matchCatalog && matchStatus;
+    });
+
+    return filtered.sort((a, b) => {
+      if (sortBy === 'OLDEST') {
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+      }
+      if (sortBy === 'CODE') {
+        return (a.requestCode || '').localeCompare(b.requestCode || '');
+      }
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+  }, [activeSection, visibleRequests, pgd.requests, registerGroup, registerCatalogItem, registerStatus, sortBy]);
+
   if (!sessionChecked) return <div className="flex min-h-[100dvh] items-center justify-center bg-slate-50 text-xs font-bold text-slate-700">Đang xác thực phiên làm việc...</div>;
   if (!currentUser) return <PgdLoginScreen />;
 
@@ -1271,17 +1481,298 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
   const logout = async () => { await clearPcnSession().catch(() => undefined); pgd.reset(); clearCurrentUser(); };
   const openCreateRequest = () => { openSection('requests'); setIntakeOpen(true); setIntakeMinimized(false); };
   const createDone = (id: string) => { setIntakeOpen(false); setIntakeMinimized(false); setSelectedRequestId(id); openSection('requests', true); if (embedded) router.push(`/pgdcn/pgd/dossiers/${encodeURIComponent(id)}`); };
-  const sectionRequests = activeSection === 'requests'
-    ? visibleRequests.filter((request) => (registerGroup === 'ALL' || request.productGroup === registerGroup) && (registerCatalogItem === 'ALL' || request.catalogItemId === registerCatalogItem) && (registerStatus === 'ALL' || request.status === registerStatus))
-    : pgd.requests;
+
   const statusCount = (status: PgdInspectionStatus) => pgd.requests.filter((request) => request.status === status).length;
-  const requestCreateAction = activeSection === 'requests' ? <div className="flex justify-end px-3 pt-3 md:px-5 md:pt-5"><button type="button" disabled={!canMutate} onClick={openCreateRequest} className="mobile-touch-target inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-3 text-[11px] font-black text-white shadow-sm hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"><FilePlus2 size={15} /> Tạo PYC</button></div> : null;
+  const requestCreateAction = null;
 
   const dashboard = <div className="space-y-4 p-3 md:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Phòng Giám định, Chứng nhận, Phát triển thị trường</div><h1 className="mt-1 text-xl font-black tracking-tight text-slate-900">Tổng quan hoạt động giám định</h1><p className="mt-1 text-[11px] text-slate-500">Từ PYC, năng lực, hiện trường, PTN đến phê duyệt và trả chứng thư.</p></div><button type="button" disabled={!canMutate} onClick={openCreateRequest} className="mobile-touch-target inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-3 text-[11px] font-black text-white shadow-sm hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"><FilePlus2 size={15} /> Tạo PYC</button></div><div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-8"><Metric label="Tổng hồ sơ" value={pgd.requests.length} /><Metric label="Chờ năng lực" value={statusCount('CAPABILITY_REVIEW')} tone="text-amber-600" /><Metric label="Đang hiện trường" value={statusCount('FIELD_INSPECTION')} tone="text-blue-600" /><Metric label="Chờ KQTN" value={statusCount('WAITING_LAB_RESULTS')} tone="text-orange-600" /><Metric label="Chờ duyệt" value={statusCount('LEADERSHIP_APPROVAL')} tone="text-indigo-600" /><Metric label="Đã ký" value={statusCount('SIGNED')} tone="text-emerald-600" /><Metric label="Đã trả" value={statusCount('RESULT_RETURNED')} tone="text-teal-600" /><Metric label="Đã lưu" value={statusCount('ARCHIVED')} tone="text-slate-600" /></div><div className="grid gap-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]"><section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"><div className="flex items-center justify-between gap-2"><div><h2 className="text-sm font-black text-slate-800">Hồ sơ gần đây</h2><p className="mt-0.5 text-[11px] text-slate-500">Mỗi thẻ dẫn về đúng một hồ sơ PGD.</p></div><button type="button" onClick={() => setActiveSection('requests')} className="mobile-touch-target inline-flex min-h-11 items-center text-[11px] font-black text-blue-600">Xem tất cả</button></div><div className="mt-3 grid gap-2 md:grid-cols-2">{pgd.requests.slice(0, 4).map((request) => <RequestCard key={request.id} request={request} users={pgd.users} onOpen={() => openRequest(request.id)} />)}{pgd.requests.length === 0 && <div className="col-span-full rounded-xl border border-dashed border-slate-300 p-8 text-center text-[11px] text-slate-400">Chưa có PYC giám định. Bắt đầu từ Tạo PYC.</div>}</div></section><section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"><h2 className="flex items-center gap-2 text-sm font-black text-slate-800"><ClipboardList size={16} className="text-blue-600" /> Danh mục PGD</h2><div className="mt-3 space-y-2">{pgd.catalog.map((item) => <div key={item.id} className="rounded-xl border border-slate-100 bg-slate-50 p-2.5"><div className="flex items-start justify-between gap-2"><div><div className="text-[11px] font-black text-slate-800">{item.name}</div><div className="mt-1 font-mono text-[9px] text-blue-600">{item.code}</div></div><span className="rounded bg-white px-1.5 py-1 text-[9px] font-bold text-slate-500">{item.slaLabel}</span></div><div className="mt-2 flex flex-wrap gap-1">{item.defaultStandards.map((standard) => <span key={standard} className="rounded bg-white px-1.5 py-1 text-[9px] text-slate-500">{standard}</span>)}</div></div>)}{pgd.catalog.length === 0 && <p className="text-[10px] text-slate-400">Đang tải danh mục PGD...</p>}</div></section></div></div>;
 
-  const requestRegister = <div className="space-y-3 p-3 md:p-5"><div className="flex flex-wrap items-end justify-between gap-2"><div><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">PGD · Sổ đăng ký</div><h1 className="mt-1 text-xl font-black text-slate-900">Sổ đăng ký hồ sơ giám định</h1><p className="mt-1 text-[11px] text-slate-500">Theo dõi các trường đăng ký đã chụp dữ liệu từ PYC mới; không sửa trực tiếp trên bảng.</p></div><div data-testid="pgd-register-toolbar" className="pgdcn-toolbar-nowrap w-full lg:w-auto lg:min-w-[58rem]"><label className="pgdcn-toolbar-search block min-w-0"><span className="mb-1 block text-[11px] font-black text-slate-600">Tìm hồ sơ PGD</span><div className="relative"><Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" /><TextInput aria-label="Tìm hồ sơ PGD" value={query} onChange={(event) => setQuery(event.target.value)} className="pl-8" /></div></label><label className="pgdcn-toolbar-filter block min-w-0"><span className="mb-1 block text-[11px] font-black text-slate-600">Nhóm sản phẩm</span><SelectInput aria-label="Lọc nhóm sản phẩm PGD" value={registerGroup} onChange={(event) => setRegisterGroup(event.target.value as typeof registerGroup)} className="w-full min-w-0"><option value="ALL">Tất cả nhóm</option>{(Object.entries(PGD_PRODUCT_GROUP_LABELS) as Array<[PgdInspectionRequestInput['productGroup'], string]>).map(([group, label]) => <option key={group} value={group}>{label}</option>)}</SelectInput></label><label className="pgdcn-toolbar-filter block min-w-0"><span className="mb-1 block text-[11px] font-black text-slate-600">Loại hồ sơ</span><SelectInput aria-label="Lọc loại hồ sơ PGD" value={registerCatalogItem} onChange={(event) => setRegisterCatalogItem(event.target.value)} className="w-full min-w-0"><option value="ALL">Tất cả loại hồ sơ</option>{pgd.catalog.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name}</option>)}</SelectInput></label><label className="pgdcn-toolbar-filter block min-w-0"><span className="mb-1 block text-[11px] font-black text-slate-600">Trạng thái</span><SelectInput aria-label="Lọc trạng thái PGD" value={registerStatus} onChange={(event) => setRegisterStatus(event.target.value as typeof registerStatus)} className="w-full min-w-0"><option value="ALL">Tất cả trạng thái</option>{PGD_WORKFLOW_STATES.map((state) => <option key={state.code} value={state.code}>{state.label}</option>)}</SelectInput></label><button type="button" onClick={() => void pgd.load(true)} title="Tải lại sổ đăng ký PGD" className="mobile-touch-target pgdcn-toolbar-actions inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-slate-500 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><RefreshCw size={15} /></button></div></div><PgdRegisterTable requests={sectionRequests} users={pgd.users} catalog={pgd.catalog} onOpen={openRequest} /></div>;
+  const requestRegister = (
+    <div className="space-y-3.5 p-3 md:p-5 min-w-0 bg-slate-50/60">
+      {/* Title & Top Action */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-black text-slate-900">Quản lý Giám định (PYC)</h1>
+          <p className="mt-0.5 text-xs text-slate-500">Phòng Giám định - Chứng nhận và Phát triển thị trường · Giao diện hồ sơ dạng thẻ chuẩn TVCI Lab</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* View switcher */}
+          <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-3xs">
+            <button
+              type="button"
+              onClick={() => setRegisterViewMode('card')}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+                registerViewMode === 'card'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Xem dạng thẻ chuẩn TVCI Lab"
+            >
+              <LayoutGrid size={13} />
+              <span className="hidden sm:inline">Dạng thẻ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRegisterViewMode('table')}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+                registerViewMode === 'table'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Xem bảng truyền thống"
+            >
+              <List size={13} />
+              <span className="hidden sm:inline">Dạng bảng</span>
+            </button>
+          </div>
 
-  const operationProjection = <div className="min-w-0"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-3 md:px-5"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600">Quản lý PGD</p><h1 className="mt-1 text-lg font-black text-slate-900">Hồ sơ cần xử lý</h1><p className="mt-1 text-[11px] text-slate-600">Chọn Hàng đợi hồ sơ để xử lý theo từng việc hoặc Sổ dữ liệu để rà soát toàn bộ trường.</p></div><div className="flex min-h-11 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1" role="tablist" aria-label="Chế độ quản lý PGD"><button type="button" role="tab" aria-selected={viewMode === 'QUEUE'} onClick={() => setViewMode('QUEUE')} className={`mobile-touch-target min-h-11 rounded-md px-3 text-[11px] font-black ${viewMode === 'QUEUE' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-white'}`}>Hàng đợi hồ sơ</button><button type="button" role="tab" aria-selected={viewMode === 'DATA'} onClick={() => setViewMode('DATA')} className={`mobile-touch-target min-h-11 rounded-md px-3 text-[11px] font-black ${viewMode === 'DATA' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-white'}`}>Sổ dữ liệu</button></div></div>{viewMode === 'QUEUE' ? <PgdDossierQueueView rows={queueRows} onOpenDossier={openRequest} /> : <PgdSummaryRegisterView requests={pgd.requests} assignments={pgd.assignments} samples={pgd.samples} labRequests={pgd.labRequests} labResults={pgd.labResults} reports={pgd.reports} certificates={pgd.certificates} catalog={pgd.catalog} users={pgd.users} currentUsername={currentUser.username} canEdit={canMutate} onOpenRequest={openRequest} onUpdateRequest={pgd.updateRequest} onAssignOwner={pgd.assignOwner} />}</div>;
+          {canMutate && (
+            <button
+              type="button"
+              onClick={openCreateRequest}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-black text-white shadow-sm hover:bg-blue-700 transition-colors cursor-pointer"
+            >
+              <Plus size={14} /> Nhận Phiếu / Tạo PYC
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Unified Search & Status Pills Filter Bar (TVCI Lab Standard) */}
+      <div data-testid="pgd-register-toolbar" className="pgdcn-toolbar-nowrap flex items-center gap-2">
+        {/* Search input with rounded-xl */}
+        <div className="pgdcn-toolbar-search relative flex-1 min-w-[240px] max-w-md">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          {!query && (
+            <span className="pointer-events-none absolute left-9 right-3 top-1/2 -translate-y-1/2 truncate text-xs text-slate-400">
+              Tìm mã PYC, số ngoài, khách hàng, hàng hóa, số lô...
+            </span>
+          )}
+          <input
+            type="text"
+            aria-label="Tìm hồ sơ PGD"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-2xs"
+          />
+        </div>
+
+        {/* Status Filter Pills - Single row */}
+        <div className="pgdcn-toolbar-pills flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => { setRegisterStatus('ALL'); setRegisterGroup('ALL'); }}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              registerStatus === 'ALL' && registerGroup === 'ALL'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            Tổng PYC
+            <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
+              registerStatus === 'ALL' && registerGroup === 'ALL' ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {pgdCounts.total}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRegisterStatus(registerStatus === 'CAPABILITY_REVIEW' ? 'ALL' : 'CAPABILITY_REVIEW')}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              registerStatus === 'CAPABILITY_REVIEW'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            Chờ xử lý
+            <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
+              registerStatus === 'CAPABILITY_REVIEW' ? 'bg-amber-700 text-amber-100' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {pgdCounts.pending}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRegisterStatus(registerStatus === 'FIELD_INSPECTION' ? 'ALL' : 'FIELD_INSPECTION')}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              registerStatus === 'FIELD_INSPECTION'
+                ? 'bg-sky-600 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            Đang giám định
+            <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
+              registerStatus === 'FIELD_INSPECTION' ? 'bg-sky-700 text-sky-100' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {pgdCounts.inProgress}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRegisterStatus(registerStatus === 'SIGNED' ? 'ALL' : 'SIGNED')}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              registerStatus === 'SIGNED'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            Đã ký / Xong
+            <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
+              registerStatus === 'SIGNED' ? 'bg-emerald-700 text-emerald-100' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {pgdCounts.done}
+            </span>
+          </button>
+
+          {pgdCounts.steel > 0 && (
+            <button
+              type="button"
+              onClick={() => setRegisterGroup(registerGroup === 'STEEL_METAL' ? 'ALL' : 'STEEL_METAL')}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                registerGroup === 'STEEL_METAL'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              Thép
+              <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
+                registerGroup === 'STEEL_METAL' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-100 text-slate-700'
+              }`}>
+                {pgdCounts.steel}
+              </span>
+            </button>
+          )}
+
+          {pgdCounts.machinery > 0 && (
+            <button
+              type="button"
+              onClick={() => setRegisterGroup(registerGroup === 'MACHINERY_LINE' ? 'ALL' : 'MACHINERY_LINE')}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                registerGroup === 'MACHINERY_LINE'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              Máy móc
+              <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
+                registerGroup === 'MACHINERY_LINE' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-100 text-slate-700'
+              }`}>
+                {pgdCounts.machinery}
+              </span>
+            </button>
+          )}
+
+          {/* Lọc nâng cao */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className={`inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                showAdvanced || registerCatalogItem !== 'ALL'
+                  ? 'border-blue-300 bg-blue-50 text-blue-800'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <SlidersHorizontal size={13} />
+              <span>Lọc nâng cao</span>
+              <ChevronDown size={13} className={`transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+              {(registerCatalogItem !== 'ALL' || registerGroup !== 'ALL') && (
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+              )}
+            </button>
+
+            {showAdvanced && (
+              <div className="absolute right-0 top-full mt-2 w-72 z-50 rounded-xl border border-slate-200 bg-white p-3 shadow-xl space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <span className="text-xs font-black text-slate-800">Bộ lọc chi tiết</span>
+                  <button
+                    type="button"
+                    onClick={() => { setRegisterGroup('ALL'); setRegisterCatalogItem('ALL'); setRegisterStatus('ALL'); }}
+                    className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
+                  >
+                    Đặt lại
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Nhóm sản phẩm</label>
+                  <SelectInput
+                    aria-label="Lọc nhóm sản phẩm PGD"
+                    value={registerGroup}
+                    onChange={(event) => setRegisterGroup(event.target.value as typeof registerGroup)}
+                    className="w-full text-xs"
+                  >
+                    <option value="ALL">Tất cả nhóm sản phẩm</option>
+                    {(Object.entries(PGD_PRODUCT_GROUP_LABELS) as Array<[PgdInspectionRequestInput['productGroup'], string]>).map(([group, label]) => (
+                      <option key={group} value={group}>{label}</option>
+                    ))}
+                  </SelectInput>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Loại hồ sơ</label>
+                  <SelectInput
+                    aria-label="Lọc loại hồ sơ PGD"
+                    value={registerCatalogItem}
+                    onChange={(event) => setRegisterCatalogItem(event.target.value)}
+                    className="w-full text-xs"
+                  >
+                    <option value="ALL">Tất cả loại hồ sơ</option>
+                    {pgd.catalog.map((item) => (
+                      <option key={item.id} value={item.id}>{item.code} · {item.name}</option>
+                    ))}
+                  </SelectInput>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Trạng thái chi tiết</label>
+                  <SelectInput
+                    aria-label="Lọc trạng thái PGD"
+                    value={registerStatus}
+                    onChange={(event) => setRegisterStatus(event.target.value as typeof registerStatus)}
+                    className="w-full text-xs"
+                  >
+                    <option value="ALL">Tất cả trạng thái</option>
+                    {PGD_WORKFLOW_STATES.map((state) => (
+                      <option key={state.code} value={state.code}>{state.label}</option>
+                    ))}
+                  </SelectInput>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sắp xếp */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none hover:border-slate-300 cursor-pointer shrink-0"
+          >
+            <option value="NEWEST">Mới nhất</option>
+            <option value="OLDEST">Cũ nhất</option>
+            <option value="CODE">Mã PYC</option>
+          </select>
+
+          {/* Nút tải lại */}
+          <button
+            type="button"
+            onClick={() => void pgd.load(true)}
+            title="Tải lại sổ đăng ký PGD"
+            className="mobile-touch-target pgdcn-toolbar-actions inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-blue-600 transition-colors shadow-3xs cursor-pointer shrink-0"
+          >
+            <RefreshCw size={13} />
+          </button>
+        </div>
+      </div>
+
+      <PgdRegisterTable requests={sectionRequests} users={pgd.users} catalog={pgd.catalog} onOpen={openRequest} viewMode={registerViewMode} onViewModeChange={setRegisterViewMode} />
+    </div>
+  );
+
+  const operationProjection = <div className="min-w-0"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-3 md:px-5"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600">Quản lý PGD</p><h1 className="mt-1 text-lg font-black text-slate-900">Hồ sơ cần xử lý</h1><p className="mt-1 text-[11px] text-slate-600">Chọn Hàng đợi hồ sơ để xử lý theo từng việc hoặc Sổ dữ liệu để rà soát toàn bộ trường.</p></div><div className="flex items-center gap-2"><div className="flex min-h-11 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1" role="tablist" aria-label="Chế độ quản lý PGD"><button type="button" role="tab" aria-selected={viewMode === 'QUEUE'} onClick={() => setViewMode('QUEUE')} className={`mobile-touch-target min-h-11 rounded-md px-3 text-[11px] font-black ${viewMode === 'QUEUE' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-white'}`}>Hàng đợi hồ sơ</button><button type="button" role="tab" aria-selected={viewMode === 'DATA'} onClick={() => setViewMode('DATA')} className={`mobile-touch-target min-h-11 rounded-md px-3 text-[11px] font-black ${viewMode === 'DATA' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-white'}`}>Sổ dữ liệu</button></div>{canMutate && (<button type="button" onClick={openCreateRequest} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-black text-white shadow-sm hover:bg-blue-700 transition-colors cursor-pointer"><FilePlus2 size={14} /> Tạo PYC</button>)}</div></div>{viewMode === 'QUEUE' ? <PgdDossierQueueView rows={queueRows} onOpenDossier={openRequest} /> : <PgdSummaryRegisterView requests={pgd.requests} assignments={pgd.assignments} samples={pgd.samples} labRequests={pgd.labRequests} labResults={pgd.labResults} reports={pgd.reports} certificates={pgd.certificates} documents={pgd.documents} catalog={pgd.catalog} users={pgd.users} currentUsername={currentUser.username} canEdit={canMutate} onOpenRequest={openRequest} onUpdateRequest={pgd.updateRequest} onAssignOwner={pgd.assignOwner} />}</div>;
   const sampleRegister = <PgdSampleOperationsView requests={pgd.requests} samples={pgd.samples} labRequests={pgd.labRequests} labResults={pgd.labResults} onOpenRequest={openRequest} />;
   const projection = activeSection === 'templates'
     ? <PgdDraftingWorkspaceView templates={pgd.documentTemplates} documents={pgd.documents} canMutate={canMutate} initialRequestId={initialDraftRequestId || draftingRequestId} initialRequirementCode={initialDraftRequirementCode || draftingRequirementCode} initialTemplateKind={initialDraftTemplateKind || draftingTemplateKind} initialReturnTo={initialDraftReturnTo} onOpenSettings={isAdmin ? () => setDocxSettingsOpen(true) : undefined} />

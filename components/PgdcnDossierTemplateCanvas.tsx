@@ -122,8 +122,8 @@ export default function PgdcnDossierTemplateCanvas(props: PgdcnDossierTemplateCa
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
-      <section data-testid="pgdcn-dossier-template-canvas" className="min-w-[960px] overflow-x-auto rounded-2xl border border-slate-200 bg-white p-3">
-        <div className="grid grid-cols-[148px_repeat(6,minmax(150px,1fr))] gap-2">
+      <section data-testid="pgdcn-dossier-template-canvas" className="mobile-scroll-x min-w-0 max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white p-3">
+        <div className="min-w-[960px] grid grid-cols-[148px_repeat(6,minmax(150px,1fr))] gap-2">
           <div className="rounded-lg bg-slate-100 p-3 text-xs font-semibold text-slate-500">Lưu trình</div>
           {COLUMNS.map((column) => <div key={column} className="rounded-lg bg-slate-100 p-3 text-center text-xs font-semibold text-slate-500">Cột {column}</div>)}
           {LANES.map((lane) => (

@@ -97,3 +97,145 @@ test('common high-impact controls use a visible focus ring and readable decision
   assert.match(approval, /text-\[11px\] font-black uppercase tracking-wide[^\n]*Ý kiến quyết định bước 5/);
   assert.match(approval, /text-\[11px\] font-black text-white[^\n]*Phê duyệt bước 5/);
 });
+
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import PgdcnSidebar from '../components/PgdcnSidebar';
+import PcnLoginScreen from '../components/PcnLoginScreen';
+import PgdcnWindowsWorkflowModal from '../components/PgdcnWindowsWorkflowModal';
+import type { PcnUserAccount } from '../types';
+import type { PgdcnNavigationTarget } from '../components/PgdcnSidebar';
+
+test('login renders the two real organization logos and a short responsive form heading', () => {
+  const markup = renderToStaticMarkup(createElement(PcnLoginScreen));
+  assert.match(markup, /src="\/icons\/iemm-logo-192\.png"[^>]*alt="Logo IEMM"/);
+  assert.match(markup, /src="\/icons\/tvci-icon-192\.png"[^>]*alt="Logo TVCI"/);
+  assert.match(markup, /<h1[^>]*>Đăng nhập<\/h1>/);
+  assert.match(markup, /Phòng Giám định - Chứng nhận - Phát triển thị trường/);
+  assert.match(markup, /max-w-md/);
+  assert.match(markup, /min-h-11 w-full/);
+  assert.doesNotMatch(markup, /admin@example\.com|password123|Mật khẩu mẫu/i);
+});
+
+const sidebarMarkup = (activeTarget: PgdcnNavigationTarget) => renderToStaticMarkup(createElement(PgdcnSidebar, {
+  currentUser: {
+    username: 'reviewer',
+    name: 'Nguyễn An',
+    role: 'admin',
+    systemRole: 'admin',
+    pgdRole: 'PGD_ADMIN',
+    departmentScopes: ['PCN', 'PGD'],
+    professionalRoleCodes: [],
+  } as PcnUserAccount,
+  activeTarget,
+  collapsed: true,
+  mobileOpen: true,
+  onToggle: () => undefined,
+  onNavigate: () => undefined,
+  onCloseMobile: () => undefined,
+  onLogout: () => undefined,
+}));
+
+const buttonWithLabel = (markup: string, label: string) => markup.match(new RegExp(`<button(?=[^>]*aria-label="${label}")[^>]*>`))?.[0] || '';
+
+test('domain navigation keeps aria-current and uses distinct PCN, PGD, and shared active tones', () => {
+  const pcnMarkup = sidebarMarkup({ domain: 'PCN', section: 'operations' });
+  const pgdMarkup = sidebarMarkup({ domain: 'PGD', section: 'operations' });
+  const sharedMarkup = sidebarMarkup({ domain: 'department', section: 'department-dashboard' });
+  const pcnButton = buttonWithLabel(pcnMarkup, 'Sổ dữ liệu PCN');
+  const pgdButton = buttonWithLabel(pgdMarkup, 'Sổ dữ liệu PGD');
+  const sharedButton = buttonWithLabel(sharedMarkup, 'Tổng quan');
+
+  assert.match(pcnButton, /aria-current="page"/);
+  assert.match(pcnButton, /bg-emerald-600/);
+  assert.match(pgdButton, /aria-current="page"/);
+  assert.match(pgdButton, /bg-blue-600/);
+  assert.match(sharedButton, /aria-current="page"/);
+  assert.match(sharedButton, /bg-slate-700/);
+  assert.match(pcnMarkup, /title="Sổ dữ liệu PCN"/);
+});
+
+test('mobile navigation drawer has a dismissible backdrop and keyboard focus lifecycle', () => {
+  const markup = sidebarMarkup({ domain: 'PCN', section: 'operations' });
+  const sidebar = read('../components/PgdcnSidebar.tsx');
+  const backdrop = markup.match(/<button(?=[^>]*data-testid="pgdcn-sidebar-backdrop")[^>]*>/)?.[0] || '';
+
+  assert.match(backdrop, /aria-label="Đóng menu phòng"/);
+  assert.match(backdrop, /lg:hidden/);
+  assert.match(sidebar, /transition-\[width,transform\] duration-200/);
+  assert.match(sidebar, /event\.key === 'Escape'/);
+  assert.match(sidebar, /event\.key !== 'Tab'/);
+  assert.match(sidebar, /closeButtonRef\.current\?\.focus\(\)/);
+  assert.match(sidebar, /returnFocusRef\.current\?\.focus\(\)/);
+});
+
+test('mobile shell exposes the active context while page scroll remains locally contained', () => {
+  const shell = read('../components/PgdcnAppShell.tsx');
+  assert.match(shell, /data-testid="pgdcn-mobile-context"/);
+  assert.match(shell, /mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto/);
+  assert.match(shell, /app-compact flex h-\[100dvh\] w-full overflow-hidden/);
+});
+
+test('shared workflow modal keeps dialog semantics, a single body scroller, focus trap, and a vector icon', () => {
+  const modalMarkup = renderToStaticMarkup(createElement(PgdcnWindowsWorkflowModal, {
+    open: true,
+    title: 'Tạo PYC',
+    eyebrow: 'Tiếp nhận hồ sơ',
+    description: 'Nhập dữ liệu cần thiết để bắt đầu hồ sơ.',
+    testId: 'contract-modal',
+    titleId: 'contract-modal-title',
+    onClose: () => undefined,
+    onMinimize: () => undefined,
+    onRestore: () => undefined,
+    footer: createElement('button', { type: 'button' }, 'Hủy'),
+    children: createElement('label', null, 'Mã hồ sơ', createElement('input', { type: 'text' })),
+  }));
+  const modal = read('../components/PgdcnWindowsWorkflowModal.tsx');
+  const modalIconStyles = read('../index.css');
+
+  assert.match(modalMarkup, /role="dialog" aria-modal="true" aria-labelledby="contract-modal-title"/);
+  assert.match(modalMarkup, /data-testid="contract-modal-body" class="mobile-scroll-y min-h-0 flex-1 overflow-x-hidden overflow-y-auto"/);
+  assert.match(modal, /event\.key !== 'Tab'/);
+  assert.match(modal, /first\.focus\(\)/);
+  assert.match(modal, /last\.focus\(\)/);
+  assert.match(modal, /aria-hidden="true"><span className="text-sm font-black">▣<\/span>/);
+  assert.match(modalIconStyles, /section\[role="dialog"\] > header > div:first-child > span\[aria-hidden="true"\] > span\.text-sm\.font-black/);
+  assert.match(modalIconStyles, /--pgdcn-workflow-modal-file-icon:\s*url\("data:image\/svg\+xml,/);
+  assert.match(modalIconStyles, /mask:\s*var\(--pgdcn-workflow-modal-file-icon\)/);});
+
+test('compact UI raises tiny utility text to a readable 11px floor', () => {
+  const css = read('../index.css');
+  for (const size of ['9px', '10px']) {
+    const ruleStart = css.indexOf(`.app-compact [class~="text-[${size}]"]`);
+    const nextRule = css.indexOf('\n  .app-compact [class~="text-[', ruleStart + 1);
+    const rule = css.slice(ruleStart, nextRule < 0 ? undefined : nextRule);
+    assert.ok(ruleStart >= 0, `Missing compact utility rule for ${size}`);
+    assert.match(rule, /font-size:\s*max\(0\.6875rem,/);
+  }
+});
+
+test('summary grid preserves sticky identifiers/actions and keyboard sorting/edit affordances', () => {
+  const source = read('../components/PgdcnDossierSummaryGrid.tsx');
+  assert.match(source, /aria-sort=/);
+  assert.match(source, /sticky left-0/);
+  assert.match(source, /sticky right-0/);
+  assert.match(source, /aria-label=\{'Sắp xếp theo '/);
+  assert.match(source, /event\.key === 'Enter'|event\.key === 'Tab'/);
+  assert.match(source, /overflow-x-auto/);
+  assert.match(source, /py-4 md:py-1\.5/);
+  assert.match(source, /tabIndex={column.editable && isRowEditable\(row.id\) \? 0 : undefined}/);
+  assert.match(source, /event.key === 'Enter'[\s\S]*?startEdit\(row, column\)/);
+});
+test('dashboard keeps its action hierarchy while using a restrained palette', () => {
+  const source = read('../components/PgdcnDashboardView.tsx');
+  const kpiTones = [...source.matchAll(/tone="([^"]+)"/g)].map((match) => match[1]);
+  const pipelineToneBlock = source.match(/const PIPELINE_TONE_CLASS:[\s\S]*?= \{([\s\S]*?)\n\};/)?.[1] || '';
+  const pipelineTones = [...pipelineToneBlock.matchAll(/:\s*'([^']+)'/g)].map((match) => match[1]);
+  const attentionPosition = source.indexOf('<AttentionQueue');
+  const referencePosition = source.indexOf('<DomainPipeline summaries=');
+
+  assert.ok(new Set(kpiTones).size <= 4, 'KPI tone palette should stay to domain, neutral, and attention colors');
+  assert.ok(new Set(pipelineTones).size <= 5, 'pipeline segments should reuse semantic colors');
+  assert.ok(attentionPosition >= 0 && referencePosition > attentionPosition, 'attention queue precedes pipeline reference content');
+  assert.match(source, /data-testid="pgdcn-dashboard-kpi-grid"/);
+});

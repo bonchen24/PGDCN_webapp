@@ -1,5 +1,6 @@
 import PgdcnAppShell from '../../../../../components/PgdcnAppShell';
 
-export default function PgdDossierPage({ params }: { params: { requestId: string } }) {
-  return <PgdcnAppShell initialDomain="PGD" initialPgdRequestId={decodeURIComponent(params.requestId)} />;
+export default async function PgdDossierPage({ params }: { params: Promise<{ requestId: string }> }) {
+  const { requestId } = await params;
+  return <PgdcnAppShell initialDomain="PGD" initialPgdRequestId={decodeURIComponent(requestId)} />;
 }

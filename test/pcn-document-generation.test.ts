@@ -38,7 +38,7 @@ import { getPcnDocumentContextConflict, getPcnDocumentPreflightIssues } from '..
 import { getPcnGeneratedDocumentLineageSummary, getPcnGeneratedDocumentsForKind } from '../utils/pcnGeneratedDocumentView.ts';
 import type { OutboundLabRequest, PcnCertificationField, PcnDossierAttachment, PcnDossierDocument, PcnDocumentRequirement, PcnGeneratedDocument } from '../types.ts';
 
-const server = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const server = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const store = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 const generationApi = fs.readFileSync(new URL('../utils/pcnDocumentGenerationApi.ts', import.meta.url), 'utf8');
 const dossierDocumentApi = fs.readFileSync(new URL('../utils/pcnDossierDocumentApi.ts', import.meta.url), 'utf8');

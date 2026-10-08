@@ -56,7 +56,7 @@ test('PGD approval has separate technical and leadership steps', () => {
 test('PGD intake and approval UI/API use the server-issued number and two approval gates', () => {
   const root = path.resolve(process.cwd());
   const workspace = fs.readFileSync(path.join(root, 'components/PgdWorkspace.tsx'), 'utf8');
-  const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
+  const server = fs.readFileSync(path.join(root, 'server.legacy.ts'), 'utf8');
   assert.doesNotMatch(workspace, /form\.requestCode|PYC-GD-/);
   assert.match(workspace, /MACHINERY_LINE/);
   assert.match(workspace, /COAL/);

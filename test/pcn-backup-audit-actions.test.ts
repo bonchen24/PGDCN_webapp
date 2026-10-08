@@ -5,7 +5,7 @@ import test from 'node:test';
 import { buildBackupActivity, getBackupActivityPayload } from '../utils/backupManager.ts';
 
 const managerSource = fs.readFileSync(new URL('../utils/backupManager.ts', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const designSource = fs.readFileSync(new URL('../design.md', import.meta.url), 'utf8');
 
 test('backup create and delete activity records preserve action, archive and actor', () => {

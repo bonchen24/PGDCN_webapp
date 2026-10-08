@@ -13,7 +13,7 @@ test('PCN dossier management follows the PGD queue and toolbar anatomy', () => {
   assert.match(operations, /<PcnDossierQueueView/);
   assert.match(queue, /data-testid="pcn-dossier-queue"/);
   assert.match(queue, /PCN · Hàng đợi công việc/);
-  assert.match(queue, /grid-cols-2\s+gap-2\s+lg:grid-cols-4/);
+  assert.match(queue, /grid grid-cols-1 md:grid-cols-2 gap-4/);
   assert.match(queue, /mobile-scroll-x[\s\S]*overflow-x-auto/);
   assert.match(queue, /dossier-action-compact/);
   assert.match(pgdQueue, /PGD · Hàng đợi công việc/);

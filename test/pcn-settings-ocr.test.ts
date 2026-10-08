@@ -30,7 +30,7 @@ test('settings is an Admin surface, not a new workflow page', () => {
   const workspace = read('components/PcnWorkspace.tsx');
   const view = read('components/PcnSettingsView.tsx');
   const api = read('utils/pcnSettingsApi.ts');
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   assert.match(navigation, /settings/);
   assert.match(workspace, /PcnSettingsView/);
   assert.match(view, /QC4/);
@@ -51,10 +51,10 @@ test('OCR accepts supported dossier files and requires confirmation before mutat
   assert.equal(isPcnOcrFileSupported('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'de-nghi.docx'), true);
   assert.equal(isPcnOcrFileSupported('image/jpeg', 'camera.jpg'), true);
   assert.equal(isPcnOcrFileSupported('text/plain', 'notes.txt'), false);
-  const ocrRoute = read('server.ts').slice(read('server.ts').indexOf("app.post('/api/pcn/ocr'"));
+  const ocrRoute = read('server.legacy.ts').slice(read('server.legacy.ts').indexOf("app.post('/api/pcn/ocr'"));
   assert.match(ocrRoute, /runPaddleFirstWithGeminiFallback/);
-  assert.match(read('server.ts'), /collectPaddleOcr/);
-  assert.match(read('server.ts'), /wordprocessingml/);
+  assert.match(read('server.legacy.ts'), /collectPaddleOcr/);
+  assert.match(read('server.legacy.ts'), /wordprocessingml/);
   const draft = normalizePcnOcrDraft({ fields: { proposalCode: 'DN-01' }, confidence: 0.82, sourcePage: 2 });
   assert.equal(draft.fields.proposalCode, 'DN-01');
   assert.equal(draft.sourcePage, 2);
@@ -73,7 +73,7 @@ test('PCN OCR settings keep PaddleOCR as the only primary provider and describe 
 test('personal AI settings explain separate project quota and verify the selected provider model', () => {
   const panel = read('components/PcnPersonalSettingsPanel.tsx');
   const api = read('utils/pcnPersonalSettingsApi.ts');
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   const design = read('design.md');
   assert.match(panel, /Google AI Studio/);
   assert.match(panel, /quota/i);

@@ -10,7 +10,7 @@ import {
 } from '../utils/pcnAuth.ts';
 import * as pcnAuth from '../utils/pcnAuth.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
 
 test('PCN user snapshot keeps system role, department role and field scope separately', () => {

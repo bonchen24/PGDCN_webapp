@@ -7,7 +7,7 @@ const read = (path: string) => fs.readFileSync(new URL(`../${path}`, import.meta
 test('PGD exception review has a reasoned return path and resumable lifecycle', () => {
   const domain = read('utils/pgdDomain.ts');
   const api = read('utils/pgdApi.ts');
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   const flow = read('components/PgdDossierFlow.tsx');
   const workspace = read('components/PgdWorkspace.tsx');
   const panel = read('components/PgdDossierStepWorkPanel.tsx');

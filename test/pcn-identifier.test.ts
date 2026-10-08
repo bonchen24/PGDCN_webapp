@@ -69,7 +69,7 @@ test('re-sequences existing lot codes by creation date and resets each year', ()
 });
 
 test('PCN intake allocates proposal codes in a locked daily sequence owned by the server', () => {
-  const server = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const server = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const intake = server.slice(server.indexOf("app.post('/api/pcn/intake'"), server.indexOf("app.post('/api/pcn/proposals/:proposalId'"));
 
   assert.match(intake, /formatPcnProposalCode/);
@@ -81,7 +81,7 @@ test('PCN intake allocates proposal codes in a locked daily sequence owned by th
 });
 
 test('PCN sample-lot creation allocates yearly lot codes in a locked server sequence', () => {
-  const server = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const server = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const sampleLots = server.slice(server.indexOf("app.post('/api/pcn/samples/lots'"), server.indexOf("app.post('/api/pcn/samples/routes/:routeId/status'"));
 
   assert.match(sampleLots, /formatPcnSampleLotCode/);

@@ -2,7 +2,7 @@
 // OS support: Web/Node
 // Description: Service Worker for resilient PCN PWA startup and offline shell fallback
 
-const CACHE_NAME = 'ddt-lab-pwa-v4';
+const CACHE_NAME = 'pgdcn-pwa-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/tvci_logo.jpg',
@@ -28,6 +28,12 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  // Do not intercept Next.js bundles, HMR, or API routes
+  if (url.pathname.startsWith('/_next/') || url.pathname.startsWith('/api/')) {
+    return;
+  }
+
   if (event.request.mode === 'navigate' || (event.request.headers.get('accept') || '').includes('text/html')) {
     event.respondWith(
       fetch(event.request).then((response) => caches.open(CACHE_NAME).then((cache) => {

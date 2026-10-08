@@ -15,7 +15,7 @@ import {
 } from '../../../../../../lib/server/response.ts';
 
 type RouteContext = {
-  params: { id: string } | Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 };
 
 export async function POST(request: NextRequest, context: RouteContext) {

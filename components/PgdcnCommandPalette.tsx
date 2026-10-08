@@ -63,16 +63,8 @@ export default function PgdcnCommandPalette({
         kind: 'command',
         label: 'Mở Tổng quan',
         description: 'Xem việc của tôi, hàng đợi và các mốc sắp tới.',
-        keywords: 'tong quan dashboard viec cua toi',
+        keywords: 'tong quan dashboard viec cua toi my work cong viec',
         action: () => { onNavigate({ domain: 'department', section: 'department-dashboard' }); onClose(); },
-      },
-      {
-        id: 'my-work',
-        kind: 'command',
-        label: 'Mở Việc của tôi',
-        description: 'Tập trung vào các hồ sơ đang đến lượt bạn.',
-        keywords: 'my work viec cua toi cong viec',
-        action: () => { onNavigate({ domain: 'department', section: 'my-work' }); onClose(); },
       },
       {
         id: 'assistant',

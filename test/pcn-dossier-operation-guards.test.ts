@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-const serverSource = fs.readFileSync(path.resolve('server.ts'), 'utf8');
+const serverSource = fs.readFileSync(path.resolve('server.legacy.ts'), 'utf8');
 
 test('dossier mutations use the shared operator guard', () => {
   const guardCalls = serverSource.match(/assertPcnDossierOperator\(dossier, actor\)/g) ?? [];

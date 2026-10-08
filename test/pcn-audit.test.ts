@@ -5,7 +5,7 @@ import test from 'node:test';
 import { buildPcnActivityLog, buildPcnAuditActor } from '../utils/pcnAudit.ts';
 
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('PCN audit records carry a PCN entity, actor snapshot and diff', () => {
   const log = buildPcnActivityLog({

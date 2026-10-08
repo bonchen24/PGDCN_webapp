@@ -5,7 +5,7 @@ import test from 'node:test';
 const domainSource = fs.readFileSync(new URL('../utils/pgdDomain.ts', import.meta.url), 'utf8');
 const dossierSource = fs.readFileSync(new URL('../utils/pgdDossier.ts', import.meta.url), 'utf8');
 const apiSource = fs.readFileSync(new URL('../utils/pgdApi.ts', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('PGD intake has editable sample catalog and draft validation contract', () => {
   for (const marker of ['PgdIntakeSampleDraft', 'PGD_SAMPLE_TYPE_OPTIONS', 'catalogOptionId', 'customLabel', 'validatePgdIntakeSampleDraft']) {

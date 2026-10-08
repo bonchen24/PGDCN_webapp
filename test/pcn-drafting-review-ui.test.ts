@@ -8,7 +8,7 @@ test('PCN node drafting is the primary document path', () => {
   const panel = read('components/PcnDossierNodeWorkPanel.tsx');
   const workspace = read('components/PcnDraftingWorkspaceView.tsx');
   const api = read('utils/pcnDraftApi.ts');
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   assert.match(panel, /Soạn thảo tài liệu/);
   assert.match(workspace, /Xác nhận.*gắn vào bộ hồ sơ/);
   assert.match(workspace, /pcn-draft-field-sections/);

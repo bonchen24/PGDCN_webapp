@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { buildPcnIntakeApiError } from '../utils/pcnIntakeApi.ts';
 
-const server = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const server = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const store = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 const detail = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
 const dossierDocumentWrite = server.slice(

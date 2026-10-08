@@ -5,7 +5,7 @@ import test from 'node:test';
 const approvalModal = fs.readFileSync(new URL('../components/PcnApprovalModal.tsx', import.meta.url), 'utf8');
 const issuanceView = fs.readFileSync(new URL('../components/PcnIssuanceView.tsx', import.meta.url), 'utf8');
 const workspace = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
-const server = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const server = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const design = fs.readFileSync(new URL('../design.md', import.meta.url), 'utf8');
 
 test('approval modal exposes the dossier completeness evidence and visual-check shortcut', () => {

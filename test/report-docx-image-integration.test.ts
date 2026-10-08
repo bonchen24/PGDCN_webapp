@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const source = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('DOCX generation uses the dynamic label-to-slot mapping', () => {
   assert.match(source, /reportDocxImageMapping/);

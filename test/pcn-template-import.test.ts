@@ -172,13 +172,13 @@ test('template import CLI locks the complete private asset provenance tuple befo
 });
 
 test('template import serializes retries for the deterministic asset id', () => {
-  const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const source = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   assert.match(source, /pcn-template-asset:/);
   assert.match(source, /pg_advisory_xact_lock\(hashtext\(\$1\)\)/);
 });
 
 test('server activity validation allowlists every PCN template and quality-document mutation', () => {
-  const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const source = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const allowlist = source.slice(source.indexOf('const ACTIVITY_LOG_ENTITY_TYPES'), source.indexOf('const ACTIVITY_LOG_SOURCES'));
   assert.match(allowlist, /"PCN_TEMPLATE"/);
   assert.match(allowlist, /"PCN_QUALITY_DOCUMENT"/);

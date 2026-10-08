@@ -15,7 +15,7 @@ import {
 import { confirmPcnGeneratedDocumentIntoChecklist, generateAndAttachPcnDossierNodeDocument, removeCurrentPcnDossierDocument, uploadPcnDossierDocument, waivePcnDossierDocument } from '../utils/pcnDossierDocumentApi.ts';
 import type { PcnGeneratedDocument } from '../types.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const documentApiSource = fs.readFileSync(new URL('../utils/pcnDossierDocumentApi.ts', import.meta.url), 'utf8');
 
 test('PCN document baseline contains only QC4 and QC9 field checklists', () => {

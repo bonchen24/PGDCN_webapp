@@ -100,7 +100,7 @@ test('active PGD station and evidence controls keep readable form text and touch
   assert.ok(pgdWorkspace.includes('text-[11px] text-slate-700">{plan ? <div className="grid gap-2 sm:grid-cols-4">'), 'sampling counts use readable text');
   assert.ok(pgdWorkspace.includes('text-[11px] text-slate-500">Các trường dưới đây được chuẩn hóa từ sổ đăng ký'), 'register form instruction is readable');
   assert.ok(pgdWorkspace.includes('mb-1 text-[11px] font-black text-slate-600">{label}'), 'registry document field labels are readable');
-  assert.ok(pgdWorkspace.includes('mobile-touch-target min-h-11 inline-flex items-center gap-1 rounded-md bg-slate-900 px-2.5 py-0.5 font-mono text-[11px]'), 'request card open action meets the mobile target size');
+  assert.ok(pgdWorkspace.includes('mobile-touch-target min-h-11 inline-flex items-center gap-1') && pgdWorkspace.includes('font-mono tracking-tight hover:text-emerald-700'), 'request card open action meets the mobile target size');
   assert.ok(pgdWorkspace.includes('text-[11px] font-black text-slate-800">{item.name}'), 'dashboard catalog decision labels are readable');
   assert.ok(userManagement.includes('text-[11px] font-black text-slate-600">Vai trò chuyên môn (có thể chọn nhiều):'), 'user role field label is readable');
   assert.ok(userManagement.includes('text-[11px] font-black text-slate-600">Phạm vi phòng:') && userManagement.includes('text-[11px] font-black text-slate-500">Phạm vi lĩnh vực:'), 'user scope field labels are readable');

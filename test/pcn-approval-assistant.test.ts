@@ -9,7 +9,7 @@ import {
   type PcnApprovalReviewInput,
 } from '../utils/pcnApprovalReview.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 const dossier = (overrides: Record<string, unknown> = {}) => ({
   id: 'dossier-1',

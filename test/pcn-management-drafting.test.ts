@@ -18,7 +18,7 @@ const proposal: CertificationProposal = {
   customerSnapshot: { name: 'Công ty A', address: 'Hà Nội' }, productName: 'Thiết bị A', model: 'M1', brand: 'B', productType: 'Điện', specifications: '220V', manufacturer: 'NSX', quantity: 1, fieldCodes: ['QC4'], receivedAt: '2026-08-01',
 };
 
-const serverSource = fs.readFileSync(path.resolve(process.cwd(), 'server.ts'), 'utf8');
+const serverSource = fs.readFileSync(path.resolve(process.cwd(), 'server.legacy.ts'), 'utf8');
 
 test('PCN lab projection keeps one row per sample route and links the outbound PYC', () => {
   const lot: PcnSampleLot = { id: 'lot-1', dossierId: 'd-1', lotCode: 'LO-01', sampleName: 'Mẫu A', quantity: 2, unit: 'bộ', fieldCodes: ['QC4'], routeIds: ['route-1'], status: 'AT_LAB', currentLocation: 'Phòng thử EMC' };

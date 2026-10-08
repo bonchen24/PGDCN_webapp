@@ -6,7 +6,7 @@ import { buildPcnOfficialGenerationContextHash } from '../utils/pcnOfficialTempl
 import { generatePcnOfficialDocuments } from '../utils/pcnOfficialDocumentApi.ts';
 
 const apiSource = fs.readFileSync(new URL('../utils/pcnOfficialDocumentApi.ts', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const issuanceSource = fs.readFileSync(new URL('../components/PcnIssuanceView.tsx', import.meta.url), 'utf8');
 const issuancePolicySource = fs.readFileSync(new URL('../utils/pcnIssuance.ts', import.meta.url), 'utf8');
 const browserPolicySource = fs.readFileSync(new URL('../utils/pcnOfficialTemplatePolicy.ts', import.meta.url), 'utf8');

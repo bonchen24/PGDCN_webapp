@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { normalizePcnDocumentWaiverPatch } from '../utils/pcnDocumentWaivers.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const dossierApiSource = fs.readFileSync(new URL('../utils/pcnDossierApi.ts', import.meta.url), 'utf8');
 
 test('document waiver patches require a reason and normalize keys', () => {

@@ -6,7 +6,7 @@ import { buildPcnReturnedResult, markOfficialPcnResults } from '../utils/pcnResu
 import { normalizePcnOcrEvidence } from '../utils/pcnOcrPolicy.ts';
 
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const resultViewSource = fs.readFileSync(new URL('../components/PcnResultReturnView.tsx', import.meta.url), 'utf8');
 
 test('builds a returned test result linked to a PYC and keeps its retry round', () => {

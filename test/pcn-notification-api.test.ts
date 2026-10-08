@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { createPcnNotificationClient } from '../utils/pcnNotificationApi.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('PCN notification routes filter by the session audience and PCN entity allowlist', () => {
   assert.match(serverSource, /app\.get\(["']\/api\/pcn\/notifications["']/);

@@ -171,10 +171,10 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
     <section className="min-w-0 space-y-3" data-testid="pgd-dossier-native-flow" aria-label="Tiến trình hồ sơ PGD">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-600">PGD · Tiến trình hồ sơ</p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-950">Xử lý từng việc theo đúng thứ tự</h2>
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600">PGD · Tiến trình hồ sơ</p>
+          <h2 className="mt-1 text-base font-black text-slate-950">Xử lý từng việc theo đúng thứ tự</h2>
         </div>
-        <p className="text-sm text-slate-600" aria-live="polite">Đang ở bước {currentNumber}/{PGD_DOSSIER_FLOW_STEPS.length} · {resolvedSteps}/{PGD_DOSSIER_FLOW_STEPS.length} việc đã xong · {getPgdStatusLabel(status)}</p>
+        <p className="text-xs text-slate-600" aria-live="polite">Đang ở bước {currentNumber}/{PGD_DOSSIER_FLOW_STEPS.length} · {resolvedSteps}/{PGD_DOSSIER_FLOW_STEPS.length} việc đã xong · {getPgdStatusLabel(status)}</p>
       </div>
 
       <div className="h-1.5 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">

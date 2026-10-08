@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await authenticatePcnUser(username, password);
-    const token = createPcnSessionToken(user, getSessionSecret(), PCN_SESSION_TTL_SECONDS);
+    const token = createPcnSessionToken(user, getSessionSecret(), Date.now(), PCN_SESSION_TTL_SECONDS);
 
     const isSecure = process.env.NODE_ENV === 'production';
     const response = jsonOk({ authenticated: true, user });

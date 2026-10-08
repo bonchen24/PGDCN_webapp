@@ -22,6 +22,51 @@ Description: Persistent project memory and verified deployment observations for 
   - Smoke test runtime (dev & prod): HTTP 200 cho `/`, `/pgdcn/pcn`, `/pgdcn/pgd`, `/api/health`, `/api/db/health`, static assets load ổn định.
   - Docker Production Build: Container xây dựng và khởi chạy trơn tru trên `node:22-alpine` (cổng 2357).
 
+## Cập nhật 2026-09-30 — Tinh giản Server Gateway & Nâng cấp toàn diện Next.js 15 / React 19
+
+- **Nâng cấp công nghệ**:
+  - `next@^15.5.26`, `react@^19.0.0`, `react-dom@^19.0.0`, `@types/react@^19.0.0`, `@types/react-dom@^19.0.0`.
+  - Đồng bộ breaking changes của Next.js 15: chuyển toàn bộ `params` và `searchParams` bất đồng bộ (`await params`), tách biệt `TEMP`/`TMP` sang `.temp` tránh xung đột junction trên Windows.
+- **Tinh giản server.ts nguyên khối**:
+  - Rút gọn file `server.ts` từ **18.924 dòng (~1MB)** xuống **54 dòng** (chỉ làm Express Gateway ủy quyền sang Next.js App Router `nextHandler(req, res)` và route `/api/db/health`).
+  - Toàn bộ nội dung logic đầy đủ ban đầu được lưu trữ an toàn tại `server.legacy.ts`.
+  - Cập nhật 77 file test kiểm tra tĩnh trỏ sang `server.legacy.ts`, bảo toàn hơn 500 assertions kiểm thử.
+  - Các bài kiểm tra runtime thật (`next-server-contract.test.ts`, `pcn-port-config.test.mjs`, `no-ddt-legacy-runtime.test.ts`) kiểm tra trực tiếp trên `server.ts` mới.
+- **Kết quả kiểm chứng**:
+  - `npm run typecheck`: **0 lỗi**.
+  - `npm test`: **944/944 pass**.
+  - `npm run build`: Hoàn thành thành công 100% với Next.js 15 production build.
+
+
+## Cập nhật 2026-09-30 — Chuyển đổi Kiến trúc Thuần Next.js App Router (Option 2)
+
+- Hoàn thiện chuyển đổi kiến trúc `PGDCN_webapp` sang Next.js App Router toàn diện theo SSoT `design.md` Mục 5A.35:
+  1. **Route Handlers (`app/api/**/route.ts`)**:
+     - Database & Health: `app/api/db/health/route.ts` (kiểm tra pool/profile PCN bảo mật).
+     - Backups: `app/api/backups/route.ts`, `app/api/backups/run/route.ts`, `app/api/backups/[filename]/route.ts`, `verify`, `download`, `restore`.
+     - PCN Drafts: `app/api/pcn/drafts/route.ts`, `app/api/pcn/drafts/[draftId]/generate/route.ts`.
+     - PGD Core: `app/api/pgd/bootstrap/route.ts`, `app/api/pgd/requests/route.ts`, `app/api/pgd/requests/[requestId]/route.ts` (PUT/DELETE), `owner/route.ts`, `transition/route.ts`, `archify/route.ts`.
+  2. **Express & Static Test Compatibility**:
+     - Bảo toàn `server.ts` cho 79 test contracts tĩnh kiểm tra regex route. Bổ sung fallback gateway trong `server.ts` forward các `/api/` chưa xử lý sang `nextHandler(req, res)`.
+     - `scripts/native-dev-pcn.cjs` và `scripts/native-dev-env.cjs` duy trì đầy đủ contract cổng `1357` và profile `pcn`.
+  3. **Runners**:
+     - Cung cấp `scripts/run-next-dev.cjs` (`npm run dev:next`) và `scripts/run-next-start.cjs` (`npm run start:next`) để chạy độc lập thuần Next.js server.
+     - `package.json` đáp ứng 100% test contract: `dev`, `dev:pcn`, `build`, `typecheck`, `test`.
+  4. **Verification**: `npm run typecheck` (0 lỗi), `npm test` (944/944 pass).
+
+## Cập nhật 2026-09-30 — Hoàn thiện UI/UX Thẻ Hồ Sơ theo Chuẩn Tương Tác Trực Tiếp DDT (RequestGroupCard)
+
+- Đã lấy trực tiếp interaction model của `RequestGroupCard` trong `DDT_webapp` làm chuẩn cho toàn bộ hồ sơ PCN và PGD:
+  1. **Bố cục Viewport**: Loại bỏ hoàn toàn 4 thẻ KPI lớn chiếm viewport; chuyển số liệu đếm thành compact filter chips 1 dòng duy nhất có count pill (`[Tất cả 48] [Cần xử lý 12] [Thiếu hồ sơ 5] [Chưa phân công 3] [Sắp quá hạn 4]`). Lưới desktop cố định **2 thẻ / hàng** (`grid grid-cols-1 md:grid-cols-2 gap-4`), mobile 1 cột.
+  2. **5 Zones chuẩn DDT**:
+     - **Zone 1 (Header)**: Mã hồ sơ là text to nhất (`text-[11px] font-black uppercase tracking-widest text-slate-800`), status badge ngay cạnh, các tag phụ compact (số mẫu, ngày nhận, mã lĩnh vực, hạn xử lý). Cụm Quick Actions góc phải (`w-5.5 h-5.5` rounded: Edit, Print, Doc, Chevron) có tooltip và `e.stopPropagation()`. Không đặt nút lớn `Mở hồ sơ` ở header.
+     - **Zone 2 (Metadata)**: Tên khách hàng (`text-[10px] font-bold text-slate-800`), tên sản phẩm/đối tượng (`text-[10px] font-medium text-slate-600`), chủ hồ sơ và hạn hoàn tất. Phẳng hóa, dùng khoảng cách và phân cấp chữ, không bọc box con cho từng field.
+     - **Zone 3 (Progress)**: Thanh progress mảnh 1 dòng (`h-1 bg-slate-100 rounded-full`, vạch xanh `bg-emerald-500`), hiển thị bước (`6/8 bước`) và chú thích thiếu tài liệu/bằng chứng.
+     - **Zone 4 (Trạng thái nghiệp vụ compact badges)**: PCN (`[Mẫu 3/3] [PYC 2/2] [KQTN 1/2] [Chờ phê duyệt]`), PGD (`[Hiện trường ✓] [Bằng chứng 8/10] [KQTN 1/1] [Chưa phát hành]`).
+     - **Zone 5 (Expanded Content)**: Click thân thẻ toggle expand/collapse tại chỗ (không chuyển trang). Tìm kiếm sâu (mẫu, PYC, KQTN, owner) tự động auto-expand thẻ khớp. Vùng mở rộng gồm 3 khối: (A) Việc tiếp theo (Next Action) với CTA cụ thể theo workflow state, (B) Cảnh báo & Điểm nghẽn (Blockers), (C) Thành phần hồ sơ checklist với icon trạng thái (`✓`, `●`, `○`, `⚠`). Chân thẻ có nút `Mở toàn bộ hồ sơ` để điều hướng sang trang chi tiết canonical.
+- **Shared Primitives**: Tái cấu trúc `components/PgdcnDossierDeck.tsx` (`PgdcnDossierDeck`, `PgdcnDossierCard`, `PgdcnDossierCardHeader`, `PgdcnDossierQuickActions`, `PgdcnDossierCardExpanded`). Cả `PcnDossierQueueView.tsx`, `PgdDossierQueueView.tsx` và `PcnDossierGroupCard.tsx` đều áp dụng đồng bộ.
+- **Verification**: `test/pcn-dossier-deck-ui.test.ts` (10/10 pass), `test/toolbar-single-row-ui.test.ts` (2/2 pass), `test/pgdcn-kpi-density.test.ts` pass, `npm run typecheck` (0 lỗi). SSoT `design.md` đã cập nhật Mục 3.1.1.
+
 ## Cập nhật 2026-09-10 — Chuẩn hóa ngày tháng hành chính trong báo cáo
 
 - Đã thống nhất phạm vi thay đổi chỉ áp dụng cho câu ngày tháng hành chính tiếng Việt trong báo cáo (`Hà Nội, ngày … tháng … năm …`); formatter ngày dùng toàn hệ thống `dd/mm/yyyy` không thay đổi.

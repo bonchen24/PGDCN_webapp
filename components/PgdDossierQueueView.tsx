@@ -15,11 +15,26 @@ import {
   Layers,
   FolderOpen,
   ChevronDown,
+  Edit3,
+  Copy,
+  Printer,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
+import {
+  PgdcnDossierCard,
+  PgdcnDossierCardExpanded,
+  PgdcnDossierQuickActions,
+  type PgdcnDossierItemModel,
+  type DossierComponentStage,
+  type DossierBlockerItem,
+  type DossierQuickAction,
+  type DossierBusinessBadge,
+} from './PgdcnDossierDeck';
 
 export interface PgdDossierQueueRow {
   requestId: string;
@@ -45,28 +60,15 @@ export interface PgdDossierQueueViewProps {
   onOpenDossier: (requestId: string) => void;
 }
 
-function Metric({ label, value, icon: Icon, className }: { label: string; value: number; icon: LucideIcon; className: string }) {
-  return (
-    <div className={`pgdcn-kpi-card ${className}`}>
-      <div className="min-w-0 flex-1">
-        <span className="block truncate text-[10px] font-semibold text-slate-600" title={label}>
-          {label}
-        </span>
-        <p className="mt-0.5 text-xl font-bold leading-5 text-slate-950">{value}</p>
-      </div>
-      <Icon size={17} aria-hidden="true" />
-    </div>
-  );
-}
-
-const PGD_FILTER_CHIPS = [
+export const PGD_FILTER_CHIPS = [
   { id: 'ALL', label: 'Tất cả' },
+  { id: 'ACTION_NEEDED', label: 'Cần xử lý' },
   { id: 'STEEL', label: 'Thép/Kim loại' },
   { id: 'MACHINE', label: 'Máy móc' },
   { id: 'COAL', label: 'Than' },
   { id: 'INTAKE', label: 'Tiếp nhận' },
   { id: 'IN_PROGRESS', label: 'Đang xử lý' },
-  { id: 'OVERDUE', label: 'Quá hạn' },
+  { id: 'OVERDUE', label: 'Thiếu hồ sơ' },
   { id: 'COMPLETED', label: 'Hoàn thành' },
 ] as const;
 
@@ -77,6 +79,10 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [activeChip, setActiveChip] = useState<PgdFilterChipId>('ALL');
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
+
+  const actionCount = rows.filter((r) => r.missingRequiredCount > 0 || !['Đã hoàn thành', 'Đã lưu trữ', 'Đã trả kết quả'].includes(r.statusLabel)).length;
+  const incompleteCount = rows.filter((r) => r.missingRequiredCount > 0).length;
+  const unassignedCount = rows.filter((r) => !r.ownerUsername && !r.ownerDisplayName).length;
 
   const toggleCard = (id: string) => {
     setExpandedCardIds((prev) => {
@@ -89,26 +95,39 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
 
   const filteredRows = useMemo(() => {
     let result = rows;
-    if (activeChip === 'STEEL') {
-      result = result.filter((r) => /thép|kim loại/i.test(`${r.productName || ''} ${r.catalogLabel || ''}`));
+    if (activeChip === 'ACTION_NEEDED') {
+      result = result.filter((r) => r.missingRequiredCount > 0 || !['Đã hoàn thành', 'Đã lưu trữ', 'Đã trả kết quả'].includes(r.statusLabel));
+    } else if (activeChip === 'STEEL') {
+      result = result.filter((r) => r.productGroup.includes('Thép') || r.catalogLabel.includes('Thép'));
     } else if (activeChip === 'MACHINE') {
-      result = result.filter((r) => /máy/i.test(`${r.productName || ''} ${r.catalogLabel || ''}`));
+      result = result.filter((r) => r.productGroup.includes('Máy') || r.catalogLabel.includes('Máy'));
     } else if (activeChip === 'COAL') {
-      result = result.filter((r) => /than/i.test(`${r.productName || ''} ${r.catalogLabel || ''}`));
+      result = result.filter((r) => r.productGroup.includes('Than') || r.catalogLabel.includes('Than'));
     } else if (activeChip === 'INTAKE') {
-      result = result.filter((r) => /tiếp nhận/i.test(`${r.currentStepLabel || ''} ${r.statusLabel || ''}`));
+      result = result.filter((r) => r.currentStepNumber <= 2);
     } else if (activeChip === 'IN_PROGRESS') {
-      result = result.filter((r) => !['Đã hoàn thành', 'Đã lưu trữ', 'Đã hủy'].includes(r.statusLabel));
+      result = result.filter((r) => r.currentStepNumber > 2 && r.currentStepNumber < 5);
     } else if (activeChip === 'OVERDUE') {
-      result = result.filter((r) => Boolean((r as any).isOverdue));
+      result = result.filter((r) => r.missingRequiredCount > 0);
     } else if (activeChip === 'COMPLETED') {
-      result = result.filter((r) => ['Đã hoàn thành', 'Đã lưu trữ', 'Đã ký', 'Đã trả kết quả'].includes(r.statusLabel));
+      result = result.filter((r) => ['Đã ký', 'Đã hoàn thành', 'Đã lưu trữ', 'Đã trả kết quả'].includes(r.statusLabel));
     }
 
     const needle = query.trim().toLocaleLowerCase('vi-VN');
     if (!needle) return result;
     return result.filter((row) =>
-      [row.requestCode, row.customerName, row.productName, row.catalogLabel, row.currentStepLabel, row.ownerDisplayName, row.ownerUsername, row.statusLabel]
+      [
+        row.requestCode,
+        row.customerName,
+        row.productName,
+        row.productGroup,
+        row.catalogLabel,
+        row.ownerDisplayName,
+        row.ownerUsername,
+        row.statusLabel,
+        row.currentStepLabel,
+        row.nextActionLabel,
+      ]
         .filter(Boolean)
         .join(' ')
         .toLocaleLowerCase('vi-VN')
@@ -116,226 +135,323 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
     );
   }, [query, rows, activeChip]);
 
-  const actionCount = rows.filter((row) => row.missingRequiredCount > 0 || !row.ownerUsername || !['Đã lưu trữ', 'Đã hủy'].includes(row.statusLabel)).length;
-  const incompleteCount = rows.filter((row) => row.missingRequiredCount > 0).length;
-  const unassignedCount = rows.filter((row) => !row.ownerUsername).length;
+  // Convert PGD row to unified item model
+  const itemModels = useMemo<PgdcnDossierItemModel[]>(() => {
+    return filteredRows.map((row) => {
+      const blockers: DossierBlockerItem[] = [];
+      if (row.missingRequiredCount > 0) {
+        blockers.push({
+          id: `pgd-missing-${row.requestId}`,
+          title: 'Thiếu hồ sơ & bằng chứng bắt buộc',
+          reason: `Còn thiếu ${row.missingRequiredCount} mục tài liệu theo quy trình giám định.`,
+          severity: 'HARD',
+          actionLabel: 'Bổ sung hồ sơ',
+          onAction: () => onOpenDossier(row.requestId),
+        });
+      }
+      if (!row.ownerUsername && !row.ownerDisplayName) {
+        blockers.push({
+          id: `pgd-unassigned-${row.requestId}`,
+          title: 'Chưa phân công giám định viên',
+          reason: 'Yêu cầu chưa có cán bộ kỹ thuật phụ trách kiểm tra hiện trường.',
+          severity: 'WARNING',
+          actionLabel: 'Phân công',
+          onAction: () => onOpenDossier(row.requestId),
+        });
+      }
+
+      const score = row.requiredDocumentTotal > 0 ? Math.round((row.requiredDocumentPresent / row.requiredDocumentTotal) * 100) : 100;
+
+      // Zone 4: Compact Business Badges
+      const businessBadges: DossierBusinessBadge[] = [
+        {
+          id: 'field',
+          label: row.currentStepNumber >= 4 ? 'Hiện trường ✓' : 'Hiện trường',
+          tone: row.currentStepNumber >= 4 ? 'success' : 'default',
+        },
+        {
+          id: 'evidence',
+          label: `Bằng chứng ${row.requiredDocumentPresent}/${row.requiredDocumentTotal}`,
+          tone: 'info',
+        },
+        {
+          id: 'kqtn',
+          label: row.currentStepNumber >= 5 ? 'KQTN ✓' : 'Chờ KQTN',
+          tone: row.currentStepNumber >= 5 ? 'success' : 'warning',
+        },
+        {
+          id: 'cert',
+          label: ['Đã ký', 'Đã hoàn thành', 'Đã lưu trữ', 'Đã trả kết quả'].includes(row.statusLabel) ? 'Chứng thư ✓' : 'Chưa phát hành',
+          tone: ['Đã ký', 'Đã hoàn thành', 'Đã lưu trữ', 'Đã trả kết quả'].includes(row.statusLabel) ? 'success' : 'default',
+        },
+      ];
+
+      // 8 PGD workflow stages breakdown
+      const stages: DossierComponentStage[] = [
+        {
+          id: 'intake',
+          name: 'Tiếp nhận PYC',
+          status: 'COMPLETED',
+          statusLabel: 'Đã nhận',
+        },
+        {
+          id: 'documents',
+          name: 'Tài liệu & hồ sơ',
+          status: row.missingRequiredCount > 0 ? 'MISSING' : 'COMPLETED',
+          statusLabel: `${row.requiredDocumentPresent}/${row.requiredDocumentTotal}`,
+          actionLabel: 'Mở',
+          onAction: () => onOpenDossier(row.requestId),
+        },
+        {
+          id: 'plan',
+          name: 'Kế hoạch',
+          status: row.currentStepNumber >= 2 ? 'COMPLETED' : 'IN_PROGRESS',
+          statusLabel: row.currentStepNumber >= 2 ? 'Đã lập KH' : 'Chờ KH',
+        },
+        {
+          id: 'field',
+          name: 'Hiện trường',
+          status: row.currentStepNumber >= 3 ? 'COMPLETED' : row.currentStepNumber === 2 ? 'IN_PROGRESS' : 'WAITING',
+          statusLabel: row.currentStepNumber >= 3 ? 'Đã kiểm' : 'Chờ kiểm',
+        },
+        {
+          id: 'lab',
+          name: 'Bàn giao PTN',
+          status: row.currentStepNumber >= 4 ? 'COMPLETED' : 'WAITING',
+          statusLabel: row.currentStepNumber >= 4 ? 'Đã giao' : 'Chưa giao',
+        },
+        {
+          id: 'results',
+          name: 'KQTN & Đánh giá',
+          status: row.currentStepNumber > 4 ? 'COMPLETED' : 'WAITING',
+          statusLabel: row.currentStepNumber > 4 ? 'Đã có KQ' : 'Chờ KQ',
+        },
+        {
+          id: 'report',
+          name: 'Báo cáo & Chứng thư',
+          status: ['Đã ký', 'Đã hoàn thành', 'Đã lưu trữ', 'Đã trả kết quả'].includes(row.statusLabel) ? 'COMPLETED' : 'IN_PROGRESS',
+          statusLabel: ['Đã ký', 'Đã hoàn thành', 'Đã lưu trữ', 'Đã trả kết quả'].includes(row.statusLabel) ? 'Đã ký' : 'Đang soạn',
+        },
+        {
+          id: 'archive',
+          name: 'Lưu trữ hồ sơ',
+          status: ['Đã lưu trữ'].includes(row.statusLabel) ? 'COMPLETED' : 'LOCKED',
+          statusLabel: ['Đã lưu trữ'].includes(row.statusLabel) ? 'Đã lưu' : 'Chưa lưu',
+        },
+      ];
+
+      return {
+        id: row.requestId,
+        domain: 'PGD',
+        primaryCode: row.requestCode,
+        status: row.status,
+        statusLabel: row.statusLabel,
+        customerName: row.customerName || 'Chưa có khách hàng',
+        productName: row.productName || 'Chưa có đối tượng',
+        brandOrGroup: row.productGroup,
+        fieldOrCatalogBadge: row.catalogLabel,
+        sampleCountLabel: row.productGroup || 'Hồ sơ GĐ',
+        ownerName: row.ownerDisplayName || row.ownerUsername,
+        currentStepNumber: row.currentStepNumber,
+        currentStepLabel: row.currentStepLabel,
+        completenessPercent: score,
+        completenessLabel: `${row.requiredDocumentPresent}/${row.requiredDocumentTotal} (${score}%)`,
+        missingRequiredCount: row.missingRequiredCount,
+        businessBadges,
+        deepSearchTokens: [
+          row.requestCode,
+          row.customerName,
+          row.productName,
+          row.productGroup,
+          row.catalogLabel,
+          row.ownerDisplayName,
+          row.ownerUsername,
+          row.statusLabel,
+          row.currentStepLabel,
+          row.nextActionLabel,
+        ].filter(Boolean),
+        nextAction: {
+          title: row.nextActionLabel || 'Tiếp tục hồ sơ giám định',
+          reason:
+            row.missingRequiredCount > 0
+              ? `Còn thiếu ${row.missingRequiredCount} mục tài liệu bắt buộc cần bổ sung.`
+              : `Sẵn sàng thực hiện bước ${row.currentStepNumber} · ${row.currentStepLabel}.`,
+          owner: row.ownerDisplayName || row.ownerUsername || 'Chưa phân công',
+          actionLabel: row.nextActionLabel || 'Tiếp tục xử lý',
+          onAction: () => onOpenDossier(row.requestId),
+        },
+        blockers,
+        stages,
+      };
+    });
+  }, [filteredRows, onOpenDossier]);
+
+  // Auto-expand card on search match
+  useEffect(() => {
+    if (!query || !query.trim()) return;
+    const q = query.trim().toLowerCase();
+    const matchingIds = itemModels
+      .filter((item) => {
+        const tokens = [
+          item.primaryCode,
+          item.secondaryCode,
+          item.customerName,
+          item.productName,
+          item.brandOrGroup,
+          item.ownerName,
+          ...(item.deepSearchTokens || []),
+        ]
+          .filter(Boolean)
+          .map((t) => String(t).toLowerCase());
+
+        return tokens.some((t) => t.includes(q));
+      })
+      .map((i) => i.id);
+
+    if (matchingIds.length > 0) {
+      setExpandedCardIds((prev) => {
+        const next = new Set(prev);
+        matchingIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  }, [query, itemModels]);
 
   return (
-    <section className="min-w-0 space-y-4 p-3 md:p-5" aria-label="Hàng đợi hồ sơ PGD">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Metric label="Tổng hồ sơ" value={rows.length} icon={ClipboardList} className="border-slate-200 text-slate-600" />
-        <Metric label="Cần xử lý" value={actionCount} icon={ArrowRight} className="border-blue-200 text-blue-700" />
-        <Metric label="Còn thiếu tài liệu" value={incompleteCount} icon={FileWarning} className="border-amber-200 text-amber-700" />
-        <Metric label="Chưa phân công" value={unassignedCount} icon={UserRound} className="border-violet-200 text-violet-700" />
-      </div>
-
+    <section className="min-w-0 space-y-3 p-3 md:p-4" aria-label="Hàng đợi hồ sơ PGD">
+      {/* Header: Title and View Switcher (Zero KPI Viewport Wastage) */}
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600">PGD · Hàng đợi công việc</p>
-          <h2 className="mt-1 text-base font-semibold text-slate-950">Mở đúng hồ sơ, xử lý đúng việc</h2>
-          <p className="mt-1 text-sm text-slate-600">Danh sách tập trung vào bước hiện tại, tài liệu còn thiếu và người phụ trách.</p>
+          <h2 className="mt-0.5 text-sm md:text-base font-black text-slate-950">Mở đúng hồ sơ, xử lý đúng việc</h2>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* View switcher */}
-          <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-3xs">
-            <button
-              type="button"
-              onClick={() => setViewMode('card')}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
-                viewMode === 'card'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Xem dạng thẻ chuẩn DdT"
-            >
-              <LayoutGrid size={13} />
-              <span className="hidden sm:inline">Dạng thẻ</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
-                viewMode === 'table'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Xem bảng truyền thống"
-            >
-              <List size={13} />
-              <span className="hidden sm:inline">Dạng bảng</span>
-            </button>
-          </div>
-
-          <label className="relative block w-full sm:w-80">
-            <span className="sr-only">Tìm trong hàng đợi hồ sơ</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} aria-hidden="true" />
-            <input
-              type="search"
-              aria-label="Tìm trong hàng đợi hồ sơ"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              className="min-h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-            />
-          </label>
+        {/* View switcher (DDT pattern) */}
+        <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setViewMode('card')}
+            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+              viewMode === 'card'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+            title="Xem dạng thẻ chuẩn DDT"
+          >
+            <LayoutGrid size={13} />
+            <span className="hidden sm:inline">Dạng thẻ</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('table')}
+            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+              viewMode === 'table'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+            title="Xem bảng truyền thống"
+          >
+            <List size={13} />
+            <span className="hidden sm:inline">Dạng bảng</span>
+          </button>
         </div>
       </div>
 
-      {/* Filter Chips Toolbar theo Mục 3.1.1 (Mục 6) */}
-      <div className="mobile-scroll-x flex min-w-0 items-center gap-1.5 overflow-x-auto pb-1">
-        {PGD_FILTER_CHIPS.map((chip) => {
-          const active = activeChip === chip.id;
-          return (
-            <button
-              key={chip.id}
-              type="button"
-              onClick={() => setActiveChip(chip.id)}
-              className={`mobile-touch-target inline-flex min-h-8 shrink-0 items-center rounded-xl px-3 py-1 text-[11px] font-black uppercase tracking-wider transition-colors ${
-                active
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
-              }`}
-            >
-              {chip.label}
-            </button>
-          );
-        })}
+      {/* Single-row Toolbar (TVCI Lab Standard) */}
+      <div className="pgdcn-toolbar-nowrap flex items-center gap-2 overflow-x-auto py-1">
+        {/* Search Input */}
+        <div className="pgdcn-toolbar-search relative min-w-[200px] max-w-sm flex-1 shrink-0">
+          <span className="sr-only">Tìm trong hàng đợi hồ sơ</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} aria-hidden="true" />
+          <input
+            type="search"
+            aria-label="Tìm trong hàng đợi hồ sơ"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Tìm mã PYC, khách hàng, đối tượng, phân loại, kết quả..."
+            className="w-full bg-white border border-slate-200/80 rounded-xl pl-9 pr-3 py-1.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs transition-all"
+          />
+        </div>
+
+        {/* Filter Pills */}
+        <div className="pgdcn-toolbar-pills flex items-center gap-1.5 shrink-0">
+          {PGD_FILTER_CHIPS.map((chip) => {
+            const active = activeChip === chip.id;
+            const count =
+              chip.id === 'ALL'
+                ? rows.length
+                : chip.id === 'ACTION_NEEDED'
+                ? actionCount
+                : chip.id === 'STEEL'
+                ? rows.filter((r) => r.productGroup.includes('Thép') || r.catalogLabel.includes('Thép')).length
+                : chip.id === 'MACHINE'
+                ? rows.filter((r) => r.productGroup.includes('Máy') || r.catalogLabel.includes('Máy')).length
+                : chip.id === 'COAL'
+                ? rows.filter((r) => r.productGroup.includes('Than') || r.catalogLabel.includes('Than')).length
+                : chip.id === 'INTAKE'
+                ? rows.filter((r) => r.currentStepNumber <= 2).length
+                : chip.id === 'IN_PROGRESS'
+                ? rows.filter((r) => r.currentStepNumber > 2 && r.currentStepNumber < 5).length
+                : chip.id === 'OVERDUE'
+                ? incompleteCount
+                : rows.filter((r) => ['Đã ký', 'Đã hoàn thành', 'Đã lưu trữ', 'Đã trả kết quả'].includes(r.statusLabel)).length;
+
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => setActiveChip(chip.id)}
+                className={`mobile-touch-target inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-xl px-3 py-1 text-[11px] font-bold transition-all cursor-pointer ${
+                  active
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
+                }`}
+              >
+                <span>{chip.label}</span>
+                <span
+                  className={`rounded-full px-1.5 py-0.2 text-[10px] font-black ${
+                    active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
+      {/* Grid: Desktop 2 Columns, Mobile 1 Column */}
       {filteredRows.length > 0 ? (
         viewMode === 'card' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {filteredRows.map((row) => {
-              const score = row.requiredDocumentTotal > 0 ? Math.round((row.requiredDocumentPresent / row.requiredDocumentTotal) * 100) : 100;
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {itemModels.map((item) => {
+              const quickActions: DossierQuickAction[] = [
+                {
+                  id: 'open-detail',
+                  label: 'Mở chi tiết',
+                  icon: FolderOpen,
+                  tone: 'primary',
+                  onClick: () => onOpenDossier(item.id),
+                },
+              ];
+
               return (
-                <div
-                  key={row.requestId}
-                  className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all"
-                >
-                  <div>
-                    {/* Header: Request Code and Status */}
-                    <div className="flex items-start justify-between gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onOpenDossier(row.requestId)}
-                        className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-2.5 py-0.5 font-mono text-[11px] font-black text-white shadow-3xs transition-colors hover:bg-slate-800 cursor-pointer"
-                      >
-                        <Layers size={11} className="text-blue-400" />
-                        {row.requestCode}
-                      </button>
-                      <PgdcnStatusBadge domain="PGD" status={row.status} label={row.statusLabel} />
-                    </div>
-
-                    {/* Customer and Product */}
-                    <div className="mt-2.5 space-y-1">
-                      <div className="flex items-start gap-1.5">
-                        <Building2 size={13} className="mt-0.5 shrink-0 text-slate-400" />
-                        <h3 className="line-clamp-1 text-xs font-black text-slate-800" title={row.customerName}>
-                          {row.customerName || 'Chưa có khách hàng'}
-                        </h3>
-                      </div>
-                      <div className="flex items-start gap-1.5 text-slate-600">
-                        <Package size={12} className="mt-0.5 shrink-0 text-slate-400" />
-                        <span className="line-clamp-1 text-xs font-medium" title={row.productName}>
-                          {row.productName || 'Chưa có đối tượng'}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 truncate" title={row.catalogLabel}>
-                        {row.catalogLabel} · {row.productGroup}
-                      </div>
-                    </div>
-
-                    {/* Step / Current Station */}
-                    <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/70 p-2.5">
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className="font-black text-blue-900">
-                          Bước {row.currentStepNumber} · {row.currentStepLabel}
-                        </span>
-                        <span className="text-[10px] font-semibold text-blue-700">{row.nextActionLabel || 'Tiếp tục hồ sơ'}</span>
-                      </div>
-                    </div>
-
-                    {/* Completeness & Missing docs */}
-                    <div className="mt-3 space-y-1.5">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500">
-                          Tài liệu bắt buộc: <strong>{row.requiredDocumentPresent}/{row.requiredDocumentTotal}</strong>
-                        </span>
-                        <span className="font-bold text-slate-700">{score}%</span>
-                      </div>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className={`h-full rounded-full transition-all ${
-                            score === 100
-                              ? 'bg-emerald-500'
-                              : score >= 60
-                              ? 'bg-blue-600'
-                              : 'bg-amber-500'
-                          }`}
-                          style={{ width: `${score}%` }}
-                        />
-                      </div>
-                      {row.missingRequiredCount > 0 ? (
-                        <p className="text-[10px] font-semibold text-amber-800">
-                          <><AlertTriangle size={13} aria-hidden="true" /> Thiếu {row.missingRequiredCount} mục tài liệu bắt buộc</>
-                        </p>
-                      ) : (
-                        <p className="text-[10px] font-semibold text-emerald-700">
-                          <><CheckCircle2 size={13} aria-hidden="true" /> Đầy đủ tài liệu theo quy trình</>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Card Footer: Owner and Open Action */}
-                  <div className="mt-3.5 flex items-center justify-between border-t border-slate-100 pt-2.5 gap-2">
-                    <div className="min-w-0">
-                      <div className="text-[11px] text-slate-500 truncate max-w-[150px]" title={row.ownerDisplayName || row.ownerUsername || 'Chưa phân công'}>
-                        Chủ hồ sơ: <strong className="text-slate-700">{row.ownerDisplayName || row.ownerUsername || 'Chưa phân công'}</strong>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => toggleCard(row.requestId)}
-                        className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-blue-700 cursor-pointer"
-                      >
-                        {expandedCardIds.has(row.requestId) ? 'Thu gọn' : 'Xem chi tiết'}
-                        <ChevronDown size={12} className={`transition-transform ${expandedCardIds.has(row.requestId) ? 'rotate-180' : ''}`} />
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onOpenDossier(row.requestId)}
-                      className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-700 px-3.5 py-1.5 text-xs font-black text-white shadow-3xs hover:bg-blue-800 transition-colors cursor-pointer"
-                    >
-                      <FolderOpen size={13} />
-                      Mở hồ sơ
-                      <ArrowRight size={11} className="opacity-70" />
-                    </button>
-                  </div>
-
-                  {/* Accordion Panel */}
-                  {expandedCardIds.has(row.requestId) && (
-                    <div className="mt-2.5 rounded-lg border border-slate-100 bg-slate-50/70 p-2.5 text-[11px] space-y-1">
-                      <div className="flex justify-between text-slate-600">
-                        <span>Tài liệu hiện có:</span>
-                        <strong className="text-slate-800">{row.requiredDocumentPresent} / {row.requiredDocumentTotal}</strong>
-                      </div>
-                      {row.missingRequiredCount > 0 && (
-                        <div className="text-amber-800 font-bold">
-                          Thiếu {row.missingRequiredCount} mục tài liệu cần bổ sung.
-                        </div>
-                      )}
-                      <div className="text-[10px] text-slate-500">
-                        Phân loại: {row.catalogLabel} · Nhóm: {row.productGroup}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <PgdcnDossierCard
+                  key={item.id}
+                  item={item}
+                  quickActions={quickActions}
+                  isExpanded={expandedCardIds.has(item.id)}
+                  onToggleExpand={() => toggleCard(item.id)}
+                  onOpenDetail={() => onOpenDossier(item.id)}
+                  searchQuery={query}
+                />
               );
             })}
           </div>
         ) : (
-          <div className="mobile-scroll-x min-w-0 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          /* Table View (Secondary Traditional Table) */
+          <div className="mobile-scroll-x min-w-0 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
             <table aria-label="Bảng hàng đợi hồ sơ PGD" className="w-full min-w-[1080px] border-collapse text-left text-sm">
               <caption className="sr-only">Danh sách hồ sơ PGD đang cần xử lý</caption>
               <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
@@ -352,34 +468,72 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredRows.map((row) => (
-                  <tr key={row.requestId} className="align-top transition-colors hover:bg-blue-50/40">
-                    <th scope="row" className="sticky left-0 z-[1] bg-white px-3 py-3 font-normal">
-                      <div className="min-w-[150px]">
-                        <button type="button" onClick={() => onOpenDossier(row.requestId)} className="mobile-touch-target min-h-11 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1">
-                          <p className="font-mono text-xs font-bold text-blue-700">{row.requestCode}</p>
+                {filteredRows.map((row) => {
+                  const score = row.requiredDocumentTotal > 0 ? Math.round((row.requiredDocumentPresent / row.requiredDocumentTotal) * 100) : 100;
+                  return (
+                    <tr key={row.requestId} className="align-top transition-colors hover:bg-blue-50/40">
+                      <th scope="row" className="sticky left-0 z-[1] bg-white px-3 py-3 font-normal">
+                        <div className="min-w-[150px]">
+                          <button
+                            type="button"
+                            onClick={() => onOpenDossier(row.requestId)}
+                            aria-label={`Mở chi tiết hồ sơ ${row.requestCode}`}
+                            className="font-mono text-xs font-bold text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 cursor-pointer"
+                          >
+                            {row.requestCode}
+                          </button>
                           <PgdcnStatusBadge compact domain="PGD" status={row.status} label={row.statusLabel} />
+                        </div>
+                      </th>
+                      <td className="max-w-[200px] px-3 py-3 align-top text-sm font-medium text-slate-900">
+                        <span className="line-clamp-2">{row.customerName || 'Chưa có khách hàng'}</span>
+                      </td>
+                      <td className="max-w-[200px] px-3 py-3 align-top text-sm text-slate-700">
+                        <span className="line-clamp-2">{row.productName || 'Chưa có đối tượng'}</span>
+                      </td>
+                      <td className="px-3 py-3 align-top text-xs text-slate-600">
+                        <span className="inline-block rounded border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium">
+                          {row.catalogLabel}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        <p className="font-semibold text-blue-900">Bước {row.currentStepNumber} · {row.currentStepLabel}</p>
+                        <p className="mt-1 text-xs text-slate-500">{row.nextActionLabel || 'Chờ xử lý tiếp'}</p>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 align-top">
+                        <span className="font-semibold text-slate-900">{score}%</span>
+                        <p className="mt-1 text-xs text-slate-500">{row.requiredDocumentPresent}/{row.requiredDocumentTotal} mục</p>
+                      </td>
+                      <td className="max-w-[220px] px-3 py-3 align-top">
+                        <span className={row.missingRequiredCount > 0 ? 'font-semibold text-amber-800' : 'font-semibold text-emerald-700'}>
+                          {row.missingRequiredCount > 0 ? `Thiếu ${row.missingRequiredCount} mục` : 'Đủ tài liệu'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 align-top text-sm text-slate-700">
+                        {row.ownerDisplayName || row.ownerUsername || 'Chưa phân công'}
+                      </td>
+                      <td className="px-3 py-3 align-top text-right">
+                        <button
+                          type="button"
+                          className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center gap-1.5 rounded-md bg-blue-700 px-3 py-2 text-[10px] font-black text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 cursor-pointer"
+                          onClick={() => onOpenDossier(row.requestId)}
+                        >
+                          <span>Mở hồ sơ</span>
+                          <ArrowRight size={13} aria-hidden="true" />
                         </button>
-                      </div>
-                    </th>
-                    <td className="max-w-[190px] px-3 py-3 align-top text-sm font-medium text-slate-900"><span className="line-clamp-2">{row.customerName || 'Chưa có khách hàng'}</span></td>
-                    <td className="max-w-[190px] px-3 py-3 align-top text-sm text-slate-700"><span className="line-clamp-2">{row.productName || 'Chưa có đối tượng'}</span><span className="mt-1 block text-xs text-slate-500">{row.productGroup}</span></td>
-                    <td className="max-w-[220px] px-3 py-3 align-top text-xs font-semibold text-slate-700"><span className="line-clamp-2">{row.catalogLabel}</span></td>
-                    <td className="px-3 py-3 align-top"><p className="font-semibold text-blue-900">Bước {row.currentStepNumber} · {row.currentStepLabel}</p><p className="mt-1 text-xs text-slate-500">{row.nextActionLabel || 'Tiếp tục hồ sơ'}</p></td>
-                    <td className="whitespace-nowrap px-3 py-3 align-top"><span className="font-semibold text-slate-900">{row.requiredDocumentPresent}/{row.requiredDocumentTotal}</span><p className="mt-1 text-xs text-slate-500">tài liệu bắt buộc</p></td>
-                    <td className="max-w-[230px] px-3 py-3 align-top"><span className={row.missingRequiredCount > 0 ? 'font-semibold text-amber-800' : 'font-semibold text-emerald-700'}>{row.missingRequiredCount > 0 ? `Thiếu ${row.missingRequiredCount} mục` : 'Đủ tài liệu bắt buộc'}</span></td>
-                    <td className="px-3 py-3 align-top text-sm text-slate-700">{row.ownerDisplayName || row.ownerUsername || 'Chưa phân công'}</td>
-                    <td className="px-3 py-3 align-top text-right"><button type="button" className="mobile-touch-target inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" onClick={() => onOpenDossier(row.requestId)}>Mở hồ sơ<ArrowRight size={16} aria-hidden="true" /></button></td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )
       ) : (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center">
-          <p className="text-sm font-semibold text-slate-900">Không có hồ sơ trong hàng đợi</p>
-          <p className="mt-1 text-sm text-slate-500">Hãy thử đổi từ khóa hoặc mở Sổ dữ liệu để kiểm tra toàn bộ hồ sơ.</p>
+        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+          <Layers size={28} className="mx-auto text-slate-300" />
+          <h3 className="mt-2 text-xs font-bold text-slate-800">Không tìm thấy hồ sơ PGD phù hợp</h3>
+          <p className="mt-1 text-[11px] text-slate-500">Hãy thử điều chỉnh từ khóa tìm kiếm hoặc các tiêu chí bộ lọc.</p>
         </div>
       )}
     </section>

@@ -9,7 +9,7 @@ const read = (relativePath: string) => fs.readFileSync(path.join(root, relativeP
 test('PGD dossier operations expose owner, generated-document attachment, and package APIs', () => {
   const api = read('utils/pgdApi.ts');
   const store = read('store-pgd.ts');
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   assert.match(api, /requests\/\$\{encodeURIComponent\(requestId\)\}\/owner/);
   assert.match(api, /attachPgdGeneratedDocument/);
   assert.match(api, /getPgdDossierPackageUrl/);

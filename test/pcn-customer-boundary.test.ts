@@ -5,7 +5,7 @@ import test from 'node:test';
 import { createPcnCustomer, deletePcnCustomer, updatePcnCustomer } from '../utils/pcnCustomerApi.ts';
 import { PCN_DEDICATED_MUTATION_COLLECTIONS } from '../utils/pcnRbac.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 const designSource = fs.readFileSync(new URL('../design.md', import.meta.url), 'utf8');
 

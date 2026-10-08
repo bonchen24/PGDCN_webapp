@@ -11,7 +11,7 @@ const tvciRequirementsSource = fs.readFileSync(new URL('../../TVCI_APP/ocr_servi
 const tvciComposeSource = fs.readFileSync(new URL('../../TVCI_APP/docker-compose.yml', import.meta.url), 'utf8');
 const ddtComposeSource = fs.readFileSync(new URL('../docker-compose.yml', import.meta.url), 'utf8');
 const ddtEnvExampleSource = fs.readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
-const ddtServerSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const ddtServerSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('shared PaddleOCR service exposes page and footer PDF OCR endpoints', () => {
   assert.match(tvciOcrSource, /@app\.post\("\/ocr\/pdf\/footer"/);

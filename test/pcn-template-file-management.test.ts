@@ -5,7 +5,7 @@ import test from 'node:test';
 const settingsSource = fs.readFileSync(new URL('../components/PcnSettingsView.tsx', import.meta.url), 'utf8');
 const modalSource = fs.readFileSync(new URL('../components/PcnTemplateSettingsModal.tsx', import.meta.url), 'utf8');
 const apiSource = fs.readFileSync(new URL('../utils/pcnTemplateApi.ts', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('PCN template management surface exposes current-file upload/download and controlled review', () => {
   assert.match(settingsSource, /onUploadTemplate/);

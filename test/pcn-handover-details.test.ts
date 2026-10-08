@@ -56,7 +56,7 @@ test('handover details reject incomplete records and impossible receipt order', 
 test('handover modal saves the canonical record through the PCN PYC API boundary', () => {
   const modal = read('components/PcnSampleHandoverModal.tsx');
   const api = read('utils/pcnLabRequestApi.ts');
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   assert.match(modal, /Người giao mẫu/);
   assert.match(modal, /Người nhận mẫu/);
   assert.match(modal, /Phương tiện/);

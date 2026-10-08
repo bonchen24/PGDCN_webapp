@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 test('PGD bootstrap and artifact mutations use dedicated PGD collections', () => {
   const source = readFileSync('utils/pgdApi.ts', 'utf8');
-  const server = readFileSync('server.ts', 'utf8');
+  const server = readFileSync('server.legacy.ts', 'utf8');
   for (const path of ['/api/pgd/inspection-plans', '/api/pgd/case-events', '/api/pgd/field-activity-logs', '/api/pgd/lab-result-reviews', '/api/pgd/dossier-indexes']) assert.match(server, new RegExp(path.replaceAll('/', '\\/')));
   assert.match(source, /savePgdInspectionPlan/);
   assert.match(server, /PGD_COLLECTIONS\.labResults[\s\S]*data->>'requestId' = \$3/);

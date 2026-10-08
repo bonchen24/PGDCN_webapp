@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ customerId: string }> | { customerId: string } }
+  context: { params: Promise<{ customerId: string }> }
 ) {
   const actor = getPcnSessionUser(req);
   if (!actor) {
@@ -164,7 +164,7 @@ export async function POST(
 
 export async function DELETE(
   req: NextRequest,
-  context: { params: Promise<{ customerId: string }> | { customerId: string } }
+  context: { params: Promise<{ customerId: string }> }
 ) {
   const actor = getPcnSessionUser(req);
   if (!actor) {

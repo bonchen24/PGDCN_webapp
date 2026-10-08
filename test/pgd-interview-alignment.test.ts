@@ -64,7 +64,7 @@ test('PGD approval chain has technical and leadership steps in order', () => {
 });
 
 test('PGD approval API enforces the technical step before leadership signing', () => {
-  const serverSource = readFileSync(resolve(process.cwd(), 'server.ts'), 'utf8');
+  const serverSource = readFileSync(resolve(process.cwd(), 'server.legacy.ts'), 'utf8');
   assert.doesNotMatch(serverSource, /PGD v1 chỉ có một cấp phê duyệt/);
   assert.match(serverSource, /TECHNICAL_REVIEW.*LEADERSHIP_APPROVAL/s);
   assert.match(serverSource, /approvedTechnical|technicalApproval|TECHNICAL_REVIEW.*APPROVED/s);

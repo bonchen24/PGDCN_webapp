@@ -5,7 +5,7 @@ import test from 'node:test';
 import { createPcnIssuanceBundle, actOnPcnApprovalStep, deliverPcnIssuance, archivePcnIssuance, attachPcnIssuanceFile } from '../utils/pcnIssuanceApi.ts';
 import { issuePcnIssuance } from '../utils/pcnSignerDelegationApi.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 const issuanceUiSource = fs.readFileSync(new URL('../components/PcnIssuanceView.tsx', import.meta.url), 'utf8');
 const designSource = fs.readFileSync(new URL('../design.md', import.meta.url), 'utf8');

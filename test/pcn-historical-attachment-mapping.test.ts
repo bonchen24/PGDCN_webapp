@@ -12,7 +12,7 @@ const reconcileScript = fs.readFileSync(new URL('../scripts/reconcilePcnHistoric
 const importScript = fs.readFileSync(new URL('../scripts/importPcnHistoricalPilot.ts', import.meta.url), 'utf8');
 const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { scripts?: Record<string, string> };
 const detailSource = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const mappingApiSource = fs.readFileSync(new URL('../utils/pcnHistoricalAttachmentMappingApi.ts', import.meta.url), 'utf8');
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 

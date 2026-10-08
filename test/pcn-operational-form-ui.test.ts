@@ -24,6 +24,24 @@ test('operational form modal covers every PCN station form and uses structured c
   assert.match(modalSource, /type="submit"/);
 });
 
+test('operational form exposes an authoritative error summary and linked field errors', () => {
+  assert.match(modalSource, /useRef/);
+  assert.match(modalSource, /pcn-operational-form-error-summary/);
+  assert.match(modalSource, /role="alert"/);
+  assert.match(modalSource, /tabIndex=\{-1\}/);
+  assert.match(modalSource, /C\u1ea7n ki\u1ec3m tra l\u1ea1i th\u00f4ng tin/);
+  assert.match(modalSource, /ref=\{errorSummaryRef\}/);
+  assert.match(modalSource, /Object\.entries\(errors\)[\s\S]*FIELD_LABELS\[field\]/);
+  assert.match(modalSource, /setErrors\(nextErrors\);[\s\S]*requestAnimationFrame/);
+  assert.match(modalSource, /<form[\s\S]*noValidate/);
+  assert.match(modalSource, /const getFieldControlId = \(field: string\) => \x60pcn-operational-\$\{kind\.toLowerCase\(\)\}-\$\{field\}\x60/);
+  assert.match(modalSource, /id=\{getFieldControlId\(field\)\}/);
+  assert.match(modalSource, /errorId=\{getFieldErrorId\(field\)\}/);
+  assert.match(modalSource, /<span id=\{errorId\}/);
+  assert.match(modalSource, /aria-invalid=\{Boolean\(errors\[field\]\)\}/);
+  assert.match(modalSource, /aria-describedby=\{errors\[field\] \? getFieldErrorId\(field\) : undefined\}/);
+  assert.ok((modalSource.match(/mobile-touch-target min-h-11/g) || []).length >= 3);
+});
 test('dossier card opens station forms in-place and persists operationalForms', () => {
   assert.match(detailSource, /PcnOperationalFormModal/);
   assert.match(detailSource, /operationalForms/);

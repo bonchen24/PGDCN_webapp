@@ -4,7 +4,7 @@ import { BookmarkPlus, Download, GripVertical, Play, SlidersHorizontal, Trash2 }
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { mergeColumnConfig, shouldPersistColumnConfig } from '../utils/columnConfigPersistence';
-import { summaryCellText, summaryRowsToCsv, type SummaryGridColumn, type SummaryGridRow } from '../utils/summaryRegister';
+import { sortSummaryRows, summaryCellText, summaryRowsToCsv, toggleSummarySort, type SummaryGridColumn, type SummaryGridRow, type SummaryGridSortState } from '../utils/summaryRegister';
 import { readPgdcnSavedFilters, type PgdcnSavedFilter, type PgdcnSavedFilterSnapshot, upsertPgdcnSavedFilter, writePgdcnSavedFilters } from '../utils/pgdcnSavedFilters';
 
 type StoredColumn = SummaryGridColumn & { width: number; visible: boolean };
@@ -63,6 +63,7 @@ export default function PgdcnDossierSummaryGrid({
   const [savedFilterName, setSavedFilterName] = useState('');
   const [loadedFilterUsername, setLoadedFilterUsername] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [sortState, setSortState] = useState<SummaryGridSortState | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number | 'ALL'>(50);
   const [showColumnConfig, setShowColumnConfig] = useState(false);
@@ -133,18 +134,24 @@ export default function PgdcnDossierSummaryGrid({
     return source.filter((row) => row.searchText.toLocaleLowerCase('vi-VN').includes(needle));
   }, [filterRows, query, rows]);
 
+  const sortedRows = useMemo(() => {
+    if (!sortState) return filteredRows;
+    const sortColumn = columns.find((column) => column.id === sortState.columnId);
+    return sortColumn ? sortSummaryRows(filteredRows, sortColumn, sortState.direction) : filteredRows;
+  }, [columns, filteredRows, sortState]);
+
   const visibleColumns = useMemo(() => columns.filter((column) => column.visible), [columns]);
-  const totalPages = pageSize === 'ALL' ? 1 : Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const totalPages = pageSize === 'ALL' ? 1 : Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = useMemo(() => {
-    if (pageSize === 'ALL') return filteredRows;
+    if (pageSize === 'ALL') return sortedRows;
     const start = (currentPage - 1) * pageSize;
-    return filteredRows.slice(start, start + pageSize);
-  }, [currentPage, filteredRows, pageSize]);
+    return sortedRows.slice(start, start + pageSize);
+  }, [currentPage, pageSize, sortedRows]);
 
   useEffect(() => {
     setPage(1);
-  }, [pageSize, query, filterRows]);
+  }, [filterRows, pageSize, query, sortState]);
 
   useEffect(() => {
     if (!editingCell) return;
@@ -238,7 +245,7 @@ export default function PgdcnDossierSummaryGrid({
   };
 
   const exportCsv = () => {
-    const blob = new Blob([summaryRowsToCsv(filteredRows, visibleColumns)], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob([summaryRowsToCsv(sortedRows, visibleColumns)], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -282,6 +289,7 @@ export default function PgdcnDossierSummaryGrid({
           <input
             id={`summary-grid-search-${domain}`}
             aria-label={`Tìm Sổ tổng hợp ${domain}`}
+            placeholder={searchPlaceholder}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
 
@@ -326,7 +334,7 @@ export default function PgdcnDossierSummaryGrid({
             <GripVertical size={12} className="text-slate-400" />
             <input type="checkbox" checked={column.visible} onChange={() => setColumns((current) => current.map((item) => item.id === column.id ? { ...item, visible: !item.visible } : item))} />
             <span>{column.label}</span>
-            <input type="number" min={80} max={640} aria-label={`Độ rộng cột ${column.label}`} value={column.width} onChange={(event) => setColumns((current) => current.map((item) => item.id === column.id ? { ...item, width: Math.max(80, Number(event.target.value) || DEFAULT_WIDTH) } : item))} onClick={(event) => event.stopPropagation()} className="w-14 rounded border border-slate-200 px-1 py-0.5 text-[10px] font-normal" />
+            <input type="number" min={80} max={640} aria-label={`Độ rộng cột ${column.label}`} value={column.width} onChange={(event) => setColumns((current) => current.map((item) => item.id === column.id ? { ...item, width: Math.max(80, Number(event.target.value) || DEFAULT_WIDTH) } : item))} onClick={(event) => event.stopPropagation()} className="mobile-touch-target min-h-11 w-14 rounded border border-slate-200 px-1 py-0.5 text-[10px] font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" />
           </label>)}
         </div>
       </div>}
@@ -334,25 +342,35 @@ export default function PgdcnDossierSummaryGrid({
       {cellError && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-bold text-rose-700">{cellError}</div>}
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="mobile-scroll-x overflow-x-auto">
           <table className="w-full min-w-[1400px] text-left text-[11px]">
             <thead className="bg-slate-50 text-[9px] font-black uppercase tracking-wide text-slate-500">
               <tr>
-                {visibleColumns.map((column, index) => <th key={column.id} style={{ width: column.width, minWidth: column.width }} className={`relative whitespace-nowrap border-b border-slate-200 px-2 py-1.5 ${column.sticky || index === 0 ? 'sticky left-0 z-10 bg-slate-50' : ''}`}>{column.label}<span role="separator" aria-label={`Đổi độ rộng cột ${column.label}`} onMouseDown={(event) => startResize(event, column)} className={`absolute right-0 top-0 h-full w-1.5 cursor-col-resize ${resizingColumnId === column.id ? 'bg-emerald-400' : 'hover:bg-emerald-200'}`} /></th>)}
+{visibleColumns.map((column, index) => { const sortDirection = sortState?.columnId === column.id ? sortState.direction : null; return <th key={column.id} aria-sort={sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none'} style={{ width: column.width, minWidth: column.width }} className={'relative whitespace-nowrap border-b border-slate-200 px-2 py-1.5 ' + (column.sticky || index === 0 ? 'sticky left-0 z-10 bg-slate-50' : '')}><button type='button' aria-label={'Sắp xếp theo ' + column.label + ' (' + (sortDirection === 'asc' ? 'tăng dần' : sortDirection === 'desc' ? 'giảm dần' : 'chưa sắp xếp') + ')'} aria-pressed={Boolean(sortDirection)} onClick={() => setSortState((current) => toggleSummarySort(current, column.id))} className='inline-flex min-h-11 min-w-11 items-center gap-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500'>{column.label}<span aria-hidden='true' className='text-slate-400'>{sortDirection === 'asc' ? '↑' : sortDirection === 'desc' ? '↓' : '↕'}</span></button><span role='separator' aria-label={'Đổi độ rộng cột ' + column.label} onMouseDown={(event) => startResize(event, column)} className={'absolute right-0 top-0 h-full w-1.5 cursor-col-resize ' + (resizingColumnId === column.id ? 'bg-emerald-400' : 'hover:bg-emerald-200')} /></th>; })}
                 <th className="sticky right-0 z-10 border-b border-slate-200 bg-slate-50 px-2 py-1.5 text-right">Hồ sơ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {pageRows.map((row) => <tr key={row.id} className="hover:bg-emerald-50/30">
+              {pageRows.map((row, rowIndex) => <tr key={row.id} className="hover:bg-emerald-50/30">
                 {visibleColumns.map((column, index) => {
                   const isEditing = editingCell?.rowId === row.id && editingCell.columnId === column.id;
                   const cellValue = summaryCellText(row.displayCells?.[column.id] ?? row.cells[column.id]);
                   const isPcnDossierCode = domain === 'PCN' && column.id === 'dossierCode' && Boolean(cellValue);
-                  return <td key={column.id} onClick={() => !isEditing && startEdit(row, column)} className={`max-w-[280px] border-slate-100 px-2 py-1.5 align-top ${column.sticky || index === 0 ? 'sticky left-0 z-[1] bg-white' : ''} ${column.editable && isRowEditable(row.id) ? 'cursor-text' : ''}`}>
+                  return <td
+                        key={column.id}
+                        onClick={() => !isEditing && startEdit(row, column)}
+                        onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget || isEditing || (event.key !== 'Enter' && event.key !== ' ')) return;
+                          event.preventDefault();
+                          startEdit(row, column);
+                        }}
+                        tabIndex={column.editable && isRowEditable(row.id) ? 0 : undefined}
+                        aria-label={column.editable && isRowEditable(row.id) ? `${column.label}, dòng ${rowIndex + 1}` : undefined}
+                        className={`max-w-[280px] border-slate-100 px-2 py-4 md:py-1.5 align-top ${column.sticky || index === 0 ? 'sticky left-0 z-[1] bg-white' : ''} ${column.editable && isRowEditable(row.id) ? 'cursor-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500' : ''}`}>
                     {isEditing ? renderEditor(row, column) : isPcnDossierCode ? <button type="button" onClick={(event) => { event.stopPropagation(); onOpenRow(row.id); }} aria-label={`Mở chi tiết hồ sơ ${cellValue}`} className="max-w-[260px] whitespace-pre-wrap break-words text-left font-mono font-black text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">{cellValue}</button> : <div title={cellValue} className={`${column.id === 'requestCode' || column.id === 'dossierCode' ? 'font-mono font-black text-slate-800' : 'font-medium text-slate-700'} max-w-[260px] whitespace-pre-wrap break-words`}>{cellValue || <span className="text-slate-300">—</span>}</div>}
                   </td>;
                 })}
-                <td className="sticky right-0 z-[1] bg-white px-2 py-1.5 text-right"><button type="button" onClick={() => onOpenRow(row.id)} className="whitespace-nowrap rounded-md border border-slate-200 px-2 py-1.5 text-[9px] font-black text-emerald-700 hover:border-emerald-300">Mở hồ sơ</button>{savingRowId === row.id && <div className="mt-1 text-[9px] text-amber-600">Đang lưu…</div>}</td>
+                <td className="sticky right-0 z-[1] bg-white px-2 py-1.5 text-right"><button type="button" onClick={() => onOpenRow(row.id)} className="mobile-touch-target min-h-11 whitespace-nowrap rounded-md border border-slate-200 px-2 py-1.5 text-[9px] font-black text-emerald-700 hover:border-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">Mở hồ sơ</button>{savingRowId === row.id && <div className="mt-1 text-[9px] text-amber-600">Đang lưu…</div>}</td>
               </tr>)}
             </tbody>
           </table>
@@ -361,12 +379,12 @@ export default function PgdcnDossierSummaryGrid({
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-3 py-2 text-[10px] font-bold text-slate-500">
           <span>Trang {currentPage}/{totalPages}</span>
           <div className="flex items-center gap-1.5">
-            <select aria-label={`Số dòng mỗi trang Sổ tổng hợp ${domain}`} value={pageSize} onChange={(event) => setPageSize(event.target.value === 'ALL' ? 'ALL' : Number(event.target.value))} className="rounded border border-slate-200 bg-white px-1.5 py-1">
+            <select aria-label={`Số dòng mỗi trang Sổ tổng hợp ${domain}`} value={pageSize} onChange={(event) => setPageSize(event.target.value === 'ALL' ? 'ALL' : Number(event.target.value))} className="mobile-touch-target min-h-11 rounded border border-slate-200 bg-white px-1.5 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
               {PAGE_SIZES.map((size) => <option key={size} value={size}>{size} dòng</option>)}
               <option value="ALL">Tất cả</option>
             </select>
-            <button type="button" disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="rounded border border-slate-200 px-2 py-1 disabled:opacity-40">‹</button>
-            <button type="button" disabled={currentPage >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))} className="rounded border border-slate-200 px-2 py-1 disabled:opacity-40">›</button>
+            <button type="button" disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="mobile-touch-target min-h-11 min-w-11 rounded border border-slate-200 px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-40">‹</button>
+            <button type="button" disabled={currentPage >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))} className="mobile-touch-target min-h-11 min-w-11 rounded border border-slate-200 px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-40">›</button>
           </div>
         </div>
       </div>

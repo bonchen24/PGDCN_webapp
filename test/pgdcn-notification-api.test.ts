@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { createPgdcnNotificationClient } from '../utils/pgdcnNotificationApi.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const schemaSource = fs.readFileSync(new URL('../sql/pcn-schema.sql', import.meta.url), 'utf8');
 
 test('shared notification client uses one PGDCN session boundary', async () => {

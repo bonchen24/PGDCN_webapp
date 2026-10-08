@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu } from 'lucide-react';
+import { Menu, RefreshCw, User } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { toast } from 'sonner';
 
@@ -67,8 +67,7 @@ const getScopes = (value: readonly DepartmentScope[] | undefined): DepartmentSco
 const getActiveContextLabel = (target: PgdcnNavigationTarget): string => {
   if (target.domain === 'department') {
     /* Tổng quan phòng remains the canonical dashboard route label. */
-    if (target.section === 'department-dashboard') return 'Tổng quan';
-    if (target.section === 'my-work') return 'Việc của tôi';
+    if (target.section === 'department-dashboard' || (target.section as string) === 'my-work') return 'Tổng quan';
     if (target.section === 'customers') return 'Khách hàng';
     if (target.section === 'assistant') return 'Trợ lý AI';
     if (target.section === 'activityLogs') return 'Nhật ký hoạt động';
@@ -110,7 +109,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     const lotIds = new Set(pcn.sampleLots.filter((lot) => lot.dossierId === dossier.id).map((lot) => lot.id));
     return [dossier.id, resolvePcnEvidenceNextAction({ dossier, proposal: pcn.proposals.find((proposal) => proposal.id === dossier.proposalId), requirements: pcn.documentRequirements.filter((requirement) => dossier.fieldCodes.includes(requirement.fieldCode)), documents: pcn.dossierDocuments.filter((document) => document.dossierId === dossier.id), sampleLots: pcn.sampleLots.filter((lot) => lot.dossierId === dossier.id), sampleItems: pcn.sampleItems.filter((item) => lotIds.has(item.sampleLotId)), sampleRoutes: pcn.sampleRoutes.filter((route) => lotIds.has(route.sampleLotId)), labRequests: pcn.labRequests.filter((request) => request.dossierId === dossier.id), results: pcn.returnedResults.filter((result) => result.dossierId === dossier.id), approvalSteps: pcn.approvalSteps.filter((step) => step.dossierId === dossier.id), issuance: pcn.issuancePackages.find((item) => item.dossierId === dossier.id) })];
   })), [pcn.approvalSteps, pcn.documentRequirements, pcn.dossierDocuments, pcn.dossiers, pcn.issuancePackages, pcn.labRequests, pcn.proposals, pcn.returnedResults, pcn.sampleItems, pcn.sampleLots, pcn.sampleRoutes]);
-  const [sessionChecked, setSessionChecked] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(() => Boolean(usePcnSessionStore.getState().currentUser));
   const [activeTarget, setActiveTarget] = useState<PgdcnNavigationTarget>(() => initialDomain === 'PCN'
     ? { domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : 'proposals' }
     : initialDomain === 'PGD' ? { domain: 'PGD', section: initialPgdDraftingOpen ? 'templates' : 'requests' } : { domain: 'department', section: 'department-dashboard' });
@@ -227,8 +226,8 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   };
 
   const navigate = (target: PgdcnNavigationTarget) => {
-    setAssistantContext(undefined);
     setFocusedPgdRequestId(undefined);
+    setAssistantContext(undefined);
     setActiveTarget(target);
     setMobileOpen(false);
     if (initialPcnDossierId || initialPgdRequestId) {
@@ -394,24 +393,49 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
             <div className="truncate text-xs font-semibold tracking-wide text-slate-800">
               Phòng Giám định - Chứng nhận và Phát triển thị trường · TVCI
             </div>
-            <div className="truncate text-[11px] font-medium text-slate-500">
+            <div data-testid="pgdcn-mobile-context" className="truncate text-[11px] font-semibold text-slate-600 lg:hidden">
+              {getActiveContextLabel(activeTarget)}
+            </div>
+            <div className="hidden truncate text-[11px] font-medium text-slate-500 lg:block">
               Hệ thống điều hành & Mở hồ sơ kiểm định - chứng nhận chuyên ngành
             </div>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2.5">
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (scopes.includes('PCN')) void pcn.load(true);
+              if (scopes.includes('PGD')) void pgd.load(true);
+              void refreshPgdcnNotifications();
+              toast.success('Đã làm mới dữ liệu');
+            }}
+            title="Tải lại dữ liệu hệ thống"
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-emerald-700 transition-colors shadow-3xs cursor-pointer"
+          >
+            <RefreshCw size={13} className="text-slate-400" />
+            <span>Tải lại dữ liệu</span>
+          </button>
           <PgdcnNotificationDropdown isOpen={notificationOpen} onToggle={handleToggleNotifications} onClose={() => setNotificationOpen(false)} notifications={notifications} currentUser={currentUser} onMarkRead={handleMarkNotificationRead} onMarkAllRead={handleMarkAllNotificationsRead} onClear={handleClearNotifications} onSelect={handleNotificationSelect} />
           <button
             type="button"
             onClick={() => setPersonalSettingsOpen(true)}
             aria-label="Cài đặt cá nhân"
             title="Cài đặt cá nhân"
-            className="hidden sm:flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1 text-xs text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+            className="hidden sm:flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer shadow-3xs"
           >
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-700">
-              {currentUser.name ? currentUser.name.trim().split(/\s+/).pop()?.slice(0, 2).toUpperCase() : 'US'}
+            <span className="max-w-[140px] truncate font-bold text-slate-800">{currentUser.name || currentUser.username}</span>
+            <span className="rounded bg-cyan-50 border border-cyan-200/80 px-1.5 py-0.2 text-[10px] font-bold text-cyan-700">
+              Văn phòng
+            </span>
+            {(currentUser.systemRole === 'admin' || currentUser.role === 'admin') && (
+              <span className="rounded bg-rose-50 border border-rose-200/80 px-1.5 py-0.2 text-[10px] font-black text-rose-700">
+                ADMIN
+              </span>
+            )}
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:text-slate-700">
+              <User size={13} />
             </div>
-            <span className="max-w-[150px] truncate font-medium text-slate-700">{currentUser.name || currentUser.username}</span>
           </button>
         </div>
       </header>

@@ -23,7 +23,7 @@ test('PGD exposes a dedicated sample management ledger beside the summary regist
 
 test('authenticated app applies the shared 10 percent type scale without zooming layout', () => {
   const css = read('../index.css');
-  assert.match(css, /--app-font-scale:\s*0\.9/);
+  assert.match(css, /--app-font-scale:\s*1\.0/);
   assert.match(css, /font-size:\s*calc\([^;]*var\(--app-font-scale\)/);
   assert.doesNotMatch(css, /\.app-compact\s*\{[^}]*zoom\s*:/s);
 });

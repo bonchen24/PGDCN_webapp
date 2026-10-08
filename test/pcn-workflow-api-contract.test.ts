@@ -6,7 +6,7 @@ import type { PcnWorkflowTemplate } from '../types.ts';
 import { createPcnWorkflowRevision, publishPcnWorkflowTemplate, retirePcnWorkflowTemplate } from '../utils/pcnWorkflowTemplateApi.ts';
 import { completePcnWorkflowTask, returnPcnWorkflowTask, startPcnWorkflowTask } from '../utils/pcnWorkflowTaskApi.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const schemaSource = fs.readFileSync(new URL('../sql/pcn-schema.sql', import.meta.url), 'utf8');
 const rbacSource = fs.readFileSync(new URL('../utils/pcnRbac.ts', import.meta.url), 'utf8');
 

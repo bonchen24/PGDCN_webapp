@@ -81,17 +81,17 @@ export default function PcnLoginScreen() {
   return (
     <div className="flex min-h-[100dvh] flex-col justify-center bg-slate-950 px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-md">
-        <div className="flex flex-col items-center gap-2">
-          <img
-            src="/icons/iemm-logo-192.png"
-            alt="IEMM • TVCI"
-            className="h-16 w-16 rounded-xl border border-slate-200/20 bg-white object-contain p-1.5"
-          />
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">IEMM • TVCI</span>
+        <div className="flex flex-col items-center">
+          <div role="group" aria-label="Logo đơn vị" className="flex items-center justify-center gap-3">
+            <img src="/icons/iemm-logo-192.png" alt="Logo IEMM" width={64} height={64} className="h-14 w-14 rounded-xl border border-slate-200/20 bg-white object-contain p-1.5 sm:h-16 sm:w-16" />
+            <span aria-hidden="true" className="h-8 w-px bg-slate-700" />
+            <img src="/icons/tvci-icon-192.png" alt="Logo TVCI" width={64} height={64} className="h-14 w-14 rounded-xl border border-slate-200/20 bg-white object-contain p-1.5 sm:h-16 sm:w-16" />
+          </div>
+          <h1 className="mt-5 text-center text-2xl font-bold tracking-tight text-white">Đăng nhập</h1>
+          <p className="mt-1 max-w-md text-center text-sm leading-5 text-slate-300">Phòng Giám định - Chứng nhận và Phát triển thị trường</p>
         </div>
-        <h1 className="mt-6 text-center text-xl font-black uppercase tracking-wide text-white">Phòng Giám định - Chứng nhận và Phát triển thị trường</h1>
 
-        <div className="mt-8 rounded-xl border border-slate-700 bg-slate-900 px-6 py-8 shadow-sm">
+        <div className="mt-8 rounded-xl border border-slate-700 bg-slate-900 px-4 py-6 shadow-sm sm:px-6 sm:py-8">
           <form className="space-y-5" onSubmit={handleLogin}>
             <div>
               <label htmlFor="pcn-username" className="mb-2 block text-sm font-medium text-slate-200">Tên đăng nhập</label>

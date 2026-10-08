@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { buildPgdNotificationDraft } from '../utils/pgdcnNotification.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('PGD notification builder applies audience defaults for major events', () => {
   assert.equal(buildPgdNotificationDraft({

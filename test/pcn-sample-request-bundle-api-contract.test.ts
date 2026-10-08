@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const apiSource = fs.readFileSync(new URL('../utils/pcnSampleRequestBundleApi.ts', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('bundle API exposes save, send and per-dispatch retry boundaries', () => {
   assert.match(apiSource, /\/api\/pcn\/sample-request-bundles/);

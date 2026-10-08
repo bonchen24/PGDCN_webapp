@@ -3,8 +3,8 @@ import type { Metadata, Viewport } from 'next';
 import '../index.css';
 
 export const metadata: Metadata = {
-  title: 'Phòng Giám định - Chứng nhận và Phát triển thị trường - TVCI',
-  description: 'Hệ thống quản lý vận hành của Phòng Giám định - Chứng nhận và Phát triển thị trường thuộc Trung tâm TVCI (IEMM); bao gồm hai phân hệ nghiệp vụ Chứng nhận (PCN) và Giám định (PGD).',
+  title: 'Phòng Giám định - Chứng nhận - TVCI',
+  description: 'Hệ thống quản lý vận hành của Phòng Giám định - Chứng nhận và Phát triển thị trường thuộc Trung tâm TVCI (IEMM); bao gồm hai phân hệ nghiệp vụ Phòng Chứng nhận (PCN) và Giám định (PGD).',
   manifest: '/manifest.json',
   icons: {
     icon: '/icons/iemm-logo-32.png',
@@ -21,7 +21,27 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="vi">
+    <html lang="vi" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var ua = navigator.userAgent || '';
+                  var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+                    || (navigator.maxTouchPoints > 1 && !/Windows NT|Macintosh|Linux x86/i.test(ua));
+                  if (!isMobile) {
+                    document.documentElement.classList.add('is-desktop');
+                  } else {
+                    document.documentElement.classList.add('is-mobile');
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body>
         <div id="root">{children}</div>
         <div id="portrait-only-message" aria-hidden="true">

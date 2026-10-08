@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const apiPath = new URL('../utils/pcnProposalApi.ts', import.meta.url);
 const apiSource = fs.existsSync(apiPath) ? fs.readFileSync(apiPath, 'utf8') : '';
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
 const proposalViewSource = workspaceSource.slice(

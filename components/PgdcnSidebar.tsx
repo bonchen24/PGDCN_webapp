@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ElementType } from 'react';
+import { useEffect, useRef, useState, type ElementType } from 'react';
 import {
   Activity,
   Award,
@@ -65,6 +65,11 @@ export default function PgdcnSidebar({
   const [pcnOpen, setPcnOpen] = useState(activeTarget.domain === 'PCN');
   const [pgdOpen, setPgdOpen] = useState(activeTarget.domain === 'PGD');
   const expanded = !collapsed || mobileOpen;
+  const sidebarRef = useRef<HTMLElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseMobileRef = useRef(onCloseMobile);
+  onCloseMobileRef.current = onCloseMobile;
   const scopes = currentUser.departmentScopes || [];
   const hasPcn = scopes.includes('PCN');
   const hasPgd = scopes.includes('PGD');
@@ -80,16 +85,64 @@ export default function PgdcnSidebar({
     if (activeTarget.domain === 'PCN') setPcnOpen(true);
     if (activeTarget.domain === 'PGD') setPgdOpen(true);
   }, [activeTarget.domain]);
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return undefined;
+    const mobileViewport = window.matchMedia('(max-width: 1023px)');
+    const syncMobileVisibility = () => {
+      const closedOnMobile = mobileViewport.matches && !mobileOpen;
+      sidebar.toggleAttribute('inert', closedOnMobile);
+      if (closedOnMobile) sidebar.setAttribute('aria-hidden', 'true');
+      else sidebar.removeAttribute('aria-hidden');
+    };
+    syncMobileVisibility();
+    mobileViewport.addEventListener('change', syncMobileVisibility);
+    return () => mobileViewport.removeEventListener('change', syncMobileVisibility);
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseMobileRef.current();
+        return;
+      }
+      if (event.key !== 'Tab' || !sidebarRef.current) return;
+      const items = Array.from(sidebarRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
+      )).filter((element) => element.getClientRects().length > 0);
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !sidebarRef.current.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !sidebarRef.current.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.requestAnimationFrame(() => returnFocusRef.current?.focus());
+    };
+  }, [mobileOpen]);
 
   const buttonClass = (active: boolean, tone: 'shared' | 'pcn' | 'pgd' = 'shared') => {
-    const activeTone = tone === 'pcn'
-      ? 'bg-emerald-600 text-white shadow-sm font-semibold'
-      : tone === 'pgd'
-        ? 'bg-blue-600 text-white shadow-sm font-semibold'
-        : 'bg-slate-700 text-white shadow-sm font-semibold';
-    return `mobile-touch-target group flex min-h-8 w-full items-center rounded-lg text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${expanded ? 'gap-2 px-2.5 py-1.5' : 'justify-center px-1 py-1.5'} ${active ? activeTone : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 font-medium'}`;
+    const toneClasses = {
+      shared: { active: 'bg-slate-700 text-white shadow-sm font-semibold', ring: 'focus-visible:ring-slate-400' },
+      pcn: { active: 'bg-emerald-600 text-white shadow-sm font-semibold', ring: 'focus-visible:ring-emerald-500' },
+      pgd: { active: 'bg-blue-600 text-white shadow-sm font-semibold', ring: 'focus-visible:ring-blue-500' },
+    };
+    const selectedTone = toneClasses[tone];
+    return `mobile-touch-target group flex min-h-8 w-full items-center rounded-xl text-left transition-all focus-visible:outline-none focus-visible:ring-2 ${selectedTone.ring} focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${expanded ? 'gap-2.5 px-3 py-2' : 'justify-center px-1 py-1.5'} ${active ? selectedTone.active : 'text-slate-300 hover:text-white hover:bg-slate-800/70 font-medium'}`;
   };
-
   const renderSharedButton = (label: string, icon: ElementType, target: Extract<PgdcnNavigationTarget, { domain: 'department' }>) => {
     const Icon = icon;
     const active = isTargetActive(activeTarget, target);
@@ -113,7 +166,9 @@ export default function PgdcnSidebar({
   };
 
   return (
-    <aside id="pgdcn-sidebar" className={`app-compact-sidebar ddt-compact-sidebar fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-200 shadow-sm lg:static lg:translate-x-0 ${collapsed ? 'lg:w-16' : 'lg:w-64'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+    <>
+      {mobileOpen && <button type="button" data-testid="pgdcn-sidebar-backdrop" aria-label="Đóng menu phòng" title="Đóng menu phòng" tabIndex={-1} onClick={() => onCloseMobileRef.current()} className="fixed inset-0 z-40 cursor-default bg-slate-950/55 lg:hidden" />}
+      <aside ref={sidebarRef} id="pgdcn-sidebar" className={`app-compact-sidebar ddt-compact-sidebar fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-200 shadow-sm transition-[width,transform] duration-200 ease-out motion-reduce:transition-none lg:static lg:translate-x-0 ${collapsed ? 'lg:w-16' : 'lg:w-64'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className={`flex h-12 items-center border-b border-slate-800 px-3 py-2 ${expanded ? 'gap-3' : 'justify-center'}`}>
         <img src="/icons/iemm-logo-192.png" alt="IEMM • TVCI" className="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-0.5" />
         {expanded && (
@@ -122,7 +177,7 @@ export default function PgdcnSidebar({
             <div className="mt-0.5 truncate text-[10px] font-medium leading-none tracking-wider text-slate-400" title="Phòng Giám định - Chứng nhận và Phát triển thị trường">PHÒNG GIÁM ĐỊNH, CHỨNG NHẬN, PHÁT TRIỂN THỊ TRƯỜNG</div>
           </div>
         )}
-        <button type="button" onClick={onCloseMobile} aria-label="Đóng menu phòng" aria-expanded={mobileOpen} aria-controls="pgdcn-sidebar" className="pgdcn-mobile-nav mobile-touch-target ml-auto rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:hidden">
+        <button ref={closeButtonRef} type="button" onClick={onCloseMobile} aria-label="Đóng menu phòng" aria-expanded={mobileOpen} aria-controls="pgdcn-sidebar" className="pgdcn-mobile-nav mobile-touch-target ml-auto rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:hidden">
           <X aria-hidden="true" size={18} />
         </button>
       </div>
@@ -132,7 +187,6 @@ export default function PgdcnSidebar({
           {/* Legacy route label: Tổng quan phòng */}
           {expanded && <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">CÔNG VIỆC</p>}
           {renderSharedButton('Tổng quan', LayoutDashboard, { domain: 'department', section: 'department-dashboard' })}
-          {renderSharedButton('Việc của tôi', ClipboardList, { domain: 'department', section: 'my-work' })}
         </div>
 
         <div>
@@ -201,5 +255,6 @@ export default function PgdcnSidebar({
         </div>
       </div>
     </aside>
+    </>
   );
 }

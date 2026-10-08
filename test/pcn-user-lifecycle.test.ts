@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const read = (path: string) => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-const serverSource = read('server.ts');
+const serverSource = read('server.legacy.ts');
 const userApiSource = read('utils/pcnUserApi.ts');
 const storeSource = read('store-pcn.ts');
 const userViewSource = read('components/PcnUserManagementView.tsx');

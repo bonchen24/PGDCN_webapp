@@ -19,7 +19,7 @@ import {
 } from '../../../../../lib/server/response.ts';
 
 type RouteContext = {
-  params: { collection: string; id: string } | Promise<{ collection: string; id: string }>;
+  params: Promise<{ collection: string; id: string }>;
 };
 
 export async function PUT(request: NextRequest, context: RouteContext) {

@@ -17,7 +17,7 @@ import {
   transitionPcnSampleRoute,
 } from '../utils/pcnSampleFlow.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
 const dossierDetailSource = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
 const sampleFlowSource = fs.readFileSync(new URL('../components/PcnSampleFlowView.tsx', import.meta.url), 'utf8');

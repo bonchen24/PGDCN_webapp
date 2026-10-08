@@ -5,7 +5,7 @@ import test from 'node:test';
 const apiSource = readFileSync(new URL('../utils/pgdWorkflowTemplateApi.ts', import.meta.url), 'utf8');
 const pgdApiSource = readFileSync(new URL('../utils/pgdApi.ts', import.meta.url), 'utf8');
 const storeSource = readFileSync(new URL('../store-pgd.ts', import.meta.url), 'utf8');
-const serverSource = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const domainSource = readFileSync(new URL('../utils/pgdDomain.ts', import.meta.url), 'utf8');
 const sqlSource = readFileSync(new URL('../sql/pcn-schema.sql', import.meta.url), 'utf8');
 

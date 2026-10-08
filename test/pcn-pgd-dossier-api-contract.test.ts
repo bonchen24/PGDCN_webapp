@@ -18,7 +18,7 @@ test('PGD client exposes request-scoped dossier evidence and sample lifecycle en
 });
 
 test('PGD server keeps dossier evidence separate from generated documents and never hard-deletes samples', () => {
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   assert.match(server, /PGD_COLLECTIONS\.dossierDocuments/);
   assert.match(server, /\/api\/pgd\/requests\/:requestId\/dossier-documents/);
   assert.match(server, /\/api\/pgd\/dossier-documents\/:documentId\/download/);
@@ -35,7 +35,7 @@ test('PGD server keeps dossier evidence separate from generated documents and ne
 });
 
 test('PGD dossier delete is a confirmed hard-delete boundary with minimal audit traceability', () => {
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   const domain = read('utils/pgdDomain.ts');
   const api = read('utils/pgdApi.ts');
   assert.match(server, /app\.delete\('\/api\/pgd\/requests\/:requestId'/);
@@ -50,7 +50,7 @@ test('PGD dossier delete is a confirmed hard-delete boundary with minimal audit 
 });
 
 test('PCN dossier delete has a specialized confirmed hard-delete boundary', () => {
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   const rbac = read('utils/pcnRbac.ts');
   const api = read('utils/pcnDossierApi.ts');
   const store = read('store-pcn.ts');
@@ -68,7 +68,7 @@ test('PCN dossier delete has a specialized confirmed hard-delete boundary', () =
 });
 
 test('PGD dossier edit is a scoped allowlist mutation with audit traceability', () => {
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   const domain = read('utils/pgdDomain.ts');
   const api = read('utils/pgdApi.ts');
   const store = read('store-pgd.ts');
@@ -84,7 +84,7 @@ test('PGD dossier edit is a scoped allowlist mutation with audit traceability', 
 });
 
 test('PGD artifact linkages cast identifier values before building JSONB', () => {
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   assert.match(server, /jsonb_build_object\('assignmentId', \$2::text\)/);
   assert.match(server, /jsonb_build_object\('fieldInspectionId', \$2::text\)/);
   assert.match(server, /jsonb_build_object\('inspectionPlanId', \$2::text\)/);
@@ -95,14 +95,14 @@ test('PGD artifact linkages cast identifier values before building JSONB', () =>
 });
 
 test('PGD dossier upload tracks the private object for rollback after a later transaction failure', () => {
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   assert.match(server, /uploadedObjectPath/);
   assert.match(server, /uploadedBucketName/);
   assert.match(server, /deleteObject\(\{[\s\S]{0,180}objectPath: uploadedObjectPath/);
 });
 
 test('PGD bootstrap and store carry dossier evidence without reusing PCN or generated-document state', () => {
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   const api = read('utils/pgdApi.ts');
   const store = read('store-pgd.ts');
   assert.match(server, /PGD_COLLECTIONS\.dossierDocuments[\s\S]{0,900}dossierDocuments:/);

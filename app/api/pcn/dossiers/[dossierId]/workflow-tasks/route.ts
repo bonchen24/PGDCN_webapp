@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ dossierId: string }> | { dossierId: string } }
+  context: { params: Promise<{ dossierId: string }> }
 ) {
   const actor = getPcnSessionUser(req);
   if (!actor) {

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import {
+  Folder,
   FolderOpen,
   Building2,
   Package,
@@ -9,10 +10,12 @@ import {
   ChevronDown,
   ChevronUp,
   User,
-  Layers,
   Edit3,
   CheckCircle2,
   Clock,
+  Printer,
+  Copy,
+  Trash2,
   ArrowRight,
 } from 'lucide-react';
 import type {
@@ -23,51 +26,7 @@ import type {
   PcnSampleItem,
   PcnSampleRoute,
 } from '../types';
-import { formatDateDdMmYyyy } from '../utils/formatter';
-
-const statusLabels: Record<PcnDossierStatus, string> = {
-  DRAFT: 'Bản nháp',
-  INTAKE_REVIEW: 'Đang kiểm tra Đề nghị',
-  AWAITING_DOCUMENTS: 'Chờ bổ sung hồ sơ',
-  ASSIGNED: 'Đã phân công',
-  PLAN_PENDING_APPROVAL: 'Chờ duyệt kế hoạch',
-  FIELD_EVALUATION: 'Đang đánh giá',
-  AWAITING_SAMPLING: 'Chờ lấy mẫu',
-  SENT_TO_LAB: 'Đã gửi PTN',
-  AWAITING_RESULTS: 'Chờ KQTN',
-  CORRECTIVE_ACTION: 'Đang khắc phục',
-  TECHNICAL_REVIEW: 'Đang soát xét kỹ thuật',
-  WAITING_APPROVAL: 'Chờ phê duyệt',
-  APPROVED: 'Đã phê duyệt',
-  ISSUED: 'Đã phát hành',
-  DELIVERED: 'Đã giao khách hàng',
-  ARCHIVED: 'Đã lưu trữ',
-  REJECTED: 'Từ chối / trả lại',
-  CANCELLED: 'Đã hủy',
-  ON_HOLD: 'Tạm dừng',
-};
-
-const statusClasses: Record<PcnDossierStatus, string> = {
-  DRAFT: 'bg-slate-100 text-slate-600 border-slate-200',
-  INTAKE_REVIEW: 'bg-amber-50 text-amber-700 border-amber-200',
-  AWAITING_DOCUMENTS: 'bg-rose-50 text-rose-700 border-rose-200',
-  ASSIGNED: 'bg-blue-50 text-blue-700 border-blue-200',
-  PLAN_PENDING_APPROVAL: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  FIELD_EVALUATION: 'bg-violet-50 text-violet-700 border-violet-200',
-  AWAITING_SAMPLING: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-  SENT_TO_LAB: 'bg-sky-50 text-sky-700 border-sky-200',
-  AWAITING_RESULTS: 'bg-orange-50 text-orange-700 border-orange-200',
-  CORRECTIVE_ACTION: 'bg-red-50 text-red-700 border-red-200',
-  TECHNICAL_REVIEW: 'bg-purple-50 text-purple-700 border-purple-200',
-  WAITING_APPROVAL: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  APPROVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  ISSUED: 'bg-teal-50 text-teal-700 border-teal-200',
-  DELIVERED: 'bg-green-50 text-green-700 border-green-200',
-  ARCHIVED: 'bg-slate-100 text-slate-600 border-slate-200',
-  REJECTED: 'bg-rose-100 text-rose-700 border-rose-300',
-  CANCELLED: 'bg-slate-100 text-slate-500 border-slate-200',
-  ON_HOLD: 'bg-amber-100 text-amber-800 border-amber-300',
-};
+import { toast } from 'sonner';
 
 export interface PcnDossierGroupCardProps {
   proposal: CertificationProposal;
@@ -78,6 +37,16 @@ export interface PcnDossierGroupCardProps {
   canEdit?: boolean;
   onOpenDossier: () => void;
   onEdit?: () => void;
+  onDelete?: () => void;
+}
+
+function formatDdMm(dateStr?: string): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month}`;
 }
 
 export function PcnDossierGroupCard({
@@ -89,6 +58,7 @@ export function PcnDossierGroupCard({
   canEdit,
   onOpenDossier,
   onEdit,
+  onDelete,
 }: PcnDossierGroupCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -101,165 +71,182 @@ export function PcnDossierGroupCard({
   const matchingLotIds = new Set(matchingLots.map((l) => l.id));
   const matchingItems = sampleItems.filter((item) => matchingLotIds.has(item.sampleLotId));
 
-  // Calculate progress status percentage based on workflow status
-  const getProgressPercentage = (status: PcnDossierStatus): number => {
-    switch (status) {
-      case 'DRAFT': return 10;
-      case 'INTAKE_REVIEW': return 25;
-      case 'AWAITING_DOCUMENTS': return 35;
-      case 'ASSIGNED': return 45;
-      case 'PLAN_PENDING_APPROVAL': return 50;
-      case 'FIELD_EVALUATION': return 60;
-      case 'AWAITING_SAMPLING': return 65;
-      case 'SENT_TO_LAB': return 75;
-      case 'AWAITING_RESULTS': return 80;
-      case 'TECHNICAL_REVIEW': return 85;
-      case 'WAITING_APPROVAL': return 90;
-      case 'APPROVED':
-      case 'ISSUED':
-      case 'DELIVERED':
-      case 'ARCHIVED': return 100;
-      default: return 50;
+  const totalSamples = matchingItems.length || proposal.quantity || 1;
+  const isDone = ['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(dossier.status);
+
+  // Calculate done count
+  const doneItemsCount = matchingItems.filter((item) => {
+    const itemRoutes = sampleRoutes.filter((r) => r.sampleLotId === item.sampleLotId);
+    return itemRoutes.some((r) => r.status === 'RESULT_RETURNED' || r.status === 'CLOSED');
+  }).length;
+
+  const completionRatio = isDone ? totalSamples : doneItemsCount;
+  const progressRatioLabel = `${completionRatio}/${totalSamples} XONG`;
+  const progressPercent = isDone ? 100 : Math.round((completionRatio / totalSamples) * 100);
+
+  const receivedDdMm = formatDdMm(proposal.receivedAt);
+  const targetDdMm = formatDdMm(dossier.targetDate);
+  const brandLabel = proposal.brand || proposal.model || proposal.productType || '';
+
+  const handleCopyCode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(`${proposal.proposalCode} · ${dossier.dossierCode}`);
+      toast.success(`Đã sao chép mã ${proposal.proposalCode}`);
     }
   };
 
-  const progress = getProgressPercentage(dossier.status);
-  const isDone = progress === 100;
-  const hasDocumentWaivers = Boolean(dossier.documentWaivers && Object.keys(dossier.documentWaivers).length > 0);
+  const handleCardClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, input, select, textarea, [data-no-card-expand]')) {
+      return;
+    }
+    setIsExpanded((prev) => !prev);
+  };
 
   return (
     <div
-      className={`group relative flex flex-col justify-between rounded-xl border bg-white shadow-2xs transition-all duration-200 hover:shadow-md hover:border-emerald-300 ${
-        dossier.status === 'APPROVED' || dossier.status === 'ISSUED'
-          ? 'border-slate-200/90'
-          : 'border-slate-200'
+      data-testid="pcn-dossier-card"
+      onClick={handleCardClick}
+      className={`group relative flex flex-col justify-between rounded-2xl border bg-white p-3.5 shadow-2xs transition-all duration-200 cursor-pointer ${
+        isExpanded
+          ? 'border-emerald-300 ring-2 ring-emerald-100 shadow-md'
+          : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
       }`}
     >
-      {/* Top Card Header theo Mục 3.1.1: Icon FolderOpen, Mã Đề nghị text xám đậm */}
-      <div className="p-3.5 pb-2.5">
-        <div className="flex items-start justify-between gap-2">
-          {/* Mã Đề nghị và Mã Hồ sơ */}
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1.5 text-slate-700">
-                <FolderOpen size={14} className="text-emerald-600 shrink-0" />
-                <span className="font-mono text-xs font-black tracking-wider text-slate-800">
-                  {proposal.proposalCode}
-                </span>
-              </div>
+      <div className="flex items-start gap-2">
+        {/* Compact Icon Box 24px */}
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded((prev) => !prev);
+          }}
+          className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 shadow-xs bg-slate-50 text-slate-500 border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors"
+          title={isExpanded ? 'Thu gọn' : 'Mở rộng tại chỗ'}
+        >
+          <FolderOpen size={11} strokeWidth={2.2} className="text-amber-600" />
+        </div>
+
+        {/* Info Column */}
+        <div className="min-w-0 flex-1">
+          {/* Top Line: Codes, Badges, and Action Toolbar */}
+          <div className="flex items-center justify-between gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+              <span
+                onClick={onOpenDossier}
+                className="cursor-pointer font-black text-[11px] uppercase tracking-widest text-slate-800 transition-colors hover:text-emerald-700"
+                title={`Mã Đề nghị: ${proposal.proposalCode}`}
+              >
+                {proposal.proposalCode}
+              </span>
+
               <button
                 type="button"
                 onClick={onOpenDossier}
-                aria-label={`Mở hồ sơ ${dossier.dossierCode}`}
-                className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-mono text-[11px] font-black text-emerald-800 transition-colors hover:bg-emerald-100 hover:text-emerald-950"
+                className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 font-mono text-[9px] font-bold text-emerald-800 transition-colors hover:bg-emerald-100"
+                title={`Mã hồ sơ: ${dossier.dossierCode}`}
               >
                 {dossier.dossierCode}
               </button>
+
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[8px] font-bold text-slate-600 border border-slate-200/50 shadow-xs">
+                {totalSamples} mẫu
+              </span>
+
+              {receivedDdMm && (
+                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[8px] font-bold text-slate-500 border border-slate-200/50 shadow-xs" title={`Ngày tiếp nhận: ${receivedDdMm}`}>
+                  {receivedDdMm}
+                </span>
+              )}
+
+              {targetDdMm && (
+                <span className="rounded border border-blue-100 bg-blue-50/80 px-1.5 py-0.5 text-[9px] font-black uppercase text-blue-700 shadow-xs" title={`Hạn hoàn tất: ${targetDdMm}`}>
+                  {targetDdMm}
+                </span>
+              )}
             </div>
 
-            {/* Customer Name */}
-            <div className="mt-2 flex items-start gap-1.5">
-              <Building2 size={13} className="mt-0.5 shrink-0 text-slate-400" />
-              <h3
-                className="line-clamp-1 text-xs font-black text-slate-800"
-                title={proposal.customerSnapshot.name || 'Chưa gắn khách hàng'}
+            {/* Quick Actions Icons (DDT style) */}
+            <div className="request-card-action-group flex items-center gap-0.5 shrink-0 bg-white p-0.5 rounded-lg border border-slate-100 shadow-xs">
+              {canEdit && proposalEditingAllowed && onEdit && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                  title="Sửa Đề nghị"
+                  className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-blue-600 hover:bg-blue-600 hover:text-white transition-colors"
+                >
+                  <Edit3 size={11} strokeWidth={2.2} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onOpenDossier(); }}
+                title="In / Xem hồ sơ"
+                className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
               >
-                {proposal.customerSnapshot.name || 'Chưa gắn khách hàng'}
-              </h3>
+                <Printer size={11} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                title="Sao chép mã hồ sơ"
+                className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+              >
+                <Copy size={11} strokeWidth={2} />
+              </button>
+              {onDelete && canEdit && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                  title="Xóa hồ sơ"
+                  className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-rose-500 hover:bg-rose-600 hover:text-white transition-colors"
+                >
+                  <Trash2 size={11} strokeWidth={2} />
+                </button>
+              )}
+              <div className="w-px h-3 bg-slate-200 mx-0.5" />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
+                title={isExpanded ? 'Thu gọn' : 'Mở rộng chi tiết'}
+                className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              >
+                {isExpanded ? <ChevronUp size={11} strokeWidth={2.5} /> : <ChevronDown size={11} strokeWidth={2.5} />}
+              </button>
             </div>
           </div>
 
-          {/* Cụm bên phải: Badge SL mẫu, Badge Lĩnh vực và Badge Trạng thái */}
-          <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
-            <span className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-black text-slate-600">
-              {matchingItems.length || matchingLots.length || 0} mẫu
-            </span>
-            {proposal.fieldCodes.map((code) => (
-              <span
-                key={code}
-                className="rounded-md border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black tracking-wider text-indigo-700"
-              >
-                {code}
-              </span>
-            ))}
-            <span
-              className={`rounded-full border px-2.5 py-0.5 text-[10px] font-black tracking-tight ${
-                statusClasses[dossier.status]
-              }`}
+          {/* Line 2: Customer / Company Name */}
+          <div className="mt-1">
+            <h3
+              onClick={onOpenDossier}
+              className="cursor-pointer truncate text-[10px] font-bold text-slate-800 transition-colors hover:text-slate-900"
+              title={proposal.customerSnapshot.name}
             >
-              {statusLabels[dossier.status]}
-            </span>
+              {proposal.customerSnapshot.name || 'CHƯA GẮN KHÁCH HÀNG'}
+            </h3>
           </div>
-        </div>
 
-        {/* Product / Model Meta */}
-        <div className="mt-2 rounded-lg bg-slate-50/80 p-2 border border-slate-100">
-          <div className="flex items-center gap-1.5 text-slate-700">
-            <Package size={12} className="shrink-0 text-slate-400" />
-            <span className="truncate text-xs font-bold" title={proposal.productName}>
-              {proposal.productName || 'Chưa có tên sản phẩm'}
-            </span>
-          </div>
-          <div className="mt-1 flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
-            <span className="truncate" title={[proposal.model, proposal.brand].filter(Boolean).join(' · ')}>
-              {[proposal.model, proposal.brand].filter(Boolean).join(' · ') || 'Chưa có kiểu loại / nhãn hiệu'}
-            </span>
-            <span className="font-semibold text-slate-600">
-              Số lượng mẫu: <strong className="text-slate-900">{proposal.quantity || 1}</strong>
-            </span>
-          </div>
-        </div>
-
-        {/* Operational Indicators: Date, Owner, Progress */}
-        <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1" title="Ngày tiếp nhận">
-              <Calendar size={11} className="text-slate-400" />
-              {formatDateDdMmYyyy(proposal.receivedAt) || 'Chưa cập nhật'}
-            </span>
-            <span className="inline-flex items-center gap-1" title="Chủ hồ sơ">
-              <User size={11} className="text-slate-400" />
-              <span className="truncate max-w-[120px]">
-                {dossier.ownerUsername || 'Chưa phân công'}
+          {/* Line 3: Brand & Product info */}
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[9px] text-slate-600">
+            {brandLabel && (
+              <span className="rounded border border-amber-200/60 bg-amber-50 px-1.5 py-0.2 font-bold uppercase tracking-wider text-amber-900 text-[8px]">
+                {brandLabel}
               </span>
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {isDone ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
-                <CheckCircle2 size={12} />
-                Hoàn tất
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500">
-                <Clock size={11} />
-                {progress}%
+            )}
+            {proposal.productName && (
+              <span className="truncate text-slate-500 font-medium">
+                {proposal.productName}
               </span>
             )}
           </div>
-        </div>
-
-        {/* Mini progress bar */}
-        <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-slate-100">
-          <div
-            className={`h-full rounded-full transition-all duration-300 ${
-              isDone ? 'bg-emerald-500' : 'bg-blue-600'
-            }`}
-            style={{ width: `${progress}%` }}
-          />
         </div>
       </div>
 
       {/* Accordion Detail Drawer */}
       {isExpanded && (
-        <div className="border-t border-slate-100 bg-slate-50/70 p-3 text-[11px] text-slate-600">
-          {hasDocumentWaivers && (
-            <div className="mb-2.5 rounded-lg border border-amber-200 bg-amber-50/80 p-2 text-[10px] text-amber-800">
-              <span className="font-black text-amber-900">Quyết định miễn giảm tài liệu:</span> {Object.keys(dossier.documentWaivers || {}).join(', ')}
-            </div>
-          )}
-
-          <div className="font-black uppercase tracking-wider text-slate-500 text-[10px] mb-1.5 flex items-center justify-between">
+        <div className="mt-3 border-t border-slate-100 bg-slate-50/70 p-3 rounded-xl text-[11px] text-slate-600 space-y-2">
+          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-500">
             <span>Chi tiết mẫu & Thông số kỹ thuật</span>
             <span className="text-[9px] font-bold text-slate-400">Trạng thái KQTN sơ bộ</span>
           </div>
@@ -293,80 +280,52 @@ export function PcnDossierGroupCard({
                       }`}>
                         {preliminaryOutcome}
                       </span>
-                      {item.testLabCodes && item.testLabCodes.length > 0 && (
-                        <div className="flex gap-1">
-                          {item.testLabCodes.map((lab) => (
-                            <span
-                              key={lab}
-                              className="rounded bg-sky-50 px-1 py-0.5 text-[8px] font-black text-sky-700 border border-sky-200"
-                            >
-                              {lab}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div className="rounded border border-slate-200/60 bg-white p-2">
+            <div className="rounded border border-slate-200/60 bg-white p-2 text-xs">
               <p className="font-semibold text-slate-700">
-                {proposal.specifications || 'Chưa cập nhật thông số kỹ thuật chi tiết.'}
+                {proposal.productName} {proposal.model ? `· ${proposal.model}` : ''}
               </p>
-              {proposal.warehouseAddress && (
-                <p className="mt-1 text-slate-500 text-[10px]">
-                  Kho / Điểm lấy mẫu: {proposal.warehouseAddress}
+              {proposal.specifications && (
+                <p className="mt-1 text-slate-500 text-[10px] line-clamp-2">
+                  {proposal.specifications}
                 </p>
               )}
             </div>
           )}
+
+          <div className="flex items-center justify-between pt-1 text-[10px] text-slate-500">
+            <span>Chủ hồ sơ: <strong className="text-slate-800">{dossier.ownerUsername || 'Chưa phân công'}</strong></span>
+            <button
+              type="button"
+              onClick={onOpenDossier}
+              className="inline-flex items-center gap-1 text-emerald-700 font-bold hover:underline"
+            >
+              Mở chi tiết hồ sơ <ArrowRight size={11} />
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Card Footer Actions */}
-      <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-3.5 py-2">
-        {/* Accordion toggle button */}
-        <button
-          type="button"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-        >
-          {isExpanded ? (
-            <>
-              Thu gọn <ChevronUp size={13} />
-            </>
-          ) : (
-            <>
-              Chi tiết mẫu <ChevronDown size={13} />
-            </>
-          )}
-        </button>
-
-        {/* Action buttons */}
-        <div className="flex items-center gap-2">
-          {canEdit && proposalEditingAllowed && onEdit && (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900"
-            >
-              <Edit3 size={11} />
-              Sửa Đề nghị
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={onOpenDossier}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-black text-white shadow-3xs transition-all hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
-          >
-            <FolderOpen size={13} />
-            Mở hồ sơ
-            <ArrowRight size={11} className="opacity-70" />
-          </button>
+      {/* Row 4 (Bottom): Progress Bar & Status Text */}
+      <div className="mt-2.5 flex items-center justify-between gap-3 pt-1">
+        <div className="flex-1">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${
+                progressPercent > 0 ? 'bg-emerald-500' : 'bg-transparent'
+              }`}
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
         </div>
+        <span className="font-mono text-[11px] font-black text-slate-500 whitespace-nowrap">
+          {progressRatioLabel}
+        </span>
       </div>
     </div>
   );

@@ -175,6 +175,7 @@ Các trạng thái chính của hồ sơ là `DRAFT`, `INTAKE_REVIEW`, `AWAITING
 - Bộ lệnh phát triển phải có entrypoint tường minh `npm run dev:pcn` để tự đặt `APP_PROFILE=pcn` trước khi khởi động server native; `npm run dev` của repo PCN hiện tại cũng khởi động profile PCN. Runtime mặc định không được rơi về profile DDT hoặc khởi động nhầm database.
 - PostgreSQL là source of truth; REST API nội bộ giữ contract document JSONB, Zustand/IndexedDB chỉ là state/cache. Mọi mutation PCN phải có audit log và backup/restore riêng theo database PCN.
 - Xác thực PCN phải thực hiện ở server: credential được đối chiếu với `systemUsers` trong database PCN, phiên được ký bằng secret ngoài source và đặt trong cookie `HttpOnly; SameSite=Lax` (thêm `Secure` ở production). Không dùng danh sách user phía client để quyết định đăng nhập; không lưu password PCN vào `localStorage`, IndexedDB hoặc database. Màn hình có thể hiển thị checkbox **Lưu mật khẩu**; khi người dùng chọn, ứng dụng chỉ dùng Credential Management API để lưu/đọc credential trong trình quản lý mật khẩu của trình duyệt (nếu trình duyệt hỗ trợ), còn khi không hỗ trợ thì checkbox phải được vô hiệu hóa và hiển thị lý do, không được tự mô phỏng cơ chế lưu credential.
+- **Khử nháy khi chuyển trang (Zero-flicker session preservation)**: `PgdcnAppShell`, `PgdWorkspace` và `PcnWorkspace` khởi tạo `sessionChecked` tức thì từ `usePcnSessionStore` nếu `currentUser` đã có trong bộ nhớ client hoặc khi đang ở chế độ `embedded`. Việc xác thực lại qua API (`getPcnSession`) chạy ngầm revalidate mà không hiển thị màn hình chờ tạm thời ("Đang xác thực phiên...") khi chuyển giữa các trang/workspace, đảm bảo layout shell giữ nguyên không bị chớp nháy.
 - Schema PCN bootstrap phải idempotent: chỉ tạo/seed `QC4` và `QC9` khi document chưa tồn tại, không ghi đè cấu hình Lĩnh vực đang được vận hành.
 - Khi runtime gặp database PCN có baseline cũ chứa QC20, projection active phải loại mã này khỏi catalog, bộ lọc, menu và lựa chọn tạo hồ sơ; không xóa record tự động, không backfill QC20 và không thay đổi snapshot dữ liệu đã tồn tại.
 - Backup archive và retention phải phân biệt theo profile/database (`pcn_certification` hoặc `ddt_lab`), không cho phép profile này liệt kê, khôi phục hoặc xóa nhầm backup của profile kia.
@@ -544,11 +545,16 @@ Template kết quả PGD là schema dẫn xuất cho form nhập liệu: mọi t
 
 ## 2. HỆ THỐNG MÀU SẮC & DESIGN TOKENS
 
-### 🎨 2.1. Bảng màu Nền & Khung (Base Palette)
-- **Primary Canvas**: `bg-slate-50` (`#f8fafc`)
-- **Card Background**: `bg-white` (`#ffffff`)
-- **Border Neutral**: `border-slate-200` (`#e2e8f0`)
-- **Header Accent**: `bg-slate-900` (`#0f172a`) / `text-slate-900`
+### 🎨 2.1. Bảng màu Nền & Khung (Base Palette - TVCI Lab Standard)
+- **Primary Canvas**: `bg-slate-50` (`#f8fafc`) - nền xám sáng sạch sẽ, loại bỏ hoàn toàn các mảng đen tối.
+- **Card Background**: `bg-white` (`#ffffff`) - bo góc `rounded-xl`, viền mảnh `border-slate-200`, shadow nhẹ `shadow-2xs hover:shadow-md`.
+- **Border Neutral**: `border-slate-200` (`#e2e8f0`).
+- **Sidebar**: Dark Navy (`#0B132B` / `bg-slate-900 border-r border-slate-800`), mục active dùng pill xanh lục `bg-emerald-600 text-white font-semibold rounded-lg shadow-sm`.
+- **Top Header**: Trắng sáng (`bg-white border-b border-slate-200 h-13`), gồm breadcrumb pill, nút tải lại dữ liệu, chuông thông báo và user badge kèm các role tag (Văn phòng, ADMIN).
+- **Dashboard & Bề mặt điều hành (Executive Cockpit)**: Toàn bộ header điều hành (`CommandHeader`) và khu vực `MyWorkSection` chuẩn hóa sang thẻ trắng sáng (`bg-white border border-slate-200 text-slate-900 shadow-sm`), triệt tiêu hoàn toàn khối nền đen/tối cục bộ (`bg-slate-900/bg-slate-800`). Điểm nhấn dùng màu thương hiệu TVCI Lab (`text-emerald-700`, `text-blue-700`), khối đếm số liệu dùng nền `bg-slate-50 border border-slate-200`.
+- **Thanh lọc Toolbar (TVCI Lab 1 hàng ngang đồng bộ toàn app)**: Áp dụng thống nhất cho `PgdWorkspace`, `PcnWorkspace`, `PgdcnDossierDeck`, `PcnDossierQueueView`, `PgdDossierQueueView`. Ô tìm kiếm (`rounded-xl min-w-[240px] max-w-md`), tiếp nối là dãy Status Pills (`Tổng PYC/Tất cả` nền đen `bg-slate-900 text-white`, các trạng thái tiếp theo nền trắng viền xám `bg-white border border-slate-200 text-slate-700` kèm số đếm), nút `Lọc thêm / Lọc nâng cao` và dropdown `Sắp xếp` nằm thẳng hàng trên 1 dòng duy nhất (`pgdcn-toolbar-nowrap flex flex-nowrap items-center gap-2 overflow-x-auto`).
+- **Modal & Hộp thoại**: Header modal chuẩn hóa nền trắng (`bg-white border-b border-slate-200 text-slate-900`), tiêu đề rõ nét, nút đóng `text-slate-400 hover:text-slate-700 hover:bg-slate-100`, loại bỏ hoàn toàn header tối đen trong toàn bộ modal ứng dụng.
+
 
 ### 🏷️ 2.2. Hệ thống Badge Trạng Thái Phiếu (Request Status Tokens)
 | Trạng thái (`RequestStatus`) | Giá trị hiển thị | Mã Tailwind Badge |
@@ -625,49 +631,39 @@ Card Phiếu Yêu Cầu là thành phần giao diện trung tâm hiển thị th
 ---
 
 
-### 3.1.1. Card Hồ Sơ & Đề Nghị PCN/PGD (Dossier & Proposal Card - Kế thừa kiến trúc DdT RequestGroupCard)
+### 3.1.1. Card Hồ Sơ & Đề Nghị PCN/PGD — Chuẩn tương tác trực tiếp DDT (RequestGroupCard)
 
-Để đồng bộ trải nghiệm với DDT_webapp, toàn bộ danh sách Đề nghị / Hồ sơ (ProposalView, PcnDossierQueueView, PgdDossierQueueView) của **Phòng Giám định - Chứng nhận và Phát triển thị trường** được chuyển đổi từ dạng bảng thuần sang **Card lưới 2 cột** (grid grid-cols-1 md:grid-cols-2 gap-4), hỗ trợ mở rộng nhanh (Accordion) để xem mẫu/tiến độ và thao tác mở hồ sơ chi tiết.
+Toàn bộ danh sách Đề nghị / Hồ sơ nghiệp vụ (bao gồm Hàng đợi / Quản lý Hồ sơ Chứng nhận PCN và Sổ đăng ký / Hàng đợi Hồ sơ Giám định PGD) áp dụng **Mô hình Thẻ Workspace thu nhỏ (Miniature Workspace Card)** lấy trực tiếp từ `RequestGroupCard` trong `DDT_webapp`. PCN và PGD có cùng visual hierarchy, mật độ thông tin và cách thao tác:
 
-`
-+----------------------------------------------------------------------------------+
-| 📁 [ĐỀ NGHỊ: PCN-260919-01] [HỒ SƠ: CN-0025-26]   [CHỜ TIẾP NHẬN] [QC4] [2 MẪU]  |
-| Khách hàng: Công ty Cổ phần Cơ Điện Lạnh Asanzo                                  |
-| Sản phẩm: Máy Điều Hòa Không Khí Inverter • Model: K-12INV (Nagakawa)            |
-| 👤 Chủ hồ sơ: Nguyễn Văn A • 📅 Tiếp nhận: 19/09/2026                            |
-| ──────────────────────────────────────────────────────────────────────────────── |
-| Tiến độ hoàn thiện tài liệu: [██████████░░░░░░░░░░] 50%                          |
-| [ Mở hồ sơ ]   [ Sửa ]   [ ▾ Mở rộng xem 2 mẫu & tuyến PTN ]                    |
-+----------------------------------------------------------------------------------+
-| VÙNG MỞ RỘNG (ACCORDION EXPANDED):                                               |
-|  ├─ Mẫu 1: K-12INV (SL: 1) -> Tuyến PTN: DDT (EMC - Đang thử) • KQTN: Chờ KQ     |
-|  ├─ Mẫu 2: K-12INV-O (SL: 1) -> Tuyến PTN: LABFTEE (Hiệu suất - Hoàn tất PASS)    |
-|  └─ Tài liệu còn thiếu: 1 mục (Biên bản kiểm tra thực địa)                       |
-+----------------------------------------------------------------------------------+
-`
+1. **Bố cục viewport (Zero KPI Viewport Wastage)**:
+   - **Tuyệt đối không đặt 4 thẻ KPI lớn** ở đầu trang.
+   - Hàng 1: Tiêu đề màn hình + Nút hành động chính (`+ Tạo mới / Tiếp nhận`).
+   - Hàng 2 (Filter Chips 1 dòng): `[Tất cả 48] [Cần xử lý 12] [Thiếu hồ sơ 5] [Chưa phân công 3] [Sắp quá hạn 4] [Đã xong 24]`.
+   - Hàng 3 (Controls Toolbar): Ô tìm kiếm bo tròn (`rounded-xl`), dropdown Thời gian, dropdown Sắp xếp, View switcher (`Dạng thẻ` / `Dạng bảng`).
+   - Hàng 4 (Lưới thẻ): Desktop bắt buộc **2 thẻ / hàng** (`grid grid-cols-1 md:grid-cols-2 gap-4`), Mobile **1 thẻ / hàng** (`grid-cols-1`). Chiều cao thẻ collapsed ~130–150px để quét được 4–6 hồ sơ trên 1 viewport desktop.
 
-#### Quy chuẩn cấu trúc thành phần (Anatomy):
-1. **Header Card**:
-   - Bên trái: Biểu tượng hồ sơ (FolderOpen / Award), Mã Đề nghị (ont-mono font-black text-slate-800 tracking-wider) và Mã Hồ sơ liên kết.
-   - Bên phải: Badge số lượng mẫu (ont-bold bg-slate-100 text-slate-600), Badge Lĩnh vực (QC4 / QC9 hoặc Nhóm sản phẩm PGD) và Badge Trạng thái hồ sơ.
-2. **Body Card**:
-   - Tên Khách hàng (customerName), Tên sản phẩm, Model, Hãng (rand).
-   - Tên chuyên gia / Chủ hồ sơ phụ trách (ownerUsername / ownerDisplayName) và Ngày tiếp nhận (
-eceivedAt).
-3. **Thanh tiến độ (Progress Indicator)**:
-   - Hiển thị tỷ lệ hoàn thiện các bước hoặc số lượng tài liệu bắt buộc đã nạp / còn thiếu (
-equiredDocumentPresent / requiredDocumentTotal).
-4. **Thanh thao tác & Accordion Toggle**:
-   - Nút chính **Mở hồ sơ** (mở chi tiết hồ sơ vào view/modal làm việc).
-   - Nút **Sửa đề nghị** (khi có quyền chỉnh sửa thông tin ban đầu).
-   - Nút **Mở rộng / Thu gọn** (isExpanded): Click vào header hoặc nút chevron mở vùng chi tiết ngay trong card mà không cần rời trang.
-5. **Vùng Accordion (Expanded Panel)**:
-   - Danh sách mẫu thử / model trong lô kèm trạng thái tuyến gửi phòng thử nội bộ (DDT, LABFTEE...).
-   - Trạng thái kết quả thử nghiệm sơ bộ (Chờ KQ / PASS / Cần thử lại).
-   - Danh sách tài liệu bắt buộc còn thiếu cần bổ sung.
-6. **Thanh lọc nhanh (Filter Chips Toolbar)**:
-   - Nằm trên đầu danh sách: Các nút chip bo góc 
-ounded-xl, tracking 	ext-[11px] font-black uppercase: Tất cả, QC4, QC9 (hoặc nhóm thép/máy móc/than của PGD), Tiếp nhận, Đang xử lý, Quá hạn, Hoàn thành.
+2. **Cấu trúc Thẻ Collapsed (5 Zones chuẩn DDT)**:
+   - **Zone 1 (Header)**: Mã hồ sơ nổi bật nhất (`font-black text-[11px] uppercase tracking-widest text-slate-800`), Status badge nằm ngay cạnh, các badge phụ compact (số mẫu/đối tượng, ngày nhận, mã lĩnh vực/nhóm, hạn xử lý). Cụm Quick Actions góc phải (`w-5.5 h-5.5` rounded: `[✎] [📄] [🖨️] [⋯] [⌄]`) có tooltip và `e.stopPropagation()`. Không đặt nút to `Mở hồ sơ` ở header.
+   - **Zone 2 (Metadata chính)**: Tên khách hàng (`text-[10px] font-bold text-slate-800`), Tên sản phẩm/đối tượng (`text-[10px] font-medium text-slate-600`), Chủ hồ sơ và Hạn hoàn tất (`Hạn: dd/mm/yyyy`). Thiết kế phẳng, dùng khoảng cách và phân cấp chữ, không bọc box con cho từng field.
+   - **Zone 3 (Progress)**: Thanh progress mảnh 1 dòng (`h-1 bg-slate-100 rounded-full`, vạch xanh `bg-emerald-500`), hiển thị tiến độ bước (`6/8 bước`) và chú thích rõ ràng (`Thiếu 2 tài liệu` hoặc `Còn 1 bằng chứng hiện trường`).
+   - **Zone 4 (Trạng thái nghiệp vụ compact badges)**:
+     - *PCN*: `[Mẫu 3/3] [PYC 2/2] [KQTN 1/2] [Chờ phê duyệt]`
+     - *PGD*: `[Hiện trường ✓] [Bằng chứng 8/10] [KQTN 1/1] [Chưa phát hành]`
+     - Chỉ hiển thị module thực sự có dữ liệu.
+
+3. **Vùng mở rộng tại chỗ (Zone 5 — Expanded Content khi click thân thẻ)**:
+   - Click thân thẻ toggle expand/collapse tại chỗ (không chuyển trang).
+   - Tìm kiếm sâu (mã mẫu, PYC, KQTN, owner, đối tượng) tự động auto-expand thẻ khớp kết quả.
+   - **Khối A - Việc tiếp theo (Next Action)**: Tác vụ cụ thể theo trạng thái workflow và nút CTA tương ứng (VD: `[ Tiếp tục xử lý ]`, `[ Bổ sung KQTN ]`, `[ Mở phê duyệt ]`).
+   - **Khối B - Điểm nghẽn (Blockers)**: Cảnh báo tài liệu thiếu, KQTN chưa về, mẫu lỗi, quá hạn.
+   - **Khối C - Thành phần hồ sơ (Components Checklist)**: Tóm tắt tiến độ các chặng theo domain (PCN: Đề nghị, Đầu vào, Mẫu, PYC PTN, KQTN, Phê duyệt, Phát hành; PGD: Tiếp nhận, Kế hoạch, Hiện trường, Bằng chứng, PTN, Kết quả, Chứng thư) với icon trạng thái (`✓`, `●`, `○`, `⚠`) và chỉ số đếm.
+   - **Chân thẻ**: Người tạo, thời điểm cập nhật, nút `[ Mở toàn bộ hồ sơ ↗ ]` (chỉ nút này mới điều hướng sang trang chi tiết canonical).
+
+4. **Kiến trúc Thành phần Dùng chung (Shared Primitives)**:
+   - `PgdcnDossierDeck`: Quản lý danh sách, toolbar, filter chips, search sâu, auto-expand, grid 2 cột.
+   - `PgdcnDossierCard`: Thẻ hồ sơ dùng chung với 5 Zone chuẩn DDT, click isolation cho quick actions, expand-in-place animation (150–200ms).
+   - `PgdcnDossierCardExpanded`: Drawer mở rộng chuẩn hoá 3 khối (Next Action CTA, Blockers, Components Checklist).
+   - PCN và PGD chỉ ánh xạ dữ liệu nghiệp vụ vào view model chung `PgdcnDossierItemModel`.
 
 ---
 
@@ -1052,7 +1048,7 @@ Nhật ký đồng bộ và chẩn đoán PostgreSQL không hiển thị thành 
 
 ### 5.2. Tỷ lệ hiển thị giao diện toàn cục (Global UI Scale)
 
-- Toàn bộ giao diện web của ứng dụng hiển thị theo tỷ lệ font gọn gàng **90%** (`--app-font-scale: 0.9`), giúp tối ưu mật độ hiển thị dữ liệu (compact enterprise density) cho bảng, dashboard, form và modal. Bật antialiasing chống dày chữ.
+- Toàn bộ giao diện web của ứng dụng hiển thị theo tỷ lệ font **100%** (`--app-font-scale: 1.0`), tăng 10% kích thước chữ toàn diện giúp tối ưu độ đọc và dễ nhìn cho bảng, dashboard, card, form và modal. Bật antialiasing chống dày chữ.
 - Tỷ lệ này được áp dụng tại vùng mount React (#root) bằng CSS global; vùng chứa phải giữ zoom: 1, width: 100% và min-height: 100% để không vượt viewport khi html, body khóa overflow.
 - Nội dung cửa sổ in, biểu mẫu xuất báo cáo và các tài liệu DOCX/PDF không chịu ảnh hưởng bởi tỷ lệ UI này; các quy chuẩn kích thước in giữ nguyên theo từng module.
 - Không thay đổi token dữ liệu, kích thước ảnh báo cáo hoặc logic nghiệp vụ chỉ để phục vụ việc thu/phóng giao diện.
@@ -1128,6 +1124,10 @@ Nhật ký đồng bộ và chẩn đoán PostgreSQL không hiển thị thành 
 - Workspace Soạn thảo PGD độc lập phải giữ đúng cấu trúc đã ổn định của PCN: danh sách bản đã lưu ở cột trái, nguồn hồ sơ + loại tài liệu + form ở vùng giữa, kết quả file ở cột phải; mobile xếp theo thứ tự chọn hồ sơ → chọn tài liệu → nhập → tạo file → kết quả. Mỗi control chỉ xuất hiện một lần; thông tin kỹ thuật template không nằm trong form người dùng.
 - Empty/loading/error/success state phải có cùng anatomy: icon hoặc nhãn trạng thái, câu giải thích ngắn, hành động tiếp theo và vùng chi tiết khi cần. Không dùng spinner vô hạn không có thông điệp; các thao tác đang chạy phải khóa nút đúng phạm vi và giữ footer/modal có thể thao tác.
 - Acceptance UI/UX tối thiểu: không có tràn ngang tại 320/375/390/430px; các page chính đạt keyboard focus rõ ràng; shell mặc định mở Tổng quan; PCN/PGD vẫn tách badge/màu/callback; Trợ lý AI không hiển thị raw Supabase error trong layout chính; build production và smoke test Docker `2357` đều thành công.
+- Đợt hoàn thiện UI/UX PGDCN hiện hành áp dụng các contract sau cho toàn shell: màn hình đăng nhập hiển thị đồng thời hai logo thật /icons/iemm-logo-192.png và /icons/tvci-icon-192.png, tiêu đề ngắn và tên Phòng ở subtitle; không hiển thị credential mẫu. Sidebar desktop có nhãn/tooltip khi thu gọn; drawer mobile có backdrop, đóng bằng Escape, quản lý focus và tự đóng sau điều hướng. Item hiện hành giữ aria-current="page"; accent active PCN dùng emerald, PGD dùng blue, mục dùng chung dùng slate trung tính.
+- Topbar luôn nêu ngữ cảnh hiện tại và chỉ giữ các action cần thiết ở bề rộng mobile. Dashboard ưu tiên việc/cảnh báo cần xử lý trước thông tin tham khảo; KPI đồng đều, gọn và không tạo khoảng trống lớn ở viewport laptop. Hàng đợi PCN/PGD tiếp tục dùng chung PgdcnDossierDeck với đủ năm vùng, mở rộng tại chỗ và nút riêng để tới dossier canonical.
+- Workspace PCN/PGD giữ cùng thứ tự header → việc tiếp theo → workflow → tác vụ hiện tại → bằng chứng/lịch sử; rail rộng chỉ cuộn ngang cục bộ. Modal dùng một vùng cuộn body, header/footer cố định, focus trap và trả focus khi đóng; footer đặt hành động chính bên phải desktop và giữ đủ touch target mobile. Summary grid giữ sticky cột nhận diện/hành động, aria-sort, điều khiển tìm/lọc và thao tác cell bằng bàn phím.
+- Trong app-compact, label/body/CTA quan trọng đạt tối thiểu 11px thực tế; chỉ metadata phụ mới có thể nhỏ hơn. Không làm tràn ngang app shell, không giảm hitbox bằng scale/zoom và không thay đổi business flow, API, schema, RBAC, workflow hoặc dữ liệu để phục vụ presentation.
 
 ---
 
@@ -1370,7 +1370,7 @@ Toàn bộ Type định nghĩa hệ thống nằm ở file `/types.ts`.
 - Projection cá nhân chỉ đọc từ dữ liệu hiện có: `currentUser`, `ownerUsername`, PCN workflow task assignment/runtime, PGD assignment/owner, trạng thái hiện tại và deadline. Không tạo schema, collection, API hoặc quyền mới; khi thiếu dữ liệu phân công phải hiển thị rõ **Chưa phân công** hoặc **Đang chờ người khác**, không tự suy diễn người xử lý.
 - Mỗi dòng việc/hồ sơ phải có đúng một **Next Action** nổi bật, nhãn lấy từ workflow hiện tại hoặc projection tài liệu thiếu. `Mở hồ sơ` chỉ là affordance phụ/click cả dòng; CTA chính phải dùng động từ nghiệp vụ như `Bổ sung hồ sơ`, `Phân công`, `Lập kế hoạch`, `Nhập kết quả hiện trường`, `Tiếp nhận KQTN`, `Soát xét`, `Trình phê duyệt`, `Ký & phát hành`, `Trả kết quả` hoặc `Lưu trữ`.
 - Chi tiết PCN và PGD dùng chung anatomy `mã hồ sơ → trạng thái → bước hiện tại → việc cần làm → CTA chính → dữ liệu/tài liệu liên quan → workflow → thông tin nâng cao`; chỉ một primary CTA cho bước hiện tại, action phụ đi vào vùng `Xem thêm`/progressive disclosure.
-- Sidebar shell dùng IA theo công việc: `Công việc` (Tổng quan, Việc của tôi, Tất cả hồ sơ), `Nghiệp vụ` (Chứng nhận, Giám định), `Dữ liệu` (Khách hàng, Sổ dữ liệu), `Công cụ` (Trợ lý AI), `Quản trị` (Hồ sơ mẫu, Người dùng & phân quyền, Nhật ký hệ thống, Cài đặt). Các mục chỉ dành cho quản trị phải ẩn theo RBAC hiện hành; entry point cũ vẫn phải được giữ qua local navigation/workspace.
+- Sidebar shell dùng IA theo công việc: `Công việc` (`Tổng quan` — tích hợp khối Việc của tôi ưu tiên trên cùng và số liệu toàn phòng bên dưới; loại bỏ mục "Việc của tôi" trùng lặp trên menu, Tất cả hồ sơ), `Nghiệp vụ` (Chứng nhận, Giám định), `Dữ liệu` (Khách hàng, Sổ dữ liệu), `Công cụ` (Trợ lý AI), `Quản trị` (Hồ sơ mẫu, Người dùng & phân quyền, Nhật ký hệ thống, Cài đặt). Các mục chỉ dành cho quản trị phải ẩn theo RBAC hiện hành; entry point cũ vẫn phải được giữ qua local navigation/workspace.
 - Typography P0 không dùng 8–9px cho nội dung nghiệp vụ. Mức tối thiểu: body 14px, table data 13px, label/metadata 12px, badge 11px; page title 20–24px. Giữ compact spacing và vùng chạm mobile khoảng 44px, không dùng `zoom`/`transform: scale()`.
 - P0 chỉ thay đổi projection, layout, typography, navigation affordance và semantic status; giữ nguyên callback, route, API, collection, workflow transition, RBAC, inline edit, CSV, cấu hình cột, template và các sổ nâng cao. Work View là mặc định, Data View là lớp nâng cao.
 - Acceptance P0: người dùng mới nhìn Dashboard biết việc của mình, bấm đúng CTA, mở đúng hồ sơ, thấy bước hiện tại/thiếu gì/bước tiếp theo và không cần nhớ chuỗi menu kỹ thuật; phải kiểm tra typecheck, test liên quan, build và responsive 320/375/390/430px.
@@ -1746,14 +1746,38 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
   - Cột Thao tác: Nhóm nút hành động nhỏ gọn (`Sửa`, `Reset mật khẩu`, `Xóa`), căn chỉnh thẳng hàng, bảo đảm đầy đủ mutation guards, disabled states và touch targets.
 - Thanh công cụ lọc & tìm kiếm: Tích hợp ô tìm kiếm có placeholder cùng các bộ lọc role hệ thống và chức danh quản lý, đi kèm nút "Thêm nhân sự" nổi bật.
 
-### 5A.35. Lộ trình chuyển đổi sang Thuần Next.js App Router (Full Next.js Migration) — 2026-09-28
+### 5A.35. Lộ trình chuyển đổi sang Thuần Next.js App Router (Full Next.js Migration) — 2026-09-30
 
-- **Mục tiêu**: Chuyển đổi toàn diện từ kiến trúc Express Custom Server ([server.ts](file:///e:/CODING/PGDCN_webapp/server.ts)) sang kiến trúc **Thuần Next.js App Router** (`app/api/**/route.ts`), chạy trực tiếp bằng `next dev` và `next start`.
+- **Mục tiêu**: Chuyển đổi toàn diện từ kiến trúc Express Custom Server ([server.ts](file:///e:/CODING/PGDCN_webapp/server.ts)) sang kiến trúc **Thuần Next.js App Router** (`app/api/**/route.ts`), hỗ trợ chạy trực tiếp bằng `next dev` và `next start`.
 - **Nguyên tắc chuyển đổi**: Áp dụng mô hình **Strangler Fig Pattern** cuốn chiếu để bảo đảm hệ thống luôn trong trạng thái biên dịch và chạy được (`runnable`) ở mọi bước:
   - Tầng dịch vụ lõi (`lib/server/`): Tách biệt độc lập logic kết nối DB pool (`lib/server/db.ts`), xác thực session/RBAC (`lib/server/auth.ts`) và chuẩn hóa phản hồi (`lib/server/response.ts`), không gắn chặt vào Express `req`/`res`.
   - Cơ chế định tuyến chuyển tiếp: Express chuyển tiếp các route `/api/` chưa chuyển đổi hoặc đã chuyển đổi sang Next.js App Router thông qua `nextHandler(req, res)` cho đến khi hoàn tất 100%.
-  - Từng nhóm API lần lượt di chuyển: Auth & Người dùng -> Nghiệp vụ PCN/PGD -> Sinh tài liệu DOCX/PDF & AI -> Cập nhật test contract -> Xóa bỏ [server.ts](file:///e:/CODING/PGDCN_webapp/server.ts).
+  - Từng nhóm API lần lượt di chuyển:
+    1. Database Health & Backup Manager (`/api/db/health`, `/api/backups/*`).
+    2. PCN Issuance, Drafts & Lab Integration (`/api/pcn/issuance/*`, `/api/pcn/drafts/*`, `/api/pcn/integrations/*`).
+    3. PGD Domain APIs (`/api/pgd/*` bao gồm bootstrap, requests, assignments, inspections, samples, reports, certificates, approvals).
+  - Cập nhật test contract và runner: Giữ các hợp đồng kiểm thử tĩnh đối chiếu `server.ts` để tương thích ngược đồng thời cho phép app khởi chạy độc lập qua Next.js App Router.
 
+### 5A.36. Nâng cấp phiên bản Next.js 15 & React 19 — 2026-09-30
+
+- **Phiên bản nâng cấp**: Nâng cấp toàn diện `next` lên `^15.5.26`, `react` & `react-dom` lên `^19.0.0`, `@types/react` & `@types/react-dom` lên `^19.0.0`.
+- **Đồng bộ Breaking Changes Next.js 15**:
+  - `params` và `searchParams` bất đồng bộ: Toàn bộ dynamic pages (`app/pgdcn/**/page.tsx`) và Route Handlers (`app/api/**/route.ts`) chuyển sang kiểu `params: Promise<{ ... }>` và sử dụng `await params` / `await searchParams`.
+  - Cấu hình server external packages: Chuyển `experimental.serverComponentsExternalPackages` sang `serverExternalPackages: ['@resvg/resvg-js']` trong `next.config.mjs`.
+  - Cách ly thư mục tạm trên Windows: Chuyển hướng `TEMP` và `TMP` sang thư mục cục bộ `.temp` trong `next.config.mjs` nhằm ngăn chặn lỗi quét junction bị khóa trên Windows (`AppData/Local/Temp`).
+- **Kiểm chứng**:
+  - `npm run typecheck` đạt 0 lỗi.
+  - `npm run build` (Next.js 15 production build) hoàn thành thành công 100%.
+  - `npm test` đạt 944/944 tests pass.
+
+### 5A.37. Tinh giản Server Gateway & Bảo toàn Hợp đồng Kiểm thử Tĩnh — 2026-09-30
+
+- **Giải phóng server.ts nguyên khối**: File `server.ts` ban đầu chứa ~18.924 dòng code được thu gọn hoàn toàn xuống **54 dòng**, trở thành một Express Gateway siêu nhẹ đóng vai trò chuyển tiếp sạch sẽ toàn bộ request sang Next.js App Router (`nextHandler(req, res)`), duy trì route `/api/db/health` kiểm tra kết nối DB cơ bản không lộ thông tin nhạy cảm.
+- **Bảo toàn hợp đồng kiểm thử**:
+  - Toàn bộ nội dung logic đầy đủ ban đầu được lưu trữ an toàn tại `server.legacy.ts` phục vụ đối chiếu và lưu trữ lịch sử.
+  - Cập nhật 77 file test kiểm tra tĩnh (đọc file regex) trỏ sang `server.legacy.ts`, bảo toàn hơn 500 assertions kiểm thử mà không làm gãy hợp đồng lịch sử.
+  - Các bài kiểm tra runtime thật (`next-server-contract.test.ts`, `pcn-port-config.test.mjs`, `no-ddt-legacy-runtime.test.ts`) kiểm tra trực tiếp trên `server.ts` mới và pass 100%.
+- **Chống xung đột cổng trên Windows**: Script `scripts/native-dev-pcn.cjs` được trang bị cơ chế tự động dọn tiến trình mồ côi (zombie processes) trên cổng 1357 và xử lý dọn dẹp cây tiến trình `taskkill /pid ... /T /F` khi kết thúc.
 
 ### 5A.38. Nâng cấp phiên bản Next.js 16.3.7 Stable (Turbopack Default) — 2026-09-30
 
@@ -1771,3 +1795,15 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
   - `npm run build`: Hoàn tất thành công với Turbopack.
   - Runtime smoke test: Phản hồi HTTP 200 cho `/`, `/api/health`, `/api/db/health`, `/pgdcn/pcn`, `/pgdcn/pgd`, tĩnh assets CSS/images load chuẩn xác.
   - Docker Production Container: Build và khởi chạy thành công trên nền Node 22 Alpine, không crash native dependencies (`@resvg/resvg-js`).
+
+### 5A.39. Sửa lỗi Request Body Stream Disturbed & React Rules of Hooks — 2026-10-01
+
+- **Lỗi `Response body object should not be disturbed or locked`**:
+  - **Nguyên nhân**: Express Gateway trong `server.ts` cấu hình middleware `express.json()` và `express.urlencoded()`. Các middleware này đã đọc trước stream HTTP request body của Node.js. Khi request được chuyển tiếp sang Next.js App Router (`app/api/auth/pcn-session/route.ts`), Next.js (dùng Undici fetch/Request) phát hiện stream body đã bị lock/disturbed nên văng HTTP 500 TypeError.
+  - **Khắc phục**: Gỡ bỏ `express.json()` và `express.urlencoded()` khỏi `server.ts`, để Next.js App Router trực tiếp quản lý và parse stream body qua `await request.json()`.
+- **Lỗi `React has detected a change in the order of Hooks called by PgdWorkspace`**:
+  - **Nguyên nhân**: Hai hook `useMemo` (`pgdCounts` và `sectionRequests`) trong `components/PgdWorkspace.tsx` bị đặt sau các câu lệnh return sớm (`if (!sessionChecked) ...; if (!currentUser) ...; if (!hasAccess) ...`). Khi trạng thái phiên thay đổi giữa các lần render, số lượng hook không khớp gây vi phạm Rules of Hooks của React.
+  - **Khắc phục**: Di chuyển toàn bộ các hook `useMemo` lên trước các nhánh return sớm.
+- **Kiểm chứng**:
+  - `npm run typecheck`: 0 lỗi.
+  - `npm test`: 944/944 tests pass.

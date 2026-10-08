@@ -73,7 +73,7 @@ test('rejects unsafe delegation records and never offers arbitrary usernames', (
 });
 
 test('issuance and delegation boundaries are server-side and dedicated', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const issuanceViewSource = fs.readFileSync(new URL('../components/PcnIssuanceView.tsx', import.meta.url), 'utf8');
   assert.match(serverSource, /\/api\/pcn\/issuance\/:issuanceId\/issue/);
   assert.match(serverSource, /pcnSignerDelegations/);

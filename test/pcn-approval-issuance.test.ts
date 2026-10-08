@@ -43,7 +43,7 @@ const passedResult: ReturnedTestResult = {
 };
 
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('creates one effective leadership PCN approval step', () => {
   const steps = buildPcnApprovalSteps('dossier-1', '2026-08-27T08:00:00.000Z');

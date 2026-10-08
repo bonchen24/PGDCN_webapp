@@ -20,14 +20,19 @@ test('PGDCN overview KPI strips use the shared compact card and desktop multi-co
   assert.match(pgd, /grid-cols-2\s+gap-2\s+md:grid-cols-4\s+lg:grid-cols-8/);
 });
 
-test('queue and sample-operation KPI strips use the same dense card contract', () => {
+test('sample-operation KPI strips use the dense card contract while dossier queues use compact 1-line filter chips', () => {
   for (const path of [
-    '../components/PcnDossierQueueView.tsx',
-    '../components/PgdDossierQueueView.tsx',
     '../components/PcnLabOperationsView.tsx',
     '../components/PcnSampleFlowView.tsx',
   ]) {
     assert.match(read(path), /pgdcn-kpi-card/, path);
+  }
+  for (const queuePath of [
+    '../components/PcnDossierQueueView.tsx',
+    '../components/PgdDossierQueueView.tsx',
+  ]) {
+    assert.doesNotMatch(read(queuePath), /pgdcn-kpi-card/, queuePath);
+    assert.match(read(queuePath), /activeChip/, queuePath);
   }
 });
 

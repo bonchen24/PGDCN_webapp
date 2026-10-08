@@ -399,13 +399,13 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
           }}
         >
           <div className="flex max-h-[85dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-900 p-4 text-white">
-              <div><p className="text-[11px] font-black uppercase tracking-widest text-emerald-300">Chi tiết hoạt động</p><h2 className="mt-1 text-sm font-black">{selectedLog.summary}</h2></div>
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white p-4 text-slate-900">
+              <div><p className="text-[11px] font-bold uppercase tracking-widest text-emerald-700">Chi tiết hoạt động</p><h2 className="mt-1 text-sm font-black text-slate-900">{selectedLog.summary}</h2></div>
               <button
                 type="button"
                 autoFocus
                 onClick={() => setSelectedLog(null)}
-                className="mobile-touch-target rounded-full p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
+                className="mobile-touch-target rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
                 aria-label="Đóng chi tiết"
               >
                 <X size={18} />

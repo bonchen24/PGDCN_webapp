@@ -6,7 +6,7 @@ import { getPcnOperationalFormKey, getPcnOperationalFormKind, validatePcnOperati
 import type { PcnDossierUpdateInput } from '../utils/pcnDossierApi.ts';
 import type { PcnOperationalForms } from '../types.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const dossierApiSource = fs.readFileSync(new URL('../utils/pcnDossierApi.ts', import.meta.url), 'utf8');
 const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 

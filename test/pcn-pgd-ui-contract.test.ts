@@ -60,7 +60,7 @@ test('PCN user administration exposes the shared PCN/PGD scope and PGD role', ()
 });
 
 test('PCN and PGD Archify routes preserve auth-before-query validation and all diagram types', () => {
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   assert.match(server, /ARCHIFY_DIAGRAM_TYPES/);
   assert.match(server, /from ['"]\.\/utils\/archifyDiagram\.ts['"]/);
 

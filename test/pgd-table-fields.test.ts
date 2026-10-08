@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const pgdTableFieldEditorSource = readFileSync(new URL('../components/PgdTableFieldEditor.tsx', import.meta.url), 'utf8');
 
 import {
   createPgdTableRow,
@@ -9,6 +12,12 @@ import {
   removePgdTableRow,
   updatePgdTableCell,
 } from '../utils/pgdTableFields.ts';
+
+test('PGD table field editor uses a bounded mobile horizontal viewport', () => {
+  assert.match(pgdTableFieldEditorSource, /className="mobile-scroll-x min-w-0 max-w-full overflow-x-auto"/);
+  assert.doesNotMatch(pgdTableFieldEditorSource, /<div className="overflow-x-auto rounded-lg border border-slate-100">/);
+});
+
 
 test('PGD table fields expose readable column labels and input types', () => {
   assert.equal(getPgdTableColumnLabel('sampleCode'), 'Mã mẫu');

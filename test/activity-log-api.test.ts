@@ -86,7 +86,7 @@ test('fetchAll follows cursors and stops at the final page', async () => {
 });
 
 test('server append routes normalize payloads before persistence', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   assert.match(serverSource, /buildActivityLog\(req\.body/);
   assert.match(serverSource, /buildActivityLog\(item/);
   assert.match(serverSource, /isValidActivityTimestamp/);
@@ -135,21 +135,21 @@ test('requests the whole-room activity projection with an explicit domain filter
 });
 
 test('server exposes grouped activity summary and repeated actor filtering', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   assert.match(serverSource, /app\.get\("\/api\/activity-logs\/summary"/);
   assert.match(serverSource, /getActivityQueryValues\(req, "actor"\)/);
   assert.match(serverSource, /COUNT\(DISTINCT CASE WHEN/);
 });
 
 test('server aggregates KPI summary to one row per actor username', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   assert.match(serverSource, /MAX\(COALESCE\(data->>'actorName', 'Hệ thống'\)\) AS "actorName"/);
   assert.match(serverSource, /GROUP BY data->>'actorUsername'/);
   assert.doesNotMatch(serverSource, /GROUP BY data->>'actorUsername', data->>'actorName'/);
 });
 
 test('server activity routes read both domain-owned append-only collections', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   assert.match(serverSource, /pgdActivityLogs/);
   assert.match(serverSource, /UNION ALL/);
   assert.match(serverSource, /activityDomain|domain.*PCN|domain.*PGD/);

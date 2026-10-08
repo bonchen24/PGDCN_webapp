@@ -41,3 +41,21 @@ export function requirePgdCollectionMutation(
   const status = operation === 'delete' && denial.includes('append-only') ? 405 : 403;
   return jsonForbidden(denial, status);
 }
+
+export function requirePgdDossierManager(req: NextRequest | Request): NextResponse | null {
+  const sessionError = requirePgdSession(req);
+  if (sessionError) return sessionError;
+  const actor = getPgdSessionUser(req);
+  const isManager = Boolean(
+    actor && (
+      isPcnSystemManager(actor)
+      || actor.pgdRole === 'PGD_ADMIN'
+      || actor.pgdRole === 'PGD_MANAGER'
+    )
+  );
+  if (!isManager) {
+    return jsonForbidden('Chỉ Admin hoặc Quản lý PGD được phân công lại chủ hồ sơ.');
+  }
+  return null;
+}
+

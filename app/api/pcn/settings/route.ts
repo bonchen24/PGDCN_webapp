@@ -11,13 +11,7 @@ import {
   jsonUnauthorized,
   jsonServerError,
 } from '../../../../lib/server/response.ts';
-
-function normalizePcnSettings(data: Record<string, any>) {
-  return {
-    ...data,
-    pcnName: data.pcnName || 'Trung tâm Đo lường Chất lượng Phát triển Tiêu chuẩn',
-  };
-}
+import { normalizePcnSettings } from '@/utils/pcnSettings';
 
 export async function GET(request: NextRequest) {
   const actor = getSessionUser(request);

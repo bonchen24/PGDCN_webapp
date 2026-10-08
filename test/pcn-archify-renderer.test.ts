@@ -370,7 +370,7 @@ test('server renderer uses the vendored Archify compiler and complete reader tem
 });
 
 test('both dossier domains serve Archify from authenticated server routes', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   assert.match(serverSource, /app\.get\('\/api\/pcn\/dossiers\/:dossierId\/archify'/);
   assert.match(serverSource, /app\.get\('\/api\/pgd\/requests\/:requestId\/archify'/);
   assert.match(serverSource, /requirePcnSession/);
@@ -380,7 +380,7 @@ test('both dossier domains serve Archify from authenticated server routes', () =
 });
 
 test('authenticated Archify routes select an allowlisted diagram suite member', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
   assert.match(serverSource, /ARCHIFY_DIAGRAM_TYPES/);
   assert.match(serverSource, /parseArchifyDiagramType/);
@@ -393,7 +393,7 @@ test('authenticated Archify routes select an allowlisted diagram suite member', 
 });
 
 test('Archify diagram parsing defaults missing, empty, and whitespace-only values to workflow', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
   assert.match(serverSource, /const diagram = String\(value \?\? ''\)\.trim\(\)\.toLowerCase\(\) \|\| 'workflow';/);
   for (const value of [undefined, '', '   ']) {
@@ -402,7 +402,7 @@ test('Archify diagram parsing defaults missing, empty, and whitespace-only value
 });
 
 test('Archify route errors are bounded and unavailable diagrams skip rendering', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const routeSources = [
     serverSource.slice(serverSource.indexOf("app.get('/api/pcn/dossiers/:dossierId/archify'"), serverSource.indexOf("\n  });", serverSource.indexOf("app.get('/api/pcn/dossiers/:dossierId/archify'")) + 5),
     serverSource.slice(serverSource.indexOf("app.get('/api/pgd/requests/:requestId/archify'"), serverSource.indexOf("\n  });", serverSource.indexOf("app.get('/api/pgd/requests/:requestId/archify'")) + 5),
@@ -418,7 +418,7 @@ test('Archify route errors are bounded and unavailable diagrams skip rendering',
 });
 
 test('Archify routes order activity logs by the JSON activity timestamp', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
   assert.match(serverSource, /readRows\(PGD_COLLECTIONS\.activityLogs, "data->>'createdAt' ASC, document_id ASC"\)/);
   assert.match(serverSource, /activityLogs' AND \(data->>'entityId' = \$1 OR data->>'requestCode' = \$1\) ORDER BY data->>'createdAt', document_id/);

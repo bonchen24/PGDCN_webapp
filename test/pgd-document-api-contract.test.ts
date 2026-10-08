@@ -39,7 +39,7 @@ test('PGD UI exposes DOCX template management and document generation modules', 
 });
 
 test('PGD server keeps document generation in PGD collections and private output metadata', () => {
-  const source = read('server.ts');
+  const source = read('server.legacy.ts');
   assert.match(source, /\/api\/pgd\/document-templates/);
   assert.match(source, /\/api\/pgd\/documents\/generate/);
   assert.match(source, /PGD_COLLECTIONS\.documents/);
@@ -51,7 +51,7 @@ test('PGD settings expose the packaged DOCX source and its placeholder inspectio
   const api = read('utils/pgdApi.ts');
   const panel = read('components/PgdDocumentGenerationPanel.tsx');
   const tableEditor = read('components/PgdTableFieldEditor.tsx');
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
   assert.match(api, /getPgdTemplateSourceUrl/);
   assert.match(api, /\/api\/pgd\/document-templates\/\$\{encodeURIComponent\(templateId\)\}\/source/);
   assert.match(panel, /sourceInspection/);

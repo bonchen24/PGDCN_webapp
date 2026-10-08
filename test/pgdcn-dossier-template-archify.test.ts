@@ -7,7 +7,7 @@ import { buildPcnArchifyWorkflowTemplate } from '../utils/pcnArchifyWorkflowTemp
 import { buildPgdArchifyWorkflowTemplate } from '../utils/pgdArchifyWorkflowTemplate.ts';
 
 const previewComponent = readFileSync(new URL('../components/PgdcnDossierTemplateArchifyPreview.tsx', import.meta.url), 'utf8');
-const serverSource = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 const model: DossierTemplateEditorModel = {
   domain: 'PCN',

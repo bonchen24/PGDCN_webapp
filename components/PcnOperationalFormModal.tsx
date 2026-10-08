@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FileText, Save, X } from 'lucide-react';
 
 import type {
@@ -109,11 +109,11 @@ function displayUser(user: PcnUserAccount): string {
   return getPcnUserDisplayName(user.username, [user]);
 }
 
-function FormField({ label, field, error, wide, required = false, children }: { label: string; field: string; error?: string; wide?: boolean; required?: boolean; children: React.ReactNode }) {
+function FormField({ label, field, error, errorId, wide, required = false, children }: { label: string; field: string; error?: string; errorId?: string; wide?: boolean; required?: boolean; children: React.ReactNode }) {
   return <label className={`block min-w-0 ${wide ? 'lg:col-span-2' : ''}`}>
     <span className="mb-1 block text-xs font-bold text-slate-600">{label}{required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span>
     {children}
-    {error && <span className="mt-1 block text-[11px] font-bold text-rose-600">{error}</span>}
+    {error && <span id={errorId} className="mt-1 block text-[11px] font-bold text-rose-600">{error}</span>}
     <span className="sr-only">Mã trường {field}</span>
   </label>;
 }
@@ -131,6 +131,7 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
   const [form, setForm] = useState<FormState>(() => initialFormState(kind, initialValue));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
   const activeUsers = useMemo(() => users.filter((user) => user.active && (user.systemRole || user.role) !== 'viewer').sort((left, right) => left.name.localeCompare(right.name, 'vi')), [users]);
 
   useEffect(() => {
@@ -150,11 +151,13 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
 
   const controlClass = 'mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs md:text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-slate-100';
   const isRequired = (field: string) => FORM_REQUIRED_FIELDS[kind].includes(field);
-  const text = (field: string, options?: { wide?: boolean; multiline?: boolean }) => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]} wide={options?.wide} required={isRequired(field)}>
-    {options?.multiline ? <textarea required={isRequired(field)} aria-required={isRequired(field) || undefined} value={toLines(form[field])} onChange={(event) => setField(field, event.target.value)} rows={2} disabled={!canEdit || isSaving} className={controlClass} /> : <input required={isRequired(field)} aria-required={isRequired(field) || undefined} value={String(form[field] ?? '')} onChange={(event) => setField(field, event.target.value)} disabled={!canEdit || isSaving} className={controlClass} />}
+  const getFieldControlId = (field: string) => `pcn-operational-${kind.toLowerCase()}-${field}`;
+  const getFieldErrorId = (field: string) => `pcn-operational-${kind.toLowerCase()}-${field}-error`;
+  const text = (field: string, options?: { wide?: boolean; multiline?: boolean }) => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]} errorId={getFieldErrorId(field)} wide={options?.wide} required={isRequired(field)}>
+    {options?.multiline ? <textarea id={getFieldControlId(field)} required={isRequired(field)} aria-required={isRequired(field) || undefined} aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? getFieldErrorId(field) : undefined} value={toLines(form[field])} onChange={(event) => setField(field, event.target.value)} rows={2} disabled={!canEdit || isSaving} className={controlClass} /> : <input id={getFieldControlId(field)} required={isRequired(field)} aria-required={isRequired(field) || undefined} aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? getFieldErrorId(field) : undefined} value={String(form[field] ?? '')} onChange={(event) => setField(field, event.target.value)} disabled={!canEdit || isSaving} className={controlClass} />}
   </FormField>;
-  const date = (field: string) => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]} required={isRequired(field)}><PgdcnDateInput required={isRequired(field)} aria-required={isRequired(field) || undefined} value={String(form[field] ?? '')} onChange={(value) => setField(field, value)} disabled={!canEdit || isSaving} className={controlClass} /></FormField>;
-  const array = (field: string) => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]} wide required={isRequired(field)}><textarea required={isRequired(field)} aria-required={isRequired(field) || undefined} value={toLines(form[field])} onChange={(event) => setField(field, event.target.value.split('\n'))} rows={2} disabled={!canEdit || isSaving} className={controlClass} /></FormField>;
+  const date = (field: string) => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]} errorId={getFieldErrorId(field)} required={isRequired(field)}><PgdcnDateInput id={getFieldControlId(field)} required={isRequired(field)} aria-required={isRequired(field) || undefined} aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? getFieldErrorId(field) : undefined} value={String(form[field] ?? '')} onChange={(value) => setField(field, value)} disabled={!canEdit || isSaving} className={controlClass} /></FormField>;
+  const array = (field: string) => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]} errorId={getFieldErrorId(field)} wide required={isRequired(field)}><textarea id={getFieldControlId(field)} required={isRequired(field)} aria-required={isRequired(field) || undefined} aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? getFieldErrorId(field) : undefined} value={toLines(form[field])} onChange={(event) => setField(field, event.target.value.split('\n'))} rows={2} disabled={!canEdit || isSaving} className={controlClass} /></FormField>;
   const user = (field: string, emptyLabel = 'Chưa chọn') => {
     const label = FIELD_LABELS[field] || field;
     const options = activeUsers.map((item) => ({
@@ -163,9 +166,9 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
       searchText: [item.username, item.name, item.position, item.departmentRoleCode].filter(Boolean).join(' '),
       description: item.username,
     }));
-    return <FormField label={label} field={field} error={errors[field]} required={isRequired(field)}><PcnCatalogCombobox id={`pcn-operational-${kind.toLowerCase()}-${field}`} label={label} hideLabel required={isRequired(field)} value={String(form[field] ?? '')} options={options} onChange={(value) => setField(field, value)} disabled={!canEdit || isSaving} /></FormField>;
+    return <FormField label={label} field={field} error={errors[field]} errorId={getFieldErrorId(field)} required={isRequired(field)}><PcnCatalogCombobox id={getFieldControlId(field)} label={label} hideLabel required={isRequired(field)} value={String(form[field] ?? '')} options={options} onChange={(value) => setField(field, value)} disabled={!canEdit || isSaving} /></FormField>;
   };
-  const number = (field: string) => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]} required={isRequired(field)}><input type="number" min="0" required={isRequired(field)} aria-required={isRequired(field) || undefined} value={String(form[field] ?? '')} onChange={(event) => setField(field, event.target.value === '' ? '' : Number(event.target.value))} disabled={!canEdit || isSaving} className={controlClass} /></FormField>;
+  const number = (field: string) => <FormField label={FIELD_LABELS[field] || field} field={field} error={errors[field]} errorId={getFieldErrorId(field)} required={isRequired(field)}><input id={getFieldControlId(field)} type="number" min="0" required={isRequired(field)} aria-required={isRequired(field) || undefined} aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? getFieldErrorId(field) : undefined} value={String(form[field] ?? '')} onChange={(event) => setField(field, event.target.value === '' ? '' : Number(event.target.value))} disabled={!canEdit || isSaving} className={controlClass} /></FormField>;
 
   const renderField = (field: string): React.ReactNode => {
     if (DATE_FIELDS.has(field)) return date(field);
@@ -183,6 +186,9 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
     const nextErrors = validatePcnOperationalForm(kind, nextValue);
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
+      requestAnimationFrame(() => {
+        errorSummaryRef.current?.focus();
+      });
       return;
     }
     setIsSaving(true);
@@ -203,12 +209,18 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
         <div className="flex min-w-0 items-start gap-2"><span className="rounded-lg bg-emerald-50 p-2 text-emerald-700"><FileText size={17} /></span><div className="min-w-0"><h2 id="pcn-operational-form-title" className="text-sm font-black text-slate-900">{PCN_OPERATIONAL_FORM_LABELS[kind]}</h2><p className="mt-1 text-[10px] leading-4 text-slate-500">{FORM_DESCRIPTIONS[kind]}</p></div></div>
         <button type="button" onClick={onClose} aria-label="Đóng form nghiệp vụ" className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={18} /></button>
       </header>
-      <form onSubmit={(event) => void submit(event)} className="flex min-h-0 flex-1 flex-col">
+      <form noValidate onSubmit={(event) => void submit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="min-h-0 flex-1 mobile-scroll-y overflow-y-auto">
+          {Object.keys(errors).length > 0 && <div ref={errorSummaryRef} id="pcn-operational-form-error-summary" role="alert" tabIndex={-1} className="mx-3 mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-800">
+            <h3 className="text-xs font-black">Cần kiểm tra lại thông tin</h3>
+            <ul className="mt-1 list-disc pl-4 text-[11px]">
+              {Object.entries(errors).map(([field, error]) => <li key={field}><a className="underline" href={`#${getFieldControlId(field)}`}>{FIELD_LABELS[field] || field}: {error}</a></li>)}
+            </ul>
+          </div>}
           {kind === 'SAMPLE_CODING' && sampleLots.length > 0 && <div className="mx-4 mt-3 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-[10px] text-indigo-800"><b>Lô mẫu trong hồ sơ:</b> {sampleLots.map((lot) => `${lot.lotCode} · ${lot.sampleName}`).join(' • ')}<p className="mt-1 text-[9px]">Mã lô, mã mẫu vật lý và mã tem niêm phong được quản lý thành ba trường riêng.</p></div>}
           <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-4">{fields}</div>
         </div>
-        <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3"><span className="text-[9px] text-slate-500">Các trường có lỗi sẽ được đánh dấu ngay tại form.</span><div className="flex gap-2"><button type="button" onClick={onClose} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-600 hover:bg-slate-100">Hủy</button><button type="submit" disabled={!canEdit || isSaving} className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-[10px] font-black text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"><Save size={13} />{isSaving ? 'Đang lưu…' : 'Lưu form vào hồ sơ'}</button></div></footer>
+        <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3"><span className="text-[9px] text-slate-500">Các trường có lỗi sẽ được đánh dấu ngay tại form.</span><div className="flex gap-2"><button type="button" onClick={onClose} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-600 hover:bg-slate-100">Hủy</button><button type="submit" disabled={!canEdit || isSaving} className="mobile-touch-target min-h-11 inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-[10px] font-black text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"><Save size={13} />{isSaving ? 'Đang lưu…' : 'Lưu form vào hồ sơ'}</button></div></footer>
       </form>
     </div>
   </div>;

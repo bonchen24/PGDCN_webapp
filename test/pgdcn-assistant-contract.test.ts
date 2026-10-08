@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { isPgdcnAssistantReviewRequest } from '../utils/pgdcnAssistant.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('accepts exactly one domain-specific assistant review request shape', () => {
   assert.equal(isPgdcnAssistantReviewRequest({ domain: 'PCN', fieldCode: 'QC4', dossierId: 'dossier-1' }), true);

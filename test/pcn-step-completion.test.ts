@@ -15,7 +15,7 @@ import { withdrawPcnIssuancePackage } from '../utils/pcnIssuance.ts';
 
 const detailSource = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
 const approvalSource = fs.readFileSync(new URL('../components/PcnApprovalModal.tsx', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const designSource = fs.readFileSync(new URL('../design.md', import.meta.url), 'utf8');
 
 test('models dossier completion as five actionable stages ending at leadership approval', () => {

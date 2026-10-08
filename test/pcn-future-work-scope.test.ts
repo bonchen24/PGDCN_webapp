@@ -22,7 +22,7 @@ test('PCN workspace exposes only new-work operations, not historical dossier man
 });
 
 test('PCN runtime rejects historical source-path and historical-review endpoints', () => {
-  const server = read('server.ts');
+  const server = read('server.legacy.ts');
 
   assert.match(server, /PCN_FUTURE_WORK_ONLY/);
   assert.doesNotMatch(server, /app\.post\('\/api\/pcn\/historical\//);

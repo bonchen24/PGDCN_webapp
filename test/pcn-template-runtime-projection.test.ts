@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('PCN template catalog projects a safe reason for private asset verification failures', () => {
   const catalogRoute = serverSource.slice(serverSource.indexOf('if (DATABASE_PROFILE === \'pcn\' && collectionName === \'pcnTemplateDefinitions\')'));

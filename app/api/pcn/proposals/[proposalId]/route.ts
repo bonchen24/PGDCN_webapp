@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ proposalId: string }> | { proposalId: string } }
+  context: { params: Promise<{ proposalId: string }> }
 ) {
   const actor = getPcnSessionUser(req);
   if (!actor) {

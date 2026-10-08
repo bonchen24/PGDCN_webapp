@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const apiSource = readFileSync(new URL('../utils/pcnWorkflowTemplateApi.ts', import.meta.url), 'utf8');
-const serverSource = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const storeSource = readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 
 test('PCN exposes draft update API and store action', () => {

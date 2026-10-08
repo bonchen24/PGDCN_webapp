@@ -11,7 +11,7 @@ import {
   getPcnCollectionMutationDenial,
 } from '../utils/pcnRbac.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('PCN RBAC permits staff business mutations but keeps viewers read-only', () => {
   assert.match(getPcnCollectionMutationDenial('customers', 'staff', 'write') || '', /endpoint chuyên biệt/i);

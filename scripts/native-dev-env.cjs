@@ -54,6 +54,8 @@ function buildPcnChildEnv({ projectRoot, env = process.env }) {
 
   childEnv.APP_PROFILE = 'pcn';
   childEnv.PORT = '1357';
+  childEnv.TEMP = path.resolve(projectRoot, 'tmp');
+  childEnv.TMP = path.resolve(projectRoot, 'tmp');
   childEnv.SUPABASE_STORAGE_URL = String(
     env.SUPABASE_STORAGE_URL || fileEnv.SUPABASE_STORAGE_URL || 'http://127.0.0.1:8000/storage/v1',
   ).trim();

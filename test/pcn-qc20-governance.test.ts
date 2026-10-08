@@ -22,7 +22,7 @@ test('stainless steel is owned by the PGD catalog with the legal standard snapsh
 });
 
 test('PCN no longer exposes QC20 confirmation endpoints or UI', () => {
-  const server = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const server = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const settings = fs.readFileSync(new URL('../components/PcnSettingsView.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(server, /qc20-readiness|qc20-scope\/confirm|PcnQc20Scope/);
   assert.doesNotMatch(settings, /PcnQc20ScopePanel|Xác nhận phạm vi QC20/);

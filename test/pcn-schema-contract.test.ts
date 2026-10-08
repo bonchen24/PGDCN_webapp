@@ -38,7 +38,7 @@ test('PCN schema contains only the shared JSON document and file metadata primit
 });
 
 test('PCN server collection allowlist names only PCN business collections', () => {
-  const server = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const server = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   const pcnBlock = server.slice(server.indexOf('const PCN_DB_COLLECTIONS'), server.indexOf('function getDbCollection'));
 
   assert.match(pcnBlock, /pcnCertificationFields/);

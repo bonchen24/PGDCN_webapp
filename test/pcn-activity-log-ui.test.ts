@@ -36,7 +36,7 @@ test('PCN activity log remains cursor based and non-mutating', () => {
 });
 
 test('PCN activity KPI maps PCN entities instead of collapsing all work into other', () => {
-  const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
   assert.match(serverSource, /const pcnActivityKpi = DATABASE_PROFILE === ['"]pcn['"]/);
   assert.match(serverSource, /pcnActivityKpi[\s\S]{0,1200}PCN_PROPOSAL/);
   assert.match(serverSource, /pcnActivityKpi[\s\S]{0,1800}PCN_RESULT/);

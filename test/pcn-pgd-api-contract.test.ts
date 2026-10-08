@@ -18,7 +18,7 @@ test('PGD client exposes dedicated endpoints and never uses generic DB writes', 
 });
 
 test('PGD server boundary is domain-scoped and has no PCN collection fallback', () => {
-  const source = read('server.ts');
+  const source = read('server.legacy.ts');
   assert.match(source, /\/api\/pgd\/bootstrap/);
   assert.match(source, /\/api\/pgd\/requests/);
   assert.match(source, /\/api\/pgd\/requests\/:requestId\/transition/);

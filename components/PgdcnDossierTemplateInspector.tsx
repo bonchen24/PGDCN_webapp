@@ -32,6 +32,15 @@ const PGD_METHOD_OPTIONS = [
   { value: 'GENERIC', label: 'Chung' },
 ] as const;
 
+const LANE_OPTIONS = [
+  { value: 'default', label: 'Chưa phân nhóm' },
+  { value: 'intake', label: 'Tiếp nhận' },
+  { value: 'preparation', label: 'Chuẩn bị' },
+  { value: 'field', label: 'Hiện trường' },
+  { value: 'lab', label: 'PTN & kết quả' },
+  { value: 'review', label: 'Rà soát & phê duyệt' },
+  { value: 'archive', label: 'Trả kết quả & lưu trữ' },
+] as const;
 export interface DossierTemplateRequirementOption {
   id: string;
   label: string;
@@ -110,8 +119,27 @@ export default function PgdcnDossierTemplateInspector(props: PgdcnDossierTemplat
       <label className="mt-4 block text-xs font-medium text-slate-500">Mô tả hướng dẫn</label>
       <input value={node.description || ''} onChange={(event) => props.onChangeNode({ description: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 px-3" />
       <div className="mt-4 grid grid-cols-2 gap-2"><label className="text-xs text-slate-500">SLA (ngày)<input type="number" min={0} value={node.slaDays ?? ''} onChange={(event) => props.onChangeNode({ slaDays: event.target.value === '' ? undefined : Number(event.target.value) })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 px-3" /></label><label className="text-xs text-slate-500">Vai trò<input value={node.assigneeRole || ''} onChange={(event) => props.onChangeNode({ assigneeRole: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 px-3" /></label></div>
-      <div className="mt-5 flex gap-2"><button type="button" className="min-h-11 flex-1 rounded-lg bg-blue-50 px-3 text-sm font-medium text-blue-700" onClick={props.onBeginConnection}>Nối tới</button><button type="button" className="min-h-11 rounded-lg px-3 text-sm font-medium text-rose-600 hover:bg-rose-50" onClick={props.onDeleteNode}>Xóa bước</button></div>
-      <div className="mt-6 border-t border-slate-100 pt-5"><div className="flex items-end justify-between gap-3"><div><h3 className="font-semibold text-slate-800">Tài liệu theo bước</h3><p className="mt-1 text-xs text-slate-500">Chọn loại tài liệu cần có khi hồ sơ chạy qua bước này.</p></div><span className="text-xs text-slate-400">{node.requirementRefs.length} đã chọn</span></div><input value={query} onChange={(event) => setQuery(event.target.value)} className="mt-3 min-h-11 w-full rounded-lg border border-slate-300 px-3 text-sm" />
+      <fieldset className="mt-5">
+        <legend className="text-xs font-semibold text-slate-800">Vị trí trên lưu trình</legend>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <label className="text-xs text-slate-500">Vùng
+            <select aria-label="Vùng" value={node.laneId || 'default'} onChange={(event) => props.onChangeNode({ laneId: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm">
+              {LANE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-slate-500">Cột
+            <select aria-label="Cột" value={node.column} onChange={(event) => props.onChangeNode({ column: Number(event.target.value) })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm">
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+              <option value={3}>3</option>
+              <option value={4}>4</option>
+              <option value={5}>5</option>
+              <option value={6}>6</option>
+            </select>
+          </label>
+        </div>
+      </fieldset>      <div className="mt-5 flex gap-2"><button type="button" className="min-h-11 flex-1 rounded-lg bg-blue-50 px-3 text-sm font-medium text-blue-700" onClick={props.onBeginConnection}>Nối tới</button><button type="button" className="min-h-11 rounded-lg px-3 text-sm font-medium text-rose-600 hover:bg-rose-50" onClick={props.onDeleteNode}>Xóa bước</button></div>
+      <div className="mt-6 border-t border-slate-100 pt-5"><div className="flex items-end justify-between gap-3"><div><h3 className="font-semibold text-slate-800">Tài liệu theo bước</h3><p className="mt-1 text-xs text-slate-500">Chọn loại tài liệu cần có khi hồ sơ chạy qua bước này.</p></div><span className="text-xs text-slate-400">{node.requirementRefs.length} đã chọn</span></div><input aria-label="Tìm tài liệu" placeholder="Tìm tài liệu" value={query} onChange={(event) => setQuery(event.target.value)} className="mt-3 min-h-11 w-full rounded-lg border border-slate-300 px-3 text-sm" />
         <div className="mt-3 max-h-[330px] space-y-2 overflow-y-auto">{filteredOptions.map((option) => <label key={option.id} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-slate-100 p-2 hover:bg-slate-50"><input type="checkbox" checked={node.requirementRefs.includes(option.id)} onChange={(event) => props.onToggleRequirement(option.id, event.target.checked)} className="mt-1 h-4 w-4" /><span className="text-sm text-slate-700"><span className="block">{option.label} {option.required && <span className="text-rose-500">*</span>}</span><span className="block text-xs text-slate-400">{option.group || option.id}</span></span></label>)}{filteredOptions.length === 0 && <p className="py-4 text-center text-xs text-slate-400">Không tìm thấy tài liệu phù hợp.</p>}</div>
       </div>
     </aside>

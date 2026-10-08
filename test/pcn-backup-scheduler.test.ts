@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { getBackupAutoPrefix, getBackupPrefix, getBackupRetentionPolicy } from '../utils/backupManager.ts';
 
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('backup prefixes follow the active database profile', () => {
   assert.equal(getBackupPrefix('pcn'), 'pcn_certification');

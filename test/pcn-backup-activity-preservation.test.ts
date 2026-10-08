@@ -31,7 +31,7 @@ const restoredLog = {
 };
 
 const managerSource = fs.readFileSync(new URL('../utils/backupManager.ts', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 
 test('restore merge keeps current logs, archive logs and the restore event without overwriting', () => {
   const restoreLog = buildBackupRestoreActivity('pcn_certification_manual_20260829-080000.zip', {
