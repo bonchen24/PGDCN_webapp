@@ -88,7 +88,7 @@ test('visual checklist is exposed in dossier detail without replacing the upload
   assert.match(detailView, /open=\{step\.key === activeWorkflowNodeKey\}/);
   assert.match(detailView, /Bước hiện tại mở sẵn/);
   assert.match(previewView, /Xem nhanh/);
-  assert.match(previewView, /vùng riêng tư/);
+  assert.match(previewView, /Mở tệp riêng tư/);
   assert.match(detailView, /item\.currentVersion\.uploadedBy/);
   assert.match(detailView, /Người tải/);
   assert.match(detailView, /formatDateTime\(item\.currentVersion\.uploadedAt\)/);

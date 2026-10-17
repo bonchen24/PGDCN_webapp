@@ -131,6 +131,15 @@ export async function executePcnWorkflowTaskMutation(
     const dossierApprovalSteps = approvalStepsResult.rows.map((row: any) => mapDocumentRow(row) as PcnApprovalStep);
     const currentTasks = currentTasksResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierWorkflowTask);
     const requirementDefinitions = requirementDefinitionsResult.rows.map((row: any) => mapDocumentRow(row) as PcnDocumentRequirement);
+    const requirementRequiredById = new Map<string, boolean>();
+    for (const requirement of requirementDefinitions) {
+      requirementRequiredById.set(
+        requirement.id,
+        (requirementRequiredById.get(requirement.id) ?? false) || requirement.required !== false,
+      );
+    }
+    const requiredRequirementIds = Array.from(new Set(workflow.nodes.flatMap((node) => node.requirementIds)))
+      .filter((requirementId) => requirementRequiredById.get(requirementId) !== false);
     const sampleLots = sampleLotsResult.rows.map((row: any) => mapDocumentRow(row) as PcnSampleLot);
     const sampleRoutes = sampleRoutesResult.rows.map((row: any) => mapDocumentRow(row) as PcnSampleRoute);
     const labRequests = labRequestsResult.rows.map((row: any) => mapDocumentRow(row) as OutboundLabRequest);
@@ -139,6 +148,7 @@ export async function executePcnWorkflowTaskMutation(
     const conditionContext = buildPcnWorkflowConditionContext({
       workflow,
       documents: dossierDocuments,
+      requiredRequirementIds,
       documentWaivers: dossier.documentWaivers,
       results: dossierResults,
       approvalSteps: dossierApprovalSteps,
@@ -152,6 +162,7 @@ export async function executePcnWorkflowTaskMutation(
         workflow,
         tasks: currentTasks,
         documents: dossierDocuments,
+        requiredRequirementIds,
         documentWaivers: dossier.documentWaivers,
         conditionContext,
       });
@@ -170,6 +181,7 @@ export async function executePcnWorkflowTaskMutation(
         workflow,
         tasks: currentTasks,
         documents: dossierDocuments,
+        requiredRequirementIds,
         documentWaivers: dossier.documentWaivers,
         conditionContext,
       });
@@ -212,6 +224,7 @@ export async function executePcnWorkflowTaskMutation(
         workflow,
         tasks: nextTasks,
         documents: dossierDocuments,
+        requiredRequirementIds,
         documentWaivers: dossier.documentWaivers,
         conditionContext,
       });

@@ -27,6 +27,7 @@ export interface PcnWorkflowConditionContext {
 export interface PcnWorkflowConditionContextInput {
   workflow: PcnWorkflowSnapshot;
   documents: readonly Pick<PcnDossierDocument, 'requirementId' | 'status'>[];
+  requiredRequirementIds?: readonly string[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver | undefined>;
   results?: readonly Pick<ReturnedTestResult, 'id' | 'dossierId' | 'labRequestId' | 'round' | 'outcome' | 'receivedAt' | 'updatedAt' | 'createdAt'>[];
   approvalSteps?: readonly Pick<PcnApprovalStep, 'id' | 'dossierId' | 'sequence' | 'role' | 'status'>[];
@@ -127,14 +128,18 @@ function nodeDocumentsResolved(
   node: PcnWorkflowNodeDefinition,
   documents: readonly Pick<PcnDossierDocument, 'requirementId' | 'status'>[],
   waivers: Record<string, PcnDossierDocumentWaiver | undefined>,
+  requiredRequirementIds?: ReadonlySet<string>,
 ): boolean {
-  return node.requirementIds.every((requirementId) => requirementIsResolved(requirementId, documents, waivers));
+  return node.requirementIds
+    .filter((requirementId) => !requiredRequirementIds || requiredRequirementIds.has(requirementId))
+    .every((requirementId) => requirementIsResolved(requirementId, documents, waivers));
 }
 
 export function buildPcnWorkflowConditionContext(input: PcnWorkflowConditionContextInput): PcnWorkflowConditionContext {
+  const requiredRequirementIds = input.requiredRequirementIds === undefined ? undefined : new Set(input.requiredRequirementIds);
   const requirementIds = new Set(input.workflow.nodes
     .filter((node) => node.active !== false)
-    .flatMap((node) => node.requirementIds));
+    .flatMap((node) => node.requirementIds.filter((requirementId) => !requiredRequirementIds || requiredRequirementIds.has(requirementId))));
   const waivers = input.documentWaivers || {};
   const results = input.results || [];
   const latestResult = [...results].sort((left, right) => recordTimestamp(right).localeCompare(recordTimestamp(left)) || String(right.id).localeCompare(String(left.id))).at(0);
@@ -257,10 +262,12 @@ export function projectPcnWorkflowRuntime(input: {
   workflow: PcnWorkflowSnapshot;
   tasks: readonly PcnDossierWorkflowTask[];
   documents: readonly Pick<PcnDossierDocument, 'requirementId' | 'status'>[];
+  requiredRequirementIds?: readonly string[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver | undefined>;
   conditionContext?: PcnWorkflowConditionContext;
 }): PcnWorkflowRuntimeProjection {
   const context = input.conditionContext || {};
+  const requiredRequirementIds = input.requiredRequirementIds === undefined ? undefined : new Set(input.requiredRequirementIds);
   const taskByNodeId = new Map(input.tasks.map((task) => [task.nodeId, task]));
   const statuses = new Map(input.tasks.map((task) => [task.nodeId, task.status]));
   const orderedNodes = [...input.workflow.nodes].filter((node) => node.active !== false).sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id));
@@ -284,7 +291,7 @@ export function projectPcnWorkflowRuntime(input: {
     const allIncoming = getIncoming(input.workflow, node.id);
     const activeIncoming = allIncoming.filter((edge) => isPcnWorkflowTransitionAllowed(edge, context));
     const predecessorReady = nodePredecessorsReady(input.workflow, node, statuses, context);
-    const documentsResolved = nodeDocumentsResolved(node, input.documents, input.documentWaivers || {});
+    const documentsResolved = nodeDocumentsResolved(node, input.documents, input.documentWaivers || {}, requiredRequirementIds);
     const blockedReason = ['READY', 'LOCKED'].includes(status)
       ? allIncoming.length > 0 && activeIncoming.length === 0 ? 'CONDITION'
         : !predecessorReady ? 'PREDECESSOR'

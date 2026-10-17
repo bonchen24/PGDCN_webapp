@@ -9,7 +9,7 @@ test('approval assistant UI selects one dossier and streams an advisory review',
   assert.match(assistant, /Trợ lý phê duyệt/);
   assert.match(assistant, /approval-assistant\/candidates/);
   assert.match(assistant, /approval-assistant\/review/);
-  assert.match(assistant, /Xác nhận/);
+  assert.match(assistant, /không xác nhận hồ sơ hoặc thay đổi trạng thái/i);
   assert.match(assistant, /type="radio"/);
   assert.match(assistant, /criterion_started|criterion_result/);
   assert.match(assistant, /Mở hồ sơ|Mở bằng chứng/);

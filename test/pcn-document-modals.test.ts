@@ -69,6 +69,23 @@ test('document output modal exposes preflight, DOCX, PDF and private-file action
   assert.match(api, /api\/pcn\/documents\/generate/);
 });
 
+test('document output modal contains accessible focus and mobile viewport handling', () => {
+  const output = read('components/PcnDocumentOutputModal.tsx');
+
+  assert.match(output, /useEffect/);
+  assert.match(output, /useRef/);
+  assert.match(output, /visualViewport/);
+  assert.match(output, /isComposing/);
+  assert.match(output, /keyCode === 229/);
+  assert.match(output, /event\.key === 'Escape'/);
+  assert.match(output, /event\.key !== 'Tab'/);
+  assert.match(output, /previouslyFocusedElement\.focus\(\)/);
+  assert.match(output, /targetDialog && targetDialog !== dialog/);
+  assert.match(output, /isTopmostDialog/);
+  assert.match(output, /aria-labelledby="pcn-document-output-title"/);
+  assert.equal((output.match(/onClick={onClose}/g) ?? []).length, 2);
+});
+
 test('official issuance documents remain a separate approval-gated output', () => {
   const issuance = read('components/PcnIssuanceView.tsx');
   const policy = read('utils/pcnOfficialDocumentApi.ts');

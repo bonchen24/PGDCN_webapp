@@ -88,62 +88,63 @@ export function PcnDossierGroupCard({
   const targetDdMm = formatDdMm(dossier.targetDate);
   const brandLabel = proposal.brand || proposal.model || proposal.productType || '';
 
-  const handleCopyCode = (e: React.MouseEvent) => {
+  const handleCopyCode = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(`${proposal.proposalCode} · ${dossier.dossierCode}`);
-      toast.success(`Đã sao chép mã ${proposal.proposalCode}`);
-    }
-  };
-
-  const handleCardClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('button, a, input, select, textarea, [data-no-card-expand]')) {
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      toast.error('Không thể sao chép mã hồ sơ.');
       return;
     }
-    setIsExpanded((prev) => !prev);
+
+    try {
+      await navigator.clipboard.writeText(`${proposal.proposalCode} · ${dossier.dossierCode}`);
+      toast.success(`Đã sao chép mã ${proposal.proposalCode}`);
+    } catch {
+      toast.error('Không thể sao chép mã hồ sơ.');
+    }
   };
 
   return (
     <div
       data-testid="pcn-dossier-card"
-      onClick={handleCardClick}
-      className={`group relative flex flex-col justify-between rounded-2xl border bg-white p-3.5 shadow-2xs transition-all duration-200 cursor-pointer ${
+      className={`group relative flex flex-col justify-between rounded-2xl border bg-white p-3.5 shadow-2xs transition-all duration-200 ${
         isExpanded
           ? 'border-emerald-300 ring-2 ring-emerald-100 shadow-md'
           : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
       }`}
     >
       <div className="flex items-start gap-2">
-        {/* Compact Icon Box 24px */}
-        <div
+        <button
+          type="button"
+          aria-label={isExpanded ? 'Thu gọn chi tiết hồ sơ' : 'Mở rộng chi tiết hồ sơ'}
+          aria-expanded={isExpanded}
           onClick={(e) => {
             e.stopPropagation();
             setIsExpanded((prev) => !prev);
           }}
-          className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 shadow-xs bg-slate-50 text-slate-500 border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors"
+          className="mobile-touch-target inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md border border-slate-100 bg-slate-50 text-slate-500 shadow-xs transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
           title={isExpanded ? 'Thu gọn' : 'Mở rộng tại chỗ'}
         >
-          <FolderOpen size={11} strokeWidth={2.2} className="text-amber-600" />
-        </div>
+          <FolderOpen size={15} strokeWidth={2.2} className="text-amber-600" />
+        </button>
 
         {/* Info Column */}
         <div className="min-w-0 flex-1">
           {/* Top Line: Codes, Badges, and Action Toolbar */}
-          <div className="flex items-center justify-between gap-1.5">
+          <div className="flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
             <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-              <span
-                onClick={onOpenDossier}
-                className="cursor-pointer font-black text-[11px] uppercase tracking-widest text-slate-800 transition-colors hover:text-emerald-700"
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onOpenDossier(); }}
+                className="mobile-touch-target inline-flex min-h-11 items-center rounded px-1 font-black text-[11px] uppercase tracking-widest text-slate-800 transition-colors hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
                 title={`Mã Đề nghị: ${proposal.proposalCode}`}
               >
                 {proposal.proposalCode}
-              </span>
+              </button>
 
               <button
                 type="button"
-                onClick={onOpenDossier}
-                className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 font-mono text-[9px] font-bold text-emerald-800 transition-colors hover:bg-emerald-100"
+                onClick={(e) => { e.stopPropagation(); onOpenDossier(); }}
+                className="mobile-touch-target inline-flex min-h-11 items-center rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 font-mono text-[9px] font-bold text-emerald-800 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
                 title={`Mã hồ sơ: ${dossier.dossierCode}`}
               >
                 {dossier.dossierCode}
@@ -167,13 +168,14 @@ export function PcnDossierGroupCard({
             </div>
 
             {/* Quick Actions Icons (DDT style) */}
-            <div className="request-card-action-group flex items-center gap-0.5 shrink-0 bg-white p-0.5 rounded-lg border border-slate-100 shadow-xs">
+            <div className="request-card-action-group flex w-full flex-wrap items-center justify-end gap-0.5 rounded-lg border border-slate-100 bg-white p-0.5 shadow-xs xl:w-auto xl:shrink-0">
               {canEdit && proposalEditingAllowed && onEdit && (
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                  aria-label="Sửa đề nghị"
                   title="Sửa Đề nghị"
-                  className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-blue-600 hover:bg-blue-600 hover:text-white transition-colors"
+                  className="mobile-touch-target inline-flex min-h-11 min-w-11 items-center justify-center rounded text-blue-600 transition-colors hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
                 >
                   <Edit3 size={11} strokeWidth={2.2} />
                 </button>
@@ -181,16 +183,18 @@ export function PcnDossierGroupCard({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onOpenDossier(); }}
+                aria-label="In hoặc xem hồ sơ"
                 title="In / Xem hồ sơ"
-                className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                className="mobile-touch-target inline-flex min-h-11 min-w-11 items-center justify-center rounded text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
               >
                 <Printer size={11} strokeWidth={2} />
               </button>
               <button
                 type="button"
                 onClick={handleCopyCode}
+                aria-label="Sao chép mã hồ sơ"
                 title="Sao chép mã hồ sơ"
-                className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                className="mobile-touch-target inline-flex min-h-11 min-w-11 items-center justify-center rounded text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
               >
                 <Copy size={11} strokeWidth={2} />
               </button>
@@ -198,18 +202,21 @@ export function PcnDossierGroupCard({
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                  aria-label="Xóa hồ sơ"
                   title="Xóa hồ sơ"
-                  className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-rose-500 hover:bg-rose-600 hover:text-white transition-colors"
+                  className="mobile-touch-target inline-flex min-h-11 min-w-11 items-center justify-center rounded text-rose-500 transition-colors hover:bg-rose-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
                 >
                   <Trash2 size={11} strokeWidth={2} />
                 </button>
               )}
-              <div className="w-px h-3 bg-slate-200 mx-0.5" />
+              <div aria-hidden="true" className="mx-0.5 h-3 w-px bg-slate-200" />
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
+                aria-label={isExpanded ? 'Thu gọn chi tiết hồ sơ' : 'Mở rộng chi tiết hồ sơ'}
+                aria-expanded={isExpanded}
                 title={isExpanded ? 'Thu gọn' : 'Mở rộng chi tiết'}
-                className="inline-flex w-5.5 h-5.5 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                className="mobile-touch-target inline-flex min-h-11 min-w-11 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
               >
                 {isExpanded ? <ChevronUp size={11} strokeWidth={2.5} /> : <ChevronDown size={11} strokeWidth={2.5} />}
               </button>
@@ -217,13 +224,16 @@ export function PcnDossierGroupCard({
           </div>
 
           {/* Line 2: Customer / Company Name */}
-          <div className="mt-1">
-            <h3
-              onClick={onOpenDossier}
-              className="cursor-pointer truncate text-[10px] font-bold text-slate-800 transition-colors hover:text-slate-900"
-              title={proposal.customerSnapshot.name}
-            >
-              {proposal.customerSnapshot.name || 'CHƯA GẮN KHÁCH HÀNG'}
+          <div className="mt-1 min-w-0">
+            <h3 className="min-w-0">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onOpenDossier(); }}
+                className="mobile-touch-target inline-flex min-h-11 max-w-full items-center truncate text-left text-[10px] font-bold text-slate-800 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                title={proposal.customerSnapshot.name}
+              >
+                {proposal.customerSnapshot.name || 'CHƯA GẮN KHÁCH HÀNG'}
+              </button>
             </h3>
           </div>
 
@@ -302,8 +312,8 @@ export function PcnDossierGroupCard({
             <span>Chủ hồ sơ: <strong className="text-slate-800">{dossier.ownerUsername || 'Chưa phân công'}</strong></span>
             <button
               type="button"
-              onClick={onOpenDossier}
-              className="inline-flex items-center gap-1 text-emerald-700 font-bold hover:underline"
+              onClick={(e) => { e.stopPropagation(); onOpenDossier(); }}
+              className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded text-emerald-700 font-bold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
             >
               Mở chi tiết hồ sơ <ArrowRight size={11} />
             </button>

@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { Eye, FileText, MoreHorizontal, Upload } from 'lucide-react';
 
+import { ORGANIZATION_MANAGEMENT_ROLE_OPTIONS, PCN_DEPARTMENT_ROLE_OPTIONS, PROFESSIONAL_ROLE_OPTIONS } from '../types';
 import type { PcnDossierDocument, UserAccount } from '../types';
 import type {
   PcnDossierNodeBusinessFact,
@@ -54,6 +55,13 @@ const DOCUMENT_STATUS_LABELS: Record<PcnDossierNodeDocumentItem['status'], strin
   WAIVED: 'Bỏ qua',
 };
 
+const WORKFLOW_BLOCKED_REASON_LABELS: Record<NonNullable<PcnDossierNodeWorkProjection['blockedReason']>, string> = {
+  MISSING_DOCUMENT: 'Bước đang chờ tài liệu bắt buộc.',
+  PREDECESSOR: 'Bước trước chưa hoàn tất.',
+  CONDITION: 'Điều kiện chuyển bước chưa được đáp ứng.',
+  JOIN_POLICY: 'Các bước liên quan chưa đáp ứng quy tắc kết hợp.',
+};
+
 function actionLabel(action: PcnDossierNodeDocumentItem['actions'][number]): string {
   switch (action) {
     case 'VIEW': return 'Xem tài liệu';
@@ -98,10 +106,61 @@ export function PcnDossierNodeWorkPanel({
   const [returnReason, setReturnReason] = useState('');
 
   const documentByRequirementId = useMemo(() => new Map(documents.map((document) => [document.requirementId, document])), [documents]);
+  const orderedDocuments = useMemo(
+    () => [...projection.documents].sort((left, right) => Number(right.required) - Number(left.required)),
+    [projection.documents],
+  );
+  const requiredDocuments = projection.documents.filter((item) => item.required);
+  const optionalDocuments = projection.documents.filter((item) => !item.required);
+  const missingRequiredDocuments = requiredDocuments.filter((item) => item.status === 'MISSING');
+  const incompleteBusinessFacts = projection.businessFacts.filter((fact) => fact.status !== 'COMPLETED' && fact.status !== 'NOT_APPLICABLE');
+  const requiredResolvedCount = requiredDocuments.length - missingRequiredDocuments.length;
+  const optionalCompletedCount = optionalDocuments.filter((item) => item.status === 'PRESENT').length;
+  const completionBlockReasons = [
+    ...(projection.blockedReason ? [WORKFLOW_BLOCKED_REASON_LABELS[projection.blockedReason]] : []),
+    ...missingRequiredDocuments.map((item) => `Thiếu tài liệu bắt buộc: ${item.label}`),
+    ...incompleteBusinessFacts.map((fact) => `${fact.actionLabel || fact.label}: ${fact.reason || 'Chưa hoàn tất.'}`),
+  ];
+  const canEditNode = canEdit && projection.isEditable;
   const canStart = Boolean(taskId && onStartTask && ['READY', 'RETURNED'].includes(projection.status));
-  const canContinue = Boolean(taskId && onCompleteTask && projection.canContinue);
+  const canOfferContinue = Boolean(taskId && onCompleteTask && ['READY', 'IN_PROGRESS', 'WAITING', 'RETURNED'].includes(projection.status));
+  const canContinue = Boolean(canOfferContinue && projection.canContinue);
   const canReturn = Boolean(taskId && onReturnTask && canEdit && returnTargets.length > 0 && ['IN_PROGRESS', 'WAITING', 'RETURNED', 'COMPLETED'].includes(projection.status));
-  const currentRole = currentUser?.professionalRoleCodes?.join(', ') || currentUser?.position || currentUser?.systemRole || 'Người xử lý hồ sơ';
+  const nextMissingRequiredDocument = canEditNode
+    ? missingRequiredDocuments.find((item) => (
+      (item.actions.includes('UPLOAD') && Boolean(onUploadDocument))
+      || (item.actions.includes('CREATE_FROM_FORM') && Boolean(getPcnNodeDocumentGenerationKind(item.code)) && Boolean(onGenerateAndAttach || onCreateFromForm))
+      || (item.actions.includes('WAIVE') && Boolean(onWaive))
+    ))
+    : undefined;
+  const nextBusinessFact = onOpenBusiness ? incompleteBusinessFacts[0] : undefined;
+  const nextActionSummary = canStart
+    ? 'Bắt đầu xử lý bước này.'
+    : canContinue
+      ? 'Hoàn tất bước này để chuyển tiếp hồ sơ.'
+      : canReturn
+        ? 'Trả hồ sơ về bước cần xử lý.'
+        : nextMissingRequiredDocument
+          ? `Bổ sung tài liệu bắt buộc: ${nextMissingRequiredDocument.label}`
+          : nextBusinessFact
+            ? nextBusinessFact.actionLabel || `Mở ${nextBusinessFact.label}`
+            : completionBlockReasons.length > 0
+              ? 'Xem các điều kiện chưa đạt bên dưới.'
+              : 'Chưa có thao tác workflow khả dụng trong phiên hiện tại.';
+  const completionBlockersId = `pcn-node-completion-blockers-${projection.nodeId}`;
+  const completionReasonsForDisplay = completionBlockReasons.length > 0
+    ? completionBlockReasons
+    : ['Chưa đủ điều kiện hoàn tất bước này.'];
+  const currentRole = currentUser?.professionalRoleCodes?.map((code) => PROFESSIONAL_ROLE_OPTIONS.find((role) => role.code === code)?.name || code).join(', ')
+    || (currentUser?.managementRoleCode && currentUser.managementRoleCode !== 'NONE'
+      ? ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.find((role) => role.code === currentUser.managementRoleCode)?.name
+      : undefined)
+    || (currentUser?.departmentRoleCode
+      ? PCN_DEPARTMENT_ROLE_OPTIONS.find((role) => role.code === currentUser.departmentRoleCode)?.name
+      : undefined)
+    || currentUser?.position
+    || currentUser?.systemRole
+    || 'Người xử lý hồ sơ';
 
   async function run(key: string, callback: () => Promise<void>) {
     setBusyKey(key);
@@ -229,7 +288,12 @@ export function PcnDossierNodeWorkPanel({
       <tr key={item.requirementId} data-testid={`pcn-node-document-${item.requirementId}`}>
         <td className="border-b border-slate-100 px-3 py-2.5 font-semibold text-slate-500">{projection.nodeLabel}</td>
         <th scope="row" className="border-b border-slate-100 px-3 py-2.5 font-semibold text-slate-800">
-          {item.label}{item.required ? <span aria-hidden="true" className="ml-1 text-rose-600">*</span> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <span>{item.label}{item.required ? <span aria-hidden="true" className="ml-1 text-rose-600">*</span> : null}</span>
+            <span className={`inline-flex min-h-6 items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${item.required ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-100 text-slate-700'}`}>
+              {item.required ? 'Bắt buộc' : 'Tùy chọn'}
+            </span>
+          </div>
           {item.status === 'WAIVED' && item.waiverReason ? <p className="mt-1 text-[11px] font-normal text-amber-700">Lý do bỏ qua: {item.waiverReason}</p> : null}
           {projection.requiresReworkOnMutation ? <p className="mt-1 text-[11px] font-normal text-violet-700">Cập nhật mục này sẽ yêu cầu rà soát lại các bước sau.</p> : null}
         </th>
@@ -262,7 +326,19 @@ export function PcnDossierNodeWorkPanel({
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.12em] text-emerald-600">Việc đang chọn</p>
           <h2 className="mt-1 text-base font-black text-slate-950">{projection.nodeLabel}</h2>
-          <p className="mt-1 text-xs text-slate-500">{STATUS_LABELS[projection.status]} · Vòng {projection.cycleNo} · {projection.documents.length - projection.unresolvedRequiredCount}/{projection.documents.length} mục đã xử lý</p>
+          <p className="mt-1 text-xs text-slate-500">{STATUS_LABELS[projection.status]} · Vòng {projection.cycleNo}</p>
+          <div className="mt-2 flex flex-wrap gap-2" aria-label="Tiến độ tài liệu trong bước" data-testid="pcn-node-progress">
+            <span data-testid="pcn-required-progress" className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-800">
+              <span className="font-semibold">Bắt buộc</span>
+              <strong className="tabular-nums">{requiredResolvedCount}/{requiredDocuments.length}</strong>
+              <span>đã xử lý</span>
+            </span>
+            <span data-testid="pcn-optional-progress" className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-xs text-slate-700">
+              <span className="font-semibold">Tùy chọn</span>
+              <strong className="tabular-nums">{optionalCompletedCount}/{optionalDocuments.length}</strong>
+              <span>đã hoàn tất</span>
+            </span>
+          </div>
         </div>
         {onClose ? <button type="button" className="mobile-touch-target min-h-11 rounded-md px-3 py-2 text-sm text-slate-500 hover:bg-slate-100" onClick={onClose} aria-label="Đóng panel">Đóng</button> : null}
       </div>
@@ -278,10 +354,26 @@ export function PcnDossierNodeWorkPanel({
       ) : null}
 
       <section data-testid="pcn-dossier-review-summary" className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-slate-200 bg-emerald-50/50 px-4 py-3 text-xs" aria-label="Soát xét hồ sơ PCN">
-        <div><span className="mr-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">Soát xét</span><strong className="text-slate-800">{projection.unresolvedRequiredCount ? `Còn ${projection.unresolvedRequiredCount} mục bắt buộc` : 'Không thiếu mục bắt buộc'}</strong></div>
-        <div><span className="mr-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">Bước kế tiếp</span><strong className="text-slate-800">Người soát xét / Quản lý PCN</strong></div>
-        <details className="text-slate-500" data-testid="pcn-node-role-details" data-disclosure="advanced"><summary className="cursor-pointer list-none font-semibold">Vai trò hiện tại</summary><span className="ml-1">{currentRole} · {currentUser?.username || 'Phiên hồ sơ'}</span></details>
+        <div><span className="mr-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">Soát xét</span><strong className="text-slate-800">{projection.unresolvedRequiredCount ? `Còn ${projection.unresolvedRequiredCount} mục bắt buộc chưa được xử lý` : 'Không thiếu mục bắt buộc'}</strong></div>
+        <div role="group" aria-label="Vai trò và thao tác trong phiên hiện tại">
+          <span className="mr-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">Vai trò hiện tại</span>
+          <strong className="text-slate-800" data-testid="pcn-node-current-role">{currentRole}</strong>
+        </div>
+        <div>
+          <span className="mr-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">Thao tác tiếp theo</span>
+          <strong className="text-slate-800" data-testid="pcn-node-next-action">{nextActionSummary}</strong>
+        </div>
       </section>
+
+      {!projection.canContinue && (completionBlockReasons.length > 0 || canOfferContinue) ? (
+        <section id={completionBlockersId} tabIndex={-1} className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" data-testid="pcn-node-completion-blockers" aria-label="Lý do chưa thể hoàn tất bước">
+          <h3 className="font-semibold">Chưa thể hoàn tất bước</h3>
+          {projection.unresolvedRequiredCount > 0 ? <p className="mt-1 text-xs">Còn {projection.unresolvedRequiredCount} mục bắt buộc chưa được xử lý.</p> : null}
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-xs">
+            {completionReasonsForDisplay.map((reason, index) => <li key={`${index}:${reason}`}>{reason}</li>)}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="min-h-0 space-y-4 p-4">
         <section>
@@ -295,7 +387,7 @@ export function PcnDossierNodeWorkPanel({
           <div className="mt-3">
             <PgdcnDossierDocumentActionTable
               testId="pcn-dossier-document-action-table"
-              rows={projection.documents.map((item) => ({
+              rows={orderedDocuments.map((item) => ({
                 id: item.requirementId,
                 step: projection.nodeLabel,
                 title: item.label,
@@ -304,7 +396,7 @@ export function PcnDossierNodeWorkPanel({
                 statusTone: item.status === 'PRESENT' ? 'success' : item.status === 'WAIVED' ? 'neutral' : 'warning',
                 action: null,
               }))}
-              renderRow={(row) => renderDocumentRow(projection.documents.find((item) => item.requirementId === row.id)!)}
+              renderRow={(row) => renderDocumentRow(orderedDocuments.find((item) => item.requirementId === row.id)!)}
             />
           </div>
         </section>
@@ -328,11 +420,12 @@ export function PcnDossierNodeWorkPanel({
           </details>
         ) : null}
 
-        {(canStart || canContinue || canReturn) ? (
+        {(canStart || canOfferContinue || canReturn) ? (
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-4">
-            {canStart ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50" disabled={busyKey === 'start'} onClick={() => void run('start', () => onStartTask!(taskId!))}>Bắt đầu xử lý</button> : null}
-            {canReturn ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50" disabled={busyKey === 'return'} onClick={() => setShowReturnForm((current) => !current)}>Trả về</button> : null}
-            {canContinue ? <button type="button" title="Tiếp tục sang bước kế tiếp" aria-label="Hoàn tất bước, tiếp tục sang bước kế tiếp" className="mobile-touch-target min-h-11 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50" disabled={busyKey === 'continue'} onClick={() => void run('continue', () => onCompleteTask!(taskId!, projection.cycleNo))}>Hoàn tất bước</button> : null}
+            {canStart ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50" disabled={busyKey === 'start'} onClick={() => void run('start', () => onStartTask!(taskId!))}>{busyKey === 'start' ? 'Đang bắt đầu…' : 'Bắt đầu xử lý'}</button> : null}
+            {canReturn ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50" disabled={busyKey === 'return'} onClick={() => setShowReturnForm((current) => !current)}>{busyKey === 'return' ? 'Đang trả về…' : 'Trả về'}</button> : null}
+            {canOfferContinue ? <button type="button" title={canContinue ? 'Tiếp tục sang bước kế tiếp' : completionReasonsForDisplay.join(' ')} aria-label="Hoàn tất bước, tiếp tục sang bước kế tiếp" aria-describedby={!canContinue ? completionBlockersId : undefined} className="mobile-touch-target min-h-11 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50" disabled={!canContinue || busyKey === 'continue'} onClick={() => void run('continue', () => onCompleteTask!(taskId!, projection.cycleNo))}>{busyKey === 'continue' ? 'Đang hoàn tất…' : 'Hoàn tất bước'}</button> : null}
+            {!canContinue && canOfferContinue ? <a href={`#${completionBlockersId}`} className="mobile-touch-target inline-flex min-h-11 items-center rounded-md px-3 py-2 text-xs font-semibold text-amber-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2">Xem lý do chưa thể hoàn tất</a> : null}
           </div>
         ) : null}
 

@@ -5,6 +5,7 @@ import Docxtemplater from 'docxtemplater';
 import ImageModule from 'docxtemplater-image-module-free';
 import PizZip from 'pizzip';
 import sizeOf from 'image-size';
+import { requirePcnSession } from '@/lib/server/auth';
 import { jsonError, jsonOk } from '@/lib/server/response';
 import { buildReportDocxMetadata } from '@/lib/reportDocxMetadata';
 import {
@@ -16,6 +17,9 @@ import { getDocxGraphSize } from '@/lib/reportDocxImageSizing';
 import { preprocessImages } from '@/lib/server/report-docx';
 
 export async function POST(req: NextRequest) {
+  const sessionError = requirePcnSession(req);
+  if (sessionError) return sessionError;
+
   try {
     const body = await req.json().catch(() => ({}));
     const {

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
+import PcnDossierNodeWorkPanel from '../components/PcnDossierNodeWorkPanel';
 import type {
   PcnDossierDocument,
   PcnDossierDocumentWaiver,
@@ -134,4 +137,65 @@ test('business work facts are derived from stored approval and result evidence',
   });
   assert.equal(completedReview[0]?.status, 'COMPLETED');
   assert.equal(completedReview[0]?.actionLabel, 'Mở KQTN');
+});
+
+test('node work panel reports per-kind progress, required-first rows, and completion blockers', () => {
+  const presentDocument = {
+    ...document('req-present', 'PRESENT'),
+    currentVersionId: 'asset-current',
+    versions: [{ assetId: 'asset-current', fileName: 'current.pdf', uploadedAt: '2026-10-10T00:00:00.000Z' }],
+  };
+  const projection = buildPcnDossierNodeWorkProjection({
+    node: node({ requirementIds: ['req-optional', 'req-missing', 'req-present'] }),
+    runtimeNode: runtimeNode(),
+    requirements: [
+      requirement('req-optional', 'OPTIONAL_EVIDENCE', false),
+      requirement('req-missing', 'REQUIRED_MISSING', true),
+      requirement('req-present', 'REQUIRED_PRESENT', true),
+    ],
+    documents: [presentDocument],
+    businessFacts: [businessFact({ id: 'results', label: 'KQTN', status: 'ATTENTION', reason: 'Chưa có KQTN chính thức' })],
+  });
+  const markup = renderToStaticMarkup(createElement(PcnDossierNodeWorkPanel, {
+    projection,
+    taskId: 'task-1',
+    documents: [presentDocument],
+    canEdit: false,
+  }));
+  const tableBody = markup.match(/<tbody>([\s\S]*?)<\/tbody>/)?.[1] || '';
+  const rowIds = Array.from(tableBody.matchAll(/data-testid="pcn-node-document-([^"]+)"/g), (match) => match[1]);
+  const blockerSummary = markup.match(/<section[^>]*data-testid="pcn-node-completion-blockers"[\s\S]*?<\/section>/)?.[0] || '';
+
+  assert.match(markup, /data-testid="pcn-required-progress"[^>]*>[\s\S]*?1\/2/);
+  assert.match(markup, /data-testid="pcn-optional-progress"[^>]*>[\s\S]*?0\/1/);
+  assert.deepEqual(rowIds, ['req-missing', 'req-present', 'req-optional']);
+  assert.match(tableBody, /REQUIRED_MISSING[\s\S]*?Bắt buộc/);
+  assert.match(tableBody, /OPTIONAL_EVIDENCE[\s\S]*?Tùy chọn[\s\S]*?Chưa có/);
+  assert.match(blockerSummary, /Còn 1 mục bắt buộc/);
+  assert.match(blockerSummary, /Thiếu tài liệu bắt buộc: REQUIRED_MISSING/);
+  assert.match(blockerSummary, /Mở sổ mẫu: Chưa có KQTN chính thức/);
+  assert.doesNotMatch(blockerSummary, /OPTIONAL_EVIDENCE/);
+  assert.match(tableBody, /aria-label="Mở tệp"/);
+  assert.doesNotMatch(tableBody, /aria-label="Tải tài liệu"/);
+
+  const optionalOnlyProjection = buildPcnDossierNodeWorkProjection({
+    node: node({ requirementIds: ['req-optional'] }),
+    runtimeNode: runtimeNode({ requirementIds: ['req-optional'] }),
+    requirements: [requirement('req-optional', 'OPTIONAL_EVIDENCE', false)],
+    businessFacts: [businessFact()],
+  });
+  const optionalOnlyMarkup = renderToStaticMarkup(createElement(PcnDossierNodeWorkPanel, {
+    projection: optionalOnlyProjection,
+    taskId: 'task-optional',
+    canEdit: true,
+    onCompleteTask: async () => undefined,
+    onWaive: async () => undefined,
+  }));
+
+  assert.equal(optionalOnlyProjection.canContinue, true);
+  assert.match(optionalOnlyMarkup, /data-testid="pcn-optional-progress"[^>]*>[\s\S]*?0\/1/);
+  assert.match(optionalOnlyMarkup, /Hoàn tất bước/);
+  assert.match(optionalOnlyMarkup, /Lý do bỏ qua/);
+  assert.match(optionalOnlyMarkup, /Bỏ qua mục này/);
+  assert.doesNotMatch(optionalOnlyMarkup, /data-testid="pcn-node-completion-blockers"/);
 });

@@ -72,6 +72,12 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
   const actionCount = rows.filter(isActionable).length;
   const incompleteCount = rows.filter((row) => row.missingRequiredCount > 0).length;
   const unassignedCount = rows.filter((row) => !row.ownerUsername).length;
+  const hasActiveFilters = activeChip !== 'ALL' || Boolean(query.trim());
+
+  const resetFilters = () => {
+    setQuery('');
+    setActiveChip('ALL');
+  };
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -107,6 +113,7 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
         row.customerName,
         row.productName,
         row.stationTitle,
+        typeof row.sampleQuantity === 'number' ? String(row.sampleQuantity) : undefined,
         row.ownerUsername,
         row.brand,
         row.model,
@@ -249,8 +256,8 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
         brandOrGroup: [row.brand, row.model].filter(Boolean).join(' · '),
         fieldOrCatalogBadge: row.fieldCodes.join(', '),
         sampleCountLabel: `${row.sampleQuantity || 1} mẫu`,
-        ownerName: row.ownerUsername,
-        currentStepLabel: row.stationTitle,
+        ownerName: row.ownerUsername || 'Chưa phân công',
+        currentStepLabel: [row.stationTitle, row.stationActionLabel].filter(Boolean).join(' · '),
         completenessPercent: row.completenessScore,
         completenessLabel: `${row.completenessScore}%`,
         missingRequiredCount: row.missingRequiredCount,
@@ -261,6 +268,7 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
           row.customerName,
           row.productName,
           row.stationTitle,
+          typeof row.sampleQuantity === 'number' ? String(row.sampleQuantity) : undefined,
           row.ownerUsername,
           row.brand,
           row.model,
@@ -324,11 +332,13 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
         </div>
 
         {/* View Switcher (DDT pattern) */}
-        <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-2xs">
+        <div role="group" aria-label="Chế độ hiển thị hồ sơ" className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-2xs">
           <button
             type="button"
             onClick={() => setViewMode('card')}
-            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+            aria-label="Xem dạng thẻ"
+            aria-pressed={viewMode === 'card'}
+            className={`mobile-touch-target flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-3 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
               viewMode === 'card'
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -336,12 +346,15 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
             title="Xem dạng thẻ chuẩn DDT"
           >
             <LayoutGrid size={13} />
+            <span className="sm:hidden">Thẻ</span>
             <span className="hidden sm:inline">Dạng thẻ</span>
           </button>
           <button
             type="button"
             onClick={() => setViewMode('table')}
-            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+            aria-label="Xem dạng bảng"
+            aria-pressed={viewMode === 'table'}
+            className={`mobile-touch-target flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-3 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
               viewMode === 'table'
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -349,28 +362,31 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
             title="Xem bảng truyền thống"
           >
             <List size={13} />
+            <span className="sm:hidden">Bảng</span>
             <span className="hidden sm:inline">Dạng bảng</span>
           </button>
         </div>
       </div>
 
-      {/* Single-row Toolbar (TVCI Lab Standard) */}
-      <div className="pgdcn-toolbar-nowrap flex items-center gap-2 overflow-x-auto py-1">
+      {/* Search and filters wrap on small screens to avoid clipping the page. */}
+      <div className="flex min-w-0 max-w-full flex-col items-stretch gap-3 py-1 sm:flex-row sm:flex-wrap sm:items-center">
         {/* Search Input */}
-        <div className="pgdcn-toolbar-search relative min-w-[200px] max-w-sm flex-1 shrink-0">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} aria-hidden="true" />
-          <input
-            type="search"
-            aria-label="Tìm kiếm trong hàng đợi hồ sơ"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Tìm mã đề nghị, mã hồ sơ, khách hàng, sản phẩm, số mẫu, phòng thử..."
-            className="w-full bg-white border border-slate-200/80 rounded-xl pl-9 pr-3 py-1.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs transition-all"
-          />
+        <div role="search" aria-label="Tìm kiếm hồ sơ PCN" className="w-full min-w-0 sm:max-w-sm sm:flex-1">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} aria-hidden="true" />
+            <input
+              type="search"
+              aria-label="Tìm kiếm trong hàng đợi hồ sơ"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Tìm mã đề nghị, mã hồ sơ, khách hàng, sản phẩm, số lượng mẫu, phòng thử..."
+              className="mobile-touch-target min-h-11 w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs font-bold shadow-2xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+            />
+          </div>
         </div>
 
         {/* Filter Pills */}
-        <div className="pgdcn-toolbar-pills flex items-center gap-1.5 shrink-0">
+        <div role="group" aria-label="Lọc hồ sơ theo trạng thái" className="pgdcn-toolbar-pills flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
           {PCN_FILTER_CHIPS.map((chip) => {
             const active = activeChip === chip.id;
             const count =
@@ -393,10 +409,11 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
                 key={chip.id}
                 type="button"
                 onClick={() => setActiveChip(chip.id)}
-                className={`mobile-touch-target inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-xl px-3 py-1 text-[11px] font-bold transition-all cursor-pointer ${
+                aria-pressed={active}
+                className={`mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1 text-[11px] font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
                   active
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                    ? 'border-slate-900 bg-slate-900 text-white shadow-xs ring-2 ring-slate-700 ring-offset-1'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
                 }`}
               >
                 <span>{chip.label}</span>
@@ -414,11 +431,19 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
 
         {/* Filter Controls */}
         {filterControls && (
-          <div className="pgdcn-toolbar-group flex items-center gap-1.5 shrink-0">
+          <div className="pgdcn-toolbar-group flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto">
             {filterControls}
           </div>
         )}
       </div>
+
+      <p role="status" aria-live="polite" aria-atomic="true" className="text-xs font-medium text-slate-600">
+        {rows.length === 0
+          ? 'Chưa có hồ sơ PCN trong hàng đợi.'
+          : filteredRows.length === 0
+          ? `Không có hồ sơ phù hợp trong ${rows.length} hồ sơ PCN.`
+          : `Đang hiển thị ${filteredRows.length} trong ${rows.length} hồ sơ PCN.`}
+      </p>
 
       {/* Grid: Desktop 2 Columns, Mobile 1 Column */}
       {filteredRows.length > 0 ? (
@@ -450,7 +475,14 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
           </div>
         ) : (
           /* Table View (Secondary Traditional Table) */
-          <div className="mobile-scroll-x min-w-0 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
+          <div
+            data-testid="pcn-dossier-table-scroll"
+            role="region"
+            aria-label="Bảng hồ sơ PCN, cuộn ngang để xem các cột khác"
+            tabIndex={0}
+            className="mobile-scroll-x min-w-0 max-w-full overflow-x-auto overscroll-x-contain touch-pan-x rounded-xl border border-slate-200 bg-white shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+          >
+            <p className="border-b border-slate-100 px-3 py-2 text-[11px] text-slate-600 sm:hidden">Vuốt ngang để xem đầy đủ bảng hồ sơ.</p>
             <table aria-label="Bảng hàng đợi hồ sơ PCN" className="w-full min-w-[980px] border-collapse text-left text-sm">
               <caption className="sr-only">Danh sách hồ sơ PCN đang chờ xử lý</caption>
               <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
@@ -521,8 +553,21 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
       ) : (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <Layers size={28} className="mx-auto text-slate-300" />
-          <h3 className="mt-2 text-xs font-bold text-slate-800">Không tìm thấy hồ sơ PCN phù hợp</h3>
-          <p className="mt-1 text-[11px] text-slate-500">Hãy thử xóa từ khóa tìm kiếm hoặc chọn bộ lọc trạng thái khác.</p>
+          <h3 className="mt-2 text-sm font-bold text-slate-800">{hasActiveFilters ? 'Không tìm thấy hồ sơ PCN phù hợp' : 'Chưa có hồ sơ PCN trong hàng đợi'}</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            {hasActiveFilters
+              ? 'Thử một mã hồ sơ hoặc tên khách hàng khác, hoặc xóa tìm kiếm và bộ lọc để xem lại toàn bộ hồ sơ.'
+              : 'Khi có hồ sơ trong hàng đợi, danh sách sẽ hiển thị tại đây.'}
+          </p>
+          <button
+            type="button"
+            data-testid="pcn-filter-reset"
+            onClick={resetFilters}
+            disabled={!hasActiveFilters}
+            className="mobile-touch-target mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-xs font-bold text-slate-700 shadow-xs transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Xóa tìm kiếm và bộ lọc
+          </button>
         </div>
       )}
     </section>

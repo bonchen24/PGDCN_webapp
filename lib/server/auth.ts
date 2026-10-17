@@ -24,12 +24,20 @@ export const PCN_SESSION_TTL_SECONDS = 8 * 60 * 60; // 8 hours
 export { createPcnSessionToken };
 
 export function getSessionSecret(): string {
-  return String(
-    process.env.PCN_SESSION_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SESSION_SECRET ||
-    'pcn-session-secret-fallback-key'
-  ).trim();
+  const configuredSecret = [
+    process.env.PCN_SESSION_SECRET,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    process.env.SESSION_SECRET,
+  ]
+    .map((secret) => String(secret || '').trim())
+    .find(Boolean);
+
+  if (configuredSecret) return configuredSecret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('PCN session secret is not configured.');
+  }
+
+  return 'pcn-session-secret-fallback-key';
 }
 
 export function extractSessionToken(request: Request | NextRequest): string | null {

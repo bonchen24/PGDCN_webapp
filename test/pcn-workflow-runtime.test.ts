@@ -117,6 +117,22 @@ test('derives branch conditions from dossier results and approval state', () => 
   assert.equal(failed.byNodeId.end.blockedReason, 'CONDITION');
 });
 
+test('condition context checks only known required document IDs and preserves legacy behavior', () => {
+  const workflow = snap();
+  const documents = [
+    { requirementId: 'req-a', status: 'PRESENT' as const },
+    { requirementId: 'req-b', status: 'MISSING' as const },
+  ];
+
+  assert.equal(buildPcnWorkflowConditionContext({ workflow, documents }).requiredDocumentsComplete, false);
+  assert.equal(buildPcnWorkflowConditionContext({ workflow, documents, requiredRequirementIds: ['req-a'] }).requiredDocumentsComplete, true);
+  assert.equal(buildPcnWorkflowConditionContext({
+    workflow,
+    documents: [{ requirementId: 'req-a', status: 'MISSING' }],
+    requiredRequirementIds: ['req-a'],
+  }).requiredDocumentsComplete, false);
+});
+
 test('projects parallel readiness and ALL join only after both branches complete', () => {
   const before = [task('start', 'COMPLETED'), task('split', 'COMPLETED'), task('doc-a', 'COMPLETED'), task('doc-b', 'READY'), task('join', 'LOCKED'), task('decision', 'LOCKED'), task('end', 'LOCKED')];
   const projected = projectPcnWorkflowRuntime({ workflow: snap(), tasks: before, documents: [], documentWaivers: {} });
@@ -143,6 +159,21 @@ test('blocks a document task until its current document or valid waiver exists',
   assert.equal(missing.byNodeId['doc-a'].blockedReason, 'MISSING_DOCUMENT');
   const waived = projectPcnWorkflowRuntime({ workflow: snap(), tasks, documents: [{ requirementId: 'req-a', status: 'MISSING' }], documentWaivers: { 'req-a': { requirementId: 'req-a', reason: 'Không áp dụng', decidedAt: '2026-09-06T00:00:00.000Z' } } });
   assert.equal(waived.byNodeId['doc-a'].blockedReason, undefined);
+});
+
+test('runtime gates required node documents while ignoring optional ones when required IDs are known', () => {
+  const tasks = [task('start', 'COMPLETED'), task('split', 'COMPLETED'), task('doc-a', 'READY'), task('doc-b', 'READY'), task('join', 'LOCKED'), task('decision', 'LOCKED'), task('end', 'LOCKED')];
+  const documents = [
+    { requirementId: 'req-a', status: 'MISSING' as const },
+    { requirementId: 'req-b', status: 'MISSING' as const },
+  ];
+
+  const legacy = projectPcnWorkflowRuntime({ workflow: snap(), tasks, documents, documentWaivers: {} });
+  assert.equal(legacy.byNodeId['doc-b'].blockedReason, 'MISSING_DOCUMENT');
+
+  const projected = projectPcnWorkflowRuntime({ workflow: snap(), tasks, documents, documentWaivers: {}, requiredRequirementIds: ['req-a'] });
+  assert.equal(projected.byNodeId['doc-a'].blockedReason, 'MISSING_DOCUMENT');
+  assert.equal(projected.byNodeId['doc-b'].blockedReason, undefined);
 });
 
 test('returns a node with a new cycle and marks downstream work stale', () => {

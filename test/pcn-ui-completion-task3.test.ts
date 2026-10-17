@@ -68,10 +68,10 @@ test('wide work tables scroll locally and the PGD edit dialog keeps its footer o
 
 test('visible PGD work controls use readable labels and 44px mobile targets', () => {
   assert.ok(/dossier-action-compact inline-flex min-h-11 min-w-11/.test(pgdStepWork), 'document row icon actions meet the mobile target size');
-  assert.ok(/dossier-action-compact inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-3 text-\[11px\]/.test(pgdStepWork), 'document drafting action meets touch and type size');
-  assert.ok(/mobile-touch-target min-h-11 rounded-lg bg-rose-600 px-3 text-\[11px\]/.test(pgdStepWork), 'exception confirmation meets touch and type size');
-  assert.ok(/id="pgd-exception-reason"[\s\S]{0,300}?className="mobile-touch-target mt-1 min-h-11[^\"]*text-\[11px\]/.test(pgdStepWork), 'exception reason field meets touch and type size');
-  assert.ok(/className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-\[11px\]/.test(pgdStepWork), 'complete-step action meets touch and type size');
+  assert.ok(/dossier-action-compact inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-3 text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'document drafting action meets touch and type size');
+  assert.ok(/mobile-touch-target min-h-11 rounded-lg bg-rose-600 px-3 text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'exception confirmation meets touch and type size');
+  assert.ok(/id="pgd-exception-reason"[\s\S]{0,300}?className="mobile-touch-target mt-1 min-h-11[^\"]*text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'exception reason field meets touch and type size');
+  assert.ok(/className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'complete-step action meets touch and type size');
 
   assert.ok(/openCreateRequest\} className="mobile-touch-target inline-flex min-h-11[^\"]*text-\[11px\]/.test(pgdWorkspace), 'request creation action meets touch and type size');
   assert.ok(/className=\{`mobile-touch-target min-h-11 flex items-center gap-1 px-2.5 py-1 text-xs/.test(pgdWorkspace), 'register card/table toggles meet the mobile target size');
@@ -107,7 +107,7 @@ test('active PGD station and evidence controls keep readable form text and touch
 });
 
 test('active PGD source forms and dossier decision summaries use readable controls', () => {
-  assert.ok(pgdSourceForms.includes("const inputClass = 'mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px]") && pgdSourceForms.includes('focus-visible:ring-2 focus-visible:ring-blue-500'), 'source form controls meet touch, type, and focus-visible contracts');
+  assert.ok(/const inputClass = 'mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-(?:\[11px\]|xs|sm)/.test(pgdSourceForms) && pgdSourceForms.includes('focus-visible:ring-2 focus-visible:ring-blue-500'), 'source form controls meet touch, type, and focus-visible contracts');
   assert.ok(pgdSourceForms.includes('text-[11px] font-black text-slate-500">{normalized}'), 'source form field labels are readable');
   assert.ok(pgdSourceForms.includes('mobile-touch-target inline-flex min-h-11') && pgdSourceForms.includes('text-[11px] font-black text-white'), 'source form primary actions meet touch and type size');
   assert.ok(pgdSourceForms.includes('overflow-x-auto rounded-lg border border-slate-100"><table className="min-w-full text-left text-[11px]'), 'source form tables scroll locally and keep readable content');
@@ -115,11 +115,11 @@ test('active PGD source forms and dossier decision summaries use readable contro
   assert.ok(dossierBusinessWorkspace.includes('min-w-0 space-y-3'), 'dossier decision summary can shrink inside the route');
   assert.ok(dossierBusinessWorkspace.includes('[&_*:focus-visible]:ring-2') && dossierBusinessWorkspace.includes('[&_*:focus-visible]:ring-indigo-500') && dossierBusinessWorkspace.includes('[&_*:focus-visible]:ring-blue-500'), 'shared decision summary gives its controls domain-colored keyboard focus');
   assert.ok(dossierBusinessWorkspace.includes('mobile-touch-target min-h-11 min-w-[10rem] flex-1') && dossierBusinessWorkspace.includes('mobile-touch-target min-h-11 max-w-full'), 'tracker search and filters meet the mobile target size');
-  assert.ok(dossierBusinessWorkspace.includes('mobile-touch-target mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-[11px] font-black text-white'), 'next action button is readable at a 44px target');
-  assert.ok(dossierBusinessWorkspace.includes('mobile-touch-target min-h-11 rounded-md border border-rose-200 bg-white px-2.5 text-[11px] font-black text-rose-700'), 'blocker action is readable at a 44px target');
-  assert.ok(dossierBusinessWorkspace.includes('mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-white px-2.5 text-[11px] font-black text-slate-700'), 'field session view action is readable at a 44px target');
-  assert.ok(dossierBusinessWorkspace.includes('text-[11px] leading-4 text-slate-600">Vì sao: {nextAction.reason}'), 'next action reasoning is readable');
-  assert.ok(dossierBusinessWorkspace.includes('text-[11px] leading-4 text-rose-800">Chỉ hiển thị thiếu hụt'), 'blocker guidance is readable');
+  assert.ok(/mobile-touch-target mt-3 inline-flex min-h-11[^']*text-\[11px\] font-black text-white/.test(dossierBusinessWorkspace), 'next action button is readable at a 44px target');
+  assert.ok(/blocker\.actionLabel && blocker\.onAction[\s\S]{0,180}?className="mobile-touch-target min-h-11[^"]*text-\[11px\] font-black/.test(dossierBusinessWorkspace), 'blocker action is readable at a 44px target');
+  assert.ok(/fieldSession\.actionLabel && fieldSession\.onAction[\s\S]{0,180}?className="mobile-touch-target mt-3 inline-flex min-h-11[^"]*text-\[11px\] font-black/.test(dossierBusinessWorkspace), 'field session action is readable at a 44px target');
+  assert.ok(dossierBusinessWorkspace.includes('text-[11px] leading-4 text-slate-600">{nextAction.reason}'), 'next action reasoning is readable');
+  assert.ok(dossierBusinessWorkspace.includes('text-[11px] leading-4 text-slate-600">{blocker.reason}'), 'blocker guidance is readable');
 });
 
 test('PGD intake sample and template table editors keep readable controls, feedback, and local scrolling', () => {
@@ -131,7 +131,7 @@ test('PGD intake sample and template table editors keep readable controls, feedb
 
   assert.ok(pgdTableFieldEditor.includes('mobile-touch-target inline-flex min-h-11 items-center gap-1') && pgdTableFieldEditor.includes('text-[11px] font-black text-blue-700'), 'add row action meets touch and type size');
   assert.ok(pgdTableFieldEditor.includes('mobile-touch-target min-h-11 w-full') && pgdTableFieldEditor.includes('focus-visible:ring-2'), 'table cell inputs meet touch and visible focus contracts');
-  assert.ok(pgdTableFieldEditor.includes('overflow-x-auto rounded-lg border border-slate-100') && pgdTableFieldEditor.includes('text-left text-[11px]'), 'template table content is readable and scrolls locally');
+  assert.ok(pgdTableFieldEditor.includes('mobile-scroll-x min-w-0 max-w-full overflow-x-auto') && pgdTableFieldEditor.includes('text-left text-[11px]'), 'template table content is readable and scrolls locally');
   assert.ok(pgdTableFieldEditor.includes('mobile-touch-target inline-flex min-h-11 min-w-11'), 'row removal action meets the mobile target size');
 
   assert.ok(pgdIntakeDropzone.includes('mobile-touch-target min-h-11 cursor-pointer') && pgdIntakeDropzone.includes('text-[11px] font-black text-white'), 'file picker action meets touch and type size');

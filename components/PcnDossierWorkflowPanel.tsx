@@ -55,8 +55,14 @@ const CURRENT_NODE_STATUS_LABELS: Record<PcnWorkflowRuntimeNode['status'], strin
 export function PcnDossierWorkflowPanel({ dossier, requirements, documents, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], workflowTasks, users: _users = [], currentUser, canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onCreateFromForm, onOpenDrafting, onGenerateAndAttach, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, initialNodeId }: PcnDossierWorkflowPanelProps) {
   const workflow = useMemo(() => getPcnWorkflowForDossier(dossier), [dossier]);
   const dossierTasks = useMemo(() => workflowTasks.filter((task) => task.dossierId === dossier.id), [dossier.id, workflowTasks]);
-  const conditionContext = useMemo(() => buildPcnWorkflowConditionContext({ workflow, documents, documentWaivers, results, approvalSteps, fieldCodes: dossier.fieldCodes, method: dossier.method }), [approvalSteps, dossier.fieldCodes, dossier.method, documentWaivers, documents, results, workflow]);
-  const runtime = useMemo(() => projectPcnWorkflowRuntime({ workflow, tasks: dossierTasks, documents, documentWaivers, conditionContext }), [conditionContext, dossierTasks, documentWaivers, documents, workflow]);
+  const requiredRequirementIds = useMemo(() => {
+    const activeRequirementIds = workflow.nodes
+      .filter((node) => node.active !== false)
+      .flatMap((node) => node.requirementIds);
+    return Array.from(new Set(activeRequirementIds.filter((requirementId) => requirements.find((requirement) => requirement.id === requirementId)?.required !== false)));
+  }, [requirements, workflow]);
+  const conditionContext = useMemo(() => buildPcnWorkflowConditionContext({ workflow, requiredRequirementIds, documents, documentWaivers, results, approvalSteps, fieldCodes: dossier.fieldCodes, method: dossier.method }), [approvalSteps, dossier.fieldCodes, dossier.method, documentWaivers, documents, requiredRequirementIds, results, workflow]);
+  const runtime = useMemo(() => projectPcnWorkflowRuntime({ workflow, tasks: dossierTasks, documents, documentWaivers, requiredRequirementIds, conditionContext }), [conditionContext, dossierTasks, documentWaivers, documents, requiredRequirementIds, workflow]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(initialNodeId || null);
 
   const projections = useMemo<Record<string, PcnDossierNodeWorkProjection | undefined>>(() => Object.fromEntries(runtime.nodes.map((node) => [node.id, buildPcnDossierNodeWorkProjection({
