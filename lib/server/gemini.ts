@@ -40,6 +40,75 @@ export {
 
 export const CANDIDATE_MODELS = ['gemini-flash-latest', 'gemini-3.6-flash', 'gemini-3.1-flash-lite'];
 
+type GeminiErrorCodeCategory = '429' | '404' | '503' | 'other';
+
+const SAFE_GEMINI_LOG_MODELS = new Set(CANDIDATE_MODELS);
+
+function getSafeGeminiLogModel(modelName: string): string {
+  return SAFE_GEMINI_LOG_MODELS.has(modelName) ? modelName : 'unknown';
+}
+
+function getGeminiErrorCodeCategory(errMsg: string): GeminiErrorCodeCategory {
+  if (
+    errMsg.includes('limit: 0') ||
+    errMsg.includes('Quota exceeded') ||
+    errMsg.includes('free_tier') ||
+    errMsg.includes('RESOURCE_EXHAUSTED') ||
+    errMsg.includes('429')
+  ) {
+    return '429';
+  }
+
+  if (errMsg.includes('404') || errMsg.includes('NOT_FOUND') || errMsg.includes('not found')) {
+    return '404';
+  }
+
+  if (
+    errMsg.includes('503') ||
+    errMsg.includes('UNAVAILABLE') ||
+    errMsg.includes('demand') ||
+    errMsg.includes('overloaded')
+  ) {
+    return '503';
+  }
+
+  return 'other';
+}
+
+function getGeminiErrorDisposition(errMsg: string) {
+  const isQuotaOrNotFound =
+    errMsg.includes('limit: 0') ||
+    errMsg.includes('Quota exceeded') ||
+    errMsg.includes('free_tier') ||
+    errMsg.includes('RESOURCE_EXHAUSTED') ||
+    errMsg.includes('429') ||
+    errMsg.includes('404') ||
+    errMsg.includes('NOT_FOUND') ||
+    errMsg.includes('not found');
+
+  const isTransient =
+    errMsg.includes('503') ||
+    errMsg.includes('UNAVAILABLE') ||
+    errMsg.includes('demand') ||
+    errMsg.includes('overloaded');
+
+  return { isQuotaOrNotFound, isTransient };
+}
+
+function logGeminiAttemptFailure(
+  modelName: string,
+  errMsg: string,
+  retry: boolean,
+  fallback: boolean,
+): void {
+  console.warn('Gemini request failed', {
+    model: getSafeGeminiLogModel(modelName),
+    errorCode: getGeminiErrorCodeCategory(errMsg),
+    retry,
+    fallback,
+  });
+}
+
 export interface GeminiGenerationOptions {
   modelNames?: string[];
   attemptsPerModel?: number;
@@ -123,11 +192,16 @@ export async function generateContentWithRetryAndFallback(
   const modelsToTry = options.modelNames || (preferredModel ? [preferredModel, ...CANDIDATE_MODELS.filter((m) => m !== preferredModel)] : CANDIDATE_MODELS);
   const attemptsPerModel = Math.max(1, Math.floor(options.attemptsPerModel || 2));
 
-  for (const modelName of modelsToTry) {
+  for (let modelIndex = 0; modelIndex < modelsToTry.length; modelIndex++) {
+    const modelName = modelsToTry[modelIndex];
     let retries = attemptsPerModel;
     while (retries > 0) {
       try {
-        console.log(`Calling Gemini API with model: ${modelName} (retries left: ${retries - 1})...`);
+        console.log('Calling Gemini API', {
+          model: getSafeGeminiLogModel(modelName),
+          retry: retries < attemptsPerModel,
+          fallback: false,
+        });
         const response = await activeAi.models.generateContent({
           ...params,
           model: modelName,
@@ -136,28 +210,14 @@ export async function generateContentWithRetryAndFallback(
       } catch (err: any) {
         lastError = err;
         const errMsg = String(err?.message || err);
-        console.warn(`Gemini model ${modelName} error:`, errMsg);
-
-        const isQuotaOrNotFound =
-          errMsg.includes('limit: 0') ||
-          errMsg.includes('Quota exceeded') ||
-          errMsg.includes('free_tier') ||
-          errMsg.includes('RESOURCE_EXHAUSTED') ||
-          errMsg.includes('429') ||
-          errMsg.includes('404') ||
-          errMsg.includes('NOT_FOUND') ||
-          errMsg.includes('not found');
+        const { isQuotaOrNotFound, isTransient } = getGeminiErrorDisposition(errMsg);
+        const retry = isTransient && retries > 1;
+        const fallback = !retry && modelIndex < modelsToTry.length - 1;
+        logGeminiAttemptFailure(modelName, errMsg, retry, fallback);
 
         if (isQuotaOrNotFound) {
-          console.warn(`Model ${modelName} encountered quota or model availability issue, switching to next model...`);
           break;
         }
-
-        const isTransient =
-          errMsg.includes('503') ||
-          errMsg.includes('UNAVAILABLE') ||
-          errMsg.includes('demand') ||
-          errMsg.includes('overloaded');
 
         if (isTransient) {
           retries--;
@@ -183,11 +243,16 @@ export async function createChatWithRetryAndFallback(
   let lastError: any = null;
   const modelsToTry = preferredModel ? [preferredModel, ...CANDIDATE_MODELS.filter((m) => m !== preferredModel)] : CANDIDATE_MODELS;
 
-  for (const modelName of modelsToTry) {
+  for (let modelIndex = 0; modelIndex < modelsToTry.length; modelIndex++) {
+    const modelName = modelsToTry[modelIndex];
     let retries = 2;
     while (retries > 0) {
       try {
-        console.log(`Creating Gemini Chat with model: ${modelName}...`);
+        console.log('Creating Gemini Chat', {
+          model: getSafeGeminiLogModel(modelName),
+          retry: retries < 2,
+          fallback: false,
+        });
         const chat = activeAi.chats.create({
           ...params,
           model: modelName,
@@ -197,28 +262,14 @@ export async function createChatWithRetryAndFallback(
       } catch (err: any) {
         lastError = err;
         const errMsg = String(err?.message || err);
-        console.warn(`Gemini Chat model ${modelName} error:`, errMsg);
-
-        const isQuotaOrNotFound =
-          errMsg.includes('limit: 0') ||
-          errMsg.includes('Quota exceeded') ||
-          errMsg.includes('free_tier') ||
-          errMsg.includes('RESOURCE_EXHAUSTED') ||
-          errMsg.includes('429') ||
-          errMsg.includes('404') ||
-          errMsg.includes('NOT_FOUND') ||
-          errMsg.includes('not found');
+        const { isQuotaOrNotFound, isTransient } = getGeminiErrorDisposition(errMsg);
+        const retry = isTransient && retries > 1;
+        const fallback = !retry && modelIndex < modelsToTry.length - 1;
+        logGeminiAttemptFailure(modelName, errMsg, retry, fallback);
 
         if (isQuotaOrNotFound) {
-          console.warn(`Chat model ${modelName} encountered quota or availability issue, switching to next model...`);
           break;
         }
-
-        const isTransient =
-          errMsg.includes('503') ||
-          errMsg.includes('UNAVAILABLE') ||
-          errMsg.includes('demand') ||
-          errMsg.includes('overloaded');
 
         if (isTransient) {
           retries--;
