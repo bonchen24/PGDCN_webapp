@@ -9,25 +9,29 @@ const read = (relativePath: string) => fs.readFileSync(path.join(root, relativeP
 test('PCN document drafting header exposes a DOCX settings action for the PCN workspace', () => {
   const source = read('components/PcnDraftingWorkspaceView.tsx');
   assert.match(source, /Cài đặt DOCX/);
-  assert.match(source, /onOpenSettings/);
+  assert.match(source, /setDocxSettingsOpen\(true\)/);
+  assert.match(source, /PcnDocxSettingsModal/);
 });
 
 test('PGD document creation header exposes a DOCX settings action for the PGD workspace', () => {
-  const source = read('components/PgdDocumentGenerationPanel.tsx');
+  const source = read('components/PgdDraftingWorkspaceView.tsx');
+  const workspace = read('components/PgdWorkspace.tsx');
   assert.match(source, /Cài đặt DOCX/);
   assert.match(source, /onOpenSettings/);
+  assert.match(workspace, /onOpenSettings=\{isAdmin \? \(\) => setDocxSettingsOpen\(true\)/);
 });
 
 test('DOCX settings is a local modal and not shared system settings', () => {
-  const generation = read('components/PgdDocumentGenerationPanel.tsx');
+  const generation = read('components/PgdDraftingWorkspaceView.tsx');
   const workspace = read('components/PgdWorkspace.tsx');
   const source = read('components/PgdcnSystemSettingsView.tsx');
+  const pcnWorkspace = read('components/PcnDraftingWorkspaceView.tsx');
   const shell = read('components/PgdcnAppShell.tsx');
   assert.match(generation, /onOpenSettings/);
   assert.match(workspace, /PgdDocxSettingsModal/);
-  assert.match(source, /PcnSettingsView/);
-  assert.match(source, /Mẫu DOCX chính thức|Template DOCX PCN/);
-  assert.doesNotMatch(source, /PgdTemplateSettingsWorkspace|Template DOCX PGD/);
+  assert.match(pcnWorkspace, /PcnDocxSettingsModal/);
+  assert.match(source, /PcnUserManagementView/);
+  assert.doesNotMatch(source, /PcnSettingsView|PgdTemplateSettingsWorkspace|Mẫu DOCX chính thức|Template DOCX PCN|Template DOCX PGD/);
   assert.doesNotMatch(shell, /pgdTemplates=\{pgd\.documentTemplates\}/);
 });
 

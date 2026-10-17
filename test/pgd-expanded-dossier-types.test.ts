@@ -21,7 +21,7 @@ test('PGD catalog label keeps legacy ids visible when no current catalog row mat
   assert.equal(getPgdCatalogItemLabel('', []), 'Chưa chọn loại hồ sơ');
 });
 
-test('PGD projections expose a compact loại hồ sơ filter and resolved type label', () => {
+test('PGD queue projects resolved type labels while detail and register retain type filters', () => {
   const root = process.cwd();
   const workspace = fs.readFileSync(`${root}/components/PgdWorkspace.tsx`, 'utf8');
   const queue = fs.readFileSync(`${root}/components/PgdDossierQueueView.tsx`, 'utf8');
@@ -30,8 +30,11 @@ test('PGD projections expose a compact loại hồ sơ filter and resolved type 
 
   assert.match(workspace, /Lọc loại hồ sơ PGD/);
   assert.match(workspace, /catalogItemId/);
-  assert.match(queue, /Loại hồ sơ/);
   assert.match(queue, /catalogLabel/);
+  assert.match(queue, /fieldOrCatalogBadge: row\.catalogLabel/);
+  assert.match(queue, /row\.catalogLabel\.includes\('Thép'\)/);
+  assert.match(queue, /row\.catalogLabel\.includes\('Máy'\)/);
+  assert.match(queue, /row\.catalogLabel\.includes\('Than'\)/);
   assert.match(selector, /Lọc loại hồ sơ PGD/);
   assert.match(selector, /getPgdCatalogItemLabel/);
   assert.match(register, /Lọc loại hồ sơ Sổ tổng hợp PGD/);
