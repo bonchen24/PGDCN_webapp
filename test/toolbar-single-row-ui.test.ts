@@ -12,10 +12,9 @@ test('shared toolbar keeps search and filters on one horizontal line with local 
   assert.match(css, /\.pgdcn-toolbar-filter/);
 });
 
-test('primary PCN and PGD management surfaces use the shared one-line toolbar', () => {
+test('primary PCN and PGD management surfaces follow their responsive toolbar layouts', () => {
   const sourceFiles = [
     '../components/PcnWorkspace.tsx',
-    '../components/PcnDossierQueueView.tsx',
     '../components/PcnLabOperationsView.tsx',
     '../components/PgdWorkspace.tsx',
     '../components/PgdSampleOperationsView.tsx',
@@ -27,6 +26,9 @@ test('primary PCN and PGD management surfaces use the shared one-line toolbar', 
   ];
 
   for (const sourceFile of sourceFiles) assert.match(read(sourceFile), /pgdcn-toolbar-nowrap/);
+
+  const pcnQueue = read('../components/PcnDossierQueueView.tsx');
+  assert.match(pcnQueue, /className="flex min-w-0 max-w-full flex-col items-stretch gap-3 py-1 sm:flex-row sm:flex-wrap sm:items-center"/);
 });
 
 // --- End of toolbar-single-row-ui.test.ts ---

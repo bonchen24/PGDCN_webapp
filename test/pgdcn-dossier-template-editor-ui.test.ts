@@ -11,7 +11,7 @@ test('visual editor exposes palette, lane/column canvas and draft actions', () =
   assert.match(editor, /data-testid="pgdcn-dossier-template-palette"/);
   assert.match(editor, /data-testid="pgdcn-dossier-template-save"/);
   assert.match(editor, /Lưu bản nháp/);
-  assert.match(editor, /onPreview/);
+  assert.doesNotMatch(editor, /onPreview|Xem trước Archify|Archify/);
   assert.match(editor, /data-testid="pgdcn-dossier-template-metadata"/);
   assert.match(editor, /Mã bộ hồ sơ/);
   assert.match(editor, /Áp dụng cho/);
@@ -65,6 +65,32 @@ test('selected node inspector exposes lane and column placement controls', () =>
   assert.match(inspector, /props\.onChangeNode\(\{ column:/);
   assert.match(inspector, /Vùng[\s\S]*min-h-11/);
   assert.match(inspector, /Cột[\s\S]*min-h-11/);
-  assert.match(inspector, /aria-label="Tìm tài liệu"/);
+  assert.match(inspector, /htmlFor=\{`\$\{idPrefix\}-requirement-search`\}/);
   assert.match(inspector, /placeholder="Tìm tài liệu"/);
+  assert.match(inspector, /useId/);
+  assert.match(inspector, /htmlFor=\{`\$\{idPrefix\}-node-label`\}/);
+  assert.match(inspector, /id=\{`\$\{idPrefix\}-node-label`\} required aria-required="true" aria-describedby=\{`\$\{idPrefix\}-node-label-hint`\}/);
+  assert.match(inspector, /htmlFor=\{`\$\{idPrefix\}-transition-label`\}/);
+  assert.match(inspector, /id=\{`\$\{idPrefix\}-transition-label`\} required aria-required="true" aria-describedby=\{`\$\{idPrefix\}-transition-label-hint`\}/);
+  assert.match(inspector, /fieldset className="mt-4 min-w-0"><legend[^>]*>Phạm vi áp dụng điều kiện/);
+  assert.match(inspector, /type=\{props\.domain === 'PCN' \? 'radio' : 'checkbox'\}/);
+  assert.match(inspector, /min-w-0 max-w-full overflow-x-clip/);
+  assert.match(inspector, /grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2/);
+  assert.match(inspector, /focus-visible:ring-2/);
+});
+
+test('canvas exposes keyboard controls for selecting, connecting, and moving nodes', () => {
+  assert.match(canvas, /useDraggable/);
+  assert.match(canvas, /setActivatorNodeRef/);
+  assert.match(canvas, /aria-pressed=\{selected\}/);
+  assert.match(canvas, /onClick=\{onSelect\}/);
+  assert.match(canvas, /role="group" aria-label=\{`Di chuyển \$\{nodeLabel\}`\}/);
+  assert.match(canvas, /props\.onMoveNode\(node\.id, \{ \.\.\.position, sortOrder: node\.sortOrder \}\)/);
+  assert.match(canvas, /disabled=\{!target\}/);
+  assert.match(canvas, /onClick=\{onBeginConnection\}/);
+  assert.match(canvas, /onClick=\{onCompleteConnection\}/);
+  assert.match(canvas, /focus-visible:ring-2/);
+  assert.match(canvas, /id=\{`pgdcn-template-node-select-\$\{node\.id\}`\}/);
+  assert.match(canvas, /document\.getElementById\(`pgdcn-template-node-select-\$\{node\.id\}`\)\?\.focus\(\)/);
+  assert.doesNotMatch(canvas, /role="button" tabIndex=\{0\}/);
 });

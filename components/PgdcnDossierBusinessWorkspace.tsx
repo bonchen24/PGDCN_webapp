@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, Clock3, FileCheck2, FlaskConical, Lightbulb, MapPin, UserRound } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarDays, Clock3, FileCheck2, FlaskConical, Lightbulb, MapPin, UserRound } from 'lucide-react';
 
 export type BusinessStatus = 'DONE' | 'IN_PROGRESS' | 'BLOCKED' | 'NOT_STARTED';
 
@@ -293,7 +293,7 @@ function FieldSessions({ sessions, onAction }: { sessions: DossierFieldSessionSu
   return <section className="rounded-xl border border-blue-200 bg-blue-50/50 p-3" data-testid="dossier-field-sessions" aria-labelledby="dossier-field-sessions-title">
     <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-[9px] font-black uppercase tracking-wide text-blue-600">PGD · Field Sessions</p><h4 id="dossier-field-sessions-title" className="mt-1 text-xs font-black text-slate-900">Các phiên hiện trường</h4><p className="mt-1 text-[11px] leading-4 text-slate-600">Mỗi phiên là một bản ghi độc lập; dữ liệu cũ vẫn được chuẩn hóa để xem chung.</p></div><span className="rounded-full border border-blue-200 bg-white px-2 py-1 text-[11px] font-black text-blue-700">{sessions.length} phiên</span></div>
     <div className="mt-2 flex flex-wrap gap-2"><input aria-label="Tìm phiên hiện trường" value={query} onChange={(event) => setQuery(event.target.value)} className="mobile-touch-target min-h-11 min-w-[12rem] flex-1 rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-[11px] outline-none focus:border-blue-400 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" placeholder="Tìm mã phiên, địa điểm, KTV..." /><select aria-label="Lọc trạng thái phiên" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="mobile-touch-target min-h-11 rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-[11px]"><option value="">Tất cả trạng thái</option>{statuses.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
-    <div className="mt-3 grid gap-2 md:grid-cols-2">{visibleSessions.map((session) => <article key={session.id} className="rounded-lg border border-blue-100 bg-white p-2.5"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="font-mono text-[11px] font-black text-slate-800">{session.sessionCode || session.id}</p><p className="mt-0.5 text-[11px] font-bold text-slate-700">{session.objectLabel || 'Chưa cập nhật đối tượng'}</p></div><span className={'rounded-full border px-2 py-0.5 text-[9px] font-black ' + TRACKER_TONE_CLASS[session.statusTone || 'neutral']}>{session.status}</span></div><div className="mt-2 grid gap-1 text-[11px] text-slate-600 sm:grid-cols-2"><span><CalendarDays size={11} className="mr-1 inline" aria-hidden="true" />Bắt đầu: {formatTimelineDate(session.occurredAt)}</span><span><CalendarDays size={11} className="mr-1 inline" aria-hidden="true" />Kết thúc: {formatTimelineDate(session.endedAt)}</span><span><MapPin size={11} className="mr-1 inline" aria-hidden="true" />{session.location || 'Chưa có địa điểm'}</span><span><UserRound size={11} className="mr-1 inline" aria-hidden="true" />{session.inspectors || 'Chưa có KTV'}</span><span>{session.activityType || 'Kiểm tra hiện trường'}</span><span>{session.quantity || 'Chưa có số lượng'} · {session.sampleCount ?? 0} mẫu</span></div>{session.observations ? <p className="mt-2 text-[11px] leading-4 text-slate-600">{session.observations}</p> : null}<div className="mt-2 flex flex-wrap gap-1.5">{session.onView ? <button type="button" onClick={session.onView} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-white px-2.5 text-[11px] font-black text-slate-700">XEM</button> : null}{session.onEdit ? <button type="button" onClick={session.onEdit} className="mobile-touch-target min-h-11 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-black text-blue-700">SỬA</button> : null}</div></article>)}</div>
+    <div className="mt-3 grid gap-2 md:grid-cols-2">{visibleSessions.map((session) => <article key={session.id} className="rounded-lg border border-blue-100 bg-white p-2.5"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="font-mono text-[11px] font-black text-slate-800">{session.sessionCode || session.id}</p><p className="mt-0.5 text-[11px] font-bold text-slate-700">{session.objectLabel || 'Chưa cập nhật đối tượng'}</p></div><span className={'rounded-full border px-2 py-0.5 text-[9px] font-black ' + TRACKER_TONE_CLASS[session.statusTone || 'neutral']}>{session.status}</span></div><div className="mt-2 grid gap-1 text-[11px] text-slate-600 sm:grid-cols-2"><span><CalendarDays size={11} className="mr-1 inline" aria-hidden="true" />Bắt đầu: {formatTimelineDate(session.occurredAt)}</span><span><CalendarDays size={11} className="mr-1 inline" aria-hidden="true" />Kết thúc: {formatTimelineDate(session.endedAt)}</span><span><MapPin size={11} className="mr-1 inline" aria-hidden="true" />{session.location || 'Chưa có địa điểm'}</span><span><UserRound size={11} className="mr-1 inline" aria-hidden="true" />{session.inspectors || 'Chưa có KTV'}</span><span>{session.activityType || 'Chưa xác định loại hoạt động'}</span><span>{session.quantity || 'Chưa ghi nhận số lượng'} · {session.sampleCount === undefined ? 'Chưa ghi nhận số mẫu' : session.sampleCount + ' mẫu'}</span></div>{session.observations ? <p className="mt-2 text-[11px] leading-4 text-slate-600">{session.observations}</p> : null}<div className="mt-2 flex flex-wrap gap-1.5">{session.onView ? <button type="button" onClick={session.onView} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-white px-2.5 text-[11px] font-black text-slate-700">XEM</button> : null}{session.onEdit ? <button type="button" onClick={session.onEdit} className="mobile-touch-target min-h-11 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-black text-blue-700">SỬA</button> : null}</div></article>)}</div>
     {visibleSessions.length === 0 ? <p className="mt-2 rounded-lg border border-dashed border-blue-200 bg-white p-3 text-[11px] text-slate-500">Không có phiên phù hợp bộ lọc hiện tại.</p> : null}
     {onAction ? <button type="button" onClick={onAction} className="mobile-touch-target mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 text-[11px] font-black text-blue-700 hover:bg-blue-100"><ArrowRight size={13} aria-hidden="true" />THÊM PHIÊN HIỆN TRƯỜNG</button> : null}
   </section>;
@@ -309,41 +309,133 @@ function FieldSessions({ sessions, onAction }: { sessions: DossierFieldSessionSu
     <div className="rounded-lg border border-slate-200 bg-white p-2.5"><div className="text-[11px] font-black uppercase tracking-wide text-slate-400">PYC / KQTN</div><div className="mt-1 text-lg font-black text-slate-800">{testSummary?.requestCount ?? sampleSummary?.labRequestCount ?? 0} / {testSummary?.resultCount ?? sampleSummary?.resultCount ?? 0}</div><div className="mt-0.5 text-[11px] text-slate-500">Yêu cầu / đã nhận</div></div>
     <div className="rounded-lg border border-slate-200 bg-white p-2.5"><div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Còn thiếu KQTN</div><div className="mt-1 text-lg font-black text-amber-700">{testSummary?.pendingCount ?? sampleSummary?.pendingLabRequestCount ?? 0}</div><div className="mt-0.5 text-[11px] text-slate-500">Chưa liên kết kết quả</div></div>
   </section>;
-}export function PgdcnDossierBusinessWorkspace({ domain, title = 'Bản đồ hồ sơ nghiệp vụ', description = 'Một lớp nhìn theo công việc thật của hồ sơ; dữ liệu vẫn lấy từ các module hiện có.', nextAction, metrics, groups, blockers = [], suggestedActions = [], fieldSession, fieldSessions, sampleSummary, testSummary, evidenceTracker, sampleTracker, testTracker, timeline }: PgdcnDossierBusinessWorkspaceProps) {
+}
+
+export function PgdcnDossierBusinessWorkspace({ domain, title = 'Bản đồ hồ sơ nghiệp vụ', description = 'Một lớp nhìn theo công việc thật của hồ sơ; dữ liệu vẫn lấy từ các module hiện có.', nextAction, metrics, groups, blockers = [], suggestedActions = [], fieldSession, fieldSessions, sampleSummary, testSummary, evidenceTracker, sampleTracker, testTracker, timeline }: PgdcnDossierBusinessWorkspaceProps) {
   const accent = domain === 'PCN' ? 'indigo' : 'blue';
-  return <section data-testid={'dossier-business-workspace-' + domain.toLowerCase()} className={'min-w-0 space-y-3 [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 ' + (accent === 'indigo' ? '[&_*:focus-visible]:ring-indigo-500' : '[&_*:focus-visible]:ring-blue-500')} aria-labelledby={'dossier-business-workspace-title-' + domain.toLowerCase()}>
-    <div className="flex flex-wrap items-start justify-between gap-2">
-      <div><p className={'text-[11px] font-black uppercase tracking-[0.16em] ' + (accent === 'indigo' ? 'text-indigo-600' : 'text-blue-600')}>{domain} · Work-first</p><h3 id={'dossier-business-workspace-title-' + domain.toLowerCase()} className="mt-1 text-sm font-black text-slate-900">{title}</h3><p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">{description}</p></div>
-      <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-black text-slate-500">Projection từ dữ liệu hiện có</span>
-    </div>
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{metrics.map((item) => <MetricCard key={item.id} item={item} />)}</div>
-    <section className={'rounded-xl border p-3 ' + (accent === 'indigo' ? 'border-indigo-200 bg-indigo-50/60' : 'border-blue-200 bg-blue-50/60')} data-testid="dossier-next-action-card">
-      <div className="flex items-start gap-2"><ArrowRight size={16} className={'mt-0.5 shrink-0 ' + (accent === 'indigo' ? 'text-indigo-600' : 'text-blue-600')} aria-hidden="true" /><div className="min-w-0 flex-1"><p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Next Action</p><h4 className="mt-1 text-xs font-black text-slate-900">{nextAction.title}</h4><p className="mt-1 text-[11px] leading-4 text-slate-600">Vì sao: {nextAction.reason}</p><div className="mt-2 grid gap-1 text-[11px] text-slate-500 sm:grid-cols-3"><span>Phụ trách: <b className="text-slate-700">{nextAction.owner || 'Chưa phân công'}</b></span><span>Thiếu: <b className="text-slate-700">{nextAction.missing || 'Không có thiếu hụt đã biết'}</b></span><span>Trạng thái: <b className="text-slate-700">Đang theo dõi</b></span></div>{nextAction.actionLabel && nextAction.onAction ? <button type="button" onClick={nextAction.onAction} className={'mobile-touch-target mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-[11px] font-black text-white ' + (accent === 'indigo' ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-blue-600 hover:bg-blue-500')}><ArrowRight size={13} aria-hidden="true" />{nextAction.actionLabel}</button> : null}</div></div>
-    </section>
-    {suggestedActions.length > 0 ? <ContextualActions actions={suggestedActions} /> : null}
-    {blockers.length > 0 ? <section className="rounded-xl border border-rose-200 bg-rose-50/70 p-3" data-testid="dossier-hard-blockers" aria-labelledby="dossier-hard-blockers-title"><div className="flex items-start gap-2"><AlertTriangle size={16} className="mt-0.5 shrink-0 text-rose-600" aria-hidden="true" /><div><h4 id="dossier-hard-blockers-title" className="text-xs font-black text-rose-900">Điểm chặn cần xử lý</h4><p className="mt-1 text-[11px] leading-4 text-rose-800">Chỉ hiển thị thiếu hụt đang cản bước hoặc cần bằng chứng; không thay thế cảnh báo nghiệp vụ trong từng module.</p></div></div><div className="mt-2 space-y-1.5">{blockers.map((blocker) => <div key={blocker.id} className="rounded-lg border border-rose-100 bg-white/80 p-2"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-[11px] font-black text-slate-800">{blocker.title}</p><p className="mt-0.5 text-[11px] leading-4 text-slate-600">{blocker.reason}</p></div>{blocker.actionLabel && blocker.onAction ? <button type="button" onClick={blocker.onAction} className="mobile-touch-target min-h-11 rounded-md border border-rose-200 bg-white px-2.5 text-[11px] font-black text-rose-700 hover:bg-rose-50">{blocker.actionLabel}</button> : null}</div></div>)}</div></section> : <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-[11px] font-bold text-emerald-700" data-testid="dossier-no-hard-blockers"><CheckCircle2 size={14} aria-hidden="true" /> Chưa có điểm chặn cứng từ dữ liệu đang chiếu.</div>}
-    <EvidenceSummary sampleSummary={sampleSummary} testSummary={testSummary} />
-    {fieldSessions && fieldSessions.length > 0 ? <FieldSessions sessions={fieldSessions} onAction={fieldSession?.onAction} /> : null}
-    {fieldSession && !fieldSessions?.length ? <section className="rounded-xl border border-blue-200 bg-blue-50/50 p-3" data-testid="dossier-field-session" aria-labelledby="dossier-field-session-title">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div><p className="text-[9px] font-black uppercase tracking-wide text-blue-600">PGD · Field Session</p><h4 id="dossier-field-session-title" className="mt-1 text-xs font-black text-slate-900">Phiên hiện trường</h4><p className="mt-1 text-[11px] leading-4 text-slate-600">Một phiên ghi nhận có thời điểm, địa điểm, người thực hiện, đối tượng, quan sát, đo đạc, mẫu và bằng chứng.</p></div>
-        <span className={'rounded-full border px-2 py-1 text-[9px] font-black ' + TRACKER_TONE_CLASS[fieldSession.statusTone || (fieldSession.exists ? 'info' : 'neutral')]}>{fieldSession.status}</span>
+  // This only points to a step already marked active, blocked, or not started by its caller.
+  const currentGroup = groups.find((group) => group.status === 'IN_PROGRESS')
+    ?? groups.find((group) => group.status === 'BLOCKED')
+    ?? groups.find((group) => group.status === 'NOT_STARTED');
+  const focusRingClass = accent === 'indigo' ? '[&_*:focus-visible]:ring-indigo-500' : '[&_*:focus-visible]:ring-blue-500';
+  const accentTextClass = accent === 'indigo' ? 'text-indigo-600' : 'text-blue-600';
+  const accentSurfaceClass = accent === 'indigo' ? 'border-indigo-200 bg-indigo-50/60' : 'border-blue-200 bg-blue-50/60';
+
+  return <section data-testid={'dossier-business-workspace-' + domain.toLowerCase()} className={'min-w-0 space-y-3 [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 ' + focusRingClass} aria-labelledby={'dossier-business-workspace-title-' + domain.toLowerCase()}>
+    <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <p className={'text-[10px] font-black uppercase tracking-[0.16em] ' + accentTextClass}>{domain} · Workspace tác nghiệp</p>
+        <h3 id={'dossier-business-workspace-title-' + domain.toLowerCase()} className="mt-1 text-base font-black text-slate-900">{title}</h3>
+        <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">{description}</p>
       </div>
-      {fieldSession.exists ? <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-blue-100 bg-white p-2"><div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Thời điểm</div><div className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-slate-700"><CalendarDays size={12} aria-hidden="true" />{formatTimelineDate(fieldSession.occurredAt)}</div></div>
-        <div className="rounded-lg border border-blue-100 bg-white p-2"><div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Địa điểm</div><div className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-slate-700"><MapPin size={12} aria-hidden="true" />{fieldSession.location || 'Chưa cập nhật'}</div></div>
-        <div className="rounded-lg border border-blue-100 bg-white p-2"><div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Người thực hiện</div><div className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-slate-700"><UserRound size={12} aria-hidden="true" />{fieldSession.inspectors || 'Chưa cập nhật'}</div></div>
-        <div className="rounded-lg border border-blue-100 bg-white p-2"><div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Đối tượng / số lượng</div><div className="mt-1 text-[11px] font-bold text-slate-700">{fieldSession.objectLabel || 'Chưa cập nhật'}{fieldSession.quantity ? ' · ' + fieldSession.quantity : ''}</div></div>
-      </div> : <div className="mt-3 rounded-lg border border-dashed border-blue-200 bg-white p-3 text-[11px] text-slate-600">Chưa có phiên hiện trường được ghi nhận. Hãy mở work panel để nhập biên bản hiện trường; hệ thống không tự tạo sự kiện.</div>}
-      {fieldSession.exists ? <div className="mt-2 grid gap-2 md:grid-cols-2">
-        <div className="rounded-lg border border-blue-100 bg-white p-2.5"><div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Quan sát</div><p className="mt-1 text-[11px] leading-4 text-slate-700">{fieldSession.observations || 'Chưa có ghi nhận'}</p></div>
-        <div className="rounded-lg border border-blue-100 bg-white p-2.5"><div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Đo đạc / mẫu / bằng chứng</div><p className="mt-1 text-[11px] leading-4 text-slate-700">{fieldSession.measurements || 'Chưa có số đo'}{fieldSession.sampleSummary ? ' · ' + fieldSession.sampleSummary : ''}{fieldSession.evidenceSummary ? ' · ' + fieldSession.evidenceSummary : ''}</p></div>
-      </div> : null}
-      {fieldSession.actionLabel && fieldSession.onAction ? <button type="button" onClick={fieldSession.onAction} className="mobile-touch-target mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 text-[11px] font-black text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><ArrowRight size={13} aria-hidden="true" />{fieldSession.actionLabel}</button> : null}
+      <span className="w-fit shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-500">Projection từ dữ liệu hiện có</span>
+    </header>
+
+    {metrics.length > 0 ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4" aria-label="Chỉ số hồ sơ">{metrics.map((item) => <MetricCard key={item.id} item={item} />)}</div> : null}
+
+    <div className="grid min-w-0 gap-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.82fr)]">
+      <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-3" data-testid="dossier-current-step" aria-labelledby="dossier-current-step-title">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className={'text-[10px] font-black uppercase tracking-wide ' + accentTextClass}>Bước hiện tại</p>
+            <h4 id="dossier-current-step-title" className="mt-1 break-words text-sm font-black text-slate-900">{currentGroup?.title || 'Chưa xác định từ trạng thái bước hiện có'}</h4>
+          </div>
+          {currentGroup ? <span className={'shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black ' + STATUS_CLASS[currentGroup.status]}>{currentGroup.statusLabel}</span> : <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-500">Chưa xác định</span>}
+        </div>
+        {currentGroup ? <>
+          <p className="mt-2 text-[11px] leading-4 text-slate-600">{currentGroup.description}</p>
+          {(currentGroup.countLabel || currentGroup.meta) ? <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">{currentGroup.countLabel ? <span className="font-bold text-slate-700">{currentGroup.countLabel}</span> : null}{currentGroup.meta ? <span>{currentGroup.meta}</span> : null}</div> : null}
+        </> : <p className="mt-2 text-[11px] leading-4 text-slate-500">Workspace chưa nhận được bước nào đang xử lý, bị chặn hoặc chưa bắt đầu.</p>}
+      </section>
+
+      <div className="min-w-0 space-y-2.5">
+        <section className={'rounded-xl border p-3 ' + accentSurfaceClass} data-testid="dossier-next-action-card" aria-labelledby="dossier-next-action-title">
+          <div className="flex items-start gap-2">
+            <ArrowRight size={16} className={'mt-0.5 shrink-0 ' + accentTextClass} aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Next Action · Việc tiếp theo</p>
+              <h4 id="dossier-next-action-title" className="mt-1 break-words text-sm font-black text-slate-900">{nextAction.title}</h4>
+              <p className="mt-1 text-[11px] leading-4 text-slate-600">{nextAction.reason}</p>
+              <dl className="mt-2 grid gap-x-3 gap-y-1 text-[11px] sm:grid-cols-2">
+                <div><dt className="inline text-slate-500">Phụ trách: </dt><dd className="inline font-bold text-slate-700">{nextAction.owner || 'Chưa phân công'}</dd></div>
+                <div><dt className="inline text-slate-500">Thiếu: </dt><dd className="inline font-bold text-slate-700">{nextAction.missing || 'Chưa có thông tin thiếu hụt'}</dd></div>
+              </dl>
+              {nextAction.actionLabel && nextAction.onAction ? <button type="button" onClick={nextAction.onAction} className={'mobile-touch-target mt-3 inline-flex min-h-11 max-w-full items-center justify-center gap-1.5 rounded-lg px-3 text-center text-[11px] font-black text-white ' + (accent === 'indigo' ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-blue-600 hover:bg-blue-500')}><ArrowRight size={13} aria-hidden="true" />{nextAction.actionLabel}</button> : null}
+            </div>
+          </div>
+        </section>
+
+        {blockers.length > 0 ? <section className="rounded-xl border border-slate-200 bg-white p-3" data-testid="dossier-hard-blockers" aria-labelledby="dossier-hard-blockers-title">
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-600" aria-hidden="true" />
+            <div><h4 id="dossier-hard-blockers-title" className="text-xs font-black text-slate-900">Điều kiện chuyển bước</h4><p className="mt-1 text-[11px] leading-4 text-slate-500">Các điểm chặn và lưu ý đang có trong dữ liệu hồ sơ.</p></div>
+          </div>
+          <ul className="mt-2 space-y-1.5">
+            {blockers.map((blocker) => {
+              const isHardBlocker = blocker.severity === 'HARD';
+              const isWarning = blocker.severity === 'WARNING';
+              const severityClass = isHardBlocker ? 'border-rose-200 bg-rose-50 text-rose-700' : isWarning ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-slate-200 bg-slate-50 text-slate-600';
+              const severityLabel = isHardBlocker ? 'Chặn chuyển bước' : isWarning ? 'Cần lưu ý' : 'Điểm cần xử lý';
+              return <li key={blocker.id} className="rounded-lg border border-slate-100 bg-slate-50/70 p-2.5">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5"><span className={'rounded-full border px-2 py-0.5 text-[9px] font-black ' + severityClass}>{severityLabel}</span><p className="text-[11px] font-black text-slate-800">{blocker.title}</p></div>
+                    <p className="mt-1 text-[11px] leading-4 text-slate-600">{blocker.reason}</p>
+                    {(blocker.source || blocker.target) ? <p className="mt-1 break-words text-[10px] leading-4 text-slate-500">{blocker.source ? <>Nguồn: {blocker.source}</> : null}{blocker.source && blocker.target ? ' · ' : null}{blocker.target ? <>Ảnh hưởng: {blocker.target}</> : null}</p> : null}
+                  </div>
+                  {blocker.actionLabel && blocker.onAction ? <button type="button" onClick={blocker.onAction} className="mobile-touch-target min-h-11 shrink-0 rounded-md border border-slate-200 bg-white px-2.5 text-[11px] font-black text-slate-700 hover:bg-slate-100">{blocker.actionLabel}</button> : null}
+                </div>
+              </li>;
+            })}
+          </ul>
+        </section> : <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-[11px] text-slate-500" data-testid="dossier-no-hard-blockers">Chưa có điểm chặn nào được ghi nhận trong dữ liệu đang chiếu.</div>}
+      </div>
+    </div>
+
+    <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-3" data-testid="dossier-business-groups" aria-labelledby="dossier-business-groups-title">
+      <div className="mb-2 flex flex-wrap items-end justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Công việc</p><h4 id="dossier-business-groups-title" className="mt-0.5 text-xs font-black text-slate-900">Các bước nghiệp vụ</h4></div><span className="text-[10px] text-slate-500">{groups.length} bước từ dữ liệu hồ sơ</span></div>
+      {groups.length > 0 ? <div className="grid min-w-0 gap-2 md:grid-cols-2">
+        {groups.map((group) => {
+          const isCurrent = currentGroup?.id === group.id;
+          return <article key={group.id} aria-current={isCurrent ? 'step' : undefined} className={'min-w-0 rounded-lg border p-3 ' + (isCurrent ? 'border-blue-300 bg-blue-50/70 ring-1 ring-blue-100' : group.status === 'BLOCKED' ? 'border-rose-200 bg-rose-50/40' : 'border-slate-200 bg-white')}>
+            <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0 flex-1"><h5 className="break-words text-[11px] font-black text-slate-800">{group.title}</h5><p className="mt-1 text-[11px] leading-4 text-slate-500">{group.description}</p></div><span className={'shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-black ' + STATUS_CLASS[group.status]}>{group.statusLabel}</span></div>
+            {(group.countLabel || group.meta) ? <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">{group.countLabel ? <span className="font-black text-slate-700">{group.countLabel}</span> : null}{group.meta ? <span>{group.meta}</span> : null}</div> : null}
+            {group.actionLabel && group.onAction ? <button type="button" onClick={group.onAction} className="mobile-touch-target mt-2 inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-left text-[11px] font-black text-slate-700 hover:border-blue-300 hover:bg-blue-50">{group.actionLabel}<ArrowRight size={12} aria-hidden="true" /></button> : null}
+          </article>;
+        })}
+      </div> : <p className="rounded-lg border border-dashed border-slate-200 bg-white p-3 text-[11px] text-slate-500">Chưa có bước nghiệp vụ trong dữ liệu hồ sơ.</p>}
+    </section>
+
+    {suggestedActions.length > 0 ? <ContextualActions actions={suggestedActions} /> : null}
+
+    {(fieldSessions?.length || fieldSession) ? <section className="space-y-2" aria-label="Biểu mẫu và phiên hiện trường">
+      <div><p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Biểu mẫu</p><h4 className="mt-0.5 text-xs font-black text-slate-900">Hiện trường</h4></div>
+      {fieldSessions && fieldSessions.length > 0 ? <FieldSessions sessions={fieldSessions} onAction={fieldSession?.onAction} /> : null}
+      {fieldSession && !fieldSessions?.length ? <section className="rounded-xl border border-blue-200 bg-blue-50/50 p-3" data-testid="dossier-field-session" aria-labelledby="dossier-field-session-title">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div><p className="text-[9px] font-black uppercase tracking-wide text-blue-600">PGD · Field Session</p><h5 id="dossier-field-session-title" className="mt-1 text-xs font-black text-slate-900">Phiên hiện trường</h5><p className="mt-1 text-[11px] leading-4 text-slate-600">Bản ghi về thời điểm, địa điểm, người thực hiện, đối tượng, quan sát, đo đạc, mẫu và bằng chứng.</p></div>
+          <span className={'rounded-full border px-2 py-1 text-[9px] font-black ' + TRACKER_TONE_CLASS[fieldSession.statusTone || (fieldSession.exists ? 'info' : 'neutral')]}>{fieldSession.status}</span>
+        </div>
+        {fieldSession.exists ? <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="min-w-0 rounded-lg border border-blue-100 bg-white p-2"><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Thời điểm</div><div className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-slate-700"><CalendarDays size={12} aria-hidden="true" />{formatTimelineDate(fieldSession.occurredAt)}</div></div>
+          <div className="min-w-0 rounded-lg border border-blue-100 bg-white p-2"><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Địa điểm</div><div className="mt-1 inline-flex items-center gap-1 break-words text-[11px] font-bold text-slate-700"><MapPin size={12} aria-hidden="true" />{fieldSession.location || 'Chưa cập nhật'}</div></div>
+          <div className="min-w-0 rounded-lg border border-blue-100 bg-white p-2"><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Người thực hiện</div><div className="mt-1 inline-flex items-center gap-1 break-words text-[11px] font-bold text-slate-700"><UserRound size={12} aria-hidden="true" />{fieldSession.inspectors || 'Chưa cập nhật'}</div></div>
+          <div className="min-w-0 rounded-lg border border-blue-100 bg-white p-2"><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Đối tượng / số lượng</div><div className="mt-1 break-words text-[11px] font-bold text-slate-700">{fieldSession.objectLabel || 'Chưa cập nhật'}{fieldSession.quantity ? ' · ' + fieldSession.quantity : ''}</div></div>
+        </div> : <div className="mt-3 rounded-lg border border-dashed border-blue-200 bg-white p-3 text-[11px] text-slate-600">Chưa có phiên hiện trường được ghi nhận. Hệ thống không tự tạo sự kiện.</div>}
+        {fieldSession.exists ? <div className="mt-2 grid gap-2 md:grid-cols-2">
+          <div className="rounded-lg border border-blue-100 bg-white p-2.5"><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Quan sát</div><p className="mt-1 break-words text-[11px] leading-4 text-slate-700">{fieldSession.observations || 'Chưa có ghi nhận'}</p></div>
+          <div className="rounded-lg border border-blue-100 bg-white p-2.5"><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Đo đạc / mẫu / bằng chứng</div><p className="mt-1 break-words text-[11px] leading-4 text-slate-700">{fieldSession.measurements || 'Chưa có số đo'}{fieldSession.sampleSummary ? ' · ' + fieldSession.sampleSummary : ''}{fieldSession.evidenceSummary ? ' · ' + fieldSession.evidenceSummary : ''}</p></div>
+        </div> : null}
+        {fieldSession.actionLabel && fieldSession.onAction ? <button type="button" onClick={fieldSession.onAction} className="mobile-touch-target mt-3 inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 text-left text-[11px] font-black text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><ArrowRight size={13} aria-hidden="true" />{fieldSession.actionLabel}</button> : null}
+      </section> : null}
     </section> : null}
-    {evidenceTracker ? <EvidenceTracker title={evidenceTracker.title || 'Evidence Tracker · bộ chứng từ'} groups={evidenceTracker.groups} emptyText={evidenceTracker.emptyText} /> : null}
-    <section className="grid gap-2 md:grid-cols-2" data-testid="dossier-business-groups">{groups.map((group) => <article key={group.id} className={'rounded-xl border p-3 ' + (group.status === 'BLOCKED' ? 'border-rose-200 bg-rose-50/40' : 'border-slate-200 bg-white')}><div className="flex items-start justify-between gap-2"><div className="min-w-0"><h4 className="text-[11px] font-black text-slate-800">{group.title}</h4><p className="mt-1 text-[11px] leading-4 text-slate-500">{group.description}</p></div><span className={'shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-black ' + STATUS_CLASS[group.status]}>{group.statusLabel}</span></div><div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">{group.countLabel ? <span className="font-black text-slate-700">{group.countLabel}</span> : null}{group.meta ? <span>{group.meta}</span> : null}</div>{group.actionLabel && group.onAction ? <button type="button" onClick={group.onAction} className="mobile-touch-target mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-[11px] font-black text-slate-700 hover:border-blue-300 hover:bg-blue-50">{group.actionLabel}</button> : null}</article>)}</section>
-    {sampleTracker || testTracker ? <div className="grid gap-2 md:grid-cols-2">{sampleTracker ? <Tracker title={sampleTracker.title || 'Theo dõi mẫu'} rows={sampleTracker.rows} emptyText={sampleTracker.emptyText} kind="sample" /> : null}{testTracker ? <Tracker title={testTracker.title || 'Theo dõi PYC/KQTN'} rows={testTracker.rows} emptyText={testTracker.emptyText} kind="test" /> : null}</div> : null}
+
+    <section className="space-y-2" aria-label="Tài liệu và bằng chứng">
+      <div><p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Tài liệu & bằng chứng</p><h4 className="mt-0.5 text-xs font-black text-slate-900">Theo dõi hồ sơ</h4></div>
+      <EvidenceSummary sampleSummary={sampleSummary} testSummary={testSummary} />
+      {evidenceTracker ? <EvidenceTracker title={evidenceTracker.title || 'Evidence Tracker · bộ chứng từ'} groups={evidenceTracker.groups} emptyText={evidenceTracker.emptyText} /> : null}
+      {sampleTracker || testTracker ? <div className="grid min-w-0 gap-2 lg:grid-cols-2">{sampleTracker ? <Tracker title={sampleTracker.title || 'Theo dõi mẫu'} rows={sampleTracker.rows} emptyText={sampleTracker.emptyText} kind="sample" /> : null}{testTracker ? <Tracker title={testTracker.title || 'Theo dõi PYC/KQTN'} rows={testTracker.rows} emptyText={testTracker.emptyText} kind="test" /> : null}</div> : null}
+    </section>
     {timeline ? <Timeline title={timeline.title || 'Event Timeline / Work Log'} items={timeline.items} emptyText={timeline.emptyText} /> : null}
   </section>;
 }

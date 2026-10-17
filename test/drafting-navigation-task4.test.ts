@@ -7,6 +7,7 @@ import {
   buildPcnDraftingRoute,
   buildPgdDossierReturnRoute,
   buildPgdDraftingRoute,
+  getPgdDossierStepForRequirement,
   sanitizeInternalReturnTo,
 } from '../utils/draftingNavigation.ts';
 
@@ -40,6 +41,44 @@ test('PGD dossier drafting deep link carries request, requirement, template and 
   assert.equal(url.searchParams.get('requirementCode'), 'PGD_INTAKE_REQUEST');
   assert.equal(url.searchParams.get('templateKind'), 'INTAKE_REQUEST');
   assert.equal(url.searchParams.get('returnTo'), '/pgdcn/pgd/dossiers/request-1?step=intake');
+});
+
+test('PGD requirement codes return to their matching dossier flow steps', () => {
+  const mappings = [
+    ['REQUEST_PYC', 'intake'],
+    ['REQUEST_SUPPORTING', 'intake'],
+    ['COMMERCIAL_CONTRACT', 'intake'],
+    ['COMMERCIAL_INVOICE', 'intake'],
+    ['PACKING_LIST', 'intake'],
+    ['BILL_OF_LADING', 'intake'],
+    ['CUSTOMS_DECLARATION', 'intake'],
+    ['CERTIFICATE_OF_ORIGIN', 'intake'],
+    ['ASSIGNMENT_FORM', 'assignment'],
+    ['INSPECTION_PLAN', 'plan'],
+    ['TECHNICAL_SPECIFICATION', 'plan'],
+    ['MACHINERY_TECHNICAL_DOSSIER', 'plan'],
+    ['COAL_TECHNICAL_OVERVIEW', 'plan'],
+    ['COAL_QUALITY_SPECIFICATION', 'plan'],
+    ['TECHNICAL_OVERVIEW', 'plan'],
+    ['FIELD_INSPECTION_MINUTES', 'field'],
+    ['FIELD_ACTIVITY_LOG', 'field'],
+    ['MACHINERY_CONDITION_ASSESSMENT', 'field'],
+    ['MACHINERY_SYNCHRONIZATION_ASSESSMENT', 'field'],
+    ['FIELD_SAMPLE_TAKING', 'sampling'],
+    ['SAMPLE_HANDOVER_LAB', 'lab-request'],
+    ['LAB_RESULT', 'lab-result'],
+    ['LAB_RESULT_REVIEW', 'result-review'],
+    ['INSPECTION_REPORT', 'report'],
+    ['DECISION', 'approval'],
+    ['INSPECTION_CERTIFICATE', 'approval'],
+    ['DOSSIER_COVER', 'return'],
+    ['ARCHIVE_INDEX', 'return'],
+  ] as const;
+
+  for (const [requirementCode, expectedStep] of mappings) {
+    assert.equal(getPgdDossierStepForRequirement(requirementCode), expectedStep, requirementCode);
+  }
+  assert.equal(getPgdDossierStepForRequirement('UNKNOWN_REQUIREMENT'), 'intake');
 });
 
 test('return context stays on the same dossier and rejects external destinations', () => {

@@ -13,7 +13,6 @@ import {
   GitBranch,
   LayoutDashboard,
   LogOut,
-  Menu,
   Settings,
   User,
   X,
@@ -136,12 +135,12 @@ export default function PgdcnSidebar({
 
   const buttonClass = (active: boolean, tone: 'shared' | 'pcn' | 'pgd' = 'shared') => {
     const toneClasses = {
-      shared: { active: 'bg-slate-700 text-white shadow-sm font-semibold', ring: 'focus-visible:ring-slate-400' },
-      pcn: { active: 'bg-emerald-600 text-white shadow-sm font-semibold', ring: 'focus-visible:ring-emerald-500' },
-      pgd: { active: 'bg-blue-600 text-white shadow-sm font-semibold', ring: 'focus-visible:ring-blue-500' },
+      shared: { active: 'bg-slate-700 text-white font-semibold', ring: 'focus-visible:ring-slate-400' },
+      pcn: { active: 'bg-emerald-700 text-white font-semibold', ring: 'focus-visible:ring-emerald-500' },
+      pgd: { active: 'bg-blue-600 text-white font-semibold', ring: 'focus-visible:ring-blue-500' },
     };
     const selectedTone = toneClasses[tone];
-    return `mobile-touch-target group flex min-h-8 w-full items-center rounded-xl text-left transition-all focus-visible:outline-none focus-visible:ring-2 ${selectedTone.ring} focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${expanded ? 'gap-2.5 px-3 py-2' : 'justify-center px-1 py-1.5'} ${active ? selectedTone.active : 'text-slate-300 hover:text-white hover:bg-slate-800/70 font-medium'}`;
+    return `mobile-touch-target group flex min-h-11 w-full items-center rounded-md text-left transition-colors ${expanded ? 'gap-2 px-2 py-1' : 'justify-center px-1 py-1'} ${active ? selectedTone.active : 'font-medium text-slate-300 hover:bg-slate-800/70 hover:text-white'} focus-visible:outline-none focus-visible:ring-2 ${selectedTone.ring} focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 lg:min-h-9`;
   };
   const renderSharedButton = (label: string, icon: ElementType, target: Extract<PgdcnNavigationTarget, { domain: 'department' }>) => {
     const Icon = icon;
@@ -149,7 +148,7 @@ export default function PgdcnSidebar({
     return (
       <button type="button" key={target.section} onClick={() => { onNavigate(target); onCloseMobile(); }} className={buttonClass(active)} title={label} aria-label={label} aria-current={active ? 'page' : undefined}>
         <Icon size={16} className={active ? 'text-white' : 'text-slate-400'} />
-        {expanded && <span className="min-w-0 flex-1 truncate text-[11px] uppercase tracking-wider">{label}</span>}
+        {expanded && <span className="min-w-0 flex-1 whitespace-normal break-words text-[11px] leading-4">{label}</span>}
       </button>
     );
   };
@@ -159,8 +158,8 @@ export default function PgdcnSidebar({
     const active = isTargetActive(activeTarget, target);
     return (
       <button type="button" key={`${target.domain}-${target.section}`} onClick={() => { onNavigate(target); onCloseMobile(); }} className={buttonClass(active, tone)} title={label} aria-label={label} aria-current={active ? 'page' : undefined}>
-        <Icon size={15} className={active ? 'text-white' : 'text-slate-400'} />
-        {expanded && <span className="min-w-0 flex-1 truncate text-[11px] uppercase tracking-wider font-semibold">{label}</span>}
+        <Icon size={16} className={active ? 'text-white' : 'text-slate-400'} />
+        {expanded && <span className="min-w-0 flex-1 whitespace-normal break-words text-[11px] leading-4">{label}</span>}
       </button>
     );
   };
@@ -168,67 +167,80 @@ export default function PgdcnSidebar({
   return (
     <>
       {mobileOpen && <button type="button" data-testid="pgdcn-sidebar-backdrop" aria-label="Đóng menu phòng" title="Đóng menu phòng" tabIndex={-1} onClick={() => onCloseMobileRef.current()} className="fixed inset-0 z-40 cursor-default bg-slate-950/55 lg:hidden" />}
-      <aside ref={sidebarRef} id="pgdcn-sidebar" className={`app-compact-sidebar ddt-compact-sidebar fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-200 shadow-sm transition-[width,transform] duration-200 ease-out motion-reduce:transition-none lg:static lg:translate-x-0 ${collapsed ? 'lg:w-16' : 'lg:w-64'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-      <div className={`flex h-12 items-center border-b border-slate-800 px-3 py-2 ${expanded ? 'gap-3' : 'justify-center'}`}>
+      <aside ref={sidebarRef} id="pgdcn-sidebar" role={mobileOpen ? 'dialog' : undefined} aria-modal={mobileOpen ? 'true' : undefined} aria-label={mobileOpen ? 'Điều hướng PGDCN' : undefined} className={`app-compact-sidebar ddt-compact-sidebar fixed left-0 top-0 z-50 flex h-[100dvh] max-h-[100dvh] w-64 max-w-[calc(100vw-1rem)] flex-col border-r border-slate-800 bg-slate-900 text-slate-200 shadow-sm transition-[width,transform] duration-200 ease-out motion-reduce:transition-none lg:static lg:max-h-[100dvh] lg:max-w-none lg:translate-x-0 ${collapsed ? 'lg:w-16' : 'lg:w-64'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`flex min-h-14 shrink-0 items-center border-b border-slate-800 px-3 py-2 ${expanded ? 'gap-3' : 'justify-center'}`}>
         <img src="/icons/iemm-logo-192.png" alt="IEMM • TVCI" className="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-0.5" />
         {expanded && (
           <div className="min-w-0">
-            <div className="truncate text-xs font-bold uppercase tracking-wide text-white">IEMM • TVCI</div>
-            <div className="mt-0.5 truncate text-[10px] font-medium leading-none tracking-wider text-slate-400" title="Phòng Giám định - Chứng nhận và Phát triển thị trường">PHÒNG GIÁM ĐỊNH, CHỨNG NHẬN, PHÁT TRIỂN THỊ TRƯỜNG</div>
+            <div className="truncate text-xs font-bold tracking-wide text-white">IEMM • TVCI</div>
+            <div title="PHÒNG GIÁM ĐỊNH, CHỨNG NHẬN, PHÁT TRIỂN THỊ TRƯỜNG" className="mt-0.5 whitespace-normal break-words text-[10px] font-medium leading-4 text-slate-400">Giám định · Chứng nhận</div>
           </div>
         )}
-        <button ref={closeButtonRef} type="button" onClick={onCloseMobile} aria-label="Đóng menu phòng" aria-expanded={mobileOpen} aria-controls="pgdcn-sidebar" className="pgdcn-mobile-nav mobile-touch-target ml-auto rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:hidden">
+        <button ref={closeButtonRef} type="button" onClick={onCloseMobile} aria-label="Đóng menu phòng" aria-expanded={mobileOpen} aria-controls="pgdcn-sidebar" className="pgdcn-mobile-nav mobile-touch-target ml-auto min-h-11 min-w-11 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:hidden">
           <X aria-hidden="true" size={18} />
         </button>
       </div>
 
-      <nav className="mobile-scroll-y flex-1 space-y-2.5 overflow-y-auto px-2 py-2" aria-label="Menu Phòng Giám định - Chứng nhận và Phát triển thị trường">
-        <div>
-          {/* Legacy route label: Tổng quan phòng */}
-          {expanded && <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">CÔNG VIỆC</p>}
+      <nav className="mobile-scroll-y min-h-0 flex-1 space-y-1.5 overflow-y-auto px-2 py-2" aria-label="Điều hướng PGDCN">
+        <section className="space-y-0.5" aria-label="Dùng chung">
+          {expanded && <p className="mb-1 px-2 text-[11px] font-semibold text-slate-400">Dùng chung</p>}
           {renderSharedButton('Tổng quan', LayoutDashboard, { domain: 'department', section: 'department-dashboard' })}
-        </div>
-
-        <div>
-          {/* Domain groups remain available from department scopes: CHỨNG NHẬN (PCN) · GIÁM ĐỊNH (PGD) */}
-          {expanded && <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">NGHIỆP VỤ</p>}
-          {hasPcn && renderDomainButton('Chứng nhận', Award, { domain: 'PCN', section: 'proposals' }, 'pcn')}
-          {hasPgd && renderDomainButton('Giám định', ClipboardCheck, { domain: 'PGD', section: 'requests' }, 'pgd')}
-        </div>
-
-        <div>
-          {expanded && <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">DỮ LIỆU</p>}
           {renderSharedButton('Khách hàng', Building2, { domain: 'department', section: 'customers' })}
-          {hasPcn && renderDomainButton(hasBothScopes ? 'Sổ dữ liệu PCN' : 'Sổ dữ liệu', ClipboardList, { domain: 'PCN', section: 'operations' }, 'pcn')}
-          {hasPgd && renderDomainButton(hasBothScopes ? 'Sổ dữ liệu PGD' : 'Sổ dữ liệu', ClipboardCheck, { domain: 'PGD', section: 'operations' }, 'pgd')}
-          {hasPcn && renderDomainButton(hasBothScopes ? 'Sổ quản lý mẫu PCN' : 'Sổ quản lý mẫu', FlaskConical, { domain: 'PCN', section: 'lab-operations' }, 'pcn')}
-          {hasPgd && renderDomainButton(hasBothScopes ? 'Sổ quản lý mẫu PGD' : 'Sổ quản lý mẫu', FlaskConical, { domain: 'PGD', section: 'sample-operations' }, 'pgd')}
-        </div>
-
-        <div>
-          {expanded && <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">CÔNG CỤ</p>}
           {renderSharedButton('Trợ lý AI', Bot, { domain: 'department', section: 'assistant' })}
-        </div>
-
-        <div>
-          {expanded && <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">QUẢN TRỊ</p>}
-          {canManageDossierTemplates && renderSharedButton('Hồ sơ mẫu', GitBranch, { domain: 'department', section: 'dossier-templates' })}
-          {canManageSettings && renderSharedButton('Người dùng & phân quyền', Settings, { domain: 'department', section: 'system-settings' })}
-          {/* Nhật ký hoạt động is retained as the route alias for the system log. */}
           {renderSharedButton('Nhật ký hệ thống', Activity, { domain: 'department', section: 'activityLogs' })}
-        </div>
+        </section>
+
+        {hasPcn && (
+          <section className="space-y-0.5" aria-label="Chứng nhận PCN">
+            {expanded && (
+              <button type="button" onClick={() => setPcnOpen((open) => !open)} aria-expanded={pcnOpen} aria-controls="pgdcn-pcn-navigation" title="Chứng nhận PCN" className={`mobile-touch-target flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 lg:min-h-9 ${activeTarget.domain === 'PCN' ? 'text-emerald-200' : 'text-slate-400 hover:bg-slate-800/70 hover:text-slate-100'}`}>
+                <span className="min-w-0 flex-1 whitespace-normal break-words leading-4">Chứng nhận · PCN</span>
+                <ChevronRight aria-hidden="true" size={14} className={`shrink-0 transition-transform motion-reduce:transition-none ${pcnOpen ? 'rotate-90' : ''}`} />
+              </button>
+            )}
+            <div id="pgdcn-pcn-navigation" hidden={expanded && !pcnOpen} className={expanded ? 'ml-2 space-y-0.5 border-l border-slate-800 pl-2' : 'space-y-0.5'}>
+              {renderDomainButton('Chứng nhận', Award, { domain: 'PCN', section: 'proposals' }, 'pcn')}
+              {renderDomainButton(hasBothScopes ? 'Sổ dữ liệu PCN' : 'Sổ dữ liệu', ClipboardList, { domain: 'PCN', section: 'operations' }, 'pcn')}
+              {renderDomainButton(hasBothScopes ? 'Sổ quản lý mẫu PCN' : 'Sổ quản lý mẫu', FlaskConical, { domain: 'PCN', section: 'lab-operations' }, 'pcn')}
+            </div>
+          </section>
+        )}
+
+        {hasPgd && (
+          <section className="space-y-0.5" aria-label="Giám định PGD">
+            {expanded && (
+              <button type="button" onClick={() => setPgdOpen((open) => !open)} aria-expanded={pgdOpen} aria-controls="pgdcn-pgd-navigation" title="Giám định PGD" className={`mobile-touch-target flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 lg:min-h-9 ${activeTarget.domain === 'PGD' ? 'text-blue-200' : 'text-slate-400 hover:bg-slate-800/70 hover:text-slate-100'}`}>
+                <span className="min-w-0 flex-1 whitespace-normal break-words leading-4">Giám định · PGD</span>
+                <ChevronRight aria-hidden="true" size={14} className={`shrink-0 transition-transform motion-reduce:transition-none ${pgdOpen ? 'rotate-90' : ''}`} />
+              </button>
+            )}
+            <div id="pgdcn-pgd-navigation" hidden={expanded && !pgdOpen} className={expanded ? 'ml-2 space-y-0.5 border-l border-slate-800 pl-2' : 'space-y-0.5'}>
+              {renderDomainButton('Giám định', ClipboardCheck, { domain: 'PGD', section: 'requests' }, 'pgd')}
+              {renderDomainButton(hasBothScopes ? 'Sổ dữ liệu PGD' : 'Sổ dữ liệu', ClipboardCheck, { domain: 'PGD', section: 'operations' }, 'pgd')}
+              {renderDomainButton(hasBothScopes ? 'Sổ quản lý mẫu PGD' : 'Sổ quản lý mẫu', FlaskConical, { domain: 'PGD', section: 'sample-operations' }, 'pgd')}
+            </div>
+          </section>
+        )}
+
+        {(canManageDossierTemplates || canManageSettings) && (
+          <section className="space-y-0.5" aria-label="Quản trị">
+            {expanded && <p className="mb-1 px-2 pt-1 text-[11px] font-semibold text-slate-400">Quản trị</p>}
+            {canManageDossierTemplates && renderSharedButton('Hồ sơ mẫu', GitBranch, { domain: 'department', section: 'dossier-templates' })}
+            {canManageSettings && renderSharedButton('Cài đặt hệ thống', Settings, { domain: 'department', section: 'system-settings' })}
+          </section>
+        )}
       </nav>
 
-      <div className="shrink-0 border-t border-slate-800 p-2.5 space-y-1.5 bg-slate-950/95">
+      <div className="shrink-0 space-y-1.5 border-t border-slate-800 bg-slate-950/95 p-2.5">
         <div className={`flex items-center ${expanded ? 'gap-3' : 'justify-center'} p-1`}>
-          <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-semibold text-xs shrink-0 uppercase overflow-hidden">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs font-semibold text-emerald-400 uppercase">
             {currentUser.name ? currentUser.name.trim().split(/\s+/).pop()?.slice(0, 2).toUpperCase() : 'US'}
           </div>
           {expanded && (
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold text-slate-200 truncate leading-tight">{currentUser.name || currentUser.username}</div>
-              <div className="mt-0.5 truncate text-[10px] text-slate-400">{managementLabel} · {currentUser.systemRole || currentUser.role}</div>
-              {professionalLabel && <div className="truncate text-[10px] text-violet-300">{professionalLabel}</div>}
+              <div className="whitespace-normal break-words text-xs font-semibold leading-4 text-slate-200">{currentUser.name || currentUser.username}</div>
+              <div className="mt-0.5 whitespace-normal break-words text-[10px] leading-4 text-slate-400">{managementLabel} · {currentUser.systemRole || currentUser.role}</div>
+              {professionalLabel && <div className="whitespace-normal break-words text-[10px] leading-4 text-violet-300">{professionalLabel}</div>}
             </div>
           )}
         </div>
@@ -237,20 +249,22 @@ export default function PgdcnSidebar({
           <button
             type="button"
             onClick={onOpenPersonalSettings}
-            className="flex-1 py-1.5 text-slate-400 hover:text-blue-400 hover:bg-slate-800/50 rounded-xl transition-all flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 cursor-pointer"
+            className="mobile-touch-target flex min-h-11 min-w-11 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-slate-400 transition-colors hover:bg-slate-800/50 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:min-h-9 lg:min-w-0"
             title="Thiết lập cá nhân"
             aria-label="Thiết lập cá nhân"
           >
-            <User size={14} />
+            <User aria-hidden="true" size={16} />
+            {expanded && <span className="min-w-0 whitespace-normal break-words text-[11px] leading-4">Thiết lập cá nhân</span>}
           </button>
           <button
             type="button"
             onClick={onLogout}
-            className="flex-1 py-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800/50 rounded-xl transition-all flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 cursor-pointer"
+            className="mobile-touch-target flex min-h-11 min-w-11 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-slate-400 transition-colors hover:bg-slate-800/50 hover:text-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:min-h-9 lg:min-w-0"
             title="Đăng xuất"
             aria-label="Đăng xuất"
           >
-            <LogOut size={14} />
+            <LogOut aria-hidden="true" size={16} />
+            {expanded && <span className="min-w-0 whitespace-normal break-words text-[11px] leading-4">Đăng xuất</span>}
           </button>
         </div>
       </div>

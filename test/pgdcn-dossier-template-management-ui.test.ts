@@ -20,7 +20,7 @@ test('management workspace separates PCN and PGD requirements and lifecycle acti
   assert.match(management, /PGD/);
   assert.match(management, /Tìm kiếm|Tìm bộ hồ sơ/);
   assert.match(management, /Đang áp dụng|Bản nháp|Đã ngừng/);
-  assert.match(management, /Tạo revision/);
+  assert.match(management, /Tạo phiên bản mới/);
   assert.match(editor, /Lưu bản nháp/);
   assert.match(management, /requirementIds|requirementCodes/);
   assert.match(editor, /selectedNodeId/);
@@ -40,8 +40,15 @@ test('management workspace guards unsaved visual-editor changes', () => {
   assert.match(management, /window\.confirm/);
 });
 
+test('template management uses the native editor without an Archify preview', () => {
+  assert.match(management, /PgdcnDossierTemplateEditor/);
+  assert.doesNotMatch(management, /PgdcnDossierTemplateArchifyPreview|previewModel|onPreview|Archify/);
+  assert.doesNotMatch(editor, /onPreview|Xem trước Archify|Archify/);
+});
+
 test('settings no longer renders raw JSON workflow editor as the primary surface', () => {
   assert.doesNotMatch(settings, /PcnWorkflowTemplateManagementView/);
   assert.doesNotMatch(settings, /topologyJson|Nodes và transitions \(JSON\)/);
-  assert.match(settings, /Cấu hình PCN/);
+  assert.match(settings, /Cài đặt hệ thống/);
+  assert.match(settings, /PcnUserManagementView/);
 });

@@ -93,9 +93,9 @@ export function DraftingWorkflowOrientation({
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-[13px] font-black text-slate-900">Tiến trình soạn thảo</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">Theo dõi việc cần làm từ chọn mẫu đến đưa tài liệu vào hồ sơ.</p>
+          <p className="mt-0.5 text-xs leading-5 text-slate-600">Theo dõi việc cần làm từ chọn mẫu đến đưa tài liệu vào hồ sơ.</p>
         </div>
-        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${colors.border} ${colors.soft} ${colors.text}`}>Bước {activeStep}/4</span>
+        <span className={`rounded-full border px-2.5 py-1 text-xs font-black ${colors.border} ${colors.soft} ${colors.text}`}>Bước {activeStep}/4</span>
       </div>
       <ol className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {DRAFTING_WORKFLOW_STEPS.map((label, index) => {
@@ -142,13 +142,13 @@ export function DraftingContextStatusBar({
           <p className="mt-0.5 break-words text-[13px] font-bold text-slate-900">{sourceLabel}</p>
           {description ? <p className="mt-1 max-w-3xl text-[12px] leading-5 text-slate-600">{description}</p> : null}
         </div>
-        <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5 text-[11px] font-bold">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center justify-start gap-1.5 text-xs font-bold sm:justify-end">
           <span className="max-w-full break-words rounded-md border border-white/80 bg-white/80 px-2 py-1 text-slate-700">Tài liệu: {documentLabel}</span>
           {statusLabel ? <span className={`max-w-full break-words rounded-md border ${accent.border} bg-white/80 px-2 py-1 ${accent.text}`}>{statusLabel}</span> : null}
           {metadata}
         </div>
       </div>
-      {advancedMetadata ? <details className="mt-2 border-t border-white/80 pt-2 text-[11px] text-slate-600"><summary className="flex cursor-pointer list-none items-center gap-1 font-bold text-slate-600 [&::-webkit-details-marker]:hidden"><ChevronDown size={14} aria-hidden="true" /> Thông tin nâng cao</summary><div className="mt-2 grid gap-1.5 sm:grid-cols-2">{advancedMetadata}</div></details> : null}
+      {advancedMetadata ? <details className="mt-2 border-t border-white/80 pt-2 text-xs text-slate-600"><summary className={`flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-md px-1 py-1 font-bold text-slate-700 focus-visible:outline-none focus-visible:ring-2 ${accent.ring} focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden`}><ChevronDown size={14} aria-hidden="true" /> Thông tin nâng cao</summary><div className="mt-2 grid gap-1.5 sm:grid-cols-2">{advancedMetadata}</div></details> : null}
     </section>
   );
 }
@@ -181,10 +181,10 @@ export function DraftingReadinessPanel({
       <div className="flex items-start gap-2.5">
         <Icon size={18} aria-hidden="true" className={state === 'GENERATING' ? 'mt-0.5 animate-spin' : 'mt-0.5'} />
         <div className="min-w-0 flex-1">
-          <div data-testid={stateTestId} role={state === 'ERROR' ? 'alert' : 'status'} aria-live="polite" aria-atomic="true" className="text-[13px] font-black">{stateLabel}</div>
-          <p className="mt-1 text-[13px] leading-5">{message}</p>
-          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-bold">{metadata}{issueCount > 0 ? <span className="rounded-md border border-amber-200 bg-white/80 px-2 py-1 text-amber-800">Còn {issueCount} mục cần kiểm tra</span> : null}</div>
-          {issues.length > 0 ? <ul data-testid={testId ? `${testId}-issues` : undefined} aria-label="Các trường cần kiểm tra" className="mt-2 space-y-1.5">{issues.map((item) => <li key={`${item.key}-${item.label}`}>{onIssueClick ? <button type="button" onClick={() => onIssueClick(item)} className="flex min-h-11 w-full items-start justify-between gap-3 rounded-md border border-amber-200/80 bg-white/80 px-2.5 py-2 text-left text-[12px] font-semibold text-amber-950 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"><span className="min-w-0"><span>{item.label}</span><span className="mx-1 text-amber-500">·</span>{item.message}</span><span className="shrink-0 text-[11px] font-black text-amber-800">Đi tới trường</span></button> : <div className="rounded-md border border-amber-200/80 bg-white/80 px-2.5 py-2 text-[12px] font-semibold text-amber-950"><span>{item.label}</span><span className="mx-1 text-amber-500">·</span>{item.message}</div>}</li>)}</ul> : null}
+          <div data-testid={stateTestId} role={state === 'ERROR' ? 'alert' : 'status'} className="text-sm font-black">{stateLabel}</div>
+          <p className="mt-1 text-sm leading-5">{message}</p>
+          <div className="mt-2 flex min-w-0 flex-wrap gap-1.5 text-xs font-bold">{metadata}{issueCount > 0 ? <span className="max-w-full break-words rounded-md border border-amber-200 bg-white/80 px-2 py-1 text-amber-800">Còn {issueCount} mục cần kiểm tra</span> : null}</div>
+          {issues.length > 0 ? <ul data-testid={testId ? `${testId}-issues` : undefined} aria-label="Các trường cần kiểm tra" className="mt-2 space-y-1.5">{issues.map((item) => <li key={`${item.key}-${item.label}`}>{onIssueClick ? <button type="button" onClick={() => onIssueClick(item)} className="flex min-h-11 w-full min-w-0 flex-col items-start gap-1 rounded-md border border-amber-200/80 bg-white/80 px-2.5 py-2 text-left text-xs font-semibold text-amber-950 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 sm:flex-row sm:items-start sm:justify-between"><span className="min-w-0 break-words"><span>{item.label}</span><span className="mx-1 text-amber-600">·</span>{item.message}</span><span className="max-w-full self-end text-xs font-black text-amber-800 sm:shrink-0">Đi tới trường</span></button> : <div className="min-w-0 break-words rounded-md border border-amber-200/80 bg-white/80 px-2.5 py-2 text-xs font-semibold text-amber-950"><span>{item.label}</span><span className="mx-1 text-amber-600">·</span>{item.message}</div>}</li>)}</ul> : null}
         </div>
       </div>
     </section>
@@ -215,17 +215,17 @@ export function DraftingFieldSection({
   const colors = ACCENT_CLASSES[accent];
   if (collapsible) {
     return <details data-testid={testId} open={defaultOpen} className={`min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-3 ${className}`}>
-      <summary className={`flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-1 text-[13px] font-black text-slate-900 focus-visible:outline-none focus-visible:ring-2 ${colors.ring} focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden`}>
-        <span className="min-w-0">{title}</span>
-        <span className="flex shrink-0 items-center gap-2 text-[11px] font-bold text-slate-500"><span>{missingCount > 0 ? `Còn ${missingCount} mục thiếu` : 'Đã đủ dữ liệu'}</span><ChevronDown size={15} aria-hidden="true" /></span>
+      <summary className={`flex min-h-11 flex-wrap items-start justify-between gap-x-3 gap-y-1 rounded-md px-1 py-1 text-left text-sm font-black text-slate-900 focus-visible:outline-none focus-visible:ring-2 ${colors.ring} focus-visible:ring-offset-2 sm:flex-nowrap sm:items-center [&::-webkit-details-marker]:hidden`}>
+        <span className="min-w-0 flex-1 break-words">{title}</span>
+        <span className="flex min-w-0 max-w-full items-center gap-2 text-xs font-bold text-slate-600"><span className="break-words">{missingCount > 0 ? `Còn ${missingCount} mục thiếu` : 'Đã đủ dữ liệu'}</span><ChevronDown size={15} aria-hidden="true" className="shrink-0" /></span>
       </summary>
-      <div className="mt-2">{description ? <p className="mb-2 text-[11px] leading-4 text-slate-500">{description}</p> : null}{children}</div>
+      <div className="mt-2">{description ? <p className="mb-2 text-xs leading-5 text-slate-600">{description}</p> : null}{children}</div>
     </details>;
   }
   return (
     <fieldset data-testid={testId} className={`min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-3 ${className}`}>
       <legend className="px-1 text-[13px] font-black text-slate-900">{title}</legend>
-      {description ? <p className="mb-2 text-[11px] leading-4 text-slate-500">{description}</p> : null}
+      {description ? <p className="mb-2 text-xs leading-5 text-slate-600">{description}</p> : null}
       {children}
     </fieldset>
   );
@@ -244,9 +244,9 @@ export function DraftingStickyActionBar({
 }) {
   const colors = ACCENT_CLASSES[accent];
   return (
-    <div data-testid={testId} role="region" aria-label="Thanh thao tác soạn thảo" className={`mobile-safe-bottom drafting-sticky-action-bar sticky bottom-0 z-10 flex flex-col items-stretch justify-between gap-3 border-t ${colors.border} bg-white/95 py-3 backdrop-blur sm:flex-row sm:items-center`}>
-      <div className="min-w-0 text-[12px] leading-5 text-slate-600">{metadata}</div>
-      <div className="flex flex-wrap justify-end gap-2">{children}</div>
+    <div data-testid={testId} role="region" aria-label="Thanh thao tác soạn thảo" className={`mobile-safe-bottom drafting-sticky-action-bar sticky bottom-0 z-10 flex min-w-0 flex-col items-stretch justify-between gap-3 border-t ${colors.border} bg-white/95 py-3 backdrop-blur sm:flex-row sm:items-center`}>
+      <div className="min-w-0 text-xs leading-5 text-slate-600">{metadata}</div>
+      <div className="flex min-w-0 w-full flex-wrap justify-start gap-2 sm:w-auto sm:justify-end [&>*]:max-w-full">{children}</div>
     </div>
   );
 }
@@ -271,7 +271,7 @@ export function DraftingOutputReviewShell({
     <section data-testid={testId} aria-label={title} className="min-w-0 space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm xl:sticky xl:top-4 xl:self-start">
       <header className="border-b border-slate-100 pb-2">
         <h2 className="text-[15px] font-black text-slate-950">{title}</h2>
-        {description ? <p className="mt-1 text-[12px] leading-5 text-slate-500">{description}</p> : null}
+        {description ? <p className="mt-1 text-xs leading-5 text-slate-600">{description}</p> : null}
       </header>
       {children || empty ? <div className={`min-w-0 ${colors.text}`}>{children || empty}</div> : null}
     </section>

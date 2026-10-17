@@ -129,6 +129,9 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target && (target.matches('input, textarea, select') || target.isContentEditable)) return;
+
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setCommandOpen(true);
@@ -376,6 +379,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
 
   return <div className="app-compact flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800">
     <Toaster position="top-right" richColors />
+    <a href="#pgdcn-main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-slate-900 focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500">Bỏ qua điều hướng đến nội dung chính</a>
     <PgdcnSidebar currentUser={currentUser} activeTarget={activeTarget} collapsed={collapsed} mobileOpen={mobileOpen} onToggle={() => setCollapsed((value) => !value)} onNavigate={navigate} onCloseMobile={() => setMobileOpen(false)} onOpenPersonalSettings={() => setPersonalSettingsOpen(true)} onLogout={handleLogout} />
     <div className="flex min-w-0 flex-1 flex-col">
       <header className="app-compact-header flex h-13 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 shadow-xs md:px-5">
@@ -439,9 +443,10 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
           </button>
         </div>
       </header>
-      <main aria-live="polite" aria-label="Không gian làm việc PCN và PGD" className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">{content}</main>
+      <main id="pgdcn-main-content" tabIndex={-1} aria-label="Không gian làm việc PCN và PGD" className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">{content}</main>
     </div>
 <PgdcnCommandPalette open={commandOpen} scopes={scopes} records={commandRecords} onClose={() => setCommandOpen(false)} onNavigate={navigate} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} />
+    <span className="sr-only" aria-live="polite" aria-atomic="true">{getActiveContextLabel(activeTarget)}</span>
     <nav className="sr-only" aria-label="Điều hướng PGDCN">{activeTarget.domain}</nav>
     {personalSettingsOpen && <PcnPersonalSettingsPanel currentUser={currentUser} onClose={() => setPersonalSettingsOpen(false)} />}
   </div>;

@@ -48,12 +48,19 @@ export default function PgdcnCommandPalette({
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    const previouslyFocusedElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setQuery('');
     setSelectedIndex(0);
-    requestAnimationFrame(() => inputRef.current?.focus());
+    const focusFrame = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      if (previouslyFocusedElement?.isConnected) previouslyFocusedElement.focus();
+    };
   }, [open]);
 
   const items = useMemo<PaletteItem[]>(() => {
@@ -138,17 +145,42 @@ export default function PgdcnCommandPalette({
 
   useEffect(() => {
     if (!open) return;
+    listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [filteredItems, open, selectedIndex]);
+
+  useEffect(() => {
+    if (!open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
-      } else if (event.key === 'ArrowDown') {
+      } else if (event.key === 'Tab') {
+        const dialog = dialogRef.current;
+        if (!dialog) return;
+        const focusableElements = Array.from(dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        )).filter((element) => element.getAttribute('aria-hidden') !== 'true');
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+        const focusIsOutsideDialog = !dialog.contains(document.activeElement);
+
+        if (!firstElement) {
+          event.preventDefault();
+          dialog.focus();
+        } else if (event.shiftKey && (document.activeElement === firstElement || focusIsOutsideDialog)) {
+          event.preventDefault();
+          lastElement.focus();
+        } else if (!event.shiftKey && (document.activeElement === lastElement || focusIsOutsideDialog)) {
+          event.preventDefault();
+          firstElement.focus();
+        }
+      } else if (event.target === inputRef.current && event.key === 'ArrowDown') {
         event.preventDefault();
         setSelectedIndex((value) => Math.min(value + 1, Math.max(0, filteredItems.length - 1)));
-      } else if (event.key === 'ArrowUp') {
+      } else if (event.target === inputRef.current && event.key === 'ArrowUp') {
         event.preventDefault();
         setSelectedIndex((value) => Math.max(0, value - 1));
-      } else if (event.key === 'Enter') {
+      } else if (event.target === inputRef.current && event.key === 'Enter') {
         event.preventDefault();
         filteredItems[selectedIndex]?.action();
       }
@@ -160,14 +192,18 @@ export default function PgdcnCommandPalette({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-950/45 px-3 pt-[12vh] backdrop-blur-[2px]" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section role="dialog" aria-modal="true" aria-labelledby="pgdcn-command-palette-title" className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-        <div className="flex items-center gap-2 border-b border-slate-200 px-3">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto overscroll-contain bg-slate-950/45 px-3 py-4 pt-[max(1rem,8dvh)] backdrop-blur-[2px]" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="pgdcn-command-palette-title" tabIndex={-1} className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-3">
           <Search size={18} className="shrink-0 text-slate-400" aria-hidden="true" />
           <label htmlFor="pgdcn-command-palette-input" className="sr-only">Tìm nhanh</label>
           <input
             ref={inputRef}
             id="pgdcn-command-palette-input"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="true"
+            aria-haspopup="listbox"
             value={query}
             onChange={(event) => { setQuery(event.target.value); setSelectedIndex(0); }}
             placeholder="Tìm hồ sơ, workspace hoặc hành động…"
@@ -180,11 +216,11 @@ export default function PgdcnCommandPalette({
             <X size={18} aria-hidden="true" />
           </button>
         </div>
-        <div className="flex items-center justify-between gap-2 px-4 py-2 text-[11px] text-slate-500">
+        <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2 text-[11px] text-slate-500">
           <h2 id="pgdcn-command-palette-title" className="font-bold">Tìm nhanh trong PGDCN</h2>
           <span>↑↓ chọn · Enter mở</span>
         </div>
-        <div id="pgdcn-command-palette-list" role="listbox" aria-label="Kết quả tìm nhanh" className="max-h-[55vh] overflow-y-auto border-t border-slate-100 p-2">
+        <div ref={listRef} id="pgdcn-command-palette-list" role="listbox" aria-label="Kết quả tìm nhanh" className="min-h-0 max-h-[55dvh] flex-1 overflow-y-auto overscroll-contain border-t border-slate-100 p-2">
           {filteredItems.map((item, index) => (
             <button
               key={item.id}

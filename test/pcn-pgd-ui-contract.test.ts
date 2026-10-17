@@ -27,7 +27,7 @@ test('PGD workspace has its own shell/sidebar and does not import PCN catalog st
   assert.match(workspace, /PGD_GROUP_LABELS|pgd-selected-group-code/);
   assert.match(workspace, /PgdDossierFlow/);
   assert.match(workspace, /PgdDossierStepWorkPanel/);
-  assert.match(read('components/PgdWorkflowMap.tsx'), /PcnArchifyWorkflowEmbed/);
+  assert.doesNotMatch(workspace, /PgdWorkflowMap|PcnArchifyWorkflowEmbed/);
   assert.match(workspace, /getPgdOperationalStepAccess/);
   assert.match(workspace, /validatePgdResultValues/);
   assert.match(workspace, /buildPgdFieldInspection/);
@@ -59,23 +59,17 @@ test('PCN user administration exposes the shared PCN/PGD scope and PGD role', ()
   assert.match(source, /PGD_ADMIN|PGD_MANAGER/);
 });
 
-test('PCN and PGD Archify routes preserve auth-before-query validation and all diagram types', () => {
+test('PCN and PGD dossier details use native workflows without Archify server routes', () => {
+  const pcnDetail = read('components/PcnDossierWorkflowPanel.tsx');
+  const pgdDetail = read('components/PgdWorkspace.tsx');
   const server = read('server.legacy.ts');
-  assert.match(server, /ARCHIFY_DIAGRAM_TYPES/);
-  assert.match(server, /from ['"]\.\/utils\/archifyDiagram\.ts['"]/);
-
-  for (const [route, guard, idCheck] of [
-    ['/api/pcn/dossiers/:dossierId/archify', 'requirePcnSession', 'isSafePcnSampleKey'],
-    ['/api/pgd/requests/:requestId/archify', 'requirePgdSession', 'requestId.length > 240'],
-  ]) {
-    const start = server.indexOf(`app.get('${route}'`);
-    assert.ok(start >= 0, route);
-    const body = server.slice(start, server.indexOf("\n  });", start) + 5);
-    assert.ok(body.indexOf(guard) < body.indexOf('parseArchifyDiagramType'), `${route} parses only after auth`);
-    assert.match(body, new RegExp(idCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-    assert.match(body, /build(?:Pcn|Pgd)ArchifyDiagramSuite/);
-    assert.match(body, /suite\[diagramType\]/);
-    assert.match(body, /private, no-store/);
-    assert.match(body, /status\(409\)\.json\(\{ error, diagram: diagramType, reason \}\)/);
-  }
+  assert.match(pcnDetail, /import PcnDossierFlow.*from ['"]\.\/PcnDossierFlow['"]/);
+  assert.match(pcnDetail, /<PcnDossierFlow\b/);
+  assert.match(pgdDetail, /import PgdDossierFlow.*from ['"]\.\/PgdDossierFlow['"]/);
+  assert.match(pgdDetail, /import PgdDossierStepWorkPanel from ['"]\.\/PgdDossierStepWorkPanel['"]/);
+  assert.match(pgdDetail, /<PgdDossierFlow\b/);
+  assert.match(pgdDetail, /<PgdDossierStepWorkPanel\b/);
+  assert.doesNotMatch(pcnDetail, /PcnArchifyWorkflowEmbed|PgdWorkflowMap/);
+  assert.doesNotMatch(pgdDetail, /PcnArchifyWorkflowEmbed|PgdWorkflowMap/);
+  assert.doesNotMatch(server, /archify/i);
 });

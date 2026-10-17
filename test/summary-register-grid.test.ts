@@ -156,6 +156,27 @@ test('PGD summary renders completion and explicit received-year filters and save
   assert.match(source, /setCompletion\([^)]*values\.completion/);
   assert.match(source, /setReceivedYear\([^)]*values\.receivedYear/);
 });
+
+test('PGD summary keeps mobile layout bounded and its filters accessible and touch sized', () => {
+  const markup = renderToStaticMarkup(createElement(PgdSummaryRegisterView, {
+    requests: [pgdRequestFixture],
+    assignments: [], samples: [], labRequests: [], labResults: [], reports: [], certificates: [],
+    catalog: [], users: [], canEdit: false,
+    onOpenRequest: () => undefined,
+    onUpdateRequest: async () => pgdRequestFixture,
+    onAssignOwner: async () => pgdRequestFixture,
+  }));
+
+  assert.match(markup, /class="min-w-0 max-w-full"/);
+  assert.match(markup, /class="[^"]*sm:hidden"[^>]*>Vuốt ngang để xem thêm cột/);
+  const filterSelects = [...markup.matchAll(/<select aria-label="(Lọc [^"]+ Sổ tổng hợp PGD)"([^>]*)>/g)];
+  assert.equal(filterSelects.length, 6, 'all six PGD filters have explicit accessible names');
+  for (const [, label, attributes] of filterSelects) {
+    assert.match(attributes, /class="pgdcn-toolbar-filter min-w-0 w-full min-h-11 /, `${label} has a mobile touch target`);
+    assert.match(attributes, /focus-visible:ring-2 focus-visible:ring-emerald-500/, `${label} has a visible keyboard focus ring`);
+  }
+});
+
 test('PGD request invoice remains read-only while registry invoice has its own editable cell', () => {
   const request = {
     ...pgdRequestFixture,

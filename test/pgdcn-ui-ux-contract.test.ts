@@ -90,7 +90,13 @@ test('common high-impact controls use a visible focus ring and readable decision
   assert.match(pgdAssistant, /text-\[11px\] font-black text-blue-800[^\"]*focus-visible:ring-2[^\n]*Tổng hợp phiên hiện trường/);
 
   const pcnAssistant = sources[2];
-  assert.match(pcnAssistant, /text-\[11px\] font-black text-white[^\n]*Xác nhận hồ sơ/);
+  const primaryAssistantAction = pcnAssistant.match(/<button type="button" onClick=\{\(\) => void startReview\(\)\}[^>]*>[\s\S]*?<\/button>/);
+  assert.ok(primaryAssistantAction, 'PCN assistant primary review action should be present');
+  assert.match(primaryAssistantAction[0], /starting \? 'Đang soát xét bằng AI\.\.\.' : 'Bắt đầu soát xét bằng AI'/);
+  assert.match(primaryAssistantAction[0], /w-full/);
+  assert.match(primaryAssistantAction[0], /text-base/);
+  assert.match(pcnAssistant, /Chỉ đọc: AI đọc hồ sơ và đánh giá hỗ trợ; không xác nhận hồ sơ hoặc thay đổi trạng thái\./);
+  assert.doesNotMatch(pcnAssistant, /bấm Xác nhận/);
   assert.match(pcnAssistant, /text-\[11px\] font-black text-rose-800[^\"]*focus-visible:ring-2[^\n]*Hồ sơ còn thiếu/);
 
   const approval = sources[3];
@@ -111,7 +117,11 @@ test('login renders the two real organization logos and a short responsive form 
   assert.match(markup, /src="\/icons\/iemm-logo-192\.png"[^>]*alt="Logo IEMM"/);
   assert.match(markup, /src="\/icons\/tvci-icon-192\.png"[^>]*alt="Logo TVCI"/);
   assert.match(markup, /<h1[^>]*>Đăng nhập<\/h1>/);
-  assert.match(markup, /Phòng Giám định - Chứng nhận - Phát triển thị trường/);
+  // Before: this expected a hyphen where the rendered tagline uses “và”.
+  const organizationTagline = markup.match(/<p\b[^>]*>([\s\S]*?)<\/p>/)?.[1] || '';
+  assert.match(organizationTagline, /Phòng Giám định/);
+  assert.match(organizationTagline, /Chứng nhận/);
+  assert.match(organizationTagline, /Phát triển thị trường/);
   assert.match(markup, /max-w-md/);
   assert.match(markup, /min-h-11 w-full/);
   assert.doesNotMatch(markup, /admin@example\.com|password123|Mật khẩu mẫu/i);
@@ -147,7 +157,7 @@ test('domain navigation keeps aria-current and uses distinct PCN, PGD, and share
   const sharedButton = buttonWithLabel(sharedMarkup, 'Tổng quan');
 
   assert.match(pcnButton, /aria-current="page"/);
-  assert.match(pcnButton, /bg-emerald-600/);
+  assert.match(pcnButton, /bg-emerald-700/);
   assert.match(pgdButton, /aria-current="page"/);
   assert.match(pgdButton, /bg-blue-600/);
   assert.match(sharedButton, /aria-current="page"/);

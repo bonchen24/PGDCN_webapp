@@ -29,33 +29,66 @@ const STATUS_TONE_CLASS: Record<NonNullable<PgdcnDossierDocumentActionRow['statu
 
 export default function PgdcnDossierDocumentActionTable({ rows, testId, emptyLabel = 'Chưa có tài liệu cần xử lý ở bước này.', renderRow }: Props) {
   return (
-    <div className="mobile-scroll-x overflow-x-auto rounded-lg border border-slate-200 bg-white" data-testid={testId}>
+    <div className="min-w-0 rounded-lg border border-slate-200 bg-white" data-testid={testId}>
       {rows.length > 0 ? (
-        <table className="min-w-[760px] w-full border-collapse text-left text-[10px]">
-          <caption className="sr-only">Danh sách tài liệu cần hoàn thiện</caption>
-          <thead className="bg-slate-50 text-[9px] font-black uppercase tracking-wide text-slate-500">
-            <tr>
-              <th scope="col" className="w-36 border-b border-slate-200 px-3 py-2">Bước</th>
-              <th scope="col" className="border-b border-slate-200 px-3 py-2">Tài liệu cần có</th>
-              <th scope="col" className="w-28 border-b border-slate-200 px-3 py-2">Trạng thái</th>
-              <th scope="col" className="w-40 border-b border-slate-200 px-3 py-2">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => renderRow ? renderRow(row) : (
-              <tr key={row.id} className="align-top transition-colors hover:bg-blue-50/40">
-                <td className="border-b border-slate-100 px-3 py-2.5 font-semibold text-slate-500">{row.step}</td>
-                <th scope="row" className="border-b border-slate-100 px-3 py-2.5 font-semibold text-slate-800">
-                  <span>{row.title}{row.required ? <span aria-hidden="true" className="ml-1 text-rose-600">*</span> : null}</span>
-                  {row.required ? <span className="ml-2 text-[9px] font-normal text-rose-600">Bắt buộc</span> : <span className="ml-2 text-[9px] font-normal text-slate-400">Tùy chọn</span>}
-                  {row.detail ? <div className="mt-1 text-[9px] font-normal leading-4 text-slate-500">{row.detail}</div> : null}
-                </th>
-                <td className="border-b border-slate-100 px-3 py-2.5"><span className={`inline-flex min-h-7 items-center rounded-full border px-2 py-1 text-[9px] font-black ${STATUS_TONE_CLASS[row.statusTone || 'neutral']}`}>{row.status}</span></td>
-                <td className="border-b border-slate-100 px-3 py-2.5">{row.action}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          {renderRow ? (
+            <span id={`${testId}-render-row-scroll-help`} className="sr-only">Kéo ngang để xem thêm các cột.</span>
+          ) : null}
+          <div
+            className={renderRow
+              ? 'mobile-scroll-x min-w-0 max-w-full overflow-x-auto overscroll-x-contain touch-pan-x rounded-b-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500'
+              : 'min-w-0 max-w-full'}
+            role={renderRow ? 'region' : undefined}
+            aria-label={renderRow ? 'Bảng tài liệu cần xử lý, cuộn ngang để xem các cột khác' : undefined}
+            aria-describedby={renderRow ? `${testId}-render-row-scroll-help` : undefined}
+            tabIndex={renderRow ? 0 : undefined}
+          >
+            <table className={renderRow
+              ? 'min-w-[760px] w-full border-collapse text-left text-sm'
+              : 'block w-full min-w-0 border-collapse text-left text-sm md:table'}>
+              <caption className="sr-only">Danh sách tài liệu cần hoàn thiện</caption>
+              <thead className={renderRow
+                ? 'bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-500'
+                : 'sr-only bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-500 md:not-sr-only md:table-header-group'}>
+                <tr>
+                  <th scope="col" className="w-36 border-b border-slate-200 px-3 py-2">Bước</th>
+                  <th scope="col" className="border-b border-slate-200 px-3 py-2">Tài liệu cần có</th>
+                  <th scope="col" className="w-28 border-b border-slate-200 px-3 py-2">Trạng thái</th>
+                  <th scope="col" className="w-40 border-b border-slate-200 px-3 py-2">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className={renderRow ? undefined : 'block space-y-2 md:table-row-group md:space-y-0'}>
+                {rows.map((row) => renderRow ? renderRow(row) : (
+                  <tr key={row.id} className="block min-w-0 rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:bg-blue-50/40 md:table-row md:rounded-none md:border-0 md:p-0 md:shadow-none">
+                    <td className="flex min-w-0 items-start gap-2 break-words border-0 px-0 py-1 font-semibold text-slate-500 md:table-cell md:border-b md:border-slate-100 md:px-3 md:py-1">
+                      <span aria-hidden="true" className="w-24 shrink-0 text-xs font-black uppercase tracking-wide text-slate-500 md:hidden">Bước</span>
+                      <span className="min-w-0 break-words">{row.step}</span>
+                    </td>
+                    <th scope="row" className="block min-w-0 break-words border-0 px-0 py-1 font-semibold text-slate-800 md:table-cell md:border-b md:border-slate-100 md:px-3 md:py-1">
+                      <span aria-hidden="true" className="mb-0.5 block text-xs font-black uppercase tracking-wide text-slate-500 md:hidden">Tài liệu cần có</span>
+                      <span>{row.title}{row.required ? <span aria-hidden="true" className="ml-1 text-rose-600">*</span> : null}</span>
+                      {row.required ? <span className="ml-2 text-xs font-normal text-rose-600">Bắt buộc</span> : <span className="ml-2 text-xs font-normal text-slate-500">Tùy chọn</span>}
+                      {row.detail ? <div className="mt-1 break-words text-xs font-normal leading-5 text-slate-600">{row.detail}</div> : null}
+                    </th>
+                    <td className="flex min-w-0 items-center gap-2 border-0 px-0 py-1 md:table-cell md:border-b md:border-slate-100 md:px-3 md:py-1">
+                      <span aria-hidden="true" className="w-24 shrink-0 text-xs font-black uppercase tracking-wide text-slate-500 md:hidden">Trạng thái</span>
+                      {row.status ? <span className={`inline-flex min-h-8 items-center rounded-full border px-2.5 py-1 text-xs font-black max-w-full whitespace-normal break-words ${STATUS_TONE_CLASS[row.statusTone || 'neutral']}`}>{row.status}</span> : null}
+                    </td>
+                    <td className="flex min-w-0 flex-wrap items-center gap-2 border-0 px-0 py-1 md:table-cell md:border-b md:border-slate-100 md:px-3 md:py-1">
+                      {row.action !== null && row.action !== undefined ? (
+                        <>
+                          <span aria-hidden="true" className="w-24 shrink-0 text-xs font-black uppercase tracking-wide text-slate-500 md:hidden">Hành động</span>
+                          <div className="min-w-0 max-w-full flex-1 md:flex-none">{row.action}</div>
+                        </>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       ) : <p className="p-4 text-xs text-slate-500">{emptyLabel}</p>}
     </div>
   );

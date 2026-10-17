@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
+import PgdcnCommandPalette from '../components/PgdcnCommandPalette';
 import { rememberPgdcnRecentRecord, type PgdcnRecentRecord } from '../utils/pgdcnRecent';
 import { upsertPgdcnSavedFilter } from '../utils/pgdcnSavedFilters';
 
@@ -38,8 +41,28 @@ test('Phase 3 context entry points are wired to live dashboard, Data View, and A
   assert.match(dashboard, /pgdcn-dashboard-recent-items/);
   assert.match(grid, /saved-filter-toolbar/);
   assert.match(grid, /readPgdcnSavedFilters/);
-  assert.match(appShell, /Ctrl K/);
+  assert.match(appShell, /if\s*\(\(event\.ctrlKey\s*\|\|\s*event\.metaKey\)\s*&&\s*event\.key\.toLowerCase\(\)\s*===\s*'k'\)\s*\{\s*event\.preventDefault\(\);\s*setCommandOpen\(true\);/);
   assert.match(appShell, /recentRecords=\{recentRecords\}/);
   assert.match(palette, /aria-modal="true"/);
   assert.match(palette, /ArrowDown/);
+});
+
+test('command palette renders an announced combobox with a viewport-bounded result list', () => {
+  const markup = renderToStaticMarkup(createElement(PgdcnCommandPalette, {
+    open: true,
+    scopes: ['PCN', 'PGD'],
+    records: [],
+    onClose: () => {},
+    onNavigate: () => {},
+    onOpenPcn: () => {},
+    onOpenPgd: () => {},
+    onOpenPcnWorkspace: () => {},
+    onOpenPgdWorkspace: () => {},
+  }));
+
+  assert.match(markup, /role="combobox"[^>]*aria-autocomplete="list"[^>]*aria-expanded="true"[^>]*aria-controls="pgdcn-command-palette-list"/);
+  assert.match(markup, /aria-activedescendant="pgdcn-command-option-dashboard"/);
+  assert.match(markup, /id="pgdcn-command-palette-list"[^>]*role="listbox"/);
+  assert.match(markup, /id="pgdcn-command-option-dashboard"[^>]*role="option"[^>]*aria-selected="true"/);
+  assert.match(markup, /max-h-\[calc\(100dvh-2rem\)\]/);
 });

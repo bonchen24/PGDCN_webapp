@@ -67,6 +67,13 @@ test('pipeline segments reconcile with the loaded source total including unknown
 });
 
 test('shared dashboard exposes the action-first layout contract without AI or activity buttons', () => {
+  const kpi = source.slice(source.indexOf('function Kpi'), source.indexOf('function CommandHeader'));
+  const workItem = source.slice(source.indexOf('function WorkItemCard'), source.indexOf('function MyWorkSection'));
+  const attention = source.slice(source.indexOf('function AttentionQueue'), source.indexOf('function DomainPipelineCard'));
+  const domainCard = source.slice(source.indexOf('function DomainPipelineCard'), source.indexOf('function DomainPipeline('));
+  const recent = source.slice(source.indexOf('function RecentItemsSection'), source.indexOf('function UpcomingMilestones'));
+  const upcoming = source.slice(source.indexOf('function UpcomingMilestones'), source.indexOf('function SharedNotifications'));
+
   assert.match(source, /data-testid="pgdcn-dashboard-my-work"/);
   assert.match(source, /data-testid="pgdcn-dashboard-kpi-grid"/);
   assert.match(source, /data-testid="pgdcn-dashboard-notifications"/);
@@ -79,6 +86,45 @@ test('shared dashboard exposes the action-first layout contract without AI or ac
   assert.doesNotMatch(source, />\s*Nhật ký hoạt động\s*</);
   assert.match(source, /onOpenPcnWorkspace/);
   assert.match(source, /onOpenPgdWorkspace/);
+
+  assert.doesNotMatch(kpi, /className="truncate/);
+  assert.match(kpi, /break-words text-\[11px\]/);
+  assert.match(workItem, /px-3[\s\S]*?text-sm font-semibold text-white/);
+  assert.match(attention, /flex min-w-0 flex-wrap items-center gap-2/);
+  assert.match(attention, /break-words text-sm font-semibold text-slate-800/);
+  assert.match(attention, /text-sm font-bold text-slate-700/);
+  assert.match(domainCard, /block break-words text-xs font-bold leading-4 text-slate-500/);
+  assert.match(domainCard, /px-3 text-sm font-bold/);
+  assert.match(recent, /flex min-w-0 flex-wrap items-start gap-2/);
+  assert.match(recent, /break-words text-sm font-semibold text-slate-800/);
+  assert.match(recent, /break-words text-xs text-slate-600/);
+  assert.match(recent, /<button\b[^>]*\btype="button"/);
+  assert.match(upcoming, /flex min-w-0 flex-wrap items-start gap-2/);
+  assert.match(upcoming, /flex min-h-16 w-full min-w-0 items-start gap-2/);
+  assert.match(upcoming, /block break-words text-sm font-semibold text-slate-800/);
+  assert.match(upcoming, /items.length === 0 && <p className="py-8 text-center text-sm text-slate-500"/);
+  assert.match(upcoming, /type="button"/);
+  assert.match(upcoming, /aria-label=\{`Mở \$\{item\.domain\} \$\{item\.label\}`\}/);
+});
+
+test('my work keeps projection details in stacked mobile records and compact desktop rows', () => {
+  const workItem = source.slice(source.indexOf('function WorkItemCard'), source.indexOf('function MyWorkSection'));
+  const myWork = source.slice(source.indexOf('function MyWorkSection'), source.indexOf('function AttentionQueue'));
+
+  assert.match(workItem, /grid-cols-1[\s\S]*lg:grid-cols-\[minmax\(0,1\.45fr\)_minmax\(0,0\.8fr\)_minmax\(0,1\.1fr\)_minmax\(0,0\.75fr\)_minmax\(0,1fr\)\]/);
+  for (const label of ['Mã hồ sơ / khách hàng', 'Trạng thái', 'Bước hiện tại', 'Hạn xử lý', 'Hành động tiếp theo']) {
+    assert.ok(workItem.includes(label), `Missing work row label: ${label}`);
+  }
+  for (const field of ['item.label', 'item.customerName', 'item.statusLabel', 'item.currentStepLabel', 'item.dueLabel', 'item.nextAction.label', 'item.nextAction.description']) {
+    assert.ok(workItem.includes(field), `Missing live projection field: ${field}`);
+  }
+  assert.match(workItem, /PgdcnStatusBadge domain=\{item\.domain\} status=\{item\.status\} label=\{item\.statusLabel\}/);
+  assert.match(workItem, /onClick=\{\(\) => isPcn \? onOpenPcn\(item\.id\) : onOpenPgd\(item\.id\)\}/);
+  assert.match(workItem, /aria-label=\{item\.nextAction\.label \+ ' ' \+ item\.label\}/);
+  assert.match(workItem, /mobile-touch-target[^"']*min-h-11/);
+  assert.match(myWork, /const buckets = \['OVERDUE', 'TODAY', 'MY_TURN', 'APPROVAL', 'RECENT'\]/);
+  assert.match(myWork, /projection\.buckets\[bucket\]/);
+  assert.match(myWork, /role="table" aria-label=\{WORK_BUCKET_LABELS\[bucket\]\}/);
 });
 
 test('shared shell wires business dashboard actions to canonical workspaces', () => {

@@ -13,7 +13,7 @@ test('shared shell owns department dashboard, assistant and activity surfaces', 
 
 test('shared sidebar renders both domain groups from department scopes', () => {
   const source = read('../components/PgdcnSidebar.tsx');
-  for (const marker of ['Tổng quan phòng', 'Trợ lý AI', 'Nhật ký hoạt động', 'CHỨNG NHẬN (PCN)', 'GIÁM ĐỊNH (PGD)', 'departmentScopes', 'aria-current', 'mobile-touch-target']) {
+  for (const marker of ['Tổng quan', 'Trợ lý AI', 'Nhật ký hệ thống', "section: 'activityLogs'", 'aria-label="Chứng nhận PCN"', 'aria-label="Giám định PGD"', 'departmentScopes', 'aria-current', 'mobile-touch-target']) {
     assert.ok(source.includes(marker), `Missing shared sidebar marker: ${marker}`);
   }
   assert.doesNotMatch(source, /Cài đặt PCN|Cài đặt PGD/);
@@ -27,7 +27,7 @@ test('shared system settings remains available without a PGD settings route', ()
 
 test('department dashboard exposes six KPIs, domain cards and a shared activity entrypoint', () => {
   const source = read('../components/PgdcnDashboardView.tsx');
-  for (const marker of ['data-testid="pgdcn-dashboard-kpi-grid"', 'Hồ sơ PCN', 'Hồ sơ PGD', 'PCN cần xử lý', 'PGD cần xử lý', 'Hồ sơ cần AI hỗ trợ', 'Quá hạn / cần chú ý', 'Việc cần chú ý']) {
+  for (const marker of ['data-testid="pgdcn-dashboard-kpi-grid"', 'Hồ sơ PCN', 'Hồ sơ PGD', 'PCN cần xử lý', 'PGD cần xử lý', 'Cần AI hỗ trợ', 'Quá hạn / chú ý', 'Việc cần chú ý']) {
     assert.ok(source.includes(marker), `Missing dashboard marker: ${marker}`);
   }
   assert.doesNotMatch(source, /Nhật ký hoạt động/);
@@ -40,7 +40,7 @@ test('department dashboard exposes six KPIs, domain cards and a shared activity 
 test('shared shell exposes a readable active context for the current target', () => {
   const source = read('../components/PgdcnAppShell.tsx');
   assert.match(source, /activeTarget\.section/);
-  assert.match(source, /Tổng quan phòng/);
+  assert.match(source, /Tổng quan/);
   assert.match(source, /aria-label/);
 });
 
@@ -57,10 +57,16 @@ test('domain workspaces support embedded mode and shared-shell section control',
 test('shared shell provides mobile navigation, sync status and explicit domain context', () => {
   const shell = read('../components/PgdcnAppShell.tsx');
   const sidebar = read('../components/PgdcnSidebar.tsx');
+  const dashboard = read('../components/PgdcnDashboardView.tsx');
+  const pcnWorkspace = read('../components/PcnWorkspace.tsx');
+  const pgdWorkspace = read('../components/PgdWorkspace.tsx');
   assert.match(shell, /pgdcn-mobile-nav/);
   assert.match(shell, /aria-label=.*PCN.*PGD/);
-  assert.match(shell, /aria-live="polite"/);
-  assert.match(shell, /mobile-safe-bottom/);
+  assert.match(shell, /id="pgdcn-main-content" tabIndex=\{-1\}/);
+  assert.match(shell, /<span className="sr-only" aria-live="polite" aria-atomic="true">\{getActiveContextLabel\(activeTarget\)\}<\/span>/);
+  assert.match(dashboard, /mobile-safe-bottom/);
+  assert.match(pcnWorkspace, /mobile-safe-bottom/);
+  assert.match(pgdWorkspace, /data-testid="pgd-dossier-mobile-footer" className="mobile-safe-bottom/);
   assert.ok(sidebar.includes('bg-slate-950/95'));
   assert.ok(sidebar.includes('aria-label='));
 });

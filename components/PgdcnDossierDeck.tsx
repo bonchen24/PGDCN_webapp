@@ -285,12 +285,12 @@ export function PgdcnDossierCardHeader({
   const deadlineDisplay = item.deadlineDisplay || item.targetDate;
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="grid grid-cols-1 gap-2 md:grid-cols-4 md:items-center md:gap-x-4 md:gap-y-2">
       {/* ================================================================== */}
       {/* ZONE 1: HEADER (Primary Code, Status Badge, Tags, Quick Actions)   */}
       {/* ================================================================== */}
-      <div data-testid="dossier-header-zone" className="flex flex-wrap items-start gap-2">
-        <div className="flex items-center flex-wrap gap-1.5 min-w-0 flex-1">
+      <div data-testid="dossier-header-zone" className="flex flex-wrap items-start gap-2 md:col-span-4 md:items-center">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           {/* Icon box compact 24px */}
           <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 shadow-xs bg-gradient-to-br from-slate-50 to-white text-slate-500 border border-slate-100">
             {item.domain === 'PCN' ? (
@@ -301,13 +301,13 @@ export function PgdcnDossierCardHeader({
           </div>
 
           {/* Primary Dossier Code */}
-          <h3 className="text-[11px] font-black text-slate-800 leading-none uppercase tracking-widest">
+          <h3 className="min-w-0 break-words text-xs font-black leading-tight tracking-wide text-slate-900 uppercase md:text-sm">
             <HighlightText text={item.primaryCode} search={searchQuery} />
           </h3>
 
           {/* Secondary Code if present */}
           {item.secondaryCode && (
-            <span className="font-mono text-[9px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200/60">
+            <span className="break-words rounded border border-slate-200/60 bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-600">
               <HighlightText text={item.secondaryCode} search={searchQuery} />
             </span>
           )}
@@ -317,31 +317,25 @@ export function PgdcnDossierCardHeader({
 
           {/* Sample count or batch size label */}
           {item.sampleCountLabel && (
-            <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[8px] border border-slate-200/50 shadow-xs font-bold">
+            <span className="rounded border border-slate-200/50 bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 shadow-xs">
               {item.sampleCountLabel}
             </span>
           )}
 
           {/* Registration Date */}
           {item.regDateDisplay && (
-            <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[8px] border border-slate-200/50 shadow-xs font-bold" title="Ngày tiếp nhận/đăng ký">
+            <span className="rounded border border-slate-200/50 bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 shadow-xs" title="Ngày tiếp nhận/đăng ký">
               {item.regDateDisplay}
             </span>
           )}
 
           {/* Domain / Field / Catalog Badge */}
           {item.fieldOrCatalogBadge && (
-            <span className="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[8px] font-black tracking-wide text-blue-700 uppercase">
+            <span className="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-blue-700 uppercase">
               {item.fieldOrCatalogBadge}
             </span>
           )}
 
-          {/* Deadline Badge */}
-          {deadlineDisplay && (
-            <span className="text-[9px] font-black text-blue-700 bg-blue-50/80 px-1.5 py-0.5 rounded border border-blue-100 uppercase shadow-xs whitespace-nowrap" title="Hạn hoàn tất">
-              {deadlineDisplay}
-            </span>
-          )}
         </div>
 
         {/* Quick Actions (Zone 1 Right) */}
@@ -360,47 +354,52 @@ export function PgdcnDossierCardHeader({
       {/* ================================================================== */}
       {/* ZONE 2: PRIMARY METADATA (Customer, Product, Brand, Assignee)      */}
       {/* ================================================================== */}
-      <div data-testid="dossier-metadata-zone" className="space-y-0.5 mt-0.5">
+      <div data-testid="dossier-metadata-zone" className="mt-0.5 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 md:col-span-3 md:row-start-2 md:mt-0 lg:grid-cols-4">
         {/* Customer Name */}
-        <p className="text-[10px] text-slate-800 font-bold truncate leading-tight" title={item.customerName}>
-          <HighlightText text={item.customerName || 'Chưa gắn khách hàng'} search={searchQuery} />
-        </p>
+        <div className="min-w-0">
+          <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wide text-slate-500">Khách hàng</span>
+          <p className="break-words text-[11px] font-bold leading-snug text-slate-900 md:text-xs" title={item.customerName || 'Chưa gắn khách hàng'}>
+            <HighlightText text={item.customerName || 'Chưa gắn khách hàng'} search={searchQuery} />
+          </p>
+        </div>
 
         {/* Product / Object / Subject */}
-        <p className="text-[10px] text-slate-600 font-medium truncate leading-tight" title={item.productName}>
-          <HighlightText text={item.productName || 'Chưa có đối tượng'} search={searchQuery} />
-        </p>
+        <div className="min-w-0">
+          <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wide text-slate-500">Đối tượng</span>
+          <p className="break-words text-[11px] font-medium leading-snug text-slate-700 md:text-xs" title={item.productName || 'Chưa có đối tượng'}>
+            <HighlightText text={item.productName || 'Chưa có đối tượng'} search={searchQuery} />
+          </p>
+        </div>
 
-        {/* Brand / Lot / Operational Badges */}
-        <div className="flex flex-wrap items-center gap-1.5 text-[9px] text-slate-500 pt-0.5">
-          {item.brandOrGroup && (
-            <span className="bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 rounded text-amber-900 font-bold text-[8px] uppercase tracking-wider">
-              {item.brandOrGroup}
-            </span>
-          )}
+        <div className="min-w-0">
+          <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wide text-slate-500">Bước nghiệp vụ</span>
+          <p className="break-words text-[11px] font-medium leading-snug text-slate-700 md:text-xs" title={item.currentStepLabel || 'Chưa có dữ liệu'}>
+            {item.currentStepLabel || 'Chưa có dữ liệu'}
+          </p>
+        </div>
 
-          {item.ownerName && (
-            <span className="inline-flex items-center gap-1 font-semibold text-slate-600">
-              <User size={10} className="text-slate-400" />
-              <span>Người phụ trách: <strong className="text-slate-800">{item.ownerName}</strong></span>
-            </span>
-          )}
-
-          {item.currentStepLabel && (
-            <span className="font-medium text-slate-500">
-              · Bước: <strong className="text-slate-700">{item.currentStepLabel}</strong>
-            </span>
-          )}
+        <div className="min-w-0">
+          <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wide text-slate-500">Người phụ trách</span>
+          <p className="flex min-w-0 items-start gap-1 break-words text-[11px] font-medium leading-snug text-slate-700 md:text-xs" title={item.ownerName || 'Chưa có dữ liệu'}>
+            <User size={12} className="mt-0.5 shrink-0 text-slate-400" aria-hidden="true" />
+            <span className="min-w-0 break-words">{item.ownerName || 'Chưa có dữ liệu'}</span>
+          </p>
         </div>
       </div>
 
       {/* ================================================================== */}
       {/* ZONE 3: PROGRESS (Thin 1-line progress bar like DDT)               */}
       {/* ================================================================== */}
-      <div data-testid="dossier-progress-zone" className="mt-1">
-        <div className="flex items-center gap-2">
+      <div data-testid="dossier-progress-zone" className="mt-1 min-w-0 space-y-1.5 md:col-start-4 md:row-start-2 md:mt-0">
+        <div className="flex min-w-0 items-start justify-between gap-2">
+          <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-slate-500">Hạn hoàn tất</span>
+          <span className="min-w-0 break-words text-right text-[10px] font-bold text-blue-800 md:text-[11px]">
+            {deadlineDisplay || 'Chưa có dữ liệu'}
+          </span>
+        </div>
+        <div className="flex min-w-0 items-center gap-2">
           <div
-            className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden"
+            className="h-1 min-w-8 flex-1 overflow-hidden rounded-full bg-slate-100"
             role="progressbar"
             aria-valuenow={item.completenessPercent}
             aria-valuemin={0}
@@ -417,27 +416,34 @@ export function PgdcnDossierCardHeader({
               style={{ width: `${Math.min(100, Math.max(0, item.completenessPercent))}%` }}
             />
           </div>
-          <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 shrink-0">
+          <span className="shrink-0 text-[10px] font-bold text-slate-600">
             {item.completenessLabel || `${item.completenessPercent}%`}
           </span>
-          {item.missingRequiredCount && item.missingRequiredCount > 0 ? (
-            <span className="text-[8px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200/60 shrink-0">
-              Thiếu {item.missingRequiredCount} tài liệu
-            </span>
-          ) : (
-            <span className="text-[8px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60 shrink-0">
-              Đủ tài liệu
-            </span>
-          )}
         </div>
+        {typeof item.missingRequiredCount === 'number' && Number.isFinite(item.missingRequiredCount) && (
+          <span className={`inline-flex max-w-full break-words rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
+            item.missingRequiredCount > 0
+              ? 'border-amber-200 bg-amber-50 text-amber-800'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+          }`}>
+            {item.missingRequiredCount > 0
+              ? `Thiếu ${item.missingRequiredCount} tài liệu bắt buộc`
+              : 'Đủ tài liệu bắt buộc'}
+          </span>
+        )}
       </div>
 
       {/* ================================================================== */}
       {/* ZONE 4: BUSINESS BADGES (Compact row of actual domain data)        */}
       {/* ================================================================== */}
-      {item.businessBadges && item.businessBadges.length > 0 && (
-        <div data-testid="dossier-business-badges" className="flex flex-wrap items-center gap-1 mt-0.5">
-          {item.businessBadges.map((badge) => {
+      {(item.brandOrGroup || (item.businessBadges && item.businessBadges.length > 0)) && (
+        <div data-testid="dossier-business-badges" className="mt-0.5 flex flex-wrap items-center gap-1.5 md:col-span-4 md:row-start-3 md:mt-0">
+          {item.brandOrGroup && (
+            <span className="rounded border border-amber-200/80 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+              {item.brandOrGroup}
+            </span>
+          )}
+          {(item.businessBadges || []).map((badge) => {
             const toneClasses =
               badge.tone === 'success'
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -452,7 +458,7 @@ export function PgdcnDossierCardHeader({
             return (
               <span
                 key={badge.id}
-                className={`text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded border shadow-2xs ${toneClasses}`}
+                className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase shadow-2xs ${toneClasses}`}
               >
                 {badge.label}
               </span>
@@ -547,7 +553,7 @@ export function PgdcnDossierCardExpanded({
                   e.stopPropagation();
                   nextAction.onAction?.();
                 }}
-                className="inline-flex shrink-0 items-center justify-center gap-1 rounded bg-blue-700 px-2.5 py-1 text-[10px] font-black text-white shadow-xs transition-colors hover:bg-blue-800 cursor-pointer"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1 rounded bg-blue-700 px-3 py-2 text-center text-[11px] font-bold text-white shadow-xs transition-colors hover:bg-blue-800 cursor-pointer md:min-h-0 md:py-1"
               >
                 {nextAction.actionLabel || 'Tiếp tục xử lý'}
                 <ArrowRight size={10} />
@@ -590,7 +596,7 @@ export function PgdcnDossierCardExpanded({
                       e.stopPropagation();
                       b.onAction?.();
                     }}
-                    className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold text-amber-800 underline hover:text-amber-950 cursor-pointer"
+                    className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded px-2 py-1 text-[10px] font-semibold text-amber-800 underline hover:text-amber-950 cursor-pointer md:min-h-0 md:min-w-0 md:px-1.5 md:py-0.5"
                   >
                     {b.actionLabel || 'Khắc phục'}
                   </button>
@@ -659,7 +665,7 @@ export function PgdcnDossierCardExpanded({
                           e.stopPropagation();
                           st.onAction?.();
                         }}
-                        className="underline text-[8px] font-bold hover:opacity-80 cursor-pointer"
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-[10px] font-bold underline hover:opacity-80 cursor-pointer md:min-h-0 md:min-w-0 md:px-0 md:text-[9px]"
                       >
                         {st.actionLabel || 'Mở'}
                       </button>
@@ -684,7 +690,7 @@ export function PgdcnDossierCardExpanded({
             e.stopPropagation();
             onOpenDetail();
           }}
-          className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 hover:text-blue-900 cursor-pointer"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded px-2 py-1 text-center text-[11px] font-bold text-blue-700 hover:text-blue-900 cursor-pointer md:min-h-0 md:min-w-0 md:px-0 md:py-0"
         >
           <FolderOpen size={12} />
           Mở toàn bộ hồ sơ
@@ -697,7 +703,7 @@ export function PgdcnDossierCardExpanded({
             e.stopPropagation();
             onToggleExpand(e);
           }}
-          className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded px-2 py-1 text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer md:min-h-0 md:min-w-0 md:px-0 md:py-0"
         >
           Thu gọn
           <ChevronUp size={11} />
@@ -741,7 +747,7 @@ export function PgdcnDossierCard({
     <div
       data-testid="pgdcn-dossier-card"
       onClick={handleCardClick}
-      className={`group relative flex flex-col justify-between rounded-xl border bg-white p-3 shadow-2xs transition-all duration-200 cursor-pointer ${
+      className={`group relative flex flex-col justify-between rounded-xl border bg-white p-3 shadow-2xs transition-all duration-200 cursor-pointer md:px-4 md:py-2.5 ${
         isExpanded
           ? 'border-blue-300 ring-2 ring-blue-100 shadow-md'
           : 'border-slate-200/90 hover:border-slate-300 hover:shadow-md'
@@ -864,7 +870,7 @@ export function PgdcnDossierDeck({
             value={searchQuery}
             onChange={(e) => onSearchChange?.(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full bg-white border border-slate-200/80 rounded-xl pl-9 pr-3 py-1.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs transition-all"
+            className="min-h-11 w-full rounded-xl border border-slate-200/80 bg-white py-2 pl-9 pr-3 text-xs font-bold outline-none shadow-2xs transition-all focus:ring-2 focus:ring-emerald-500 md:min-h-0 md:py-1.5 md:text-[11px]"
           />
         </div>
 
@@ -878,7 +884,7 @@ export function PgdcnDossierDeck({
                   key={chip.id}
                   type="button"
                   onClick={() => onFilterChange?.(chip.id)}
-                  className={`mobile-touch-target inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-xl px-3 py-1 text-[11px] font-bold transition-all cursor-pointer ${
+                  className={`mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 py-1 text-[11px] font-bold transition-all cursor-pointer md:min-h-8 ${
                     active
                       ? 'bg-slate-900 text-white shadow-xs'
                       : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
@@ -907,7 +913,7 @@ export function PgdcnDossierDeck({
               type="button"
               data-testid="dossier-mobile-filter-toggle"
               onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
-              className="inline-flex md:hidden items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 shadow-xs cursor-pointer"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700 shadow-xs cursor-pointer md:hidden"
             >
               <SlidersHorizontal size={13} />
               <span>Bộ lọc</span>
@@ -918,9 +924,9 @@ export function PgdcnDossierDeck({
         )}
       </div>
 
-      {/* Dossier Grid (2 columns on desktop, 1 on mobile) */}
+      {/* Dense, single-column dossier list at desktop and mobile widths */}
       {items.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-2">
           {items.map((item) => (
             <PgdcnDossierCard
               key={item.id}
