@@ -16,7 +16,7 @@ import {
   XCircle,
   type LucideIcon,
 } from 'lucide-react';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import type { PgdInspectionStatus, PgdTransitionContext } from '../utils/pgdDomain';
 import { getPgdStatusLabel } from '../utils/pgdDomain';
@@ -104,30 +104,75 @@ export function getPgdDossierCurrentStepNumber(status: PgdInspectionStatus): num
   return 12;
 }
 
-function currentStatusForStep(stepNumber: number, status: PgdInspectionStatus): PgdDossierFlowStepStatus {
+function hasStepCompletionEvidence(step: FlowStep, evidence: PgdTransitionContext | undefined, status: PgdInspectionStatus): boolean {
+  if (step.id === 'assignment') return evidence?.hasApprovedAssignment === true;
+  if (step.id === 'field') return evidence?.hasFieldInspection === true;
+  if (step.id === 'sampling') return evidence?.hasSampleHandover === true;
+  if (step.id === 'lab-request') return (evidence?.labRequests?.length || 0) > 0;
+  if (step.id === 'lab-result') {
+    const requests = evidence?.labRequests || [];
+    return requests.length > 0 && requests.every((request) => ['RESULT_RECEIVED', 'CLOSED'].includes(request.status));
+  }
+  if (step.id === 'result-review') {
+    const review = evidence?.labResultReview;
+    return review?.status === 'FINAL' && review.retestRequired !== true && review.conformity !== 'NON_CONFORMING';
+  }
+  if (step.id === 'report') return evidence?.reportReady === true;
+  if (step.id === 'approval') return evidence?.signed === true;
+  if (step.id === 'return') return ['RESULT_RETURNED', 'ARCHIVED'].includes(status) && evidence?.signed === true;
+  return false;
+}
+
+function currentStatusForStep(stepNumber: number, status: PgdInspectionStatus, evidence: PgdTransitionContext | undefined): PgdDossierFlowStepStatus {
   const current = getPgdDossierCurrentStepNumber(status);
-  if (stepNumber < current) return 'COMPLETED';
+  const step = PGD_DOSSIER_FLOW_STEPS[stepNumber - 1];
+  const verifiedComplete = step ? hasStepCompletionEvidence(step, evidence, status) : false;
   if (stepNumber > current) return 'LOCKED';
+  if (stepNumber < current) return verifiedComplete ? 'COMPLETED' : 'READY';
+  if (stepNumber === 12 && ['SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status)) {
+    if (status === 'SIGNED' && evidence?.signed === true) return 'WAITING';
+    return verifiedComplete ? 'COMPLETED' : 'READY';
+  }
   if (status === 'WAITING_LAB_RESULTS') return 'WAITING';
   if (status === 'REJECTED' || status === 'ON_HOLD') return 'RETURNED';
-  if (status === 'SIGNED' || status === 'RESULT_RETURNED' || status === 'ARCHIVED') return 'COMPLETED';
   return 'IN_PROGRESS';
 }
 
+function stepStatusLabel(stepNumber: number, stepStatus: PgdDossierFlowStepStatus, status: PgdInspectionStatus): string {
+  const current = getPgdDossierCurrentStepNumber(status);
+  if (stepStatus === 'READY' && stepNumber < current) return 'Đã qua · chưa xác minh';
+  if (stepStatus === 'READY' && stepNumber === current && ['SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status)) return 'Chưa xác minh';
+  return STATUS_META[stepStatus].label;
+}
+
 function stepProgress(step: FlowStep, evidence: PgdTransitionContext | undefined, status: PgdInspectionStatus): string {
-  if (step.id === 'assignment') return evidence?.hasApprovedAssignment ? 'Đã duyệt' : 'Chưa duyệt';
-  if (step.id === 'field') return evidence?.hasFieldInspection ? 'Đã ghi nhận' : 'Chưa ghi nhận';
-  if (step.id === 'sampling') return evidence?.hasSampleHandover ? 'Đã bàn giao' : 'Chưa bàn giao';
-  if (step.id === 'lab-request') return `${evidence?.labRequests?.length || 0} PYC PTN`;
+  if (step.id === 'assignment') return evidence?.hasApprovedAssignment === true ? 'Đã duyệt' : evidence?.hasApprovedAssignment === false ? 'Chưa duyệt' : 'Chưa có dữ liệu xác minh';
+  if (step.id === 'field') return evidence?.hasFieldInspection === true ? 'Đã ghi nhận' : evidence?.hasFieldInspection === false ? 'Chưa ghi nhận' : 'Chưa có dữ liệu xác minh';
+  if (step.id === 'sampling') return evidence?.hasSampleHandover === true ? 'Đã bàn giao' : evidence?.hasSampleHandover === false ? 'Chưa bàn giao' : 'Chưa có dữ liệu xác minh';
+  if (step.id === 'lab-request') return evidence?.labRequests ? `${evidence.labRequests.length} PYC PTN` : 'Chưa có dữ liệu xác minh';
   if (step.id === 'lab-result') {
-    const requests = evidence?.labRequests || [];
+    if (!evidence?.labRequests) return 'Chưa có dữ liệu xác minh';
+    const requests = evidence.labRequests;
+    if (requests.length === 0) return 'Chưa có PYC PTN';
     const completed = requests.filter((item) => ['RESULT_RECEIVED', 'CLOSED'].includes(item.status)).length;
     return `${completed}/${requests.length} KQTN`;
   }
-  if (step.id === 'report') return evidence?.reportReady ? 'Đã có báo cáo' : 'Chưa có báo cáo';
-  if (step.id === 'approval') return evidence?.hasCertificate ? 'Đã có chứng thư' : 'Chưa có chứng thư';
-  if (step.id === 'return') return evidence?.signed ? 'Đã ký' : 'Chờ ký';
-  return getPgdStatusLabel(status);
+  if (step.id === 'result-review') {
+    const review = evidence?.labResultReview;
+    if (!review) return 'Chưa có dữ liệu xác minh';
+    if (review.status !== 'FINAL') return 'Chưa hoàn tất xem xét';
+    if (review.retestRequired === true || review.conformity === 'NON_CONFORMING') return 'Cần xử lý thêm';
+    return 'Đã xem xét';
+  }
+  if (step.id === 'report') return evidence?.reportReady === true ? 'Đã có báo cáo' : evidence?.reportReady === false ? 'Chưa có báo cáo' : 'Chưa có dữ liệu xác minh';
+  if (step.id === 'approval') return evidence?.signed === true ? 'Đã ký' : evidence?.hasCertificate === true ? 'Chưa ký' : evidence?.hasCertificate === false ? 'Chưa có chứng thư' : 'Chưa có dữ liệu xác minh';
+  if (step.id === 'return') {
+    if (evidence?.signed !== true) return evidence?.signed === false ? 'Chưa ký' : 'Chưa có dữ liệu xác minh';
+    if (status === 'ARCHIVED') return 'Đã lưu trữ';
+    if (status === 'RESULT_RETURNED') return 'Đã trả kết quả';
+    return 'Đã ký · chờ trả';
+  }
+  return 'Chưa có dữ liệu xác minh';
 }
 
 export function getPgdDossierFlowStepIdForStatus(status: PgdInspectionStatus): PgdDossierFlowStepId {
@@ -137,11 +182,39 @@ export function getPgdDossierFlowStepIdForStatus(status: PgdInspectionStatus): P
 
 export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep }: PgdDossierFlowProps) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const currentNumber = getPgdDossierCurrentStepNumber(status);
   const selectedStep = PGD_DOSSIER_FLOW_STEPS.find((step) => step.id === selectedStepId) || PGD_DOSSIER_FLOW_STEPS[Math.min(currentNumber - 1, PGD_DOSSIER_FLOW_STEPS.length - 1)];
   const selectedIndex = PGD_DOSSIER_FLOW_STEPS.findIndex((step) => step.id === selectedStep?.id);
-  const resolvedSteps = PGD_DOSSIER_FLOW_STEPS.filter((_, index) => currentStatusForStep(index + 1, status) === 'COMPLETED').length;
+  const resolvedSteps = PGD_DOSSIER_FLOW_STEPS.filter((_, index) => currentStatusForStep(index + 1, status, evidence) === 'COMPLETED').length;
   const selectableIndexes = useMemo(() => PGD_DOSSIER_FLOW_STEPS.map((_, index) => index).filter((index) => index + 1 <= currentNumber), [currentNumber]);
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    const selectedIndex = PGD_DOSSIER_FLOW_STEPS.findIndex((step) => step.id === selectedStepId);
+    const selectedTab = selectedIndex >= 0 ? tabRefs.current[selectedIndex] : null;
+    if (!scrollContainer || !selectedTab) return;
+
+    const scrollBounds = scrollContainer.getBoundingClientRect();
+    const tabBounds = selectedTab.getBoundingClientRect();
+    const visibleLeft = scrollBounds.left + scrollContainer.clientLeft;
+    const visibleRight = visibleLeft + scrollContainer.clientWidth;
+    const nextScrollLeft = tabBounds.left < visibleLeft
+      ? scrollContainer.scrollLeft + tabBounds.left - visibleLeft
+      : tabBounds.right > visibleRight
+        ? scrollContainer.scrollLeft + tabBounds.right - visibleRight
+        : scrollContainer.scrollLeft;
+    const maxScrollLeft = Math.max(0, scrollContainer.scrollWidth - scrollContainer.clientWidth);
+    const targetLeft = Math.max(0, Math.min(nextScrollLeft, maxScrollLeft));
+    if (Math.abs(targetLeft - scrollContainer.scrollLeft) < 1) return;
+
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+    if (prefersReducedMotion || typeof scrollContainer.scrollTo !== 'function') {
+      scrollContainer.scrollLeft = targetLeft;
+      return;
+    }
+    scrollContainer.scrollTo({ left: targetLeft, behavior: 'smooth' });
+  }, [selectedStepId]);
 
   const focusRelative = (index: number, direction: 1 | -1) => {
     const position = selectableIndexes.indexOf(index);
@@ -181,11 +254,12 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
         <div className="h-full rounded-full bg-blue-600 transition-[width] duration-200" style={{ width: `${Math.round((resolvedSteps / PGD_DOSSIER_FLOW_STEPS.length) * 100)}%` }} />
       </div>
 
-      <div className="mobile-scroll-x min-w-0 overflow-x-auto pb-1" data-testid="pgd-dossier-flow-scroll">
+      <div ref={scrollContainerRef} className="mobile-scroll-x min-w-0 overflow-x-auto pb-1" data-testid="pgd-dossier-flow-scroll">
         <div className="flex min-w-max items-stretch gap-2" role="tablist" aria-label="Các việc xử lý hồ sơ PGD">
           {PGD_DOSSIER_FLOW_STEPS.map((step, index) => {
-            const stepStatus = currentStatusForStep(index + 1, status);
+            const stepStatus = currentStatusForStep(index + 1, status, evidence);
             const statusMeta = STATUS_META[stepStatus];
+            const displayedStatusLabel = stepStatusLabel(index + 1, stepStatus, status);
             const typeMeta = TYPE_META[step.type];
             const TypeIcon = typeMeta.icon;
             const StatusIcon = statusMeta.icon;
@@ -200,7 +274,7 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
                   role="tab"
                   tabIndex={selected ? 0 : -1}
                   aria-selected={selected}
-                  aria-current={stepStatus === 'IN_PROGRESS' || stepStatus === 'RETURNED' || stepStatus === 'WAITING' ? 'step' : undefined}
+                  aria-current={index + 1 === currentNumber && stepStatus !== 'COMPLETED' ? 'step' : undefined}
                   aria-controls={`pgd-dossier-step-panel-${step.id}`}
                   aria-describedby={`pgd-step-status-${step.id}`}
                   aria-posinset={index + 1}
@@ -218,7 +292,7 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
                   <span className="mt-2 line-clamp-2 text-sm font-semibold text-slate-900">{step.label}</span>
                   <span className="mt-2 flex items-center justify-between gap-2 text-xs">
                     <span className="truncate text-slate-500">{stepProgress(step, evidence, status)}</span>
-                    <span id={`pgd-step-status-${step.id}`} className={`inline-flex shrink-0 items-center gap-1 font-medium ${statusMeta.className}`}><StatusIcon size={14} aria-hidden="true" />{statusMeta.label}</span>
+                    <span id={`pgd-step-status-${step.id}`} className={`inline-flex shrink-0 items-center gap-1 font-medium ${statusMeta.className}`}><StatusIcon size={14} aria-hidden="true" />{displayedStatusLabel}</span>
                   </span>
                 </button>
                 {index < PGD_DOSSIER_FLOW_STEPS.length - 1 ? <ChevronRight className="shrink-0 text-slate-300" size={18} aria-hidden="true" /> : null}
@@ -227,6 +301,7 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
           })}
         </div>
       </div>
+      <p className="px-1 text-[11px] text-slate-500 md:hidden">Vuốt ngang để xem đủ 12 bước</p>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600" aria-label="Chú giải loại việc">
         {(Object.keys(TYPE_META) as FlowType[]).map((type) => {

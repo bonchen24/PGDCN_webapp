@@ -21,9 +21,9 @@ test('PGD UI exposes DOCX template management and document generation modules', 
   const documentPanel = read('components/PgdDocumentGenerationPanel.tsx');
   assert.match(documentPanel, /Quản trị mẫu DOCX PGD/);
   assert.match(documentPanel, /placeholder/);
-  assert.match(documentPanel, /Sinh DOCX|Sinh PDF/);
+  assert.match(documentPanel, /Sinh tài liệu \{format\}/);
   assert.match(documentPanel, /DECISION: 'Quyết định PGD'/);
-  assert.match(documentPanel, /getPgdDocumentDownloadUrl/);
+  assert.match(documentPanel, /link\.download = result\.document\.fileName/);
   assert.match(documentPanel, /PgdDocumentTemplate/);
   assert.match(documentPanel, /steelLotSize: request\.productDetails\?\.steelLotSize/);
   assert.match(documentPanel, /steelSameGradeMultiProduct: request\.productDetails\?\.steelSameGradeMultiProduct/);

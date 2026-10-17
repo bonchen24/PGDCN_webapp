@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
@@ -102,7 +102,7 @@ import PgdDossierStepWorkPanel from './PgdDossierStepWorkPanel';
 import PgdSummaryRegisterView from './PgdSummaryRegisterView';
 import PgdDossierQueueView, { type PgdDossierQueueRow } from './PgdDossierQueueView';
 import PgdSampleOperationsView from './PgdSampleOperationsView';
-import { PgdcnPageHeader, PgdcnStatePanel } from './PgdcnUiPrimitives';
+import { PgdcnPageHeader, PgdcnStatePanel, PgdcnStatusBadge } from './PgdcnUiPrimitives';
 import PgdDossierBusinessWorkspace from './PgdDossierBusinessWorkspace';
 import { PgdcnDateInput, PgdcnDateTimeInput } from './PgdcnDateInput';
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, parseDdMmYyyy, parseDdMmYyyyTime } from '../utils/formatter';
@@ -283,12 +283,7 @@ function SelectInput(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
 }
 
 function StatusBadge({ status }: { status: PgdInspectionStatus }) {
-  const tone = status === 'SIGNED' || status === 'RESULT_RETURNED' || status === 'ARCHIVED'
-    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-    : status === 'REJECTED' || status === 'CANCELLED'
-      ? 'border-rose-200 bg-rose-50 text-rose-700'
-      : 'border-blue-200 bg-blue-50 text-blue-700';
-  return <span className={`inline-flex items-center rounded-full border px-2 py-1 text-[9px] font-black ${tone}`}>{getPgdStatusLabel(status)}</span>;
+  return <PgdcnStatusBadge compact domain="PGD" status={status} label={getPgdStatusLabel(status)} />;
 }
 
 function Metric({ label, value, tone = 'text-slate-900' }: { label: string; value: number; tone?: string }) {
@@ -1057,34 +1052,127 @@ function PgdRegisterTable({
   );
 }
 
+type PgdDetailFieldForm = {
+  lotObservation: string;
+  packaging: string;
+  labeling: string;
+  measurements: string;
+  nonconformities: string;
+  inspectionResult: string;
+  customerRepresentative: string;
+  note: string;
+};
+
+function createPgdDetailFieldForm(lotCode?: string): PgdDetailFieldForm {
+  return {
+    lotObservation: '',
+    packaging: '',
+    labeling: lotCode ? `Số lô: ${lotCode}` : '',
+    measurements: '',
+    nonconformities: '',
+    inspectionResult: '',
+    customerRepresentative: '',
+    note: '',
+  };
+}
+
+function getPgdFieldInspectionValidationMessage(form: PgdDetailFieldForm): string | null {
+  if (!form.lotObservation.trim()) return 'Vui lòng nhập ghi nhận lô hàng thực tế.';
+  if (!form.packaging.trim()) return 'Vui lòng nhập tình trạng bao gói thực tế.';
+  if (!form.nonconformities.trim()) return 'Vui lòng nhập điểm không phù hợp hoặc xác nhận rõ không có.';
+  if (!form.inspectionResult.trim()) return 'Vui lòng nhập kết quả giám định thực tế.';
+  return null;
+}
+
+function getPgdSampleSplitValidationMessage(quantity: string, description: string): string | null {
+  const actualQuantity = Number(quantity);
+  if (!quantity.trim() || !Number.isInteger(actualQuantity) || actualQuantity < 2) {
+    return 'Vui lòng nhập số lượng mẫu thực tế là số nguyên từ 2 trở lên.';
+  }
+  if (!description.trim()) return 'Vui lòng nhập mô tả mẫu thực tế.';
+  return null;
+}
+
+function getPgdLabResultValidationMessage(conclusion: string): string | null {
+  return conclusion.trim() ? null : 'Vui lòng nhập kết luận PTN thực tế.';
+}
+
+function getPgdCertificateValidationMessage(conclusion: string): string | null {
+  return conclusion.trim() ? null : 'Vui lòng nhập kết luận báo cáo/chứng thư thực tế.';
+}
+
+function getPgdLabConclusionFromResults(labResults: Array<{ receivedAt: string; values: Array<{ key: string; label: string; value: unknown; conclusion?: string }> }>): string {
+  const value = [...labResults]
+    .sort((left, right) => right.receivedAt.localeCompare(left.receivedAt))
+    .flatMap((result) => result.values)
+    .find((item) => {
+      const descriptor = `${item.key} ${item.label}`.toLocaleLowerCase();
+      const actualValue = String(item.conclusion ?? item.value ?? '').trim();
+      return Boolean(actualValue) && (descriptor.includes('conclusion') || descriptor.includes('kết luận') || Boolean(item.conclusion));
+    });
+  return value ? String(value.conclusion ?? value.value ?? '').trim() : '';
+}
+
+function getPgdReportConclusion(report?: PgdInspectionReport): string {
+  const conclusionValue = report?.values.find((value) => `${value.key} ${value.label}`.toLocaleLowerCase().includes('conclusion') || `${value.key} ${value.label}`.toLocaleLowerCase().includes('kết luận'))?.value;
+  return String(report?.conclusion?.trim() || conclusionValue || '').trim();
+}
+
+type PgdDossierStepSelectionContext = {
+  requestId: string;
+  initialStepId?: PgdDossierFlowStepId;
+};
+
+export function reconcilePgdDossierStepSelection({
+  selectedStepId,
+  status,
+  requestId,
+  initialStepId,
+  previousContext,
+}: {
+  selectedStepId: PgdDossierFlowStepId;
+  status: PgdInspectionStatus;
+  requestId: string;
+  initialStepId?: PgdDossierFlowStepId;
+  previousContext: PgdDossierStepSelectionContext;
+}): PgdDossierFlowStepId {
+  const currentStepId = getPgdDossierFlowStepIdForStatus(status);
+  const contextChanged = previousContext.requestId !== requestId || previousContext.initialStepId !== initialStepId;
+  const candidateStepId = contextChanged ? initialStepId || currentStepId : selectedStepId;
+  const candidateStepIndex = PGD_DOSSIER_FLOW_STEPS.findIndex((step) => step.id === candidateStepId);
+  const currentStepNumber = getPgdDossierCurrentStepNumber(status);
+
+  return candidateStepIndex >= 0 && candidateStepIndex < currentStepNumber ? candidateStepId : currentStepId;
+}
+
 function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpenContextualAssistant, initialStepId, standalone = false }: { request: import('../utils/pgdDomain').PgdInspectionRequest; currentUser: PcnUserAccount; onClose: () => void; onOpenDrafting?: (request: import('../utils/pgdDomain').PgdInspectionRequest, input: { templateKind: PgdDocumentTemplateKind; requirementCode: string }, stepId?: PgdDossierFlowStepId) => string | undefined; onOpenContextualAssistant?: (requestId: string) => void; initialStepId?: PgdDossierFlowStepId; standalone?: boolean }) {
   const pgd = usePgdStore();
   const [dossierRequirements, setDossierRequirements] = useState<import('../utils/pgdDossier').PgdDossierRequirement[]>([]);
   const [dossierError, setDossierError] = useState<string | null>(null);
+  const [dossierLoading, setDossierLoading] = useState(false);
   const [inspectorInput, setInspectorInput] = useState(currentUser.username);
   const [reviewerInput, setReviewerInput] = useState('');
-  const [fieldForm, setFieldForm] = useState({
-    lotObservation: 'Đã kiểm tra nhận dạng theo PYC.',
-    packaging: 'Đã ghi nhận tại hiện trường.',
-    labeling: request.lotCode ? `Số lô: ${request.lotCode}` : '',
-    measurements: '',
-    nonconformities: 'Không có',
-    inspectionResult: 'Kết quả phù hợp với phạm vi giám định đã thống nhất.',
-    customerRepresentative: '',
-    note: 'Biên bản hiện trường được ghi nhận trên hồ sơ PGD.',
-  });
-  const [sampleQuantity, setSampleQuantity] = useState('2');
+  const [fieldForm, setFieldForm] = useState(() => createPgdDetailFieldForm(request.lotCode));
+  const [sampleQuantity, setSampleQuantity] = useState('');
   const [sampleDescription, setSampleDescription] = useState(request.productName);
   const [labName, setLabName] = useState('PTN nội bộ TVCI');
   const [labCode, setLabCode] = useState('');
   const [labItems, setLabItems] = useState('Nhận dạng, kích thước, chỉ tiêu theo PYC');
   const [labReportNumber, setLabReportNumber] = useState('');
-  const [labConclusion, setLabConclusion] = useState('Đạt theo phạm vi kết quả được tiếp nhận');
-  const [certificateConclusion, setCertificateConclusion] = useState('Kết quả giám định phù hợp với phạm vi và tiêu chuẩn đã thống nhất.');
+  const [labConclusion, setLabConclusion] = useState('');
+  const [certificateConclusion, setCertificateConclusion] = useState('');
   const [reportInputs, setReportInputs] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [selectedStepId, setSelectedStepId] = useState<PgdDossierFlowStepId>(() => initialStepId || getPgdDossierFlowStepIdForStatus(request.status));
+  const [selectedStepId, setSelectedStepId] = useState<PgdDossierFlowStepId>(() => reconcilePgdDossierStepSelection({
+    selectedStepId: initialStepId || getPgdDossierFlowStepIdForStatus(request.status),
+    status: request.status,
+    requestId: request.id,
+    initialStepId,
+    previousContext: { requestId: request.id, initialStepId },
+  }));
+  const stepSelectionContext = useRef<PgdDossierStepSelectionContext>({ requestId: request.id, initialStepId });
+  const dossierFetchSequence = useRef(0);
 
   const assignment = pgd.assignments.find((item) => item.requestId === request.id);
   const fieldInspection = pgd.fieldInspections.find((item) => item.requestId === request.id);
@@ -1097,10 +1185,21 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
   const labResultReview = pgd.labResultReviews.find((item) => item.requestId === request.id);
   const template = pgd.templates.find((item) => item.productGroup === request.productGroup && item.active) || pgd.templates.find((item) => item.active);
   useEffect(() => {
-    setSelectedStepId(initialStepId || getPgdDossierFlowStepIdForStatus(request.status));
+    const previousContext = stepSelectionContext.current;
+    stepSelectionContext.current = { requestId: request.id, initialStepId };
+    setSelectedStepId((selected) => reconcilePgdDossierStepSelection({
+      selectedStepId: selected,
+      status: request.status,
+      requestId: request.id,
+      initialStepId,
+      previousContext,
+    }));
   }, [initialStepId, request.id, request.status]);
   useEffect(() => {
-    if (!fieldInspection) return;
+    if (!fieldInspection) {
+      setFieldForm(createPgdDetailFieldForm(request.lotCode));
+      return;
+    }
     setFieldForm({
       lotObservation: fieldInspection.lotObservation || '',
       packaging: fieldInspection.packaging || '',
@@ -1111,24 +1210,43 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
       customerRepresentative: fieldInspection.customerRepresentative || '',
       note: fieldInspection.note || '',
     });
-  }, [fieldInspection?.id]);
+  }, [request.id, request.lotCode, fieldInspection]);
+  const storedLabConclusion = getPgdLabConclusionFromResults(labResults);
   useEffect(() => {
-    let cancelled = false;
-    void pgd.fetchDossierDocuments(request.id)
-      .then((result) => {
-        if (!cancelled) {
-          setDossierRequirements(result.requirements);
-          setDossierError(null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setDossierRequirements(getPgdDossierRequirements(request.productGroup));
-          setDossierError('Không tải được trạng thái chứng từ; checklist đang hiển thị để rà soát, vui lòng thử lại.');
-        }
-      });
-    return () => { cancelled = true; };
+    setSampleQuantity('');
+  }, [request.id]);
+  useEffect(() => {
+    setLabConclusion(storedLabConclusion);
+  }, [request.id, storedLabConclusion]);
+  useEffect(() => {
+    setCertificateConclusion(certificate?.conclusion?.trim() || getPgdReportConclusion(report));
+  }, [request.id, certificate?.id, certificate?.updatedAt, report?.id, report?.updatedAt]);
+  useEffect(() => {
+    setReportInputs(report ? report.values.reduce<Record<string, string>>((inputs, value) => {
+      inputs[value.key] = value.value == null ? '' : String(value.value);
+      return inputs;
+    }, {}) : {});
+  }, [request.id, report?.id, report?.updatedAt]);
+  const loadDossierDocuments = useCallback(async () => {
+    const requestId = request.id;
+    const fetchSequence = ++dossierFetchSequence.current;
+    setDossierLoading(true);
+    try {
+      const result = await pgd.fetchDossierDocuments(requestId);
+      if (dossierFetchSequence.current !== fetchSequence) return;
+      setDossierRequirements(result.requirements);
+      setDossierError(null);
+    } catch {
+      if (dossierFetchSequence.current !== fetchSequence) return;
+      setDossierError('Không thể tải trạng thái chứng từ. Các mục chưa có dữ liệu chưa thể xác định là thiếu.');
+    } finally {
+      if (dossierFetchSequence.current === fetchSequence) setDossierLoading(false);
+    }
   }, [pgd.fetchDossierDocuments, request.id]);
+  useEffect(() => {
+    void loadDossierDocuments();
+    return () => { dossierFetchSequence.current += 1; };
+  }, [loadDossierDocuments]);
   useEffect(() => {
     if (!template) return;
     setReportInputs((current) => {
@@ -1202,18 +1320,32 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
     await pgd.saveAssignment({ id: assignment?.id || makeId('pgd-assignment'), domain: PGD_DOMAIN, requestId: request.id, leadInspectorUsername: inspectorUsernames[0], inspectorUsernames, technicalReviewerUsername, method: request.method, status: isManager ? 'APPROVED' : 'PENDING_APPROVAL', approvedByUsername: isManager ? currentUser.username : undefined, approvedAt: isManager ? now : undefined, createdAt: assignment?.createdAt || now, updatedAt: now });
   }, isManager ? 'Đã phê duyệt phân công PGD.' : 'Đã lưu phân công chờ phê duyệt.');
 
-  const saveFieldInspection = () => run(async () => {
-    const measurements = Object.fromEntries(fieldForm.measurements.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => {
-      const separator = line.indexOf(':');
-      return separator > 0 ? [line.slice(0, separator).trim(), line.slice(separator + 1).trim()] : ['Ghi nhận', line];
-    }));
-    const inspection = buildPgdFieldInspection({ id: fieldInspection?.id || makeId('pgd-field'), requestId: request.id, performedAt: fieldInspection?.performedAt || new Date().toISOString(), location: request.inspectionLocation, inspectorUsernames: assignment?.inspectorUsernames || [currentUser.username], lotObservation: fieldForm.lotObservation.trim(), packaging: fieldForm.packaging.trim(), labeling: fieldForm.labeling.trim() || undefined, measurements, nonconformities: fieldForm.nonconformities.split('\n'), inspectionResult: fieldForm.inspectionResult.trim() || undefined, customerRepresentative: fieldForm.customerRepresentative.trim() || undefined, sampleIds: request.sampleIds, note: fieldForm.note.trim() || undefined });
-    await pgd.saveFieldInspection(inspection);
-  }, 'Đã hoàn tất biên bản hiện trường.');
+  const saveFieldInspection = () => {
+    const validationMessage = getPgdFieldInspectionValidationMessage(fieldForm);
+    if (validationMessage) {
+      toast.error(validationMessage);
+      return;
+    }
+    return run(async () => {
+      const measurements = Object.fromEntries(fieldForm.measurements.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => {
+        const separator = line.indexOf(':');
+        return separator > 0 ? [line.slice(0, separator).trim(), line.slice(separator + 1).trim()] : ['Ghi nhận', line];
+      }));
+      const inspection = buildPgdFieldInspection({ id: fieldInspection?.id || makeId('pgd-field'), requestId: request.id, performedAt: fieldInspection?.performedAt || new Date().toISOString(), location: request.inspectionLocation, inspectorUsernames: assignment?.inspectorUsernames || [currentUser.username], lotObservation: fieldForm.lotObservation.trim(), packaging: fieldForm.packaging.trim(), labeling: fieldForm.labeling.trim() || undefined, measurements, nonconformities: fieldForm.nonconformities.split('\n').map((line) => line.trim()).filter(Boolean), inspectionResult: fieldForm.inspectionResult.trim(), customerRepresentative: fieldForm.customerRepresentative.trim() || undefined, sampleIds: request.sampleIds, note: fieldForm.note.trim() || undefined });
+      await pgd.saveFieldInspection(inspection);
+    }, 'Đã hoàn tất biên bản hiện trường.');
+  };
 
-  const splitSample = () => run(async () => {
-    await pgd.splitSample({ requestId: request.id, sampleCodePrefix: request.requestCode, description: sampleDescription, quantity: Number(sampleQuantity), unit: request.unit });
-  }, 'Đã tách phần mẫu gửi PTN và mẫu lưu.');
+  const splitSample = () => {
+    const validationMessage = getPgdSampleSplitValidationMessage(sampleQuantity, sampleDescription);
+    if (validationMessage) {
+      toast.error(validationMessage);
+      return;
+    }
+    return run(async () => {
+      await pgd.splitSample({ requestId: request.id, sampleCodePrefix: request.requestCode, description: sampleDescription.trim(), quantity: Number(sampleQuantity), unit: request.unit });
+    }, 'Đã tách phần mẫu gửi PTN và mẫu lưu.');
+  };
 
   const createLabRequest = () => run(async () => {
     const sample = samples.find((item) => item.disposition === 'LAB' && !item.handedOverAt);
@@ -1221,22 +1353,37 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
     await pgd.saveLabRequest({ id: makeId('pgd-lab'), domain: PGD_DOMAIN, requestId: request.id, sampleId: sample.id, status: 'SENT', laboratoryName: labName.trim() || 'PTN nội bộ TVCI', laboratoryCode: labCode.trim() || undefined, senderUnit: 'Phòng Giám định, Chứng nhận, Phát triển thị trường', testItems: labItems.split(',').map((item) => item.trim()).filter(Boolean), handover: { sentAt: new Date().toISOString(), senderUsername: currentUser.username, receiverName: labName.trim(), quantity: sample.quantity, note: `Bàn giao theo mã mẫu ${sample.sampleCode}` } });
   }, 'Đã lập và bàn giao yêu cầu PTN.');
 
-  const saveLabResult = () => run(async () => {
-    const labRequest = labRequests.find((item) => !item.resultId) || labRequests[0];
-    if (!labRequest) throw new Error('Chưa có yêu cầu PTN để tiếp nhận kết quả.');
-    await pgd.saveLabResult({ id: makeId('pgd-result'), domain: PGD_DOMAIN, requestId: request.id, labRequestId: labRequest.id, reportNumber: labReportNumber.trim() || undefined, receivedAt: new Date().toISOString(), values: [{ key: 'conclusion', label: 'Kết luận PTN', value: labConclusion, conclusion: labConclusion }] });
-  }, 'Đã tiếp nhận kết quả PTN; hồ sơ sẽ cảnh báo nếu còn yêu cầu thiếu kết quả.');
+  const saveLabResult = () => {
+    const validationMessage = getPgdLabResultValidationMessage(labConclusion);
+    if (validationMessage) {
+      toast.error(validationMessage);
+      return;
+    }
+    return run(async () => {
+      const labRequest = labRequests.find((item) => !item.resultId) || labRequests[0];
+      if (!labRequest) throw new Error('Chưa có yêu cầu PTN để tiếp nhận kết quả.');
+      const conclusion = labConclusion.trim();
+      await pgd.saveLabResult({ id: makeId('pgd-result'), domain: PGD_DOMAIN, requestId: request.id, labRequestId: labRequest.id, reportNumber: labReportNumber.trim() || undefined, receivedAt: new Date().toISOString(), values: [{ key: 'conclusion', label: 'Kết luận PTN', value: conclusion, conclusion }] });
+    }, 'Đã tiếp nhận kết quả PTN; hồ sơ sẽ cảnh báo nếu còn yêu cầu thiếu kết quả.');
+  };
 
-  const saveCertificate = () => run(async () => {
-    if (!template) throw new Error('Chưa có mẫu kết quả phù hợp với loại hình giám định.');
-    if (reportIssues.length > 0) throw new Error(`Chưa thể lập báo cáo: ${reportIssues.map((issue) => issue.message).join(' ')}`);
-    const templateSnapshot = snapshotPgdResultTemplate(template);
-    const now = new Date().toISOString();
-    const conclusion = certificateConclusion.trim();
-    const reportRecord: PgdInspectionReport = { id: report?.id || makeId('pgd-report'), domain: PGD_DOMAIN, requestId: request.id, reportNumber: report?.reportNumber, title: `Báo cáo giám định · ${request.productName}`, standardSnapshot: [...request.standards], templateSnapshot, values: reportValues, conclusion, status: report?.status === 'APPROVED' ? 'APPROVED' : 'DRAFT', createdAt: report?.createdAt || now, updatedAt: now };
-    await pgd.saveReport(reportRecord);
+  const saveCertificate = () => {
+    const validationMessage = getPgdCertificateValidationMessage(certificateConclusion);
+    if (validationMessage) {
+      toast.error(validationMessage);
+      return;
+    }
+    return run(async () => {
+      if (!template) throw new Error('Chưa có mẫu kết quả phù hợp với loại hình giám định.');
+      if (reportIssues.length > 0) throw new Error(`Chưa thể lập báo cáo: ${reportIssues.map((issue) => issue.message).join(' ')}`);
+      const templateSnapshot = snapshotPgdResultTemplate(template);
+      const now = new Date().toISOString();
+      const conclusion = certificateConclusion.trim();
+      const reportRecord: PgdInspectionReport = { id: report?.id || makeId('pgd-report'), domain: PGD_DOMAIN, requestId: request.id, reportNumber: report?.reportNumber, title: `Báo cáo giám định · ${request.productName}`, standardSnapshot: [...request.standards], templateSnapshot, values: reportValues, conclusion, status: report?.status === 'APPROVED' ? 'APPROVED' : 'DRAFT', createdAt: report?.createdAt || now, updatedAt: now };
+      await pgd.saveReport(reportRecord);
       await pgd.saveCertificate({ id: certificate?.id || makeId('pgd-certificate'), domain: PGD_DOMAIN, requestId: request.id, documentNumber: certificate?.documentNumber, title: `Chứng thư giám định · ${request.productName}`, standardSnapshot: [...request.standards], conclusion, templateSnapshot, status: certificate?.status === 'SIGNED' ? 'SIGNED' : 'DRAFT', signedByUsername: certificate?.signedByUsername, signedAt: certificate?.signedAt, createdAt: certificate?.createdAt || now, updatedAt: now });
     }, 'Đã lưu dự thảo chứng thư và bản chụp mẫu.');
+  };
 
   const advance = () => {
     if (!nextState) return;
@@ -1287,7 +1434,11 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
 </button>
 </div>
 </header>
-    <div className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 pb-5 md:p-5"><div id="pgd-dossier-current-work" className="mt-3"><PgdDossierStepWorkPanel request={request} currentUser={currentUser} selectedStepId={selectedStepId} dossierRequirements={dossierRequirements} dossierDocuments={dossierDocuments} samples={samples} canMutate={canMutate} completeDisabled={!selectedStepIsCurrent || Boolean(nextDenial) || busy || !canMutate} completeLabel={request.status === 'DRAFT' ? 'Bắt đầu xử lý' : request.status === 'REJECTED' || request.status === 'ON_HOLD' ? 'Tiếp tục xử lý' : request.status === 'TECHNICAL_REVIEW' ? 'Hoàn tất việc & trình phê duyệt' : request.status === 'LEADERSHIP_APPROVAL' ? 'Phê duyệt & ký' : nextState ? 'Hoàn tất việc' : undefined} onCompleteCurrent={selectedStepIsCurrent ? (request.status === 'TECHNICAL_REVIEW' || request.status === 'LEADERSHIP_APPROVAL' ? approve : nextState ? advance : undefined) : undefined} onOpenChecklist={() => setSelectedStepId('intake')} onOpenDrafting={(input) => onOpenDrafting?.(request, input, selectedStepId)} onRequestException={requestException} exceptionBusy={busy} /></div><details data-testid="pgd-dossier-workflow-disclosure" className="mt-3 rounded-xl border border-slate-200 bg-slate-50">
+    <div className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 pb-5 md:p-5"><div id="pgd-dossier-current-work" className="mt-3">
+      {dossierLoading && <p role="status" className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800">Đang tải trạng thái chứng từ hồ sơ…</p>}
+      {dossierError && <div role="alert" className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border-2 border-amber-400 bg-amber-50 px-3 py-2.5 text-amber-950 shadow-sm"><p className="min-w-0 flex-1 text-xs font-bold leading-5">{dossierError}</p><button type="button" disabled={dossierLoading} aria-busy={dossierLoading} onClick={() => void loadDossierDocuments()} className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-500 bg-white px-3 text-xs font-black text-amber-900 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-70"><RefreshCw size={14} className={dossierLoading ? 'animate-spin' : ''} aria-hidden="true" />{dossierLoading ? 'Đang tải lại tài liệu…' : 'Tải lại tài liệu'}</button></div>}
+      <PgdDossierStepWorkPanel request={request} currentUser={currentUser} selectedStepId={selectedStepId} dossierRequirements={dossierRequirements} dossierDocuments={dossierDocuments} samples={samples} canMutate={canMutate} completeDisabled={!selectedStepIsCurrent || Boolean(nextDenial) || busy || !canMutate} completeLabel={request.status === 'DRAFT' ? 'Bắt đầu xử lý' : request.status === 'REJECTED' || request.status === 'ON_HOLD' ? 'Tiếp tục xử lý' : request.status === 'TECHNICAL_REVIEW' ? 'Hoàn tất việc & trình phê duyệt' : request.status === 'LEADERSHIP_APPROVAL' ? 'Phê duyệt & ký' : nextState ? 'Hoàn tất việc' : undefined} onCompleteCurrent={selectedStepIsCurrent ? (request.status === 'TECHNICAL_REVIEW' || request.status === 'LEADERSHIP_APPROVAL' ? approve : nextState ? advance : undefined) : undefined} onOpenChecklist={() => setSelectedStepId('intake')} onOpenDrafting={(input) => onOpenDrafting?.(request, input, selectedStepId)} onRequestException={requestException} exceptionBusy={busy} />
+    </div><details data-testid="pgd-dossier-workflow-disclosure" className="mt-3 rounded-xl border border-slate-200 bg-slate-50">
 <summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-black text-slate-900">Xem tiến trình hồ sơ PGD <span className="text-[11px] font-bold text-slate-500">Mở để chọn bước khác</span></summary>
 <div className="border-t border-slate-200 p-3">
 <PgdDossierFlow status={request.status} evidence={context} selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
@@ -1296,8 +1447,8 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
       <PgdDossierBusinessWorkspace request={request} currentUser={currentUser} onOpenDrafting={onOpenDrafting ? (input) => onOpenDrafting(request, input, selectedStepId) : undefined} onOpenCurrentWork={() => { setSelectedStepId(currentStepId); document.getElementById('pgd-dossier-current-work')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} />
 <div className="hidden mt-3 grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)]"><main className="min-w-0 space-y-3"><section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-xl border border-slate-200 bg-white p-3"><div className="text-[9px] font-black uppercase text-slate-400">Khách hàng</div><div className="mt-1 text-xs font-black text-slate-800">{request.customerSnapshot.name}</div><div className="mt-1 text-[10px] text-slate-500">{request.customerSnapshot.address}</div></div><div className="rounded-xl border border-slate-200 bg-white p-3"><div className="text-[9px] font-black uppercase text-slate-400">Lô / số lượng</div><div className="mt-1 text-xs font-black text-slate-800">{request.lotCode || 'Chưa ghi nhận'}</div><div className="mt-1 text-[10px] text-slate-500">{request.quantity} {request.unit || ''} {request.weight ? `· ${request.weight} ${request.weightUnit || ''}` : ''}</div></div><div className="rounded-xl border border-slate-200 bg-white p-3"><div className="text-[9px] font-black uppercase text-slate-400">Phạm vi</div><div className="mt-1 line-clamp-3 text-[10px] font-bold text-slate-700">{request.inspectionScope}</div></div><div className="rounded-xl border border-slate-200 bg-white p-3"><div className="text-[9px] font-black uppercase text-slate-400">Ngày tiếp nhận</div><div className="mt-1 text-xs font-black text-slate-800">{formatRegistryDate(request.registryMetadata?.receivedAt)}</div><div className="mt-1 text-[10px] text-slate-500">{request.method || 'Chưa chọn phương thức'}</div></div></section>
       <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><h3 className="flex items-center gap-2 text-xs font-black text-slate-800"><Users size={15} className="text-blue-600" /> Phân công theo năng lực</h3><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Field label="KTV / chuyên gia *"><TextInput required aria-required="true" list="pgd-inspectors" value={inspectorInput} onChange={(event) => setInspectorInput(event.target.value)} /><datalist id="pgd-inspectors">{pgdUsers.map((user) => <option key={user.username} value={user.username}>{user.name} · {user.pgdRole}</option>)}</datalist></Field><Field label="Người soát xét kỹ thuật *"><TextInput required aria-required="true" list="pgd-reviewers" value={reviewerInput} onChange={(event) => setReviewerInput(event.target.value)} /><datalist id="pgd-reviewers">{reviewerCandidates.map((user) => <option key={user.username} value={user.username}>{user.name} · {user.pgdRole}</option>)}</datalist></Field><div className="flex items-end"><button type="button" disabled={!canMutate || busy || !assignmentAccess.editable || !inspectorInput.trim()} onClick={saveAssignment} className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-[10px] font-black text-blue-700 disabled:opacity-50"><ShieldCheck size={14} />{assignment?.status === 'APPROVED' ? 'Cập nhật phân công' : 'Lưu phân công'}</button></div></div>{assignment && <p className="mt-2 text-[10px] text-slate-500">Trạng thái: <b className="text-slate-700">{assignment.status}</b> · KTV: {assignment.inspectorUsernames.join(', ') || 'Chưa chọn'} · Soát xét: {assignment.technicalReviewerUsername || 'Chưa chọn'}</p>}{!assignmentAccess.editable && <p className="mt-2 text-[9px] font-bold text-amber-700">{assignmentAccess.reason}</p>}</section>
-      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><h3 className="flex items-center gap-2 text-xs font-black text-slate-800"><ClipboardCheck size={15} className="text-blue-600" /> Hiện trường, lấy mẫu và bàn giao PTN</h3><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5"><div className="text-[10px] font-black text-slate-700">Biên bản hiện trường</div><div className="mt-1 text-[9px] text-slate-500">{fieldInspection ? `Hoàn tất lúc ${formatDate(fieldInspection.performedAt)}` : 'Chưa hoàn tất'}</div><div className="mt-2 grid gap-1.5"><Field label="Ghi nhận lô hàng *"><TextInput required aria-required="true" aria-label="Ghi nhận lô hàng" value={fieldForm.lotObservation} onChange={(event) => setFieldForm((current) => ({ ...current, lotObservation: event.target.value }))} /></Field><Field label="Bao gói *"><TextInput required aria-required="true" aria-label="Bao gói" value={fieldForm.packaging} onChange={(event) => setFieldForm((current) => ({ ...current, packaging: event.target.value }))} /></Field><Field label="Nhãn hàng hóa"><TextInput aria-label="Nhãn hàng hóa" value={fieldForm.labeling} onChange={(event) => setFieldForm((current) => ({ ...current, labeling: event.target.value }))} /></Field><label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Kích thước và đo đạc</span><textarea aria-label="Kích thước và đo đạc" rows={2} value={fieldForm.measurements} onChange={(event) => setFieldForm((current) => ({ ...current, measurements: event.target.value }))} className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400" /></label><label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Điểm không phù hợp</span><textarea aria-label="Điểm không phù hợp" rows={2} value={fieldForm.nonconformities} onChange={(event) => setFieldForm((current) => ({ ...current, nonconformities: event.target.value }))} className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400" /></label><Field label="Kết quả giám định *"><textarea required aria-required="true" aria-label="Kết quả giám định" rows={2} value={fieldForm.inspectionResult} onChange={(event) => setFieldForm((current) => ({ ...current, inspectionResult: event.target.value }))} className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400" /></Field><Field label="Đại diện khách hàng"><TextInput aria-label="Đại diện khách hàng" value={fieldForm.customerRepresentative} onChange={(event) => setFieldForm((current) => ({ ...current, customerRepresentative: event.target.value }))} /></Field></div><button type="button" disabled={!canMutate || busy || !fieldAccess.editable || !fieldForm.lotObservation.trim() || !fieldForm.packaging.trim() || !fieldForm.inspectionResult.trim()} onClick={saveFieldInspection} className="mt-2 min-h-10 w-full rounded-lg bg-blue-600 px-2 text-[10px] font-black text-white disabled:opacity-50">{fieldInspection ? 'Ghi nhận lại biên bản' : 'Hoàn tất hiện trường'}</button></div><div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5"><div className="text-[10px] font-black text-slate-700">Tách mẫu</div><div className="mt-1 grid gap-1.5"><Field label="Số lượng mẫu *"><TextInput required aria-required="true" type="number" min="2" step="1" value={sampleQuantity} onChange={(event) => setSampleQuantity(event.target.value)} /></Field><Field label="Mô tả mẫu *"><TextInput required aria-required="true" value={sampleDescription} onChange={(event) => setSampleDescription(event.target.value)} /></Field></div><button type="button" disabled={!canMutate || busy || !fieldAccess.editable || Number(sampleQuantity) < 2 || !sampleDescription.trim()} onClick={splitSample} className="mt-2 min-h-10 w-full rounded-lg border border-blue-200 bg-white px-2 text-[10px] font-black text-blue-700 disabled:opacity-50">Tách phần PTN + mẫu lưu</button><p className="mt-1 text-[9px] text-slate-400">{samples.length ? `${samples.length} phần mẫu đã tạo` : 'Chưa có mẫu'}</p></div><div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5"><div className="text-[10px] font-black text-slate-700">Yêu cầu PTN</div><div className="mt-1 grid gap-1.5"><Field label="Phòng thử nghiệm *"><TextInput required aria-required="true" value={labName} onChange={(event) => setLabName(event.target.value)} /></Field><Field label="Mã PTN"><TextInput value={labCode} onChange={(event) => setLabCode(event.target.value)} /></Field><Field label="Hạng mục thử *"><TextInput required aria-required="true" value={labItems} onChange={(event) => setLabItems(event.target.value)} /></Field></div><button type="button" disabled={!canMutate || busy || !fieldAccess.editable || !labName.trim() || !labItems.trim()} onClick={createLabRequest} className="mt-2 min-h-10 w-full rounded-lg border border-blue-200 bg-white px-2 text-[10px] font-black text-blue-700 disabled:opacity-50">Giao mẫu & lập PYC PTN</button><p className="mt-1 text-[9px] text-slate-400">{labRequests.length} PYC · {labResults.length} KQTN</p></div></div></section>
-      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><h3 className="flex items-center gap-2 text-xs font-black text-slate-800"><FlaskConical size={15} className="text-blue-600" /> Kết quả PTN và báo cáo / chứng thư linh hoạt</h3><div className="mt-2 grid gap-2 md:grid-cols-2"><div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5"><div className="text-[10px] font-black text-slate-700">Tiếp nhận KQTN</div><div className="mt-2 grid gap-1.5"><Field label="Số phiếu KQTN"><TextInput aria-label="Số phiếu KQTN" value={labReportNumber} onChange={(event) => setLabReportNumber(event.target.value)} /></Field><Field label="Kết luận KQTN *"><textarea required aria-required="true" rows={2} value={labConclusion} onChange={(event) => setLabConclusion(event.target.value)} className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400" /></Field></div><button type="button" disabled={!canMutate || busy || !labAccess.editable || labRequests.length === 0 || !labConclusion.trim()} onClick={saveLabResult} className="mt-2 min-h-10 w-full rounded-lg bg-blue-600 px-2 text-[10px] font-black text-white disabled:opacity-50">Ghi nhận kết quả</button>{labRequests.some((item) => !item.resultId) && <p className="mt-1 text-[9px] font-bold text-amber-700">Cảnh báo: còn PYC PTN chưa có kết quả.</p>}</div><div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5"><div className="text-[10px] font-black text-slate-700">Báo cáo / chứng thư</div><p className="mt-1 text-[9px] text-slate-500">{template ? `Mẫu ${template.code || template.id} · phiên bản ${template.version}` : 'Chưa có mẫu'}{report ? ` · báo cáo ${report.status}` : ''}</p><div className="mt-2 grid gap-1.5">{template?.fields.map((field) => { const fieldDescriptor = `${field.key} ${field.label}`.toLowerCase(); const isConclusion = fieldDescriptor.includes('conclusion') || fieldDescriptor.includes('kết luận'); const value = isConclusion ? certificateConclusion : reportInputs[field.key] || ''; const updateValue = (nextValue: string) => { if (isConclusion) setCertificateConclusion(nextValue); else setReportInputs((current) => ({ ...current, [field.key]: nextValue })); }; const requiredProps = field.required ? { required: true, 'aria-required': true } : {}; return <label key={field.key} className="block"><span className="mb-1 block text-[9px] font-black text-slate-500">{field.label}{field.required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}{field.unit ? ` · ${field.unit}` : ''}</span>{field.type === 'TABLE' ? <textarea {...requiredProps} rows={2} value={value} onChange={(event) => updateValue(event.target.value)} className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400" /> : field.type === 'BOOLEAN' ? <SelectInput {...requiredProps} value={value} onChange={(event) => updateValue(event.target.value)}><option value="">Chọn...</option><option value="true">Có</option><option value="false">Không</option></SelectInput> : field.type === 'DATE' ? <PgdcnDateInput {...requiredProps} value={value} onChange={updateValue} /> : <TextInput {...requiredProps} type={field.type === 'NUMBER' ? 'number' : 'text'} value={value} onChange={(event) => updateValue(event.target.value)} />}</label>; })}</div>{reportIssues.length > 0 && <p role="alert" className="mt-2 text-[9px] font-bold text-amber-700">Còn {reportIssues.length} trường cần xử lý trước khi lập báo cáo.</p>}{!template && <p className="mt-2 text-[9px] font-bold text-amber-700">Chưa có mẫu kết quả phù hợp; chọn mẫu trước khi lập báo cáo.</p>}<button type="button" disabled={!canMutate || busy || !reportAccess.editable || labResults.length === 0 || reportIssues.length > 0 || certificate?.status === 'SIGNED'} onClick={saveCertificate} className="mt-2 min-h-10 w-full rounded-lg border border-blue-200 bg-white px-2 text-[10px] font-black text-blue-700 disabled:opacity-50">{certificate ? 'Cập nhật dự thảo chứng thư' : 'Tạo báo cáo + dự thảo chứng thư'}</button>{report && <p className="mt-1 text-[9px] font-bold text-blue-700">Báo cáo đã snapshot {report.standardSnapshot.length} tiêu chuẩn; {report.values.length} trường trong mẫu.</p>}{certificate && <p className="mt-1 text-[9px] font-bold text-emerald-700">Đã snapshot mẫu lúc {formatDate(certificate.templateSnapshot?.capturedAt)} · {certificate.status}</p>}</div></div></section>
+      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><h3 className="flex items-center gap-2 text-xs font-black text-slate-800"><ClipboardCheck size={15} className="text-blue-600" /> Hiện trường, lấy mẫu và bàn giao PTN</h3><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5"><div className="text-[10px] font-black text-slate-700">Biên bản hiện trường</div><div className="mt-1 text-[9px] text-slate-500">{fieldInspection ? `Hoàn tất lúc ${formatDate(fieldInspection.performedAt)}` : 'Chưa hoàn tất'}</div><div className="mt-2 grid gap-1.5"><Field label="Ghi nhận lô hàng *"><TextInput required aria-required="true" aria-label="Ghi nhận lô hàng" value={fieldForm.lotObservation} onChange={(event) => setFieldForm((current) => ({ ...current, lotObservation: event.target.value }))} /></Field><Field label="Bao gói *"><TextInput required aria-required="true" aria-label="Bao gói" value={fieldForm.packaging} onChange={(event) => setFieldForm((current) => ({ ...current, packaging: event.target.value }))} /></Field><Field label="Nhãn hàng hóa"><TextInput aria-label="Nhãn hàng hóa" value={fieldForm.labeling} onChange={(event) => setFieldForm((current) => ({ ...current, labeling: event.target.value }))} /></Field><label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Kích thước và đo đạc</span><textarea aria-label="Kích thước và đo đạc" rows={2} value={fieldForm.measurements} onChange={(event) => setFieldForm((current) => ({ ...current, measurements: event.target.value }))} className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400" /></label><label className="block"><span className="mb-1 block text-[10px] font-black text-slate-500">Điểm không phù hợp *</span><textarea required aria-required="true" aria-label="Điểm không phù hợp" rows={2} value={fieldForm.nonconformities} onChange={(event) => setFieldForm((current) => ({ ...current, nonconformities: event.target.value }))} className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400" /></label><Field label="Kết quả giám định *"><textarea required aria-required="true" aria-label="Kết quả giám định" rows={2} value={fieldForm.inspectionResult} onChange={(event) => setFieldForm((current) => ({ ...current, inspectionResult: event.target.value }))} className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400" /></Field><Field label="Đại diện khách hàng"><TextInput aria-label="Đại diện khách hàng" value={fieldForm.customerRepresentative} onChange={(event) => setFieldForm((current) => ({ ...current, customerRepresentative: event.target.value }))} /></Field></div><button type="button" disabled={!canMutate || busy || !fieldAccess.editable} onClick={saveFieldInspection} className="mt-2 min-h-10 w-full rounded-lg bg-blue-600 px-2 text-[10px] font-black text-white disabled:opacity-50">{fieldInspection ? 'Ghi nhận lại biên bản' : 'Hoàn tất hiện trường'}</button></div><div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5"><div className="text-[10px] font-black text-slate-700">Tách mẫu</div><div className="mt-1 grid gap-1.5"><Field label="Số lượng mẫu *"><TextInput required aria-required="true" type="number" min="2" step="1" value={sampleQuantity} onChange={(event) => setSampleQuantity(event.target.value)} /></Field><Field label="Mô tả mẫu *"><TextInput required aria-required="true" value={sampleDescription} onChange={(event) => setSampleDescription(event.target.value)} /></Field></div><button type="button" disabled={!canMutate || busy || !fieldAccess.editable} onClick={splitSample} className="mt-2 min-h-10 w-full rounded-lg border border-blue-200 bg-white px-2 text-[10px] font-black text-blue-700 disabled:opacity-50">Tách phần PTN + mẫu lưu</button><p className="mt-1 text-[9px] text-slate-400">{samples.length ? `${samples.length} phần mẫu đã tạo` : 'Chưa có mẫu'}</p></div><div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5"><div className="text-[10px] font-black text-slate-700">Yêu cầu PTN</div><div className="mt-1 grid gap-1.5"><Field label="Phòng thử nghiệm *"><TextInput required aria-required="true" value={labName} onChange={(event) => setLabName(event.target.value)} /></Field><Field label="Mã PTN"><TextInput value={labCode} onChange={(event) => setLabCode(event.target.value)} /></Field><Field label="Hạng mục thử *"><TextInput required aria-required="true" value={labItems} onChange={(event) => setLabItems(event.target.value)} /></Field></div><button type="button" disabled={!canMutate || busy || !fieldAccess.editable || !labName.trim() || !labItems.trim()} onClick={createLabRequest} className="mt-2 min-h-10 w-full rounded-lg border border-blue-200 bg-white px-2 text-[10px] font-black text-blue-700 disabled:opacity-50">Giao mẫu & lập PYC PTN</button><p className="mt-1 text-[9px] text-slate-400">{labRequests.length} PYC · {labResults.length} KQTN</p></div></div></section>
+      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><h3 className="flex items-center gap-2 text-xs font-black text-slate-800"><FlaskConical size={15} className="text-blue-600" /> Kết quả PTN và báo cáo / chứng thư linh hoạt</h3><div className="mt-2 grid gap-2 md:grid-cols-2"><div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5"><div className="text-[10px] font-black text-slate-700">Tiếp nhận KQTN</div><div className="mt-2 grid gap-1.5"><Field label="Số phiếu KQTN"><TextInput aria-label="Số phiếu KQTN" value={labReportNumber} onChange={(event) => setLabReportNumber(event.target.value)} /></Field><Field label="Kết luận KQTN *"><textarea required aria-required="true" rows={2} value={labConclusion} onChange={(event) => setLabConclusion(event.target.value)} className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400" /></Field></div><button type="button" disabled={!canMutate || busy || !labAccess.editable || labRequests.length === 0} onClick={saveLabResult} className="mt-2 min-h-10 w-full rounded-lg bg-blue-600 px-2 text-[10px] font-black text-white disabled:opacity-50">Ghi nhận kết quả</button>{labRequests.some((item) => !item.resultId) && <p className="mt-1 text-[9px] font-bold text-amber-700">Cảnh báo: còn PYC PTN chưa có kết quả.</p>}</div><div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5"><div className="text-[10px] font-black text-slate-700">Báo cáo / chứng thư</div><p className="mt-1 text-[9px] text-slate-500">{template ? `Mẫu ${template.code || template.id} · phiên bản ${template.version}` : 'Chưa có mẫu'}{report ? ` · báo cáo ${report.status}` : ''}</p><div className="mt-2 grid gap-1.5">{template?.fields.map((field) => { const fieldDescriptor = `${field.key} ${field.label}`.toLowerCase(); const isConclusion = fieldDescriptor.includes('conclusion') || fieldDescriptor.includes('kết luận'); const value = isConclusion ? certificateConclusion : reportInputs[field.key] || ''; const updateValue = (nextValue: string) => { if (isConclusion) setCertificateConclusion(nextValue); else setReportInputs((current) => ({ ...current, [field.key]: nextValue })); }; const requiredProps = field.required ? { required: true, 'aria-required': true } : {}; return <label key={field.key} className="block"><span className="mb-1 block text-[9px] font-black text-slate-500">{field.label}{field.required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}{field.unit ? ` · ${field.unit}` : ''}</span>{field.type === 'TABLE' ? <textarea {...requiredProps} rows={2} value={value} onChange={(event) => updateValue(event.target.value)} className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400" /> : field.type === 'BOOLEAN' ? <SelectInput {...requiredProps} value={value} onChange={(event) => updateValue(event.target.value)}><option value="">Chọn...</option><option value="true">Có</option><option value="false">Không</option></SelectInput> : field.type === 'DATE' ? <PgdcnDateInput {...requiredProps} value={value} onChange={updateValue} /> : <TextInput {...requiredProps} type={field.type === 'NUMBER' ? 'number' : 'text'} value={value} onChange={(event) => updateValue(event.target.value)} />}</label>; })}{template && !template.fields.some((field) => `${field.key} ${field.label}`.toLowerCase().includes("conclusion") || `${field.key} ${field.label}`.toLowerCase().includes("kết luận")) && <Field label="Kết luận báo cáo/chứng thư *"><textarea required aria-required="true" aria-label="Kết luận báo cáo/chứng thư" rows={2} value={certificateConclusion} onChange={(event) => setCertificateConclusion(event.target.value)} className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] outline-none focus:border-blue-400" /></Field>}</div>{!certificateConclusion.trim() && <p role="alert" className="mt-2 text-[9px] font-bold text-amber-700">Vui lòng nhập kết luận báo cáo/chứng thư thực tế trước khi lập.</p>}{reportIssues.length > 0 && <><p role="alert" className="mt-2 text-[9px] font-bold text-amber-700">Còn {reportIssues.length} trường cần xử lý trước khi lập báo cáo.</p><p className="mt-1 text-[9px] text-amber-700">{reportIssues.map((issue) => issue.message).join(" ")}</p></>}{!template && <p className="mt-2 text-[9px] font-bold text-amber-700">Chưa có mẫu kết quả phù hợp; chọn mẫu trước khi lập báo cáo.</p>}<button type="button" disabled={!canMutate || busy || !reportAccess.editable || labResults.length === 0 || !certificateConclusion.trim() || reportIssues.length > 0 || certificate?.status === 'SIGNED'} onClick={saveCertificate} className="mt-2 min-h-10 w-full rounded-lg border border-blue-200 bg-white px-2 text-[10px] font-black text-blue-700 disabled:opacity-50">{certificate ? 'Cập nhật dự thảo chứng thư' : 'Tạo báo cáo + dự thảo chứng thư'}</button>{report && <p className="mt-1 text-[9px] font-bold text-blue-700">Báo cáo đã snapshot {report.standardSnapshot.length} tiêu chuẩn; {report.values.length} trường trong mẫu.</p>}{certificate && <p className="mt-1 text-[9px] font-bold text-emerald-700">Đã snapshot mẫu lúc {formatDate(certificate.templateSnapshot?.capturedAt)} · {certificate.status}</p>}</div></div></section>
       {editOpen && <PgdRequestEditPanel request={request} onClose={() => setEditOpen(false)} />}
       <PgdCaseEvidencePanel request={request} requirements={dossierRequirements} dossierDocuments={dossierDocuments} samples={samples} canMutate={canMutate} editable={getPgdPostSignatureMutationDenial(request.status) === null} lockedReason={getPgdPostSignatureMutationDenial(request.status)} loadError={dossierError} />
       <PgdSourceFormsPanel request={request} currentUser={currentUser} editable={getPgdPostSignatureMutationDenial(request.status) === null} />
@@ -1778,7 +1929,7 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
     ? <PgdDraftingWorkspaceView templates={pgd.documentTemplates} documents={pgd.documents} canMutate={canMutate} initialRequestId={initialDraftRequestId || draftingRequestId} initialRequirementCode={initialDraftRequirementCode || draftingRequirementCode} initialTemplateKind={initialDraftTemplateKind || draftingTemplateKind} initialReturnTo={initialDraftReturnTo} onOpenSettings={isAdmin ? () => setDocxSettingsOpen(true) : undefined} />
     : activeSection === 'sample-operations' ? sampleRegister : operationProjection;
 
-  const requestDetail = selectedRequest ? <PgdRequestDetail request={selectedRequest} currentUser={currentUser} initialStepId={initialRequestStep || routeRequestStep} standalone={standaloneRequest} onOpenDrafting={openDraftingFromStep} onOpenContextualAssistant={onOpenContextualAssistant} onClose={() => { setSelectedRequestId(undefined); onRequestClose?.(); }} /> : null;
+  const requestDetail = selectedRequest ? <PgdRequestDetail key={selectedRequest.id} request={selectedRequest} currentUser={currentUser} initialStepId={initialRequestStep || routeRequestStep} standalone={standaloneRequest} onOpenDrafting={openDraftingFromStep} onOpenContextualAssistant={onOpenContextualAssistant} onClose={() => { setSelectedRequestId(undefined); onRequestClose?.(); }} /> : null;
 
   return <>
     <div className={embedded ? 'min-w-0 overflow-x-hidden [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 [&_*:focus-visible]:ring-blue-500' : 'flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800 [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 [&_*:focus-visible]:ring-blue-500'}>

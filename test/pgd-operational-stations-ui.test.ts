@@ -15,6 +15,17 @@ test('each operational station stays inside the dossier workspace contract', () 
   for (const station of ['preparation', 'field', 'labs', 'results']) assert.doesNotMatch(pgdWorkspace, new RegExp(`activeSection === '${station}'`));
 });
 
+test('operational station omits the embedded Archify reader and keeps native dossier actions', () => {
+  const workspace = read('components/PgdOperationalStationWorkspace.tsx');
+  assert.doesNotMatch(workspace, /PgdWorkflowMap|PcnArchifyWorkflowEmbed|<iframe\b/);
+  assert.match(workspace, /PgdDossierSummary request=\{selectedRequest\}/);
+  assert.match(workspace, /request\.requestCode/);
+  assert.match(workspace, /getEvidence: \(requestId: string\) => PgdTransitionContext/);
+  assert.match(workspace, /onOpenFullDossier\(selectedRequest\.id\)/);
+  assert.match(workspace, /children\(selectedRequest\)/);
+  assert.equal((workspace.match(/Mở hồ sơ đầy đủ/g) ?? []).length, 1);
+});
+
 test('PGD selector keeps one-dossier-per-PYC fields visible', () => {
   const selector = read('components/PgdDossierSelector.tsx');
   for (const marker of ['requestCode', 'customerSnapshot', 'productName', 'lotCode', 'inspectionLocation', 'method', 'onSelect']) {

@@ -47,3 +47,22 @@ test('PGD drafting exposes explicit review and attach success states', () => {
   assert.match(workspace, /pgd-drafting-attach-success/);
   assert.match(generation, /Đã gắn vào hồ sơ/);
 });
+
+test('PGD field AI suggestions send one reviewed field and guard application against stale context', () => {
+  assert.match(generation, /PgdcnDraftAiSuggestionPanel/);
+  assert.match(generation, /canSuggestPgdDocumentField\(cell, scalarInputValue\(cellValues\[cell\.key\]\), \{ canMutate, busy, readOnly \}\)/);
+  assert.match(generation, /cell\.type !== 'TEXT'/);
+  assert.match(generation, /cell\.validation\?\.options\?\.length/);
+  assert.match(generation, /onClick=\{\(\) => openAiSuggestion\(cell\)\}/);
+  assert.match(generation, /onRequest=\{\(\) => void requestAiSuggestion\(\)\}/);
+  assert.match(generation, /fetch\('\/api\/pgdcn\/drafting-ai'/);
+  assert.match(generation, /domain: 'PGD'/);
+  assert.match(generation, /mode: 'PROOFREAD'/);
+  assert.match(generation, /templateVersion: current\.snapshot\.templateVersion/);
+  const payload = generation.match(/body: JSON\.stringify\(\{([\s\S]*?)\}\),/);
+  assert.ok(payload, 'the AI request must use a bounded JSON payload');
+  assert.doesNotMatch(payload[1], /\bcontext\s*:/);
+  for (const field of ['templateCode', 'fieldKey', 'fieldLabel', 'originalText']) assert.match(payload[1], new RegExp(`${field}: current\\.snapshot\\.${field}`));
+  assert.match(generation, /isAiSuggestionSnapshotCurrent/);
+  assert.match(generation, /updateCell\(cell, suggestion\)/);
+});

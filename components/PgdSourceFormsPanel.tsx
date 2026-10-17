@@ -28,7 +28,7 @@ type PgdSourceFormsPanelProps = {
   editable: boolean;
 };
 
-const inputClass = 'mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] outline-none focus:border-blue-400 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2';
+const inputClass = 'mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-blue-400 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2';
 
 function SourceField({ label, children, required = false, wide = false }: { label: string; children: ReactNode; required?: boolean; wide?: boolean }) {
   const normalized = label.replace(/\s*\*\s*$/, '').trim();
@@ -40,8 +40,19 @@ function currentTime(): string {
   return new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
 }
 
+export function getLocalCalendarDate(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function toLocalIsoTimestamp(date: string, time: string): string {
+  return new Date(`${date}T${time}:00`).toISOString();
+}
+
 function currentDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  return getLocalCalendarDate();
 }
 
 function newId(prefix: string): string {
@@ -102,7 +113,7 @@ export default function PgdSourceFormsPanel({ request, currentUser, editable }: 
 
   const saveEvent = () => run(async () => {
     const time = eventTime.trim() || currentTime();
-    const occurredAt = new Date(`${currentDate()}T${time}:00`).toISOString();
+    const occurredAt = toLocalIsoTimestamp(currentDate(), time);
     await pgd.saveCaseEvent(createPgdCaseEvent({ id: newId('pgd-event'), requestId: request.id, occurredAt, activity: eventActivity.trim(), actorUsername: currentUser.username, note: eventNote.trim() || undefined }, new Date().toISOString()));
     setEventActivity('');
     setEventNote('');

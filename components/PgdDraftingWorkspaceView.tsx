@@ -3,7 +3,7 @@
 import { formatDateTimeDdMmYyyy } from '../utils/formatter';
 
 import { ArrowLeft, CheckCircle2, FileDown, FilePlus2, LockKeyhole, Settings2, UnlockKeyhole } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { PgdDocumentTemplateKind } from '../utils/pgdDocumentTemplates';
@@ -66,6 +66,42 @@ function documentKindLabel(kind: string): string {
   return PGD_DOCUMENT_KIND_LABELS[kind as PgdDocumentTemplateKind] || kind;
 }
 
+type PgdDraftSaveContext = {
+  request?: PgdInspectionRequest;
+  activeRequirementCode?: string;
+  template?: PgdDocumentTemplate;
+};
+
+export function requirePgdDraftSaveContext(context: PgdDraftSaveContext): Required<PgdDraftSaveContext> {
+  if (!context.request) throw new Error('Không thể lưu bản nháp: chưa chọn hồ sơ/PYC PGD.');
+  if (!context.activeRequirementCode) throw new Error('Không thể lưu bản nháp: chưa xác định mục tài liệu trong hồ sơ PGD.');
+  if (!context.template) throw new Error('Không thể lưu bản nháp: chưa có biểu mẫu hợp lệ trong danh mục PGD.');
+  return {
+    request: context.request,
+    activeRequirementCode: context.activeRequirementCode,
+    template: context.template,
+  };
+}
+
+export function confirmPgdDraftTitleDiscard(
+  currentTitle: string,
+  savedOrLoadedTitle: string,
+  confirmDiscard: (message: string) => boolean,
+): boolean {
+  if (currentTitle === savedOrLoadedTitle) return true;
+  return confirmDiscard('Tên bản soạn đã thay đổi kể từ lần lưu hoặc nạp gần nhất. Bạn có muốn tiếp tục và bỏ thay đổi tiêu đề này không?');
+}
+
+export function confirmPgdDraftContextSwitch(
+  currentTitle: string,
+  savedOrLoadedTitle: string,
+  documentDirty: boolean,
+  confirmDiscard: (message: string) => boolean,
+): boolean {
+  if (currentTitle === savedOrLoadedTitle && !documentDirty) return true;
+  return confirmDiscard('Tiêu đề hoặc nội dung tài liệu đã thay đổi kể từ lần lưu hoặc nạp gần nhất. Bạn có muốn tiếp tục và bỏ các thay đổi này không?');
+}
+
 const PGD_WORKSPACE_STATE_LABELS: Record<DraftingState, string> = {
   EMPTY: 'Chưa chọn hồ sơ hoặc biểu mẫu',
   EDITING: 'Đang soạn tài liệu',
@@ -86,8 +122,11 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
   const [requestId, setRequestId] = useState(initialRequestId || '');
   const [draftId, setDraftId] = useState<string>();
   const [draftTitle, setDraftTitle] = useState('');
+  const savedOrLoadedTitleRef = useRef('');
+  const draftDirtyRef = useRef(false);
   const [templateId, setTemplateId] = useState('');
   const [selectedRequirementCode, setSelectedRequirementCode] = useState(initialRequirementCode || '');
+  const [draftPanelRevision, setDraftPanelRevision] = useState(0);
   const [drafts, setDrafts] = useState<PgdDraftSession[]>([]);
   const [checklistError, setChecklistError] = useState('');
   const [contextUnlocked, setContextUnlocked] = useState(false);
@@ -139,6 +178,15 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
   const isDeepContextRequest = Boolean(request && (!initialRequestId || request.id === initialRequestId));
   const deepContextUnavailable = Boolean(request && isDeepContextRequest && resolvedContext.invalidDeepContext);
   const activeRequirementCode = resolvedContext.activeRequirementCode;
+  const handleDraftDirtyChange = useCallback((dirty: boolean) => {
+    draftDirtyRef.current = dirty;
+  }, []);
+  const confirmContextSwitch = () => confirmPgdDraftContextSwitch(
+    draftTitle,
+    savedOrLoadedTitleRef.current,
+    draftDirtyRef.current,
+    (message) => typeof window !== 'undefined' && window.confirm(message),
+  );
   const selectedDocuments = useMemo(() => request && activeRequirementCode
     ? getPgdDocumentsForRequirement({ documents, requestId: request.id, requirementCode: activeRequirementCode, productGroup: request.productGroup })
     : [], [activeRequirementCode, documents, request]);
@@ -181,6 +229,8 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
 
   const returnToDossier = () => {
     if (typeof window === 'undefined') return;
+    if (!confirmContextSwitch()) return;
+    handleDraftDirtyChange(false);
     const target = sanitizeInternalReturnTo(initialReturnTo || routeReturnTo) || (request ? buildPgdDossierReturnRoute(request.id, { step: activeRequirementCode ? getPgdDossierStepForRequirement(activeRequirementCode) : undefined }) : '/pgdcn/pgd');
     window.location.replace(target);
   };
@@ -220,6 +270,7 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
       setRequestId('');
       setDraftId(undefined);
       setDraftTitle('');
+      savedOrLoadedTitleRef.current = '';
       setTemplateId('');
       setSelectedRequirementCode('');
     }
@@ -261,6 +312,7 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
     setRequestId(initialRequestId);
     setDraftId(undefined);
     setDraftTitle('');
+    savedOrLoadedTitleRef.current = '';
     setTemplateId('');
     setSelectedRequirementCode(initialRequirementCode || '');
     setContextUnlocked(false);
@@ -276,6 +328,7 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
   useEffect(() => {
     if (activeDraft) {
       setDraftTitle(activeDraft.title);
+      savedOrLoadedTitleRef.current = activeDraft.title;
       setTemplateId(activeDraft.templateId);
       const draftTemplate = catalogTemplates.find((template) => template.id === activeDraft.templateId);
       setSelectedRequirementCode(draftTemplate && request ? getPgdDossierRequirementForTemplate(draftTemplate.kind, request.productGroup)?.code || '' : '');
@@ -293,15 +346,23 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
   }, [request?.id]);
 
   const loadDraft = (draft: PgdDraftSession) => {
+    if (draft.id === draftId && draft.requestId === requestId) return;
+    if (!confirmContextSwitch()) return;
+    handleDraftDirtyChange(false);
     setContextUnlocked(true);
     setDraftId(draft.id);
     setRequestId(draft.requestId);
     setDraftTitle(draft.title);
+    savedOrLoadedTitleRef.current = draft.title;
     setTemplateId(draft.templateId);
     setSelectedRequirementCode(draft.requirementCode);
   };
 
   const newDraft = () => {
+    if (!confirmContextSwitch()) return;
+    handleDraftDirtyChange(false);
+    setDraftPanelRevision((revision) => revision + 1);
+    savedOrLoadedTitleRef.current = '';
     if (hasPgdDeepContext({ requestId: initialRequestId, requirementCode: initialRequirementCode, templateKind: initialTemplateKind }) && request) {
       const preservedTemplate = deepTemplate || deepRequirementTemplate || selectedTemplate;
       setContextUnlocked(false);
@@ -321,10 +382,14 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
 
   const handleRequestChange = (nextRequestId: string) => {
     if (contextLocked) return;
+    if (nextRequestId === requestId || !confirmContextSwitch()) return;
+    handleDraftDirtyChange(false);
+    setDraftPanelRevision((revision) => revision + 1);
     const nextRequest = requests.find((item) => item.id === nextRequestId);
     setRequestId(nextRequestId);
     setDraftId(undefined);
     setDraftTitle('');
+    savedOrLoadedTitleRef.current = '';
     const nextTemplate = catalogTemplates.find((template) => template.productGroups.includes(nextRequest?.productGroup || 'OTHER'));
     setTemplateId(nextTemplate?.id || '');
     setSelectedRequirementCode(nextTemplate && nextRequest ? getPgdDossierRequirementForTemplate(nextTemplate.kind, nextRequest.productGroup)?.code || '' : '');
@@ -332,20 +397,28 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
 
   const handleTemplateChange = (nextTemplateId: string) => {
     if (contextLocked) return;
+    if (nextTemplateId === templateId || !confirmContextSwitch()) return;
+    handleDraftDirtyChange(false);
+    setDraftPanelRevision((revision) => revision + 1);
     setTemplateId(nextTemplateId);
     setDraftId(undefined);
     setDraftTitle('');
+    savedOrLoadedTitleRef.current = '';
     const nextTemplate = catalogTemplates.find((template) => template.id === nextTemplateId);
     setSelectedRequirementCode(nextTemplate && request ? getPgdDossierRequirementForTemplate(nextTemplate.kind, request.productGroup)?.code || '' : '');
   };
 
   const selectRequirement = (requirementCode: string) => {
     if (!request || contextLocked) return;
+    if (requirementCode === activeRequirementCode || !confirmContextSwitch()) return;
+    handleDraftDirtyChange(false);
+    setDraftPanelRevision((revision) => revision + 1);
     setSelectedRequirementCode(requirementCode);
     const matchingTemplate = availableTemplates.find((template) => getPgdDossierRequirementForTemplate(template.kind, request.productGroup)?.code === requirementCode);
     setTemplateId(matchingTemplate?.id || '');
     setDraftId(undefined);
     setDraftTitle('');
+    savedOrLoadedTitleRef.current = '';
   };
 
   const attachGenerated = async (document: PgdGeneratedDocument) => {
@@ -359,21 +432,24 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
   };
 
   const saveDraft = async (input: PgdDraftSaveInput) => {
-    if (!request || !activeRequirementCode) return;
     const template = catalogTemplates.find((candidate) => candidate.id === input.templateId);
-    if (!template) {
-      toast.error('Không thể lưu bản nháp vì template không còn trong catalog PGD.');
-      return;
+    let saveContext: Required<PgdDraftSaveContext>;
+    try {
+      saveContext = requirePgdDraftSaveContext({ request, activeRequirementCode, template });
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể lưu bản nháp PGD.');
+      throw error;
     }
+    const { request: saveRequest, activeRequirementCode: saveRequirementCode, template: saveTemplate } = saveContext;
     const nextDraft: PgdDraftSession = {
       id: draftId || makeDraftId(),
       domain: 'pgd',
-      requestId: request.id,
-      requirementCode: activeRequirementCode,
-      title: input.title?.trim() || `${request.requestCode} · ${templateTitle(catalogTemplates.find((template) => template.id === input.templateId))}`,
+      requestId: saveRequest.id,
+      requirementCode: saveRequirementCode,
+      title: input.title?.trim() || `${saveRequest.requestCode} · ${templateTitle(saveTemplate)}`,
       templateId: input.templateId,
-      templateKind: template.kind,
-      templateVersion: template.version,
+      templateKind: saveTemplate.kind,
+      templateVersion: saveTemplate.version,
       format: input.format,
       cellValues: input.cellValues,
       createdAt: activeDraft?.createdAt || new Date().toISOString(),
@@ -385,6 +461,8 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
       setDrafts((current) => [saved, ...current.filter((draft) => draft.id !== saved.id)]);
       setDraftId(saved.id);
       setDraftTitle(saved.title);
+      savedOrLoadedTitleRef.current = saved.title;
+      if (!draftId) handleDraftDirtyChange(false);
       toast.success('Đã lưu bản nháp PGD.');
     } catch (error: any) {
       toast.error(error?.message || 'Không thể lưu bản nháp PGD.');
@@ -438,7 +516,7 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
 
       <main className="min-w-0"><section data-testid="pgd-drafting-form" className="min-w-0 space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" aria-label="Form soạn thảo tài liệu PGD"><div className="grid gap-2 sm:grid-cols-2"><label><span className="block text-[12px] font-black text-slate-600">Tên bản soạn</span><input value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} disabled={!canMutate} className="mt-1 min-h-11 w-full rounded-md border border-slate-200 px-2.5 py-2 text-[13px] outline-none focus:border-blue-400 disabled:bg-slate-50" /></label><label><span className="block text-[12px] font-black text-slate-600">Loại tài liệu {contextLocked ? '(tự chọn theo bối cảnh)' : ''}</span><select aria-label="Loại tài liệu PGD" value={templateId} onChange={(event) => handleTemplateChange(event.target.value)} disabled={!canMutate || !request || contextLocked} className="mt-1 min-h-11 w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[13px] outline-none focus:border-blue-400 disabled:bg-slate-50">{!templateId && <option value="">Chưa có mẫu phù hợp</option>}{templateOptions.map((template) => <option key={template.id} value={template.id}>{template.name} · {template.code} · v{template.version}</option>)}</select></label></div>
         <section data-testid="pgd-drafting-context" className="rounded-lg border border-blue-100 bg-blue-50/40 p-2.5" aria-label="Nguồn hồ sơ PGD"><div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="text-[13px] font-black text-slate-800">{contextLocked ? 'Bối cảnh hồ sơ đã mở sẵn' : 'Hồ sơ nguồn'}</h2><p className="mt-0.5 text-[12px] leading-5 text-slate-600">{contextLocked ? 'PYC, mục tài liệu và biểu mẫu được giữ theo đường dẫn nghiệp vụ.' : 'Chọn một PYC/hồ sơ; dữ liệu phù hợp sẽ tự điền vào biểu mẫu.'}</p></div></div><div className="mt-2"><PcnCatalogCombobox id="pgd-draft-source" label="Chọn hồ sơ PGD" hideLabel value={requestId} options={sourceOptions} onChange={handleRequestChange} disabled={Boolean(initialRequestId) && !contextUnlocked} /></div></section>
-      {request ? deepContextUnavailable || !selectedTemplate ? <section data-testid="pgd-drafting-no-template" className="rounded-xl border border-dashed border-amber-300 bg-amber-50/70 p-6 text-center"><div className="mx-auto max-w-xl"><h2 className="text-[16px] font-black text-amber-950">Không có mẫu phù hợp</h2><p className="mt-2 text-[13px] leading-5 text-amber-900">{templateEmptyMessage} Không thể sinh tài liệu cho tới khi có biểu mẫu đúng nhóm sản phẩm và mục hồ sơ. Nếu đã có tệp do bên ngoài cung cấp, hãy dùng đúng luồng bổ sung ngoại sinh của hồ sơ này.</p>{request && <button type="button" onClick={returnToDossier} title="Quay về đúng hồ sơ và mục tài liệu để bổ sung tệp ngoại sinh" className="mobile-touch-target mt-4 mr-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-amber-700 px-3 py-2 text-[13px] font-black text-white hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"><ArrowLeft size={14} aria-hidden="true" /> Bổ sung tệp ngoại sinh</button>}{onOpenSettings && <button type="button" onClick={onOpenSettings} title="Mở cài đặt mẫu DOCX theo quyền hiện tại" className="mobile-touch-target mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-2 text-[13px] font-black text-amber-900 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"><Settings2 size={15} aria-hidden="true" /> Mở cài đặt mẫu</button>}</div></section> : <div data-testid="pgd-drafting-work-area" className="min-w-0"><div className="mb-2 rounded-lg border border-blue-200 bg-blue-50/70 px-3 py-2 text-[12px] font-bold leading-5 text-blue-900">Tài liệu <b>{selectedTemplate.name}</b> đang được soạn cho mục hồ sơ tương ứng. Tài liệu chỉ hoàn tất sau khi soát nội dung và xác nhận vào bộ hồ sơ.</div><PgdDocumentGenerationPanel key={`${request.id}:${activeDraft?.id || 'new'}:${templateId}`} request={request} templates={catalogTemplates} canMutate={canMutate} initialTemplateId={templateId} initialFormat={activeDraft?.format} initialCellValues={activeDraft?.cellValues} onSaveDraft={(input) => saveDraft({ ...input, title: draftTitle })} onAttachGenerated={attachGenerated} showTemplateSelector={false} showContextStatus={false} showReadiness={false} showOutputReview={false} onReviewOutput={focusOutputReview} onGenerated={handleGenerated} onStateChange={handleGenerationStateChange} /></div> : <section className="rounded-lg border border-dashed border-slate-300 bg-slate-50/60 p-10 text-center text-[12px] leading-5 text-slate-500">Chọn một PYC PGD để bắt đầu soạn tài liệu.</section>}
+      {request ? deepContextUnavailable || !selectedTemplate ? <section data-testid="pgd-drafting-no-template" className="rounded-xl border border-dashed border-amber-300 bg-amber-50/70 p-6 text-center"><div className="mx-auto max-w-xl"><h2 className="text-[16px] font-black text-amber-950">Không có mẫu phù hợp</h2><p className="mt-2 text-[13px] leading-5 text-amber-900">{templateEmptyMessage} Không thể sinh tài liệu cho tới khi có biểu mẫu đúng nhóm sản phẩm và mục hồ sơ. Nếu đã có tệp do bên ngoài cung cấp, hãy dùng đúng luồng bổ sung ngoại sinh của hồ sơ này.</p>{request && <button type="button" onClick={returnToDossier} title="Quay về đúng hồ sơ và mục tài liệu để bổ sung tệp ngoại sinh" className="mobile-touch-target mt-4 mr-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-amber-700 px-3 py-2 text-[13px] font-black text-white hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"><ArrowLeft size={14} aria-hidden="true" /> Bổ sung tệp ngoại sinh</button>}{onOpenSettings && <button type="button" onClick={onOpenSettings} title="Mở cài đặt mẫu DOCX theo quyền hiện tại" className="mobile-touch-target mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-2 text-[13px] font-black text-amber-900 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"><Settings2 size={15} aria-hidden="true" /> Mở cài đặt mẫu</button>}</div></section> : <div data-testid="pgd-drafting-work-area" className="min-w-0"><div className="mb-2 rounded-lg border border-blue-200 bg-blue-50/70 px-3 py-2 text-[12px] font-bold leading-5 text-blue-900">Tài liệu <b>{selectedTemplate.name}</b> đang được soạn cho mục hồ sơ tương ứng. Tài liệu chỉ hoàn tất sau khi soát nội dung và xác nhận vào bộ hồ sơ.</div><PgdDocumentGenerationPanel key={`${request.id}:${activeDraft?.id || 'new'}:${templateId}:${draftPanelRevision}`} request={request} templates={catalogTemplates} canMutate={canMutate} initialTemplateId={templateId} initialFormat={activeDraft?.format} initialCellValues={activeDraft?.cellValues} onSaveDraft={(input) => saveDraft({ ...input, title: draftTitle })} onDraftDirtyChange={handleDraftDirtyChange} onAttachGenerated={attachGenerated} showTemplateSelector={false} showContextStatus={false} showReadiness={false} showOutputReview={false} showA4Preview={true} onReviewOutput={focusOutputReview} onGenerated={handleGenerated} onStateChange={handleGenerationStateChange} /></div> : <section className="rounded-lg border border-dashed border-slate-300 bg-slate-50/60 p-10 text-center text-[12px] leading-5 text-slate-500">Chọn một PYC PGD để bắt đầu soạn tài liệu.</section>}
       </section>
 
       {hasReviewOutput && <DraftingOutputReviewShell testId="pgd-drafting-outputs" accent="blue" title="Soát xét & kết quả" description="Kiểm tra định danh tài liệu trước khi xác nhận và gắn vào đúng mục hồ sơ."><div data-testid="pgd-drafting-review-context" className="rounded-lg border border-blue-100 bg-blue-50/60 p-3"><p className="text-[12px] font-black text-blue-950">Soát xét trước khi gắn</p><p className="mt-1 text-[11px] leading-4 text-blue-900">Nguồn PYC: <b>{request?.requestCode}</b> · khách hàng <b>{request?.customerSnapshot.name}</b> · sản phẩm/đối tượng <b>{request?.productName}</b>.</p><p className="mt-1 text-[11px] leading-4 text-blue-900">Trạng thái: <b>Đã sinh, chờ soát xét</b>. Chỉ thao tác gắn sau khi đã kiểm tra định danh và phiên bản mẫu.</p></div><div className="mt-3 space-y-2">{selectedDocuments.map((document) => { const attached = attachedDocumentIds.has(document.id); const reviewed = attached || reviewedDocumentIds.includes(document.id); return <article key={document.id} data-testid={`pgd-draft-output-${document.id}`} className="rounded-lg border border-slate-200 bg-white p-3"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-[13px] font-black text-slate-800">{documentKindLabel(document.kind)} · {document.fileName}</p><details className="mt-1 text-[11px] text-slate-500"><summary className="cursor-pointer font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1">Thông tin tệp và phiên bản</summary><p className="mt-1 break-words">Nguồn: {document.requestCode || request?.requestCode} · mẫu <span className="font-mono">{document.templateCode} · v{document.templateVersion}</span> · {document.format} · {formatWorkspaceDate(document.generatedAt)}</p></details><p className="mt-1 break-words text-[11px] text-slate-500">Trạng thái hồ sơ: {request ? getPgdStatusLabel(request.status) : 'Chưa có hồ sơ'}</p></div><span className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-black ${attached ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : reviewed ? 'border-teal-200 bg-teal-50 text-teal-800' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>{attached ? 'Đã gắn vào hồ sơ' : reviewed ? 'Đã soát xét' : 'Chờ soát xét'}</span></div><div className="mt-3 flex flex-wrap gap-2">{document.fileAssetId ? <a href={getPgdDocumentDownloadUrl(document.id)} download={document.fileName} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] font-black text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><FileDown size={14} aria-hidden="true" /> Mở tệp</a> : <span className="inline-flex min-h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-600">Tệp đã sinh trong phiên hiện tại</span>}{!reviewed && <button type="button" onClick={() => reviewDocument(document.id)} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-[12px] font-black text-teal-800 hover:bg-teal-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"><CheckCircle2 size={14} aria-hidden="true" /> Xác nhận đã soát xét</button>}{reviewed && !attached && <button type="button" title={!canMutate ? 'Tài khoản hiện tại không có quyền gắn tài liệu' : attachingDocumentId === document.id ? 'Đang gắn tài liệu' : undefined} onClick={() => void attachDocument(document)} disabled={attachingDocumentId === document.id || !canMutate} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-black text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><CheckCircle2 size={14} aria-hidden="true" /> {attachingDocumentId === document.id ? 'Đang gắn…' : 'Xác nhận & gắn vào bộ hồ sơ'}</button>}{attached && <span data-testid="pgd-drafting-attach-success" className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] font-black text-emerald-800"><CheckCircle2 size={14} aria-hidden="true" /> Đã gắn: {getPgdDossierRequirementForTemplate(document.kind as PgdDocumentTemplateKind, request?.productGroup || 'OTHER')?.title || 'mục checklist'}</span>}{attached && <button type="button" onClick={returnToDossier} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-700 px-3 py-2 text-[12px] font-black text-white hover:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><ArrowLeft size={14} aria-hidden="true" /> Quay lại hồ sơ</button>}</div></article>; })}</div></DraftingOutputReviewShell>}

@@ -6,17 +6,17 @@ const read = (relativePath: string) => fs.readFileSync(new URL(`../${relativePat
 
 test('PGD sidebar exposes management pages, not operational stations', () => {
   const sharedSidebar = read('components/PgdcnSidebar.tsx');
-  const legacySidebar = read('components/PgdSidebar.tsx');
+  const shell = read('components/PgdcnAppShell.tsx');
   const expected = [
     "section: 'requests'",
     "section: 'operations'",
-    "section: 'templates'",
+    "section: 'sample-operations'",
   ];
   for (const marker of expected) assert.match(sharedSidebar, new RegExp(marker));
-  assert.match(legacySidebar, /\['dashboard', 'requests', 'operations', 'templates'\]/);
+  assert.match(shell, /import PgdcnSidebar,[^\n]*from '\.\/PgdcnSidebar'/);
+  assert.doesNotMatch(shell, /<PgdSidebar\b/);
   for (const marker of ["section: 'preparation'", "section: 'field'", "section: 'labs'", "section: 'results'"]) {
     assert.doesNotMatch(sharedSidebar, new RegExp(marker));
-    assert.doesNotMatch(legacySidebar, new RegExp(marker));
   }
 });
 
@@ -45,11 +45,14 @@ test('shared PGD navigation focuses the requested record and clears that focus o
   assert.match(workspace, /onRequestClose\?: \(\) => void/);
   assert.match(workspace, /setSelectedRequestId\(initialRequestId\)/);
   assert.match(workspace, /onRequestClose\?\.\(\)/);
-  assert.match(workspace, /<PgdRequestDetail request=\{selectedRequest\}/);
+  assert.match(workspace, /<PgdRequestDetail key=\{selectedRequest\.id\} request=\{selectedRequest\}/);
   assert.match(shell, /focusedPgdRequestId/);
-  assert.match(shell, /setFocusedPgdRequestId\(requestId\)/);
+  assert.match(shell, /const openPgdRequest = \(requestId: string\) => \{[\s\S]*router\.push\(`\/pgdcn\/pgd\/dossiers\/\$\{encodeURIComponent\(requestId\)\}`\)/);
   assert.match(shell, /initialRequestId=\{focusedPgdRequestId\}/);
-  assert.match(shell, /onRequestClose=\{\(\) => setFocusedPgdRequestId\(undefined\)\}/);
+  assert.match(shell, /onRequestClose=\{\(\) => \{\s*setFocusedPgdRequestId\(undefined\);/);
+  assert.match(shell, /if \(initialPgdRequestId\) router\.replace\('\/pgdcn\/pgd'\)/);
+  const route = read('app/pgdcn/pgd/dossiers/[requestId]/page.tsx');
+  assert.match(route, /initialPgdRequestId=\{decodeURIComponent\(requestId\)\}/);
 });
 
 test('PGD notifications forward the target record and generic navigation clears stale PGD focus', () => {

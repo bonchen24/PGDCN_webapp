@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import {
+  confirmPgdDraftTitleDiscard,
+  requirePgdDraftSaveContext,
+} from '../components/PgdDraftingWorkspaceView.tsx';
 import { getPgdDossierRequirements } from '../utils/pgdDossier.ts';
 import { getPgdDocumentTemplates } from '../utils/pgdDocumentTemplates.ts';
 import type { PgdGeneratedDocument, PgdInspectionRequest } from '../utils/pgdDomain.ts';
@@ -66,4 +70,35 @@ test('PGD drafting resolver follows the selected requirement and its mapped temp
   assert.equal(resolved.activeRequirement?.code, 'FIELD_INSPECTION_MINUTES');
   assert.equal(resolved.selectedTemplate?.kind, 'FIELD_INSPECTION');
   assert.equal(resolved.invalidDeepContext, false);
+});
+
+test('PGD draft save context throws a specific validation error for each missing dependency', () => {
+  assert.throws(
+    () => requirePgdDraftSaveContext({ activeRequirementCode: 'FIELD_INSPECTION_MINUTES', template: {} as never }),
+    { message: 'Không thể lưu bản nháp: chưa chọn hồ sơ/PYC PGD.' },
+  );
+  assert.throws(
+    () => requirePgdDraftSaveContext({ request, template: {} as never }),
+    { message: 'Không thể lưu bản nháp: chưa xác định mục tài liệu trong hồ sơ PGD.' },
+  );
+  assert.throws(
+    () => requirePgdDraftSaveContext({ request, activeRequirementCode: 'FIELD_INSPECTION_MINUTES' }),
+    { message: 'Không thể lưu bản nháp: chưa có biểu mẫu hợp lệ trong danh mục PGD.' },
+  );
+});
+
+test('PGD title discard guard prompts only when the title differs from its saved or loaded baseline', () => {
+  let promptCount = 0;
+  let promptMessage = '';
+  const confirmDiscard = (message: string) => {
+    promptCount += 1;
+    promptMessage = message;
+    return false;
+  };
+
+  assert.equal(confirmPgdDraftTitleDiscard('Bản soạn', 'Bản soạn', confirmDiscard), true);
+  assert.equal(promptCount, 0);
+  assert.equal(confirmPgdDraftTitleDiscard('Bản soạn đã đổi', 'Bản soạn', confirmDiscard), false);
+  assert.equal(promptCount, 1);
+  assert.equal(promptMessage, 'Tên bản soạn đã thay đổi kể từ lần lưu hoặc nạp gần nhất. Bạn có muốn tiếp tục và bỏ thay đổi tiêu đề này không?');
 });

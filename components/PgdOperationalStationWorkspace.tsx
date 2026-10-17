@@ -10,7 +10,6 @@ import {
 } from '../utils/pgdDomain';
 import { PGD_OPERATIONAL_STATIONS, getPgdOperationalStationByKey, type PgdOperationalStationKey } from '../utils/pgdWorkflow';
 import PgdDossierSelector from './PgdDossierSelector';
-import PgdWorkflowMap from './PgdWorkflowMap';
 
 export type PgdOperationalStationWorkspaceProps = {
   station: PgdOperationalStationKey;
@@ -40,7 +39,7 @@ function EmptySelection() {
   return <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm"><div className="text-sm font-black text-slate-700">Chưa chọn hồ sơ PGD</div><p className="mt-1 text-[11px] text-slate-400">Chọn một PYC ở bộ chọn phía trên để mở biểu mẫu của trạm.</p></div>;
 }
 
-export default function PgdOperationalStationWorkspace({ station, requests, catalog, selectedRequestId, onSelectRequest, onOpenFullDossier, children, getEvidence }: PgdOperationalStationWorkspaceProps) {
+export default function PgdOperationalStationWorkspace({ station, requests, catalog, selectedRequestId, onSelectRequest, onOpenFullDossier, children }: PgdOperationalStationWorkspaceProps) {
   const selectedRequest = requests.find((request) => request.id === selectedRequestId);
   const stationDefinition = getPgdOperationalStationByKey(station);
   const currentStatus = selectedRequest?.status;
@@ -50,7 +49,6 @@ export default function PgdOperationalStationWorkspace({ station, requests, cata
     <div aria-label="Bộ chọn hồ sơ PGD"><PgdDossierSelector requests={requests} catalog={catalog} selectedRequestId={selectedRequestId} onSelect={onSelectRequest} /></div>
     {selectedRequest ? <>
       <PgdDossierSummary request={selectedRequest} />
-      <PgdWorkflowMap status={selectedRequest.status} evidence={getEvidence(selectedRequest.id)} />
       <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-1.5 text-[10px] font-black text-slate-600"><span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-blue-700">{stationDefinition.number}/5</span><ArrowRight size={13} className="text-slate-400" /><span>{stationDefinition.title}</span>{currentStatus && <span className="font-normal text-slate-400">· {currentStatus}</span>}</div><button type="button" onClick={() => onOpenFullDossier(selectedRequest.id)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 shadow-sm hover:border-blue-300 hover:text-blue-700"><ExternalLink size={13} /> Mở hồ sơ đầy đủ</button></div>
       <section aria-label={`Trạm ${stationDefinition.title}`} className="space-y-3">{children(selectedRequest)}</section>
     </> : <EmptySelection />}

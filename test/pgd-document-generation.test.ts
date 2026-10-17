@@ -1,13 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import PizZip from 'pizzip';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
+import PgdDocumentGenerationPanel from '../components/PgdDocumentGenerationPanel.tsx';
 import {
   buildPgdDocumentContext,
   buildPgdDocumentOutput,
   type PgdDocumentContext,
 } from '../utils/pgdDocumentGeneration.ts';
-import { getPgdDocumentTemplate } from '../utils/pgdDocumentTemplates.ts';
+import { getPgdDocumentTemplate, type PgdDocumentTemplate } from '../utils/pgdDocumentTemplates.ts';
 import type { PgdInspectionRequest, PgdLabRequest, PgdSample } from '../utils/pgdDomain.ts';
 import type { PgdCaseEvent, PgdInspectionPlan } from '../utils/pgdArtifacts.ts';
 
@@ -157,4 +160,44 @@ test('inactive PGD cells remain in the snapshot but are excluded from generated 
   const documentXml = new PizZip(docx.bytes).file('word/document.xml')?.asText() || '';
   assert.equal(context.templateSnapshot.cells.find((cell) => cell.key === 'internalNote')?.active, false);
   assert.doesNotMatch(documentXml, /Ghi chú nội bộ không xuất/);
+});
+
+test('PGD generation action labels and tooltips name only the selected output format', () => {
+  const template: PgdDocumentTemplate = {
+    id: 'test-format-labels',
+    domain: 'pgd',
+    kind: 'INSPECTION_REPORT',
+    code: 'TEST',
+    name: 'Test',
+    version: '1',
+    status: 'PUBLISHED',
+    productGroups: ['STEEL_METAL'],
+    formats: ['DOCX', 'PDF'],
+    cells: [{ key: 'draftNote', label: 'Ghi chú', sectionCode: 'identity', row: 1, column: 1, type: 'TEXT', required: false }],
+    fileName: 'test.docx',
+    placeholderKeys: ['draftNote'],
+    requiredPlaceholderKeys: [],
+    sourceFormLabel: 'Test',
+    active: true,
+  };
+
+  for (const format of ['DOCX', 'PDF'] as const) {
+    const markup = renderToStaticMarkup(createElement(PgdDocumentGenerationPanel, {
+      request,
+      templates: [template],
+      canMutate: true,
+      initialTemplateId: template.id,
+      initialFormat: format,
+      initialCellValues: { draftNote: 'Draft' },
+      onSaveDraft: () => undefined,
+      showContextStatus: false,
+      showReadiness: false,
+      showOutputReview: false,
+    }));
+
+    assert.match(markup, new RegExp(`Sinh tài liệu ${format}</button>`));
+    assert.match(markup, new RegExp(`title="Sinh tài liệu ${format}"`));
+    assert.match(markup, /Lưu bản nháp<\/button>/);
+    assert.doesNotMatch(markup, /Lưu & sinh DOCX \+ PDF/);
+  }
 });

@@ -21,3 +21,27 @@ test('PGD dossier workspace wires the shared source forms to the operational bra
   assert.match(workspace, /selectedRequestId/);
   assert.match(workspace, /dossierRequirements/);
 });
+
+test('PGD lab and report forms never invent positive results or conclusions', () => {
+  const panel = read('components/PgdStationFormsPanel.tsx');
+  for (const inventedValue of [
+    "value: 'Đạt theo phạm vi kết quả được tiếp nhận'",
+    "review?.conclusion || 'Kết quả thử nghiệm phù hợp với tiêu chuẩn áp dụng.'",
+    "report?.conclusion || 'Kết quả giám định phù hợp với phạm vi và tiêu chuẩn đã thống nhất.'",
+    "completeness: 'COMPLETE', conformity: 'CONFORMING'",
+    "recommendation: reviewConformity ===",
+  ]) {
+    assert.equal(panel.includes(inventedValue), false, `Unexpected positive default/save value: ${inventedValue}`);
+  }
+  for (const requiredGuard of [
+    "Cần nhập giá trị cho ít nhất một dòng kết quả PTN.",
+    "Cần chọn độ đầy đủ kết quả PTN.",
+    "Cần chọn đánh giá sự phù hợp kết quả PTN.",
+    "Cần nhập kết luận đánh giá kết quả thử nghiệm.",
+    "Cần nhập kết luận báo cáo giám định.",
+  ]) {
+    assert.ok(panel.includes(requiredGuard), `Missing Vietnamese validation: ${requiredGuard}`);
+  }
+  assert.match(panel, /setReviewConclusion\(review\?\.conclusion \|\| ''\)/);
+  assert.match(panel, /setConclusion\(report\?\.conclusion \|\| certificate\?\.conclusion \|\| ''\)/);
+});

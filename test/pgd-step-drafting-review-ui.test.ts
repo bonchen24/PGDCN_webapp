@@ -14,7 +14,7 @@ test('PGD steps hand off source context to drafting and confirmation', () => {
   assert.match(workspace, /initialDraftingRequestId|draftingRequestId/);
   assert.match(drafting, /initialRequestId|requestId/);
   assert.match(generation, /Xác nhận vào bộ hồ sơ/);
-  assert.match(generation, /pgd-document-readiness-issues/);
+  assert.match(generation, /testId="pgd-document-readiness"/);
   assert.match(generation, /readinessIssues\.map/);
   assert.match(generation, /registrationNumber: request\.registryMetadata\?\.registrationNumber/);
   assert.match(generation, /receivedAt: request\.registryMetadata\?\.receivedAt/);

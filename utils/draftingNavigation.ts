@@ -40,13 +40,17 @@ export function buildPgdDossierReturnRoute(
 
 export function getPgdDossierStepForRequirement(requirementCode: string): string {
   const code = requirementCode.trim().toUpperCase();
-  if (['REQUEST_PYC', 'REQUEST_SUPPORTING'].includes(code)) return 'intake';
-  if (['ASSIGNMENT_FORM', 'INSPECTION_PLAN', 'TECHNICAL_SPECIFICATION', 'MACHINERY_TECHNICAL_DOSSIER', 'COAL_TECHNICAL_OVERVIEW', 'COAL_QUALITY_SPECIFICATION', 'TECHNICAL_OVERVIEW'].includes(code)) return 'plan';
-  if (['FIELD_INSPECTION_MINUTES', 'FIELD_ACTIVITY_LOG', 'FIELD_SAMPLE_TAKING', 'MACHINERY_CONDITION_ASSESSMENT', 'MACHINERY_SYNCHRONIZATION_ASSESSMENT'].includes(code)) return 'field';
+  if (['REQUEST_PYC', 'REQUEST_SUPPORTING', 'COMMERCIAL_CONTRACT', 'COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_OF_LADING', 'CUSTOMS_DECLARATION', 'CERTIFICATE_OF_ORIGIN'].includes(code)) return 'intake';
+  if (code === 'ASSIGNMENT_FORM') return 'assignment';
+  if (['INSPECTION_PLAN', 'TECHNICAL_SPECIFICATION', 'MACHINERY_TECHNICAL_DOSSIER', 'COAL_TECHNICAL_OVERVIEW', 'COAL_QUALITY_SPECIFICATION', 'TECHNICAL_OVERVIEW'].includes(code)) return 'plan';
+  if (['FIELD_INSPECTION_MINUTES', 'FIELD_ACTIVITY_LOG', 'MACHINERY_CONDITION_ASSESSMENT', 'MACHINERY_SYNCHRONIZATION_ASSESSMENT'].includes(code)) return 'field';
+  if (code === 'FIELD_SAMPLE_TAKING') return 'sampling';
   if (code === 'SAMPLE_HANDOVER_LAB') return 'lab-request';
-  if (['LAB_RESULT', 'LAB_RESULT_REVIEW'].includes(code)) return 'lab-result';
+  if (code === 'LAB_RESULT') return 'lab-result';
+  if (code === 'LAB_RESULT_REVIEW') return 'result-review';
   if (['INSPECTION_REPORT'].includes(code)) return 'report';
-  if (['DECISION', 'INSPECTION_CERTIFICATE', 'DOSSIER_COVER', 'ARCHIVE_INDEX'].includes(code)) return 'approval';
+  if (['DECISION', 'INSPECTION_CERTIFICATE'].includes(code)) return 'approval';
+  if (['DOSSIER_COVER', 'ARCHIVE_INDEX'].includes(code)) return 'return';
   return 'intake';
 }
 

@@ -50,8 +50,23 @@ test('PGD native step panel keeps the existing work actions behind each tab', ()
     'PgdResultsStepPanel',
     'Bắt đầu xử lý',
     'Hoàn tất việc',
-    'Mở checklist',
+    'Xem danh sách tài liệu',
     'Mở hồ sơ đầy đủ',
   ]) assert.match(panel, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(panel, /role="tabpanel"/);
+});
+
+test('PGD dossier rail reveals the selected tab through its own reduced-motion-aware scroller', () => {
+  const flow = read('components/PgdDossierFlow.tsx');
+  const scrollEffect = flow.match(/useEffect\(\(\) => \{([\s\S]*?)\}, \[selectedStepId\]\);/)?.[1];
+
+  assert.ok(scrollEffect, 'the reveal effect should run only when selectedStepId changes');
+  assert.match(flow, /ref=\{scrollContainerRef\}/);
+  assert.match(scrollEffect, /scrollContainer\.getBoundingClientRect\(\)/);
+  assert.match(scrollEffect, /scrollContainer\.scrollTo\(\{ left: targetLeft, behavior: 'smooth' \}\)/);
+  assert.match(scrollEffect, /prefers-reduced-motion: reduce/);
+  assert.match(scrollEffect, /scrollContainer\.scrollLeft = targetLeft/);
+  assert.doesNotMatch(scrollEffect, /\.focus\(/);
+  assert.doesNotMatch(flow, /\.scrollIntoView\(/);
+  assert.match(flow, /md:hidden[^\n]*Vuốt ngang để xem đủ 12 bước/);
 });

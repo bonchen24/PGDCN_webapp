@@ -2,7 +2,7 @@
 
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from '../utils/formatter';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Download, FileBadge2, FlaskConical, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -42,6 +42,29 @@ const initialForm: DocumentFormState = {
   note: '',
   file: null,
 };
+
+const createDocumentForm = (requirements: PgdDossierRequirement[], requirementCode?: string): DocumentFormState => {
+  const selected = requirements.find((requirement) => requirement.code === requirementCode) || requirements[0];
+  return {
+    ...initialForm,
+    requirementCode: selected?.code || '',
+    title: selected?.title || '',
+  };
+};
+
+const hasUnsavedDocumentForm = (form: DocumentFormState, requirements: PgdDossierRequirement[], documentDateDraft = ''): boolean => {
+  const currentRequirement = requirements.find((requirement) => requirement.code === form.requirementCode);
+  return Boolean(
+    form.file
+    || form.documentNumber.trim()
+    || form.documentDate.trim()
+    || documentDateDraft.trim()
+    || form.note.trim()
+    || form.title.trim() !== (currentRequirement?.title || '').trim(),
+  );
+};
+
+const REQUIREMENT_CHANGE_CONFIRMATION = 'Bạn có tệp, thông tin hoặc tiêu đề chứng từ chưa lưu. Chuyển sang tài liệu khác sẽ xóa nội dung đang nhập. Bạn có muốn tiếp tục không?';
 
 const formatDate = (value?: string): string => {
   return formatDateTimeDdMmYyyy(value) || 'Chưa có';
@@ -115,18 +138,26 @@ export default ({
   const saveDossierDocument = usePgdStore((state) => state.saveDossierDocument);
   const destroyPgdSample = usePgdStore((state) => state.destroySample);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [form, setForm] = useState<DocumentFormState>(() => ({
-    ...initialForm,
-    requirementCode: initialRequirementCode || requirements[0]?.code || '',
-    title: requirements.find((requirement) => requirement.code === initialRequirementCode)?.title || requirements[0]?.title || '',
-  }));
+  const documentFormRef = useRef<HTMLFormElement>(null);
+  const requirementsRef = useRef(requirements);
+  requirementsRef.current = requirements;
+  const [form, setForm] = useState<DocumentFormState>(() => createDocumentForm(requirements, initialRequirementCode));
+  const formRef = useRef(form);
+  formRef.current = form;
+  const previousRequestIdRef = useRef(request.id);
+  const previousInitialRequirementCodeRef = useRef(initialRequirementCode);
+  const formRequestIdRef = useRef(request.id);
+  const requestIdRef = useRef(request.id);
+  requestIdRef.current = request.id;
   const [busy, setBusy] = useState(false);
+  const [formResetVersion, setFormResetVersion] = useState(0);
   const register = useMemo(() => buildPgdSampleRegister(samples), [samples]);
   const requirementAccess = useMemo(() => new Map(requirements.map((requirement) => [
     requirement.code,
     getPgdOperationalStepAccess({ status: request.status, targetStationKey: getPgdDossierRequirementStationKey(requirement.code) }),
   ] as const)), [request.status, requirements]);
   const selectedRequirementAccess = requirementAccess.get(form.requirementCode);
+  const requestFormIsCurrent = formRequestIdRef.current === request.id;
   const sampleAccess = useMemo(() => getPgdOperationalStepAccess({ status: request.status, targetStationKey: 'FIELD_SAMPLING' }), [request.status]);
   const groupedRequirements = useMemo(() => {
     const grouped = new Map<PgdDossierRequirementGroup, PgdDossierRequirement[]>();
@@ -137,15 +168,6 @@ export default ({
     }
     return Array.from(grouped.entries());
   }, [requirements]);
-
-  useEffect(() => {
-    if (!initialRequirementCode) return;
-    const selected = requirements.find((requirement) => requirement.code === initialRequirementCode);
-    if (!selected) return;
-    setForm((current) => current.requirementCode === selected.code && current.title === selected.title
-      ? current
-      : { ...current, requirementCode: selected.code, title: selected.title });
-  }, [initialRequirementCode, requirements]);
 
   const documentsByRequirement = useMemo(() => {
     const map = new Map<string, PgdDossierDocument[]>();
@@ -164,19 +186,49 @@ export default ({
     setForm((current) => ({ ...current, [key]: value }));
   };
 
+  const hasUnsavedCurrentDocumentForm = useCallback(() => {
+    const documentDateDraft = documentFormRef.current?.querySelector<HTMLInputElement>('[data-document-date-input]')?.value || '';
+    return hasUnsavedDocumentForm(formRef.current, requirementsRef.current, documentDateDraft);
+  }, []);
+
+  const clearDocumentForm = useCallback((requirementCode?: string) => {
+    const nextForm = createDocumentForm(requirementsRef.current, requirementCode);
+    documentFormRef.current?.reset();
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    formRef.current = nextForm;
+    formRequestIdRef.current = request.id;
+    setFormResetVersion((current) => current + 1);
+    setForm(nextForm);
+  }, [request.id]);
+
+  useEffect(() => {
+    const requestChanged = previousRequestIdRef.current !== request.id;
+    const initialRequirementChanged = previousInitialRequirementCodeRef.current !== initialRequirementCode;
+    previousRequestIdRef.current = request.id;
+    previousInitialRequirementCodeRef.current = initialRequirementCode;
+
+    if (requestChanged) {
+      clearDocumentForm(initialRequirementCode);
+      return;
+    }
+
+    if (!initialRequirementChanged || !initialRequirementCode) return;
+    const selected = requirementsRef.current.find((requirement) => requirement.code === initialRequirementCode);
+    if (!selected || selected.code === formRef.current.requirementCode) return;
+    if (hasUnsavedCurrentDocumentForm() && !globalThis.confirm(REQUIREMENT_CHANGE_CONFIRMATION)) return;
+    clearDocumentForm(selected.code);
+  }, [initialRequirementCode, request.id, clearDocumentForm, hasUnsavedCurrentDocumentForm]);
+
   const onRequirementChange = (requirementCode: string) => {
     const selected = requirements.find((item) => item.code === requirementCode);
-    setForm((current) => ({
-      ...current,
-      requirementCode,
-      title: selected && (!current.title.trim() || current.title === (requirements.find((item) => item.code === current.requirementCode)?.title || ''))
-        ? selected.title
-        : current.title,
-    }));
+    if (!selected || selected.code === formRef.current.requirementCode) return;
+    if (hasUnsavedCurrentDocumentForm() && !globalThis.confirm(REQUIREMENT_CHANGE_CONFIRMATION)) return;
+    clearDocumentForm(selected.code);
   };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (formRequestIdRef.current !== request.id) return;
     if (!form.requirementCode.trim()) {
       toast.error('Cần chọn tài liệu cần bổ sung.');
       return;
@@ -201,13 +253,7 @@ export default ({
         fileName: form.file?.name,
       });
       toast.success('Đã lưu hồ sơ chứng từ PGD.');
-      const selected = requirements.find((item) => item.code === form.requirementCode);
-      setForm({
-        ...initialForm,
-        requirementCode: form.requirementCode,
-        title: selected?.title || '',
-      });
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (requestIdRef.current === request.id) clearDocumentForm(form.requirementCode);
     } catch (error: any) {
       toast.error(error?.message || 'Không thể lưu hồ sơ chứng từ.');
     } finally {
@@ -312,7 +358,7 @@ export default ({
           ))}
         </div>
 
-        <form onSubmit={submit} className="mt-3 rounded-lg border border-blue-100 bg-blue-50/50 p-3">
+        <form ref={documentFormRef} onSubmit={submit} className="mt-3 rounded-lg border border-blue-100 bg-blue-50/50 p-3">
           <div className="grid gap-2 md:grid-cols-2">
             <label className="block">
               <span className="mb-1 block text-[11px] font-black text-slate-500">Tài liệu cần bổ sung<span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></span>
@@ -320,7 +366,7 @@ export default ({
                 aria-label="Chọn tài liệu cần bổ sung PGD"
                 value={form.requirementCode}
                 onChange={(event) => onRequirementChange(event.target.value)}
-                disabled={!canMutate || !editable || busy}
+                disabled={!canMutate || !editable || busy || !requestFormIsCurrent}
                 className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-bold outline-none focus:border-blue-400"
               >
                 <option value="">Chọn loại tài liệu...</option>
@@ -337,7 +383,7 @@ export default ({
                 onChange={(event) => updateForm('title', event.target.value)}
                 required
 
-                disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
+                disabled={!canMutate || !editable || busy || !requestFormIsCurrent || !selectedRequirementAccess?.editable}
                 className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] outline-none focus:border-blue-400"
               />
             </label>
@@ -348,18 +394,20 @@ export default ({
                 value={form.documentNumber}
                 onChange={(event) => updateForm('documentNumber', event.target.value)}
 
-                disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
+                disabled={!canMutate || !editable || busy || !requestFormIsCurrent || !selectedRequirementAccess?.editable}
                 className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] outline-none focus:border-blue-400"
               />
             </label>
             <label className="block">
               <span className="mb-1 block text-[11px] font-black text-slate-500">Ngày chứng từ</span>
               <PgdcnDateInput
+                key={formResetVersion}
+                data-document-date-input="true"
                 aria-label="Ngày chứng từ PGD"
                 value={form.documentDate}
                 onChange={(value) => updateForm('documentDate', value)}
 
-                disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
+                disabled={!canMutate || !editable || busy || !requestFormIsCurrent || !selectedRequirementAccess?.editable}
                 className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] outline-none focus:border-blue-400"
               />
             </label>
@@ -371,7 +419,7 @@ export default ({
                 value={form.note}
                 onChange={(event) => updateForm('note', event.target.value)}
 
-                disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
+                disabled={!canMutate || !editable || busy || !requestFormIsCurrent || !selectedRequirementAccess?.editable}
                 className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px] outline-none focus:border-blue-400"
               />
             </label>
@@ -382,7 +430,7 @@ export default ({
                 aria-label="Tải tệp chứng từ PGD"
                 onChange={(event) => updateForm('file', event.target.files?.[0] || null)}
                 ref={fileInputRef}
-                disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
+                disabled={!canMutate || !editable || busy || !requestFormIsCurrent || !selectedRequirementAccess?.editable}
                 className="block mobile-touch-target min-h-11 w-full rounded-lg border border-dashed border-slate-300 bg-white px-2 py-2 text-[11px] text-slate-500"
               />
             </label>
@@ -392,7 +440,7 @@ export default ({
             <button
               type="submit"
               title="Lưu chứng từ dossier PGD"
-              disabled={!canMutate || !editable || busy || !selectedRequirementAccess?.editable}
+              disabled={!canMutate || !editable || busy || !requestFormIsCurrent || !selectedRequirementAccess?.editable}
               className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? 'Đang lưu...' : 'Lưu chứng từ'}
