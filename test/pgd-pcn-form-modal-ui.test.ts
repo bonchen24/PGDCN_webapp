@@ -37,5 +37,11 @@ test('PCN proposal form exposes structured customer, product, scope and OCR grou
   assert.match(pcnSource, /Nhà sản xuất/);
   assert.match(pcnSource, /Lĩnh vực/);
   assert.match(pcnSource, /PcnOcrPanel/);
-  assert.match(pcnSource, /Server tự cấp/);
+  assert.match(
+    pcnSource,
+    /<Field label="Mã Đề nghị">\s*<div[^>]*>Hệ thống tự cấp theo dạng PCN-YYMMDD-TT khi lưu<\/div>/
+  );
+  assert.match(pcnSource, /Tên sản phẩm/);
+  assert.match(pcnSource, /xác nhận phạm vi/);
+  assert.match(pcnSource, /if \(!canEdit\) return;/);
 });

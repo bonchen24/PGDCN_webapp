@@ -54,16 +54,45 @@ test('PGD workflow forms keep labels visible without HTML placeholders', () => {
 
 test('PCN signer delegation keeps required dates accessible in the shared date format', () => {
   const source = fs.readFileSync('components/PcnSignerDelegationPanel.tsx', 'utf8');
+  const dateInputSource = fs.readFileSync('components/PgdcnDateInput.tsx', 'utf8');
+
   assert.match(source, /PgdcnDateInput/);
-  assert.match(source, /Từ ngày · dd\/mm\/yyyy/);
-  assert.match(source, /Đến ngày · dd\/mm\/yyyy/);
+  assert.match(source, /<RequiredLabel>Thời hạn<\/RequiredLabel>/);
+  assert.match(source, /aria-label="Thời hạn từ ngày"/);
+  assert.match(source, /aria-label="Thời hạn đến ngày"/);
+  assert.match(source, /PgdcnDateInput[^>]*required[^>]*aria-required="true"[^>]*aria-label="Thời hạn từ ngày"/);
+  assert.match(source, /PgdcnDateInput[^>]*required[^>]*aria-required="true"[^>]*aria-label="Thời hạn đến ngày"/);
   assert.doesNotMatch(source, /type="date"/);
+
+  assert.match(dateInputSource, /formatDateDdMmYyyy/);
+  assert.match(dateInputSource, /parseDdMmYyyy/);
 });
 
 test('PCN proposal intake keeps visible Vietnamese labels beside the editable fields', () => {
   const source = fs.readFileSync('components/PcnWorkspace.tsx', 'utf8');
-  for (const label of ['Tên khách hàng', 'Địa chỉ kho', 'Tên sản phẩm', 'Model', 'Nhãn hiệu', 'Thông số kỹ thuật']) {
-    assert.match(source, new RegExp(label), `PCN proposal source should expose the visible label ${label}`);
+
+  const boundFields: Array<{ label: string; controlId: string }> = [
+    { label: 'Khách hàng *', controlId: 'pcn-customer' },
+    { label: 'Địa chỉ khách hàng *', controlId: 'pcn-proposal-customer-address' },
+    { label: 'Địa chỉ/kho liên quan *', controlId: 'pcn-proposal-warehouse-address' },
+    { label: 'Tên sản phẩm *', controlId: 'pcn-proposal-product-name' },
+    { label: 'Kiểu loại *', controlId: 'pcn-proposal-model' },
+    { label: 'Nhãn hiệu *', controlId: 'pcn-proposal-brand' },
+    { label: 'Thông số kỹ thuật / mô tả *', controlId: 'pcn-proposal-specifications' },
+  ];
+
+  for (const { label, controlId } of boundFields) {
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const fieldPattern = new RegExp(`<Field[^>]*label="${escapedLabel}"[\\s\\S]*?id="${controlId}"`);
+    assert.match(source, fieldPattern, `PCN proposal form should bind visible label "${label}" to control "${controlId}"`);
   }
+
+  assert.match(
+    source,
+    /<Field[^>]*label="Ngày tiếp nhận \*"[\s\S]*?<PgdcnDateInput[^>]*id="pcn-proposal-received-at"[^>]*required[^>]*aria-required="true"/,
+    'PCN proposal should bind required intake date to PgdcnDateInput with aria-required="true"',
+  );
+
+  assert.match(source, /function Field/);
   assert.doesNotMatch(source, /placeholder=/);
 });

@@ -32,10 +32,16 @@ test('shared shell routes customers and system settings before domain workspaces
 
 test('system settings puts personnel assignment and password operations in one shared surface', () => {
   const source = read('../components/PgdcnSystemSettingsView.tsx');
-  for (const marker of ['Nhân sự &amp; tài khoản', 'departmentScopes', 'position', 'Reset mật khẩu', 'Admin', 'Quản lý']) {
+  const userManagementSource = read('../components/PcnUserManagementView.tsx');
+  assert.match(source, /Cài đặt hệ thống/);
+  assert.match(source, /PcnUserManagementView/);
+  for (const marker of ['Nhân sự &amp; tài khoản', 'Admin']) {
     assert.ok(source.includes(marker), `Missing system settings marker: ${marker}`);
   }
-  assert.match(source, /PcnSettingsView/);
+  for (const marker of ['departmentScopes', 'position', 'Reset mật khẩu', 'Quản lý']) {
+    assert.ok(userManagementSource.includes(marker), `Missing user management marker: ${marker}`);
+  }
+  assert.doesNotMatch(source, /PcnSettingsView/);
   assert.doesNotMatch(source, /PgdTemplateSettingsWorkspace/);
   assert.doesNotMatch(source, /Danh mục phòng ban|Danh mục chức vụ/);
 });
