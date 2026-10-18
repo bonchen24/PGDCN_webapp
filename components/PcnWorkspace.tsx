@@ -1318,6 +1318,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
   const managementRoleLabel = ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.find((role) => role.code === currentUser.managementRoleCode)?.name || 'Chưa phân công chức danh quản lý';
   const professionalRoleLabel = (currentUser.professionalRoleCodes || []).map((code) => PROFESSIONAL_ROLE_OPTIONS.find((role) => role.code === code)?.name || code).join(', ') || 'Chưa gán vai trò chuyên môn';
   const departmentRoleLabel = `${managementRoleLabel} • ${professionalRoleLabel}`;
+  const WorkspaceContent = embedded ? 'div' : 'main';
   return (
     <>
       <div className={embedded ? 'flex h-full min-h-0 w-full min-w-0 flex-col' : 'pcn-compact flex h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-800'}>
@@ -1370,7 +1371,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
             </div>
           </header>}
           {/* Standalone contract: <main className="min-h-0 min-w-0 flex-1 mobile-scroll-y overflow-x-hidden overflow-y-auto"> */}
-          <main className={embedded ? (standaloneDossier ? 'min-h-0 min-w-0 flex-1 overflow-hidden' : 'min-w-0 flex-1') : 'min-h-0 min-w-0 flex-1 mobile-scroll-y overflow-x-hidden overflow-y-auto'}>{content}</main>
+          <WorkspaceContent className={embedded ? (standaloneDossier ? 'min-h-0 min-w-0 flex-1 overflow-hidden' : 'min-w-0 flex-1') : 'min-h-0 min-w-0 flex-1 mobile-scroll-y overflow-x-hidden overflow-y-auto'}>{content}</WorkspaceContent>
           {!embedded && <nav className="pcn-mobile-nav mobile-scroll-x flex shrink-0 items-center justify-start gap-1 border-t border-slate-200 bg-white p-1.5 lg:hidden" aria-label="Menu di động">
             {mobileNavItems.map(({ key, icon: Icon }) => {
               const isActive = activeSection === key;
