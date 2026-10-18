@@ -11,7 +11,8 @@ test('PGD dossier detail has a dedicated route under the shared shell', () => {
   assert.match(page, /PgdcnAppShell/);
   assert.match(page, /initialDomain="PGD"/);
   assert.match(page, /initialPgdRequestId/);
-  assert.match(page, /params\.requestId/);
+  assert.match(page, /await params/);
+  assert.match(page, /initialPgdRequestId=\{decodeURIComponent\(requestId\)\}/);
 });
 
 test('shared shell carries PGD detail context and keeps the domain sidebar visible', () => {
