@@ -19,6 +19,7 @@ const dossierBusinessWorkspace = read('components/PgdcnDossierBusinessWorkspace.
 const pgdIntakeSamples = read('components/PgdIntakeSampleTable.tsx');
 const pgdTableFieldEditor = read('components/PgdTableFieldEditor.tsx');
 const pgdIntakeDropzone = read('components/PgdcnIntakeDropzone.tsx');
+const pgdcnAppShell = read('components/PgdcnAppShell.tsx');
 
 test('core PCN and PGD work surfaces expose a visible focus ring for descendant controls', () => {
   for (const [name, source] of [
@@ -63,7 +64,7 @@ test('wide work tables scroll locally and the PGD edit dialog keeps its footer o
   assert.ok(/<section className="my-2 w-full max-w-5xl[^\"]*max-h-\[calc\(100dvh-1rem\)\][^\"]*flex[^\"]*flex-col/.test(pgdWorkspace), 'PGD edit panel is bounded by the viewport and uses a column layout');
   assert.ok(/<header className="[^\"]*shrink-0[^\"]*">[\s\S]*?<form onSubmit=\{submit\} className="flex min-h-0 flex-1 flex-col">/.test(pgdWorkspace), 'PGD edit header stays visible above the form body');
   assert.ok(/<div className="mobile-scroll-y min-h-0 flex-1 space-y-4 overflow-y-auto[^\"]*">[\s\S]*?<footer className="[^\"]*shrink-0/.test(pgdWorkspace), 'PGD edit footer stays outside the independently scrolling body');
-  assert.ok(/<main className=\{embedded \? 'min-w-0' : 'mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto'\}>/.test(pgdWorkspace), 'PGD page keeps horizontal overflow inside the app shell');
+  assert.ok(/<main[^>]*className="[^"]*mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto[^"]*"/.test(pgdcnAppShell), 'app shell main wrapper keeps horizontal overflow contained');
 });
 
 test('visible PGD work controls use readable labels and 44px mobile targets', () => {
