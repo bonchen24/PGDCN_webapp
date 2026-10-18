@@ -627,7 +627,12 @@ export function getPgdDocumentTemplates(): PgdDocumentTemplate[] {
 
 /** Hydrate metadata for persisted rows created before the DOCX pack was introduced. */
 export function normalizePgdDocumentTemplate(template: PgdDocumentTemplate): PgdDocumentTemplate {
-  return cloneTemplate(template);
+  const cloned = cloneTemplate(template);
+  if (Array.isArray(template.requiredPlaceholderKeys) && template.requiredPlaceholderKeys.length > 0) {
+    const requiredKeys = new Set(template.requiredPlaceholderKeys.map((key) => String(key || '').trim()).filter(Boolean));
+    cloned.cells = cloned.cells.map((cell) => (requiredKeys.has(cell.key) ? { ...cell, required: true } : cell));
+  }
+  return cloned;
 }
 
 export function isPgdDocumentTemplateRecordAllowed(value: unknown): value is PgdDocumentTemplate {
@@ -642,6 +647,10 @@ export function isPgdDocumentTemplateRecordAllowed(value: unknown): value is Pgd
   if (template.placeholderKeys !== undefined && (!Array.isArray(template.placeholderKeys) || template.placeholderKeys.some((key) => !/^[a-z][a-zA-Z0-9_]*$/.test(String(key))))) return false;
   if (template.requiredPlaceholderKeys !== undefined && (!Array.isArray(template.requiredPlaceholderKeys) || template.requiredPlaceholderKeys.some((key) => !/^[a-z][a-zA-Z0-9_]*$/.test(String(key))))) return false;
   if (!Array.isArray(template.cells) || validatePgdTemplateCells(template.cells).length > 0) return false;
+  if (Array.isArray(template.requiredPlaceholderKeys) && Array.isArray(template.cells)) {
+    const cellKeys = new Set(template.cells.map((c) => c.key));
+    if (template.requiredPlaceholderKeys.some((key) => !cellKeys.has(String(key)))) return false;
+  }
   return !/QC20|TVCI_NAS|Desktop|UNC/i.test(JSON.stringify(value));
 }
 
@@ -658,7 +667,17 @@ export function validatePgdDocumentTemplate(template: Partial<PgdDocumentTemplat
   if (template.requiredPlaceholderKeys !== undefined && (!Array.isArray(template.requiredPlaceholderKeys) || template.requiredPlaceholderKeys.some((key) => !/^[a-z][a-zA-Z0-9_]*$/.test(String(key))))) issues.push('Danh sách placeholder bắt buộc DOCX không hợp lệ.');
   if (!String(template.sourceFormLabel || '').trim()) issues.push('Template cần ghi nhận tên biểu mẫu nghiệp vụ đã chuẩn hóa.');
   if (!Array.isArray(template.cells) || template.cells.length === 0) issues.push('Template cần có ít nhất một cell.');
-  else issues.push(...validatePgdTemplateCells(template.cells).map((issue) => issue.message));
+  else {
+    issues.push(...validatePgdTemplateCells(template.cells).map((issue) => issue.message));
+    if (Array.isArray(template.requiredPlaceholderKeys)) {
+      const cellKeys = new Set(template.cells.map((c) => c.key));
+      for (const reqKey of template.requiredPlaceholderKeys) {
+        if (!cellKeys.has(String(reqKey))) {
+          issues.push('Placeholder bắt buộc “' + reqKey + '” không có cell nhập liệu tương ứng.');
+        }
+      }
+    }
+  }
   if (/QC20|TVCI_NAS|Desktop|UNC/i.test(JSON.stringify(template))) issues.push('Template PGD không được chứa QC20 hoặc đường dẫn nguồn cũ.');
   return issues;
 }
