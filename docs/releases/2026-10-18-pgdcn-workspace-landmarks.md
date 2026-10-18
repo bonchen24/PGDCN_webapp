@@ -1,37 +1,50 @@
 # Biên bản phát hành PGDCN Web App — 18/10/2026
 
-## Trạng thái
+## Kết quả tiếp tục
 
-**BLOCKED trước Docker build/deploy.** Không tạo image mới, không thay container, không sửa cơ sở dữ liệu và không push Git.
+**BLOCKED — chưa deploy Docker Desktop production.**
 
-## Phạm vi đã chốt
+Compose xác thực cấu hình thành công, nhưng build từ snapshot đã commit dừng giữa bước npm ci --include=dev: Docker BuildKit trả lỗi RPC Unavailable / EOF khi đọc trạng thái. Lệnh docker compose up -d --build --no-deps webapp thoát mã 1. Lượt docker info bounded ngay sau đó timeout ở 15 giây. Không restart Docker/WSL, không xóa image/container/volume, không khởi động lại DB. Không có image ID mới được xác nhận; không có kết quả health/smoke sau deploy. Do Docker Engine mất phản hồi, trạng thái container sau lỗi không thể kiểm tra lại.
 
-- Chuẩn hóa landmark truy cập PCN/PGD ở chế độ nhúng và độc lập; vùng soạn thảo dùng section có nhãn, vùng PGD bị ẩn không còn lồng main.
-- Không đổi quy trình nghiệp vụ PCN/PGD, sinh DOCX/PDF, xem trước A4 hay các cổng xác nhận tài liệu.
-- Commit mã: `eaedba15d7c3de4e394f5f66dc8eab93cddc1436` — `fix: use accessible landmarks in PCN and PGD workspaces`.
-- Trạng thái Git sau commit mã: nhánh `master`, ahead remote 15 commit; không push. Phiên bản package đang khai báo `0.0.0`; không tạo tag/image phát hành.
+## Commit và working tree
 
-## Bằng chứng kiểm thử
+- Landmark PCN/PGD: eaedba15d7c3de4e394f5f66dc8eab93cddc1436.
+- Assertion params Next 16 cho PGD: 8ea6fee1fcefcd038a6e1051cd919c5f7584eb03.
+- Assertion overflow PGD cũ được chuyển sang kiểm tra main ở shell dùng chung: e1a0e054d4c782bb5f90ac404ae2e4d5ee2a77cb.
+- Báo cáo preflight trước đó: 0d5761485c4aaea053b1f79da44f83107576a010.
+- Snapshot build dùng đúng HEAD e1a0e054d4c782bb5f90ac404ae2e4d5ee2a77cb, tạo bằng git archive: 1.897 file, không chứa .env; blob của 8 file trọng yếu khớp commit.
+- Trước commit biên bản này, master ahead origin/master 18 commit. Không push. Có 16 mục tracked dirty và 9 mục untracked hiện hữu; không đụng vào các mục đó.
 
-- `npm run typecheck`: đạt.
-- Hai bài landmark: 5/5 đạt.
-- Bộ UI/drafting/mobile tập trung: 46/46 đạt, gồm kiểm tra preview PDF A4 và đường soạn DOCX.
-- `npm run test:pcn`: 917/918 đạt. Bài còn lại `test/pcn-ui-completion-task3.test.ts` yêu cầu chuỗi JSX `<main className={embedded ? ...}>`; implementation chọn `main` khi standalone và section có nhãn khi embedded. Đây là assertion phụ thuộc cú pháp hiện cần rà soát; không sửa assertion ngoài phạm vi release.
-- Bộ 103 file PGD liên quan: 341/342 đạt. `test/dossier-detail-sidebar-route.test.ts` còn yêu cầu `params.requestId` đồng bộ, trong khi route hiện await Promise `params` theo Next.js 16.
-- `git diff --check`: đạt. Không có xác minh build production hoặc smoke test vì Docker Engine không sẵn sàng.
+## Kiểm thử
+
+Các kiểm thử chạy trong working tree tại commit nội dung e1a0e05 (giữ nguyên các thay đổi runtime dirty có từ trước):
+
+- npm run typecheck: đạt.
+- npm run test:pcn: 918/918 đạt.
+- PGD suite theo tên file, gồm route detail: 105 file, 370/370 đạt.
+- Hai landmark tests PCN/PGD: 5/5 đạt.
+- Test tập trung pcn-ui-completion-task3.test.ts: 8/8 đạt.
+
+Các kết quả này không thay thế cho Docker production build; build image chưa hoàn tất.
+
+## Docker và health
+
+- Trước build, Docker context desktop-linux, Engine 29.8.2, Compose v5.6.0; docker info trả lời.
+- Đã xác nhận project pgdcn_webapp, service webapp, container pcn_webapp-webapp, port 2357, external network supabase_default; lúc preflight có 13 container Supabase ở trạng thái Up.
+- Compose config --quiet exit 0 khi nạp đồng thời E:\CODING\PGDCN_webapp\.env và E:\CODING\TVCI_APP\supabase-docker\.env; không in giá trị bí mật.
+- Trước build, container là 325e0ed1eec678aea3348a1ffa2337c130772585c547d422103f84c04f8a5fc1, dùng image sha256:47d3995f3c02fb7bb942ef4c8d1f584ed2bcc4bb132108745779325caedd1e8f (pgdcn_webapp-webapp:latest).
+- Baseline gọi từ host tới http://localhost:2357/api/health và /api/db/health trả kết nối rỗng, HTTP 000. Gọi từ trong container, /api/health và /api/db/health đều trả 200; DB health xác nhận pcn_certification. Chưa smoke route PCN/PGD/drafting sau deploy vì không có deploy.
+- Build dùng context cô lập ở %TEMP%\pgdcn-release-e1a0e05\source, không dùng các file dirty/untracked trong workspace. Lỗi xảy ra ở npm ci, trước khi Dockerfile chạy npm run build.
+- Image phát hành mới: không có ID được xác nhận. Không khẳng định deploy thành công.
 
 ## Backup và rollback
 
-- Backup hiện có: `E:\CODING\PGDCN_webapp\backups\pgdcn-predeploy-20261017-222005.dump` (25,979,362 byte; 17/10/2026 22:20 UTC+7).
-- `pg_restore --list`: exit 0, liệt kê 2,383 object.
-- SHA-256: `B74452795AF00844D5AAB5AF36477154DBE3865ABD6FE4BFEC97104D3625468D`.
-- Tệp rollback `backups\pgdcn-rollback-20261017-222005.yml` tham chiếu tag `pgdcn_webapp-webapp:rollback-20261017-222005`; chưa thể kiểm tra image ID hoặc container hiện tại. Chưa tạo pg_dump mới.
-- Vì chưa deploy, rollback lúc này là không áp dụng: container và DB không bị thay đổi. Trước lần triển khai tiếp theo cần kiểm tra Docker engine, xác nhận image cũ bằng ID bất biến, tạo/xác minh backup mới, sau đó nếu smoke lỗi thì chạy lại riêng service webapp bằng image rollback; không chạy migration.
+- Đã tạo dump chỉ đọc cho đúng database app pcn_certification: E:\CODING\PGDCN_webapp\backups\pgdcn-predeploy-20261018-122149.dump.
+- pg_restore --list: exit 0, database pcn_certification, 26 mục TOC; có TABLE DATA cho app_documents và file_assets. Kích thước 604.393 byte; SHA-256 5B931A498CB2C7A839D935A7C428200A551F03885AE3378B447174FF0487F794.
+- Trước dump, DB health và pg_isready đạt; truy vấn đếm trả 7.898 app_documents và 912 file_assets. Không chạy migration, seed, restore hay lệnh ghi DB.
+- Backup pgdcn-predeploy-20261017-222005.dump đã kiểm tra lại, SHA-256 B74452795AF00844D5AAB5AF36477154DBE3865ABD6FE4BFEC97104D3625468D, nhưng header cho biết database là postgres, không phải pcn_certification; không dùng nó thay cho dump mới của DB app.
+- Image đang chạy ngay trước build được xác minh dưới tag latest với ID sha256:47d3995f3c02fb7bb942ef4c8d1f584ed2bcc4bb132108745779325caedd1e8f. Tag rollback cũ pgdcn_webapp-webapp:rollback-20261017-222005 có ID sha256:f643b3d82c4a0dba3684f38f1849cce0a2f8bdd3e63b3c1f27781fb956b3bc0b và file backups\pgdcn-rollback-20261017-222005.yml trỏ tới tag đó; đây là image cũ hơn, không phải image đang chạy trước lượt build. Chưa tạo tag/compose rollback mới vì build dừng trước thay container. Docker Engine offline nên các ID này chưa được kiểm tra lại sau lỗi.
 
-## Blocker triển khai
+## Điều kiện tiếp tục
 
-1. Docker Desktop được khởi chạy nhưng named pipe `dockerDesktopLinuxEngine` không phản hồi; không đọc được container, image hay trạng thái các dịch vụ Supabase.
-2. `docker compose -p pgdcn_webapp -f docker-compose.pcn.yml config --quiet` dừng vì thiếu biến bắt buộc `SERVICE_ROLE_KEY`; file môi trường hiện có không khai báo `SERVICE_ROLE_KEY` hoặc `SUPABASE_SERVICE_ROLE_KEY`. Không in hoặc lưu giá trị bí mật.
-3. Dockerfile dùng `COPY package*.json` rồi `COPY . .`; `package.json`, lockfile và một số file server/config đang có thay đổi ngoài commit release. Không dùng snapshot build mặc định khi các thay đổi đó chưa được rà soát.
-
-Image release: **chưa tạo** (image ID N/A). Container/port 2357 và endpoint health: **chưa xác minh**. Không có tuyên bố deploy thành công.
+Chờ Docker Engine tự sẵn sàng hoặc được khôi phục ngoài lượt này; không factory reset hoặc xóa dữ liệu. Trước lần deploy tiếp theo, xác minh lại container/image đang chạy, tạo tag rollback từ đúng image hiện tại và compose rollback tương ứng, xác minh backup pcn_certification, rồi mới build lại từ commit đã duyệt. Sau đó kiểm tra health từ host và smoke route PCN/PGD/drafting; nếu health lỗi thì rollback webapp, không restore DB tự động.
