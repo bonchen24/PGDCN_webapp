@@ -47,6 +47,8 @@ const NODE_DRAFT_FORM_KIND_BY_REQUIREMENT_CODE: Readonly<Partial<Record<string, 
   SAMPLE_CODING: 'SAMPLE_CODING',
   SAMPLE_HANDOVER: 'SAMPLE_HANDOVER',
   LAB_REQUEST: 'LAB_REQUEST',
+  CERTIFICATION_RESULT: 'CERTIFICATION_RESULT',
+  CLIENT_PACKAGE: 'CLIENT_PACKAGE',
 };
 
 export function getPcnNodeDocumentGenerationKind(requirementCode: string): PcnGeneratedDocumentKind | undefined {
