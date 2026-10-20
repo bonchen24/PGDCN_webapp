@@ -10,6 +10,7 @@ const pcnSidebar = read('components/PcnSidebar.tsx');
 const workflowMap = read('components/PcnWorkflowMap.tsx');
 const dossierDetail = read('components/PcnDossierDetailView.tsx');
 const approvalModal = read('components/PcnApprovalModal.tsx');
+const appShell = read('components/PgdcnAppShell.tsx');
 const horizontalSurfaces = [
   read('components/PcnWorkflowMap.tsx'),
   read('components/PcnSampleFlowView.tsx'),
@@ -57,31 +58,48 @@ test('defines visible reusable vertical and horizontal scrollbar contracts', () 
 });
 
 test('keeps the PCN shell and overlays inside a mobile scroll surface', () => {
-  assert.match(pcnWorkspace, /<main className="min-h-0 min-w-0 flex-1 mobile-scroll-y overflow-x-hidden overflow-y-auto/);
+  assert.match(
+    pcnWorkspace,
+    /<WorkspaceContent\s+className=\{embedded\s*\?\s*\(standaloneDossier\s*\?\s*'min-h-0 min-w-0 flex-1 overflow-hidden'\s*:\s*'min-w-0 flex-1'\)\s*:\s*'min-h-0 min-w-0 flex-1 mobile-scroll-y overflow-x-hidden overflow-y-auto'/,
+  );
   assert.match(pcnWorkspace, /<nav className="pcn-mobile-nav mobile-scroll-x flex shrink-0/);
   assert.match(pcnWorkspace, /mobile-touch-target flex min-h-11 min-w-\[4\.5rem\] shrink-0/);
   assert.match(pcnSidebar, /mobile-scroll-y/);
-  assert.match(dossierDetail, /<main className="[^"]*(?:pcn-dossier-focus-scroll|mobile-scroll-y)[^"]*"/);
+  assert.doesNotMatch(dossierDetail, /<main\b/);
+  assert.doesNotMatch(dossierDetail, /<\/main>/);
+  assert.doesNotMatch(dossierDetail, /role=["']main["']/);
+  assert.match(
+    dossierDetail,
+    /<section\s+aria-label="Nội dung hồ sơ PCN"\s+className="[^"]*(?:pcn-dossier-focus-scroll|mobile-scroll-y)[^"]*"/,
+  );
   assert.match(approvalModal, /<main className="min-h-0 flex-1 mobile-scroll-y overflow-y-auto/);
+  assert.match(appShell, /<main id="pgdcn-main-content"[^>]*aria-label="Không gian làm việc PCN và PGD"/);
+  assert.match(pcnWorkspace, /const renderDossierDetail = \(standalone: boolean\) =>/);
+  assert.match(pcnWorkspace, /standaloneDossier \? \(selectedDossier \? renderDossierDetail\(true\)/);
+  assert.match(pcnWorkspace, /\{!standaloneDossier && renderDossierDetail\(false\)\}/);
 });
 
 test('gives the focused dossier workspace a definite mobile scroll boundary', () => {
   assert.match(dossierDetail, /data-testid="pcn-dossier-focus-shell"/);
   assert.match(dossierDetail, /standalone \? 'flex h-full min-h-0 w-full flex-col overflow-hidden/);
   assert.match(dossierDetail, /: 'flex h-\[100dvh\] min-h-0 w-full flex-col overflow-hidden/);
-  assert.match(dossierDetail, /<main className="[^"]*pcn-dossier-focus-scroll[^"]*"/);
+  assert.match(
+    dossierDetail,
+    /<section\s+aria-label="Nội dung hồ sơ PCN"\s+className="mobile-scroll-y h-0 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pcn-dossier-focus-scroll p-3 md:p-4">/,
+  );
+  assert.match(dossierDetail, /<\/section>{!workflowFirst && <footer/);
   assert.match(stylesheet, /\.pcn-dossier-focus-scroll\s*\{[\s\S]*height:\s*0[\s\S]*min-height:\s*0[\s\S]*overflow-y:\s*auto/);
 });
 
 test('keeps the dossier workflow summary inside the mobile scroll body', () => {
   const shellStart = dossierDetail.indexOf('return <div data-testid="pcn-dossier-focus-shell"');
   const shell = dossierDetail.slice(shellStart);
-  const mainIndex = shell.search(/<main className="[^"]*pcn-dossier-focus-scroll[^"]*"/);
+  const scrollIndex = shell.search(/<section\s+aria-label="Nội dung hồ sơ PCN"\s+className="[^"]*pcn-dossier-focus-scroll[^"]*"/);
   const workflowIndex = shell.indexOf('<DossierWorkflowSummary');
 
   assert.ok(shellStart >= 0, 'focused dossier shell should be present');
-  assert.ok(mainIndex >= 0, 'focused dossier scroll body should be present');
-  assert.ok(workflowIndex > mainIndex, 'workflow summary must scroll with dossier content on mobile');
+  assert.ok(scrollIndex >= 0, 'focused dossier scroll body should be present');
+  assert.ok(workflowIndex > scrollIndex, 'workflow summary must scroll with dossier content on mobile');
 });
 
 test('keeps every PCN vertical work surface discoverably scrollable', () => {

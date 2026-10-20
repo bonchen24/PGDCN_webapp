@@ -343,7 +343,7 @@ test('no regression in Summary Grid and Dossier Detail views', () => {
 
 test('shared dossier quick actions remain compact on desktop and meet mobile touch and focus contracts', () => {
   const deckSource = read('../components/PgdcnDossierDeck.tsx');
-  const quickActions = deckSource.match(/export function PgdcnDossierQuickActions[\s\S]*?\n}\n/)?.[0] || '';
+  const quickActions = deckSource.match(/export function PgdcnDossierQuickActions[\s\S]*?\r?\n}\r?\n/)?.[0] || '';
   const actionClasses = [...quickActions.matchAll(/className=\{`([^`]*inline-flex[^`]*)`|className="([^"]*inline-flex[^"]*)"/g)]
     .map((match) => match[1] || match[2]);
 
