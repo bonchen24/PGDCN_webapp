@@ -11,7 +11,7 @@ import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, getPcnDocumentRequirements, getPcnDr
 import { buildPcnDossierInspection } from '../utils/pcnDossierInspection';
 import { getPcnDossierStatusLabel } from '../utils/pcnWorkflow';
 import { getPcnOperationalTemplates, type PcnOperationalTemplateDefinition } from '../utils/pcnOperationalTemplateCatalog';
-import { buildPcnDossierReturnRoute, sanitizeInternalReturnTo } from '../utils/draftingNavigation';
+import { buildPcnDossierReturnRoute, resolvePcnDraftFormKindForRequirementCode, sanitizeInternalReturnTo } from '../utils/draftingNavigation';
 import { preflightPgdcnDraftText } from '../utils/pgdcnDraftTextPreflight';
 import PcnCatalogCombobox, { type PcnCatalogOption } from './PcnCatalogCombobox';
 import { PcnFilePreviewButton } from './PcnDossierFilePreview';
@@ -238,9 +238,11 @@ export default function PcnDraftingWorkspaceView({ proposals, dossiers, template
   const validation = useMemo(() => validatePcnDraftAction(kind, values, 'GENERATE'), [kind, values]);
   const templateRequirementCode = getPcnDraftFormRequirementCode(kind);
   const selectedRequirement = dossierRequirements.find((requirement) => requirement.id === selectedRequirementId);
-  const selectedRequirementHasForm = !selectedRequirement || FORM_OPTIONS.some((option) => getPcnDraftFormRequirementCode(option.kind) === selectedRequirement.code);
+  const selectedRequirementHasForm = !selectedRequirementId || Boolean(selectedRequirement && resolvePcnDraftFormKindForRequirementCode(selectedRequirement.code, kind) === kind);
   const template = selectedRequirementHasForm ? templates.find((item) => item.generationKind === kind) as PcnOperationalTemplateDefinition | undefined : undefined;
-  const activeRequirement = selectedRequirement || dossierRequirements.find((requirement) => requirement.code === templateRequirementCode);
+  const activeRequirement = selectedRequirement || (!selectedRequirementId
+    ? dossierRequirements.find((requirement) => String(requirement.code || '').trim().toUpperCase() === String(templateRequirementCode || '').trim().toUpperCase())
+    : undefined);
   const sourceFingerprint = serializeDraftValues(sourceValues);
   const aiSuggestionContext: PcnDraftAiContext = {
     values,
@@ -344,7 +346,8 @@ export default function PcnDraftingWorkspaceView({ proposals, dossiers, template
   const relatedDrafts = useMemo(() => drafts.filter((draft) => (source.dossier ? draft.sourceDossierId === source.dossier?.id : source.proposal ? draft.sourceProposalId === source.proposal.id : false) && draft.formKind === kind), [drafts, kind, source.dossier, source.proposal]);
   const preferredOutput = currentOutputs.find((output) => output.format === 'PDF' && !attachedOutputIdSet.has(output.id)) || currentOutputs.find((output) => !attachedOutputIdSet.has(output.id)) || currentOutputs[0];
   const busy = busyAction !== null;
-  const canSaveDraft = ['EDITING', 'SAVED', 'BLOCKED', 'ERROR'].includes(draftingState) || (hasUnsavedChanges && !hasAttachedOutput);
+  const requirementContextIsValid = !selectedRequirementId || Boolean(selectedRequirement && selectedRequirementHasForm);
+  const canSaveDraft = requirementContextIsValid && (['EDITING', 'SAVED', 'BLOCKED', 'ERROR'].includes(draftingState) || (hasUnsavedChanges && !hasAttachedOutput));
 
   useEffect(() => {
     let active = true;
@@ -356,11 +359,11 @@ export default function PcnDraftingWorkspaceView({ proposals, dossiers, template
     const initialDossier = initialDossierId ? dossiers.find((dossier) => dossier.id === initialDossierId) : undefined;
     const initialRequirements = initialDossier ? getPcnDocumentRequirements(initialDossier.fieldCodes, documentRequirements) : [];
     const requirementFromProps = initialRequirementId ? initialRequirements.find((requirement) => requirement.id === initialRequirementId) : undefined;
-    const kindFromRequirement = requirementFromProps ? FORM_OPTIONS.find((option) => getPcnDraftFormRequirementCode(option.kind) === requirementFromProps.code)?.kind : undefined;
-    const nextKind = initialKind || kindFromRequirement;
+    const kindFromRequirement = requirementFromProps ? resolvePcnDraftFormKindForRequirementCode(requirementFromProps.code, initialKind) : undefined;
+    const nextKind = initialRequirementId ? kindFromRequirement : (initialKind || kindFromRequirement);
     if (initialDossierId) setSourceKey(`dossier:${initialDossierId}`);
     if (nextKind) setKind(nextKind);
-    const requirementForKind = nextKind ? initialRequirements.find((requirement) => requirement.code === getPcnDraftFormRequirementCode(nextKind)) : undefined;
+    const requirementForKind = nextKind ? initialRequirements.find((requirement) => String(requirement.code || '').trim().toUpperCase() === String(getPcnDraftFormRequirementCode(nextKind) || '').trim().toUpperCase()) : undefined;
     const nextRequirementId = requirementFromProps?.id || requirementForKind?.id;
     if (nextRequirementId) setSelectedRequirementId(nextRequirementId);
     if (hasPcnDeepContext({ dossierId: initialDossierId, requirementId: initialRequirementId, kind: initialKind })) setContextLocked(true);
@@ -579,7 +582,7 @@ export default function PcnDraftingWorkspaceView({ proposals, dossiers, template
     if (!requirement) return;
     invalidateAiSuggestion();
     setSelectedRequirementId(requirement.id);
-    const nextKind = FORM_OPTIONS.find((item) => getPcnDraftFormRequirementCode(item.kind) === requirement.code)?.kind;
+    const nextKind = resolvePcnDraftFormKindForRequirementCode(requirement.code, kind);
     if (nextKind) {
       setKind(nextKind);
       setValues((current) => ({ ...sourceValues, ...current }));

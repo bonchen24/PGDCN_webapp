@@ -1,9 +1,35 @@
 import { getPcnNodeDraftFormKind } from './pcnDossierNodeWork';
+import type { PcnDraftFormKind } from '../types';
+import { getPcnDraftFormRequirementCode } from './pcnDossierDocuments';
+import { getPcnOperationalTemplateForKind, type PcnOperationalTemplateKind } from './pcnOperationalTemplateCatalog';
 
 const INTERNAL_DOSSIER_PATHS = ['/pgdcn/pcn/dossiers/', '/pgdcn/pgd/dossiers/'] as const;
 
 function encodeRoutePart(value: string): string {
   return encodeURIComponent(value);
+}
+
+const PCN_DRAFT_FORM_KINDS: readonly PcnDraftFormKind[] = [
+  'PROPOSAL_FORM', 'DOSSIER_COVER', 'ASSIGNMENT_FORM', 'EVALUATION_PLAN', 'FIELD_INSPECTION',
+  'SAMPLE_TAKING', 'SAMPLE_CODING', 'SAMPLE_HANDOVER', 'LAB_REQUEST', 'EVALUATION_REPORT',
+  'CERTIFICATION_RESULT', 'COMMERCIAL', 'CLIENT_PACKAGE',
+];
+
+function hasPcnDraftTemplate(kind: PcnDraftFormKind): boolean {
+  return Boolean(getPcnOperationalTemplateForKind(kind as PcnOperationalTemplateKind));
+}
+
+export function resolvePcnDraftFormKindForRequirementCode(
+  requirementCode: string,
+  preferredKind?: PcnDraftFormKind,
+): PcnDraftFormKind | undefined {
+  const normalizedCode = String(requirementCode || '').trim().toUpperCase();
+  if (!normalizedCode) return undefined;
+  const candidates = PCN_DRAFT_FORM_KINDS.filter((kind) => (
+    String(getPcnDraftFormRequirementCode(kind) || '').trim().toUpperCase() === normalizedCode
+    && hasPcnDraftTemplate(kind)
+  ));
+  return candidates.find((kind) => kind === preferredKind) || candidates[0];
 }
 
 /** Keep return navigation inside the app and discard malformed/external values. */
@@ -80,7 +106,7 @@ export function buildPcnNodeDraftingRoute(input: {
   returnTo?: string;
 }): string | undefined {
   const kind = getPcnNodeDraftFormKind(input.requirementCode);
-  if (!kind) return undefined;
+  if (!kind || !hasPcnDraftTemplate(kind)) return undefined;
   return buildPcnDraftingRoute({ ...input, kind });
 }
 
