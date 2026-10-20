@@ -18,8 +18,10 @@ assert.match(design, /Xác nhận/);
 test('active dossier panels expose role-aware review copy', () => {
   const pgd = read('components/PgdDossierStepWorkPanel.tsx');
   const pcn = read('components/PcnDossierNodeWorkPanel.tsx');
-  assert.match(pgd, /Soát xét hồ sơ/);
-  assert.match(pgd, /Vai trò hiện tại/);
+  const pgdReviewSection = pgd.match(/<section\b(?=[^>]*aria-label="Soát xét tài liệu bắt buộc ở bước PGD hiện tại")[^>]*>([\s\S]*?)<\/section>/)?.[1] ?? '';
+  assert.match(pgdReviewSection, /Soát xét bước này/);
+  assert.match(pgdReviewSection, /Vai trò hiện tại/);
+  assert.match(pgdReviewSection, /\{currentRole\}/);
   assert.match(pcn, /Soát xét hồ sơ/);
   assert.match(pcn, /Vai trò hiện tại/);
 });
