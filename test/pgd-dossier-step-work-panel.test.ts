@@ -86,6 +86,49 @@ test('step summary counts only required items for the selected step', () => {
   assert.doesNotMatch(tableBody, /old\.pdf · v1/);
 });
 
+test('waived optional documents do not show an upload action', () => {
+  const optionalRequirement = getPgdDossierRequirements('OTHER').find((item) => item.code === 'ASSIGNMENT_FORM')!;
+  assert.equal(optionalRequirement.required, false);
+
+  const request = {
+    id: 'pgd-waived-optional-test',
+    domain: PGD_DOMAIN,
+    requestCode: 'PYC-WAIVED-OPTIONAL-TEST',
+    productGroup: 'OTHER',
+    customerName: 'Khách hàng thử nghiệm',
+    customerSnapshot: { name: 'Khách hàng thử nghiệm', address: '' },
+    productName: 'Sản phẩm thử nghiệm',
+    standards: [],
+    status: 'DRAFT',
+    dossierChecklist: [{
+      domain: PGD_DOMAIN,
+      requirementCode: optionalRequirement.code,
+      group: optionalRequirement.group,
+      title: optionalRequirement.title,
+      required: false,
+      status: 'WAIVED',
+      waiverReason: 'Không áp dụng cho hồ sơ này',
+      updatedAt: '2026-10-10T00:00:00.000Z',
+    }],
+  } as unknown as PgdInspectionRequest;
+  const markup = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
+    request,
+    currentUser: { username: 'reviewer' } as PcnUserAccount,
+    selectedStepId: 'assignment',
+    dossierRequirements: [optionalRequirement],
+    dossierDocuments: [],
+    samples: [],
+    canMutate: true,
+    onOpenChecklist: () => undefined,
+  }));
+  const tableBody = markup.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/)?.[1] || '';
+  const waivedRow = Array.from(tableBody.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g), (match) => match[1])
+    .find((row) => row.includes(optionalRequirement.title));
+
+  assert.ok(waivedRow, 'the waived optional requirement remains visible in its step table');
+  assert.doesNotMatch(waivedRow, /<button\b/, 'waived optional evidence must not prompt an upload');
+});
+
 test('an in-progress dossier update is distinct from a step without an available transition', () => {
   const commonProps = {
     request: {
