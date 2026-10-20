@@ -85,3 +85,42 @@ test('step summary counts only required items for the selected step', () => {
   assert.match(tableBody, /current\.pdf · v2/);
   assert.doesNotMatch(tableBody, /old\.pdf · v1/);
 });
+
+test('an in-progress dossier update is distinct from a step without an available transition', () => {
+  const commonProps = {
+    request: {
+      id: 'pgd-step-loading-test',
+      domain: PGD_DOMAIN,
+      requestCode: 'PYC-LOADING-TEST',
+      productGroup: 'OTHER',
+      customerName: 'Khách hàng thử nghiệm',
+      customerSnapshot: { name: 'Khách hàng thử nghiệm', address: '' },
+      productName: 'Sản phẩm thử nghiệm',
+      standards: [],
+      status: 'DRAFT',
+      dossierChecklist: [],
+    } as unknown as PgdInspectionRequest,
+    currentUser: { username: 'reviewer' } as PcnUserAccount,
+    selectedStepId: 'intake' as const,
+    dossierRequirements: [],
+    dossierDocuments: [],
+    samples: [],
+    canMutate: true,
+    completeDisabled: true,
+  };
+  const processingMarkup = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
+    ...commonProps,
+    isProcessing: true,
+    onCompleteCurrent: () => undefined,
+  }));
+  const unavailableMarkup = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
+    ...commonProps,
+    isProcessing: false,
+  }));
+
+  assert.match(processingMarkup, /Việc bạn cần làm: Đang xử lý thay đổi hồ sơ/);
+  assert.match(processingMarkup, /aria-busy="true"[^>]*>Đang xử lý/);
+  assert.match(processingMarkup, /Đang xử lý thay đổi hồ sơ; vui lòng chờ hoàn tất/);
+  assert.match(unavailableMarkup, /không có thao tác chuyển tiếp trong trạng thái hiện tại/);
+  assert.doesNotMatch(unavailableMarkup, /aria-busy="true"|Đang xử lý thay đổi hồ sơ/);
+});

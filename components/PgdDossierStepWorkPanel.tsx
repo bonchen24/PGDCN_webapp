@@ -34,6 +34,7 @@ type Props = {
   canMutate: boolean;
   onCompleteCurrent?: () => void;
   completeDisabled?: boolean;
+  isProcessing?: boolean;
   completeLabel?: string;
   onOpenChecklist?: (requirementCode?: string) => void;
   initialRequirementCode?: string;
@@ -112,7 +113,7 @@ function ExistingStationPanel({ request, currentUser, canMutate }: Pick<Props, '
   return <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600"><div className="font-black text-slate-800">Việc này dùng cùng dữ liệu nghiệp vụ PGD</div><p className="mt-1">Các biểu mẫu liên quan được gom theo ngữ cảnh để bạn xử lý mà không rời hồ sơ. Quyền chỉnh sửa vẫn do quy trình và RBAC hiện tại quyết định.</p><div className="mt-2 grid gap-2 sm:grid-cols-3"><span><b className="block text-[9px] text-slate-400">Mã PYC</b><strong className="font-mono text-blue-700">{request.requestCode}</strong></span><span><b className="block text-[9px] text-slate-400">Hàng hóa</b><strong className="text-slate-700">{request.productName}</strong></span><span><b className="block text-[9px] text-slate-400">Người thao tác</b><strong className="font-mono text-slate-700">{currentUser.username}</strong></span></div><span className="sr-only">{canMutate ? 'Có quyền thao tác khi bước mở.' : 'Chỉ xem theo quyền hiện tại.'}</span></div>;
 }
 
-export default function PgdDossierStepWorkPanel({ request, currentUser, selectedStepId, dossierRequirements, dossierDocuments, samples, canMutate, onCompleteCurrent, completeDisabled = false, completeLabel, onOpenChecklist, initialRequirementCode, onOpenFullDossier, onOpenDrafting, onRequestException, exceptionBusy = false }: Props) {
+export default function PgdDossierStepWorkPanel({ request, currentUser, selectedStepId, dossierRequirements, dossierDocuments, samples, canMutate, onCompleteCurrent, completeDisabled = false, isProcessing = false, completeLabel, onOpenChecklist, initialRequirementCode, onOpenFullDossier, onOpenDrafting, onRequestException, exceptionBusy = false }: Props) {
   const meta = STEP_META[selectedStepId];
   const stationProps: PgdStationPanelProps = { request, currentUser, editable: canMutate };
   const templateKind = STEP_DRAFTING[selectedStepId];
@@ -143,12 +144,15 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
   ));
   const missingRequiredCount = missingStepRequirements.length;
   const nextAction = getPgdcnNextAction('PGD', request.status, { missingRequiredCount });
-  const completionUnavailable = !canMutate || !onCompleteCurrent || completeDisabled;
+  const completionPending = isProcessing && canMutate && Boolean(onCompleteCurrent);
+  const completionUnavailable = !canMutate || !onCompleteCurrent || completeDisabled || completionPending;
   const continuationReason = !canMutate
     ? 'Tài khoản hiện tại chỉ có quyền xem; hãy nhờ người có quyền PGD thực hiện thao tác tiếp theo.'
     : !onCompleteCurrent
       ? 'Bước đang chọn không có thao tác chuyển tiếp trong trạng thái hiện tại. Hãy mở bước PGD hiện hành.'
-      : completeDisabled
+      : completionPending
+        ? 'Đang xử lý thay đổi hồ sơ; vui lòng chờ hoàn tất trước khi tiếp tục.'
+        : completeDisabled
         ? 'Thao tác chuyển bước đang bị khóa bởi điều kiện nghiệp vụ hoặc đang được xử lý. Kiểm tra mục Cổng tiếp theo của hồ sơ PGD để biết trạng thái hiện hành.'
         : undefined;
   const permissionAwareNextAction = !canMutate
@@ -157,7 +161,9 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
       : 'Chỉ xem hồ sơ; nhờ người có quyền PGD tiếp tục bước hiện tại.'
     : !onCompleteCurrent
       ? 'Xem lại bước này; thao tác chuyển tiếp thuộc về bước PGD hiện hành.'
-      : completeDisabled
+      : completionPending
+        ? 'Đang xử lý thay đổi hồ sơ; vui lòng chờ hoàn tất.'
+        : completeDisabled
         ? 'Kiểm tra điều kiện nghiệp vụ trước khi tiếp tục.'
         : missingRequiredCount > 0
           ? `Bổ sung ${missingRequiredCount} tài liệu bắt buộc còn thiếu.`
@@ -282,7 +288,7 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
 
       <footer className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
         <p className="text-xs leading-5 text-slate-600">{completionUnavailable ? 'Xem lý do và hướng xử lý ở trên trước khi tiếp tục.' : 'Chỉ hoàn tất khi các điều kiện của việc và dữ liệu bắt buộc đã đủ.'}</p>
-        <button type="button" onClick={onCompleteCurrent} disabled={completionUnavailable} aria-describedby={completionUnavailable ? continuationReasonId : undefined} className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{completeLabel || (selectedStepId === 'intake' ? 'Bắt đầu xử lý' : 'Hoàn tất việc')}</button>
+        <button type="button" onClick={onCompleteCurrent} disabled={completionUnavailable} aria-busy={completionPending ? 'true' : undefined} aria-describedby={completionUnavailable ? continuationReasonId : undefined} className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{completionPending ? 'Đang xử lý...' : completeLabel || (selectedStepId === 'intake' ? 'Bắt đầu xử lý' : 'Hoàn tất việc')}</button>
       </footer>
     </section>
   );
