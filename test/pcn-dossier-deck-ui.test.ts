@@ -5,8 +5,8 @@ import React from 'react';
 import * as cheerio from 'cheerio';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PgdcnDossierDeck, type PgdcnDossierItemModel } from '../components/PgdcnDossierDeck';
-import PcnDossierGroupCard from '../components/PcnDossierGroupCard';
-import type { CertificationDossier, CertificationProposal } from '../types';
+import PcnDossierGroupCard, { buildPcnDossierRequiredDocumentSummary } from '../components/PcnDossierGroupCard';
+import type { CertificationDossier, CertificationProposal, PcnDocumentRequirement, PcnDossierDocument } from '../types';
 
 const read = (relativePath: string) => fs.readFileSync(new URL(relativePath, import.meta.url), 'utf8');
 
@@ -102,6 +102,7 @@ test('PCN dossier group card uses semantic controls, mobile touch targets, and c
   const dossier = {
     id: 'dossier-1',
     dossierCode: 'DS-001',
+    fieldCodes: ['QC4'],
     status: 'INTAKE_REVIEW',
     targetDate: '2026-12-01',
     ownerUsername: 'owner',
@@ -109,6 +110,9 @@ test('PCN dossier group card uses semantic controls, mobile touch targets, and c
   const markup = renderToStaticMarkup(React.createElement(PcnDossierGroupCard, {
     proposal,
     dossier,
+    documentRequirements: [],
+    dossierDocuments: [],
+    dataLoaded: true,
     canEdit: true,
     onOpenDossier: () => {},
     onEdit: () => {},
@@ -140,6 +144,63 @@ test('PCN dossier group card uses semantic controls, mobile touch targets, and c
   assert.ok(copyHandler.indexOf('await navigator.clipboard.writeText') < copyHandler.indexOf('toast.success'), 'clipboard success follows a completed write');
   assert.match(copyHandler, /catch[\s\S]*toast\.error/);
   assert.match(copyHandler, /navigator\.clipboard\?\.writeText[\s\S]*toast\.error/);
+});
+
+test('PCN dossier card keeps required-document loading separate from zero missing and names the first two missing items', () => {
+  const dossier = {
+    id: 'dossier-documents',
+    dossierCode: 'DS-DOCS',
+    proposalId: 'proposal-documents',
+    fieldCodes: ['QC4'],
+    method: 'METHOD_1',
+    status: 'AWAITING_DOCUMENTS',
+    labRequestIds: [],
+    returnedResultIds: [],
+  } as CertificationDossier;
+  const proposal = {
+    id: 'proposal-documents',
+    proposalCode: 'PCN-DOCS',
+    customerSnapshot: { name: 'Acme Manufacturing' },
+    productName: 'Widget',
+  } as CertificationProposal;
+  const requirements: PcnDocumentRequirement[] = [
+    { id: 'required-1', fieldCode: 'QC4', code: 'REQ_1', name: 'Đề nghị đăng ký', stages: ['INTAKE'], required: true, active: true, sortOrder: 1 },
+    { id: 'required-2', fieldCode: 'QC4', code: 'REQ_2', name: 'Báo giá', stages: ['INTAKE'], required: true, active: true, sortOrder: 2 },
+    { id: 'required-3', fieldCode: 'QC4', code: 'REQ_3', name: 'Biên bản kiểm tra', stages: ['INTAKE'], required: true, active: true, sortOrder: 3 },
+    { id: 'optional-1', fieldCode: 'QC4', code: 'OPTIONAL', name: 'Tài liệu tham khảo', stages: ['INTAKE'], required: false, active: true, sortOrder: 4 },
+  ];
+  const documents: PcnDossierDocument[] = [
+    {
+      id: 'document-1',
+      dossierId: dossier.id,
+      requirementId: 'required-1',
+      fieldCode: 'QC4',
+      currentVersionId: 'asset-1',
+      status: 'PRESENT',
+      versions: [{ assetId: 'asset-1', fileName: 'de-nghi.pdf', uploadedAt: '2026-10-01T00:00:00.000Z' }],
+    },
+  ];
+
+  assert.deepEqual(
+    buildPcnDossierRequiredDocumentSummary({ dossier, proposal, requirements, documents, dataLoaded: false }),
+    { state: 'LOADING' },
+    'empty arrays before the PCN store finishes loading do not appear as zero missing documents',
+  );
+  assert.deepEqual(
+    buildPcnDossierRequiredDocumentSummary({ dossier, proposal, requirements, documents: [], dataLoaded: true }),
+    { state: 'MISSING', missingCount: 3, labels: ['Đề nghị đăng ký', 'Báo giá'], additionalMissingCount: 1 },
+    'the canonical checklist names the first two missing required items and counts the rest',
+  );
+  assert.deepEqual(
+    buildPcnDossierRequiredDocumentSummary({ dossier, proposal, requirements: [requirements[0]], documents, dataLoaded: true }),
+    { state: 'COMPLETE', missingCount: 0, labels: [], additionalMissingCount: 0 },
+    'a loaded checklist with no missing required item is distinct from loading',
+  );
+
+  const source = read('../components/PcnDossierGroupCard.tsx');
+  assert.match(source, /buildPcnDossierCompleteness/);
+  assert.match(source, /data-testid="pcn-dossier-required-documents"/);
+  assert.match(source, /requiredDocumentSummary\.labels/);
 });
 
 test('card expands in place on card body click without navigating away, while explicit detail action navigates', () => {

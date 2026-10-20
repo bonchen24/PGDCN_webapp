@@ -21,16 +21,21 @@ import {
 import type {
   CertificationDossier,
   CertificationProposal,
-  PcnDossierStatus,
+  PcnDocumentRequirement,
+  PcnDossierDocument,
   PcnSampleLot,
   PcnSampleItem,
   PcnSampleRoute,
 } from '../types';
 import { toast } from 'sonner';
+import { buildPcnDossierCompleteness } from '../utils/pcnDossierPipeline';
 
 export interface PcnDossierGroupCardProps {
   proposal: CertificationProposal;
   dossier: CertificationDossier;
+  documentRequirements: PcnDocumentRequirement[];
+  dossierDocuments: PcnDossierDocument[];
+  dataLoaded: boolean;
   sampleLots?: PcnSampleLot[];
   sampleItems?: PcnSampleItem[];
   sampleRoutes?: PcnSampleRoute[];
@@ -38,6 +43,42 @@ export interface PcnDossierGroupCardProps {
   onOpenDossier: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+}
+
+export type PcnDossierRequiredDocumentSummary =
+  | { state: 'LOADING' }
+  | { state: 'NO_REQUIREMENTS'; missingCount: 0; labels: []; additionalMissingCount: 0 }
+  | { state: 'COMPLETE'; missingCount: 0; labels: []; additionalMissingCount: 0 }
+  | { state: 'MISSING'; missingCount: number; labels: string[]; additionalMissingCount: number };
+
+export function buildPcnDossierRequiredDocumentSummary(input: {
+  dossier: CertificationDossier;
+  proposal?: CertificationProposal;
+  requirements: PcnDocumentRequirement[];
+  documents: PcnDossierDocument[];
+  dataLoaded: boolean;
+}): PcnDossierRequiredDocumentSummary {
+  if (!input.dataLoaded) return { state: 'LOADING' };
+
+  const completeness = buildPcnDossierCompleteness({
+    dossier: input.dossier,
+    proposal: input.proposal,
+    requirements: input.requirements,
+    documents: input.documents,
+  });
+  const missingCount = completeness.missingRequirementIds.length;
+  if (completeness.requiredDocumentTotal === 0) {
+    return { state: 'NO_REQUIREMENTS', missingCount: 0, labels: [], additionalMissingCount: 0 };
+  }
+  if (missingCount === 0) return { state: 'COMPLETE', missingCount: 0, labels: [], additionalMissingCount: 0 };
+
+  const labels = completeness.missingLabels.slice(0, 2);
+  return {
+    state: 'MISSING',
+    missingCount,
+    labels,
+    additionalMissingCount: Math.max(0, missingCount - labels.length),
+  };
 }
 
 function formatDdMm(dateStr?: string): string {
@@ -52,6 +93,9 @@ function formatDdMm(dateStr?: string): string {
 export function PcnDossierGroupCard({
   proposal,
   dossier,
+  documentRequirements,
+  dossierDocuments,
+  dataLoaded,
   sampleLots = [],
   sampleItems = [],
   sampleRoutes = [],
@@ -70,7 +114,6 @@ export function PcnDossierGroupCard({
   const matchingLots = sampleLots.filter((lot) => lot.dossierId === dossier.id);
   const matchingLotIds = new Set(matchingLots.map((l) => l.id));
   const matchingItems = sampleItems.filter((item) => matchingLotIds.has(item.sampleLotId));
-
   const totalSamples = matchingItems.length || proposal.quantity || 1;
   const isDone = ['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(dossier.status);
 
@@ -79,10 +122,16 @@ export function PcnDossierGroupCard({
     const itemRoutes = sampleRoutes.filter((r) => r.sampleLotId === item.sampleLotId);
     return itemRoutes.some((r) => r.status === 'RESULT_RETURNED' || r.status === 'CLOSED');
   }).length;
-
   const completionRatio = isDone ? totalSamples : doneItemsCount;
   const progressRatioLabel = `${completionRatio}/${totalSamples} XONG`;
   const progressPercent = isDone ? 100 : Math.round((completionRatio / totalSamples) * 100);
+  const requiredDocumentSummary = buildPcnDossierRequiredDocumentSummary({
+    dossier,
+    proposal,
+    requirements: documentRequirements,
+    documents: dossierDocuments,
+    dataLoaded,
+  });
 
   const receivedDdMm = formatDdMm(proposal.receivedAt);
   const targetDdMm = formatDdMm(dossier.targetDate);
@@ -256,6 +305,23 @@ export function PcnDossierGroupCard({
       {/* Accordion Detail Drawer */}
       {isExpanded && (
         <div className="mt-3 border-t border-slate-100 bg-slate-50/70 p-3 rounded-xl text-[11px] text-slate-600 space-y-2">
+          <section data-testid="pcn-dossier-required-documents" aria-label="Tài liệu bắt buộc" className="rounded-lg border border-slate-200 bg-white p-2.5">
+            <p className={`font-bold ${requiredDocumentSummary.state === 'MISSING' ? 'text-amber-800' : 'text-slate-700'}`}>
+              {requiredDocumentSummary.state === 'LOADING' && 'Đang tải danh sách tài liệu bắt buộc…'}
+              {requiredDocumentSummary.state === 'NO_REQUIREMENTS' && 'Chưa có cấu hình tài liệu bắt buộc cho Lĩnh vực này.'}
+              {requiredDocumentSummary.state === 'COMPLETE' && 'Đủ tài liệu bắt buộc.'}
+              {requiredDocumentSummary.state === 'MISSING' && `Thiếu ${requiredDocumentSummary.missingCount} tài liệu bắt buộc.`}
+            </p>
+            {requiredDocumentSummary.state === 'MISSING' && (
+              <>
+                <ul className="mt-1 list-inside list-disc space-y-0.5 text-slate-600">
+                  {requiredDocumentSummary.labels.map((label) => <li key={label}>{label}</li>)}
+                </ul>
+                {requiredDocumentSummary.additionalMissingCount > 0 && <p className="mt-1 text-slate-500">Còn {requiredDocumentSummary.additionalMissingCount} mục bắt buộc khác.</p>}
+              </>
+            )}
+          </section>
+
           <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-500">
             <span>Chi tiết mẫu & Thông số kỹ thuật</span>
             <span className="text-[9px] font-bold text-slate-400">Trạng thái KQTN sơ bộ</span>

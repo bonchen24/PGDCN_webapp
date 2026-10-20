@@ -54,7 +54,7 @@ import { usePcnStore } from '../store-pcn';
 import { usePcnSessionStore } from '../utils/pcnSessionState';
 import { clearPcnSession, getPcnSession } from '../utils/pcnAuthApi';
 import { ORGANIZATION_MANAGEMENT_ROLE_OPTIONS, PROFESSIONAL_ROLE_OPTIONS } from '../types';
-import type { AppNotification, CertificationDossier, CertificationProposal, PcnDossierStatus, PcnProposalStatus, PcnCertificationField, PcnSampleLot, PcnSampleItem, PcnSampleRoute } from '../types';
+import type { AppNotification, CertificationDossier, CertificationProposal, PcnDossierDocument, PcnDocumentRequirement, PcnDossierStatus, PcnProposalStatus, PcnCertificationField, PcnSampleLot, PcnSampleItem, PcnSampleRoute } from '../types';
 import type { PcnProposalUpdateInput } from '../utils/pcnProposalApi';
 import { PcnIntakeApiError } from '../utils/pcnIntakeApi';
 import { formatPcnIntakeValidationIssues, indexPcnIntakeValidationIssues, validatePcnProposalIntake } from '../utils/pcnIntakePolicy';
@@ -327,6 +327,9 @@ function ProposalView({
   fields,
   proposals,
   dossiers,
+  documentRequirements,
+  dossierDocuments,
+  dataLoaded,
   sampleLots = [],
   sampleItems = [],
   sampleRoutes = [],
@@ -342,6 +345,9 @@ function ProposalView({
   fields: PcnCertificationField[];
   proposals: CertificationProposal[];
   dossiers: CertificationDossier[];
+  documentRequirements: PcnDocumentRequirement[];
+  dossierDocuments: PcnDossierDocument[];
+  dataLoaded: boolean;
   sampleLots?: PcnSampleLot[];
   sampleItems?: PcnSampleItem[];
   sampleRoutes?: PcnSampleRoute[];
@@ -982,6 +988,9 @@ function ProposalView({
                 key={proposal.id}
                 proposal={proposal}
                 dossier={dossier}
+                documentRequirements={documentRequirements}
+                dossierDocuments={dossierDocuments}
+                dataLoaded={dataLoaded}
                 sampleLots={sampleLots}
                 sampleItems={sampleItems}
                 sampleRoutes={sampleRoutes}
@@ -1285,6 +1294,9 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
       fields={pcn.fields}
       proposals={pcn.proposals}
       dossiers={pcn.dossiers}
+      documentRequirements={pcn.documentRequirements}
+      dossierDocuments={pcn.dossierDocuments}
+      dataLoaded={pcn.isLoaded}
       sampleLots={pcn.sampleLots}
       sampleItems={pcn.sampleItems}
       sampleRoutes={pcn.sampleRoutes}
