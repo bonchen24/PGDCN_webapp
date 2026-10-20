@@ -2,23 +2,31 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const readRoute = (relativePath: string) => {
+  const url = new URL(`../${relativePath}`, import.meta.url);
+  assert.equal(fs.existsSync(url), true, `Next.js App Router handler must exist: ${relativePath}`);
+  return fs.readFileSync(url, 'utf8');
+};
 
-test('custom server prepares Next and keeps Express as the /api gateway', () => {
-  assert.match(source, /from ['"]next['"]/);
-  assert.match(source, /const nextApp = next\(/);
-  assert.match(source, /await nextApp\.prepare\(\)/);
-  assert.match(source, /const nextHandler = nextApp\.getRequestHandler\(\)/);
-  assert.match(source, /req\.path\.startsWith\(['"]\/api\//);
-  assert.match(source, /nextHandler\(req, res\)/);
-  assert.doesNotMatch(source, /createServer: createViteServer/);
+test('Next.js App Router exposes database health without credentials', () => {
+  const health = readRoute('app/api/db/health/route.ts');
+
+  assert.match(health, /export async function GET\(\)/);
+  assert.match(health, /pool\.query\('SELECT current_database\(\) AS database_name'\)/);
+  assert.match(health, /profile,/);
+  assert.match(health, /databaseName:\s*result\.rows\[0\]\?\.database_name\s*\|\|\s*null/);
+  assert.doesNotMatch(health, /POSTGRES_PASSWORD|password\s*:/i);
 });
 
-test('database health exposes the active PCN profile without exposing credentials', () => {
-  assert.match(source, /current_database\(\)/);
-  assert.match(source, /profile:\s*DATABASE_PROFILE/);
-  assert.match(source, /databaseName/);
-  assert.doesNotMatch(source, /POSTGRES_PASSWORD.*res\.json/);
-});
+test('PCN App Router session handler enforces authentication and protected cookies', () => {
+  const session = readRoute('app/api/auth/pcn-session/route.ts');
 
-// --- End of next-server-contract.test.ts ---
+  assert.match(session, /export async function GET\(request: NextRequest\)/);
+  assert.match(session, /const user = getSessionUser\(request\)/);
+  assert.match(session, /if \(!user\)\s*\{\s*return jsonUnauthorized/);
+  assert.match(session, /export async function POST\(request: NextRequest\)/);
+  assert.match(session, /authenticatePcnUser\(username, password\)/);
+  assert.match(session, /response\.cookies\.set\(\{\s*name: PCN_SESSION_COOKIE,[\s\S]*?httpOnly: true,[\s\S]*?sameSite: 'lax',[\s\S]*?secure: isSecure/);
+  assert.match(session, /export async function DELETE\(\)/);
+  assert.match(session, /maxAge: 0/);
+});

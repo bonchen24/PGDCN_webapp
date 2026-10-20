@@ -38,7 +38,8 @@
   "exclude": [
     "LapBaoCao",
     "node_modules",
-    "dist"
+    "dist",
+    "server.legacy.ts"
   ],
   "include": [
     "next-env.d.ts",

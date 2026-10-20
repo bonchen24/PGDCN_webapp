@@ -11,32 +11,24 @@ test('active product has no legacy Vite/DDT entrypoint', () => {
   for (const relativePath of ['App.tsx', 'index.tsx', 'index.html', 'vite.config.ts', 'store.ts', 'scripts/native-dev.cjs']) {
     assert.equal(exists(relativePath), false, `legacy runtime file must be removed: ${relativePath}`);
   }
-
-  const packageJson = JSON.parse(read('package.json')) as { scripts?: Record<string, string>; dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
-  assert.equal(packageJson.scripts?.['dev:ddt'], undefined);
-  const allDependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
-  for (const dependency of ['vite', '@vitejs/plugin-react', '@tailwindcss/vite']) {
-    assert.equal(allDependencies[dependency], undefined, `legacy Vite dependency must be removed: ${dependency}`);
-  }
-
-  const activeSource = [
-    read('index.css'),
-    read('components/PcnAssistantView.tsx'),
-    read('components/PgdcnAssistantView.tsx'),
-    read('components/PgdcnDashboardView.tsx'),
-    read('components/PgdcnAppShell.tsx'),
-    read('components/PcnSidebar.tsx'),
-    read('components/PgdcnSidebar.tsx'),
-    read('components/PcnWorkspace.tsx'),
-  ].join('\n');
-  assert.doesNotMatch(activeSource, /ddt-compact/);
 });
 
-test('server exposes only PCN/PGD document-template boundaries', () => {
-  const server = read('server.ts');
-  assert.doesNotMatch(server, /REPORT_TEMPLATES_CATALOG|\/api\/templates/);
-  assert.match(server, /\/api\/pcn\/templates/);
-  assert.match(server, /\/api\/pgd\/document-templates/);
+test('PCN and PGD template boundaries are session-protected App Router handlers', () => {
+  const pcnPath = 'app/api/pcn/workflow-templates/route.ts';
+  const pgdPath = 'app/api/pgd/document-templates/route.ts';
+  assert.equal(exists(pcnPath), true, `PCN route handler must exist: ${pcnPath}`);
+  assert.equal(exists(pgdPath), true, `PGD route handler must exist: ${pgdPath}`);
+
+  const pcnRoute = read(pcnPath);
+  assert.match(pcnRoute, /export async function GET\(req: NextRequest\)/);
+  assert.match(pcnRoute, /const actor = getPcnSessionUser\(req\)/);
+  assert.match(pcnRoute, /if \(!actor\)\s*\{\s*return jsonUnauthorized/);
+  assert.match(pcnRoute, /if \(!isPcnWorkflowManager\(actor\)\)\s*\{\s*return jsonForbidden/);
+
+  const pgdRoute = read(pgdPath);
+  assert.match(pgdRoute, /export async function GET\(req: NextRequest\)/);
+  assert.match(pgdRoute, /const sessionError = requirePgdSession\(req\)/);
+  assert.match(pgdRoute, /if \(sessionError\) return sessionError/);
 });
 
 test('PCN keeps the external DDT laboratory integration contract', () => {

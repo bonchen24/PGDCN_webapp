@@ -244,13 +244,6 @@ import { buildPcnSampleHandoverDetails } from './utils/pcnHandoverPolicy.ts';
 import { buildPcnReturnedResult, markOfficialPcnResults } from './utils/pcnResultPolicy.ts';
 import { buildPcnDossierChecklist, buildPcnDossierDocumentId, buildPcnGeneratedDossierAttachment, buildPcnUploadedDossierAttachment, getPcnDocumentRequirements, getPcnDraftFormRequirementCode, getPcnGeneratedDocumentRequirementCode, mergePcnDocumentRequirements } from './utils/pcnDossierDocuments.ts';
 import { getPcnDossierAssignmentDenial, getPcnDossierOperatorDenial, getPcnOwnerAssignmentAuthorityDenial } from './utils/pcnDossierAssignment.ts';
-import { buildPcnArchifyDiagramSuite, buildPcnArchifyWorkflow } from './utils/pcnArchifyWorkflow.ts';
-import { buildPgdArchifyDiagramSuite, buildPgdArchifyWorkflow } from './utils/pgdArchifyWorkflow.ts';
-import { buildPcnArchifyWorkflowTemplate } from './utils/pcnArchifyWorkflowTemplate.ts';
-import { buildPgdArchifyWorkflowTemplate } from './utils/pgdArchifyWorkflowTemplate.ts';
-import { validateDossierTemplateEditorModel } from './utils/pgdcnDossierTemplate.ts';
-import { ARCHIFY_DIAGRAM_TYPES, type ArchifyDiagramType } from './utils/archifyDiagram.ts';
-import { renderArchifyDiagram, renderArchifyWorkflowDocument } from './utils/pcnArchifyRenderer.ts';
 import { getPcnDossierDateDenial, getPcnTimestampDenial, normalizePcnIssuanceTimestamp, normalizePcnUtcTimestamp } from './utils/pcnDossierDate.ts';
 import type { PcnDossierUpdateInput } from './utils/pcnDossierApi.ts';
 import type { PcnProposalUpdateInput } from './utils/pcnProposalApi.ts';
@@ -1140,14 +1133,6 @@ function setPcnSessionCookie(req: express.Request, res: express.Response, token:
     'Set-Cookie',
     `${PCN_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=${maxAgeSeconds}; HttpOnly; SameSite=Lax${secure}`,
   );
-}
-
-function parseArchifyDiagramType(value: unknown): ArchifyDiagramType {
-  const diagram = String(value ?? '').trim().toLowerCase() || 'workflow';
-  if (!ARCHIFY_DIAGRAM_TYPES.includes(diagram as ArchifyDiagramType)) {
-    throw Object.assign(new Error('Loại sơ đồ Archify không hợp lệ.'), { statusCode: 400 });
-  }
-  return diagram as ArchifyDiagramType;
 }
 
 function requirePcnSession(req: express.Request, res: express.Response, next?: express.NextFunction): boolean {
@@ -3497,20 +3482,6 @@ async function startServer() {
     void client;
   };
 
-  app.post('/api/pgd/workflow-templates/preview', async (req, res) => {
-    if (!requirePgdWorkflowManager(req, res)) return;
-    const model = req.body as any;
-    if (model?.domain !== 'PGD') { res.status(400).json({ error: 'Preview PGD cần model domain PGD.' }); return; }
-    const validation = validateDossierTemplateEditorModel(model);
-    if (!validation.valid) { res.status(400).json({ error: validation.errors.join(' '), issues: validation.errors }); return; }
-    try {
-      const html = await renderArchifyWorkflowDocument(buildPgdArchifyWorkflowTemplate(model), { domain: 'pgd', recordId: `template-preview-${String(model.id).trim()}` });
-      res.json({ html });
-    } catch (error: any) {
-      res.status(Number(error?.statusCode) || 422).json({ error: error?.message || 'Không thể tạo preview Archify PGD.' });
-    }
-  });
-
   app.get('/api/pgd/workflow-templates', async (req, res) => {
     if (!requirePgdSession(req, res)) return;
     try {
@@ -4072,79 +4043,6 @@ async function startServer() {
       res.json({ instrument });
     } catch (error: any) {
       res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
-    }
-  });
-
-  app.get('/api/pgd/requests/:requestId/archify', async (req, res) => {
-    if (!requirePgdSession(req, res)) return;
-    const requestId = decodeURIComponent(String(req.params.requestId || '')).trim();
-    if (!requestId || requestId.length > 240 || /[\\/]/.test(requestId)) { res.status(400).json({ error: 'Mã hồ sơ PGD không hợp lệ.' }); return; }
-    let diagramType: ArchifyDiagramType;
-    try {
-      diagramType = parseArchifyDiagramType(req.query.diagram);
-    } catch (error: any) {
-      res.status(Number(error?.statusCode) === 400 ? 400 : 500).json({ error: 'Loại sơ đồ Archify không hợp lệ.' });
-      return;
-    }
-    try {
-      const readRows = (collectionName: string, order = 'updated_at DESC, document_id ASC') => pool.query(
-        `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY ${order}`,
-        [collectionName, requestId],
-      );
-      const [requestResult, assignmentResult, fieldResult, sampleResult, labRequestResult, labResultResult, reportResult, certificateResult, labReviewResult, documentResult, approvalResult, activityResult] = await Promise.all([
-        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`, [PGD_COLLECTIONS.requests, requestId]),
-        readRows(PGD_COLLECTIONS.assignments),
-        readRows(PGD_COLLECTIONS.fieldInspections),
-        readRows(PGD_COLLECTIONS.samples, 'document_id ASC'),
-        readRows(PGD_COLLECTIONS.labRequests, 'document_id ASC'),
-        readRows(PGD_COLLECTIONS.labResults, 'document_id ASC'),
-        readRows(PGD_COLLECTIONS.reports),
-        readRows(PGD_COLLECTIONS.certificates),
-        readRows(PGD_COLLECTIONS.labResultReviews),
-        readRows(PGD_COLLECTIONS.dossierDocuments, 'COALESCE((data->>\'version\')::int, 0) DESC, updated_at DESC, document_id DESC'),
-        readRows(PGD_COLLECTIONS.approvals, 'COALESCE((data->>\'sequence\')::int, 0), document_id ASC'),
-        readRows(PGD_COLLECTIONS.activityLogs, "data->>'createdAt' ASC, document_id ASC"),
-      ]);
-      const request = requestResult.rows[0] ? mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest : undefined;
-      if (!request) { res.status(404).json({ error: 'Không tìm thấy hồ sơ PGD.' }); return; }
-      const suite = buildPgdArchifyDiagramSuite({
-        request,
-        assignment: assignmentResult.rows[0] ? mapDocumentRow(assignmentResult.rows[0]) as PgdInspectionAssignment : undefined,
-        fieldInspection: fieldResult.rows[0] ? mapDocumentRow(fieldResult.rows[0]) as PgdFieldInspection : undefined,
-        samples: sampleResult.rows.map((row: any) => mapDocumentRow(row)) as PgdSample[],
-        labRequests: labRequestResult.rows.map((row: any) => mapDocumentRow(row)) as PgdLabRequest[],
-        labResults: labResultResult.rows.map((row: any) => mapDocumentRow(row)) as PgdLabResult[],
-        report: reportResult.rows[0] ? mapDocumentRow(reportResult.rows[0]) as PgdInspectionReport : undefined,
-        certificate: certificateResult.rows[0] ? mapDocumentRow(certificateResult.rows[0]) as PgdInspectionCertificate : undefined,
-        labResultReview: labReviewResult.rows[0] ? mapDocumentRow(labReviewResult.rows[0]) as PgdLabResultReview : undefined,
-        dossierDocuments: documentResult.rows.map((row: any) => mapDocumentRow(row)) as PgdDossierDocument[],
-        approvals: approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PgdApprovalStep[],
-        activityLogs: activityResult.rows.map((row: any) => mapDocumentRow(row)) as Array<Record<string, unknown>>,
-      });
-      let document: unknown;
-      if (diagramType === 'workflow') {
-        document = suite.workflow;
-      } else {
-        const unavailable = suite[diagramType];
-        if (unavailable.available === false) {
-          const error = 'Biểu đồ Archify hiện chưa khả dụng.';
-          const reason = unavailable.reason;
-          res.status(409).json({ error, diagram: diagramType, reason });
-          return;
-        }
-        document = unavailable.document;
-      }
-      const rendered = await renderArchifyDiagram(diagramType, document, { domain: 'pgd', recordId: request.id });
-      if (rendered.available === false) {
-        const error = 'Biểu đồ Archify hiện chưa khả dụng.';
-        const reason = rendered.reason;
-        res.status(409).json({ error, diagram: diagramType, reason });
-        return;
-      }
-      res.type('html').set('Cache-Control', 'private, no-store').send(rendered.html);
-    } catch (error: any) {
-      const status = Number(error?.statusCode) === 404 ? 404 : Number(error?.statusCode) === 422 ? 422 : 500;
-      res.status(status).json({ error: status === 422 ? 'Không thể render biểu đồ Archify.' : 'Không thể mở biểu đồ Archify.', diagram: diagramType });
     }
   });
 
@@ -8692,20 +8590,6 @@ async function startServer() {
     }
   });
 
-  app.post('/api/pcn/workflow-templates/preview', async (req, res) => {
-    if (!requirePcnWorkflowManager(req, res)) return;
-    const model = req.body as any;
-    if (model?.domain !== 'PCN') { res.status(400).json({ error: 'Preview PCN cần model domain PCN.' }); return; }
-    const validation = validateDossierTemplateEditorModel(model);
-    if (!validation.valid) { res.status(400).json({ error: validation.errors.join(' '), issues: validation.errors }); return; }
-    try {
-      const html = await renderArchifyWorkflowDocument(buildPcnArchifyWorkflowTemplate(model), { domain: 'pcn', recordId: `template-preview-${String(model.id).trim()}` });
-      res.json({ html });
-    } catch (error: any) {
-      res.status(Number(error?.statusCode) || 422).json({ error: error?.message || 'Không thể tạo preview Archify PCN.' });
-    }
-  });
-
   app.post('/api/pcn/workflow-templates', async (req, res) => {
     if (!requirePcnWorkflowManager(req, res)) return;
     const actor = getPcnSessionUser(req)! as PcnUserAccount;
@@ -9043,66 +8927,6 @@ async function startServer() {
       res.json({ items: result.rows.map(mapDocumentRow) });
     } catch (error: any) {
       res.status(500).json({ error: error?.message || String(error) });
-    }
-  });
-
-  app.get('/api/pcn/dossiers/:dossierId/archify', async (req, res) => {
-    if (!requirePcnSession(req, res)) return;
-    const dossierId = String(req.params.dossierId || '').trim();
-    if (!isSafePcnSampleKey(dossierId)) { res.status(400).json({ error: 'Mã hồ sơ không hợp lệ.' }); return; }
-    let diagramType: ArchifyDiagramType;
-    try {
-      diagramType = parseArchifyDiagramType(req.query.diagram);
-    } catch (error: any) {
-      res.status(Number(error?.statusCode) === 400 ? 400 : 500).json({ error: 'Loại sơ đồ Archify không hợp lệ.' });
-      return;
-    }
-    try {
-      const [dossierResult, documentResult, resultResult, approvalResult, taskResult, activityResult] = await Promise.all([
-        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'certificationDossiers' AND document_id = $1 LIMIT 1`, [dossierId]),
-        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'dossierDocuments' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossierId]),
-        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'returnedResults' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossierId]),
-        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'approvalSteps' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossierId]),
-        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnDossierWorkflowTasks' AND data->>'dossierId' = $1 ORDER BY document_id`, [dossierId]),
-        pool.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'activityLogs' AND (data->>'entityId' = $1 OR data->>'requestCode' = $1) ORDER BY data->>'createdAt', document_id`, [dossierId]),
-      ]);
-      const dossier = dossierResult.rows[0] ? mapDocumentRow(dossierResult.rows[0]) as CertificationDossier : undefined;
-      if (!dossier) { res.status(404).json({ error: 'Không tìm thấy hồ sơ PCN.' }); return; }
-      const workflow = getPcnWorkflowForDossier(dossier);
-      const suite = buildPcnArchifyDiagramSuite({
-        dossier,
-        workflow,
-        tasks: taskResult.rows.map((row: any) => mapDocumentRow(row)) as PcnDossierWorkflowTask[],
-        documents: documentResult.rows.map((row: any) => mapDocumentRow(row)) as PcnDossierDocument[],
-        documentWaivers: dossier.documentWaivers,
-        results: resultResult.rows.map((row: any) => mapDocumentRow(row)) as ReturnedTestResult[],
-        approvalSteps: approvalResult.rows.map((row: any) => mapDocumentRow(row)) as PcnApprovalStep[],
-        activityLogs: activityResult.rows.map((row: any) => mapDocumentRow(row)) as ActivityLog[],
-      });
-      let document: unknown;
-      if (diagramType === 'workflow') {
-        document = suite.workflow;
-      } else {
-        const unavailable = suite[diagramType];
-        if (unavailable.available === false) {
-          const error = 'Biểu đồ Archify hiện chưa khả dụng.';
-          const reason = unavailable.reason;
-          res.status(409).json({ error, diagram: diagramType, reason });
-          return;
-        }
-        document = unavailable.document;
-      }
-      const rendered = await renderArchifyDiagram(diagramType, document, { domain: 'pcn', recordId: dossier.id });
-      if (rendered.available === false) {
-        const error = 'Biểu đồ Archify hiện chưa khả dụng.';
-        const reason = rendered.reason;
-        res.status(409).json({ error, diagram: diagramType, reason });
-        return;
-      }
-      res.type('html').set('Cache-Control', 'private, no-store').send(rendered.html);
-    } catch (error: any) {
-      const status = Number(error?.statusCode) === 404 ? 404 : Number(error?.statusCode) === 422 ? 422 : 500;
-      res.status(status).json({ error: status === 422 ? 'Không thể render biểu đồ Archify.' : 'Không thể mở biểu đồ Archify.', diagram: diagramType });
     }
   });
 

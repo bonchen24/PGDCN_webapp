@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import AdmZip from 'adm-zip';
 import { resolveLegacyTemplatePath } from './legacyTemplatePath.mjs';
 
-const serverSource = fs.readFileSync('server.ts', 'utf8');
+const serverSource = fs.readFileSync(fileURLToPath(new URL('../server.legacy.ts', import.meta.url)), 'utf8');
 const serverKeys = new Set([
   ...['anh_1', 'anh_2', 'anh_3', 'anh_4', 'anh_5', 'anh_6'],
   ...[...serverSource.matchAll(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:/gm)].map((match) => match[1]),
