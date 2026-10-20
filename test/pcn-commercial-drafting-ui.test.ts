@@ -14,6 +14,9 @@ test('PCN commercial checklist routes to the independent drafting workspace', ()
   assert.match(nodeWork, /getPcnNodeDraftFormKind/);
   assert.match(nodeWork, /COMMERCIAL:\s*'COMMERCIAL'/);
   assert.match(detail, /buildPcnNodeDraftingRoute/);
+  assert.match(detail, /onOpenDrafting=\{\(item,\s*nodeId\)\s*=>\s*buildPcnNodeDraftingRoute/);
+  assert.match(detail, /requirementCode:\s*item\.code/);
+  assert.match(panel, /onOpenDrafting\?\.\(item\)/);
   assert.match(page, /getPcnNodeDraftFormKind/);
   assert.match(panel, /getPcnNodeDocumentGenerationKind\(item\.code\)/);
 });
