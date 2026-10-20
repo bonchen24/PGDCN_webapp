@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { PcnUserAccount } from '../types';
 import PgdDossierStepWorkPanel from '../components/PgdDossierStepWorkPanel';
 import { PGD_COLLECTIONS, PGD_DOMAIN, type PgdInspectionRequest } from '../utils/pgdDomain';
-import { getPgdDossierRequirements, type PgdDossierDocument } from '../utils/pgdDossier';
+import { getPgdDossierRequirementForTemplate, getPgdDossierRequirements, type PgdDossierDocument } from '../utils/pgdDossier';
 
 test('step summary counts only required items for the selected step', () => {
   const allRequiredRequirements = getPgdDossierRequirements('OTHER').filter((item) => item.required);
@@ -127,6 +127,101 @@ test('waived optional documents do not show an upload action', () => {
 
   assert.ok(waivedRow, 'the waived optional requirement remains visible in its step table');
   assert.doesNotMatch(waivedRow, /<button\b/, 'waived optional evidence must not prompt an upload');
+});
+
+test('document actions respect read-only access while preserving available evidence actions', () => {
+  const draftRequirement = getPgdDossierRequirementForTemplate('INTAKE_REQUEST', 'OTHER')!;
+  const uploadRequirement = getPgdDossierRequirements('OTHER').find((item) => (
+    item.group === 'REQUEST' && item.required && item.code !== draftRequirement.code
+  ))!;
+  assert.ok(uploadRequirement, 'the intake step includes a required document without a drafting template');
+
+  const render = (canMutate: boolean, state: 'missing' | 'present' | 'waived', dossierLoadStatus: 'loaded' | 'error' = 'loaded') => {
+    const request = {
+      id: 'pgd-document-action-permissions-test',
+      domain: PGD_DOMAIN,
+      requestCode: 'PYC-DOCUMENT-ACTION-PERMISSIONS',
+      productGroup: 'OTHER',
+      customerName: 'Khách hàng thử nghiệm',
+      customerSnapshot: { name: 'Khách hàng thử nghiệm', address: '' },
+      productName: 'Sản phẩm thử nghiệm',
+      standards: [],
+      status: 'DRAFT',
+      dossierChecklist: state === 'waived' ? [{
+        domain: PGD_DOMAIN,
+        requirementCode: draftRequirement.code,
+        group: draftRequirement.group,
+        title: draftRequirement.title,
+        required: true,
+        status: 'WAIVED',
+        waiverReason: 'Không áp dụng cho hồ sơ này',
+        updatedAt: '2026-10-10T00:00:00.000Z',
+      }] : [],
+    } as unknown as PgdInspectionRequest;
+    const documents: PgdDossierDocument[] = state === 'present' ? [{
+      id: 'present-intake-document',
+      domain: PGD_DOMAIN,
+      requestId: request.id,
+      requirementCode: draftRequirement.code,
+      title: draftRequirement.title,
+      fileName: 'intake.pdf',
+      fileAssetId: 'intake-asset',
+      sourceCollection: PGD_COLLECTIONS.dossierDocuments,
+      sourceDocumentId: 'present-intake-document',
+      version: 1,
+      checksum: 'intake-checksum',
+      uploadedByUsername: 'reviewer',
+      uploadedAt: '2026-10-10T00:00:00.000Z',
+    }] : [];
+
+    const markup = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
+      request,
+      currentUser: { username: 'reviewer' } as PcnUserAccount,
+      selectedStepId: 'intake',
+      dossierRequirements: [uploadRequirement],
+      dossierDocuments: documents,
+      dossierLoadStatus,
+      samples: [],
+      canMutate,
+      onOpenChecklist: () => undefined,
+      onOpenDrafting: () => '/pgd/drafting?requestId=pgd-document-action-permissions-test',
+    }));
+    const rows = Array.from(markup.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g), (match) => match[1]);
+    const rowFor = (requirement: { title: string }) => rows.find((row) => row.includes(requirement.title)) || '';
+    return { markup, draftRow: rowFor(draftRequirement), uploadRow: rowFor(uploadRequirement) };
+  };
+
+  for (const canMutate of [false, true]) {
+    const label = canMutate ? 'mutable' : 'read-only';
+    const missing = render(canMutate, 'missing');
+    assert.ok(missing.draftRow, `${label}: the missing drafting requirement remains visible`);
+    assert.ok(missing.uploadRow, `${label}: the missing upload requirement remains visible`);
+    if (canMutate) {
+      assert.match(missing.draftRow, /aria-label="Soạn thảo tài liệu"/);
+      assert.match(missing.uploadRow, /aria-label="Bổ sung tệp"/);
+    } else {
+      assert.match(missing.draftRow, /Nhờ người có quyền bổ sung/);
+      assert.match(missing.uploadRow, /Nhờ người có quyền bổ sung/);
+      assert.doesNotMatch(missing.markup, /Soạn thảo tài liệu|aria-label="Bổ sung tệp"/);
+    }
+
+    const present = render(canMutate, 'present');
+    assert.match(present.draftRow, /aria-label="Xem tài liệu"/);
+    assert.match(present.draftRow, /download="intake\.pdf"/);
+    if (canMutate) assert.match(present.uploadRow, /aria-label="Bổ sung tệp"/);
+    else assert.match(present.uploadRow, /Nhờ người có quyền bổ sung/);
+
+    const waived = render(canMutate, 'waived');
+    assert.match(waived.draftRow, /Đã bỏ qua/);
+    assert.doesNotMatch(waived.draftRow, /<a\b|<button\b/);
+    if (canMutate) assert.match(waived.uploadRow, /aria-label="Bổ sung tệp"/);
+    else assert.match(waived.uploadRow, /Nhờ người có quyền bổ sung/);
+
+    const loadError = render(canMutate, 'missing', 'error');
+    assert.match(loadError.draftRow, /Chưa thể xác định/);
+    assert.match(loadError.uploadRow, /Chưa thể xác định/);
+    assert.doesNotMatch(loadError.draftRow + loadError.uploadRow, /<a\b|<button\b/);
+  }
 });
 
 test('an in-progress dossier update is distinct from a step without an available transition', () => {

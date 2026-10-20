@@ -181,7 +181,7 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
           ? `Bổ sung ${missingRequiredCount} tài liệu bắt buộc còn thiếu.`
           : nextAction.label;
   const continuationReasonId = `pgd-step-continuation-reasons-${selectedStepId}`;
-  const draftingHref = templateKind && requirement && onOpenDrafting
+  const draftingHref = canMutate && templateKind && requirement && onOpenDrafting
     ? onOpenDrafting({ templateKind, requirementCode: requirement.code })
     : undefined;
   const documentActionRows = stepRequirements.map((item) => {
@@ -192,6 +192,8 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
       <span className="text-xs font-semibold text-slate-500">{dossierLoadPending ? 'Đang tải trạng thái' : 'Chưa thể xác định'}</span>
     ) : document?.fileAssetId ? (
       <a href={getPgdDossierDocumentDownloadUrl(document.id)} target="_blank" rel="noreferrer" download={document.fileName} title="Xem tài liệu" aria-label="Xem tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Eye size={14} aria-hidden="true" /></a>
+    ) : !document && !isWaived && !canMutate ? (
+      <span className="text-xs font-semibold text-slate-500">Nhờ người có quyền bổ sung</span>
     ) : !document && !isWaived && draftingHref && requirement?.code === item.code ? (
       <a href={draftingHref} title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a>
     ) : !document && !isWaived && onOpenChecklist ? (
