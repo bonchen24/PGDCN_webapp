@@ -124,3 +124,66 @@ test('an in-progress dossier update is distinct from a step without an available
   assert.match(unavailableMarkup, /không có thao tác chuyển tiếp trong trạng thái hiện tại/);
   assert.doesNotMatch(unavailableMarkup, /aria-busy="true"|Đang xử lý thay đổi hồ sơ/);
 });
+
+test('dossier load state keeps step summary and completion action factual', () => {
+  const request = {
+    id: 'pgd-dossier-load-state-test',
+    domain: PGD_DOMAIN,
+    requestCode: 'PYC-LOAD-STATE-TEST',
+    productGroup: 'OTHER',
+    customerName: 'Khách hàng thử nghiệm',
+    customerSnapshot: { name: 'Khách hàng thử nghiệm', address: '' },
+    productName: 'Sản phẩm thử nghiệm',
+    standards: [],
+    status: 'DRAFT',
+    dossierChecklist: [],
+  } as unknown as PgdInspectionRequest;
+  const requirements = getPgdDossierRequirements('OTHER').filter((item) => item.group === 'REQUEST' && item.required);
+  const completeDocuments: PgdDossierDocument[] = requirements.map((item, index) => ({
+    id: `document-${index}`,
+    domain: PGD_DOMAIN,
+    requestId: request.id,
+    requirementCode: item.code,
+    title: item.title,
+    fileName: `${item.code}.pdf`,
+    sourceCollection: PGD_COLLECTIONS.dossierDocuments,
+    sourceDocumentId: `document-${index}`,
+    version: 1,
+    checksum: `checksum-${index}`,
+    uploadedByUsername: 'reviewer',
+    uploadedAt: '2026-10-10T00:00:00.000Z',
+  }));
+  const baseProps = {
+    request,
+    currentUser: { username: 'reviewer' } as PcnUserAccount,
+    selectedStepId: 'intake' as const,
+    dossierRequirements: requirements,
+    dossierDocuments: [] as PgdDossierDocument[],
+    samples: [],
+    canMutate: true,
+    onCompleteCurrent: () => undefined,
+    completeLabel: 'Hoàn tất việc',
+  };
+  const render = (dossierLoadStatus: 'loading' | 'error' | 'loaded', dossierDocuments = baseProps.dossierDocuments) => renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
+    ...baseProps,
+    dossierLoadStatus,
+    dossierDocuments,
+  }));
+  const loadingMarkup = render('loading');
+  const errorMarkup = render('error');
+  const loadedEmptyMarkup = render('loaded');
+  const loadedCompleteMarkup = render('loaded', completeDocuments);
+
+  assert.match(loadingMarkup, /Đang tải trạng thái chứng từ/);
+  assert.match(loadingMarkup, /Việc bạn cần làm: Đang tải trạng thái chứng từ/);
+  assert.match(loadingMarkup, /<button(?=[^>]*disabled="")[^>]*>Hoàn tất việc<\/button>/);
+  assert.doesNotMatch(loadingMarkup, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc/);
+  assert.match(errorMarkup, /Không thể xác định trạng thái chứng từ/);
+  assert.match(errorMarkup, /Việc bạn cần làm: Không thể xác định việc cần làm/);
+  assert.match(errorMarkup, /<button(?=[^>]*disabled="")[^>]*>Hoàn tất việc<\/button>/);
+  assert.doesNotMatch(errorMarkup, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc/);
+  assert.match(loadedEmptyMarkup, /0 đã có · 0 được miễn · 2 còn thiếu/);
+  assert.match(loadedEmptyMarkup, /Còn thiếu 2 tài liệu bắt buộc ở bước này/);
+  assert.match(loadedCompleteMarkup, /2 đã có · 0 được miễn · 0 còn thiếu/);
+  assert.match(loadedCompleteMarkup, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc ở bước này/);
+});

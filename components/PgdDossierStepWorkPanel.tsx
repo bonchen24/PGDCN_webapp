@@ -30,6 +30,7 @@ type Props = {
   selectedStepId: PgdDossierFlowStepId;
   dossierRequirements: PgdDossierRequirement[];
   dossierDocuments: PgdDossierDocument[];
+  dossierLoadStatus?: 'loading' | 'error' | 'loaded';
   samples: PgdSample[];
   canMutate: boolean;
   onCompleteCurrent?: () => void;
@@ -113,7 +114,7 @@ function ExistingStationPanel({ request, currentUser, canMutate }: Pick<Props, '
   return <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600"><div className="font-black text-slate-800">Việc này dùng cùng dữ liệu nghiệp vụ PGD</div><p className="mt-1">Các biểu mẫu liên quan được gom theo ngữ cảnh để bạn xử lý mà không rời hồ sơ. Quyền chỉnh sửa vẫn do quy trình và RBAC hiện tại quyết định.</p><div className="mt-2 grid gap-2 sm:grid-cols-3"><span><b className="block text-[9px] text-slate-400">Mã PYC</b><strong className="font-mono text-blue-700">{request.requestCode}</strong></span><span><b className="block text-[9px] text-slate-400">Hàng hóa</b><strong className="text-slate-700">{request.productName}</strong></span><span><b className="block text-[9px] text-slate-400">Người thao tác</b><strong className="font-mono text-slate-700">{currentUser.username}</strong></span></div><span className="sr-only">{canMutate ? 'Có quyền thao tác khi bước mở.' : 'Chỉ xem theo quyền hiện tại.'}</span></div>;
 }
 
-export default function PgdDossierStepWorkPanel({ request, currentUser, selectedStepId, dossierRequirements, dossierDocuments, samples, canMutate, onCompleteCurrent, completeDisabled = false, isProcessing = false, completeLabel, onOpenChecklist, initialRequirementCode, onOpenFullDossier, onOpenDrafting, onRequestException, exceptionBusy = false }: Props) {
+export default function PgdDossierStepWorkPanel({ request, currentUser, selectedStepId, dossierRequirements, dossierDocuments, dossierLoadStatus = 'loaded', samples, canMutate, onCompleteCurrent, completeDisabled = false, isProcessing = false, completeLabel, onOpenChecklist, initialRequirementCode, onOpenFullDossier, onOpenDrafting, onRequestException, exceptionBusy = false }: Props) {
   const meta = STEP_META[selectedStepId];
   const stationProps: PgdStationPanelProps = { request, currentUser, editable: canMutate };
   const templateKind = STEP_DRAFTING[selectedStepId];
@@ -145,17 +146,28 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
   const missingRequiredCount = missingStepRequirements.length;
   const nextAction = getPgdcnNextAction('PGD', request.status, { missingRequiredCount });
   const completionPending = isProcessing && canMutate && Boolean(onCompleteCurrent);
-  const completionUnavailable = !canMutate || !onCompleteCurrent || completeDisabled || completionPending;
+  const dossierLoadPending = dossierLoadStatus === 'loading';
+  const dossierLoadFailed = dossierLoadStatus === 'error';
+  const dossierStatusUnknown = dossierLoadStatus !== 'loaded';
+  const completionUnavailable = dossierStatusUnknown || !canMutate || !onCompleteCurrent || completeDisabled || completionPending;
   const continuationReason = !canMutate
     ? 'Tài khoản hiện tại chỉ có quyền xem; hãy nhờ người có quyền PGD thực hiện thao tác tiếp theo.'
     : !onCompleteCurrent
       ? 'Bước đang chọn không có thao tác chuyển tiếp trong trạng thái hiện tại. Hãy mở bước PGD hiện hành.'
       : completionPending
         ? 'Đang xử lý thay đổi hồ sơ; vui lòng chờ hoàn tất trước khi tiếp tục.'
+        : dossierLoadPending
+          ? 'Đang tải trạng thái chứng từ; vui lòng chờ trước khi tiếp tục.'
+          : dossierLoadFailed
+            ? 'Không thể xác định điều kiện tài liệu. Hãy tải lại trạng thái chứng từ trước khi tiếp tục.'
         : completeDisabled
         ? 'Thao tác chuyển bước đang bị khóa bởi điều kiện nghiệp vụ hoặc đang được xử lý. Kiểm tra mục Cổng tiếp theo của hồ sơ PGD để biết trạng thái hiện hành.'
         : undefined;
-  const permissionAwareNextAction = !canMutate
+  const permissionAwareNextAction = dossierLoadPending
+    ? 'Đang tải trạng thái chứng từ; vui lòng chờ để xác định việc cần làm.'
+    : dossierLoadFailed
+      ? 'Không thể xác định việc cần làm do chưa tải được trạng thái chứng từ. Hãy tải lại trước khi tiếp tục.'
+    : !canMutate
     ? missingRequiredCount > 0
       ? `Xem ${missingRequiredCount} mục bắt buộc còn thiếu; nhờ người có quyền PGD bổ sung tài liệu.`
       : 'Chỉ xem hồ sơ; nhờ người có quyền PGD tiếp tục bước hiện tại.'
@@ -175,8 +187,10 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
   const documentActionRows = stepRequirements.map((item) => {
     const document = currentDocumentsByCode.get(item.code);
     const isWaived = waivedRequirementCodes.has(item.code);
-    const status = document ? 'Đã có' : isWaived ? 'Đã bỏ qua' : 'Chưa có';
-    const action = document?.fileAssetId ? (
+    const status = dossierLoadPending ? 'Đang xác định' : dossierLoadFailed ? 'Không xác định' : document ? 'Đã có' : isWaived ? 'Đã bỏ qua' : 'Chưa có';
+    const action = dossierStatusUnknown ? (
+      <span className="text-xs font-semibold text-slate-500">{dossierLoadPending ? 'Đang tải trạng thái' : 'Chưa thể xác định'}</span>
+    ) : document?.fileAssetId ? (
       <a href={getPgdDossierDocumentDownloadUrl(document.id)} target="_blank" rel="noreferrer" download={document.fileName} title="Xem tài liệu" aria-label="Xem tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Eye size={14} aria-hidden="true" /></a>
     ) : !document && !isWaived && draftingHref && requirement?.code === item.code ? (
       <a href={draftingHref} title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a>
@@ -189,8 +203,8 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
       title: item.title,
       required: item.required,
       status,
-      statusTone: document ? 'success' as const : isWaived ? 'neutral' as const : 'warning' as const,
-      detail: document ? `${document.fileName} · v${document.version}` : item.description,
+      statusTone: dossierStatusUnknown ? 'neutral' as const : document ? 'success' as const : isWaived ? 'neutral' as const : 'warning' as const,
+      detail: dossierStatusUnknown ? 'Chưa xác định trạng thái tài liệu.' : document ? `${document.fileName} · v${document.version}` : item.description,
       action,
     };
   });
@@ -246,7 +260,7 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
       </header>
 
       <section className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-xs" aria-label="Soát xét tài liệu bắt buộc ở bước PGD hiện tại">
-        <div className="min-w-0 break-words"><span className="mr-2 text-xs font-black uppercase tracking-wide text-blue-700">Soát xét bước này</span><strong className="break-words text-slate-800">{presentRequiredCount} đã có · {waivedRequiredCount} được miễn · {missingRequiredCount} còn thiếu</strong></div>
+        <div className="min-w-0 break-words"><span className="mr-2 text-xs font-black uppercase tracking-wide text-blue-700">Soát xét bước này</span><strong aria-live="polite" className="break-words text-slate-800">{dossierStatusUnknown ? dossierLoadPending ? 'Đang tải trạng thái chứng từ…' : 'Không thể xác định trạng thái chứng từ.' : `${presentRequiredCount} đã có · ${waivedRequiredCount} được miễn · ${missingRequiredCount} còn thiếu`}</strong></div>
         <div><span className="mr-2 text-xs font-black uppercase tracking-wide text-blue-700">Bước kế tiếp</span><strong className="text-slate-800">{NEXT_ROLE[selectedStepId]}</strong></div>
         <details className="text-slate-500" data-testid="pgd-dossier-role-details" data-disclosure="advanced"><summary className="cursor-pointer list-none font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">Vai trò hiện tại</summary><span className="ml-1">{currentRole} · {currentUser.username}</span></details>
       </section>
@@ -254,7 +268,11 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
       <section data-testid="pgd-step-continuation-guidance" aria-label="Hướng dẫn tiếp tục bước PGD" aria-live="polite" className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="min-w-0 break-words">
           <h4 className="text-xs font-black text-slate-900">Điều kiện và việc tiếp theo</h4>
-          {missingRequiredCount > 0
+          {dossierLoadPending
+            ? <p data-testid="pgd-step-missing-requirements" className="mt-1 text-xs leading-5 text-slate-600">Đang tải trạng thái chứng từ; chưa thể xác định tài liệu còn thiếu.</p>
+            : dossierLoadFailed
+              ? <p data-testid="pgd-step-missing-requirements" className="mt-1 text-xs leading-5 text-amber-900">Không thể xác định trạng thái chứng từ. Hãy tải lại để kiểm tra điều kiện trước khi tiếp tục.</p>
+              : missingRequiredCount > 0
             ? <p data-testid="pgd-step-missing-requirements" className="mt-1 text-xs leading-5 text-amber-900">Còn thiếu {missingRequiredCount} tài liệu bắt buộc ở bước này: {missingStepRequirements.map((item) => item.title).join(' · ')}.</p>
             : <p data-testid="pgd-step-missing-requirements" className="mt-1 text-xs leading-5 text-slate-600">Đã có hoặc được miễn toàn bộ tài liệu bắt buộc ở bước này.</p>}
         </div>
