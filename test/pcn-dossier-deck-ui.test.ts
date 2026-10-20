@@ -5,8 +5,12 @@ import React from 'react';
 import * as cheerio from 'cheerio';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PgdcnDossierDeck, type PgdcnDossierItemModel } from '../components/PgdcnDossierDeck';
-import PcnDossierGroupCard, { buildPcnDossierRequiredDocumentSummary } from '../components/PcnDossierGroupCard';
-import type { CertificationDossier, CertificationProposal, PcnDocumentRequirement, PcnDossierDocument } from '../types';
+import PcnDossierGroupCard, {
+  buildPcnDossierRequiredDocumentSummary,
+  buildPcnSampleProgress,
+  getPcnSampleItemResultState,
+} from '../components/PcnDossierGroupCard';
+import type { CertificationDossier, CertificationProposal, PcnDocumentRequirement, PcnDossierDocument, PcnSampleItem, PcnSampleRoute } from '../types';
 
 const read = (relativePath: string) => fs.readFileSync(new URL(relativePath, import.meta.url), 'utf8');
 
@@ -201,6 +205,50 @@ test('PCN dossier card keeps required-document loading separate from zero missin
   assert.match(source, /buildPcnDossierCompleteness/);
   assert.match(source, /data-testid="pcn-dossier-required-documents"/);
   assert.match(source, /requiredDocumentSummary\.labels/);
+});
+
+test('PCN sample progress uses item snapshots and stays unknown or empty without tracked sample items', () => {
+  const items: PcnSampleItem[] = [
+    { id: 'item-a', sampleLotId: 'lot-1', sampleCode: 'M-01', sampleType: 'Đèn bàn', model: 'A1', quantity: 1 },
+    { id: 'item-b', sampleLotId: 'lot-1', sampleCode: 'M-02', sampleType: 'Quạt bàn', model: 'B1', quantity: 1 },
+  ];
+  const sharedRoute: PcnSampleRoute = {
+    id: 'route-shared',
+    sampleLotId: 'lot-1',
+    labCode: 'PERFORMANCE',
+    labName: 'Phòng thử Hiệu suất',
+    status: 'RESULT_RETURNED',
+    sampleItemIds: ['item-a', 'item-b'],
+    itemSnapshots: {
+      'item-a': { status: 'RESULT_RETURNED' },
+      'item-b': { status: 'SENT' },
+    },
+  };
+
+  assert.deepEqual(getPcnSampleItemResultState(items[0], [sharedRoute]), {
+    hasResult: true,
+    isTesting: false,
+    isComplete: true,
+  });
+  assert.deepEqual(getPcnSampleItemResultState(items[1], [sharedRoute]), {
+    hasResult: false,
+    isTesting: true,
+    isComplete: false,
+  }, 'one route aggregate cannot overwrite another item’s in-flight snapshot');
+  assert.deepEqual(buildPcnSampleProgress({ items, routes: [sharedRoute], dataLoaded: true }), {
+    state: 'TRACKED',
+    totalItems: 2,
+    completedItems: 1,
+    percent: 50,
+  });
+  assert.deepEqual(buildPcnSampleProgress({ items: [], routes: [], dataLoaded: false }), { state: 'LOADING' });
+  assert.deepEqual(buildPcnSampleProgress({ items: [], routes: [], dataLoaded: true }), { state: 'EMPTY' });
+
+  const source = read('../components/PcnDossierGroupCard.tsx');
+  assert.doesNotMatch(source, /matchingItems\.length \|\| proposal\.quantity \|\| 1/);
+  assert.doesNotMatch(source, /const isDone =/);
+  assert.match(source, /data-testid="pcn-sample-progress"/);
+  assert.match(source, /role="progressbar"/);
 });
 
 test('card expands in place on card body click without navigating away, while explicit detail action navigates', () => {

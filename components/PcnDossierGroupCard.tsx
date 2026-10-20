@@ -29,6 +29,7 @@ import type {
 } from '../types';
 import { toast } from 'sonner';
 import { buildPcnDossierCompleteness } from '../utils/pcnDossierPipeline';
+import { getPcnSampleRouteSnapshotForItem, isPcnSampleRouteAssignedToItem, isPcnSampleRouteCompleteForNext } from '../utils/pcnSampleFlow';
 
 export interface PcnDossierGroupCardProps {
   proposal: CertificationProposal;
@@ -81,6 +82,45 @@ export function buildPcnDossierRequiredDocumentSummary(input: {
   };
 }
 
+export interface PcnSampleItemResultState {
+  hasResult: boolean;
+  isTesting: boolean;
+  isComplete: boolean;
+}
+
+export function getPcnSampleItemResultState(item: PcnSampleItem, routes: PcnSampleRoute[]): PcnSampleItemResultState {
+  const itemRoutes = routes
+    .filter((route) => route.sampleLotId === item.sampleLotId && isPcnSampleRouteAssignedToItem(route, item.id, item))
+    .map((route) => getPcnSampleRouteSnapshotForItem(route, item.id));
+  return {
+    hasResult: itemRoutes.some((route) => ['RESULT_RETURNED', 'RETURNED_TO_PCN', 'CLOSED'].includes(route.status)),
+    isTesting: itemRoutes.some((route) => route.status === 'RECEIVED' || route.status === 'SENT'),
+    isComplete: itemRoutes.length > 0 && itemRoutes.every(isPcnSampleRouteCompleteForNext),
+  };
+}
+
+export type PcnSampleProgress =
+  | { state: 'LOADING' }
+  | { state: 'EMPTY' }
+  | { state: 'TRACKED'; totalItems: number; completedItems: number; percent: number };
+
+export function buildPcnSampleProgress(input: {
+  items: PcnSampleItem[];
+  routes: PcnSampleRoute[];
+  dataLoaded: boolean;
+}): PcnSampleProgress {
+  if (!input.dataLoaded) return { state: 'LOADING' };
+  if (input.items.length === 0) return { state: 'EMPTY' };
+
+  const completedItems = input.items.filter((item) => getPcnSampleItemResultState(item, input.routes).isComplete).length;
+  return {
+    state: 'TRACKED',
+    totalItems: input.items.length,
+    completedItems,
+    percent: Math.round((completedItems / input.items.length) * 100),
+  };
+}
+
 function formatDdMm(dateStr?: string): string {
   if (!dateStr) return '';
   const d = new Date(dateStr);
@@ -114,17 +154,7 @@ export function PcnDossierGroupCard({
   const matchingLots = sampleLots.filter((lot) => lot.dossierId === dossier.id);
   const matchingLotIds = new Set(matchingLots.map((l) => l.id));
   const matchingItems = sampleItems.filter((item) => matchingLotIds.has(item.sampleLotId));
-  const totalSamples = matchingItems.length || proposal.quantity || 1;
-  const isDone = ['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(dossier.status);
-
-  // Calculate done count
-  const doneItemsCount = matchingItems.filter((item) => {
-    const itemRoutes = sampleRoutes.filter((r) => r.sampleLotId === item.sampleLotId);
-    return itemRoutes.some((r) => r.status === 'RESULT_RETURNED' || r.status === 'CLOSED');
-  }).length;
-  const completionRatio = isDone ? totalSamples : doneItemsCount;
-  const progressRatioLabel = `${completionRatio}/${totalSamples} XONG`;
-  const progressPercent = isDone ? 100 : Math.round((completionRatio / totalSamples) * 100);
+  const sampleProgress = buildPcnSampleProgress({ items: matchingItems, routes: sampleRoutes, dataLoaded });
   const requiredDocumentSummary = buildPcnDossierRequiredDocumentSummary({
     dossier,
     proposal,
@@ -200,7 +230,7 @@ export function PcnDossierGroupCard({
               </button>
 
               <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[8px] font-bold text-slate-600 border border-slate-200/50 shadow-xs">
-                {totalSamples} mẫu
+                {sampleProgress.state === 'LOADING' ? 'Đang tải mẫu…' : sampleProgress.state === 'EMPTY' ? 'Chưa ghi nhận mẫu' : `${sampleProgress.totalItems} kiểu mẫu`}
               </span>
 
               {receivedDdMm && (
@@ -330,10 +360,16 @@ export function PcnDossierGroupCard({
           {matchingItems.length > 0 ? (
             <div className="space-y-1.5">
               {matchingItems.map((item, idx) => {
-                const itemRoutes = sampleRoutes.filter((r) => r.sampleLotId === item.sampleLotId);
-                const hasResult = itemRoutes.some((r) => r.status === 'RESULT_RETURNED' || r.status === 'CLOSED');
-                const isTesting = itemRoutes.some((r) => r.status === 'RECEIVED' || r.status === 'SENT');
-                const preliminaryOutcome = hasResult ? 'Đã có KQ' : isTesting ? 'Đang thử' : 'Chờ KQ';
+                const itemResult = getPcnSampleItemResultState(item, sampleRoutes);
+                const preliminaryOutcome = itemResult.isComplete
+                  ? 'Hoàn tất các tuyến'
+                  : itemResult.hasResult && itemResult.isTesting
+                    ? 'Có KQ, còn tuyến'
+                    : itemResult.hasResult
+                      ? 'Đã có KQ'
+                      : itemResult.isTesting
+                        ? 'Đang thử'
+                        : 'Chờ KQ';
                 return (
                   <div
                     key={item.id || idx}
@@ -350,8 +386,8 @@ export function PcnDossierGroupCard({
                         {item.quantity} {item.unit || 'mẫu'}
                       </span>
                       <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold border ${
-                        hasResult ? 'border-emerald-200 bg-emerald-50 text-emerald-800' :
-                        isTesting ? 'border-blue-200 bg-blue-50 text-blue-800' :
+                        itemResult.isComplete ? 'border-emerald-200 bg-emerald-50 text-emerald-800' :
+                        itemResult.hasResult || itemResult.isTesting ? 'border-blue-200 bg-blue-50 text-blue-800' :
                         'border-amber-200 bg-amber-50 text-amber-800'
                       }`}>
                         {preliminaryOutcome}
@@ -363,6 +399,9 @@ export function PcnDossierGroupCard({
             </div>
           ) : (
             <div className="rounded border border-slate-200/60 bg-white p-2 text-xs">
+              <p className="font-semibold text-slate-700">
+                {sampleProgress.state === 'LOADING' ? 'Đang tải dữ liệu mẫu…' : 'Chưa ghi nhận mẫu/model trong hồ sơ.'}
+              </p>
               <p className="font-semibold text-slate-700">
                 {proposal.productName} {proposal.model ? `· ${proposal.model}` : ''}
               </p>
@@ -387,21 +426,30 @@ export function PcnDossierGroupCard({
         </div>
       )}
 
-      {/* Row 4 (Bottom): Progress Bar & Status Text */}
+      {/* Row 4 (Bottom): Sample progress, separate from dossier status */}
       <div className="mt-2.5 flex items-center justify-between gap-3 pt-1">
-        <div className="flex-1">
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+        {sampleProgress.state === 'TRACKED' ? (
+          <>
             <div
-              className={`h-full rounded-full transition-all duration-300 ${
-                progressPercent > 0 ? 'bg-emerald-500' : 'bg-transparent'
-              }`}
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
-        <span className="font-mono text-[11px] font-black text-slate-500 whitespace-nowrap">
-          {progressRatioLabel}
-        </span>
+              role="progressbar"
+              aria-label="Tiến độ hoàn tất mẫu/model"
+              aria-valuemin={0}
+              aria-valuemax={sampleProgress.totalItems}
+              aria-valuenow={sampleProgress.completedItems}
+              aria-valuetext={`${sampleProgress.completedItems}/${sampleProgress.totalItems} kiểu mẫu hoàn tất`}
+              className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100"
+            >
+              <div className="h-full rounded-full bg-emerald-500 transition-all duration-300" style={{ width: `${sampleProgress.percent}%` }} />
+            </div>
+            <span data-testid="pcn-sample-progress" role="status" aria-live="polite" className="font-mono text-[11px] font-black text-slate-500 whitespace-nowrap">
+              {sampleProgress.completedItems}/{sampleProgress.totalItems} kiểu mẫu hoàn tất
+            </span>
+          </>
+        ) : (
+          <span data-testid="pcn-sample-progress" role="status" aria-live="polite" className="min-w-0 flex-1 text-right text-[10px] font-bold text-slate-500">
+            {sampleProgress.state === 'LOADING' ? 'Đang tải dữ liệu mẫu…' : 'Chưa có dữ liệu mẫu/model để tính tiến độ'}
+          </span>
+        )}
       </div>
     </div>
   );
