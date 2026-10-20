@@ -1,3 +1,5 @@
+import { getPcnNodeDraftFormKind } from './pcnDossierNodeWork';
+
 const INTERNAL_DOSSIER_PATHS = ['/pgdcn/pcn/dossiers/', '/pgdcn/pgd/dossiers/'] as const;
 
 function encodeRoutePart(value: string): string {
@@ -68,6 +70,18 @@ export function buildPcnDraftingRoute(input: {
   const returnTo = sanitizeInternalReturnTo(input.returnTo);
   if (returnTo) query.set('returnTo', returnTo);
   return `/pgdcn/pcn/drafting?${query.toString()}`;
+}
+
+export function buildPcnNodeDraftingRoute(input: {
+  dossierId: string;
+  requirementId: string;
+  requirementCode: string;
+  nodeId?: string;
+  returnTo?: string;
+}): string | undefined {
+  const kind = getPcnNodeDraftFormKind(input.requirementCode);
+  if (!kind) return undefined;
+  return buildPcnDraftingRoute({ ...input, kind });
 }
 
 export function buildPgdDraftingRoute(input: {
