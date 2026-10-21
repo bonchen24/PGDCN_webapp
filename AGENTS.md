@@ -36,7 +36,7 @@
   - Chỉ đọc section liên quan trực tiếp, không đọc toàn bộ file.
   - Không để nội dung cũ trong `design.md` lấn át yêu cầu mới nhất của người dùng. Nếu mâu thuẫn, ưu tiên yêu cầu mới và cập nhật lại `design.md` nếu là thay đổi thiết kế chính thức.
   - **Không cập nhật `design.md` chỉ để ghi lại việc sửa bug hoặc hoàn thành task.** Chỉ cập nhật khi có quyết định thiết kế lâu dài.
-  - Obsidian chỉ là bản tham chiếu cá nhân tùy chọn, không phải nguồn quyết định khi coding.
+  - Use the central Obsidian vault at E:\coding\Obsidian for durable project rules and decisions under the global task-tier retrieval policy; keep design.md as the code-level contract.
 
 ## 4. NGÔN NGỮ GIAO TIẾP
 - **Luôn phản hồi bằng tiếng Việt** khi giao tiếp với người dùng.

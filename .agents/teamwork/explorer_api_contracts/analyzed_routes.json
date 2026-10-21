@@ -1,0 +1,1501 @@
+[
+  {
+    "line": 2885,
+    "method": "POST",
+    "path": "/api/pcn/integrations/lab-status-events",
+    "domain": "PCN",
+    "authChecks": []
+  },
+  {
+    "line": 3269,
+    "method": "GET",
+    "path": "/api/pgd/bootstrap",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 3344,
+    "method": "GET",
+    "path": "/api/pgd/drafts",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession",
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 3365,
+    "method": "POST",
+    "path": "/api/pgd/drafts",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 3500,
+    "method": "POST",
+    "path": "/api/pgd/workflow-templates/preview",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession",
+      "requirePgdWorkflowManager"
+    ]
+  },
+  {
+    "line": 3514,
+    "method": "GET",
+    "path": "/api/pgd/workflow-templates",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession",
+      "requirePgdWorkflowManager"
+    ]
+  },
+  {
+    "line": 3529,
+    "method": "POST",
+    "path": "/api/pgd/workflow-templates",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdWorkflowManager"
+    ]
+  },
+  {
+    "line": 3563,
+    "method": "PUT",
+    "path": "/api/pgd/workflow-templates/:templateId",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdWorkflowManager"
+    ]
+  },
+  {
+    "line": 3593,
+    "method": "POST",
+    "path": "/api/pgd/workflow-templates/:templateId/revisions",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdWorkflowManager"
+    ]
+  },
+  {
+    "line": 3625,
+    "method": "POST",
+    "path": "/api/pgd/workflow-templates/:templateId/publish",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdWorkflowManager"
+    ]
+  },
+  {
+    "line": 3652,
+    "method": "POST",
+    "path": "/api/pgd/workflow-templates/:templateId/retire",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdWorkflowManager"
+    ]
+  },
+  {
+    "line": 3988,
+    "method": "POST",
+    "path": "/api/pgd/assistant/review",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 4038,
+    "method": "POST",
+    "path": "/api/pgd/calibration-instruments",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 4078,
+    "method": "GET",
+    "path": "/api/pgd/requests/:requestId/archify",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 4151,
+    "method": "GET",
+    "path": "/api/pgd/requests/:requestId/dossier-documents",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 4182,
+    "method": "POST",
+    "path": "/api/pgd/requests/:requestId/dossier-documents",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 4351,
+    "method": "POST",
+    "path": "/api/pgd/requests/:requestId/dossier-documents/attach-generated",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 4463,
+    "method": "GET",
+    "path": "/api/pgd/dossier-documents/:documentId/download",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 4509,
+    "method": "GET",
+    "path": "/api/pgd/document-templates",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 4525,
+    "method": "GET",
+    "path": "/api/pgd/document-templates/:templateId/source",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 4556,
+    "method": "PUT",
+    "path": "/api/pgd/document-templates/:templateId",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 4623,
+    "method": "GET",
+    "path": "/api/pgd/documents",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 4637,
+    "method": "GET",
+    "path": "/api/pgd/documents/:documentId/download",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 4669,
+    "method": "GET",
+    "path": "/api/pgd/requests/:requestId/package",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 4746,
+    "method": "POST",
+    "path": "/api/pgd/documents/generate",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 4874,
+    "method": "POST",
+    "path": "/api/pgd/requests",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 4961,
+    "method": "PUT",
+    "path": "/api/pgd/requests/:requestId/owner",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdDossierManager"
+    ]
+  },
+  {
+    "line": 5024,
+    "method": "PUT",
+    "path": "/api/pgd/requests/:requestId",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 5087,
+    "method": "DELETE",
+    "path": "/api/pgd/requests/:requestId",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 5142,
+    "method": "POST",
+    "path": "/api/pgd/requests/:requestId/transition",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5208,
+    "method": "POST",
+    "path": "/api/pgd/assignments",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5270,
+    "method": "POST",
+    "path": "/api/pgd/field-inspections",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5321,
+    "method": "POST",
+    "path": "/api/pgd/inspection-plans",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5344,
+    "method": "POST",
+    "path": "/api/pgd/case-events",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5367,
+    "method": "POST",
+    "path": "/api/pgd/field-activity-logs",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5390,
+    "method": "POST",
+    "path": "/api/pgd/lab-result-reviews",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5422,
+    "method": "POST",
+    "path": "/api/pgd/dossier-indexes",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5450,
+    "method": "POST",
+    "path": "/api/pgd/samples/split",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5509,
+    "method": "POST",
+    "path": "/api/pgd/samples/:sampleId/destroy",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5560,
+    "method": "POST",
+    "path": "/api/pgd/lab-requests",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5616,
+    "method": "POST",
+    "path": "/api/pgd/lab-results",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5668,
+    "method": "POST",
+    "path": "/api/pgd/reports",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5746,
+    "method": "POST",
+    "path": "/api/pgd/certificates",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5807,
+    "method": "POST",
+    "path": "/api/pgd/approvals",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdCollectionMutation"
+    ]
+  },
+  {
+    "line": 5901,
+    "method": "POST",
+    "path": "/api/pcn/lab-requests/:requestId/dispatch",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 6240,
+    "method": "POST",
+    "path": "/api/pcn/lab-requests/:requestId/reconcile",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 6434,
+    "method": "POST",
+    "path": "/api/auth/pcn-session",
+    "domain": "AUTH",
+    "authChecks": []
+  },
+  {
+    "line": 6520,
+    "method": "GET",
+    "path": "/api/auth/pcn-session",
+    "domain": "AUTH",
+    "authChecks": []
+  },
+  {
+    "line": 6533,
+    "method": "DELETE",
+    "path": "/api/auth/pcn-session",
+    "domain": "AUTH",
+    "authChecks": []
+  },
+  {
+    "line": 6542,
+    "method": "GET",
+    "path": "/api/pcn/users",
+    "domain": "PCN",
+    "authChecks": []
+  },
+  {
+    "line": 6560,
+    "method": "GET",
+    "path": "/api/pcn/department-roles",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 6578,
+    "method": "GET",
+    "path": "/api/pcn/settings",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 6599,
+    "method": "GET",
+    "path": "/api/pcn/personal-settings",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 6615,
+    "method": "PUT",
+    "path": "/api/pcn/personal-settings",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 6708,
+    "method": "PUT",
+    "path": "/api/pcn/settings",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnAdmin"
+    ]
+  },
+  {
+    "line": 6766,
+    "method": "POST",
+    "path": "/api/pcn/users",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnPersonnelAdmin"
+    ]
+  },
+  {
+    "line": 6797,
+    "method": "PUT",
+    "path": "/api/pcn/users/:id",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnPersonnelAdmin"
+    ]
+  },
+  {
+    "line": 6831,
+    "method": "DELETE",
+    "path": "/api/pcn/users/:id",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnPersonnelAdmin"
+    ]
+  },
+  {
+    "line": 6876,
+    "method": "POST",
+    "path": "/api/pcn/users/:id/reset-password",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnPersonnelAdmin"
+    ]
+  },
+  {
+    "line": 6907,
+    "method": "GET",
+    "path": "/api/pcn/signer-delegations",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession",
+      "requirePcnAdmin"
+    ]
+  },
+  {
+    "line": 6926,
+    "method": "POST",
+    "path": "/api/pcn/signer-delegations",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnAdmin"
+    ]
+  },
+  {
+    "line": 6993,
+    "method": "POST",
+    "path": "/api/pcn/signer-delegations/:id/revoke",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnAdmin"
+    ]
+  },
+  {
+    "line": 7052,
+    "method": "POST",
+    "path": "/api/pcn/customers",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 7120,
+    "method": "POST",
+    "path": "/api/pcn/customers/:customerId",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 7222,
+    "method": "DELETE",
+    "path": "/api/pcn/customers/:customerId",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 7313,
+    "method": "POST",
+    "path": "/api/pcn/customer-import/preview",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnAdmin"
+    ]
+  },
+  {
+    "line": 7326,
+    "method": "POST",
+    "path": "/api/pcn/customer-import/apply",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnAdmin"
+    ]
+  },
+  {
+    "line": 7374,
+    "method": "POST",
+    "path": "/api/pcn/quality-documents",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnAdmin"
+    ]
+  },
+  {
+    "line": 7464,
+    "method": "POST",
+    "path": "/api/pcn/quality-documents/:documentId",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnAdmin"
+    ]
+  },
+  {
+    "line": 7553,
+    "method": "POST",
+    "path": "/api/pcn/quality-documents/:documentId/file",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnAdmin"
+    ]
+  },
+  {
+    "line": 7635,
+    "method": "POST",
+    "path": "/api/pcn/issuance",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 7916,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/approval/:stepId",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 8085,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/deliver",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 8165,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/archive",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 8232,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/withdraw",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 8359,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/issue",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 8681,
+    "method": "GET",
+    "path": "/api/pcn/workflow-templates",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession",
+      "requirePcnWorkflowManager"
+    ]
+  },
+  {
+    "line": 8695,
+    "method": "POST",
+    "path": "/api/pcn/workflow-templates/preview",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnWorkflowManager"
+    ]
+  },
+  {
+    "line": 8709,
+    "method": "POST",
+    "path": "/api/pcn/workflow-templates",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnWorkflowManager"
+    ]
+  },
+  {
+    "line": 8743,
+    "method": "PUT",
+    "path": "/api/pcn/workflow-templates/:templateId",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnWorkflowManager"
+    ]
+  },
+  {
+    "line": 8773,
+    "method": "POST",
+    "path": "/api/pcn/workflow-templates/:templateId/revisions",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnWorkflowManager"
+    ]
+  },
+  {
+    "line": 8816,
+    "method": "POST",
+    "path": "/api/pcn/workflow-templates/:templateId/publish",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnWorkflowManager"
+    ]
+  },
+  {
+    "line": 8852,
+    "method": "POST",
+    "path": "/api/pcn/workflow-templates/:templateId/retire",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnWorkflowManager"
+    ]
+  },
+  {
+    "line": 9032,
+    "method": "GET",
+    "path": "/api/pcn/dossiers/:dossierId/workflow-tasks",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 9049,
+    "method": "GET",
+    "path": "/api/pcn/dossiers/:dossierId/archify",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 9109,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/workflow-tasks/:taskId/start",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 9110,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/workflow-tasks/:taskId/complete",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 9111,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/workflow-tasks/:taskId/return",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 9113,
+    "method": "POST",
+    "path": "/api/pcn/intake",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 9362,
+    "method": "POST",
+    "path": "/api/pcn/proposals/:proposalId",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 9597,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 10032,
+    "method": "DELETE",
+    "path": "/api/pcn/dossiers/:dossierId",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 10112,
+    "method": "POST",
+    "path": "/api/pcn/results",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 10519,
+    "method": "POST",
+    "path": "/api/pcn/sample-request-bundles",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 10825,
+    "method": "POST",
+    "path": "/api/pcn/sample-request-bundles/:bundleId/send",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 10862,
+    "method": "POST",
+    "path": "/api/pcn/sample-request-bundles/:bundleId/retry/:dispatchId",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 10894,
+    "method": "POST",
+    "path": "/api/pcn/lab-requests",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 11099,
+    "method": "POST",
+    "path": "/api/pcn/lab-requests/:requestId/status",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 11407,
+    "method": "POST",
+    "path": "/api/pcn/samples/lots",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 11631,
+    "method": "POST",
+    "path": "/api/pcn/samples/routes/:routeId/status",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 11904,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/retention",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 12001,
+    "method": "GET",
+    "path": "/api/pcn/drafts",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession",
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 12020,
+    "method": "POST",
+    "path": "/api/pcn/drafts",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 12116,
+    "method": "POST",
+    "path": "/api/pcn/assistant",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 12177,
+    "method": "POST",
+    "path": "/api/pcn/drafts/:draftId/generate",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 12283,
+    "method": "POST",
+    "path": "/api/pcn/documents/generate",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 12621,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/official-documents/generate",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession",
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 12988,
+    "method": "POST",
+    "path": "/api/pcn/templates/:templateId/review",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnAdmin"
+    ]
+  },
+  {
+    "line": 13077,
+    "method": "POST",
+    "path": "/api/pcn/templates/:templateId/annotate",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnAdmin"
+    ]
+  },
+  {
+    "line": 13221,
+    "method": "GET",
+    "path": "/api/pcn/document-requirements",
+    "domain": "PCN",
+    "authChecks": []
+  },
+  {
+    "line": 13246,
+    "method": "GET",
+    "path": "/api/pcn/dossiers/:dossierId/package",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 13511,
+    "method": "GET",
+    "path": "/api/pcn/dossiers/:dossierId/documents",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession",
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 13533,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 13776,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents/:requirementId/waive",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 13824,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents/:requirementId/remove-current",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 13866,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/node-work/:nodeId/generate-and-attach",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 14404,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents/confirm-generated",
+    "domain": "PCN",
+    "authChecks": []
+  },
+  {
+    "line": 14405,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents/confirm-draft-output",
+    "domain": "PCN",
+    "authChecks": []
+  },
+  {
+    "line": 14410,
+    "method": "POST",
+    "path": "/api/auth/kqtn-session",
+    "domain": "AUTH",
+    "authChecks": []
+  },
+  {
+    "line": 14468,
+    "method": "DELETE",
+    "path": "/api/auth/kqtn-session",
+    "domain": "AUTH",
+    "authChecks": []
+  },
+  {
+    "line": 14837,
+    "method": "GET",
+    "path": "/api/pcn/approval-assistant/candidates",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 14856,
+    "method": "POST",
+    "path": "/api/pcn/approval-assistant/review",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 14913,
+    "method": "POST",
+    "path": "/api/pcn/approval-assistant/export",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 14946,
+    "method": "POST",
+    "path": "/api/pgd/ocr",
+    "domain": "PGD",
+    "authChecks": [
+      "requirePgdSession"
+    ]
+  },
+  {
+    "line": 14995,
+    "method": "POST",
+    "path": "/api/pcn/ocr",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 15112,
+    "method": "POST",
+    "path": "/api/kqtn/ocr/footer",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15113,
+    "method": "POST",
+    "path": "/api/kqtn/ocr/page",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15246,
+    "method": "POST",
+    "path": "/api/kqtn/ocr/footer-jobs",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15286,
+    "method": "GET",
+    "path": "/api/kqtn/ocr/footer-jobs/:jobId",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15305,
+    "method": "POST",
+    "path": "/api/kqtn/:recordId/pdf",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15396,
+    "method": "GET",
+    "path": "/api/kqtn/:recordId/pdf",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15443,
+    "method": "DELETE",
+    "path": "/api/kqtn/:recordId/pdf",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15493,
+    "method": "POST",
+    "path": "/api/pcn/files",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnAdmin",
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 15595,
+    "method": "POST",
+    "path": "/api/pcn/templates/:templateId/file",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnAdmin"
+    ]
+  },
+  {
+    "line": 15737,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/file",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 15837,
+    "method": "POST",
+    "path": "/api/pcn/results/:resultId/file",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 15939,
+    "method": "GET",
+    "path": "/api/pcn/files/:assetId",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 15974,
+    "method": "GET",
+    "path": "/api/health",
+    "domain": "OTHER",
+    "authChecks": []
+  },
+  {
+    "line": 15978,
+    "method": "GET",
+    "path": "/api/db/health",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 15992,
+    "method": "GET",
+    "path": "/api/pgdcn/notifications",
+    "domain": "PGDCN",
+    "authChecks": []
+  },
+  {
+    "line": 16020,
+    "method": "POST",
+    "path": "/api/pgdcn/notifications/read-all",
+    "domain": "PGDCN",
+    "authChecks": [
+      "requirePgdcnNotificationMutation"
+    ]
+  },
+  {
+    "line": 16040,
+    "method": "DELETE",
+    "path": "/api/pgdcn/notifications/clear",
+    "domain": "PGDCN",
+    "authChecks": [
+      "requirePgdcnNotificationMutation"
+    ]
+  },
+  {
+    "line": 16058,
+    "method": "POST",
+    "path": "/api/pgdcn/notifications/:notificationId/read",
+    "domain": "PGDCN",
+    "authChecks": [
+      "requirePgdcnNotificationMutation"
+    ]
+  },
+  {
+    "line": 16089,
+    "method": "GET",
+    "path": "/api/pcn/notifications",
+    "domain": "PCN",
+    "authChecks": []
+  },
+  {
+    "line": 16117,
+    "method": "POST",
+    "path": "/api/pcn/notifications/read-all",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 16141,
+    "method": "POST",
+    "path": "/api/pcn/notifications/clear",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 16163,
+    "method": "POST",
+    "path": "/api/pcn/notifications/:notificationId/read",
+    "domain": "PCN",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 16197,
+    "method": "GET",
+    "path": "/api/activity-logs/summary",
+    "domain": "AUDIT",
+    "authChecks": []
+  },
+  {
+    "line": 16266,
+    "method": "GET",
+    "path": "/api/activity-logs",
+    "domain": "AUDIT",
+    "authChecks": []
+  },
+  {
+    "line": 16365,
+    "method": "POST",
+    "path": "/api/activity-logs",
+    "domain": "AUDIT",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 16394,
+    "method": "POST",
+    "path": "/api/activity-logs/batch",
+    "domain": "AUDIT",
+    "authChecks": [
+      "requirePcnMutation"
+    ]
+  },
+  {
+    "line": 16431,
+    "method": "GET",
+    "path": "/api/db-meta",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 16463,
+    "method": "GET",
+    "path": "/api/db/:collection",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 16547,
+    "method": "PUT",
+    "path": "/api/db/:collection/:id",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 16650,
+    "method": "DELETE",
+    "path": "/api/db/:collection/:id",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 16687,
+    "method": "POST",
+    "path": "/api/db/:collection/batch",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 16813,
+    "method": "POST",
+    "path": "/api/db/:collection/delete-batch",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 16854,
+    "method": "GET",
+    "path": "/api/backups",
+    "domain": "BACKUP",
+    "authChecks": [
+      "requireAdmin"
+    ]
+  },
+  {
+    "line": 16867,
+    "method": "POST",
+    "path": "/api/backups/run",
+    "domain": "BACKUP",
+    "authChecks": [
+      "requireAdmin"
+    ]
+  },
+  {
+    "line": 16884,
+    "method": "GET",
+    "path": "/api/backups/:filename/verify",
+    "domain": "BACKUP",
+    "authChecks": [
+      "requireAdmin"
+    ]
+  },
+  {
+    "line": 16894,
+    "method": "GET",
+    "path": "/api/backups/:filename/download",
+    "domain": "BACKUP",
+    "authChecks": [
+      "requireAdmin"
+    ]
+  },
+  {
+    "line": 16904,
+    "method": "POST",
+    "path": "/api/backups/:filename/restore",
+    "domain": "BACKUP",
+    "authChecks": [
+      "requireAdmin"
+    ]
+  },
+  {
+    "line": 16928,
+    "method": "DELETE",
+    "path": "/api/backups/:filename",
+    "domain": "BACKUP",
+    "authChecks": [
+      "requireAdmin"
+    ]
+  },
+  {
+    "line": 16940,
+    "method": "GET",
+    "path": "/api/tieuchuan",
+    "domain": "OTHER",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 16961,
+    "method": "GET",
+    "path": "/api/gemini/models",
+    "domain": "AI",
+    "authChecks": [
+      "requirePcnSession"
+    ]
+  },
+  {
+    "line": 17028,
+    "method": "POST",
+    "path": "/api/gemini/extract-requests",
+    "domain": "AI",
+    "authChecks": []
+  },
+  {
+    "line": 17258,
+    "method": "POST",
+    "path": "/api/gemini/extract-results",
+    "domain": "AI",
+    "authChecks": []
+  },
+  {
+    "line": 17332,
+    "method": "POST",
+    "path": "/api/gemini/extract-kqtn-metadata",
+    "domain": "AI",
+    "authChecks": []
+  },
+  {
+    "line": 17402,
+    "method": "POST",
+    "path": "/api/gemini/extract-kqtn-bulk-structure",
+    "domain": "AI",
+    "authChecks": []
+  },
+  {
+    "line": 17574,
+    "method": "POST",
+    "path": "/api/gemini/chat",
+    "domain": "AI",
+    "authChecks": []
+  },
+  {
+    "line": 17624,
+    "method": "POST",
+    "path": "/api/extract-radimation",
+    "domain": "OTHER",
+    "authChecks": []
+  },
+  {
+    "line": 18242,
+    "method": "POST",
+    "path": "/api/generate-docx",
+    "domain": "OTHER",
+    "authChecks": []
+  },
+  {
+    "line": 18765,
+    "method": "POST",
+    "path": "/api/gemini/generate",
+    "domain": "AI",
+    "authChecks": []
+  },
+  {
+    "line": 18868,
+    "method": "POST",
+    "path": "/api/upload-nas",
+    "domain": "OTHER",
+    "authChecks": []
+  }
+]

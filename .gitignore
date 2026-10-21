@@ -41,6 +41,7 @@ revised_templates/
 .superpowers/
 .codex-remote-attachments/
 dist/*.bak
+.temp/
 
 # Generated DOCX guide renders are QA-only artefacts.
 docs/user-guide-render*/

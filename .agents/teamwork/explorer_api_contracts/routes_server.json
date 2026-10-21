@@ -1,0 +1,1046 @@
+[
+  {
+    "line": 2885,
+    "method": "POST",
+    "path": "/api/pcn/integrations/lab-status-events",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 3269,
+    "method": "GET",
+    "path": "/api/pgd/bootstrap",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 3344,
+    "method": "GET",
+    "path": "/api/pgd/drafts",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 3365,
+    "method": "POST",
+    "path": "/api/pgd/drafts",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 3500,
+    "method": "POST",
+    "path": "/api/pgd/workflow-templates/preview",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 3514,
+    "method": "GET",
+    "path": "/api/pgd/workflow-templates",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 3529,
+    "method": "POST",
+    "path": "/api/pgd/workflow-templates",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 3563,
+    "method": "PUT",
+    "path": "/api/pgd/workflow-templates/:templateId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 3593,
+    "method": "POST",
+    "path": "/api/pgd/workflow-templates/:templateId/revisions",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 3625,
+    "method": "POST",
+    "path": "/api/pgd/workflow-templates/:templateId/publish",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 3652,
+    "method": "POST",
+    "path": "/api/pgd/workflow-templates/:templateId/retire",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 3988,
+    "method": "POST",
+    "path": "/api/pgd/assistant/review",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4038,
+    "method": "POST",
+    "path": "/api/pgd/calibration-instruments",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4078,
+    "method": "GET",
+    "path": "/api/pgd/requests/:requestId/archify",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4151,
+    "method": "GET",
+    "path": "/api/pgd/requests/:requestId/dossier-documents",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4182,
+    "method": "POST",
+    "path": "/api/pgd/requests/:requestId/dossier-documents",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4351,
+    "method": "POST",
+    "path": "/api/pgd/requests/:requestId/dossier-documents/attach-generated",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4463,
+    "method": "GET",
+    "path": "/api/pgd/dossier-documents/:documentId/download",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4509,
+    "method": "GET",
+    "path": "/api/pgd/document-templates",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4525,
+    "method": "GET",
+    "path": "/api/pgd/document-templates/:templateId/source",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4556,
+    "method": "PUT",
+    "path": "/api/pgd/document-templates/:templateId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4623,
+    "method": "GET",
+    "path": "/api/pgd/documents",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4637,
+    "method": "GET",
+    "path": "/api/pgd/documents/:documentId/download",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4669,
+    "method": "GET",
+    "path": "/api/pgd/requests/:requestId/package",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4746,
+    "method": "POST",
+    "path": "/api/pgd/documents/generate",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4874,
+    "method": "POST",
+    "path": "/api/pgd/requests",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 4961,
+    "method": "PUT",
+    "path": "/api/pgd/requests/:requestId/owner",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5024,
+    "method": "PUT",
+    "path": "/api/pgd/requests/:requestId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5087,
+    "method": "DELETE",
+    "path": "/api/pgd/requests/:requestId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5142,
+    "method": "POST",
+    "path": "/api/pgd/requests/:requestId/transition",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5208,
+    "method": "POST",
+    "path": "/api/pgd/assignments",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5270,
+    "method": "POST",
+    "path": "/api/pgd/field-inspections",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5321,
+    "method": "POST",
+    "path": "/api/pgd/inspection-plans",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5344,
+    "method": "POST",
+    "path": "/api/pgd/case-events",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5367,
+    "method": "POST",
+    "path": "/api/pgd/field-activity-logs",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5390,
+    "method": "POST",
+    "path": "/api/pgd/lab-result-reviews",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5422,
+    "method": "POST",
+    "path": "/api/pgd/dossier-indexes",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5450,
+    "method": "POST",
+    "path": "/api/pgd/samples/split",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5509,
+    "method": "POST",
+    "path": "/api/pgd/samples/:sampleId/destroy",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5560,
+    "method": "POST",
+    "path": "/api/pgd/lab-requests",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5616,
+    "method": "POST",
+    "path": "/api/pgd/lab-results",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5668,
+    "method": "POST",
+    "path": "/api/pgd/reports",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5746,
+    "method": "POST",
+    "path": "/api/pgd/certificates",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5807,
+    "method": "POST",
+    "path": "/api/pgd/approvals",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 5901,
+    "method": "POST",
+    "path": "/api/pcn/lab-requests/:requestId/dispatch",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6240,
+    "method": "POST",
+    "path": "/api/pcn/lab-requests/:requestId/reconcile",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6434,
+    "method": "POST",
+    "path": "/api/auth/pcn-session",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6520,
+    "method": "GET",
+    "path": "/api/auth/pcn-session",
+    "context": ", (req, res) => {"
+  },
+  {
+    "line": 6533,
+    "method": "DELETE",
+    "path": "/api/auth/pcn-session",
+    "context": ", (req, res) => {"
+  },
+  {
+    "line": 6542,
+    "method": "GET",
+    "path": "/api/pcn/users",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6560,
+    "method": "GET",
+    "path": "/api/pcn/department-roles",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6578,
+    "method": "GET",
+    "path": "/api/pcn/settings",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6599,
+    "method": "GET",
+    "path": "/api/pcn/personal-settings",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6615,
+    "method": "PUT",
+    "path": "/api/pcn/personal-settings",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6708,
+    "method": "PUT",
+    "path": "/api/pcn/settings",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6766,
+    "method": "POST",
+    "path": "/api/pcn/users",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6797,
+    "method": "PUT",
+    "path": "/api/pcn/users/:id",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6831,
+    "method": "DELETE",
+    "path": "/api/pcn/users/:id",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6876,
+    "method": "POST",
+    "path": "/api/pcn/users/:id/reset-password",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6907,
+    "method": "GET",
+    "path": "/api/pcn/signer-delegations",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6926,
+    "method": "POST",
+    "path": "/api/pcn/signer-delegations",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 6993,
+    "method": "POST",
+    "path": "/api/pcn/signer-delegations/:id/revoke",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 7052,
+    "method": "POST",
+    "path": "/api/pcn/customers",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 7120,
+    "method": "POST",
+    "path": "/api/pcn/customers/:customerId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 7222,
+    "method": "DELETE",
+    "path": "/api/pcn/customers/:customerId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 7313,
+    "method": "POST",
+    "path": "/api/pcn/customer-import/preview",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 7326,
+    "method": "POST",
+    "path": "/api/pcn/customer-import/apply",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 7374,
+    "method": "POST",
+    "path": "/api/pcn/quality-documents",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 7464,
+    "method": "POST",
+    "path": "/api/pcn/quality-documents/:documentId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 7553,
+    "method": "POST",
+    "path": "/api/pcn/quality-documents/:documentId/file",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 7635,
+    "method": "POST",
+    "path": "/api/pcn/issuance",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 7916,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/approval/:stepId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 8085,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/deliver",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 8165,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/archive",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 8232,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/withdraw",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 8359,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/issue",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 8681,
+    "method": "GET",
+    "path": "/api/pcn/workflow-templates",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 8695,
+    "method": "POST",
+    "path": "/api/pcn/workflow-templates/preview",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 8709,
+    "method": "POST",
+    "path": "/api/pcn/workflow-templates",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 8743,
+    "method": "PUT",
+    "path": "/api/pcn/workflow-templates/:templateId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 8773,
+    "method": "POST",
+    "path": "/api/pcn/workflow-templates/:templateId/revisions",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 8816,
+    "method": "POST",
+    "path": "/api/pcn/workflow-templates/:templateId/publish",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 8852,
+    "method": "POST",
+    "path": "/api/pcn/workflow-templates/:templateId/retire",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 9032,
+    "method": "GET",
+    "path": "/api/pcn/dossiers/:dossierId/workflow-tasks",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 9049,
+    "method": "GET",
+    "path": "/api/pcn/dossiers/:dossierId/archify",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 9109,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/workflow-tasks/:taskId/start",
+    "context": ", (req, res) => { void mutatePcnWorkflowTask(req, res, 'start'); });"
+  },
+  {
+    "line": 9110,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/workflow-tasks/:taskId/complete",
+    "context": ", (req, res) => { void mutatePcnWorkflowTask(req, res, 'complete'); });"
+  },
+  {
+    "line": 9111,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/workflow-tasks/:taskId/return",
+    "context": ", (req, res) => { void mutatePcnWorkflowTask(req, res, 'return'); });"
+  },
+  {
+    "line": 9113,
+    "method": "POST",
+    "path": "/api/pcn/intake",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 9362,
+    "method": "POST",
+    "path": "/api/pcn/proposals/:proposalId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 9597,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 10032,
+    "method": "DELETE",
+    "path": "/api/pcn/dossiers/:dossierId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 10112,
+    "method": "POST",
+    "path": "/api/pcn/results",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 10519,
+    "method": "POST",
+    "path": "/api/pcn/sample-request-bundles",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 10825,
+    "method": "POST",
+    "path": "/api/pcn/sample-request-bundles/:bundleId/send",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 10862,
+    "method": "POST",
+    "path": "/api/pcn/sample-request-bundles/:bundleId/retry/:dispatchId",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 10894,
+    "method": "POST",
+    "path": "/api/pcn/lab-requests",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 11099,
+    "method": "POST",
+    "path": "/api/pcn/lab-requests/:requestId/status",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 11407,
+    "method": "POST",
+    "path": "/api/pcn/samples/lots",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 11631,
+    "method": "POST",
+    "path": "/api/pcn/samples/routes/:routeId/status",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 11904,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/retention",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 12001,
+    "method": "GET",
+    "path": "/api/pcn/drafts",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 12020,
+    "method": "POST",
+    "path": "/api/pcn/drafts",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 12116,
+    "method": "POST",
+    "path": "/api/pcn/assistant",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 12177,
+    "method": "POST",
+    "path": "/api/pcn/drafts/:draftId/generate",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 12283,
+    "method": "POST",
+    "path": "/api/pcn/documents/generate",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 12621,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/official-documents/generate",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 12988,
+    "method": "POST",
+    "path": "/api/pcn/templates/:templateId/review",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 13077,
+    "method": "POST",
+    "path": "/api/pcn/templates/:templateId/annotate",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 13221,
+    "method": "GET",
+    "path": "/api/pcn/document-requirements",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 13246,
+    "method": "GET",
+    "path": "/api/pcn/dossiers/:dossierId/package",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 13511,
+    "method": "GET",
+    "path": "/api/pcn/dossiers/:dossierId/documents",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 13533,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 13776,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents/:requirementId/waive",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 13824,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents/:requirementId/remove-current",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 13866,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/node-work/:nodeId/generate-and-attach",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 14404,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents/confirm-generated",
+    "context": ", confirmPcnDossierDocumentRoute);"
+  },
+  {
+    "line": 14405,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents/confirm-draft-output",
+    "context": ", confirmPcnDossierDocumentRoute);"
+  },
+  {
+    "line": 14410,
+    "method": "POST",
+    "path": "/api/auth/kqtn-session",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 14468,
+    "method": "DELETE",
+    "path": "/api/auth/kqtn-session",
+    "context": ", (_req, res) => {"
+  },
+  {
+    "line": 14837,
+    "method": "GET",
+    "path": "/api/pcn/approval-assistant/candidates",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 14856,
+    "method": "POST",
+    "path": "/api/pcn/approval-assistant/review",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 14913,
+    "method": "POST",
+    "path": "/api/pcn/approval-assistant/export",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 14946,
+    "method": "POST",
+    "path": "/api/pgd/ocr",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 14995,
+    "method": "POST",
+    "path": "/api/pcn/ocr",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 15112,
+    "method": "POST",
+    "path": "/api/kqtn/ocr/footer",
+    "context": ", (req, res) => proxyKqtnOcr(req, res, \"footer\"));"
+  },
+  {
+    "line": 15113,
+    "method": "POST",
+    "path": "/api/kqtn/ocr/page",
+    "context": ", (req, res) => proxyKqtnOcr(req, res, \"page\"));"
+  },
+  {
+    "line": 15246,
+    "method": "POST",
+    "path": "/api/kqtn/ocr/footer-jobs",
+    "context": ", handleKqtnFooterJobUpload, (req, res) => {"
+  },
+  {
+    "line": 15286,
+    "method": "GET",
+    "path": "/api/kqtn/ocr/footer-jobs/:jobId",
+    "context": ", (req, res) => {"
+  },
+  {
+    "line": 15305,
+    "method": "POST",
+    "path": "/api/kqtn/:recordId/pdf",
+    "context": ", kqtnPdfUpload.single(\"file\"), async (req, res) => {"
+  },
+  {
+    "line": 15396,
+    "method": "GET",
+    "path": "/api/kqtn/:recordId/pdf",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 15443,
+    "method": "DELETE",
+    "path": "/api/kqtn/:recordId/pdf",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 15493,
+    "method": "POST",
+    "path": "/api/pcn/files",
+    "context": ", requirePcnMutationMiddleware, handlePcnFileUpload, async (req, res) => {"
+  },
+  {
+    "line": 15595,
+    "method": "POST",
+    "path": "/api/pcn/templates/:templateId/file",
+    "context": ", handlePcnFileUpload, async (req, res) => {"
+  },
+  {
+    "line": 15737,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/file",
+    "context": ", requirePcnMutationMiddleware, async (req, res) => {"
+  },
+  {
+    "line": 15837,
+    "method": "POST",
+    "path": "/api/pcn/results/:resultId/file",
+    "context": ", requirePcnMutationMiddleware, async (req, res) => {"
+  },
+  {
+    "line": 15939,
+    "method": "GET",
+    "path": "/api/pcn/files/:assetId",
+    "context": ", requirePcnSessionMiddleware, async (req, res) => {"
+  },
+  {
+    "line": 15974,
+    "method": "GET",
+    "path": "/api/health",
+    "context": ", (req, res) => {"
+  },
+  {
+    "line": 15978,
+    "method": "GET",
+    "path": "/api/db/health",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 15992,
+    "method": "GET",
+    "path": "/api/pgdcn/notifications",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16020,
+    "method": "POST",
+    "path": "/api/pgdcn/notifications/read-all",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16040,
+    "method": "DELETE",
+    "path": "/api/pgdcn/notifications/clear",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16058,
+    "method": "POST",
+    "path": "/api/pgdcn/notifications/:notificationId/read",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16089,
+    "method": "GET",
+    "path": "/api/pcn/notifications",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16117,
+    "method": "POST",
+    "path": "/api/pcn/notifications/read-all",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16141,
+    "method": "POST",
+    "path": "/api/pcn/notifications/clear",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16163,
+    "method": "POST",
+    "path": "/api/pcn/notifications/:notificationId/read",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16197,
+    "method": "GET",
+    "path": "/api/activity-logs/summary",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16266,
+    "method": "GET",
+    "path": "/api/activity-logs",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16365,
+    "method": "POST",
+    "path": "/api/activity-logs",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16394,
+    "method": "POST",
+    "path": "/api/activity-logs/batch",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16431,
+    "method": "GET",
+    "path": "/api/db-meta",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16463,
+    "method": "GET",
+    "path": "/api/db/:collection",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16547,
+    "method": "PUT",
+    "path": "/api/db/:collection/:id",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16650,
+    "method": "DELETE",
+    "path": "/api/db/:collection/:id",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16687,
+    "method": "POST",
+    "path": "/api/db/:collection/batch",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16813,
+    "method": "POST",
+    "path": "/api/db/:collection/delete-batch",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 16854,
+    "method": "GET",
+    "path": "/api/backups",
+    "context": ", requireAdmin, async (req, res) => {"
+  },
+  {
+    "line": 16867,
+    "method": "POST",
+    "path": "/api/backups/run",
+    "context": ", requireAdmin, async (req, res) => {"
+  },
+  {
+    "line": 16884,
+    "method": "GET",
+    "path": "/api/backups/:filename/verify",
+    "context": ", requireAdmin, async (req, res) => {"
+  },
+  {
+    "line": 16894,
+    "method": "GET",
+    "path": "/api/backups/:filename/download",
+    "context": ", requireAdmin, async (req, res) => {"
+  },
+  {
+    "line": 16904,
+    "method": "POST",
+    "path": "/api/backups/:filename/restore",
+    "context": ", requireAdmin, async (req, res) => {"
+  },
+  {
+    "line": 16928,
+    "method": "DELETE",
+    "path": "/api/backups/:filename",
+    "context": ", requireAdmin, async (req, res) => {"
+  },
+  {
+    "line": 16940,
+    "method": "GET",
+    "path": "/api/tieuchuan",
+    "context": ", (req, res) => {"
+  },
+  {
+    "line": 16961,
+    "method": "GET",
+    "path": "/api/gemini/models",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 17028,
+    "method": "POST",
+    "path": "/api/gemini/extract-requests",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 17258,
+    "method": "POST",
+    "path": "/api/gemini/extract-results",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 17332,
+    "method": "POST",
+    "path": "/api/gemini/extract-kqtn-metadata",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 17402,
+    "method": "POST",
+    "path": "/api/gemini/extract-kqtn-bulk-structure",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 17574,
+    "method": "POST",
+    "path": "/api/gemini/chat",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 17624,
+    "method": "POST",
+    "path": "/api/extract-radimation",
+    "context": ", upload.single(\"file\"), async (req, res) => {"
+  },
+  {
+    "line": 18242,
+    "method": "POST",
+    "path": "/api/generate-docx",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 18765,
+    "method": "POST",
+    "path": "/api/gemini/generate",
+    "context": ", async (req, res) => {"
+  },
+  {
+    "line": 18868,
+    "method": "POST",
+    "path": "/api/upload-nas",
+    "context": ", async (req, res) => {"
+  }
+]

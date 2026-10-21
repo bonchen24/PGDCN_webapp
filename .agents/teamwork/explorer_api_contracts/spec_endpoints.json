@@ -1,0 +1,352 @@
+[
+  {
+    "line": 239,
+    "method": "POST",
+    "path": "/api/pcn/documents/generate"
+  },
+  {
+    "line": 240,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/official-documents/generate"
+  },
+  {
+    "line": 246,
+    "method": "POST",
+    "path": "/api/pcn/proposals/:proposalId"
+  },
+  {
+    "line": 247,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId"
+  },
+  {
+    "line": 248,
+    "method": "DELETE",
+    "path": "/api/pcn/dossiers/:dossierId"
+  },
+  {
+    "line": 251,
+    "method": "POST",
+    "path": "/api/pcn/customers"
+  },
+  {
+    "line": 251,
+    "method": "POST",
+    "path": "/api/pcn/customers/:customerId"
+  },
+  {
+    "line": 251,
+    "method": "DELETE",
+    "path": "/api/pcn/customers/:customerId"
+  },
+  {
+    "line": 256,
+    "method": "GET",
+    "path": "/api/pcn/users"
+  },
+  {
+    "line": 256,
+    "method": "GET",
+    "path": "/api/db/systemUsers"
+  },
+  {
+    "line": 256,
+    "method": "PUT",
+    "path": "/api/pcn/users"
+  },
+  {
+    "line": 262,
+    "method": "POST",
+    "path": "/api/pcn/samples/lots"
+  },
+  {
+    "line": 263,
+    "method": "POST",
+    "path": "/api/pcn/samples/routes/:routeId/status"
+  },
+  {
+    "line": 265,
+    "method": "POST",
+    "path": "/api/pcn/lab-requests"
+  },
+  {
+    "line": 265,
+    "method": "POST",
+    "path": "/api/pcn/lab-requests/:requestId/status"
+  },
+  {
+    "line": 270,
+    "method": "POST",
+    "path": "/api/pcn/results"
+  },
+  {
+    "line": 271,
+    "method": "POST",
+    "path": "/api/pcn/results/:resultId/file"
+  },
+  {
+    "line": 275,
+    "method": "POST",
+    "path": "/api/pcn/issuance"
+  },
+  {
+    "line": 275,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/approval/:stepId"
+  },
+  {
+    "line": 275,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/withdraw"
+  },
+  {
+    "line": 275,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/issue"
+  },
+  {
+    "line": 275,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/deliver"
+  },
+  {
+    "line": 275,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/archive"
+  },
+  {
+    "line": 293,
+    "method": "POST",
+    "path": "/api/pcn/issuance/:issuanceId/file"
+  },
+  {
+    "line": 309,
+    "method": "POST",
+    "path": "/api/pcn/files"
+  },
+  {
+    "line": 309,
+    "method": "GET",
+    "path": "/api/pcn/files/:assetId"
+  },
+  {
+    "line": 310,
+    "method": "GET",
+    "path": "/api/pcn/dossiers/:dossierId/package"
+  },
+  {
+    "line": 325,
+    "method": "POST",
+    "path": "/api/pcn/ocr"
+  },
+  {
+    "line": 325,
+    "method": "PUT",
+    "path": "/api/pcn/settings"
+  },
+  {
+    "line": 360,
+    "method": "POST",
+    "path": "/api/pgd/drafts"
+  },
+  {
+    "line": 363,
+    "method": "PUT",
+    "path": "/api/pgd/requests/:requestId"
+  },
+  {
+    "line": 363,
+    "method": "PUT",
+    "path": "/api/pgd/requests/:requestId/owner"
+  },
+  {
+    "line": 411,
+    "method": "DELETE",
+    "path": "/api/pgd/requests/:requestId"
+  },
+  {
+    "line": 438,
+    "method": "PUT",
+    "path": "/api/pgd/document-templates/:templateId"
+  },
+  {
+    "line": 456,
+    "method": "POST",
+    "path": "/api/pgd/requests/:requestId/dossier-documents/attach-generated"
+  },
+  {
+    "line": 457,
+    "method": "GET",
+    "path": "/api/pgd/requests/:requestId/package"
+  },
+  {
+    "line": 1004,
+    "method": "POST",
+    "path": "/api/pcn/templates/:templateId/file"
+  },
+  {
+    "line": 1216,
+    "method": "GET",
+    "path": "/api/db/health"
+  },
+  {
+    "line": 1217,
+    "method": "DELETE",
+    "path": "/api/auth/pcn-session"
+  },
+  {
+    "line": 1218,
+    "method": "GET",
+    "path": "/api/db/:collection"
+  },
+  {
+    "line": 1219,
+    "method": "GET",
+    "path": "/api/pcn/notifications"
+  },
+  {
+    "line": 1220,
+    "method": "POST",
+    "path": "/api/pcn/notifications/:notificationId/read"
+  },
+  {
+    "line": 1220,
+    "method": "POST",
+    "path": "/api/pcn/notifications/read-all"
+  },
+  {
+    "line": 1220,
+    "method": "POST",
+    "path": "/api/pcn/notifications/clear"
+  },
+  {
+    "line": 1221,
+    "method": "PUT",
+    "path": "/api/db/:collection/:id"
+  },
+  {
+    "line": 1222,
+    "method": "DELETE",
+    "path": "/api/db/:collection/:id"
+  },
+  {
+    "line": 1223,
+    "method": "POST",
+    "path": "/api/db/:collection/batch"
+  },
+  {
+    "line": 1223,
+    "method": "POST",
+    "path": "/api/db/:collection/delete-batch"
+  },
+  {
+    "line": 1224,
+    "method": "POST",
+    "path": "/api/pcn/lab-requests/:requestId/dispatch"
+  },
+  {
+    "line": 1225,
+    "method": "POST",
+    "path": "/api/pcn/integrations/lab-status-events"
+  },
+  {
+    "line": 1226,
+    "method": "POST",
+    "path": "/api/pcn/lab-requests/:requestId/reconcile"
+  },
+  {
+    "line": 1227,
+    "method": "POST",
+    "path": "/api/pcn/sample-request-bundles"
+  },
+  {
+    "line": 1228,
+    "method": "POST",
+    "path": "/api/pcn/sample-request-bundles/:bundleId/send"
+  },
+  {
+    "line": 1229,
+    "method": "POST",
+    "path": "/api/pcn/sample-request-bundles/:bundleId/retry/:dispatchId"
+  },
+  {
+    "line": 1230,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents/:requirementId/waive"
+  },
+  {
+    "line": 1231,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents/:requirementId/remove-current"
+  },
+  {
+    "line": 1232,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/node-work/:nodeId/generate-and-attach"
+  },
+  {
+    "line": 1234,
+    "method": "POST",
+    "path": "/api/integrations/v1/lab-requests"
+  },
+  {
+    "line": 1239,
+    "method": "PUT",
+    "path": "/api/pcn/personal-settings"
+  },
+  {
+    "line": 1242,
+    "method": "GET",
+    "path": "/api/gemini/models"
+  },
+  {
+    "line": 1244,
+    "method": "GET",
+    "path": "/api/pcn/approval-assistant/candidates"
+  },
+  {
+    "line": 1244,
+    "method": "POST",
+    "path": "/api/pcn/approval-assistant/review"
+  },
+  {
+    "line": 1244,
+    "method": "POST",
+    "path": "/api/pcn/approval-assistant/export"
+  },
+  {
+    "line": 1375,
+    "method": "POST",
+    "path": "/api/kqtn/:recordId/pdf"
+  },
+  {
+    "line": 1375,
+    "method": "GET",
+    "path": "/api/kqtn/:recordId/pdf"
+  },
+  {
+    "line": 1375,
+    "method": "DELETE",
+    "path": "/api/kqtn/:recordId/pdf"
+  },
+  {
+    "line": 1464,
+    "method": "POST",
+    "path": "/api/pcn/quality-documents"
+  },
+  {
+    "line": 1464,
+    "method": "POST",
+    "path": "/api/pcn/quality-documents/:documentId"
+  },
+  {
+    "line": 1464,
+    "method": "POST",
+    "path": "/api/pcn/quality-documents/:documentId/file"
+  },
+  {
+    "line": 1507,
+    "method": "GET",
+    "path": "/api/kqtn/ocr/footer-jobs/:jobId"
+  }
+]

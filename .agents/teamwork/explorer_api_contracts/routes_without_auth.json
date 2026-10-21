@@ -1,0 +1,233 @@
+[
+  {
+    "line": 2885,
+    "method": "POST",
+    "path": "/api/pcn/integrations/lab-status-events",
+    "domain": "PCN",
+    "authChecks": []
+  },
+  {
+    "line": 6542,
+    "method": "GET",
+    "path": "/api/pcn/users",
+    "domain": "PCN",
+    "authChecks": []
+  },
+  {
+    "line": 13221,
+    "method": "GET",
+    "path": "/api/pcn/document-requirements",
+    "domain": "PCN",
+    "authChecks": []
+  },
+  {
+    "line": 14404,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents/confirm-generated",
+    "domain": "PCN",
+    "authChecks": []
+  },
+  {
+    "line": 14405,
+    "method": "POST",
+    "path": "/api/pcn/dossiers/:dossierId/documents/confirm-draft-output",
+    "domain": "PCN",
+    "authChecks": []
+  },
+  {
+    "line": 14410,
+    "method": "POST",
+    "path": "/api/auth/kqtn-session",
+    "domain": "AUTH",
+    "authChecks": []
+  },
+  {
+    "line": 14468,
+    "method": "DELETE",
+    "path": "/api/auth/kqtn-session",
+    "domain": "AUTH",
+    "authChecks": []
+  },
+  {
+    "line": 15112,
+    "method": "POST",
+    "path": "/api/kqtn/ocr/footer",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15113,
+    "method": "POST",
+    "path": "/api/kqtn/ocr/page",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15246,
+    "method": "POST",
+    "path": "/api/kqtn/ocr/footer-jobs",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15286,
+    "method": "GET",
+    "path": "/api/kqtn/ocr/footer-jobs/:jobId",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15305,
+    "method": "POST",
+    "path": "/api/kqtn/:recordId/pdf",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15396,
+    "method": "GET",
+    "path": "/api/kqtn/:recordId/pdf",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15443,
+    "method": "DELETE",
+    "path": "/api/kqtn/:recordId/pdf",
+    "domain": "KQTN",
+    "authChecks": []
+  },
+  {
+    "line": 15992,
+    "method": "GET",
+    "path": "/api/pgdcn/notifications",
+    "domain": "PGDCN",
+    "authChecks": []
+  },
+  {
+    "line": 16089,
+    "method": "GET",
+    "path": "/api/pcn/notifications",
+    "domain": "PCN",
+    "authChecks": []
+  },
+  {
+    "line": 16197,
+    "method": "GET",
+    "path": "/api/activity-logs/summary",
+    "domain": "AUDIT",
+    "authChecks": []
+  },
+  {
+    "line": 16266,
+    "method": "GET",
+    "path": "/api/activity-logs",
+    "domain": "AUDIT",
+    "authChecks": []
+  },
+  {
+    "line": 16431,
+    "method": "GET",
+    "path": "/api/db-meta",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 16463,
+    "method": "GET",
+    "path": "/api/db/:collection",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 16547,
+    "method": "PUT",
+    "path": "/api/db/:collection/:id",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 16650,
+    "method": "DELETE",
+    "path": "/api/db/:collection/:id",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 16687,
+    "method": "POST",
+    "path": "/api/db/:collection/batch",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 16813,
+    "method": "POST",
+    "path": "/api/db/:collection/delete-batch",
+    "domain": "DB",
+    "authChecks": []
+  },
+  {
+    "line": 17028,
+    "method": "POST",
+    "path": "/api/gemini/extract-requests",
+    "domain": "AI",
+    "authChecks": []
+  },
+  {
+    "line": 17258,
+    "method": "POST",
+    "path": "/api/gemini/extract-results",
+    "domain": "AI",
+    "authChecks": []
+  },
+  {
+    "line": 17332,
+    "method": "POST",
+    "path": "/api/gemini/extract-kqtn-metadata",
+    "domain": "AI",
+    "authChecks": []
+  },
+  {
+    "line": 17402,
+    "method": "POST",
+    "path": "/api/gemini/extract-kqtn-bulk-structure",
+    "domain": "AI",
+    "authChecks": []
+  },
+  {
+    "line": 17574,
+    "method": "POST",
+    "path": "/api/gemini/chat",
+    "domain": "AI",
+    "authChecks": []
+  },
+  {
+    "line": 17624,
+    "method": "POST",
+    "path": "/api/extract-radimation",
+    "domain": "OTHER",
+    "authChecks": []
+  },
+  {
+    "line": 18242,
+    "method": "POST",
+    "path": "/api/generate-docx",
+    "domain": "OTHER",
+    "authChecks": []
+  },
+  {
+    "line": 18765,
+    "method": "POST",
+    "path": "/api/gemini/generate",
+    "domain": "AI",
+    "authChecks": []
+  },
+  {
+    "line": 18868,
+    "method": "POST",
+    "path": "/api/upload-nas",
+    "domain": "OTHER",
+    "authChecks": []
+  }
+]

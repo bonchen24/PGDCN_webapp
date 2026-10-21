@@ -63,6 +63,7 @@
     "zustand": "4.5.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/adm-zip": "^0.5.8",
     "@types/cheerio": "^1.0.0",
