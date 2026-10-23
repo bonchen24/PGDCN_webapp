@@ -28,9 +28,11 @@ type PgdDraftingWorkspaceViewProps = {
   documents: PgdGeneratedDocument[];
   canMutate: boolean;
   onOpenSettings?: () => void;
+  initialDraftId?: string;
   initialRequestId?: string;
   initialRequirementCode?: string;
   initialTemplateKind?: PgdDocumentTemplateKind;
+  initialTemplateId?: string;
   initialReturnTo?: string;
 };
 
@@ -114,17 +116,17 @@ const PGD_WORKSPACE_STATE_LABELS: Record<DraftingState, string> = {
   ERROR: 'Có lỗi, cần thử lại',
 };
 
-export default function PgdDraftingWorkspaceView({ templates, documents, canMutate, onOpenSettings, initialRequestId, initialRequirementCode, initialTemplateKind, initialReturnTo }: PgdDraftingWorkspaceViewProps) {
+export default function PgdDraftingWorkspaceView({ templates, documents, canMutate, onOpenSettings, initialDraftId, initialRequestId, initialRequirementCode, initialTemplateKind, initialTemplateId, initialReturnTo }: PgdDraftingWorkspaceViewProps) {
   const requests = usePgdStore((state) => state.requests.filter((request) => !request.deletedAt));
   const isLoaded = usePgdStore((state) => state.isLoaded);
   const dossierDocuments = usePgdStore((state) => state.dossierDocuments);
   const fetchDossierDocuments = usePgdStore((state) => state.fetchDossierDocuments);
   const [requestId, setRequestId] = useState(initialRequestId || '');
-  const [draftId, setDraftId] = useState<string>();
+  const [draftId, setDraftId] = useState<string | undefined>(initialDraftId);
   const [draftTitle, setDraftTitle] = useState('');
   const savedOrLoadedTitleRef = useRef('');
   const draftDirtyRef = useRef(false);
-  const [templateId, setTemplateId] = useState('');
+  const [templateId, setTemplateId] = useState(initialTemplateId || '');
   const [selectedRequirementCode, setSelectedRequirementCode] = useState(initialRequirementCode || '');
   const [draftPanelRevision, setDraftPanelRevision] = useState(0);
   const [drafts, setDrafts] = useState<PgdDraftSession[]>([]);
@@ -298,25 +300,55 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
     }
     let cancelled = false;
     setDrafts([]);
-    setDraftId(undefined);
+    if (!initialDraftId) {
+      setDraftId(undefined);
+    }
     void fetchPgdDraftWorkspaces(request.id).then((items) => {
-      if (!cancelled) setDrafts(items);
+      if (!cancelled) {
+        setDrafts(items);
+        if (initialDraftId) {
+          const target = items.find((d) => d.id === initialDraftId);
+          if (target) {
+            setContextUnlocked(true);
+            setDraftId(target.id);
+            setDraftTitle(target.title);
+            savedOrLoadedTitleRef.current = target.title;
+            setTemplateId(target.templateId);
+            setSelectedRequirementCode(target.requirementCode);
+          }
+        }
+      }
     }).catch((error: any) => {
       if (!cancelled) setChecklistError(error?.message || 'Không tải được bản nháp PGD đã lưu.');
     });
     return () => { cancelled = true; };
-  }, [request?.id]);
+  }, [initialDraftId, request?.id]);
+
+  useEffect(() => {
+    if (!initialDraftId || drafts.length === 0) return;
+    const target = drafts.find((d) => d.id === initialDraftId);
+    if (target && target.id !== draftId) {
+      setContextUnlocked(true);
+      setDraftId(target.id);
+      setDraftTitle(target.title);
+      savedOrLoadedTitleRef.current = target.title;
+      setTemplateId(target.templateId);
+      setSelectedRequirementCode(target.requirementCode);
+    }
+  }, [initialDraftId, drafts, draftId]);
 
   useEffect(() => {
     if (!initialRequestId) return;
     setRequestId(initialRequestId);
-    setDraftId(undefined);
-    setDraftTitle('');
-    savedOrLoadedTitleRef.current = '';
-    setTemplateId('');
-    setSelectedRequirementCode(initialRequirementCode || '');
+    if (!initialDraftId) {
+      setDraftId(undefined);
+      setDraftTitle('');
+      savedOrLoadedTitleRef.current = '';
+      setTemplateId(initialTemplateId || '');
+      setSelectedRequirementCode(initialRequirementCode || '');
+    }
     setContextUnlocked(false);
-  }, [initialRequestId, initialRequirementCode, initialTemplateKind]);
+  }, [initialDraftId, initialRequestId, initialRequirementCode, initialTemplateId, initialTemplateKind]);
 
   useEffect(() => {
     if (!request || activeDraft || !isDeepContextRequest || contextUnlocked) return;

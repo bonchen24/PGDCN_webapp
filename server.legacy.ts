@@ -3329,18 +3329,28 @@ async function startServer() {
   app.get('/api/pgd/drafts', async (req, res) => {
     if (!requirePgdSession(req, res)) return;
     const requestId = String(req.query.requestId || '').trim();
+    const mineOnly = String(req.query.mineOnly || '').toLowerCase() === 'true';
+    const actor = getPgdSessionUser(req);
     try {
       const params: unknown[] = [PGD_COLLECTIONS.drafts];
-      const requestClause = requestId ? ` AND data->>'requestId' = $${params.push(requestId)}` : '';
-      const result = await pool.query(
-        `SELECT document_id, data
+      let query = `SELECT document_id, data
            FROM app_documents
           WHERE collection_name = $1
             AND data->>'domain' = 'pgd'
-            AND COALESCE(data->>'status', 'DRAFT') = 'DRAFT'${requestClause}
-          ORDER BY updated_at DESC, document_id DESC`,
-        params,
-      );
+            AND COALESCE(data->>'status', 'DRAFT') = 'DRAFT'`;
+      if (requestId) {
+        query += ` AND data->>'requestId' = $${params.push(requestId)}`;
+      }
+      if (mineOnly) {
+        const username = String(actor?.username || '').trim();
+        if (!username) {
+          res.json({ items: [] });
+          return;
+        }
+        query += ` AND NULLIF(data->>'createdByUsername', '') = $${params.push(username)}`;
+      }
+      query += ` ORDER BY updated_at DESC, document_id DESC`;
+      const result = await pool.query(query, params);
       res.json({ items: result.rows.map((row: any) => mapDocumentRow(row)) });
     } catch (error: any) {
       res.status(500).json({ error: error?.message || String(error) });
@@ -11828,12 +11838,22 @@ async function startServer() {
       return;
     }
     if (!requirePcnSession(req, res)) return;
+    const mineOnly = String(req.query.mineOnly || '').toLowerCase() === 'true';
+    const actor = getPcnSessionUser(req);
     try {
-      const result = await pool.query(
-        `SELECT document_id, data FROM app_documents
-         WHERE collection_name = 'pcnDraftWorkspaces'
-         ORDER BY updated_at DESC, document_id ASC`,
-      );
+      const params: unknown[] = ['pcnDraftWorkspaces'];
+      let query = `SELECT document_id, data FROM app_documents
+         WHERE collection_name = $1`;
+      if (mineOnly) {
+        const username = String(actor?.username || '').trim();
+        if (!username) {
+          res.json({ items: [] });
+          return;
+        }
+        query += ` AND NULLIF(data->>'createdByUsername', '') = $${params.push(username)}`;
+      }
+      query += ` ORDER BY updated_at DESC, document_id ASC`;
+      const result = await pool.query(query, params);
       res.json({ items: result.rows.map(mapDocumentRow) });
     } catch (error: any) {
       console.error('PCN drafting read error:', error);

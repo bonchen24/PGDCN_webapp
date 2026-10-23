@@ -250,8 +250,11 @@ export async function createPgdInspection(input: PgdInspectionRequestCreateInput
   };
 }
 
-export async function fetchPgdDraftWorkspaces(requestId?: string): Promise<PgdDraftWorkspace[]> {
-  const query = requestId ? `?requestId=${encodeURIComponent(requestId)}` : '';
+export async function fetchPgdDraftWorkspaces(requestId?: string, options?: { mineOnly?: boolean }): Promise<PgdDraftWorkspace[]> {
+  const params = new URLSearchParams();
+  if (requestId) params.set('requestId', requestId);
+  if (options?.mineOnly) params.set('mineOnly', 'true');
+  const query = params.toString() ? `?${params.toString()}` : '';
   const payload = await request(`/api/pgd/drafts${query}`);
   return Array.isArray(payload?.items) ? payload.items as PgdDraftWorkspace[] : [];
 }

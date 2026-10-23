@@ -7,8 +7,9 @@ async function parse(response: Response): Promise<any> {
   return payload;
 }
 
-export async function fetchPcnDraftWorkspaces(): Promise<PcnDraftWorkspace[]> {
-  const response = await fetch('/api/pcn/drafts', { credentials: 'same-origin' });
+export async function fetchPcnDraftWorkspaces(options?: { mineOnly?: boolean }): Promise<PcnDraftWorkspace[]> {
+  const query = options?.mineOnly ? '?mineOnly=true' : '';
+  const response = await fetch(`/api/pcn/drafts${query}`, { credentials: 'same-origin' });
   return (await parse(response)).items || [];
 }
 

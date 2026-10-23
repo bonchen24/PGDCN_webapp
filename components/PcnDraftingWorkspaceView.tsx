@@ -20,7 +20,7 @@ import PgdcnDraftAiSuggestionPanel from './PgdcnDraftAiSuggestionPanel';
 import { DraftingContextStatusBar, DraftingFieldSection, DraftingHeader, DraftingOutputReviewShell, DraftingReadinessPanel, DraftingStickyActionBar, DraftingWorkflowOrientation, type DraftingReadinessIssue } from './PgdcnDraftingPrimitives';
 import { PgdcnDateInput } from './PgdcnDateInput';
 
-type Props = { proposals: CertificationProposal[]; dossiers: CertificationDossier[]; templates: PcnTemplateDefinition[]; documentRequirements?: PcnDocumentRequirement[]; dossierDocuments?: PcnDossierDocument[]; onUploadTemplate: (templateId: string, file: File) => Promise<unknown>; onReviewTemplate: (templateId: string, action: PcnTemplateReviewAction, reason?: string) => Promise<unknown>; sampleLots?: PcnSampleLot[]; sampleRoutes?: PcnSampleRoute[]; labRequests?: OutboundLabRequest[]; returnedResults?: ReturnedTestResult[]; initialDossierId?: string; initialRequirementId?: string; initialNodeId?: string; initialKind?: PcnDraftFormKind; initialReturnTo?: string; onToast?: (message: string, type?: 'success' | 'error') => void };
+type Props = { proposals: CertificationProposal[]; dossiers: CertificationDossier[]; templates: PcnTemplateDefinition[]; documentRequirements?: PcnDocumentRequirement[]; dossierDocuments?: PcnDossierDocument[]; onUploadTemplate: (templateId: string, file: File) => Promise<unknown>; onReviewTemplate: (templateId: string, action: PcnTemplateReviewAction, reason?: string) => Promise<unknown>; sampleLots?: PcnSampleLot[]; sampleRoutes?: PcnSampleRoute[]; labRequests?: OutboundLabRequest[]; returnedResults?: ReturnedTestResult[]; initialDraftId?: string; initialDossierId?: string; initialRequirementId?: string; initialNodeId?: string; initialKind?: PcnDraftFormKind; initialReturnTo?: string; onToast?: (message: string, type?: 'success' | 'error') => void };
 
 type DraftSnapshot = { title: string; values: Record<string, unknown> };
 type PcnDraftAiField = { key: string; label: string; type?: string };
@@ -177,7 +177,7 @@ function DraftLifecycleStatus({ status }: { status: PcnDocumentUiStatus }) {
   </section>;
 }
 
-export default function PcnDraftingWorkspaceView({ proposals, dossiers, templates: managedTemplates, documentRequirements = DEFAULT_PCN_DOCUMENT_REQUIREMENTS, dossierDocuments = [], onUploadTemplate, onReviewTemplate, sampleLots = [], sampleRoutes = [], labRequests = [], returnedResults = [], initialDossierId, initialRequirementId, initialNodeId, initialKind, initialReturnTo, onToast }: Props) {
+export default function PcnDraftingWorkspaceView({ proposals, dossiers, templates: managedTemplates, documentRequirements = DEFAULT_PCN_DOCUMENT_REQUIREMENTS, dossierDocuments = [], onUploadTemplate, onReviewTemplate, sampleLots = [], sampleRoutes = [], labRequests = [], returnedResults = [], initialDraftId, initialDossierId, initialRequirementId, initialNodeId, initialKind, initialReturnTo, onToast }: Props) {
   const templates = useMemo(() => getPcnOperationalTemplates(), []);
   const [drafts, setDrafts] = useState<PcnDraftWorkspace[]>([]);
   const [draftId, setDraftId] = useState<string>();
@@ -576,6 +576,14 @@ export default function PcnDraftingWorkspaceView({ proposals, dossiers, template
     setErrorMessage('');
     setMessage(`Đã mở ${draftWorkspaceStatusLabel(draft.status).toLowerCase()}: ${draft.title}.`);
   });
+
+  useEffect(() => {
+    if (!initialDraftId || drafts.length === 0) return;
+    const target = drafts.find((d) => d.id === initialDraftId);
+    if (target && target.id !== draftId) {
+      loadDraft(target);
+    }
+  }, [initialDraftId, drafts, draftId]);
 
   const selectRequirement = (requirementId: string) => confirmContextSwitch(() => {
     const requirement = dossierRequirements.find((item) => item.id === requirementId);
