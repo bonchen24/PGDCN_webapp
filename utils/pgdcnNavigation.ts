@@ -13,6 +13,7 @@ const sharedItems: PgdcnNavigationItem[] = [
   { id: 'assistant', label: 'Trợ lý AI', kind: 'shared' },
   { id: 'activity-logs', label: 'Nhật ký hoạt động', kind: 'shared' },
   { id: 'system-settings', label: 'Cài đặt hệ thống', kind: 'shared' },
+  { id: 'document-drafting', label: 'Hỗ trợ soạn thảo văn bản', kind: 'shared' },
 ];
 
 export function getPgdcnVisibleNavigation(scopes: readonly DepartmentScope[]): PgdcnNavigationItem[] {

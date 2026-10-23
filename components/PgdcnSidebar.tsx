@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   ClipboardList,
+  FileEdit,
   FlaskConical,
   GitBranch,
   LayoutDashboard,
@@ -25,7 +26,7 @@ import type { PcnSection } from '../utils/pcnNavigation';
 import { canViewSystemSettings } from '../utils/systemSettingsPolicy';
 import { isPcnSystemManager } from '../utils/pcnRbac';
 
-export type PgdcnSharedSection = 'department-dashboard' | 'my-work' | 'customers' | 'assistant' | 'activityLogs' | 'system-settings' | 'dossier-templates';
+export type PgdcnSharedSection = 'department-dashboard' | 'my-work' | 'customers' | 'assistant' | 'activityLogs' | 'system-settings' | 'dossier-templates' | 'document-drafting';
 export type PgdcnDomain = 'department' | 'PCN' | 'PGD';
 export type PgdcnNavigationTarget =
   | { domain: 'department'; section: PgdcnSharedSection }
@@ -188,6 +189,7 @@ export default function PgdcnSidebar({
           {renderSharedButton('Khách hàng', Building2, { domain: 'department', section: 'customers' })}
           {renderSharedButton('Trợ lý AI', Bot, { domain: 'department', section: 'assistant' })}
           {renderSharedButton('Nhật ký hệ thống', Activity, { domain: 'department', section: 'activityLogs' })}
+          {renderSharedButton('Soạn thảo văn bản', FileEdit, { domain: 'department', section: 'document-drafting' })}
         </section>
 
         {hasPcn && (

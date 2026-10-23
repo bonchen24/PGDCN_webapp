@@ -26,6 +26,7 @@ import PgdcnCommandPalette, { type PgdcnCommandRecord } from './PgdcnCommandPale
 import PgdcnCustomersView from './PgdcnCustomersView';
 import PgdcnSystemSettingsView from './PgdcnSystemSettingsView';
 import PgdcnDossierTemplateManagementView from './PgdcnDossierTemplateManagementView';
+import PgdcnUnifiedDraftingView, { type UnifiedDraftingTab } from './PgdcnUnifiedDraftingView';
 import { PgdcnNotificationDropdown } from './PgdcnNotificationDropdown';
 import PcnPersonalSettingsPanel from './PcnPersonalSettingsPanel';
 import type { PcnSection } from '../utils/pcnNavigation';
@@ -42,6 +43,9 @@ const PGD_TEMPLATE_REQUIREMENTS = Array.from(new Map(
 
 type PgdcnAppShellProps = {
   initialDomain?: PgdcnDomain;
+  initialDepartmentSection?: import('./PgdcnSidebar').PgdcnSharedSection;
+  initialDraftingDomain?: 'PGD' | 'PCN';
+  initialDraftingTab?: UnifiedDraftingTab;
   initialPcnDossierId?: string;
   initialPcnDossierTab?: PcnDossierDetailTab;
   initialPcnDossierNodeId?: string;
@@ -72,6 +76,7 @@ const getActiveContextLabel = (target: PgdcnNavigationTarget): string => {
     if (target.section === 'assistant') return 'Trợ lý AI';
     if (target.section === 'activityLogs') return 'Nhật ký hoạt động';
     if (target.section === 'dossier-templates') return 'Hồ sơ mẫu';
+    if (target.section === 'document-drafting') return 'Hỗ trợ soạn thảo';
     return 'Cài đặt hệ thống';
   }
   if (target.domain === 'PCN') {
@@ -98,7 +103,7 @@ const getSharedTargetForPgdSection = (section: PgdSection): PgdcnNavigationTarge
   return undefined;
 };
 
-export default function PgdcnAppShell({ initialDomain = 'department', initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPcnDraftRequirementId, initialPcnDraftNodeId, initialPcnDraftKind, initialPcnDraftReturnTo, initialPgdDraftingOpen, initialPgdRequestId, initialPgdRequestStep, initialPgdDraftRequestId, initialPgdDraftRequirementCode, initialPgdDraftTemplateKind, initialPgdDraftReturnTo }: PgdcnAppShellProps) {
+export default function PgdcnAppShell({ initialDomain = 'department', initialDepartmentSection, initialDraftingDomain, initialDraftingTab, initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPcnDraftRequirementId, initialPcnDraftNodeId, initialPcnDraftKind, initialPcnDraftReturnTo, initialPgdDraftingOpen, initialPgdRequestId, initialPgdRequestStep, initialPgdDraftRequestId, initialPgdDraftRequirementCode, initialPgdDraftTemplateKind, initialPgdDraftReturnTo }: PgdcnAppShellProps) {
   const router = useRouter();
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const setCurrentUser = usePcnSessionStore((state) => state.setCurrentUser);
@@ -112,7 +117,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
   const [sessionChecked, setSessionChecked] = useState(() => Boolean(usePcnSessionStore.getState().currentUser));
   const [activeTarget, setActiveTarget] = useState<PgdcnNavigationTarget>(() => initialDomain === 'PCN'
     ? { domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : 'proposals' }
-    : initialDomain === 'PGD' ? { domain: 'PGD', section: initialPgdDraftingOpen ? 'templates' : 'requests' } : { domain: 'department', section: 'department-dashboard' });
+    : initialDomain === 'PGD' ? { domain: 'PGD', section: initialPgdDraftingOpen ? 'templates' : 'requests' } : initialDepartmentSection ? { domain: 'department', section: initialDepartmentSection } : { domain: 'department', section: 'department-dashboard' });
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [personalSettingsOpen, setPersonalSettingsOpen] = useState(false);
@@ -371,6 +376,37 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialPcn
     <ActivityLogView currentUser={currentUser} systemUsers={systemUsers} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'assistant' ? (
     <PgdcnAssistantView currentUser={currentUser} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pcnRequirements={pcn.documentRequirements} pcnDocuments={pcn.dossierDocuments} pcnLabRequests={pcn.labRequests} pcnSampleLots={pcn.sampleLots} pcnSampleItems={pcn.sampleItems} pcnSampleRoutes={pcn.sampleRoutes} pcnReturnedResults={pcn.returnedResults} pgdRequests={pgd.requests} pgdAssignments={pgd.assignments} pgdFieldInspections={pgd.fieldInspections} pgdSamples={pgd.samples} pgdLabRequests={pgd.labRequests} pgdLabResults={pgd.labResults} pgdReports={pgd.reports} pgdCertificates={pgd.certificates} pgdApprovals={pgd.approvals} pgdInspectionPlans={pgd.inspectionPlans} pgdCaseEvents={pgd.caseEvents} pgdFieldActivityLogs={pgd.fieldActivityLogs} pgdLabResultReviews={pgd.labResultReviews} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} initialDomain={assistantContext?.domain} initialPcnDossierId={assistantContext?.domain === 'PCN' ? assistantContext.recordId : undefined} initialPgdRequestId={assistantContext?.domain === 'PGD' ? assistantContext.recordId : undefined} />
+  ) : activeTarget.domain === 'department' && activeTarget.section === 'document-drafting' ? (
+    <PgdcnUnifiedDraftingView
+      currentUser={currentUser!}
+      scopes={scopes}
+      pcnProposals={pcn.proposals}
+      pcnDossiers={pcn.dossiers}
+      pcnTemplates={pcn.templates}
+      pcnRequirements={pcn.documentRequirements}
+      pcnDocuments={pcn.dossierDocuments}
+      pcnSampleLots={pcn.sampleLots}
+      pcnSampleRoutes={pcn.sampleRoutes}
+      pcnLabRequests={pcn.labRequests}
+      pcnReturnedResults={pcn.returnedResults}
+      onUploadPcnTemplate={pcn.uploadPcnTemplate}
+      onReviewPcnTemplate={pcn.reviewPcnTemplate}
+      pgdRequests={pgd.requests}
+      pgdTemplates={pgd.documentTemplates}
+      pgdDocuments={pgd.documents}
+      canMutatePgd={currentUser ? currentUser.pgdRole !== 'PGD_VIEWER' && currentUser.systemRole !== 'viewer' && currentUser.role !== 'viewer' : false}
+      initialDomain={initialDraftingDomain}
+      initialTab={initialDraftingTab}
+      initialPcnDossierId={initialPcnDraftDossierId}
+      initialPcnRequirementId={initialPcnDraftRequirementId}
+      initialPcnNodeId={initialPcnDraftNodeId}
+      initialPcnKind={initialPcnDraftKind}
+      initialPcnReturnTo={initialPcnDraftReturnTo}
+      initialPgdRequestId={initialPgdDraftRequestId}
+      initialPgdRequirementCode={initialPgdDraftRequirementCode}
+      initialPgdTemplateKind={initialPgdDraftTemplateKind}
+      initialPgdReturnTo={initialPgdDraftReturnTo}
+    />
   ) : activeTarget.domain === 'PCN' ? (
     <PcnWorkspace embedded initialSection={activeTarget.section as PcnSection} initialDossierId={initialPcnDossierId} initialDossierTab={initialPcnDossierTab} initialDossierNodeId={initialPcnDossierNodeId} initialDraftDossierId={initialPcnDraftDossierId} initialDraftRequirementId={initialPcnDraftRequirementId} initialDraftNodeId={initialPcnDraftNodeId} initialDraftKind={initialPcnDraftKind} initialDraftReturnTo={initialPcnDraftReturnTo} standaloneDossier={Boolean(initialPcnDossierId)} onActiveSectionChange={openPcnSection} onOpenContextualAssistant={openPcnContextualAssistant} />
   ) : (
