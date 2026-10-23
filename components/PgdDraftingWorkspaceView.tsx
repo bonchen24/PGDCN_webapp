@@ -34,6 +34,7 @@ type PgdDraftingWorkspaceViewProps = {
   initialTemplateKind?: PgdDocumentTemplateKind;
   initialTemplateId?: string;
   initialReturnTo?: string;
+  onToast?: (message: string, type?: 'success' | 'error') => void;
 };
 
 function formatWorkspaceDate(value: string): string {
@@ -116,7 +117,7 @@ const PGD_WORKSPACE_STATE_LABELS: Record<DraftingState, string> = {
   ERROR: 'Có lỗi, cần thử lại',
 };
 
-export default function PgdDraftingWorkspaceView({ templates, documents, canMutate, onOpenSettings, initialDraftId, initialRequestId, initialRequirementCode, initialTemplateKind, initialTemplateId, initialReturnTo }: PgdDraftingWorkspaceViewProps) {
+export default function PgdDraftingWorkspaceView({ templates, documents, canMutate, onOpenSettings, initialDraftId, initialRequestId, initialRequirementCode, initialTemplateKind, initialTemplateId, initialReturnTo, onToast }: PgdDraftingWorkspaceViewProps) {
   const requests = usePgdStore((state) => state.requests.filter((request) => !request.deletedAt));
   const isLoaded = usePgdStore((state) => state.isLoaded);
   const dossierDocuments = usePgdStore((state) => state.dossierDocuments);
@@ -292,50 +293,49 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
     return () => { cancelled = true; };
   }, [fetchDossierDocuments, request?.id]);
 
+  const loadDraft = useCallback((draft: PgdDraftSession) => {
+    if (draft.id === draftId && draft.requestId === requestId) return true;
+    if (!confirmContextSwitch()) return false;
+    handleDraftDirtyChange(false);
+    setContextUnlocked(true);
+    setDraftId(draft.id);
+    setRequestId(draft.requestId);
+    setDraftTitle(draft.title);
+    savedOrLoadedTitleRef.current = draft.title;
+    setTemplateId(draft.templateId);
+    setSelectedRequirementCode(draft.requirementCode);
+    onToast?.(`Đã nạp bản nháp "${draft.title}"`, 'success');
+    return true;
+  }, [confirmContextSwitch, draftId, handleDraftDirtyChange, onToast, requestId]);
+
+  const lastHandledInitialDraftIdRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
     if (!request) {
       setDrafts([]);
-      setDraftId(undefined);
       return;
     }
     let cancelled = false;
-    setDrafts([]);
-    if (!initialDraftId) {
-      setDraftId(undefined);
-    }
     void fetchPgdDraftWorkspaces(request.id).then((items) => {
       if (!cancelled) {
         setDrafts(items);
-        if (initialDraftId) {
-          const target = items.find((d) => d.id === initialDraftId);
-          if (target) {
-            setContextUnlocked(true);
-            setDraftId(target.id);
-            setDraftTitle(target.title);
-            savedOrLoadedTitleRef.current = target.title;
-            setTemplateId(target.templateId);
-            setSelectedRequirementCode(target.requirementCode);
-          }
-        }
       }
     }).catch((error: any) => {
       if (!cancelled) setChecklistError(error?.message || 'Không tải được bản nháp PGD đã lưu.');
     });
     return () => { cancelled = true; };
-  }, [initialDraftId, request?.id]);
+  }, [request?.id]);
 
   useEffect(() => {
     if (!initialDraftId || drafts.length === 0) return;
+    if (lastHandledInitialDraftIdRef.current === initialDraftId) return;
     const target = drafts.find((d) => d.id === initialDraftId);
-    if (target && target.id !== draftId) {
-      setContextUnlocked(true);
-      setDraftId(target.id);
-      setDraftTitle(target.title);
-      savedOrLoadedTitleRef.current = target.title;
-      setTemplateId(target.templateId);
-      setSelectedRequirementCode(target.requirementCode);
+    if (!target) return;
+    lastHandledInitialDraftIdRef.current = initialDraftId;
+    if (target.id !== draftId || target.requestId !== requestId) {
+      loadDraft(target);
     }
-  }, [initialDraftId, drafts, draftId]);
+  }, [initialDraftId, drafts, draftId, requestId, loadDraft]);
 
   useEffect(() => {
     if (!initialRequestId) return;
@@ -376,19 +376,6 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
   useEffect(() => {
     setReviewedDocumentIds([]);
   }, [request?.id]);
-
-  const loadDraft = (draft: PgdDraftSession) => {
-    if (draft.id === draftId && draft.requestId === requestId) return;
-    if (!confirmContextSwitch()) return;
-    handleDraftDirtyChange(false);
-    setContextUnlocked(true);
-    setDraftId(draft.id);
-    setRequestId(draft.requestId);
-    setDraftTitle(draft.title);
-    savedOrLoadedTitleRef.current = draft.title;
-    setTemplateId(draft.templateId);
-    setSelectedRequirementCode(draft.requirementCode);
-  };
 
   const newDraft = () => {
     if (!confirmContextSwitch()) return;

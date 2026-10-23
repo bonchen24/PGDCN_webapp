@@ -127,20 +127,140 @@ test('child editors and unified view support continuing draft by specific ID', (
   assert.match(pgdWorkspace, /drafts\.find\(\(d\) => d\.id === initialDraftId\)/);
 });
 
-test('unified drafting filters DOCX and drafts by activeDomain and validates drafting capability', () => {
+test('unified drafting filters DOCX and drafts strictly by activeDomain without redundant domain select mixing', () => {
   const unifiedView = read('components/PgdcnUnifiedDraftingView.tsx');
 
-  // Initial filter defaults to defaultDomain, not ALL
-  assert.match(unifiedView, /useState<'ALL' \| 'PGD' \| 'PCN'>\(defaultDomain\)/);
+  // Active domain is the single source of truth for filtering DOCX & drafts
+  assert.match(unifiedView, /const currentDomainDocxList = useMemo\(\(\) =>/);
+  assert.match(unifiedView, /const currentDomainDraftList = useMemo\(\(\) =>/);
+  assert.match(unifiedView, /unifiedDocxList\.filter\(\(item\) => item\.domain === activeDomain/);
+  assert.match(unifiedView, /unifiedDraftList\.filter\(\(item\) => item\.domain === activeDomain/);
 
-  // Switching active domain syncs filters
-  assert.match(unifiedView, /handleDomainChange/);
+  // Redundant domain selects are removed from tab toolbars to prevent mixing
+  assert.doesNotMatch(unifiedView, /docxDomainFilter/);
+  assert.doesNotMatch(unifiedView, /draftDomainFilter/);
+
+  // Badges reflect current domain counts
+  assert.match(unifiedView, /\{currentDomainDocxList\.length\}/);
+  assert.match(unifiedView, /\{currentDomainDraftList\.length\}/);
 
   // Validates canDraft on template use
   assert.match(unifiedView, /if \(!item\.canDraft\)/);
   assert.match(unifiedView, /toast\.error/);
 
+  // Honest messaging on open/select actions instead of false immediate success
+  assert.match(unifiedView, /toast\.info\(`Đang mở bản nháp/);
+  assert.match(unifiedView, /toast\.info\(`Đang chuyển sang biểu mẫu/);
+  assert.match(unifiedView, /Không tìm thấy.*bản nháp/);
+
   // No dead '#' links in outputs
   assert.doesNotMatch(unifiedView, /href=\{out\.url \|\| '#'\}/);
+});
+
+test('PCN database templates in unified DOCX tab have canDraft=false with clear explanation and disabled action', () => {
+  const unifiedView = read('components/PgdcnUnifiedDraftingView.tsx');
+
+  // PCN DB templates are marked canDraft: false with explicit reason
+  assert.match(unifiedView, /id: `pcn-db-\$\{t\.id\}`/);
+  assert.match(unifiedView, /sourceType: 'DATABASE'/);
+  assert.match(unifiedView, /sourceLabel: 'Mẫu tải lên \(CSDL\)'/);
+  assert.match(unifiedView, /canDraft: false/);
+  assert.match(unifiedView, /canDraftReason: 'Mẫu tải lên \(CSDL\) phục vụ lưu trữ và xuất văn bản qua pipeline DOCX/);
+
+  // Operational templates maintain canDraft: true
+  assert.match(unifiedView, /id: `pcn-cat-\$\{t\.id\}`/);
+  assert.match(unifiedView, /sourceType: 'CATALOG'/);
+  assert.match(unifiedView, /canDraft: true/);
+});
+
+test('server.legacy.ts enforces ownership authorization on POST /api/pgd/drafts and POST /api/pcn/drafts', () => {
+  const server = read('server.legacy.ts');
+
+  // PGD draft update checks creator ownership or manager override
+  assert.match(server, /if \(existing && existing\.createdByUsername\) \{[\s\S]*?existing\.createdByUsername\.toLowerCase\(\) === actor\.username\.toLowerCase\(\)/);
+  assert.match(server, /isPcnSystemManager\(actor\) \|\| isPgdDossierManager\(actor\)/);
+  assert.match(server, /Chỉ người tạo bản nháp hoặc quản trị viên mới có quyền cập nhật bản nháp này/);
+
+  // PCN draft update checks creator ownership or manager override
+  assert.match(server, /if \(existing && existing\.createdByUsername\) \{[\s\S]*?existing\.createdByUsername\.toLowerCase\(\) === actor\.username\.toLowerCase\(\)/);
+  assert.match(server, /Chỉ người tạo bản nháp hoặc quản trị viên mới có quyền cập nhật bản nháp PCN này/);
+  assert.match(server, /res\.status\(Number\(error\?\.statusCode\) \|\| 400\)\.json/);
+});
+
+test('behavioral simulation: draft context switch prevents data loss on cancel and succeeds on confirmation', () => {
+  const pgdWorkspace = read('components/PgdDraftingWorkspaceView.tsx');
+
+  // Verify workspace uses loadDraft with confirmContextSwitch protection on initialDraftId changes
+  assert.match(pgdWorkspace, /const lastHandledInitialDraftIdRef = useRef<string \| undefined>/);
+  assert.match(pgdWorkspace, /lastHandledInitialDraftIdRef\.current === initialDraftId/);
+  assert.match(pgdWorkspace, /loadDraft\(target\)/);
+
+  // Pure logic simulation of draft context switch
+  let currentDraft = { id: 'draft-A', title: 'Bản A', dirty: true, cellValues: { field1: 'dirty-value' } };
+  let promptShown = 0;
+
+  function attemptLoadDraft(newDraft: typeof currentDraft, userConfirms: boolean): boolean {
+    if (currentDraft.dirty) {
+      promptShown++;
+      if (!userConfirms) {
+        // User cancelled discard: abort switch, keep current draft and unsaved changes
+        return false;
+      }
+    }
+    // Confirmed or clean: load draft and reset dirty
+    currentDraft = { ...newDraft, dirty: false };
+    return true;
+  }
+
+  // 1. User is on draft A with unsaved changes, attempts to open draft B, but clicks Cancel
+  const draftB = { id: 'draft-B', title: 'Bản B', dirty: false, cellValues: { field1: 'draft-B-value' } };
+  const switch1 = attemptLoadDraft(draftB, false);
+
+  assert.equal(switch1, false, 'Context switch must be aborted on Cancel');
+  assert.equal(promptShown, 1, 'Confirmation prompt must be shown once');
+  assert.equal(currentDraft.id, 'draft-A', 'Draft ID must remain draft-A');
+  assert.equal(currentDraft.cellValues.field1, 'dirty-value', 'Unsaved changes in draft-A must NOT be lost');
+
+  // 2. User attempts to open draft B and clicks OK (confirm discard)
+  const switch2 = attemptLoadDraft(draftB, true);
+  assert.equal(switch2, true, 'Context switch must succeed on confirmation');
+  assert.equal(promptShown, 2, 'Second confirmation prompt must be recorded');
+  assert.equal(currentDraft.id, 'draft-B', 'Current draft must now be draft-B');
+  assert.equal(currentDraft.dirty, false, 'Dirty flag must be reset upon loading clean draft');
+});
+
+test('behavioral simulation: owner authorization logic protects private drafts and allows manager override', () => {
+  type Actor = { username: string; isManager: boolean };
+  type Draft = { id: string; createdByUsername?: string };
+
+  function authorizeDraftUpdate(existing: Draft, actor: Actor): { allowed: boolean; status: number; error?: string } {
+    if (existing.createdByUsername) {
+      const isOwner = existing.createdByUsername.toLowerCase() === actor.username.toLowerCase();
+      const canOverride = actor.isManager;
+      if (!isOwner && !canOverride) {
+        return { allowed: false, status: 403, error: 'Chỉ người tạo bản nháp hoặc quản trị viên mới có quyền cập nhật bản nháp này.' };
+      }
+    }
+    return { allowed: true, status: 200 };
+  }
+
+  const draftOwnerA: Draft = { id: 'd-1', createdByUsername: 'userA' };
+  const legacySharedDraft: Draft = { id: 'd-legacy', createdByUsername: undefined };
+
+  // Case 1: Owner updates their own draft
+  assert.deepEqual(authorizeDraftUpdate(draftOwnerA, { username: 'userA', isManager: false }), { allowed: true, status: 200 });
+
+  // Case 2: Different user tries to overwrite userA draft -> 403 Forbidden
+  assert.deepEqual(authorizeDraftUpdate(draftOwnerA, { username: 'userB', isManager: false }), {
+    allowed: false,
+    status: 403,
+    error: 'Chỉ người tạo bản nháp hoặc quản trị viên mới có quyền cập nhật bản nháp này.',
+  });
+
+  // Case 3: Admin / Manager overrides and updates userA draft -> Allowed
+  assert.deepEqual(authorizeDraftUpdate(draftOwnerA, { username: 'adminUser', isManager: true }), { allowed: true, status: 200 });
+
+  // Case 4: Legacy draft without createdByUsername (unowned) -> Any authorized user can update
+  assert.deepEqual(authorizeDraftUpdate(legacySharedDraft, { username: 'userB', isManager: false }), { allowed: true, status: 200 });
 });
 

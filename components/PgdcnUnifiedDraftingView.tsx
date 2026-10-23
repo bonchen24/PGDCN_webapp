@@ -183,26 +183,22 @@ export default function PgdcnUnifiedDraftingView({
   const [selectedPgdTemplateKind, setSelectedPgdTemplateKind] = useState<PgdDocumentTemplateKind | undefined>(initialPgdTemplateKind);
   const [selectedPgdTemplateId, setSelectedPgdTemplateId] = useState<string | undefined>(initialPgdTemplateId);
 
-  // Tab DOCX: Filters - default to activeDomain to prevent cross-business domain pollution
+  // Tab DOCX: Search & Status Filters (domain strictly follows activeDomain)
   const [docxSearch, setDocxSearch] = useState('');
-  const [docxDomainFilter, setDocxDomainFilter] = useState<'ALL' | 'PGD' | 'PCN'>(defaultDomain);
   const [docxStatusFilter, setDocxStatusFilter] = useState<string>('ALL');
 
-  // Tab Drafts: Data & Filters - default to activeDomain
+  // Tab Drafts: Data & Search (domain strictly follows activeDomain)
   const [draftsLoading, setDraftsLoading] = useState(false);
   const [pcnDrafts, setPcnDrafts] = useState<PcnDraftWorkspace[]>([]);
   const [pgdDrafts, setPgdDrafts] = useState<PgdDraftWorkspace[]>([]);
   const [draftSearch, setDraftSearch] = useState('');
-  const [draftDomainFilter, setDraftDomainFilter] = useState<'ALL' | 'PGD' | 'PCN'>(defaultDomain);
 
   // Modal for editing/uploading PCN template revision
   const [editingPcnTemplate, setEditingPcnTemplate] = useState<PcnTemplateDefinition | null>(null);
 
-  // Switch domain handler with synced filters
+  // Switch domain handler
   const handleDomainChange = (nextDomain: 'PGD' | 'PCN') => {
     setActiveDomain(nextDomain);
-    setDocxDomainFilter(nextDomain);
-    setDraftDomainFilter(nextDomain);
   };
 
   // Fetch drafts with mineOnly opt-in and strict error reporting
@@ -286,10 +282,7 @@ export default function PgdcnUnifiedDraftingView({
 
       for (const t of pcnSource) {
         if (t.id && !seenKinds.has(t.id)) {
-          const supportedKinds = new Set(['PROPOSAL_FORM', 'DOSSIER_COVER', 'ASSIGNMENT_FORM', 'EVALUATION_PLAN', 'FIELD_INSPECTION', 'SAMPLE_TAKING', 'SAMPLE_CODING', 'SAMPLE_HANDOVER', 'LAB_REQUEST', 'EVALUATION_REPORT', 'CERTIFICATION_RESULT', 'COMMERCIAL', 'CLIENT_PACKAGE']);
-          const isSupported = Boolean(t.documentKind && supportedKinds.has(t.documentKind));
           const isRetired = t.status === 'RETIRED';
-          const canDraft = isSupported && !isRetired;
           const versionStr = t.variant ? `v${t.variant}` : 'Chưa xác định';
           const updatedDateStr = t.importedAt ? formatDateTimeDdMmYyyy(t.importedAt) : 'Chưa xác định';
 
@@ -305,9 +298,9 @@ export default function PgdcnUnifiedDraftingView({
             updatedAt: updatedDateStr,
             status: t.status === 'APPROVED' ? 'Đã duyệt' : isRetired ? 'Ngừng dùng' : 'Bản nháp',
             statusClass: t.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : isRetired ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200',
-            canDraft,
-            canDraftReason: canDraft ? undefined : isRetired ? 'Biểu mẫu đã ngừng áp dụng' : 'Biểu mẫu này chưa hỗ trợ soạn thảo trực tiếp trên trình soạn thảo web (chỉ lưu trữ/tải về)',
-            pcnKind: canDraft ? (t.documentKind as unknown as PcnDraftFormKind) : undefined,
+            canDraft: false,
+            canDraftReason: 'Mẫu tải lên (CSDL) phục vụ lưu trữ và xuất văn bản qua pipeline DOCX, chưa hỗ trợ soạn thảo trực tiếp trên trình soạn thảo web.',
+            pcnKind: undefined,
             fileAssetId: t.fileAssetId,
             downloadUrl: t.fileAssetId ? getPcnFileUrl(t.fileAssetId, { download: true }) : undefined,
             rawPcnTemplate: t,
@@ -319,14 +312,14 @@ export default function PgdcnUnifiedDraftingView({
     return items;
   }, [hasPgd, hasPcn, pgdTemplates, pcnTemplates]);
 
-  // Filtered DOCX items with activeDomain support and SHARED inclusion
+  // DOCX items scoped to activeDomain (plus any truly SHARED templates)
+  const currentDomainDocxList = useMemo(() => {
+    return unifiedDocxList.filter((item) => item.domain === activeDomain || item.domain === 'SHARED');
+  }, [unifiedDocxList, activeDomain]);
+
+  // Filtered DOCX items matching search and status filter
   const filteredDocxList = useMemo(() => {
-    return unifiedDocxList.filter((item) => {
-      if (docxDomainFilter !== 'ALL') {
-        if (item.domain !== docxDomainFilter && item.domain !== 'SHARED') {
-          return false;
-        }
-      }
+    return currentDomainDocxList.filter((item) => {
       if (docxStatusFilter !== 'ALL' && item.status !== docxStatusFilter) {
         return false;
       }
@@ -339,7 +332,7 @@ export default function PgdcnUnifiedDraftingView({
       }
       return true;
     });
-  }, [unifiedDocxList, docxDomainFilter, docxStatusFilter, docxSearch]);
+  }, [currentDomainDocxList, docxStatusFilter, docxSearch]);
 
   // Unified Draft items
   const unifiedDraftList = useMemo<UnifiedDraftItem[]>(() => {
@@ -389,12 +382,14 @@ export default function PgdcnUnifiedDraftingView({
     return items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [pcnDrafts, pgdDrafts, pcnDossiers, pcnProposals, pgdRequests]);
 
-  // Filtered Draft items
+  // Draft items scoped to activeDomain
+  const currentDomainDraftList = useMemo(() => {
+    return unifiedDraftList.filter((item) => item.domain === activeDomain);
+  }, [unifiedDraftList, activeDomain]);
+
+  // Filtered Draft items matching search
   const filteredDraftList = useMemo(() => {
-    return unifiedDraftList.filter((item) => {
-      if (draftDomainFilter !== 'ALL' && item.domain !== draftDomainFilter) {
-        return false;
-      }
+    return currentDomainDraftList.filter((item) => {
       if (draftSearch.trim()) {
         const q = draftSearch.toLowerCase();
         const match = item.title.toLowerCase().includes(q) ||
@@ -404,7 +399,7 @@ export default function PgdcnUnifiedDraftingView({
       }
       return true;
     });
-  }, [unifiedDraftList, draftDomainFilter, draftSearch]);
+  }, [currentDomainDraftList, draftSearch]);
 
   // Handler: "Sử dụng để soạn thảo" from DOCX Tab
   const handleUseTemplate = (item: UnifiedDocxItem) => {
@@ -421,12 +416,16 @@ export default function PgdcnUnifiedDraftingView({
       if (item.pgdTemplateId) setSelectedPgdTemplateId(item.pgdTemplateId);
     }
     setActiveTab('drafting');
-    toast.success(`Đã chọn biểu mẫu ${item.code}`);
+    toast.info(`Đang chuyển sang biểu mẫu "${item.name || item.code}"...`);
   };
 
   // Handler: "Tiếp tục soạn" from Drafts Tab - opens specific draft by ID
   const handleContinueDraft = (item: UnifiedDraftItem) => {
-    if (item.domain === 'PCN' && item.rawPcnDraft) {
+    if (item.domain === 'PCN') {
+      if (!item.rawPcnDraft || !item.rawPcnDraft.id) {
+        toast.error('Không tìm thấy dữ liệu bản nháp Chứng nhận để mở.');
+        return;
+      }
       setActiveDomain('PCN');
       setSelectedPcnDraftId(item.rawPcnDraft.id);
       if (item.rawPcnDraft.sourceDossierId) {
@@ -435,7 +434,13 @@ export default function PgdcnUnifiedDraftingView({
       if (item.rawPcnDraft.formKind) {
         setSelectedPcnKind(item.rawPcnDraft.formKind);
       }
-    } else if (item.domain === 'PGD' && item.rawPgdDraft) {
+      setActiveTab('drafting');
+      toast.info(`Đang mở bản nháp "${item.title}"...`);
+    } else if (item.domain === 'PGD') {
+      if (!item.rawPgdDraft || !item.rawPgdDraft.id) {
+        toast.error('Không tìm thấy dữ liệu bản nháp Giám định để mở.');
+        return;
+      }
       setActiveDomain('PGD');
       setSelectedPgdDraftId(item.rawPgdDraft.id);
       if (item.rawPgdDraft.requestId) {
@@ -450,9 +455,11 @@ export default function PgdcnUnifiedDraftingView({
       if (item.rawPgdDraft.templateId) {
         setSelectedPgdTemplateId(item.rawPgdDraft.templateId);
       }
+      setActiveTab('drafting');
+      toast.info(`Đang mở bản nháp "${item.title}"...`);
+    } else {
+      toast.error('Không xác định được phân hệ của bản nháp.');
     }
-    setActiveTab('drafting');
-    toast.success(`Đã nạp bản nháp "${item.title}"`);
   };
 
   return (
@@ -556,7 +563,7 @@ export default function PgdcnUnifiedDraftingView({
             <BookOpen size={14} />
             <span>Danh sách biểu mẫu DOCX</span>
             <span className="ml-1 rounded-full bg-slate-200 px-1.5 py-0.2 text-[10px] font-bold text-slate-700">
-              {unifiedDocxList.length}
+              {currentDomainDocxList.length}
             </span>
           </button>
 
@@ -576,7 +583,7 @@ export default function PgdcnUnifiedDraftingView({
             <Clock size={14} />
             <span>Bản nháp của tôi</span>
             <span className="ml-1 rounded-full bg-slate-200 px-1.5 py-0.2 text-[10px] font-bold text-slate-700">
-              {unifiedDraftList.length}
+              {currentDomainDraftList.length}
             </span>
           </button>
         </nav>
@@ -624,6 +631,7 @@ export default function PgdcnUnifiedDraftingView({
                 initialTemplateId={selectedPgdTemplateId}
                 initialReturnTo={initialPgdReturnTo}
                 onOpenSettings={onOpenPgdSettings}
+                onToast={(message, type) => (type === 'error' ? toast.error(message) : toast.success(message))}
               />
             </div>
           )}
@@ -652,19 +660,6 @@ export default function PgdcnUnifiedDraftingView({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {hasPcn && hasPgd && (
-                  <select
-                    value={docxDomainFilter}
-                    onChange={(e) => setDocxDomainFilter(e.target.value as 'ALL' | 'PGD' | 'PCN')}
-                    className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
-                    aria-label="Lọc theo phân hệ"
-                  >
-                    <option value="ALL">Tất cả nghiệp vụ</option>
-                    <option value="PGD">Giám định (PGD)</option>
-                    <option value="PCN">Chứng nhận (PCN)</option>
-                  </select>
-                )}
-
                 <select
                   value={docxStatusFilter}
                   onChange={(e) => setDocxStatusFilter(e.target.value)}
@@ -814,19 +809,6 @@ export default function PgdcnUnifiedDraftingView({
               </div>
 
               <div className="flex items-center gap-2">
-                {hasPcn && hasPgd && (
-                  <select
-                    value={draftDomainFilter}
-                    onChange={(e) => setDraftDomainFilter(e.target.value as 'ALL' | 'PGD' | 'PCN')}
-                    className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
-                    aria-label="Lọc theo phân hệ bản nháp"
-                  >
-                    <option value="ALL">Tất cả nghiệp vụ</option>
-                    <option value="PGD">Giám định (PGD)</option>
-                    <option value="PCN">Chứng nhận (PCN)</option>
-                  </select>
-                )}
-
                 <button
                   type="button"
                   onClick={() => void loadDrafts()}

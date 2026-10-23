@@ -575,15 +575,20 @@ export default function PcnDraftingWorkspaceView({ proposals, dossiers, template
     setContextLocked(false);
     setErrorMessage('');
     setMessage(`Đã mở ${draftWorkspaceStatusLabel(draft.status).toLowerCase()}: ${draft.title}.`);
+    onToast?.(`Đã nạp bản nháp: ${draft.title}`, 'success');
   });
 
+  const lastHandledInitialDraftIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!initialDraftId || drafts.length === 0) return;
+    if (lastHandledInitialDraftIdRef.current === initialDraftId) return;
     const target = drafts.find((d) => d.id === initialDraftId);
-    if (target && target.id !== draftId) {
+    if (!target) return;
+    lastHandledInitialDraftIdRef.current = initialDraftId;
+    if (target.id !== draftId) {
       loadDraft(target);
     }
-  }, [initialDraftId, drafts, draftId]);
+  }, [initialDraftId, drafts, draftId, loadDraft]);
 
   const selectRequirement = (requirementId: string) => confirmContextSwitch(() => {
     const requirement = dossierRequirements.find((item) => item.id === requirementId);

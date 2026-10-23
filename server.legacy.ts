@@ -3409,6 +3409,13 @@ async function startServer() {
         if (existing && (existing.requestId !== requestId || existing.requirementCode !== requirement.code || existing.templateId !== template.id)) {
           throw Object.assign(new Error('Không thể ghi đè bản nháp của hồ sơ, requirement hoặc template khác.'), { statusCode: 409 });
         }
+        if (existing && existing.createdByUsername) {
+          const isOwner = existing.createdByUsername.toLowerCase() === actor.username.toLowerCase();
+          const canOverride = isPcnSystemManager(actor) || isPgdDossierManager(actor);
+          if (!isOwner && !canOverride) {
+            throw Object.assign(new Error('Chỉ người tạo bản nháp hoặc quản trị viên mới có quyền cập nhật bản nháp này.'), { statusCode: 403 });
+          }
+        }
         const now = new Date().toISOString();
         const next: PgdDraftWorkspace = {
           id: draftId,
@@ -11892,6 +11899,13 @@ async function startServer() {
           [draftId],
         );
         const existing = existingResult.rows[0] ? mapDocumentRow(existingResult.rows[0]) as PcnDraftWorkspace : undefined;
+        if (existing && existing.createdByUsername) {
+          const isOwner = existing.createdByUsername.toLowerCase() === actor.username.toLowerCase();
+          const canOverride = isPcnSystemManager(actor);
+          if (!isOwner && !canOverride) {
+            throw Object.assign(new Error('Chỉ người tạo bản nháp hoặc quản trị viên mới có quyền cập nhật bản nháp PCN này.'), { statusCode: 403 });
+          }
+        }
         let sourceProposal: CertificationProposal | undefined;
         let sourceDossier: CertificationDossier | undefined;
         if (sourceDossierId) {
@@ -11953,7 +11967,7 @@ async function startServer() {
       res.status(201).json(result);
     } catch (error: any) {
       console.error('PCN drafting save error:', error);
-      res.status(400).json({ error: error?.message || String(error) });
+      res.status(Number(error?.statusCode) || 400).json({ error: error?.message || String(error) });
     }
   });
 
