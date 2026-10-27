@@ -1,0 +1,3810 @@
+{
+  "mode": "QA_MOCKED",
+  "baseUrl": "http://localhost:2367",
+  "capturedAt": "2026-10-27T20:30:26.549Z",
+  "apiGets": [
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pgd/bootstrap",
+      "statusMode": "loading"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnCertificationFields",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnTemplateDefinitions",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnDocumentRequirements",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/dossierDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/dossierAttachments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnGeneratedDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnOfficialGeneratedDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/customers",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/certificationProposals",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/certificationDossiers",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnSampleLots",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnSampleItems",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnSampleRoutes",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnSampleFlowEvents",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnSampleRequestBundles",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/labRequests",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/returnedResults",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/approvalSteps",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/issuancePackages",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pcn/users",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pcn/department-roles",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pcn/signer-delegations",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnQualityDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pcn/workflow-templates",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnDossierWorkflowTasks",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pcn/notifications",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pgdcn/notifications",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pgdcn/notifications",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pgd/bootstrap",
+      "statusMode": "loading"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnCertificationFields",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnTemplateDefinitions",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnDocumentRequirements",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/dossierDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/dossierAttachments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnGeneratedDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnOfficialGeneratedDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/customers",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/certificationProposals",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/certificationDossiers",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnSampleLots",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnSampleItems",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnSampleRoutes",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnSampleFlowEvents",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnSampleRequestBundles",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/labRequests",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/returnedResults",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/approvalSteps",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/issuancePackages",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pcn/users",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pcn/department-roles",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pcn/signer-delegations",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnQualityDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pcn/workflow-templates",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/db/pcnDossierWorkflowTasks",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pcn/notifications",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pgdcn/notifications",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-loading",
+      "path": "/api/pgdcn/notifications",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pgd/bootstrap",
+      "statusMode": "error"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnCertificationFields",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnTemplateDefinitions",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnDocumentRequirements",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/dossierDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/dossierAttachments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnGeneratedDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnOfficialGeneratedDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/customers",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/certificationProposals",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/certificationDossiers",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnSampleLots",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnSampleItems",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnSampleRoutes",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnSampleFlowEvents",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnSampleRequestBundles",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/labRequests",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/returnedResults",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/approvalSteps",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/issuancePackages",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pcn/users",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pcn/department-roles",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pcn/signer-delegations",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnQualityDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pcn/workflow-templates",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnDossierWorkflowTasks",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pcn/notifications",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pgdcn/notifications",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pgd/bootstrap",
+      "statusMode": "error"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pgdcn/notifications",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pgd/bootstrap",
+      "statusMode": "error"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnCertificationFields",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnTemplateDefinitions",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnDocumentRequirements",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/dossierDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/dossierAttachments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnGeneratedDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnOfficialGeneratedDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/customers",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/certificationProposals",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/certificationDossiers",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnSampleLots",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnSampleItems",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnSampleRoutes",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnSampleFlowEvents",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnSampleRequestBundles",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/labRequests",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/returnedResults",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/approvalSteps",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/issuancePackages",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pcn/users",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pcn/department-roles",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pcn/signer-delegations",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnQualityDocuments",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pcn/workflow-templates",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/db/pcnDossierWorkflowTasks",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pcn/notifications",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pgdcn/notifications",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/auth/pcn-session",
+      "statusMode": "fixture"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pgd/bootstrap",
+      "statusMode": "error"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "path": "/api/pgdcn/notifications",
+      "statusMode": "fixture"
+    }
+  ],
+  "apiMutationAttempts": [],
+  "externalRequests": [],
+  "pageErrors": [],
+  "consoleErrors": [
+    {
+      "scenario": "pgd-register-error",
+      "message": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "message": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "message": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "scenario": "pgd-register-error",
+      "message": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    }
+  ],
+  "observations": [
+    {
+      "role": "admin",
+      "scenario": "pgd-register-loading",
+      "state": "loading",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "/pgdcn/pgd",
+      "title": "Phòng Giám định - Chứng nhận - TVCI",
+      "headings": [
+        "Hồ sơ cần xử lý",
+        "Mở đúng hồ sơ, xử lý đúng việc",
+        "Chưa có hồ sơ PGD trong hàng đợi"
+      ],
+      "nextActionCandidates": [
+        {
+          "name": "Tạo PYC",
+          "disabled": false,
+          "bounds": {
+            "x": 198,
+            "y": 151,
+            "width": 97,
+            "height": 44,
+            "top": 151,
+            "bottom": 195,
+            "right": 294
+          }
+        },
+        {
+          "name": "Cần xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 77,
+            "y": 409,
+            "width": 85,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 162
+          }
+        },
+        {
+          "name": "Đang xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 258,
+            "y": 409,
+            "width": 93,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 351
+          }
+        }
+      ],
+      "visibleActions": [
+        {
+          "name": "Đóng menu phòng",
+          "disabled": false,
+          "bounds": {
+            "x": -57,
+            "y": 12,
+            "width": 44,
+            "height": 44,
+            "top": 12,
+            "bottom": 56,
+            "right": -13
+          }
+        },
+        {
+          "name": "Tổng quan",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 100,
+            "width": 225,
+            "height": 44,
+            "top": 100,
+            "bottom": 144,
+            "right": -21
+          }
+        },
+        {
+          "name": "Khách hàng",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 146,
+            "width": 225,
+            "height": 44,
+            "top": 146,
+            "bottom": 190,
+            "right": -21
+          }
+        },
+        {
+          "name": "Trợ lý AI",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 192,
+            "width": 225,
+            "height": 44,
+            "top": 192,
+            "bottom": 236,
+            "right": -21
+          }
+        },
+        {
+          "name": "Nhật ký hệ thống",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 238,
+            "width": 225,
+            "height": 44,
+            "top": 238,
+            "bottom": 282,
+            "right": -21
+          }
+        },
+        {
+          "name": "Soạn thảo văn bản",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 284,
+            "width": 225,
+            "height": 44,
+            "top": 284,
+            "bottom": 328,
+            "right": -21
+          }
+        },
+        {
+          "name": "Chứng nhận PCN",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 334,
+            "width": 225,
+            "height": 44,
+            "top": 334,
+            "bottom": 378,
+            "right": -21
+          }
+        },
+        {
+          "name": "Giám định PGD",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 384,
+            "width": 225,
+            "height": 44,
+            "top": 384,
+            "bottom": 428,
+            "right": -21
+          }
+        },
+        {
+          "name": "Giám định",
+          "disabled": false,
+          "bounds": {
+            "x": -229,
+            "y": 430,
+            "width": 208,
+            "height": 44,
+            "top": 430,
+            "bottom": 474,
+            "right": -21
+          }
+        },
+        {
+          "name": "Sổ dữ liệu PGD",
+          "disabled": false,
+          "bounds": {
+            "x": -229,
+            "y": 476,
+            "width": 208,
+            "height": 44,
+            "top": 476,
+            "bottom": 520,
+            "right": -21
+          }
+        },
+        {
+          "name": "Sổ quản lý mẫu PGD",
+          "disabled": false,
+          "bounds": {
+            "x": -229,
+            "y": 522,
+            "width": 208,
+            "height": 44,
+            "top": 522,
+            "bottom": 566,
+            "right": -21
+          }
+        },
+        {
+          "name": "Hồ sơ mẫu",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 596,
+            "width": 225,
+            "height": 44,
+            "top": 596,
+            "bottom": 640,
+            "right": -21
+          }
+        },
+        {
+          "name": "Cài đặt hệ thống",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 642,
+            "width": 225,
+            "height": 44,
+            "top": 642,
+            "bottom": 686,
+            "right": -21
+          }
+        },
+        {
+          "name": "Thiết lập cá nhân",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 790,
+            "width": 116,
+            "height": 44,
+            "top": 790,
+            "bottom": 834,
+            "right": -130
+          }
+        },
+        {
+          "name": "Đăng xuất",
+          "disabled": false,
+          "bounds": {
+            "x": -126,
+            "y": 790,
+            "width": 116,
+            "height": 44,
+            "top": 790,
+            "bottom": 834,
+            "right": -11
+          }
+        },
+        {
+          "name": "Mở menu phòng",
+          "disabled": false,
+          "bounds": {
+            "x": 8,
+            "y": 4,
+            "width": 44,
+            "height": 44,
+            "top": 4,
+            "bottom": 48,
+            "right": 52
+          }
+        },
+        {
+          "name": "Thông báo phòng",
+          "disabled": false,
+          "bounds": {
+            "x": 342,
+            "y": 6,
+            "width": 40,
+            "height": 40,
+            "top": 6,
+            "bottom": 46,
+            "right": 382
+          }
+        },
+        {
+          "name": "Hàng đợi hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 13,
+            "y": 151,
+            "width": 98,
+            "height": 44,
+            "top": 151,
+            "bottom": 195,
+            "right": 111
+          }
+        },
+        {
+          "name": "Sổ dữ liệu",
+          "disabled": false,
+          "bounds": {
+            "x": 115,
+            "y": 151,
+            "width": 70,
+            "height": 44,
+            "top": 151,
+            "bottom": 195,
+            "right": 185
+          }
+        },
+        {
+          "name": "Tạo PYC",
+          "disabled": false,
+          "bounds": {
+            "x": 198,
+            "y": 151,
+            "width": 97,
+            "height": 44,
+            "top": 151,
+            "bottom": 195,
+            "right": 294
+          }
+        },
+        {
+          "name": "Dạng thẻ",
+          "disabled": false,
+          "bounds": {
+            "x": 11,
+            "y": 262,
+            "width": 89,
+            "height": 44,
+            "top": 262,
+            "bottom": 306,
+            "right": 100
+          }
+        },
+        {
+          "name": "Dạng bảng",
+          "disabled": false,
+          "bounds": {
+            "x": 100,
+            "y": 262,
+            "width": 99,
+            "height": 44,
+            "top": 262,
+            "bottom": 306,
+            "right": 199
+          }
+        },
+        {
+          "name": "Bộ lọc sản phẩm, 0 bộ lọc đang áp dụng",
+          "disabled": false,
+          "bounds": {
+            "x": 8,
+            "y": 357,
+            "width": 364,
+            "height": 44,
+            "top": 357,
+            "bottom": 401,
+            "right": 372
+          }
+        },
+        {
+          "name": "Tất cả, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 8,
+            "y": 409,
+            "width": 65,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 73
+          }
+        },
+        {
+          "name": "Cần xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 77,
+            "y": 409,
+            "width": 85,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 162
+          }
+        },
+        {
+          "name": "Tiếp nhận, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 166,
+            "y": 409,
+            "width": 88,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 254
+          }
+        },
+        {
+          "name": "Đang xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 258,
+            "y": 409,
+            "width": 93,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 351
+          }
+        },
+        {
+          "name": "Thiếu hồ sơ, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 355,
+            "y": 409,
+            "width": 97,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 451
+          }
+        },
+        {
+          "name": "Hoàn thành, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 455,
+            "y": 409,
+            "width": 97,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 552
+          }
+        }
+      ],
+      "visibleLinks": [
+        {
+          "name": "Bỏ qua điều hướng đến nội dung chính",
+          "href": "#pgdcn-main-content",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          }
+        }
+      ],
+      "visibleFields": [
+        {
+          "name": "Tìm trong hàng đợi hồ sơ",
+          "type": "search",
+          "required": false,
+          "disabled": false,
+          "bounds": {
+            "x": 8,
+            "y": 321,
+            "width": 364,
+            "height": 32,
+            "top": 321,
+            "bottom": 353,
+            "right": 372
+          }
+        }
+      ],
+      "visibleFieldControlCount": 1,
+      "visibleButtonCount": 29,
+      "visibleLinkCount": 1,
+      "mutationLikeButtons": [
+        {
+          "name": "Tạo PYC",
+          "disabled": false,
+          "bounds": {
+            "x": 198,
+            "y": 151,
+            "width": 97,
+            "height": 44,
+            "top": 151,
+            "bottom": 195,
+            "right": 294
+          }
+        }
+      ],
+      "documentClientWidth": 390,
+      "documentScrollWidth": 390,
+      "horizontalOverflowPx": 0,
+      "scrollContainers": [
+        {
+          "name": "Tất cả 0 Cần xử lý 0 Tiếp nhận 0 Đang xử lý 0 Thiếu hồ sơ 0 Hoàn thành 0",
+          "scrollWidth": 544,
+          "clientWidth": 364,
+          "overflowX": "auto",
+          "bounds": {
+            "x": 8,
+            "y": 409,
+            "width": 364,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 372
+          }
+        }
+      ],
+      "clippedOrTruncated": [
+        {
+          "name": "Bỏ qua điều hướng đến nội dung chính",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          },
+          "scrollWidth": 226,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:"
+        },
+        {
+          "name": "Tìm trong hàng đợi hồ sơ",
+          "bounds": {
+            "x": 7,
+            "y": 320,
+            "width": 1,
+            "height": 1,
+            "top": 320,
+            "bottom": 321,
+            "right": 8
+          },
+          "scrollWidth": 147,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only"
+        },
+        {
+          "name": "Nhóm sản phẩm PGD",
+          "bounds": {
+            "x": 7,
+            "y": 356,
+            "width": 1,
+            "height": 1,
+            "top": 356,
+            "bottom": 357,
+            "right": 8
+          },
+          "scrollWidth": 124,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only md:not-sr-only md:mb-1 md:text-[9px] md:font-black md:uppercase md:tracking-wide md:text-sla"
+        },
+        {
+          "name": "0 bộ lọc đang áp dụng",
+          "bounds": {
+            "x": 317,
+            "y": 379,
+            "width": 1,
+            "height": 1,
+            "top": 379,
+            "bottom": 380,
+            "right": 318
+          },
+          "scrollWidth": 116,
+          "clientWidth": 1,
+          "scrollHeight": 17,
+          "clientHeight": 1,
+          "className": "sr-only"
+        },
+        {
+          "name": "Trạng thái / tiến độ hồ sơ",
+          "bounds": {
+            "x": 7,
+            "y": 408,
+            "width": 1,
+            "height": 1,
+            "top": 408,
+            "bottom": 409,
+            "right": 8
+          },
+          "scrollWidth": 145,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only md:not-sr-only md:mb-1 md:text-[9px] md:font-black md:uppercase md:tracking-wide md:text-sla"
+        },
+        {
+          "name": "Sổ tổng hợp",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          },
+          "scrollWidth": 71,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only"
+        },
+        {
+          "name": "Điều hướng PGDCN",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          },
+          "scrollWidth": 25,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only"
+        }
+      ],
+      "stickyElements": [
+        {
+          "name": "IEMM • TVCI Giám định · Chứng nhận Dùng chung Tổng quan Khách hàng Trợ lý AI Nhật ký hệ thống Soạn thảo văn bản Chứng nhận · PCN Giám định · PGD Giám định Sổ dữ liệu PGD Sổ quản lý",
+          "position": "fixed",
+          "zIndex": "50",
+          "bounds": {
+            "x": -256,
+            "y": 0,
+            "width": 256,
+            "height": 844,
+            "top": 0,
+            "bottom": 844,
+            "right": 0
+          }
+        }
+      ],
+      "focus": {
+        "tag": "button",
+        "role": null,
+        "name": "Mở menu phòng",
+        "bounds": {
+          "x": 8,
+          "y": 4,
+          "width": 44,
+          "height": 44,
+          "top": 4,
+          "bottom": 48,
+          "right": 52
+        },
+        "outlineStyle": "none",
+        "outlineWidth": "3px"
+      },
+      "tableCount": 0,
+      "tableRowCount": 0,
+      "cardCount": 0,
+      "notificationItemCount": 0,
+      "fixtureMarkersExpected": [],
+      "fixtureMarkersVisible": [],
+      "visibleTextExcerpt": "Bỏ qua điều hướng đến nội dung chính IEMM • TVCI Giám định · Chứng nhận Dùng chung Tổng quan Khách hàng Trợ lý AI Nhật ký hệ thống Soạn thảo văn bản Chứng nhận · PCN Giám định · PGD Giám định Sổ dữ liệu PGD Sổ quản lý mẫu PGD Quản trị Hồ sơ mẫu Cài đặt hệ thống AD Synthetic Admin Chưa phân công chức danh · admin Thiết lập cá nhân Đăng xuất PGDCN · TVCI Sổ tổng hợp QUẢN LÝ PGD Hồ sơ cần xử lý Chọn Hàng đợi hồ sơ để xử lý theo từng việc hoặc Sổ dữ liệu để rà soát toàn bộ trường. Hàng đợi hồ sơ Sổ dữ liệu Tạo PYC PGD · HÀNG ĐỢI CÔNG VIỆC Mở đúng hồ sơ, xử lý đúng việc Dạng thẻ Dạng bảng Tìm trong hàng đợi hồ sơ Nhóm sản phẩm PGD Bộ lọc sản phẩm 0 0 bộ lọc đang áp dụng Trạng thái / tiến độ hồ sơ",
+      "stateTextEvidence": [
+        "Sổ tổng hợp"
+      ],
+      "apiRouteModes": [
+        {
+          "path": "/api/auth/pcn-session",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pgd/bootstrap",
+          "statusMode": "loading"
+        },
+        {
+          "path": "/api/db/pcnCertificationFields",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnTemplateDefinitions",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnDocumentRequirements",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/dossierDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/dossierAttachments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnGeneratedDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnOfficialGeneratedDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/customers",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/certificationProposals",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/certificationDossiers",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleLots",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleItems",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleRoutes",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleFlowEvents",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleRequestBundles",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/labRequests",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/returnedResults",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/approvalSteps",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/issuancePackages",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/users",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/department-roles",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/signer-delegations",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnQualityDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/workflow-templates",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnDossierWorkflowTasks",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/notifications",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pgdcn/notifications",
+          "statusMode": "fixture"
+        }
+      ],
+      "mode": "QA_MOCKED",
+      "scopeFixture": [
+        "PCN",
+        "PGD"
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "screenshot": "docs/ux-audit/artifacts/density/coverage-2026-10-28/d13-before/pgd-register-loading/admin-390x844.png"
+    },
+    {
+      "role": "admin",
+      "scenario": "pgd-register-loading",
+      "state": "loading",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "url": "/pgdcn/pgd",
+      "title": "Phòng Giám định - Chứng nhận - TVCI",
+      "headings": [
+        "Hồ sơ cần xử lý",
+        "Mở đúng hồ sơ, xử lý đúng việc",
+        "Chưa có hồ sơ PGD trong hàng đợi"
+      ],
+      "nextActionCandidates": [
+        {
+          "name": "Tạo PYC",
+          "disabled": false,
+          "bounds": {
+            "x": 1325,
+            "y": 69,
+            "width": 97,
+            "height": 44,
+            "top": 69,
+            "bottom": 113,
+            "right": 1422
+          }
+        },
+        {
+          "name": "Cần xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 803,
+            "y": 266,
+            "width": 85,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 888
+          }
+        },
+        {
+          "name": "Đang xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 984,
+            "y": 266,
+            "width": 93,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 1077
+          }
+        }
+      ],
+      "visibleActions": [
+        {
+          "name": "Tổng quan",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 89,
+            "width": 225,
+            "height": 36,
+            "top": 89,
+            "bottom": 125,
+            "right": 235
+          }
+        },
+        {
+          "name": "Khách hàng",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 127,
+            "width": 225,
+            "height": 36,
+            "top": 127,
+            "bottom": 163,
+            "right": 235
+          }
+        },
+        {
+          "name": "Trợ lý AI",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 165,
+            "width": 225,
+            "height": 36,
+            "top": 165,
+            "bottom": 201,
+            "right": 235
+          }
+        },
+        {
+          "name": "Nhật ký hệ thống",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 203,
+            "width": 225,
+            "height": 36,
+            "top": 203,
+            "bottom": 239,
+            "right": 235
+          }
+        },
+        {
+          "name": "Soạn thảo văn bản",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 241,
+            "width": 225,
+            "height": 36,
+            "top": 241,
+            "bottom": 277,
+            "right": 235
+          }
+        },
+        {
+          "name": "Chứng nhận PCN",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 283,
+            "width": 225,
+            "height": 36,
+            "top": 283,
+            "bottom": 319,
+            "right": 235
+          }
+        },
+        {
+          "name": "Giám định PGD",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 325,
+            "width": 225,
+            "height": 36,
+            "top": 325,
+            "bottom": 361,
+            "right": 235
+          }
+        },
+        {
+          "name": "Giám định",
+          "disabled": false,
+          "bounds": {
+            "x": 27,
+            "y": 363,
+            "width": 208,
+            "height": 36,
+            "top": 363,
+            "bottom": 399,
+            "right": 235
+          }
+        },
+        {
+          "name": "Sổ dữ liệu PGD",
+          "disabled": false,
+          "bounds": {
+            "x": 27,
+            "y": 401,
+            "width": 208,
+            "height": 36,
+            "top": 401,
+            "bottom": 437,
+            "right": 235
+          }
+        },
+        {
+          "name": "Sổ quản lý mẫu PGD",
+          "disabled": false,
+          "bounds": {
+            "x": 27,
+            "y": 439,
+            "width": 208,
+            "height": 36,
+            "top": 439,
+            "bottom": 475,
+            "right": 235
+          }
+        },
+        {
+          "name": "Hồ sơ mẫu",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 505,
+            "width": 225,
+            "height": 36,
+            "top": 505,
+            "bottom": 541,
+            "right": 235
+          }
+        },
+        {
+          "name": "Cài đặt hệ thống",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 543,
+            "width": 225,
+            "height": 36,
+            "top": 543,
+            "bottom": 579,
+            "right": 235
+          }
+        },
+        {
+          "name": "Thiết lập cá nhân",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 954,
+            "width": 116,
+            "height": 36,
+            "top": 954,
+            "bottom": 990,
+            "right": 126
+          }
+        },
+        {
+          "name": "Đăng xuất",
+          "disabled": false,
+          "bounds": {
+            "x": 130,
+            "y": 954,
+            "width": 116,
+            "height": 36,
+            "top": 954,
+            "bottom": 990,
+            "right": 245
+          }
+        },
+        {
+          "name": "Thu gọn / Mở rộng thanh điều hướng",
+          "disabled": false,
+          "bounds": {
+            "x": 264,
+            "y": 11,
+            "width": 30,
+            "height": 30,
+            "top": 11,
+            "bottom": 41,
+            "right": 294
+          }
+        },
+        {
+          "name": "Tải lại dữ liệu hệ thống",
+          "disabled": false,
+          "bounds": {
+            "x": 971,
+            "y": 13,
+            "width": 117,
+            "height": 25,
+            "top": 13,
+            "bottom": 38,
+            "right": 1089
+          }
+        },
+        {
+          "name": "Thông báo phòng",
+          "disabled": false,
+          "bounds": {
+            "x": 1097,
+            "y": 6,
+            "width": 40,
+            "height": 40,
+            "top": 6,
+            "bottom": 46,
+            "right": 1137
+          }
+        },
+        {
+          "name": "Cài đặt cá nhân",
+          "disabled": false,
+          "bounds": {
+            "x": 1145,
+            "y": 9,
+            "width": 287,
+            "height": 34,
+            "top": 9,
+            "bottom": 43,
+            "right": 1432
+          }
+        },
+        {
+          "name": "Hàng đợi hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 1141,
+            "y": 69,
+            "width": 98,
+            "height": 44,
+            "top": 69,
+            "bottom": 113,
+            "right": 1238
+          }
+        },
+        {
+          "name": "Sổ dữ liệu",
+          "disabled": false,
+          "bounds": {
+            "x": 1242,
+            "y": 69,
+            "width": 70,
+            "height": 44,
+            "top": 69,
+            "bottom": 113,
+            "right": 1312
+          }
+        },
+        {
+          "name": "Tạo PYC",
+          "disabled": false,
+          "bounds": {
+            "x": 1325,
+            "y": 69,
+            "width": 97,
+            "height": 44,
+            "top": 69,
+            "bottom": 113,
+            "right": 1422
+          }
+        },
+        {
+          "name": "Dạng thẻ",
+          "disabled": false,
+          "bounds": {
+            "x": 1227,
+            "y": 145,
+            "width": 89,
+            "height": 44,
+            "top": 145,
+            "bottom": 189,
+            "right": 1316
+          }
+        },
+        {
+          "name": "Dạng bảng",
+          "disabled": false,
+          "bounds": {
+            "x": 1316,
+            "y": 145,
+            "width": 99,
+            "height": 44,
+            "top": 145,
+            "bottom": 189,
+            "right": 1415
+          }
+        },
+        {
+          "name": "Thép/Kim loại, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 268,
+            "y": 266,
+            "width": 110,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 378
+          }
+        },
+        {
+          "name": "Máy móc, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 382,
+            "y": 266,
+            "width": 84,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 466
+          }
+        },
+        {
+          "name": "Than, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 470,
+            "y": 266,
+            "width": 62,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 532
+          }
+        },
+        {
+          "name": "Tất cả, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 734,
+            "y": 266,
+            "width": 65,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 799
+          }
+        },
+        {
+          "name": "Cần xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 803,
+            "y": 266,
+            "width": 85,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 888
+          }
+        },
+        {
+          "name": "Tiếp nhận, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 892,
+            "y": 266,
+            "width": 88,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 980
+          }
+        },
+        {
+          "name": "Đang xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 984,
+            "y": 266,
+            "width": 93,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 1077
+          }
+        },
+        {
+          "name": "Thiếu hồ sơ, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 1081,
+            "y": 266,
+            "width": 97,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 1177
+          }
+        },
+        {
+          "name": "Hoàn thành, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 1181,
+            "y": 266,
+            "width": 97,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 1278
+          }
+        }
+      ],
+      "visibleLinks": [
+        {
+          "name": "Bỏ qua điều hướng đến nội dung chính",
+          "href": "#pgdcn-main-content",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          }
+        }
+      ],
+      "visibleFields": [
+        {
+          "name": "Tìm trong hàng đợi hồ sơ",
+          "type": "search",
+          "required": false,
+          "disabled": false,
+          "bounds": {
+            "x": 268,
+            "y": 208,
+            "width": 384,
+            "height": 32,
+            "top": 208,
+            "bottom": 240,
+            "right": 652
+          }
+        }
+      ],
+      "visibleFieldControlCount": 1,
+      "visibleButtonCount": 32,
+      "visibleLinkCount": 1,
+      "mutationLikeButtons": [
+        {
+          "name": "Tạo PYC",
+          "disabled": false,
+          "bounds": {
+            "x": 1325,
+            "y": 69,
+            "width": 97,
+            "height": 44,
+            "top": 69,
+            "bottom": 113,
+            "right": 1422
+          }
+        }
+      ],
+      "documentClientWidth": 1440,
+      "documentScrollWidth": 1440,
+      "horizontalOverflowPx": 0,
+      "scrollContainers": [],
+      "clippedOrTruncated": [
+        {
+          "name": "Bỏ qua điều hướng đến nội dung chính",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          },
+          "scrollWidth": 226,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:"
+        },
+        {
+          "name": "Tìm trong hàng đợi hồ sơ",
+          "bounds": {
+            "x": 267,
+            "y": 207,
+            "width": 1,
+            "height": 1,
+            "top": 207,
+            "bottom": 208,
+            "right": 268
+          },
+          "scrollWidth": 147,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only"
+        },
+        {
+          "name": "Sổ tổng hợp",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          },
+          "scrollWidth": 71,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only"
+        },
+        {
+          "name": "Điều hướng PGDCN",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          },
+          "scrollWidth": 25,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only"
+        }
+      ],
+      "stickyElements": [],
+      "focus": {
+        "tag": "button",
+        "role": null,
+        "name": "Sổ dữ liệu PGD",
+        "bounds": {
+          "x": 27,
+          "y": 401,
+          "width": 208,
+          "height": 36,
+          "top": 401,
+          "bottom": 437,
+          "right": 235
+        },
+        "outlineStyle": "none",
+        "outlineWidth": "3px"
+      },
+      "tableCount": 0,
+      "tableRowCount": 0,
+      "cardCount": 0,
+      "notificationItemCount": 0,
+      "fixtureMarkersExpected": [],
+      "fixtureMarkersVisible": [],
+      "visibleTextExcerpt": "Bỏ qua điều hướng đến nội dung chính IEMM • TVCI Giám định · Chứng nhận Dùng chung Tổng quan Khách hàng Trợ lý AI Nhật ký hệ thống Soạn thảo văn bản Chứng nhận · PCN Giám định · PGD Giám định Sổ dữ liệu PGD Sổ quản lý mẫu PGD Quản trị Hồ sơ mẫu Cài đặt hệ thống AD Synthetic Admin Chưa phân công chức danh · admin Thiết lập cá nhân Đăng xuất SỔ TỔNG HỢP Phòng Giám định - Chứng nhận và Phát triển thị trường · TVCI Hệ thống điều hành & Mở hồ sơ kiểm định - chứng nhận chuyên ngành Tải lại dữ liệu Synthetic Admin Văn phòng ADMIN QUẢN LÝ PGD Hồ sơ cần xử lý Chọn Hàng đợi hồ sơ để xử lý theo từng việc hoặc Sổ dữ liệu để rà soát toàn bộ trường. Hàng đợi hồ sơ Sổ dữ liệu Tạo PYC PGD · HÀNG ĐỢI CÔNG VI",
+      "stateTextEvidence": [
+        "Sổ tổng hợp"
+      ],
+      "apiRouteModes": [
+        {
+          "path": "/api/auth/pcn-session",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pgd/bootstrap",
+          "statusMode": "loading"
+        },
+        {
+          "path": "/api/db/pcnCertificationFields",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnTemplateDefinitions",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnDocumentRequirements",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/dossierDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/dossierAttachments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnGeneratedDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnOfficialGeneratedDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/customers",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/certificationProposals",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/certificationDossiers",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleLots",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleItems",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleRoutes",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleFlowEvents",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleRequestBundles",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/labRequests",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/returnedResults",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/approvalSteps",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/issuancePackages",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/users",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/department-roles",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/signer-delegations",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnQualityDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/workflow-templates",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnDossierWorkflowTasks",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/notifications",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pgdcn/notifications",
+          "statusMode": "fixture"
+        }
+      ],
+      "mode": "QA_MOCKED",
+      "scopeFixture": [
+        "PCN",
+        "PGD"
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "screenshot": "docs/ux-audit/artifacts/density/coverage-2026-10-28/d13-before/pgd-register-loading/admin-1440x1000.png"
+    },
+    {
+      "role": "admin",
+      "scenario": "pgd-register-error",
+      "state": "error",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "/pgdcn/pgd",
+      "title": "Phòng Giám định - Chứng nhận - TVCI",
+      "headings": [
+        "Hồ sơ cần xử lý",
+        "Mở đúng hồ sơ, xử lý đúng việc",
+        "Chưa có hồ sơ PGD trong hàng đợi"
+      ],
+      "nextActionCandidates": [
+        {
+          "name": "Tạo PYC",
+          "disabled": false,
+          "bounds": {
+            "x": 198,
+            "y": 151,
+            "width": 97,
+            "height": 44,
+            "top": 151,
+            "bottom": 195,
+            "right": 294
+          }
+        },
+        {
+          "name": "Cần xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 77,
+            "y": 409,
+            "width": 85,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 162
+          }
+        },
+        {
+          "name": "Đang xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 258,
+            "y": 409,
+            "width": 93,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 351
+          }
+        }
+      ],
+      "visibleActions": [
+        {
+          "name": "Đóng menu phòng",
+          "disabled": false,
+          "bounds": {
+            "x": -57,
+            "y": 12,
+            "width": 44,
+            "height": 44,
+            "top": 12,
+            "bottom": 56,
+            "right": -13
+          }
+        },
+        {
+          "name": "Tổng quan",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 100,
+            "width": 225,
+            "height": 44,
+            "top": 100,
+            "bottom": 144,
+            "right": -21
+          }
+        },
+        {
+          "name": "Khách hàng",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 146,
+            "width": 225,
+            "height": 44,
+            "top": 146,
+            "bottom": 190,
+            "right": -21
+          }
+        },
+        {
+          "name": "Trợ lý AI",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 192,
+            "width": 225,
+            "height": 44,
+            "top": 192,
+            "bottom": 236,
+            "right": -21
+          }
+        },
+        {
+          "name": "Nhật ký hệ thống",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 238,
+            "width": 225,
+            "height": 44,
+            "top": 238,
+            "bottom": 282,
+            "right": -21
+          }
+        },
+        {
+          "name": "Soạn thảo văn bản",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 284,
+            "width": 225,
+            "height": 44,
+            "top": 284,
+            "bottom": 328,
+            "right": -21
+          }
+        },
+        {
+          "name": "Chứng nhận PCN",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 334,
+            "width": 225,
+            "height": 44,
+            "top": 334,
+            "bottom": 378,
+            "right": -21
+          }
+        },
+        {
+          "name": "Giám định PGD",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 384,
+            "width": 225,
+            "height": 44,
+            "top": 384,
+            "bottom": 428,
+            "right": -21
+          }
+        },
+        {
+          "name": "Giám định",
+          "disabled": false,
+          "bounds": {
+            "x": -229,
+            "y": 430,
+            "width": 208,
+            "height": 44,
+            "top": 430,
+            "bottom": 474,
+            "right": -21
+          }
+        },
+        {
+          "name": "Sổ dữ liệu PGD",
+          "disabled": false,
+          "bounds": {
+            "x": -229,
+            "y": 476,
+            "width": 208,
+            "height": 44,
+            "top": 476,
+            "bottom": 520,
+            "right": -21
+          }
+        },
+        {
+          "name": "Sổ quản lý mẫu PGD",
+          "disabled": false,
+          "bounds": {
+            "x": -229,
+            "y": 522,
+            "width": 208,
+            "height": 44,
+            "top": 522,
+            "bottom": 566,
+            "right": -21
+          }
+        },
+        {
+          "name": "Hồ sơ mẫu",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 596,
+            "width": 225,
+            "height": 44,
+            "top": 596,
+            "bottom": 640,
+            "right": -21
+          }
+        },
+        {
+          "name": "Cài đặt hệ thống",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 642,
+            "width": 225,
+            "height": 44,
+            "top": 642,
+            "bottom": 686,
+            "right": -21
+          }
+        },
+        {
+          "name": "Thiết lập cá nhân",
+          "disabled": false,
+          "bounds": {
+            "x": -246,
+            "y": 790,
+            "width": 116,
+            "height": 44,
+            "top": 790,
+            "bottom": 834,
+            "right": -130
+          }
+        },
+        {
+          "name": "Đăng xuất",
+          "disabled": false,
+          "bounds": {
+            "x": -126,
+            "y": 790,
+            "width": 116,
+            "height": 44,
+            "top": 790,
+            "bottom": 834,
+            "right": -11
+          }
+        },
+        {
+          "name": "Mở menu phòng",
+          "disabled": false,
+          "bounds": {
+            "x": 8,
+            "y": 4,
+            "width": 44,
+            "height": 44,
+            "top": 4,
+            "bottom": 48,
+            "right": 52
+          }
+        },
+        {
+          "name": "Thông báo phòng",
+          "disabled": false,
+          "bounds": {
+            "x": 342,
+            "y": 6,
+            "width": 40,
+            "height": 40,
+            "top": 6,
+            "bottom": 46,
+            "right": 382
+          }
+        },
+        {
+          "name": "Hàng đợi hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 13,
+            "y": 151,
+            "width": 98,
+            "height": 44,
+            "top": 151,
+            "bottom": 195,
+            "right": 111
+          }
+        },
+        {
+          "name": "Sổ dữ liệu",
+          "disabled": false,
+          "bounds": {
+            "x": 115,
+            "y": 151,
+            "width": 70,
+            "height": 44,
+            "top": 151,
+            "bottom": 195,
+            "right": 185
+          }
+        },
+        {
+          "name": "Tạo PYC",
+          "disabled": false,
+          "bounds": {
+            "x": 198,
+            "y": 151,
+            "width": 97,
+            "height": 44,
+            "top": 151,
+            "bottom": 195,
+            "right": 294
+          }
+        },
+        {
+          "name": "Dạng thẻ",
+          "disabled": false,
+          "bounds": {
+            "x": 11,
+            "y": 262,
+            "width": 89,
+            "height": 44,
+            "top": 262,
+            "bottom": 306,
+            "right": 100
+          }
+        },
+        {
+          "name": "Dạng bảng",
+          "disabled": false,
+          "bounds": {
+            "x": 100,
+            "y": 262,
+            "width": 99,
+            "height": 44,
+            "top": 262,
+            "bottom": 306,
+            "right": 199
+          }
+        },
+        {
+          "name": "Bộ lọc sản phẩm, 0 bộ lọc đang áp dụng",
+          "disabled": false,
+          "bounds": {
+            "x": 8,
+            "y": 357,
+            "width": 364,
+            "height": 44,
+            "top": 357,
+            "bottom": 401,
+            "right": 372
+          }
+        },
+        {
+          "name": "Tất cả, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 8,
+            "y": 409,
+            "width": 65,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 73
+          }
+        },
+        {
+          "name": "Cần xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 77,
+            "y": 409,
+            "width": 85,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 162
+          }
+        },
+        {
+          "name": "Tiếp nhận, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 166,
+            "y": 409,
+            "width": 88,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 254
+          }
+        },
+        {
+          "name": "Đang xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 258,
+            "y": 409,
+            "width": 93,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 351
+          }
+        },
+        {
+          "name": "Thiếu hồ sơ, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 355,
+            "y": 409,
+            "width": 97,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 451
+          }
+        },
+        {
+          "name": "Hoàn thành, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 455,
+            "y": 409,
+            "width": 97,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 552
+          }
+        }
+      ],
+      "visibleLinks": [
+        {
+          "name": "Bỏ qua điều hướng đến nội dung chính",
+          "href": "#pgdcn-main-content",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          }
+        }
+      ],
+      "visibleFields": [
+        {
+          "name": "Tìm trong hàng đợi hồ sơ",
+          "type": "search",
+          "required": false,
+          "disabled": false,
+          "bounds": {
+            "x": 8,
+            "y": 321,
+            "width": 364,
+            "height": 32,
+            "top": 321,
+            "bottom": 353,
+            "right": 372
+          }
+        }
+      ],
+      "visibleFieldControlCount": 1,
+      "visibleButtonCount": 29,
+      "visibleLinkCount": 1,
+      "mutationLikeButtons": [
+        {
+          "name": "Tạo PYC",
+          "disabled": false,
+          "bounds": {
+            "x": 198,
+            "y": 151,
+            "width": 97,
+            "height": 44,
+            "top": 151,
+            "bottom": 195,
+            "right": 294
+          }
+        }
+      ],
+      "documentClientWidth": 390,
+      "documentScrollWidth": 390,
+      "horizontalOverflowPx": 0,
+      "scrollContainers": [
+        {
+          "name": "Tất cả 0 Cần xử lý 0 Tiếp nhận 0 Đang xử lý 0 Thiếu hồ sơ 0 Hoàn thành 0",
+          "scrollWidth": 544,
+          "clientWidth": 364,
+          "overflowX": "auto",
+          "bounds": {
+            "x": 8,
+            "y": 409,
+            "width": 364,
+            "height": 44,
+            "top": 409,
+            "bottom": 453,
+            "right": 372
+          }
+        }
+      ],
+      "clippedOrTruncated": [
+        {
+          "name": "Bỏ qua điều hướng đến nội dung chính",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          },
+          "scrollWidth": 226,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:"
+        },
+        {
+          "name": "Tìm trong hàng đợi hồ sơ",
+          "bounds": {
+            "x": 7,
+            "y": 320,
+            "width": 1,
+            "height": 1,
+            "top": 320,
+            "bottom": 321,
+            "right": 8
+          },
+          "scrollWidth": 147,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only"
+        },
+        {
+          "name": "Nhóm sản phẩm PGD",
+          "bounds": {
+            "x": 7,
+            "y": 356,
+            "width": 1,
+            "height": 1,
+            "top": 356,
+            "bottom": 357,
+            "right": 8
+          },
+          "scrollWidth": 124,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only md:not-sr-only md:mb-1 md:text-[9px] md:font-black md:uppercase md:tracking-wide md:text-sla"
+        },
+        {
+          "name": "0 bộ lọc đang áp dụng",
+          "bounds": {
+            "x": 317,
+            "y": 379,
+            "width": 1,
+            "height": 1,
+            "top": 379,
+            "bottom": 380,
+            "right": 318
+          },
+          "scrollWidth": 116,
+          "clientWidth": 1,
+          "scrollHeight": 17,
+          "clientHeight": 1,
+          "className": "sr-only"
+        },
+        {
+          "name": "Trạng thái / tiến độ hồ sơ",
+          "bounds": {
+            "x": 7,
+            "y": 408,
+            "width": 1,
+            "height": 1,
+            "top": 408,
+            "bottom": 409,
+            "right": 8
+          },
+          "scrollWidth": 145,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only md:not-sr-only md:mb-1 md:text-[9px] md:font-black md:uppercase md:tracking-wide md:text-sla"
+        },
+        {
+          "name": "Sổ tổng hợp",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          },
+          "scrollWidth": 71,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only"
+        },
+        {
+          "name": "Điều hướng PGDCN",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          },
+          "scrollWidth": 25,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only"
+        }
+      ],
+      "stickyElements": [
+        {
+          "name": "IEMM • TVCI Giám định · Chứng nhận Dùng chung Tổng quan Khách hàng Trợ lý AI Nhật ký hệ thống Soạn thảo văn bản Chứng nhận · PCN Giám định · PGD Giám định Sổ dữ liệu PGD Sổ quản lý",
+          "position": "fixed",
+          "zIndex": "50",
+          "bounds": {
+            "x": -256,
+            "y": 0,
+            "width": 256,
+            "height": 844,
+            "top": 0,
+            "bottom": 844,
+            "right": 0
+          }
+        }
+      ],
+      "focus": {
+        "tag": "button",
+        "role": null,
+        "name": "Mở menu phòng",
+        "bounds": {
+          "x": 8,
+          "y": 4,
+          "width": 44,
+          "height": 44,
+          "top": 4,
+          "bottom": 48,
+          "right": 52
+        },
+        "outlineStyle": "none",
+        "outlineWidth": "3px"
+      },
+      "tableCount": 0,
+      "tableRowCount": 0,
+      "cardCount": 0,
+      "notificationItemCount": 0,
+      "fixtureMarkersExpected": [],
+      "fixtureMarkersVisible": [],
+      "visibleTextExcerpt": "Bỏ qua điều hướng đến nội dung chính IEMM • TVCI Giám định · Chứng nhận Dùng chung Tổng quan Khách hàng Trợ lý AI Nhật ký hệ thống Soạn thảo văn bản Chứng nhận · PCN Giám định · PGD Giám định Sổ dữ liệu PGD Sổ quản lý mẫu PGD Quản trị Hồ sơ mẫu Cài đặt hệ thống AD Synthetic Admin Chưa phân công chức danh · admin Thiết lập cá nhân Đăng xuất PGDCN · TVCI Sổ tổng hợp QUẢN LÝ PGD Hồ sơ cần xử lý Chọn Hàng đợi hồ sơ để xử lý theo từng việc hoặc Sổ dữ liệu để rà soát toàn bộ trường. Hàng đợi hồ sơ Sổ dữ liệu Tạo PYC PGD · HÀNG ĐỢI CÔNG VIỆC Mở đúng hồ sơ, xử lý đúng việc Dạng thẻ Dạng bảng Tìm trong hàng đợi hồ sơ Nhóm sản phẩm PGD Bộ lọc sản phẩm 0 0 bộ lọc đang áp dụng Trạng thái / tiến độ hồ sơ",
+      "stateTextEvidence": [
+        "Sổ tổng hợp"
+      ],
+      "apiRouteModes": [
+        {
+          "path": "/api/auth/pcn-session",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pgd/bootstrap",
+          "statusMode": "error"
+        },
+        {
+          "path": "/api/db/pcnCertificationFields",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnTemplateDefinitions",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnDocumentRequirements",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/dossierDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/dossierAttachments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnGeneratedDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnOfficialGeneratedDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/customers",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/certificationProposals",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/certificationDossiers",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleLots",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleItems",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleRoutes",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleFlowEvents",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleRequestBundles",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/labRequests",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/returnedResults",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/approvalSteps",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/issuancePackages",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/users",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/department-roles",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/signer-delegations",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnQualityDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/workflow-templates",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnDossierWorkflowTasks",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/notifications",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pgdcn/notifications",
+          "statusMode": "fixture"
+        }
+      ],
+      "mode": "QA_MOCKED",
+      "scopeFixture": [
+        "PCN",
+        "PGD"
+      ],
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+        "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+      ],
+      "screenshot": "docs/ux-audit/artifacts/density/coverage-2026-10-28/d13-before/pgd-register-error/admin-390x844.png"
+    },
+    {
+      "role": "admin",
+      "scenario": "pgd-register-error",
+      "state": "error",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "url": "/pgdcn/pgd",
+      "title": "Phòng Giám định - Chứng nhận - TVCI",
+      "headings": [
+        "Hồ sơ cần xử lý",
+        "Mở đúng hồ sơ, xử lý đúng việc",
+        "Chưa có hồ sơ PGD trong hàng đợi"
+      ],
+      "nextActionCandidates": [
+        {
+          "name": "Tạo PYC",
+          "disabled": false,
+          "bounds": {
+            "x": 1325,
+            "y": 69,
+            "width": 97,
+            "height": 44,
+            "top": 69,
+            "bottom": 113,
+            "right": 1422
+          }
+        },
+        {
+          "name": "Cần xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 803,
+            "y": 266,
+            "width": 85,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 888
+          }
+        },
+        {
+          "name": "Đang xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 984,
+            "y": 266,
+            "width": 93,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 1077
+          }
+        }
+      ],
+      "visibleActions": [
+        {
+          "name": "Tổng quan",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 89,
+            "width": 225,
+            "height": 36,
+            "top": 89,
+            "bottom": 125,
+            "right": 235
+          }
+        },
+        {
+          "name": "Khách hàng",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 127,
+            "width": 225,
+            "height": 36,
+            "top": 127,
+            "bottom": 163,
+            "right": 235
+          }
+        },
+        {
+          "name": "Trợ lý AI",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 165,
+            "width": 225,
+            "height": 36,
+            "top": 165,
+            "bottom": 201,
+            "right": 235
+          }
+        },
+        {
+          "name": "Nhật ký hệ thống",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 203,
+            "width": 225,
+            "height": 36,
+            "top": 203,
+            "bottom": 239,
+            "right": 235
+          }
+        },
+        {
+          "name": "Soạn thảo văn bản",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 241,
+            "width": 225,
+            "height": 36,
+            "top": 241,
+            "bottom": 277,
+            "right": 235
+          }
+        },
+        {
+          "name": "Chứng nhận PCN",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 283,
+            "width": 225,
+            "height": 36,
+            "top": 283,
+            "bottom": 319,
+            "right": 235
+          }
+        },
+        {
+          "name": "Giám định PGD",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 325,
+            "width": 225,
+            "height": 36,
+            "top": 325,
+            "bottom": 361,
+            "right": 235
+          }
+        },
+        {
+          "name": "Giám định",
+          "disabled": false,
+          "bounds": {
+            "x": 27,
+            "y": 363,
+            "width": 208,
+            "height": 36,
+            "top": 363,
+            "bottom": 399,
+            "right": 235
+          }
+        },
+        {
+          "name": "Sổ dữ liệu PGD",
+          "disabled": false,
+          "bounds": {
+            "x": 27,
+            "y": 401,
+            "width": 208,
+            "height": 36,
+            "top": 401,
+            "bottom": 437,
+            "right": 235
+          }
+        },
+        {
+          "name": "Sổ quản lý mẫu PGD",
+          "disabled": false,
+          "bounds": {
+            "x": 27,
+            "y": 439,
+            "width": 208,
+            "height": 36,
+            "top": 439,
+            "bottom": 475,
+            "right": 235
+          }
+        },
+        {
+          "name": "Hồ sơ mẫu",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 505,
+            "width": 225,
+            "height": 36,
+            "top": 505,
+            "bottom": 541,
+            "right": 235
+          }
+        },
+        {
+          "name": "Cài đặt hệ thống",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 543,
+            "width": 225,
+            "height": 36,
+            "top": 543,
+            "bottom": 579,
+            "right": 235
+          }
+        },
+        {
+          "name": "Thiết lập cá nhân",
+          "disabled": false,
+          "bounds": {
+            "x": 10,
+            "y": 954,
+            "width": 116,
+            "height": 36,
+            "top": 954,
+            "bottom": 990,
+            "right": 126
+          }
+        },
+        {
+          "name": "Đăng xuất",
+          "disabled": false,
+          "bounds": {
+            "x": 130,
+            "y": 954,
+            "width": 116,
+            "height": 36,
+            "top": 954,
+            "bottom": 990,
+            "right": 245
+          }
+        },
+        {
+          "name": "Thu gọn / Mở rộng thanh điều hướng",
+          "disabled": false,
+          "bounds": {
+            "x": 264,
+            "y": 11,
+            "width": 30,
+            "height": 30,
+            "top": 11,
+            "bottom": 41,
+            "right": 294
+          }
+        },
+        {
+          "name": "Tải lại dữ liệu hệ thống",
+          "disabled": false,
+          "bounds": {
+            "x": 971,
+            "y": 13,
+            "width": 117,
+            "height": 25,
+            "top": 13,
+            "bottom": 38,
+            "right": 1089
+          }
+        },
+        {
+          "name": "Thông báo phòng",
+          "disabled": false,
+          "bounds": {
+            "x": 1097,
+            "y": 6,
+            "width": 40,
+            "height": 40,
+            "top": 6,
+            "bottom": 46,
+            "right": 1137
+          }
+        },
+        {
+          "name": "Cài đặt cá nhân",
+          "disabled": false,
+          "bounds": {
+            "x": 1145,
+            "y": 9,
+            "width": 287,
+            "height": 34,
+            "top": 9,
+            "bottom": 43,
+            "right": 1432
+          }
+        },
+        {
+          "name": "Hàng đợi hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 1141,
+            "y": 69,
+            "width": 98,
+            "height": 44,
+            "top": 69,
+            "bottom": 113,
+            "right": 1238
+          }
+        },
+        {
+          "name": "Sổ dữ liệu",
+          "disabled": false,
+          "bounds": {
+            "x": 1242,
+            "y": 69,
+            "width": 70,
+            "height": 44,
+            "top": 69,
+            "bottom": 113,
+            "right": 1312
+          }
+        },
+        {
+          "name": "Tạo PYC",
+          "disabled": false,
+          "bounds": {
+            "x": 1325,
+            "y": 69,
+            "width": 97,
+            "height": 44,
+            "top": 69,
+            "bottom": 113,
+            "right": 1422
+          }
+        },
+        {
+          "name": "Dạng thẻ",
+          "disabled": false,
+          "bounds": {
+            "x": 1227,
+            "y": 145,
+            "width": 89,
+            "height": 44,
+            "top": 145,
+            "bottom": 189,
+            "right": 1316
+          }
+        },
+        {
+          "name": "Dạng bảng",
+          "disabled": false,
+          "bounds": {
+            "x": 1316,
+            "y": 145,
+            "width": 99,
+            "height": 44,
+            "top": 145,
+            "bottom": 189,
+            "right": 1415
+          }
+        },
+        {
+          "name": "Thép/Kim loại, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 268,
+            "y": 266,
+            "width": 110,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 378
+          }
+        },
+        {
+          "name": "Máy móc, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 382,
+            "y": 266,
+            "width": 84,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 466
+          }
+        },
+        {
+          "name": "Than, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 470,
+            "y": 266,
+            "width": 62,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 532
+          }
+        },
+        {
+          "name": "Tất cả, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 734,
+            "y": 266,
+            "width": 65,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 799
+          }
+        },
+        {
+          "name": "Cần xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 803,
+            "y": 266,
+            "width": 85,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 888
+          }
+        },
+        {
+          "name": "Tiếp nhận, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 892,
+            "y": 266,
+            "width": 88,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 980
+          }
+        },
+        {
+          "name": "Đang xử lý, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 984,
+            "y": 266,
+            "width": 93,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 1077
+          }
+        },
+        {
+          "name": "Thiếu hồ sơ, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 1081,
+            "y": 266,
+            "width": 97,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 1177
+          }
+        },
+        {
+          "name": "Hoàn thành, 0 hồ sơ",
+          "disabled": false,
+          "bounds": {
+            "x": 1181,
+            "y": 266,
+            "width": 97,
+            "height": 32,
+            "top": 266,
+            "bottom": 298,
+            "right": 1278
+          }
+        }
+      ],
+      "visibleLinks": [
+        {
+          "name": "Bỏ qua điều hướng đến nội dung chính",
+          "href": "#pgdcn-main-content",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          }
+        }
+      ],
+      "visibleFields": [
+        {
+          "name": "Tìm trong hàng đợi hồ sơ",
+          "type": "search",
+          "required": false,
+          "disabled": false,
+          "bounds": {
+            "x": 268,
+            "y": 208,
+            "width": 384,
+            "height": 32,
+            "top": 208,
+            "bottom": 240,
+            "right": 652
+          }
+        }
+      ],
+      "visibleFieldControlCount": 1,
+      "visibleButtonCount": 32,
+      "visibleLinkCount": 1,
+      "mutationLikeButtons": [
+        {
+          "name": "Tạo PYC",
+          "disabled": false,
+          "bounds": {
+            "x": 1325,
+            "y": 69,
+            "width": 97,
+            "height": 44,
+            "top": 69,
+            "bottom": 113,
+            "right": 1422
+          }
+        }
+      ],
+      "documentClientWidth": 1440,
+      "documentScrollWidth": 1440,
+      "horizontalOverflowPx": 0,
+      "scrollContainers": [],
+      "clippedOrTruncated": [
+        {
+          "name": "Bỏ qua điều hướng đến nội dung chính",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          },
+          "scrollWidth": 226,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:"
+        },
+        {
+          "name": "Tìm trong hàng đợi hồ sơ",
+          "bounds": {
+            "x": 267,
+            "y": 207,
+            "width": 1,
+            "height": 1,
+            "top": 207,
+            "bottom": 208,
+            "right": 268
+          },
+          "scrollWidth": 147,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only"
+        },
+        {
+          "name": "Sổ tổng hợp",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          },
+          "scrollWidth": 71,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only"
+        },
+        {
+          "name": "Điều hướng PGDCN",
+          "bounds": {
+            "x": -1,
+            "y": -1,
+            "width": 1,
+            "height": 1,
+            "top": -1,
+            "bottom": 0,
+            "right": 0
+          },
+          "scrollWidth": 25,
+          "clientWidth": 1,
+          "scrollHeight": 20,
+          "clientHeight": 1,
+          "className": "sr-only"
+        }
+      ],
+      "stickyElements": [],
+      "focus": {
+        "tag": "button",
+        "role": null,
+        "name": "Sổ dữ liệu PGD",
+        "bounds": {
+          "x": 27,
+          "y": 401,
+          "width": 208,
+          "height": 36,
+          "top": 401,
+          "bottom": 437,
+          "right": 235
+        },
+        "outlineStyle": "none",
+        "outlineWidth": "3px"
+      },
+      "tableCount": 0,
+      "tableRowCount": 0,
+      "cardCount": 0,
+      "notificationItemCount": 0,
+      "fixtureMarkersExpected": [],
+      "fixtureMarkersVisible": [],
+      "visibleTextExcerpt": "Bỏ qua điều hướng đến nội dung chính IEMM • TVCI Giám định · Chứng nhận Dùng chung Tổng quan Khách hàng Trợ lý AI Nhật ký hệ thống Soạn thảo văn bản Chứng nhận · PCN Giám định · PGD Giám định Sổ dữ liệu PGD Sổ quản lý mẫu PGD Quản trị Hồ sơ mẫu Cài đặt hệ thống AD Synthetic Admin Chưa phân công chức danh · admin Thiết lập cá nhân Đăng xuất SỔ TỔNG HỢP Phòng Giám định - Chứng nhận và Phát triển thị trường · TVCI Hệ thống điều hành & Mở hồ sơ kiểm định - chứng nhận chuyên ngành Tải lại dữ liệu Synthetic Admin Văn phòng ADMIN QUẢN LÝ PGD Hồ sơ cần xử lý Chọn Hàng đợi hồ sơ để xử lý theo từng việc hoặc Sổ dữ liệu để rà soát toàn bộ trường. Hàng đợi hồ sơ Sổ dữ liệu Tạo PYC PGD · HÀNG ĐỢI CÔNG VI",
+      "stateTextEvidence": [
+        "Sổ tổng hợp"
+      ],
+      "apiRouteModes": [
+        {
+          "path": "/api/auth/pcn-session",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pgd/bootstrap",
+          "statusMode": "error"
+        },
+        {
+          "path": "/api/db/pcnCertificationFields",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnTemplateDefinitions",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnDocumentRequirements",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/dossierDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/dossierAttachments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnGeneratedDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnOfficialGeneratedDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/customers",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/certificationProposals",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/certificationDossiers",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleLots",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleItems",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleRoutes",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleFlowEvents",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnSampleRequestBundles",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/labRequests",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/returnedResults",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/approvalSteps",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/issuancePackages",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/users",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/department-roles",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/signer-delegations",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnQualityDocuments",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/workflow-templates",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/db/pcnDossierWorkflowTasks",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pcn/notifications",
+          "statusMode": "fixture"
+        },
+        {
+          "path": "/api/pgdcn/notifications",
+          "statusMode": "fixture"
+        }
+      ],
+      "mode": "QA_MOCKED",
+      "scopeFixture": [
+        "PCN",
+        "PGD"
+      ],
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+        "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+        "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+        "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+      ],
+      "screenshot": "docs/ux-audit/artifacts/density/coverage-2026-10-28/d13-before/pgd-register-error/admin-1440x1000.png"
+    }
+  ],
+  "captureErrors": [],
+  "totalScreenshots": 4,
+  "uniqueScenarios": 2,
+  "roleCount": 1,
+  "viewportCoverage": [
+    "390x844",
+    "1440x1000"
+  ]
+}

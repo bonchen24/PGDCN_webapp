@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, RefreshCw, User } from 'lucide-react';
 import { Toaster } from 'sonner';
@@ -117,6 +117,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
     return [dossier.id, resolvePcnEvidenceNextAction({ dossier, proposal: pcn.proposals.find((proposal) => proposal.id === dossier.proposalId), requirements: pcn.documentRequirements.filter((requirement) => dossier.fieldCodes.includes(requirement.fieldCode)), documents: pcn.dossierDocuments.filter((document) => document.dossierId === dossier.id), sampleLots: pcn.sampleLots.filter((lot) => lot.dossierId === dossier.id), sampleItems: pcn.sampleItems.filter((item) => lotIds.has(item.sampleLotId)), sampleRoutes: pcn.sampleRoutes.filter((route) => lotIds.has(route.sampleLotId)), labRequests: pcn.labRequests.filter((request) => request.dossierId === dossier.id), results: pcn.returnedResults.filter((result) => result.dossierId === dossier.id), approvalSteps: pcn.approvalSteps.filter((step) => step.dossierId === dossier.id), issuance: pcn.issuancePackages.find((item) => item.dossierId === dossier.id) })];
   })), [pcn.approvalSteps, pcn.documentRequirements, pcn.dossierDocuments, pcn.dossiers, pcn.issuancePackages, pcn.labRequests, pcn.proposals, pcn.returnedResults, pcn.sampleItems, pcn.sampleLots, pcn.sampleRoutes]);
   const [sessionChecked, setSessionChecked] = useState(() => Boolean(usePcnSessionStore.getState().currentUser));
+  const [pgdDataLoadState, setPgdDataLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [activeTarget, setActiveTarget] = useState<PgdcnNavigationTarget>(() => initialDomain === 'PCN'
     ? { domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : (initialPcnSection || 'proposals') }
     : initialDomain === 'PGD' ? { domain: 'PGD', section: initialPgdDraftingOpen ? 'templates' : 'requests' } : initialDepartmentSection ? { domain: 'department', section: initialDepartmentSection } : { domain: 'department', section: 'department-dashboard' });
@@ -188,11 +189,25 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
   }, [pgd.reset, pcn.reset, setCurrentUser]);
 
   const scopes = getScopes(currentUser?.departmentScopes);
+  const loadPgdData = useCallback(async (force = false) => {
+    if (!scopes.includes('PGD')) {
+      setPgdDataLoadState('ready');
+      return;
+    }
+    setPgdDataLoadState('loading');
+    try {
+      await pgd.load(force);
+      setPgdDataLoadState('ready');
+    } catch {
+      setPgdDataLoadState('error');
+    }
+  }, [pgd.load, scopes.join('|')]);
+
   useEffect(() => {
     if (!sessionChecked || !currentUser) return;
     if (scopes.includes('PCN')) void pcn.load().catch(() => undefined);
-    if (scopes.includes('PGD')) void pgd.load().catch(() => undefined);
-  }, [currentUser, pgd.load, pcn.load, scopes.join('|'), sessionChecked]);
+    void loadPgdData();
+  }, [currentUser, loadPgdData, pcn.load, scopes.join('|'), sessionChecked]);
 
   useEffect(() => {
     if (!sessionChecked || !currentUser) return;
@@ -499,7 +514,26 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
           </button>
         </div>
       </header>
-      <main id="pgdcn-main-content" tabIndex={-1} aria-label="Không gian làm việc PCN và PGD" className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">{content}</main>
+      <main id="pgdcn-main-content" tabIndex={-1} aria-label="Không gian làm việc PCN và PGD" className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+        {activeTarget.domain === 'PGD' && pgdDataLoadState !== 'ready' ? (
+          <section className="m-3 rounded-xl border border-blue-200 bg-white p-4 shadow-sm sm:m-5" aria-labelledby="pgd-bootstrap-state-title">
+            {pgdDataLoadState === 'loading' ? (
+              <div role="status" aria-live="polite">
+                <h1 id="pgd-bootstrap-state-title" className="text-sm font-black text-blue-950">Đang tải dữ liệu PGD</h1>
+                <p className="mt-1 text-sm leading-5 text-slate-600">Đang nạp hàng đợi hồ sơ và sổ dữ liệu. Trạng thái rỗng sẽ hiện sau khi tải xong.</p>
+              </div>
+            ) : (
+              <div role="alert" aria-live="assertive" className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h1 id="pgd-bootstrap-state-title" className="text-sm font-black text-amber-950">Không thể tải dữ liệu PGD</h1>
+                  <p className="mt-1 text-sm leading-5 text-amber-900">Sổ hồ sơ chưa được tải. Hãy thử lại trước khi kết luận hàng đợi đang rỗng.</p>
+                </div>
+                <button type="button" onClick={() => void loadPgdData(true)} className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-blue-700 px-3 py-2 text-sm font-black text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">Thử tải lại dữ liệu PGD</button>
+              </div>
+            )}
+          </section>
+        ) : content}
+      </main>
     </div>
 <PgdcnCommandPalette open={commandOpen} scopes={scopes} records={commandRecords} onClose={() => setCommandOpen(false)} onNavigate={navigate} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} />
     <span className="sr-only" aria-live="polite" aria-atomic="true">{getActiveContextLabel(activeTarget)}</span>

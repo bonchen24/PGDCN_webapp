@@ -1909,6 +1909,10 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 - **Chi tiết quy trình PGD (D09)**:
   - Bước hiện tại và hành động tiếp theo/CTA được ưu tiên ở đầu bề mặt hồ sơ. Checklist và vùng tài liệu, mẫu, lịch sử được thu gọn theo disclosure có trạng thái mở rõ ràng.
   - Không lược bỏ thông tin bắt buộc để qua bước; không đổi state machine, gate, validation hoặc quyền. CTA phản ánh đúng trạng thái cho phép/từ chối của business gate.
+- **Trạng thái nạp dữ liệu sổ PGD (D13)**:
+  - Chỉ hiển thị empty-state của hàng đợi/sổ sau khi bootstrap PGD tải thành công và trả về danh sách rỗng.
+  - Trong lúc tải, hiển thị trạng thái chờ có thể truy cập bằng assistive technology; khi tải lỗi, hiển thị cảnh báo và hành động thử lại, không diễn giải lỗi thành “không có hồ sơ”.
+  - Thử lại bằng bàn phím và cảm ứng; không thay đổi quyền, dữ liệu, luồng nghiệp vụ hoặc trạng thái hồ sơ.
 - **Chi tiết hồ sơ PCN (D10)**:
   - Số tài liệu thiếu trong tóm tắt ngữ cảnh là số toàn hồ sơ; checklist trực quan tổng cũng hiển thị số toàn hồ sơ. Khi tab “Tài liệu hồ sơ” đã mở checklist tổng, ẩn chip số toàn hồ sơ thứ hai trong tóm tắt header; vẫn giữ badge định tính, CTA bổ sung có số lượng và checklist.
   - Số ở checklist/summary của bước hiện hành là số thuộc phạm vi bước, không thay thế số toàn hồ sơ và không được hợp nhất với số tổng.

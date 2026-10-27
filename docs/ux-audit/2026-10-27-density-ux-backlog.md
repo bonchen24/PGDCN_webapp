@@ -60,17 +60,19 @@ Bao phủ 37 trạng thái màn hình đã được chụp bằng Chromium Playw
 | 36 | Nhân sự (Staff) · Tổng quan | Staff | `/pgdcn` | QA_MOCKED | 1440×1000, 390×844 | [Desktop](artifacts/staff/staff-overview-desktop-1440x1000.png), [Mobile](artifacts/staff/staff-overview-mobile-390x844.png) | Session Staff PCN+PGD; ẩn panel Cài đặt hệ thống. |
 | 37 | Nhân sự (Staff) · Hàng đợi PGD | Staff | `/pgdcn` (pgd) | QA_MOCKED | 1440×1000, 390×844 | [Desktop](artifacts/staff/staff-pgd-queue-desktop-1440x1000.png), [Mobile](artifacts/staff/staff-pgd-queue-mobile-390x844.png) | H=3, buttons=33/32. Quyền thao tác theo phân công cán bộ. |
 
-### Các khoảng trống chụp ảnh cần bổ sung (`NEEDS NEW CAPTURE`)
+### Bổ sung coverage 2026-10-28 (đã chụp)
 
-Các trạng thái sau hiện chưa có ảnh Chromium chụp trong bộ bằng chứng 2026-10-27; không được coi là đã hoàn tất kiểm chứng cho tới khi chạy bổ sung kịch bản capture:
-1. `Staff` truy cập Sổ dữ liệu PCN, Sổ mẫu PCN, Soạn thảo văn bản và Khách hàng (`NEEDS NEW CAPTURE`).
-2. `Viewer` truy cập Sổ tổng hợp PCN chế độ chỉ đọc và Chi tiết hồ sơ PCN chỉ đọc (`NEEDS NEW CAPTURE`).
-3. Màn hình Chi tiết hồ sơ PCN / PGD ở trạng thái đã hoàn tất (Hoàn thành cấp chứng chỉ / Ban hành chứng thư) hoặc đã hủy (`NEEDS NEW CAPTURE`).
-4. Trạng thái rỗng (Empty state) của Danh sách khách hàng và Sổ quản lý mẫu khi không có bản ghi (`NEEDS NEW CAPTURE`).
+Các khoảng trống chụp ảnh dưới đây đã được xác minh bằng browser thật với QA_MOCKED synthetic fixtures ở 390×844 và 1440×1000; ảnh và DOM metrics được liệt kê trong [báo cáo coverage 2026-10-28](2026-10-28-density-coverage.md):
+1. `Staff`: Sổ dữ liệu PCN, Sổ mẫu PCN, Soạn thảo văn bản và Khách hàng — đã chụp.
+2. `Viewer`: Sổ tổng hợp PCN và Chi tiết hồ sơ PCN chỉ đọc — đã chụp; mock chỉ có PCN scope, không suy rộng sang PGD.
+3. Chi tiết PCN ở `ISSUED`/`CANCELLED` và PGD ở `ARCHIVED`/`CANCELLED` — đã chụp.
+4. Empty-state Khách hàng, Sổ mẫu PCN và Sổ mẫu PGD — đã chụp.
+
+Coverage mở rộng thêm long-data cho sổ PGD, sổ mẫu PCN/PGD, soạn thảo, AI và notifications; loading/error fixtures; cùng D13 bootstrap PGD ở 320/375/390/430/768/1280/1440px.
 
 ---
 
-## 3. Danh mục 12 Điểm nghẽn Mật độ Thông tin & UX Cần Tối ưu (D01 – D12)
+## 3. Danh mục 13 Điểm nghẽn Mật độ Thông tin & UX Cần Tối ưu (D01 – D13)
 
 | Mã ID | Mức | Phân hệ & Vai trò | Triệu chứng tái hiện | Bằng chứng hình ảnh | Bằng chứng số đo DOM thực tế | Tác động người dùng | File dự kiến tác động | Tiêu chí nghiệm thu (Acceptance Criteria) | Trạng thái |
 |---|---|---|---|---|---|---|---|---|---|
@@ -86,13 +88,15 @@ Các trạng thái sau hiện chưa có ảnh Chromium chụp trong bộ bằng 
 | **D10** | **P3** | Chi tiết quy trình PCN · Admin, Staff, Viewer | Số toàn hồ sơ có thể bị lặp giữa header và checklist; checklist bước dùng phạm vi riêng. | Trước: [header](artifacts/density/next-batch/d10/before/admin-390x844.png), [header + checklist](artifacts/density/next-batch/d10/before/admin-390x844-checklist.png). Sau: [header](artifacts/density/next-batch/d10/after/admin-390x844.png), [checklist](artifacts/density/next-batch/d10/after/admin-390x844-checklist.png) | Fixture thiếu: `14` ở header = `14/14` toàn hồ sơ; checklist bước `0/5`. Có một tài liệu: `13` = `13/14`; checklist bước `1/5`. Do đó tổng bị lặp, số bước khác phạm vi. Sau sửa không còn số tổng thứ hai trong header trên tab Tài liệu. | Trước sửa, số tổng lặp gây dư thông tin; số bước vẫn cần cho quyết định tại bước hiện hành. | `components/PcnDossierDetailView.tsx` | Chỉ bỏ số tổng trùng khỏi header của tab Tài liệu; giữ badge cảnh báo, CTA bổ sung, checklist tổng và checklist bước. Không đổi workflow/RBAC. | **PASS** |
 | **D11** | **P3** | Cài đặt hệ thống · Admin | Ghép chung bảng tài khoản người dùng và bảng sao lưu dữ liệu trên cùng một màn hình dọc mobile dài, làm phân tán sự chú ý giữa 2 tác vụ quản trị khác nhau. | [system-settings-users-and-backups-mobile-390x844.png](artifacts/admin/system-settings-users-and-backups-mobile-390x844.png) | DOM: `H=4, buttons=22, fields=4, tables=2, overflow=0px, internal scroll-x=1, clip/trunc=7`. 2 bảng lớn xếp chồng dọc. | Quản trị viên khó phân tách thao tác quản trị tài khoản với khu vực sao lưu hệ thống nhạy cảm trên mobile. | `components/PgdcnSystemSettingsView.tsx` | Trên mobile (<768px), tổ chức phân tách rõ ràng bằng tab hoặc navigation con: "Quản trị nhân sự" và "Sao lưu & Dữ liệu"; bảo toàn nguyên vẹn quyền RBAC admin và chức năng backup chỉ đọc/thao tác. | **Đã tối ưu (Pass)** |
 | **D12** | **P3** | Quản trị người dùng · Admin | Form tạo nhân sự dài, chưa chia nhóm; số 19 của audit là tổng điều khiển mặt form + filter, không phải số trường form. | Trước: [390px](artifacts/density/next-batch/d12/before/admin-390x844.png). Sau: [390px](artifacts/density/next-batch/d12/after/admin-390x844.png), [1440px](artifacts/density/next-batch/d12/after/admin-1440x1000.png), [PGD + validation](artifacts/density/next-batch/d12/after/admin-390x844-permissions-open-validation.png) | Form PCN mặc định: 15 điều khiển; khi thêm PGD: 16. Toàn bề mặt là 18/19 vì có 3 filter danh sách. Form height 390px: `1045.3→445.3px`; 1440px: `595.5→373.5px`. | Nhập tài khoản trên mobile khó quét; dễ nhầm giữa thông tin định danh và phân quyền. | `components/PcnUserManagementView.tsx` | Ba nhóm “Định danh & đăng nhập”, “Quyền & phạm vi nghiệp vụ”, “Thông tin bổ sung”; giữ required, validation, RBAC và API. | **PASS** |
+| **D13** | **P2** | Sổ dữ liệu PGD · Admin, Staff | Khi `/api/pgd/bootstrap` đang chờ hoặc trả lỗi, queue vẫn báo không có hồ sơ như thể đã tải xong. | Trước: [loading 390px](artifacts/density/coverage-2026-10-28/d13-before/pgd-register-loading/admin-390x844.png), [error 390px](artifacts/density/coverage-2026-10-28/d13-before/pgd-register-error/admin-390x844.png). Sau: [error 390px](artifacts/density/coverage-2026-10-28/pgd-register-error/admin-390x844.png), [error 1440px](artifacts/density/coverage-2026-10-28/pgd-register-error/admin-1440x1000.png). | Trước: 0 trạng thái loading/error, empty-state hiện trong cả pending và HTTP 503. Sau: trạng thái chờ hoặc cảnh báo retry; empty-state bị loại trừ đến khi bootstrap thành công. Retry bằng Enter phát GET, cao 44px; overflow `0px` ở cả 7 viewport cho Admin và Staff. | Người dùng có thể tưởng mình không còn hồ sơ cần xử lý trong lúc dữ liệu chưa tải hoặc server lỗi. | `components/PgdcnAppShell.tsx` | Chỉ hiển thị empty-state sau bootstrap thành công; loading có `role=status`; lỗi có `role=alert` và hành động retry keyboard/touch. Không đổi API, workflow hoặc RBAC. | **PASS** |
 
 ---
 
 ## 4. Trạng thái xử lý
 
 - D01–D12: **đã nghiệm thu PASS** theo báo cáo [density-after](2026-10-27-density-after.md); các D01–D11 PASS trước đó được giữ nguyên trong batch tiếp theo.
+- D13 (P2): **PASS** theo [coverage report 2026-10-28](2026-10-28-density-coverage.md); loading, lỗi, empty-after-success, retry bàn phím và responsive Admin/Staff đã được kiểm tra.
 - D05 và D09 (P2): Playwright trước/sau, định lượng và role coverage nằm tại `artifacts/density/next-batch/d05/` và `d09/`.
 - D10 (P3): repro chứng minh số tổng trùng `14` / `13`, còn checklist bước có giá trị khác `0/5` / `1/5`; chỉ số lặp trong header tab Tài liệu đã được gỡ, checklist và cảnh báo nghiệp vụ vẫn giữ.
 - D12 (P3): chủ sở hữu form là `components/PcnUserManagementView.tsx`; form có 15 controls mặc định, 16 khi thêm phạm vi PGD. Số 19 là tổng 16 form controls và 3 filter ngoài form; trạng thái mô tả cũ đã được sửa.
-- Không còn item D05/D09/D10/D12 ở trạng thái Backlog, Cần repro hoặc Next Batch.
+- Không còn khoảng trống capture NEEDS NEW CAPTURE; D01–D13 đã có trạng thái và bằng chứng trong audit tương ứng.
