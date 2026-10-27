@@ -16,6 +16,8 @@ import {
   type PcnUserRow,
 } from '../../utils/pcnAuth.ts';
 import { pool, withPgTransaction } from './db.ts';
+import { getCanonicalUserKey, getUserFullName } from '../../utils/userIdentity.ts';
+import { isPcnDepartmentKpiMember } from '../../utils/activityLogKpi.ts';
 
 export const PCN_SYSTEM_ROLE_VALUES = new Set(['admin', 'staff', 'viewer']);
 export const PCN_DEPARTMENT_ROLE_VALUES = new Set([
@@ -47,7 +49,17 @@ export const PCN_USER_REFERENCE_SPECS: Array<{ collection: string; fields: strin
 ];
 
 export function sanitizePcnUserRow(row: { document_id: string; data: Record<string, any> }) {
-  const user = toPcnUserAccount({ documentId: row.document_id, data: row.data || {} });
+  const data = row.data || {};
+  const user = toPcnUserAccount({ documentId: row.document_id, data });
+  const pcnDepartmentKpiMember = isPcnDepartmentKpiMember({
+    username: getCanonicalUserKey(row.document_id, data),
+    name: getUserFullName(data, ''),
+    active: data.active !== false && data.isActive !== false,
+    departmentRoleCode: String(data.departmentRoleCode || ''),
+    managementRoleCode: String(data.managementRoleCode || ''),
+    professionalRoleCodes: Array.isArray(data.professionalRoleCodes) ? data.professionalRoleCodes.map(String) : [],
+    pgdRole: String(data.pgdRole || ''),
+  });
   return {
     id: row.document_id,
     username: user.username,
@@ -59,6 +71,7 @@ export function sanitizePcnUserRow(row: { document_id: string; data: Record<stri
     departmentRoleCode: user.departmentRoleCode,
     fieldCodes: user.fieldCodes,
     active: user.active,
+    pcnDepartmentKpiMember,
     departmentScopes: user.departmentScopes,
     ...(user.pgdRole ? { pgdRole: user.pgdRole } : {}),
     ...(user.position ? { position: user.position } : {}),

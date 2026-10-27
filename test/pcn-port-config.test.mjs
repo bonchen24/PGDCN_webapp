@@ -57,7 +57,7 @@ test('PCN uses native Windows development port 1357 and Docker production port 2
   assert.equal(packageJson.scripts?.['dev:next'], 'node ./scripts/run-next-dev.cjs');
   assert.equal(packageJson.scripts?.['start'], 'node ./scripts/run-next-start.cjs');
   assert.equal(packageJson.scripts?.['start:next'], 'node ./scripts/run-next-start.cjs');
-  assert.equal(packageJson.scripts?.['build'], 'next build');
+  assert.equal(packageJson.scripts?.['build'], 'next build --webpack');
   assert.match(nativeEnv, /PORT\s*=\s*['"]1357['"]/);
   assert.match(read('scripts/run-pcn-tsx.cjs'), /APP_PROFILE\s*=\s*['"]pcn['"]/);
 

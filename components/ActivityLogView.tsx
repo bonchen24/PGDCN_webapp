@@ -3,8 +3,8 @@
 // Description: Admin and management view for filtered, paginated, append-only system activity history
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Download, Filter, History, Loader2, RefreshCw, Search, X } from 'lucide-react';
-import { PRESET_ACCOUNTS, type ActivityLogAction, type ActivityLogDomain, type ActivityLogEntityType, type UserAccount } from '../types';
+import { AlertCircle, BookmarkPlus, Download, Filter, History, Loader2, Play, RefreshCw, Search, Trash2, X } from 'lucide-react';
+import { type ActivityLogAction, type ActivityLogDomain, type ActivityLogEntityType, type UserAccount } from '../types';
 import {
   activityActionLabels,
   activityEntityLabels,
@@ -19,6 +19,16 @@ import {
 } from '../utils/activityLogTime';
 import { getUserFullName } from '../utils/userIdentity';
 import { canOpenPgdcnActivitySource, type PgdcnActivityLog } from '../utils/pgdcnActivity';
+import { getPcnDepartmentKpiMembers } from '../utils/activityLogKpi';
+import {
+  ACTIVITY_LOG_SAVED_FILTER_LIMIT,
+  readActivityLogSavedFilters,
+  removeActivityLogSavedFilter,
+  upsertActivityLogSavedFilter,
+  writeActivityLogSavedFilters,
+  type ActivityLogFilterSnapshot,
+  type ActivityLogSavedFilter,
+} from '../utils/activityLogSavedFilters';
 import { PcnUserKpiTable } from './PcnUserKpiTable';
 
 const PAGE_SIZE = 50;
@@ -98,9 +108,14 @@ const toApiFilters = (
 
 export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: providedCurrentUser, systemUsers: providedSystemUsers }) => {
   const currentUser = providedCurrentUser || null;
+  const currentUsername = currentUser?.username ? String(currentUser.username).trim() : null;
   const systemUsers = providedSystemUsers || [];
   const [filters, setFilters] = useState<ActivityFilters>(INITIAL_FILTERS);
   const [selectedActors, setSelectedActors] = useState<string[]>([]);
+  const [savedFilters, setSavedFilters] = useState<ActivityLogSavedFilter[]>([]);
+  const [savedFilterName, setSavedFilterName] = useState('');
+  const [savedFilterStatus, setSavedFilterStatus] = useState<string | null>(null);
+  const [loadedFilterUsername, setLoadedFilterUsername] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState('');
   const [isUserFilterOpen, setIsUserFilterOpen] = useState(false);
   const [logs, setLogs] = useState<PgdcnActivityLog[]>([]);
@@ -111,6 +126,19 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
   const [error, setError] = useState<string | null>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const logRequestSequence = useRef(0);
+
+  useEffect(() => {
+    setSavedFilterName('');
+    setSavedFilterStatus(null);
+    if (!currentUsername) {
+      setSavedFilters([]);
+      setLoadedFilterUsername(null);
+      return;
+    }
+    const loaded = readActivityLogSavedFilters(currentUsername);
+    setSavedFilters(loaded);
+    setLoadedFilterUsername(currentUsername);
+  }, [currentUsername]);
 
   useEffect(() => {
     if (!selectedLog) return;
@@ -129,21 +157,31 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
   const currentDepartmentScopes = (currentUser?.departmentScopes || []).filter(scope => scope === 'PCN' || scope === 'PGD') as Array<'PCN' | 'PGD'>;
 
   const userOptions = useMemo(() => {
-    const directory = providedSystemUsers === undefined ? [...PRESET_ACCOUNTS, ...(systemUsers || [])] : systemUsers || [];
-    const merged = directory
-      .map(user => ({
-        username: String(user.username || '').trim(),
-        name: getUserFullName(user, ''),
-      }))
-      .filter(user => user.username && user.name);
-    return Array.from(new Map(merged.map(user => [user.username, user])).values())
-      .sort((left, right) => left.name.localeCompare(right.name, 'vi'));
-  }, [providedSystemUsers, systemUsers]);
+    const members = getPcnDepartmentKpiMembers(systemUsers);
+    const nameCounts = new Map<string, number>();
+    for (const member of members) {
+      const normalizedName = getUserFullName(member, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('vi-VN').trim().replace(/\s+/g, ' ');
+      nameCounts.set(normalizedName, (nameCounts.get(normalizedName) || 0) + 1);
+    }
+    return members
+      .map(member => {
+        const username = String(member.username || '').trim();
+        const name = getUserFullName(member, '');
+        const normalizedName = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('vi-VN').trim().replace(/\s+/g, ' ');
+        return {
+          username,
+          name,
+          displayName: nameCounts.get(normalizedName)! > 1 ? `${name} (${username})` : name,
+        };
+      })
+      .filter(user => user.username && user.name)
+      .sort((left, right) => left.name.localeCompare(right.name, 'vi') || left.username.localeCompare(right.username));
+  }, [systemUsers]);
 
   const filteredUserOptions = useMemo(() => {
     const query = userSearch.trim().toLowerCase();
     if (!query) return userOptions;
-    return userOptions.filter(user => user.name.toLowerCase().includes(query));
+    return userOptions.filter(user => `${user.name} ${user.username}`.toLowerCase().includes(query));
   }, [userOptions, userSearch]);
 
   const periodBounds = useMemo(
@@ -197,6 +235,48 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
 
   const updateFilter = <K extends keyof ActivityFilters>(key: K, value: ActivityFilters[K]) => {
     setFilters(previous => ({ ...previous, [key]: value }));
+  };
+
+  const saveCurrentFilter = () => {
+    if (!currentUsername || loadedFilterUsername !== currentUsername) return;
+    const snapshot: ActivityLogFilterSnapshot = {
+      domain: filters.domain,
+      search: filters.search,
+      action: filters.action,
+      entityType: filters.entityType,
+      period: filters.period,
+      selectedActors: [...selectedActors],
+    };
+    const next = upsertActivityLogSavedFilter(savedFilters, savedFilterName, snapshot);
+    if (!writeActivityLogSavedFilters(currentUsername, next)) {
+      setSavedFilterStatus('Không thể lưu bộ lọc trên trình duyệt này.');
+      return;
+    }
+    setSavedFilters(next);
+    setSavedFilterName('');
+    setSavedFilterStatus('Đã lưu bộ lọc.');
+  };
+
+  const applySavedFilter = (preset: ActivityLogSavedFilter) => {
+    setFilters({
+      domain: preset.snapshot.domain,
+      search: preset.snapshot.search,
+      action: preset.snapshot.action,
+      entityType: preset.snapshot.entityType,
+      period: preset.snapshot.period,
+    });
+    setSelectedActors([...preset.snapshot.selectedActors]);
+  };
+
+  const deleteSavedFilter = (id: string) => {
+    if (!currentUsername || loadedFilterUsername !== currentUsername) return;
+    const next = removeActivityLogSavedFilter(savedFilters, id);
+    if (!writeActivityLogSavedFilters(currentUsername, next)) {
+      setSavedFilterStatus('Không thể lưu bộ lọc trên trình duyệt này.');
+      return;
+    }
+    setSavedFilters(next);
+    setSavedFilterStatus('Đã xóa bộ lọc.');
   };
 
   const resetFilters = () => {
@@ -302,12 +382,13 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
                     <input aria-label="Tìm người dùng trong nhật ký" value={userSearch} onChange={event => setUserSearch(event.target.value)} className="min-h-9 min-w-0 flex-1 rounded-lg border border-slate-200 px-2 text-xs outline-none focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1" />
                     <button type="button" onClick={() => setSelectedActors([])} className="whitespace-nowrap rounded-lg border border-slate-200 px-2 text-[11px] font-black uppercase text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">Bỏ chọn tất cả</button>
                   </div>
+                  <p className="mt-1.5 text-[10px] font-medium text-slate-500">KPI để trống lựa chọn sẽ tính toàn bộ nhân sự thuộc phòng.</p>
                   <button type="button" onClick={() => setSelectedActors(userOptions.map(user => user.username))} className="mt-1.5 text-[11px] font-black uppercase text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">Chọn tất cả</button>
                   <div className="mt-1.5 max-h-48 space-y-0.5 overflow-y-auto border-t border-slate-100 pt-1.5">
                     {filteredUserOptions.map(user => (
                       <label key={user.username} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-emerald-50">
                         <input type="checkbox" checked={selectedActors.includes(user.username)} onChange={() => toggleActor(user.username)} className="h-4 w-4 accent-emerald-600" />
-                        <span className="min-w-0 truncate text-xs font-semibold text-slate-700">{user.name}</span>
+                        <span className="min-w-0 truncate text-xs font-semibold text-slate-700" title={`${user.name} · ${user.username}`}>{user.displayName}</span>
                       </label>
                     ))}
                   </div>
@@ -338,6 +419,71 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
               <Filter size={14} aria-hidden="true" /> Xóa lọc
             </button>
           </div>
+          {currentUsername && loadedFilterUsername === currentUsername && (
+            <div data-testid="activity-log-saved-filters" className={`${isFiltersOpen ? 'block' : 'hidden'} mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label htmlFor="activity-log-saved-filter-name" className="text-[10px] font-black uppercase tracking-wide text-slate-600">
+                  Bộ lọc đã lưu
+                </label>
+                <span className="text-[10px] font-bold text-slate-400">
+                  {savedFilters.length}/{ACTIVITY_LOG_SAVED_FILTER_LIMIT}
+                </span>
+              </div>
+              {savedFilters.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {savedFilters.map(filter => (
+                    <span key={filter.id} className="inline-flex min-h-9 items-center overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => applySavedFilter(filter)}
+                        className="mobile-touch-target inline-flex min-h-9 items-center gap-1.5 px-2.5 text-[11px] font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500"
+                        title={`Áp dụng bộ lọc: ${filter.name}`}
+                      >
+                        <Play size={11} aria-hidden="true" /> {filter.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteSavedFilter(filter.id)}
+                        aria-label={`Xóa bộ lọc đã lưu ${filter.name}`}
+                        className="mobile-touch-target inline-flex min-h-9 min-w-9 items-center justify-center border-l border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-rose-500"
+                        title={`Xóa bộ lọc: ${filter.name}`}
+                      >
+                        <Trash2 size={12} aria-hidden="true" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="mt-2 flex min-w-0 flex-col gap-2 sm:flex-row">
+                <input
+                  id="activity-log-saved-filter-name"
+                  aria-label="Tên bộ lọc đã lưu nhật ký hoạt động"
+                  value={savedFilterName}
+                  onChange={event => {
+                    setSavedFilterName(event.target.value);
+                    setSavedFilterStatus(null);
+                  }}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      saveCurrentFilter();
+                    }
+                  }}
+                  placeholder="Ví dụ: Giám định tuần này"
+                  className="min-h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                />
+                <button
+                  type="button"
+                  disabled={!savedFilterName.trim()}
+                  onClick={saveCurrentFilter}
+                  className="mobile-touch-target inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-[11px] font-black uppercase text-white shadow-2xs hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                >
+                  <BookmarkPlus size={13} aria-hidden="true" /> Lưu bộ lọc
+                </button>
+              </div>
+              {savedFilterStatus && <p className="mt-2 text-[10px] font-semibold text-slate-600" role="status">{savedFilterStatus}</p>}
+            </div>
+          )}
         </div>
       </div>
 

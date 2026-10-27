@@ -255,7 +255,6 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
         productName: row.productName || 'Chưa có sản phẩm',
         brandOrGroup: [row.brand, row.model].filter(Boolean).join(' · '),
         fieldOrCatalogBadge: row.fieldCodes.join(', '),
-        sampleCountLabel: `${row.sampleQuantity || 1} mẫu`,
         ownerName: row.ownerUsername || 'Chưa phân công',
         currentStepLabel: [row.stationTitle, row.stationActionLabel].filter(Boolean).join(' · '),
         completenessPercent: row.completenessScore,

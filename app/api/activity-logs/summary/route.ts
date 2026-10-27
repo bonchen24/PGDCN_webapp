@@ -1,10 +1,19 @@
 import { NextRequest } from 'next/server';
 import { pool } from '@/lib/server/db';
-import { jsonError, jsonOk, jsonServerError } from '@/lib/server/response';
+import { getPcnSessionUser, requirePcnSession } from '@/lib/server/auth';
+import { jsonError, jsonForbidden, jsonOk, jsonServerError, jsonUnauthorized } from '@/lib/server/response';
 import {
   PGDCN_ACTIVITY_SOURCE_QUERY,
   normalizeActivityDateBound,
 } from '@/lib/server/activity-logs';
+import { getCanonicalUserKey, getUserFullName } from '@/utils/userIdentity';
+import { isActivityLogVisibleToUser } from '@/utils/activityLog';
+import {
+  getPcnDepartmentKpiMembers,
+  mergeActivityKpiRows,
+  selectPcnDepartmentKpiMembers,
+  type PcnDepartmentKpiAccount,
+} from '@/utils/activityLogKpi';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +29,15 @@ function getActivityQueryText(req: NextRequest, paramName: string): string {
 }
 
 export async function GET(req: NextRequest) {
+  const actor = getPcnSessionUser(req);
+  if (!actor) return jsonUnauthorized('Phiên PCN không còn hợp lệ.');
+  const sessionError = requirePcnSession(actor);
+  if (sessionError) return sessionError;
+  if (!isActivityLogVisibleToUser(actor)) return jsonForbidden('Bạn không có quyền xem KPI hoạt động.');
+  const hasDepartmentScope = actor.departmentScopes === undefined
+    || actor.departmentScopes.some((scope) => scope === 'PCN' || scope === 'PGD');
+  if (!hasDepartmentScope) return jsonForbidden('Tài khoản không thuộc phạm vi Phòng Giám định – Chứng nhận.');
+
   const params: any[] = [];
   const conditions = ['TRUE'];
   const addParam = (value: any): string => {
@@ -62,10 +80,33 @@ export async function GET(req: NextRequest) {
   if (to) conditions.push(`data->>'createdAt' <= ${addParam(normalizeActivityDateBound(to, true))}`);
 
   try {
+    const directoryResult = await pool.query(
+      `SELECT document_id, data FROM app_documents
+       WHERE collection_name = 'systemUsers'
+       ORDER BY document_id`,
+    );
+    const directoryAccounts: PcnDepartmentKpiAccount[] = directoryResult.rows.map((row: any) => {
+      const data = row.data || {};
+      return {
+        username: getCanonicalUserKey(row.document_id, data),
+        name: getUserFullName(data, ''),
+        active: data.active !== false && data.isActive !== false,
+        departmentRoleCode: String(data.departmentRoleCode || ''),
+        managementRoleCode: String(data.managementRoleCode || ''),
+        professionalRoleCodes: Array.isArray(data.professionalRoleCodes) ? data.professionalRoleCodes.map(String) : [],
+        pgdRole: String(data.pgdRole || ''),
+      };
+    });
+    const members = getPcnDepartmentKpiMembers(directoryAccounts);
+    const selectedMembers = selectPcnDepartmentKpiMembers(members, actors);
+    if (selectedMembers.length === 0) return jsonOk({ items: [] });
+
+    const selectedActorUsernames = selectedMembers.map((member) => member.username.trim().toLowerCase());
+    conditions.push(`lower(trim(data->>'actorUsername')) = ANY(${addParam(selectedActorUsernames)})`);
     const result = await pool.query(
       `
       SELECT
-        COALESCE(data->>'actorUsername', '') AS "actorUsername",
+        lower(trim(COALESCE(data->>'actorUsername', ''))) AS "actorUsername",
         MAX(COALESCE(data->>'actorName', 'Hệ thống')) AS "actorName",
         COUNT(*)::int AS "totalActions",
         COUNT(DISTINCT CASE WHEN ${proposalCreatedPredicate} AND data->>'action' = 'CREATED' THEN NULLIF(data->>'entityId', '') END)::int AS "requestsCreated",
@@ -81,11 +122,11 @@ export async function GET(req: NextRequest) {
         MAX(data->>'createdAt') AS "lastActivityAt"
       FROM (${PGDCN_ACTIVITY_SOURCE_QUERY}) AS activity_source
       WHERE ${conditions.join(' AND ')}
-      GROUP BY data->>'actorUsername'
+      GROUP BY lower(trim(COALESCE(data->>'actorUsername', '')))
       ORDER BY COUNT(*) DESC, MAX(COALESCE(data->>'actorName', 'Hệ thống')) ASC`,
       params
     );
-    return jsonOk({ items: result.rows });
+    return jsonOk({ items: mergeActivityKpiRows(selectedMembers, result.rows) });
   } catch (error: any) {
     console.error('PostgreSQL activity KPI summary error:', error);
     return jsonServerError(error?.message || String(error));

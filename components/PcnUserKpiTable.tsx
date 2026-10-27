@@ -83,10 +83,16 @@ export const PcnUserKpiTable: React.FC<PcnUserKpiTableProps> = ({
     if (canView) void loadKpiSummary();
   }, [canView, loadKpiSummary]);
 
-  const visibleKpiRows = useMemo(
-    () => selectActivityKpiRows(kpiRows, actorFilter, kpiDisplayLimit),
-    [actorFilter, kpiDisplayLimit, kpiRows],
+  const filteredKpiRows = useMemo(
+    () => selectActivityKpiRows(kpiRows, actorFilter, 0),
+    [actorFilter, kpiRows],
   );
+  const visibleKpiRows = useMemo(
+    () => !kpiDisplayLimit || kpiDisplayLimit < 1 ? filteredKpiRows : filteredKpiRows.slice(0, kpiDisplayLimit),
+    [filteredKpiRows, kpiDisplayLimit],
+  );
+  const selectedKpiMemberCount = filteredKpiRows.length;
+  const hasNoActivityInPeriod = visibleKpiRows.length > 0 && visibleKpiRows.every(row => row.totalActions <= 0);
   const selectedKpiRow = visibleKpiRows.find(row => row.actorUsername === selectedKpiActor) || visibleKpiRows[0] || null;
 
   if (!canView) return null;
@@ -121,7 +127,12 @@ export const PcnUserKpiTable: React.FC<PcnUserKpiTableProps> = ({
       {kpiLoading && kpiRows.length === 0 ? (
         <div className="flex h-28 items-center justify-center gap-2 text-[10px] font-bold text-slate-400"><Loader2 className="animate-spin" size={16} /> Đang tải KPI...</div>
       ) : visibleKpiRows.length === 0 ? (
-        <div className="flex h-28 items-center justify-center text-[10px] font-bold text-slate-400">Chưa có KPI trong kỳ đã chọn.</div>
+        <div className="flex h-28 items-center justify-center text-center text-[10px] font-bold text-slate-400">{actorFilter.length === 0 ? 'Chưa có nhân viên thuộc phòng.' : 'Không có nhân viên phù hợp với bộ lọc.'}</div>
+      ) : hasNoActivityInPeriod ? (
+        <div className="flex h-28 flex-col items-center justify-center gap-1 text-center text-[10px] font-bold text-slate-400">
+          <span>Chưa có hoạt động trong kỳ.</span>
+          <span>{selectedKpiMemberCount} nhân sự thuộc phòng trong phạm vi chọn.</span>
+        </div>
       ) : (
         <div className="mt-2 grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(230px,0.38fr)]">
           <div className="min-w-0 rounded-lg border border-slate-100 bg-slate-50 p-1.5">

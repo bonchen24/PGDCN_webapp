@@ -74,6 +74,10 @@ const statusClass: Record<PgdAssistantCriterionStatus, string> = {
 };
 const PGD_ASSISTANT_CRITERIA_TOTAL = PGD_ASSISTANT_CRITERION_ORDER.length;
 
+export function countCompletedPgdAssistantCriteria(criteria: readonly Pick<PgdAssistantCriterion, 'id'>[]): number {
+  return new Set(criteria.map((criterion) => criterion.id)).size;
+}
+
 export default function PgdcnAssistantView(props: Props) {
   const [domain, setDomain] = useState<'PCN' | 'PGD'>(props.initialDomain || 'PCN');
 
@@ -100,7 +104,6 @@ function PgdAssistantPanel(props: Props) {
   const [runErrorView, setRunErrorView] = useState<PcnAssistantErrorView>();
   const [runErrorDetail, setRunErrorDetail] = useState('');
   const [currentCriterion, setCurrentCriterion] = useState({ index: -1, title: '' });
-  const [completedCriterionCount, setCompletedCriterionCount] = useState(0);
   const [quickAnswer, setQuickAnswer] = useState('');
   const reviewRunRef = useRef(0);
   const initialRequestContextRef = useRef<string | undefined>(undefined);
@@ -119,7 +122,6 @@ function PgdAssistantPanel(props: Props) {
     setRunMessage('');
     setQuickAnswer('');
     setCurrentCriterion({ index: -1, title: '' });
-    setCompletedCriterionCount(0);
   }, []);
 
   useEffect(() => {
@@ -170,6 +172,7 @@ function PgdAssistantPanel(props: Props) {
   const selectedTimeline = useMemo(() => selectedBusinessFacts ? buildPgdBusinessTimeline(selectedBusinessFacts) : [], [selectedBusinessFacts]);
   const selectedNextAction = useMemo(() => selectedBusinessFacts ? resolvePgdEvidenceNextAction(selectedBusinessFacts) : undefined, [selectedBusinessFacts]);
   const displayedCriteria = review?.criteria || criteria;
+  const completedCriterionCount = countCompletedPgdAssistantCriteria(review?.criteria ?? criteria);
   const selectedEvidence = useMemo(() => {
     for (const criterion of displayedCriteria) {
       for (const finding of criterion.findings) {
@@ -203,20 +206,15 @@ function PgdAssistantPanel(props: Props) {
     }
     if (event.type === 'criterion_result' && event.criterion) {
       setCriteria((current) => [...current.filter((item) => item.id !== event.criterion?.id), event.criterion!].sort((left, right) => PGD_ASSISTANT_CRITERION_ORDER.indexOf(left.id) - PGD_ASSISTANT_CRITERION_ORDER.indexOf(right.id)));
-      setCompletedCriterionCount((current) => Math.max(current, Number(event.index || 0) + 1));
     }
     if (event.type === 'criterion_completed') {
-      const index = Number(event.index || 0);
-      const total = Number(event.total || PGD_ASSISTANT_CRITERIA_TOTAL);
-      setCompletedCriterionCount((current) => Math.max(current, index + 1));
-      setRunMessage(`Tiêu chí đã hoàn tất: ${index + 1}/${total}`);
+      setRunMessage('Đã nhận kết quả của tiêu chí vừa soát xét.');
     }
     if (event.type === 'run_completed') {
       setRunning(false);
       setViewState('completed');
       setReview(event.review);
       setSummary(event.summary || event.review?.summary);
-      setCompletedCriterionCount(PGD_ASSISTANT_CRITERIA_TOTAL);
       setRunMessage(event.message || 'Đã hoàn tất phiên hỗ trợ PGD.');
     }
     if (event.type === 'run_error') {
@@ -239,7 +237,6 @@ function PgdAssistantPanel(props: Props) {
     setRunErrorView(undefined);
     setRunErrorDetail('');
     setCurrentCriterion({ index: -1, title: '' });
-    setCompletedCriterionCount(0);
     setRunMessage('Đang chuẩn bị đọc các tệp riêng của hồ sơ PGD...');
     try {
       const response = await fetch('/api/pgd/assistant/review', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ requestId }) });
@@ -325,9 +322,9 @@ function PgdAssistantPanel(props: Props) {
         {selectedRequest && selectedSampleEvidence && <section className="mt-3 rounded-lg border border-slate-200 bg-white p-2.5" data-testid="pgd-assistant-quick-actions" aria-labelledby="pgd-assistant-quick-actions-title"><div className="flex flex-wrap items-start justify-between gap-2"><div><h3 id="pgd-assistant-quick-actions-title" className="text-[11px] font-black uppercase tracking-wide text-slate-700">Thao tác nhanh · chỉ đọc</h3><p className="mt-1 text-[11px] leading-4 text-slate-500">Dùng dữ liệu hiện có để tra cứu nhanh hoặc mở hồ sơ. Trợ lý chỉ đọc và gợi ý, không thay đổi dữ liệu.</p></div><span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">{selectedNextAction?.label || 'Đang đọc dữ liệu'}</span></div><div className="mt-2 grid gap-1.5 sm:grid-cols-2"><button type="button" onClick={() => runQuickAction('sessions')} className="mobile-touch-target min-h-11 rounded-md border border-blue-200 bg-blue-50 px-2 text-left text-[11px] font-black text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1">Tổng hợp phiên hiện trường</button><button type="button" onClick={() => runQuickAction('samples')} className="mobile-touch-target min-h-11 rounded-md border border-amber-200 bg-amber-50 px-2 text-left text-[11px] font-black text-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1">Còn mẫu chưa lấy?</button><button type="button" onClick={() => runQuickAction('results')} className="mobile-touch-target min-h-11 rounded-md border border-violet-200 bg-violet-50 px-2 text-left text-[11px] font-black text-violet-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1">Còn KQTN chưa về?</button><button type="button" onClick={() => runQuickAction('summary')} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-slate-50 px-2 text-left text-[11px] font-black text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1">Tóm tắt vụ giám định</button><button type="button" onClick={() => runQuickAction('report')} className="mobile-touch-target min-h-11 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-left text-[11px] font-black text-emerald-800 sm:col-span-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1">Mở hồ sơ PGD</button></div>{quickAnswer && <p className="mt-2 rounded-md border border-blue-100 bg-blue-50/60 p-2 text-[11px] leading-4 text-blue-950" role="status" aria-live="polite">{quickAnswer}</p>}</section>}        <div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" onClick={() => void startReview()} disabled={!selectedRequestId || running} className="mobile-touch-target min-h-11 inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-[11px] font-black text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"><Play size={13} /> {running ? 'Đang soát xét...' : 'Bắt đầu soát xét hồ sơ'}</button>{selectedRequest && <span className="text-[11px] text-slate-500">Đã chọn: <strong>{selectedRequest.requestCode}</strong>. Phiên chỉ đọc.</span>}</div>
       </section>
       <section className="min-w-0 space-y-3">
-        {viewState === 'running' && <div className="rounded-lg border border-blue-200 bg-white p-3" role="status" aria-live="polite"><div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-blue-800"><span>{currentCriterion.title ? `Đang soát xét tiêu chí ${currentCriterion.index + 1}/${PGD_ASSISTANT_CRITERIA_TOTAL}: ${currentCriterion.title}` : 'Đang chuẩn bị đọc bằng chứng...'}</span><span>Tiêu chí đã hoàn tất: {completedCriterionCount}/{PGD_ASSISTANT_CRITERIA_TOTAL}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-blue-100"><div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${Math.min(100, (completedCriterionCount / PGD_ASSISTANT_CRITERIA_TOTAL) * 100)}%` }} /></div></div>}
+        {viewState === 'running' && <div className="rounded-lg border border-blue-300 bg-white p-3" role="status" aria-live="polite"><div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 text-sm font-bold text-blue-950"><span>{currentCriterion.title ? `Đang soát xét tiêu chí ${currentCriterion.index + 1}/${PGD_ASSISTANT_CRITERIA_TOTAL}: ${currentCriterion.title}` : 'Đang chuẩn bị đọc bằng chứng...'}</span><span className="font-black text-slate-950">Tiêu chí đã hoàn tất: {completedCriterionCount}/{PGD_ASSISTANT_CRITERIA_TOTAL}</span></div><div role="progressbar" aria-label="Tiến độ soát xét PGD" aria-valuemin={0} aria-valuemax={PGD_ASSISTANT_CRITERIA_TOTAL} aria-valuenow={completedCriterionCount} aria-valuetext={`${completedCriterionCount} trên ${PGD_ASSISTANT_CRITERIA_TOTAL} tiêu chí đã hoàn tất`} className="mt-3 h-3 overflow-hidden rounded-full bg-blue-100"><div className="h-full rounded-full bg-blue-700 transition-all" style={{ width: `${Math.min(100, (completedCriterionCount / PGD_ASSISTANT_CRITERIA_TOTAL) * 100)}%` }} /></div></div>}
         {runErrorView && <div className="flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-[11px] leading-4 text-rose-900" role="alert" aria-live="assertive"><FileWarning size={17} className="mt-0.5 shrink-0 text-rose-600" /><div className="min-w-0 flex-1"><h2 className="font-black">{runErrorView.title}</h2><p className="mt-1 font-bold text-rose-800">{runErrorView.action}</p>{runErrorDetail && <details className="mt-2 text-[11px] text-rose-700"><summary className="cursor-pointer font-bold">Chi tiết phiên</summary><p className="mt-1 break-words">{runErrorDetail}</p></details>}<div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => props.onOpenPgd(selectedRequestId)} disabled={!selectedRequest} className="mobile-touch-target inline-flex min-h-11 items-center rounded-md border border-rose-200 bg-white px-2.5 py-1.5 font-black text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50">Mở hồ sơ</button><button type="button" onClick={openSelectedFile} disabled={!selectedEvidence} className="mobile-touch-target inline-flex min-h-11 items-center rounded-md border border-rose-200 bg-white px-2.5 py-1.5 font-black text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50">Mở tệp</button><button type="button" onClick={() => void startReview()} disabled={!selectedRequestId || running} className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-md bg-rose-600 px-2.5 py-1.5 font-black text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"><RefreshCw size={12} /> Thử lại</button></div></div></div>}
-        {runMessage && viewState !== 'error' && <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] text-blue-800" role="status" aria-live="polite">{running && <Loader2 size={13} className="animate-spin" />}{runMessage}</div>}
+        {runMessage && viewState !== 'error' && <div className="flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-950" role="status" aria-live="polite">{running && <Loader2 size={13} className="animate-spin" />}{runMessage}</div>}
         {(review || criteria.length > 0) ? <><div className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><div className="min-w-0"><p className="text-[11px] font-black uppercase tracking-wide text-blue-600">Phiên hỗ trợ PGD · 11 tiêu chí</p><h3 className="mt-1 truncate text-sm font-black text-slate-900">{selectedRequest?.requestCode}</h3></div><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2 py-1 text-[11px] font-black ${viewState === 'completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>{viewState === 'completed' ? 'Đã hoàn tất' : 'Đang cập nhật'}</span><button type="button" onClick={() => props.onOpenPgd(selectedRequestId)} className="mobile-touch-target rounded-lg border border-blue-200 px-3 py-2 text-[11px] font-black text-blue-700 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1">Mở hồ sơ PGD</button></div></div>{summary && viewState === 'completed' && <div className="grid grid-cols-2 gap-2 md:grid-cols-5"><SummaryCell label="Đạt" value={summary.pass} tone="text-emerald-700 bg-emerald-50" /><SummaryCell label="Cảnh báo" value={summary.warning} tone="text-amber-700 bg-amber-50" /><SummaryCell label="Lỗi" value={summary.error} tone="text-rose-700 bg-rose-50" /><SummaryCell label="Chưa đủ căn cứ" value={summary.notEvaluable} tone="text-slate-700 bg-slate-100" /><div className="rounded-lg border border-indigo-200 bg-indigo-50 p-2"><div className="text-[11px] font-bold text-indigo-600">Gợi ý tổng hợp</div><div className="mt-1 text-[11px] font-black text-indigo-900">{summary.conclusion}</div></div></div>}<div className="space-y-2">{displayedCriteria.map((item) => <PgdCriterionCard key={item.id} criterion={item} onOpenEvidence={openEvidence} />)}</div></> : <div className="flex min-h-64 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-[11px] text-slate-500">Chọn một PYC PGD, sau đó bấm “Bắt đầu soát xét hồ sơ”. AI sẽ đọc và đối chiếu lần lượt 11 tiêu chí, nêu điểm cần sửa và dẫn chứng.</div>}
       </section>
     </div>

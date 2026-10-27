@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import PgdcnDossierTemplateManagementView from '../components/PgdcnDossierTemplateManagementView.tsx';
 
 const sidebar = readFileSync(new URL('../components/PgdcnSidebar.tsx', import.meta.url), 'utf8');
 const shell = readFileSync(new URL('../components/PgdcnAppShell.tsx', import.meta.url), 'utf8');
@@ -51,4 +54,47 @@ test('settings no longer renders raw JSON workflow editor as the primary surface
   assert.doesNotMatch(settings, /topologyJson|Nodes và transitions \(JSON\)/);
   assert.match(settings, /Cài đặt hệ thống/);
   assert.match(settings, /PcnUserManagementView/);
+});
+
+test('template cards render Xem trước button and management wires saved-model adapters', () => {
+  assert.match(management, /toPcnDossierTemplateEditorModel/);
+  assert.match(management, /toPgdDossierTemplateEditorModel/);
+  assert.match(management, /PgdcnDossierTemplatePreview/);
+  assert.match(management, /pgdcn-dossier-template-preview-surface/);
+
+  const dummyUser: any = {
+    username: 'admin',
+    role: 'admin',
+    departmentScopes: ['PCN', 'PGD'],
+  };
+  const dummyTemplate: any = {
+    id: 'pcn-template-1',
+    code: 'PCN-QC4-01',
+    name: 'Quy trình mẫu QC4',
+    version: 1,
+    status: 'PUBLISHED',
+    appliesTo: { fieldCodes: ['QC4'], methods: [] },
+    nodes: [],
+    transitions: [],
+  };
+  const markup = renderToStaticMarkup(
+    createElement(PgdcnDossierTemplateManagementView, {
+      currentUser: dummyUser,
+      pcnTemplates: [dummyTemplate],
+      pcnRequirements: [],
+      pgdTemplates: [],
+      pgdRequirements: [],
+      onCreatePcnWorkflowTemplate: async () => dummyTemplate,
+      onUpdatePcnWorkflowTemplate: async () => dummyTemplate,
+      onCreatePcnWorkflowRevision: async () => dummyTemplate,
+      onPublishPcnWorkflowTemplate: async () => dummyTemplate,
+      onRetirePcnWorkflowTemplate: async () => dummyTemplate,
+      onCreatePgdWorkflowTemplate: async () => dummyTemplate,
+      onUpdatePgdWorkflowTemplate: async () => dummyTemplate,
+      onCreatePgdWorkflowRevision: async () => dummyTemplate,
+      onPublishPgdWorkflowTemplate: async () => dummyTemplate,
+      onRetirePgdWorkflowTemplate: async () => dummyTemplate,
+    }),
+  );
+  assert.match(markup, />Xem trước<\/button>/);
 });

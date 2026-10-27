@@ -169,19 +169,19 @@ export function PgdcnDossierQuickActions({
   return (
     <div
       data-testid="dossier-quick-actions"
-      className="request-card-action-group flex w-full flex-wrap items-center justify-end gap-0.5 md:w-auto shrink-0 bg-white p-0.5 rounded-lg border border-slate-100 shadow-xs"
+      className="request-card-action-group flex w-full flex-wrap items-center justify-end gap-1 md:w-auto shrink-0 bg-white p-1 rounded-xl border border-slate-200/80 shadow-xs"
       onClick={(e) => e.stopPropagation()}
     >
       {actions.map((act) => {
         const Icon = act.icon;
         const colorClasses =
           act.tone === 'primary'
-            ? 'text-blue-600 hover:bg-blue-600 hover:text-white'
+            ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white hover:border-blue-600'
             : act.tone === 'danger'
-            ? 'text-rose-500 hover:bg-rose-600 hover:text-white'
+            ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white hover:border-rose-600'
             : act.tone === 'warning'
-            ? 'text-amber-600 hover:bg-amber-600 hover:text-white'
-            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800';
+            ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white hover:border-amber-600'
+            : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-200 hover:text-slate-900 hover:border-slate-300';
 
         return (
           <button
@@ -194,9 +194,9 @@ export function PgdcnDossierQuickActions({
             }}
             title={act.label}
             aria-label={act.label}
-            className={`inline-flex min-h-11 min-w-11 md:min-h-0 md:min-w-0 md:h-5.5 md:w-5.5 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none ${colorClasses}`}
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${colorClasses}`}
           >
-            <Icon size={11} strokeWidth={2.2} />
+            <Icon size={16} strokeWidth={2.2} />
           </button>
         );
       })}
@@ -210,9 +210,9 @@ export function PgdcnDossierQuickActions({
           }}
           title="Sao chép mã hồ sơ"
           aria-label="Sao chép mã hồ sơ"
-          className="inline-flex min-h-11 min-w-11 md:min-h-0 md:min-w-0 md:h-5.5 md:w-5.5 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-200 hover:text-slate-900 hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 transition-colors cursor-pointer"
         >
-          <Copy size={11} strokeWidth={2} />
+          <Copy size={16} strokeWidth={2} />
         </button>
       )}
 
@@ -225,15 +225,15 @@ export function PgdcnDossierQuickActions({
           }}
           title="Mở hồ sơ chi tiết"
           aria-label="Mở hồ sơ chi tiết"
-          className="inline-flex min-h-11 min-w-11 md:min-h-0 md:min-w-0 md:h-5.5 md:w-5.5 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white hover:border-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 transition-colors cursor-pointer"
         >
-          <ExternalLink size={11} strokeWidth={2} />
+          <ExternalLink size={16} strokeWidth={2} />
         </button>
       )}
 
       {onToggleExpand && (
         <>
-          <div className="w-px h-3 bg-slate-200 mx-0.5" />
+          <div className="w-px h-5 bg-slate-200 mx-0.5" />
           <button
             type="button"
             onClick={(e) => {
@@ -242,9 +242,9 @@ export function PgdcnDossierQuickActions({
             }}
             title={isExpanded ? 'Thu gọn' : 'Mở rộng tại chỗ'}
             aria-label={isExpanded ? 'Thu gọn' : 'Mở rộng tại chỗ'}
-            className="inline-flex min-h-11 min-w-11 md:min-h-0 md:min-w-0 md:h-5.5 md:w-5.5 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-200 hover:text-slate-900 hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 transition-colors cursor-pointer"
           >
-            {isExpanded ? <ChevronUp size={11} strokeWidth={2.5} /> : <ChevronDown size={11} strokeWidth={2.5} />}
+            {isExpanded ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
           </button>
         </>
       )}
@@ -285,14 +285,14 @@ export function PgdcnDossierCardHeader({
   const deadlineDisplay = item.deadlineDisplay || item.targetDate;
 
   return (
-    <div className="grid grid-cols-1 gap-2 md:grid-cols-4 md:items-center md:gap-x-4 md:gap-y-2">
+    <div className="grid grid-cols-1 gap-1 md:grid-cols-4 md:items-center md:gap-x-3 md:gap-y-1">
       {/* ================================================================== */}
       {/* ZONE 1: HEADER (Primary Code, Status Badge, Tags, Quick Actions)   */}
       {/* ================================================================== */}
-      <div data-testid="dossier-header-zone" className="flex flex-wrap items-start gap-2 md:col-span-4 md:items-center">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-          {/* Icon box compact 24px */}
-          <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 shadow-xs bg-gradient-to-br from-slate-50 to-white text-slate-500 border border-slate-100">
+      <div data-testid="dossier-header-zone" className="flex flex-wrap items-start gap-x-2 gap-y-1 md:col-span-4 md:items-center">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+          {/* Icon box compact 20px */}
+          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-slate-100 bg-slate-50 text-slate-500 shadow-xs">
             {item.domain === 'PCN' ? (
               <Layers size={11} strokeWidth={2.2} className="text-amber-600" />
             ) : (
@@ -301,7 +301,7 @@ export function PgdcnDossierCardHeader({
           </div>
 
           {/* Primary Dossier Code */}
-          <h3 className="min-w-0 break-words text-xs font-black leading-tight tracking-wide text-slate-900 uppercase md:text-sm">
+          <h3 className="min-w-0 break-words text-xs font-black leading-tight tracking-wide text-slate-900 uppercase">
             <HighlightText text={item.primaryCode} search={searchQuery} />
           </h3>
 
@@ -354,56 +354,53 @@ export function PgdcnDossierCardHeader({
       {/* ================================================================== */}
       {/* ZONE 2: PRIMARY METADATA (Customer, Product, Brand, Assignee)      */}
       {/* ================================================================== */}
-      <div data-testid="dossier-metadata-zone" className="mt-0.5 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 md:col-span-3 md:row-start-2 md:mt-0 lg:grid-cols-4">
+      <div data-testid="dossier-metadata-zone" className="mt-0 grid min-w-0 grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2 md:col-span-4 md:row-start-2">
         {/* Customer Name */}
-        <div className="min-w-0">
-          <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wide text-slate-500">Khách hàng</span>
-          <p className="break-words text-[11px] font-bold leading-snug text-slate-900 md:text-xs" title={item.customerName || 'Chưa gắn khách hàng'}>
+        <p className="min-w-0 break-words text-[10px] leading-4 text-slate-700">
+          <span className="mr-1 font-semibold text-slate-500">Khách hàng:</span>
+          <span className="font-bold text-slate-900" title={item.customerName || 'Chưa gắn khách hàng'}>
             <HighlightText text={item.customerName || 'Chưa gắn khách hàng'} search={searchQuery} />
-          </p>
-        </div>
+          </span>
+        </p>
 
         {/* Product / Object / Subject */}
-        <div className="min-w-0">
-          <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wide text-slate-500">Đối tượng</span>
-          <p className="break-words text-[11px] font-medium leading-snug text-slate-700 md:text-xs" title={item.productName || 'Chưa có đối tượng'}>
+        <p className="min-w-0 break-words text-[10px] leading-4 text-slate-700">
+          <span className="mr-1 font-semibold text-slate-500">Đối tượng:</span>
+          <span className="font-medium text-slate-700" title={item.productName || 'Chưa có đối tượng'}>
             <HighlightText text={item.productName || 'Chưa có đối tượng'} search={searchQuery} />
-          </p>
-        </div>
+          </span>
+        </p>
 
-        <div className="min-w-0">
-          <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wide text-slate-500">Bước nghiệp vụ</span>
-          <p className="break-words text-[11px] font-medium leading-snug text-slate-700 md:text-xs" title={item.currentStepLabel || 'Chưa có dữ liệu'}>
+        <p className="min-w-0 break-words text-[10px] leading-4 text-slate-700" title={item.currentStepLabel || 'Chưa có dữ liệu'}>
+          <span className="mr-1 font-semibold text-slate-500">Bước nghiệp vụ:</span>
+          <span className="font-medium text-slate-700">
             {item.currentStepLabel || 'Chưa có dữ liệu'}
-          </p>
-        </div>
+          </span>
+        </p>
 
-        <div className="min-w-0">
-          <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wide text-slate-500">Người phụ trách</span>
-          <p className="flex min-w-0 items-start gap-1 break-words text-[11px] font-medium leading-snug text-slate-700 md:text-xs" title={item.ownerName || 'Chưa có dữ liệu'}>
-            <User size={12} className="mt-0.5 shrink-0 text-slate-400" aria-hidden="true" />
-            <span className="min-w-0 break-words">{item.ownerName || 'Chưa có dữ liệu'}</span>
-          </p>
-        </div>
+        <p className="min-w-0 break-words text-[10px] leading-4 text-slate-700" title={item.ownerName || 'Chưa có dữ liệu'}>
+          <span className="mr-1 font-semibold text-slate-500">Người phụ trách:</span>
+          <span className="font-medium text-slate-700">{item.ownerName || 'Chưa có dữ liệu'}</span>
+        </p>
       </div>
 
       {/* ================================================================== */}
       {/* ZONE 3: PROGRESS (Thin 1-line progress bar like DDT)               */}
       {/* ================================================================== */}
-      <div data-testid="dossier-progress-zone" className="mt-1 min-w-0 space-y-1.5 md:col-start-4 md:row-start-2 md:mt-0">
-        <div className="flex min-w-0 items-start justify-between gap-2">
-          <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-slate-500">Hạn hoàn tất</span>
-          <span className="min-w-0 break-words text-right text-[10px] font-bold text-blue-800 md:text-[11px]">
-            {deadlineDisplay || 'Chưa có dữ liệu'}
-          </span>
-        </div>
-        <div className="flex min-w-0 items-center gap-2">
+      <div data-testid="dossier-progress-zone" className="mt-0 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 md:col-span-4 md:row-start-3">
+        <span className="shrink-0 text-[10px] leading-4 text-slate-700">
+          <span className="font-semibold text-slate-500">Hạn:</span>{' '}
+          <span className="font-bold text-blue-800" title="Hạn hoàn tất">{deadlineDisplay || 'Chưa có dữ liệu'}</span>
+        </span>
+        <div className="flex min-w-32 flex-1 items-center gap-2">
           <div
             className="h-1 min-w-8 flex-1 overflow-hidden rounded-full bg-slate-100"
             role="progressbar"
-            aria-valuenow={item.completenessPercent}
+            aria-label="Tiến độ hoàn tất hồ sơ"
+            aria-valuenow={Math.min(100, Math.max(0, item.completenessPercent))}
             aria-valuemin={0}
             aria-valuemax={100}
+            aria-valuetext={`${Math.min(100, Math.max(0, item.completenessPercent))}% hoàn tất`}
           >
             <div
               className={`h-full rounded-full transition-all duration-300 ${
@@ -416,19 +413,19 @@ export function PgdcnDossierCardHeader({
               style={{ width: `${Math.min(100, Math.max(0, item.completenessPercent))}%` }}
             />
           </div>
-          <span className="shrink-0 text-[10px] font-bold text-slate-600">
+          <span className="shrink-0 text-[10px] font-bold text-slate-600" title="Mức độ hoàn tất hồ sơ">
             {item.completenessLabel || `${item.completenessPercent}%`}
           </span>
         </div>
         {typeof item.missingRequiredCount === 'number' && Number.isFinite(item.missingRequiredCount) && (
-          <span className={`inline-flex max-w-full break-words rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
+          <span title={item.missingRequiredCount > 0 ? `${item.missingRequiredCount} tài liệu bắt buộc còn thiếu` : 'Đã đủ tài liệu bắt buộc'} className={`inline-flex max-w-full break-words rounded border px-1.5 py-0.5 text-[9px] font-semibold ${
             item.missingRequiredCount > 0
               ? 'border-amber-200 bg-amber-50 text-amber-800'
               : 'border-emerald-200 bg-emerald-50 text-emerald-800'
           }`}>
             {item.missingRequiredCount > 0
-              ? `Thiếu ${item.missingRequiredCount} tài liệu bắt buộc`
-              : 'Đủ tài liệu bắt buộc'}
+              ? `Thiếu ${item.missingRequiredCount} tài liệu`
+              : 'Đủ tài liệu'}
           </span>
         )}
       </div>
@@ -437,7 +434,7 @@ export function PgdcnDossierCardHeader({
       {/* ZONE 4: BUSINESS BADGES (Compact row of actual domain data)        */}
       {/* ================================================================== */}
       {(item.brandOrGroup || (item.businessBadges && item.businessBadges.length > 0)) && (
-        <div data-testid="dossier-business-badges" className="mt-0.5 flex flex-wrap items-center gap-1.5 md:col-span-4 md:row-start-3 md:mt-0">
+        <div data-testid="dossier-business-badges" className="mt-0 flex flex-wrap items-center gap-1 md:col-span-4 md:row-start-4">
           {item.brandOrGroup && (
             <span className="rounded border border-amber-200/80 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
               {item.brandOrGroup}
@@ -458,7 +455,7 @@ export function PgdcnDossierCardHeader({
             return (
               <span
                 key={badge.id}
-                className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase shadow-2xs ${toneClasses}`}
+                className={`rounded border px-1.5 py-0.5 text-[9px] font-semibold tracking-wide uppercase shadow-2xs ${toneClasses}`}
               >
                 {badge.label}
               </span>

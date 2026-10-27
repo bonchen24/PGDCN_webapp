@@ -56,6 +56,46 @@ test('dossier deck keeps model data readable and does not imply completeness wit
   assert.doesNotMatch(progressText, /Đủ tài liệu/);
 });
 
+test('collapsed dossier card keeps metadata on compact inline rows and names its progress bar', () => {
+  const item: PgdcnDossierItemModel = {
+    id: 'dossier-compact',
+    domain: 'PCN',
+    primaryCode: 'PCN-COMPACT-001',
+    secondaryCode: 'ĐN: DN-COMPACT-001',
+    status: 'IN_PROGRESS',
+    statusLabel: 'Đang xử lý',
+    customerName: 'Công ty Kiểm định Thiết bị Công nghiệp',
+    productName: 'Thiết bị đo công suất',
+    currentStepLabel: 'Thẩm định hồ sơ',
+    deadlineDisplay: '24/10/2026',
+    ownerName: 'Nguyễn An',
+    completenessPercent: 60,
+    completenessLabel: '60%',
+    missingRequiredCount: 2,
+    businessBadges: [{ id: 'samples', label: 'Mẫu 3/3' }],
+  };
+  const markup = renderToStaticMarkup(React.createElement(PgdcnDossierDeck, {
+    items: [item],
+    onOpenDossier: () => {},
+  }));
+  const $ = cheerio.load(markup);
+  const card = $('[data-testid="pgdcn-dossier-card"]');
+  const metadata = card.find('[data-testid="dossier-metadata-zone"]');
+  const metadataClass = metadata.attr('class') || '';
+
+  for (const label of ['Khách hàng:', 'Đối tượng:', 'Bước nghiệp vụ:', 'Người phụ trách:']) {
+    const labelElement = metadata.find('span').filter((_, span) => $(span).text().trim() === label);
+    assert.equal(labelElement.length, 1, `${label} remains visible`);
+    assert.equal(labelElement.parent().get(0)?.tagName, 'p', `${label} shares a line with its value`);
+  }
+  assert.match(metadataClass, /gap-y-1/);
+  assert.doesNotMatch(metadataClass, /lg:grid-cols-4/, 'metadata does not squeeze four labeled columns into each card');
+
+  const progress = card.find('[data-testid="dossier-progress-zone"] [role="progressbar"]');
+  assert.equal(progress.attr('aria-label'), 'Tiến độ hoàn tất hồ sơ');
+  assert.equal(progress.attr('aria-valuetext'), '60% hoàn tất');
+});
+
 test('PCN and PGD dossier queues completely eliminate large top KPI cards and display compact 1-line counters', () => {
   const pcnQueue = read('../components/PcnDossierQueueView.tsx');
   const pgdQueue = read('../components/PgdDossierQueueView.tsx');
@@ -341,7 +381,7 @@ test('no regression in Summary Grid and Dossier Detail views', () => {
 });
 
 
-test('shared dossier quick actions remain compact on desktop and meet mobile touch and focus contracts', () => {
+test('shared dossier quick actions maintain persistent >=44px touch targets and meet focus and accessibility contracts', () => {
   const deckSource = read('../components/PgdcnDossierDeck.tsx');
   const quickActions = deckSource.match(/export function PgdcnDossierQuickActions[\s\S]*?\r?\n}\r?\n/)?.[0] || '';
   const actionClasses = [...quickActions.matchAll(/className=\{`([^`]*inline-flex[^`]*)`|className="([^"]*inline-flex[^"]*)"/g)]
@@ -349,13 +389,35 @@ test('shared dossier quick actions remain compact on desktop and meet mobile tou
 
   assert.equal(actionClasses.length, 4, 'dynamic, copy, open, and expand actions should share one control contract');
   for (const className of actionClasses) {
-    assert.match(className, /min-h-11 min-w-11/);
-    assert.match(className, /md:min-h-0 md:min-w-0 md:h-5\.5 md:w-5\.5/);
-    assert.match(className, /md:min-h-0 md:min-w-0/);
-    assert.match(className, /focus-visible:ring-2/);
+    assert.match(className, /min-h-11 min-w-11/, 'all control variants retain >=44px control sizing');
+    assert.doesNotMatch(className, /md:min-h-0|md:min-w-0|md:h-|md:w-/, 'no desktop breakpoint shrinks control sizing below 44px');
+    assert.match(className, /focus-visible:ring-2/, 'focus-visible ring is present');
+    assert.match(className, /focus-visible:ring-offset-2/, 'focus-visible ring offset is present');
+    assert.match(className, /focus-visible:outline-none/, 'focus-visible outline reset is present');
   }
+
+  // Icons are legible (around 16px, not 11px)
+  assert.match(quickActions, /<Icon size=\{16\}/, 'dynamic action icon size is legible');
+  assert.match(quickActions, /<Copy size=\{16\}/, 'copy icon size is legible');
+  assert.match(quickActions, /<ExternalLink size=\{16\}/, 'open detail icon size is legible');
+  assert.match(quickActions, /<ChevronUp size=\{16\}/, 'expand icon size is legible');
+  assert.doesNotMatch(quickActions, /size=\{11\}/, 'no 11px icons in quick actions');
+
+  // Tone hierarchy and restrained base styling
+  assert.match(quickActions, /act\.tone === 'primary'/, 'primary tone handler exists');
+  assert.match(quickActions, /act\.tone === 'danger'/, 'danger tone handler exists');
+  assert.match(quickActions, /act\.tone === 'warning'/, 'warning tone handler exists');
+  assert.match(quickActions, /text-blue-700/, 'primary blue tone contrast');
+  assert.match(quickActions, /text-rose-700/, 'danger rose tone contrast');
+  assert.match(quickActions, /text-amber-700/, 'warning amber tone contrast');
+  assert.match(quickActions, /text-slate-700/, 'neutral slate tone contrast');
+
+  // Labels and accessibility behavior remain intact
   assert.match(quickActions, /aria-label=\{act\.label\}/);
   assert.match(quickActions, /title=\{act\.label\}/);
+  assert.match(quickActions, /aria-label="Sao chép mã hồ sơ"/);
+  assert.match(quickActions, /aria-label="Mở hồ sơ chi tiết"/);
+  assert.match(quickActions, /aria-label=\{isExpanded \? 'Thu gọn' : 'Mở rộng tại chỗ'\}/);
   assert.match(quickActions, /flex w-full flex-wrap items-center justify-end/);
   assert.match(deckSource, /data-testid="dossier-header-zone" className="flex flex-wrap items-start/);
 });

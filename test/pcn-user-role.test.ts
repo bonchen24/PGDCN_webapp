@@ -12,6 +12,7 @@ import * as pcnAuth from '../utils/pcnAuth.ts';
 
 const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const workspaceSource = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
+const userServiceSource = fs.readFileSync(new URL('../lib/server/users.ts', import.meta.url), 'utf8');
 
 test('PCN user snapshot keeps system role, department role and field scope separately', () => {
   const user = toPcnUserAccount({
@@ -109,6 +110,14 @@ test('PCN exposes a separate personnel management surface and never treats users
   assert.match(customerBranch, /PcnCustomersManagementView/);
   assert.doesNotMatch(customerBranch, /SystemManagementViews/);
   assert.doesNotMatch(customerBranch, /systemUsers/);
+});
+
+test('server user directory publishes KPI membership computed from explicit source role metadata', () => {
+  assert.match(userServiceSource, /const pcnDepartmentKpiMember = isPcnDepartmentKpiMember\(/);
+  assert.match(userServiceSource, /departmentRoleCode:\s*String\(data\.departmentRoleCode/);
+  assert.match(userServiceSource, /professionalRoleCodes:\s*Array\.isArray\(data\.professionalRoleCodes\)/);
+  assert.match(userServiceSource, /pgdRole:\s*String\(data\.pgdRole/);
+  assert.match(userServiceSource, /pcnDepartmentKpiMember,/);
 });
 
 // --- End of pcn-user-role.test.ts ---

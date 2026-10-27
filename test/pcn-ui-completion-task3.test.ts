@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import React from 'react';
+import * as cheerio from 'cheerio';
+import { renderToStaticMarkup } from 'react-dom/server';
+
+import { PcnCustomerContactDisplay } from '../components/PcnCustomersManagementView';
 
 const read = (path: string) => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -142,7 +147,23 @@ test('PGD intake sample and template table editors keep readable controls, feedb
 });
 
 test('customer, sample-flow, and PGD dashboard decision details remain readable', () => {
-  assert.ok(customers.includes('customer.phone && <div className="text-[11px] text-slate-600"') && customers.includes('<div className="text-[11px] text-slate-500">{customer.address'), 'customer identity details are readable');
+  const contactMarkup = cheerio.load(renderToStaticMarkup(React.createElement(PcnCustomerContactDisplay, {
+    customer: {
+      name: 'Công ty Ánh Dương',
+      address: 'Đà Nẵng',
+      phone: ' 0901234567 ',
+      email: ' anh@example.vn ',
+      contactPerson: ' Đặng Thị Ánh ',
+    },
+  })));
+  const contactLines = contactMarkup('div').first().children('div');
+  const readableContactDetails = ['SĐT: 0901234567', 'Email: anh@example.vn', 'LH: Đặng Thị Ánh'];
+  assert.equal(contactLines.length, readableContactDetails.length, 'customer contact details render as separate lines');
+  readableContactDetails.forEach((detail, index) => {
+    const line = contactLines.eq(index);
+    assert.equal(line.text(), detail, `customer contact detail renders correctly: ${detail}`);
+    assert.ok(line.attr('class')?.split(/\s+/).includes('text-[11px]'), `customer contact detail remains readable: ${detail}`);
+  });
   assert.ok(sampleFlow.includes('text-[11px] font-bold text-slate-600">{dossier?.dossierCode') && sampleFlow.includes('text-[11px] text-slate-500">{lot.brand'), 'sample identifiers and product details are readable');
   assert.ok(sampleFlow.includes('text-[11px] font-black text-slate-600">{routes.length} phép thử đã gán') && sampleFlow.includes('text-[11px] font-bold text-slate-600"><MapPin'), 'sample route count and location are readable');
   assert.ok(pgdDossierOperations.includes('text-[11px] font-black uppercase text-slate-400">Bắt buộc hiện hành'), 'dossier document metric label is readable');

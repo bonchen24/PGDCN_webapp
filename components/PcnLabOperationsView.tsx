@@ -2,7 +2,7 @@
 
 import { formatDateTimeDdMmYyyy } from '../utils/formatter';
 
-import { ClipboardList, Filter, Plus, Search, Send } from 'lucide-react';
+import { AlertTriangle, Ban, CheckCircle2, ClipboardList, Filter, FlaskConical, HelpCircle, PackageCheck, Plus, Search, Send, Clock3, type LucideIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import type {
@@ -47,6 +47,25 @@ const labTone: Record<PcnSampleLabCode, { header: string; cell: string; badge: s
 function statusLabel(value?: string): string {
   const labels: Record<string, string> = { PENDING: 'Chờ gửi', SENT: 'Đã gửi', RECEIVED: 'PTN đã nhận', RESULT_RETURNED: 'Đã trả KQ', RETURNED_TO_PCN: 'Đã trả mẫu', CLOSED: 'Đóng', ISSUE: 'Có sự cố', CANCELLED: 'Hủy' };
   return labels[String(value || '')] || value || 'Chưa có tuyến';
+}
+
+const labStatusVisuals: Record<string, { label: string; Icon: LucideIcon; tone: string }> = {
+  PENDING: { label: 'Chờ gửi', Icon: Clock3, tone: 'bg-amber-100 text-amber-800' },
+  SENT: { label: 'Đã gửi', Icon: Send, tone: 'bg-sky-100 text-sky-800' },
+  RECEIVED: { label: 'Đã nhận', Icon: FlaskConical, tone: 'bg-indigo-100 text-indigo-800' },
+  RESULT_RETURNED: { label: 'Trả KQ', Icon: CheckCircle2, tone: 'bg-emerald-100 text-emerald-800' },
+  RETURNED_TO_PCN: { label: 'Trả mẫu', Icon: PackageCheck, tone: 'bg-cyan-100 text-cyan-800' },
+  CLOSED: { label: 'Đóng', Icon: CheckCircle2, tone: 'bg-slate-100 text-slate-700' },
+  ISSUE: { label: 'Sự cố', Icon: AlertTriangle, tone: 'bg-rose-100 text-rose-800' },
+  CANCELLED: { label: 'Hủy', Icon: Ban, tone: 'bg-slate-100 text-slate-500' },
+};
+
+function labStatusPresentation(value?: string): { label: string; fullLabel: string; Icon: LucideIcon; tone: string } {
+  const fullLabel = statusLabel(value);
+  const visual = labStatusVisuals[String(value || '')];
+  return visual
+    ? { ...visual, fullLabel }
+    : { label: fullLabel, fullLabel, Icon: HelpCircle, tone: 'bg-slate-100 text-slate-700' };
 }
 
 function executionStatusLabel(value?: string): string {
@@ -148,22 +167,32 @@ function LabCell({ labCode, cell, onRetryBundleDispatch }: { labCode: PcnSampleL
   if (!cell) {
     return <td data-testid={`lab-cell-${labCode}`} className="border-l border-white bg-slate-50/40 px-3 py-2"><span className="text-[9px] text-slate-300">Không gán PTN</span></td>;
   }
+  const status = labStatusPresentation(cell.routeStatus);
+  const StatusIcon = status.Icon;
 
-  return <td data-testid={`lab-cell-${labCode}`} className={`border-l border-white px-3 py-2 ${tone.cell}`}>
-    <div className="space-y-1">
-      <div className="flex items-center justify-between gap-2">
-        <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black ${tone.badge}`}>{statusLabel(cell.routeStatus)}</span>
+  return <td data-testid={`lab-cell-${labCode}`} className={`min-w-0 border-l border-white px-3 py-2 ${tone.cell}`}>
+    <div className="min-w-0 space-y-1">
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <span title={status.fullLabel} aria-label={`Trạng thái PTN: ${status.fullLabel}`} tabIndex={0} className={`inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${status.tone}`}>
+          <StatusIcon size={11} aria-hidden="true" className="shrink-0" />
+          <span className="min-w-0 max-w-full truncate">{status.label}</span>
+        </span>
         {cell.resultOutcome && <span className="text-[9px] font-black text-emerald-700">KQ: {cell.resultOutcome}</span>}
       </div>
-      <p className="font-mono text-[10px] font-black text-slate-800">{cell.pycNumber || 'Chưa tạo PYC'}</p>
+      <p
+        title={cell.pycNumber || undefined}
+        aria-label={cell.pycNumber ? `Mã PYC: ${cell.pycNumber}` : undefined}
+        tabIndex={cell.pycNumber ? 0 : undefined}
+        className="block min-w-0 max-w-[10rem] break-all rounded-sm font-mono text-[10px] font-black text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:truncate"
+      >{cell.pycNumber || 'Chưa tạo PYC'}</p>
       {cell.labSampleCode && <p className="text-[9px] font-bold text-slate-700">Mã mẫu PTN: <span className="font-mono">{cell.labSampleCode}</span></p>}
       <details className="mt-1.5 rounded-md border border-white/70 bg-white/40 px-1.5 py-1">
         <summary className="mobile-touch-target flex min-h-8 w-full cursor-pointer list-none items-center justify-between gap-2 text-left text-[9px] font-black text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
           <span>Xem chi tiết PTN</span>
           <span className="text-[8px] font-bold text-slate-400">{cell.executionStatus ? 'Có thực thi' : 'Chưa có lịch'}</span>
         </summary>
-        <div className="mt-1 space-y-1 border-t border-slate-100 pt-1">
-          {cell.externalRequestCode && <p className="text-[9px] text-slate-600">Mã phiếu PTN: {cell.externalRequestCode}</p>}
+        <div className="mt-1 min-w-0 space-y-1 border-t border-slate-100 pt-1">
+          {cell.externalRequestCode && <p className="flex min-w-0 items-baseline gap-1 text-[9px] text-slate-600"><span className="shrink-0">Mã phiếu PTN:</span><span title={cell.externalRequestCode} aria-label={`Mã phiếu PTN: ${cell.externalRequestCode}`} tabIndex={0} className="min-w-0 max-w-[7rem] flex-1 break-all rounded-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:truncate">{cell.externalRequestCode}</span></p>}
           {cell.executionStatus && <p className="text-[9px] font-black text-indigo-700">Thực thi: {executionStatusLabel(cell.executionStatus)}{cell.executionOutcome ? ` · ${cell.executionOutcome}` : ''}</p>}
           {cell.executionScheduledDate && <p className="text-[9px] text-slate-600">Lịch thử: {displayDate(cell.executionScheduledDate)}</p>}
           {cell.executionStartedAt && <p className="text-[9px] text-slate-600">Bắt đầu: {displayDate(cell.executionStartedAt)}</p>}

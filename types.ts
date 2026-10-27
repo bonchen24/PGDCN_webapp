@@ -1552,6 +1552,8 @@ export interface UserAccount {
   /** Shared identity may be explicitly scoped to PCN, PGD, or both. */
   departmentScopes?: DepartmentScope[];
   pgdRole?: PgdDepartmentRoleCode;
+  /** Server-derived membership marker for PCN/PGD activity KPI filters. */
+  pcnDepartmentKpiMember?: boolean;
 }
 
 export interface PcnUserAccount extends UserAccount {

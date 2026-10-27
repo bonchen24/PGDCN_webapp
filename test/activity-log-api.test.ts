@@ -156,4 +156,20 @@ test('server activity routes read both domain-owned append-only collections', ()
   assert.match(serverSource, /departmentScopes/);
 });
 
+test('Next summary route authenticates and scopes every KPI actor against the server room roster', () => {
+  const summaryRoute = fs.readFileSync(new URL('../app/api/activity-logs/summary/route.ts', import.meta.url), 'utf8');
+
+  assert.match(summaryRoute, /getPcnSessionUser/);
+  assert.match(summaryRoute, /requirePcnSession/);
+  assert.match(summaryRoute, /collection_name = 'systemUsers'/);
+  assert.match(summaryRoute, /getPcnDepartmentKpiMembers/);
+  assert.match(summaryRoute, /selectPcnDepartmentKpiMembers/);
+  assert.match(summaryRoute, /data->>'actorUsername' = ANY/);
+  assert.match(summaryRoute, /mergeActivityKpiRows/);
+
+  const sessionGate = summaryRoute.indexOf('const sessionError = requirePcnSession(actor)');
+  const rosterQuery = summaryRoute.indexOf("collection_name = 'systemUsers'");
+  assert.ok(sessionGate >= 0 && rosterQuery > sessionGate, 'session authorization must run before reading the KPI roster');
+});
+
 // --- End of activity-log-api.test.ts ---

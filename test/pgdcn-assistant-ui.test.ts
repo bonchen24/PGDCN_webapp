@@ -13,3 +13,16 @@ test('shared assistant exposes PCN and PGD domain workbenches', () => {
   }
   assert.doesNotMatch(source, /Quick actions|Mở vùng soạn báo cáo|\{candidate\.status\}|text-\[9px\]/);
 });
+
+test('PGD assistant progress counts unique completed criterion results', async () => {
+  const assistant = await import('../components/PgdcnAssistantView.tsx');
+  assert.equal(typeof assistant.countCompletedPgdAssistantCriteria, 'function', 'Progress should be derived by a reusable result counter');
+  if (typeof assistant.countCompletedPgdAssistantCriteria !== 'function') return;
+
+  assert.equal(assistant.countCompletedPgdAssistantCriteria([
+    { id: 'REQUEST_IDENTITY' },
+    { id: 'PRODUCT_PROFILE' },
+    { id: 'REQUEST_IDENTITY' },
+  ]), 2);
+  assert.equal(assistant.countCompletedPgdAssistantCriteria([]), 0);
+});

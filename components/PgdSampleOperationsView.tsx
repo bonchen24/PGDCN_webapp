@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronDown, FlaskConical, Search } from 'lucide-react';
+import { ChevronDown, Copy, FlaskConical, Search } from 'lucide-react';
+import { toast } from 'sonner';
 
 import {
   getPgdStatusLabel,
@@ -37,6 +38,33 @@ const LAB_STATUS_LABELS: Record<PgdLabRequest['status'], string> = {
 };
 
 const dispositionLabel = (value: PgdSample['disposition']) => value === 'RETAINED' ? 'Lưu mẫu' : 'Gửi PTN';
+
+async function copyIdentifier(value: string, label: string) {
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('Clipboard API không khả dụng.');
+    await navigator.clipboard.writeText(value);
+    toast.success(`Đã sao chép ${label}.`);
+  } catch {
+    toast.error(`Không thể sao chép ${label}.`);
+  }
+}
+
+function CopyableIdentifier({ value, label }: { value: string; label: string }) {
+  return <div className="min-w-0 max-w-full">
+    <span className="block min-w-0 max-w-[5rem] truncate whitespace-nowrap font-mono font-black text-slate-800" title={value}>{value}</span>
+    <div className="mt-1 flex max-w-full flex-wrap items-center gap-1">
+      <button type="button" onClick={() => void copyIdentifier(value, label)} aria-label={`Sao chép ${label}: ${value}`} className="mobile-touch-target inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 text-[9px] font-bold text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+        <Copy size={11} aria-hidden="true" /><span>Sao chép</span>
+      </button>
+      <details className="min-w-0 max-w-full">
+        <summary className="mobile-touch-target inline-flex min-h-7 max-w-full cursor-pointer items-center gap-1 text-[9px] font-bold text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+          <span>Xem đầy đủ</span><span className="sr-only">{label}</span><ChevronDown size={11} aria-hidden="true" />
+        </summary>
+        <code className="mt-1 block max-w-[5rem] whitespace-normal break-all rounded bg-slate-50 p-1 font-mono text-[9px] leading-4 text-slate-700">{value}</code>
+      </details>
+    </div>
+  </div>;
+}
 
 const labStatusTone = (status?: PgdLabRequest['status'], issue?: string) => {
   if (issue || status === 'ISSUE') return 'border-rose-200 bg-rose-50 text-rose-700';
@@ -116,7 +144,24 @@ export default function PgdSampleOperationsView({ requests, samples, labRequests
       <span className="pgdcn-toolbar-count text-[10px] font-bold text-slate-400">{visibleRows.length}/{rows.length} mẫu</span>
     </div>
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="mobile-scroll-x overflow-x-auto"><table className="min-w-[1120px] w-full border-collapse text-left text-[10px]"><thead><tr className="border-b border-slate-200 bg-slate-100 text-[9px] font-black uppercase tracking-wide text-slate-500"><th className="min-w-[110px] px-3 py-2">Mã mẫu</th><th className="min-w-[190px] px-3 py-2">Loại / mô tả</th><th className="min-w-[205px] px-3 py-2">Hồ sơ / khách hàng</th><th className="min-w-[85px] px-3 py-2">Số lượng</th><th className="min-w-[100px] px-3 py-2">Phân loại</th><th className="min-w-[245px] px-3 py-2">PTN liên kết</th><th className="min-w-[110px] px-3 py-2">Trạng thái hồ sơ</th><th className="min-w-[100px] px-3 py-2">Hành động</th></tr></thead><tbody>{visibleRows.map(({ sample, request, labRequest, labResult }) => <tr key={sample.id} className="border-t border-slate-100 align-top hover:bg-slate-50/70"><td className="px-3 py-2"><p className="font-mono font-black text-slate-800">{sample.sampleCode}</p>{sample.sealNumber && <p className="mt-1 text-[9px] text-slate-500">Niêm phong: {sample.sealNumber}</p>}</td><td className="px-3 py-2"><p className="font-black text-slate-700">{sample.customLabel || sample.sampleTypeLabel || 'Mẫu PGD'}</p><p className="mt-1 line-clamp-2 text-[9px] leading-4 text-slate-500">{sample.description || 'Chưa có mô tả'}</p></td><td className="px-3 py-2"><p className="font-mono font-black text-slate-700">{request?.requestCode || '—'}</p><p className="mt-1 line-clamp-2 text-[9px] text-slate-600">{request?.customerSnapshot.name || 'Hồ sơ không còn trong sổ'}{request?.productName ? ` · ${request.productName}` : ''}</p></td><td className="px-3 py-2 font-black text-slate-700">{sample.quantity} {sample.unit || 'mẫu'}</td><td className="px-3 py-2"><span className="rounded-full border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-black text-slate-600">{dispositionLabel(sample.disposition)}</span></td><td className="px-3 py-2"><LaboratoryCell row={{ sample, request, labRequest, labResult }} /></td><td className="px-3 py-2"><span className="rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] font-black text-blue-700">{request ? getPgdStatusLabel(request.status) : 'Thiếu hồ sơ'}</span></td><td className="px-3 py-2">{request ? <button type="button" onClick={() => onOpenRequest(request.id)} className="mobile-touch-target min-h-8 rounded-md border border-blue-200 bg-white px-2 text-[9px] font-black text-blue-700 hover:bg-blue-50">Mở hồ sơ</button> : <span className="text-[9px] text-slate-400">—</span>}</td></tr>)}</tbody></table></div>
+      <div className="mobile-scroll-x overflow-x-auto">
+        <table className="min-w-[1120px] w-full border-collapse text-left text-[10px]">
+          <thead><tr className="border-b border-slate-200 bg-slate-100 text-[9px] font-black uppercase tracking-wide text-slate-500"><th className="min-w-[110px] px-3 py-2">Mã mẫu</th><th className="min-w-[190px] px-3 py-2">Loại / mô tả</th><th className="min-w-[205px] px-3 py-2">Hồ sơ / khách hàng</th><th className="min-w-[85px] px-3 py-2">Số lượng</th><th className="min-w-[100px] px-3 py-2">Phân loại</th><th className="min-w-[245px] px-3 py-2">PTN liên kết</th><th className="min-w-[110px] px-3 py-2">Trạng thái hồ sơ</th><th className="min-w-[100px] px-3 py-2">Hành động</th></tr></thead>
+          <tbody>{visibleRows.map(({ sample, request, labRequest, labResult }) => <tr key={sample.id} className="border-t border-slate-100 align-top hover:bg-slate-50/70">
+            <td className="px-3 py-2">
+              <CopyableIdentifier value={sample.sampleCode} label="mã mẫu" />
+              {sample.sealNumber && <div className="mt-2 min-w-0"><p className="mb-0.5 text-[9px] text-slate-500">Niêm phong:</p><CopyableIdentifier value={sample.sealNumber} label="mã niêm phong" /></div>}
+            </td>
+            <td className="px-3 py-2"><p className="font-black text-slate-700">{sample.customLabel || sample.sampleTypeLabel || 'Mẫu PGD'}</p><p className="mt-1 line-clamp-2 text-[9px] leading-4 text-slate-500">{sample.description || 'Chưa có mô tả'}</p></td>
+            <td className="px-3 py-2"><p className="font-mono font-black text-slate-700">{request?.requestCode || '—'}</p><p className="mt-1 line-clamp-2 text-[9px] text-slate-600">{request?.customerSnapshot.name || 'Hồ sơ không còn trong sổ'}{request?.productName ? ` · ${request.productName}` : ''}</p></td>
+            <td className="px-3 py-2 font-black text-slate-700">{sample.quantity} {sample.unit || 'mẫu'}</td>
+            <td className="px-3 py-2"><span className="rounded-full border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-black text-slate-600">{dispositionLabel(sample.disposition)}</span></td>
+            <td className="px-3 py-2"><LaboratoryCell row={{ sample, request, labRequest, labResult }} /></td>
+            <td className="px-3 py-2"><span className="rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] font-black text-blue-700">{request ? getPgdStatusLabel(request.status) : 'Thiếu hồ sơ'}</span></td>
+            <td className="px-3 py-2">{request ? <button type="button" onClick={() => onOpenRequest(request.id)} className="mobile-touch-target min-h-8 rounded-md border border-blue-200 bg-white px-2 text-[9px] font-black text-blue-700 hover:bg-blue-50">Mở hồ sơ</button> : <span className="text-[9px] text-slate-400">—</span>}</td>
+          </tr>)}</tbody>
+        </table>
+      </div>
       {visibleRows.length === 0 && <div className="border-t border-dashed border-slate-200 p-10 text-center text-[11px] text-slate-500">Chưa có mẫu PGD phù hợp.</div>}
     </section>
   </div>;

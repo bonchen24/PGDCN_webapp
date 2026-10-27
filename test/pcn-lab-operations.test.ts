@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { CertificationDossier, CertificationProposal, OutboundLabRequest, PcnSampleLabCode, PcnSampleLot, PcnSampleRoute, ReturnedTestResult } from '../types.ts';
 import { buildPcnSampleFlowProjections, filterPcnSampleFlowProjections } from '../utils/pcnLabOperations.ts';
+import PcnLabOperationsView from '../components/PcnLabOperationsView.tsx';
 
 const dossier: CertificationDossier = {
   id: 'd-1', dossierCode: 'PCN-001', proposalId: 'p-1', customerSnapshot: { name: 'Công ty A', address: 'Hà Nội' },
@@ -189,6 +192,43 @@ test('sample register exposes searchable lab filters and a separate bundle modal
   assert.match(operationsSource, /aria-label="Lọc theo phòng thử nghiệm"/);
   assert.match(operationsSource, /onSaveBundle/);
   assert.match(operationsSource, /onSendBundle/);
+});
+
+test('renders compact PTN statuses and keeps full request codes keyboard-readable', () => {
+  const pycNumber = 'PYC-2026-0123456789-ABCDEF';
+  const externalRequestCode = 'LAB-REQ-PTN-2026-ABCDEFGHIJKLMN';
+  const markup = renderToStaticMarkup(createElement(PcnLabOperationsView, {
+    dossiers: [dossier],
+    proposals: [proposal],
+    sampleLots: [lot],
+    sampleItems: [{ id: 'item-1', sampleLotId: lot.id, sampleCode: 'M-01', sampleType: 'Thiết bị', model: 'M1', quantity: 1 }],
+    sampleRoutes: [
+      { id: 'route-performance', sampleLotId: lot.id, labCode: 'PERFORMANCE', labName: 'Hiệu suất', status: 'RESULT_RETURNED', sequence: 1, sampleItemIds: ['item-1'] },
+      { id: 'route-emc', sampleLotId: lot.id, labCode: 'EMC', labName: 'Phòng thử EMC', status: 'RECEIVED', sequence: 2, sampleItemIds: ['item-1'] },
+    ],
+    labRequests: [{ ...request, pycNumber, sampleRouteId: 'route-performance', integration: { targetSystemCode: 'LAB', syncStatus: 'ACKNOWLEDGED', externalRequestCode } }],
+    sampleRequestBundles: [],
+    returnedResults: [],
+    canEdit: false,
+    onSaveBundle: async () => { throw new Error('not called'); },
+    onSendBundle: async () => { throw new Error('not called'); },
+    onRetryBundleDispatch: async () => { throw new Error('not called'); },
+    onOpenDossier: () => { throw new Error('not called'); },
+  } as never));
+
+  assert.match(markup, /Trả KQ/);
+  assert.match(markup, /Đã nhận/);
+  assert.match(markup, /aria-label="Trạng thái PTN: Đã trả KQ"/);
+  assert.match(markup, /aria-label="Trạng thái PTN: PTN đã nhận"/);
+  assert.match(markup, /<svg[^>]*aria-hidden="true"/);
+  assert.match(markup, new RegExp(`title="${pycNumber}"[^>]*tabindex="0"`));
+  assert.match(markup, new RegExp(`aria-label="Mã PYC: ${pycNumber}"`));
+  assert.match(markup, new RegExp(`title="${externalRequestCode}"[^>]*tabindex="0"`));
+  assert.match(markup, new RegExp(`aria-label="Mã phiếu PTN: ${externalRequestCode}"`));
+  assert.match(markup, /max-w-\[10rem\][^\"]*break-all[^\"]*sm:truncate/);
+  assert.match(markup, /max-w-\[7rem\][^\"]*break-all[^\"]*sm:truncate/);
+  assert.match(markup, /focus-visible:ring-2/);
+  assert.match(markup, /sm:truncate/);
 });
 
 // --- End of pcn-lab-operations.test.ts ---

@@ -10,7 +10,9 @@ test('active PCN customer screen stays focused on the operational customer list'
   assert.match(source, /Dữ liệu khách hàng PCN/);
   assert.doesNotMatch(source, /Đối soát nguồn/);
   assert.doesNotMatch(source, /inspectPcnCustomerImport|buildPcnCustomerReconciliation|pcnCustomerReconciliation/);
-  assert.doesNotMatch(source, /type=["']file["']/);
+  assert.match(source, /type=["']file["']/);
+  assert.match(source, /accept=["']\.xlsx["']/);
+  assert.match(source, /Chọn tệp Excel khách hàng/);
   assert.doesNotMatch(source, /SystemManagementViews/);
   assert.doesNotMatch(browserUtility, /node:crypto/);
 });

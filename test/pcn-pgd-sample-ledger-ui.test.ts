@@ -21,6 +21,26 @@ test('PGD exposes a dedicated sample management ledger beside the summary regist
   assert.match(ledger, /mobile-scroll-x/);
 });
 
+test('PGD sample identifiers stay compact, fully inspectable, and copyable', () => {
+  const ledger = read('../components/PgdSampleOperationsView.tsx');
+
+  assert.match(ledger, /function CopyableIdentifier/);
+  assert.match(ledger, /value=\{sample\.sampleCode\}/);
+  assert.match(ledger, /value=\{sample\.sealNumber\}/);
+  assert.match(ledger, /truncate/);
+  assert.match(ledger, /max-w-/);
+  assert.match(ledger, /<details/);
+  assert.match(ledger, /<summary/);
+  assert.match(ledger, /break-all/);
+  assert.match(ledger, /type="button"/);
+  assert.match(ledger, /Sao chép/);
+  assert.match(ledger, /aria-label=/);
+  assert.match(ledger, /focus-visible:ring/);
+  assert.match(ledger, /navigator\.clipboard\.writeText\(value\)/);
+  assert.match(ledger, /toast\.success/);
+  assert.match(ledger, /toast\.error/);
+});
+
 test('authenticated app applies the shared 10 percent type scale without zooming layout', () => {
   const css = read('../index.css');
   assert.match(css, /--app-font-scale:\s*1\.0/);

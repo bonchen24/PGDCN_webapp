@@ -21,18 +21,17 @@ import {
   SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, type MouseEvent } from 'react';
 import { toast } from 'sonner';
 
 import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
 import {
-  PgdcnDossierCard,
   PgdcnDossierCardExpanded,
   PgdcnDossierQuickActions,
+  HighlightText,
   type PgdcnDossierItemModel,
   type DossierComponentStage,
   type DossierBlockerItem,
-  type DossierQuickAction,
   type DossierBusinessBadge,
 } from './PgdcnDossierDeck';
 
@@ -106,6 +105,101 @@ export function filterPgdDossierQueueRows(
   return rows;
 }
 
+interface PgdDossierSummaryCardProps {
+  item: PgdcnDossierItemModel;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onOpenDetail: () => void;
+  searchQuery: string;
+}
+
+// PGD uses a focused summary here instead of the shared PgdcnDossierCard; PCN keeps its existing shared card.
+function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail, searchQuery }: PgdDossierSummaryCardProps) {
+  const handleCardClick = (event: MouseEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('button, a, input, select, textarea, [data-no-card-expand]')) return;
+    onToggleExpand();
+  };
+
+  const handleCopyCode = (event: MouseEvent) => {
+    event.stopPropagation();
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
+
+    void navigator.clipboard.writeText(item.primaryCode).then(
+      () => toast.success(`Đã sao chép mã ${item.primaryCode}`),
+      () => toast.error('Không thể sao chép mã hồ sơ.'),
+    );
+  };
+
+  return (
+    <article
+      data-testid="pgdcn-dossier-card"
+      onClick={handleCardClick}
+      className={`min-w-0 cursor-pointer rounded-xl border bg-white p-3 shadow-2xs transition-colors md:px-4 md:py-3 ${
+        isExpanded ? 'border-blue-300 ring-2 ring-blue-100' : 'border-slate-200 hover:border-blue-200'
+      }`}
+    >
+      <div data-testid="dossier-header-zone" className="flex min-w-0 items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <h3 className="min-w-0 break-words font-mono text-xs font-black tracking-wide text-slate-900">
+              <HighlightText text={item.primaryCode} search={searchQuery} />
+            </h3>
+            <PgdcnStatusBadge compact domain="PGD" status={item.status} label={item.statusLabel} />
+          </div>
+        </div>
+        <PgdcnDossierQuickActions
+          actions={[]}
+          isExpanded={isExpanded}
+          onToggleExpand={() => onToggleExpand()}
+          onCopyCode={handleCopyCode}
+        />
+      </div>
+
+      <div data-testid="dossier-metadata-zone" className="mt-2 grid min-w-0 grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
+        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700">
+          <span className="mr-1 font-semibold text-slate-500">Khách hàng:</span>
+          <span className="font-bold text-slate-900"><HighlightText text={item.customerName || 'Chưa có khách hàng'} search={searchQuery} /></span>
+        </p>
+        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700">
+          <span className="mr-1 font-semibold text-slate-500">Đối tượng:</span>
+          <span className="font-medium text-slate-800"><HighlightText text={item.productName || 'Chưa có đối tượng'} search={searchQuery} /></span>
+        </p>
+        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700 sm:col-span-2">
+          <span className="mr-1 font-semibold text-slate-500">Bước hiện tại:</span>
+          <span className="font-semibold text-blue-900">{item.currentStepLabel || 'Chưa có dữ liệu'}</span>
+        </p>
+      </div>
+
+      <div className="mt-2 flex justify-end">
+        <button
+          type="button"
+          onClick={onOpenDetail}
+          aria-label={`Mở hồ sơ ${item.primaryCode}`}
+          className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-md bg-blue-700 px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 md:min-h-9 md:py-1.5"
+        >
+          <FolderOpen size={13} aria-hidden="true" />
+          Mở hồ sơ
+          <ArrowRight size={12} aria-hidden="true" />
+        </button>
+      </div>
+
+      {isExpanded && (
+        <div data-testid="pgd-dossier-expanded-details" className="mt-3 space-y-3 border-t border-slate-100 pt-3" onClick={(event) => event.stopPropagation()}>
+          <section aria-label="Thông tin phân loại" className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+            <h4 className="text-[10px] font-black uppercase tracking-wide text-slate-600">Thông tin phân loại</h4>
+            <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-2 text-xs sm:grid-cols-2">
+              <div className="min-w-0"><dt className="font-semibold text-slate-500">Nhóm sản phẩm</dt><dd className="break-words font-medium text-slate-800">{item.brandOrGroup || 'Chưa xác định nhóm'}</dd></div>
+              <div className="min-w-0"><dt className="font-semibold text-slate-500">Phân loại</dt><dd className="break-words font-medium text-slate-800">{item.fieldOrCatalogBadge || 'Chưa phân loại'}</dd></div>
+            </dl>
+          </section>
+          <PgdcnDossierCardExpanded item={item} onOpenDetail={onOpenDetail} onToggleExpand={() => onToggleExpand()} />
+        </div>
+      )}
+    </article>
+  );
+}
+
 export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQueueViewProps) {
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
@@ -172,7 +266,7 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
         onClick={() => setActiveChip(chip.id)}
         aria-label={`${chip.label}, ${count} hồ sơ`}
         aria-pressed={active}
-        className={`mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 py-1 text-[11px] font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+        className={`mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 md:min-h-8 ${
           active
             ? 'bg-blue-600 text-white shadow-xs'
             : 'border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
@@ -181,7 +275,7 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
         <span>{chip.label}</span>
         <span
           aria-hidden="true"
-          className={`rounded-full px-1.5 py-0.2 text-[10px] font-black ${
+          className={`rounded-full px-1 py-0.2 text-[10px] font-black ${
             active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
           }`}
         >
@@ -451,16 +545,16 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
         </div>
 
         {/* Product group and dossier state filters stay distinct and wrap on mobile. */}
-        <div className="pgd-queue-filter-pills flex min-w-0 max-w-full flex-col gap-3 md:flex-row md:gap-6">
-          <div className="min-w-0">
-            <p id="pgd-queue-product-filter-label" className="mb-1 text-[10px] font-black uppercase tracking-wide text-slate-500">Nhóm sản phẩm PGD</p>
-            <div role="group" aria-labelledby="pgd-queue-product-filter-label" className="flex max-w-full flex-wrap items-center gap-2">
+        <div className="pgd-queue-filter-pills flex min-w-0 max-w-full flex-col gap-2 md:flex-row md:items-end md:gap-4">
+          <div className="min-w-0 md:flex-1">
+            <p id="pgd-queue-product-filter-label" className="mb-1 text-[9px] font-black uppercase tracking-wide text-slate-500">Nhóm sản phẩm PGD</p>
+            <div role="group" aria-labelledby="pgd-queue-product-filter-label" className="flex max-w-full flex-wrap items-center gap-1">
               {productGroupChips.map(renderFilterChip)}
             </div>
           </div>
-          <div className="min-w-0">
-            <p id="pgd-queue-state-filter-label" className="mb-1 text-[10px] font-black uppercase tracking-wide text-slate-500">Trạng thái / tiến độ hồ sơ</p>
-            <div role="group" aria-labelledby="pgd-queue-state-filter-label" className="flex max-w-full flex-wrap items-center gap-2">
+          <div className="min-w-0 md:flex-[1.5]">
+            <p id="pgd-queue-state-filter-label" className="mb-1 text-[9px] font-black uppercase tracking-wide text-slate-500">Trạng thái / tiến độ hồ sơ</p>
+            <div role="group" aria-labelledby="pgd-queue-state-filter-label" className="flex max-w-full flex-wrap items-center gap-1">
               {dossierStateChips.map(renderFilterChip)}
             </div>
           </div>
@@ -472,21 +566,10 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
         viewMode === 'card' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {itemModels.map((item) => {
-              const quickActions: DossierQuickAction[] = [
-                {
-                  id: 'open-detail',
-                  label: 'Mở chi tiết',
-                  icon: FolderOpen,
-                  tone: 'primary',
-                  onClick: () => onOpenDossier(item.id),
-                },
-              ];
-
               return (
-                <PgdcnDossierCard
+                <PgdDossierSummaryCard
                   key={item.id}
                   item={item}
-                  quickActions={quickActions}
                   isExpanded={expandedCardIds.has(item.id)}
                   onToggleExpand={() => toggleCard(item.id)}
                   onOpenDetail={() => onOpenDossier(item.id)}

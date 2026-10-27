@@ -148,6 +148,7 @@ export function PcnUserManagementView({
   const [resettingUsername, setResettingUsername] = useState<string>();
   const [deletingUsername, setDeletingUsername] = useState<string>();
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<PcnUserAccount | null>(null);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   const [resetPasswordUser, setResetPasswordUser] = useState<PcnUserAccount | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [pageSize, setPageSize] = useState<number | 'ALL'>(20);
@@ -245,12 +246,18 @@ export function PcnUserManagementView({
   };
 
   const executeDeleteUser = async () => {
-    if (!deleteConfirmUser || deletingUsername || deleteConfirmUser.username === currentUser?.username) return;
+    if (
+      !deleteConfirmUser
+      || deletingUsername
+      || deleteConfirmationText !== 'XAC NHAN'
+      || deleteConfirmUser.username === currentUser?.username
+    ) return;
     setDeletingUsername(deleteConfirmUser.username);
     try {
       await onDelete(deleteConfirmUser.username);
       toast.success(`Đã xóa tài khoản ${deleteConfirmUser.name}.`);
       setDeleteConfirmUser(null);
+      setDeleteConfirmationText('');
     } catch (error: any) {
       toast.error(error?.message || 'Không thể xóa tài khoản PGDCN.');
     } finally {
@@ -307,6 +314,17 @@ export function PcnUserManagementView({
         pgdRole: nextScopes.includes('PGD') ? (previous.pgdRole || 'PGD_FIELD_INSPECTOR') : undefined,
       };
     });
+  };
+
+  const openDeleteConfirmation = (user: PcnUserAccount) => {
+    setDeleteConfirmationText('');
+    setDeleteConfirmUser(user);
+  };
+
+  const closeDeleteConfirmation = () => {
+    if (deletingUsername === deleteConfirmUser?.username) return;
+    setDeleteConfirmUser(null);
+    setDeleteConfirmationText('');
   };
 
   return (
@@ -574,7 +592,7 @@ export function PcnUserManagementView({
                             </button>
                             {user.username !== currentUser?.username && (
                               <button
-                                onClick={() => setDeleteConfirmUser(user)}
+                                onClick={() => openDeleteConfirmation(user)}
                                 disabled={deletingUsername !== undefined || saving || resettingUsername !== undefined}
                                 aria-busy={deletingUsername === user.username}
                                 className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-wait disabled:opacity-50 transition-colors"
@@ -651,7 +669,10 @@ export function PcnUserManagementView({
           aria-labelledby="delete-user-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
           onKeyDown={(e) => {
-            if (e.key === 'Escape') setDeleteConfirmUser(null);
+            if (e.key === 'Escape' && deletingUsername !== deleteConfirmUser.username) {
+              setDeleteConfirmUser(null);
+              setDeleteConfirmationText('');
+            }
           }}
         >
           <div className="w-full max-w-md rounded-xl border border-rose-200 bg-white p-5 shadow-xl">
@@ -661,7 +682,8 @@ export function PcnUserManagementView({
               </h3>
               <button
                 type="button"
-                onClick={() => setDeleteConfirmUser(null)}
+                onClick={closeDeleteConfirmation}
+                disabled={deletingUsername === deleteConfirmUser.username}
                 className="mobile-touch-target min-h-11 min-w-11 text-slate-400 hover:text-slate-700"
                 aria-label="Đóng hộp thoại"
               >
@@ -670,23 +692,41 @@ export function PcnUserManagementView({
             </div>
             <div className="py-4 text-xs text-slate-600 leading-relaxed">
               Bạn có chắc chắn muốn xóa tài khoản <b className="text-slate-800">{deleteConfirmUser.name}</b> (<code>@{deleteConfirmUser.username}</code>)?
-              <p className="mt-2 text-slate-500">Dữ liệu hồ sơ nghiệp vụ và lịch sử thao tác của nhân sự này vẫn được lưu trữ nguyên vẹn trên hệ thống.</p>
+              <p className="mt-2 text-slate-500">Sau khi xóa, người này không thể đăng nhập. Thao tác chỉ gỡ tài khoản khỏi danh mục đăng nhập (systemUsers); không xóa hồ sơ nghiệp vụ, tệp, nhiệm vụ hoặc nhật ký lịch sử.</p>
+              <p className="mt-2 text-amber-700">Hệ thống có thể từ chối nếu tài khoản còn tham chiếu đang hoạt động.</p>
             </div>
+            <label htmlFor="delete-user-confirmation" className="mb-1 block text-[11px] font-bold text-slate-700">
+              Nhập chính xác <code className="rounded bg-slate-100 px-1 py-0.5 font-black">XAC NHAN</code> để xác nhận
+            </label>
+            <input
+              id="delete-user-confirmation"
+              type="text"
+              required
+              autoComplete="off"
+              autoFocus
+              value={deleteConfirmationText}
+              onChange={(e) => setDeleteConfirmationText(e.target.value)}
+              disabled={deletingUsername === deleteConfirmUser.username}
+              placeholder="XAC NHAN"
+              className={inputClass}
+            />
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setDeleteConfirmUser(null)}
+                onClick={closeDeleteConfirmation}
+                disabled={deletingUsername === deleteConfirmUser.username}
                 className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
               >
                 Hủy bỏ
               </button>
               <button
                 type="button"
-                disabled={deletingUsername === deleteConfirmUser.username}
+                disabled={deletingUsername === deleteConfirmUser.username || deleteConfirmationText !== 'XAC NHAN'}
                 onClick={() => void executeDeleteUser()}
                 className="mobile-touch-target min-h-11 rounded-lg bg-rose-600 px-4 py-2 text-xs font-black text-white hover:bg-rose-500 disabled:opacity-50"
+                aria-busy={deletingUsername === deleteConfirmUser.username}
               >
-                {deletingUsername === deleteConfirmUser.username ? 'Đang xóa…' : 'Xác nhận xóa'}
+                {deletingUsername === deleteConfirmUser.username ? 'Đang xóa…' : 'Xóa tài khoản'}
               </button>
             </div>
           </div>

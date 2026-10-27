@@ -76,3 +76,43 @@ test('PCN queue view switch shows concise mobile labels and preserves desktop an
   assert.ok((tableDesktopLabel.attr('class') || '').includes('hidden sm:inline'));
   assert.ok(switcher.parent().hasClass('flex-wrap'), 'the header can wrap the switcher below the title');
 });
+
+test('PCN card presents sample quantity once instead of repeating the Zone 4 sample badge', () => {
+  const row = {
+    dossierId: 'pcn-compact-1',
+    dossierCode: 'HS-PCN-COMPACT-001',
+    registrationCode: 'DN-PCN-COMPACT-001',
+    customerName: 'Công ty Kiểm định Thiết bị Công nghiệp',
+    sampleQuantity: 3,
+    sampleLocations: [],
+    productName: 'Thiết bị đo công suất',
+    model: 'M-3',
+    standardRefs: [],
+    fieldCodes: ['QC4'],
+    reportNumbers: [],
+    testCriteria: [],
+    labStatuses: [],
+    dossierStatus: 'TESTING',
+    stationKey: 'TESTING',
+    stationTitle: 'Thử nghiệm tại phòng',
+    stationActionLabel: 'Theo dõi KQTN',
+    completenessScore: 60,
+    requiredDocumentTotal: 5,
+    requiredDocumentPresent: 3,
+    missingRequiredCount: 2,
+    stationDocumentTotal: 5,
+    stationDocumentPresent: 3,
+    missingRequiredByStage: [],
+    stationMissingLabels: [],
+  };
+  const markup = renderToStaticMarkup(React.createElement(PcnDossierQueueView, {
+    rows: [row as never],
+    onOpenDossier: () => {},
+  }));
+  const $ = cheerio.load(markup);
+  const card = $('[data-testid="pgdcn-dossier-card"]');
+  const sampleCountMentions = card.text().match(/(?:Mẫu\s+3|3\s+mẫu)/gi) || [];
+
+  assert.equal(sampleCountMentions.length, 1, 'the sample quantity appears once in the collapsed PCN card');
+  assert.match(card.text(), /Mẫu 3/);
+});

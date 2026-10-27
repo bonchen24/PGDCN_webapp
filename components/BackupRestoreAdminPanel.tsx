@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -35,6 +35,109 @@ interface BackupRestoreAdminPanelProps {
   currentUser: UserAccount | null;
 }
 
+export interface DialogFocusTarget {
+  focus: () => void;
+  isConnected?: boolean;
+}
+
+export interface RestoreDialogFocusOptions {
+  focusTarget?: 'opener' | 'fallback';
+}
+
+export function restoreDialogFocus(
+  opener: DialogFocusTarget | null | undefined,
+  fallback: DialogFocusTarget | null | undefined,
+  options?: RestoreDialogFocusOptions,
+): 'opener' | 'fallback' | 'none' {
+  if (options?.focusTarget === 'fallback') {
+    if (fallback && typeof fallback.focus === 'function') {
+      fallback.focus();
+      return 'fallback';
+    }
+    return 'none';
+  }
+  const isConnected = opener ? (typeof opener.isConnected === 'boolean' ? opener.isConnected : true) : false;
+  if (opener && typeof opener.focus === 'function' && isConnected) {
+    opener.focus();
+    return 'opener';
+  }
+  if (fallback && typeof fallback.focus === 'function') {
+    fallback.focus();
+    return 'fallback';
+  }
+  return 'none';
+}
+
+export function isArchiveVerifiedForRestore(
+  verified?: { ok?: boolean; status?: string } | null,
+): boolean {
+  if (!verified || !verified.ok) return false;
+  if ('status' in verified && verified.status !== undefined && verified.status !== 'VALID') {
+    return false;
+  }
+  return true;
+}
+
+export interface BackupActionHandlerOptions {
+  type: 'delete' | 'restore';
+  target: ServerBackupInfo | null;
+  confirmInput: string;
+  inFlightRef: { current: boolean };
+  setBusy: (busy: boolean) => void;
+  setDialogError: (error: string | null) => void;
+  performApi: () => Promise<void>;
+  onSuccess?: () => Promise<void> | void;
+  forceCloseDialog: (options?: RestoreDialogFocusOptions) => void;
+  onSuccessToast?: () => void;
+  onErrorToast?: (msg: string) => void;
+  defaultErrorMessage?: string;
+}
+
+export async function runBackupAction({
+  type,
+  target,
+  confirmInput,
+  inFlightRef,
+  setBusy,
+  setDialogError,
+  performApi,
+  onSuccess,
+  forceCloseDialog,
+  onSuccessToast,
+  onErrorToast,
+  defaultErrorMessage = 'Thao tác thất bại.',
+}: BackupActionHandlerOptions): Promise<boolean> {
+  if (inFlightRef.current || !target || confirmInput !== 'XAC NHAN') {
+    return false;
+  }
+  inFlightRef.current = true;
+  setBusy(true);
+  setDialogError(null);
+  try {
+    await performApi();
+    forceCloseDialog({ focusTarget: type === 'delete' ? 'fallback' : 'opener' });
+    onSuccessToast?.();
+  } catch (err: any) {
+    const msg = err?.message || defaultErrorMessage;
+    setDialogError(msg);
+    onErrorToast?.(msg);
+    return false;
+  } finally {
+    setBusy(false);
+    inFlightRef.current = false;
+  }
+
+  if (onSuccess) {
+    try {
+      await onSuccess();
+    } catch {
+      // Refresh error must not reopen dialog or report as failed mutation
+    }
+  }
+
+  return true;
+}
+
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -50,17 +153,26 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
   const [runningBackup, setRunningBackup] = useState(false);
   const [verifyingFile, setVerifyingFile] = useState<string | null>(null);
   const [verificationResult, setVerificationResult] = useState<ServerBackupVerification | null>(null);
+  const [verifiedFiles, setVerifiedFiles] = useState<Record<string, ServerBackupVerification>>({});
 
-  // Restore Modal State
+  // Dialog targets and state
+  const [deleteTarget, setDeleteTarget] = useState<ServerBackupInfo | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<ServerBackupInfo | null>(null);
-  const [restoreConfirmText, setRestoreConfirmText] = useState('');
+  const [confirmInput, setConfirmInput] = useState('');
+  const [dialogError, setDialogError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
-  // Delete State
-  const [deletingFile, setDeletingFile] = useState<string | null>(null);
+  // Focus & A11y management
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const lastFocusedElementRef = useRef<HTMLElement | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const actionInFlightRef = useRef(false);
 
   const username = currentUser?.username || 'admin';
   const isAdmin = currentUser?.systemRole === 'admin' || currentUser?.role === 'admin';
+  const isBusy = deleting || restoring || actionInFlightRef.current;
 
   const loadBackups = async () => {
     if (!isAdmin) return;
@@ -80,8 +192,28 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
     void loadBackups();
   }, [username, isAdmin]);
 
+  // Reset confirmation input when target changes
+  useEffect(() => {
+    setConfirmInput('');
+  }, [deleteTarget?.filename, restoreTarget?.filename]);
+
+  // Initial focus into dialog input
+  useEffect(() => {
+    if (deleteTarget || restoreTarget) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [deleteTarget, restoreTarget]);
+
+  const isArchiveVerified = (filename: string): boolean => {
+    const verified = verifiedFiles[filename] || (verificationResult?.filename === filename ? verificationResult : null);
+    return isArchiveVerifiedForRestore(verified);
+  };
+
   const handleCreateBackup = async () => {
-    if (runningBackup) return;
+    if (runningBackup || isBusy) return;
     setRunningBackup(true);
     try {
       const result = await triggerServerBackup(username);
@@ -95,10 +227,12 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
   };
 
   const handleVerify = async (filename: string) => {
+    if (isBusy) return;
     setVerifyingFile(filename);
     try {
       const result = await verifyBackupFile(username, filename);
       setVerificationResult(result);
+      setVerifiedFiles((prev) => ({ ...prev, [filename]: result }));
       if (result.ok && result.status === 'VALID') {
         toast.success(`Bản sao lưu ${filename} hợp lệ (VALID).`);
       } else {
@@ -112,6 +246,7 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
   };
 
   const handleDownload = async (filename: string) => {
+    if (isBusy) return;
     try {
       await downloadBackupFile(username, filename);
       toast.success(`Đang tải xuống ${filename}...`);
@@ -120,35 +255,108 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
     }
   };
 
-  const handleDelete = async (filename: string) => {
-    if (deletingFile) return;
-    if (typeof window !== 'undefined' && !window.confirm(`Xác nhận xóa vĩnh viễn tệp sao lưu ${filename}?`)) {
+  const forceCloseDialog = (options?: RestoreDialogFocusOptions) => {
+    setDeleteTarget(null);
+    setRestoreTarget(null);
+    setConfirmInput('');
+    setDialogError(null);
+    restoreDialogFocus(lastFocusedElementRef.current, panelRef.current, options);
+  };
+
+  const closeDialog = () => {
+    if (deleting || restoring || actionInFlightRef.current) return;
+    forceCloseDialog();
+  };
+
+  const handleOpenDelete = (item: ServerBackupInfo, triggerEl?: HTMLElement | null) => {
+    if (isBusy) return;
+    lastFocusedElementRef.current = triggerEl || (document.activeElement as HTMLElement | null);
+    setRestoreTarget(null);
+    setConfirmInput('');
+    setDialogError(null);
+    setDeleteTarget(item);
+  };
+
+  const handleOpenRestore = (item: ServerBackupInfo, triggerEl?: HTMLElement | null) => {
+    if (isBusy) return;
+    if (!isArchiveVerified(item.filename)) {
+      toast.error('Bản sao lưu cần được kiểm chứng thành công (yêu cầu ok=true và status=VALID khi có trả về status) trước khi mở bước khôi phục. Vui lòng bấm "Kiểm chứng" trước.');
       return;
     }
-    setDeletingFile(filename);
-    try {
-      await deleteBackupFile(username, filename);
-      toast.success(`Đã xóa tệp sao lưu ${filename}.`);
-      await loadBackups();
-    } catch (err: any) {
-      toast.error(err?.message || 'Không thể xóa tệp sao lưu.');
-    } finally {
-      setDeletingFile(null);
-    }
+    lastFocusedElementRef.current = triggerEl || (document.activeElement as HTMLElement | null);
+    setDeleteTarget(null);
+    setConfirmInput('');
+    setDialogError(null);
+    setRestoreTarget(item);
+  };
+
+  const executeDelete = async () => {
+    if (!deleteTarget || deleting || confirmInput !== 'XAC NHAN') return;
+    const targetFilename = deleteTarget.filename;
+    await runBackupAction({
+      type: 'delete',
+      target: deleteTarget,
+      confirmInput,
+      inFlightRef: actionInFlightRef,
+      setBusy: setDeleting,
+      setDialogError,
+      performApi: () => deleteBackupFile(username, targetFilename),
+      onSuccess: async () => {
+        await loadBackups();
+      },
+      forceCloseDialog,
+      onSuccessToast: () => toast.success(`Đã xóa tệp sao lưu ${targetFilename}.`),
+      onErrorToast: (msg) => toast.error(msg),
+      defaultErrorMessage: 'Không thể xóa tệp sao lưu.',
+    });
   };
 
   const executeRestore = async () => {
-    if (!restoreTarget || restoring || restoreConfirmText.trim() !== 'KHOIPHUC') return;
-    setRestoring(true);
-    try {
-      await restoreServerBackup(username, restoreTarget.filename);
-      toast.success(`Đã khôi phục dữ liệu từ ${restoreTarget.filename} thành công!`);
-      setRestoreTarget(null);
-      setRestoreConfirmText('');
-    } catch (err: any) {
-      toast.error(err?.message || 'Khôi phục dữ liệu thất bại.');
-    } finally {
-      setRestoring(false);
+    if (!restoreTarget || restoring || confirmInput !== 'XAC NHAN') return;
+    const targetFilename = restoreTarget.filename;
+    await runBackupAction({
+      type: 'restore',
+      target: restoreTarget,
+      confirmInput,
+      inFlightRef: actionInFlightRef,
+      setBusy: setRestoring,
+      setDialogError,
+      performApi: () => restoreServerBackup(username, targetFilename),
+      forceCloseDialog,
+      onSuccessToast: () => toast.success(`Đã khôi phục dữ liệu từ ${targetFilename} thành công!`),
+      onErrorToast: (msg) => toast.error(msg),
+      defaultErrorMessage: 'Khôi phục dữ liệu thất bại.',
+    });
+  };
+
+  const handleDialogKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (deleting || restoring || actionInFlightRef.current) {
+        return;
+      }
+      closeDialog();
+      return;
+    }
+    if (e.key === 'Tab') {
+      if (!dialogRef.current) return;
+      const focusableElements = dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusableElements.length === 0) return;
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     }
   };
 
@@ -158,6 +366,8 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
 
   return (
     <section
+      ref={panelRef}
+      tabIndex={-1}
       data-testid="backup-restore-admin-panel"
       className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4 space-y-3"
       aria-label="Quản lý sao lưu và phục hồi dữ liệu hệ thống"
@@ -179,7 +389,7 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
           <button
             type="button"
             onClick={() => void loadBackups()}
-            disabled={loading}
+            disabled={loading || isBusy}
             className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
             title="Làm mới danh sách"
           >
@@ -189,7 +399,7 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
           <button
             type="button"
             onClick={() => void handleCreateBackup()}
-            disabled={runningBackup || !pgToolAvailable}
+            disabled={runningBackup || isBusy || !pgToolAvailable}
             className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-[11px] font-black text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors"
           >
             {runningBackup ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
@@ -243,7 +453,7 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
                       <div className="inline-flex items-center justify-end gap-1.5">
                         <button
                           type="button"
-                          disabled={verifyingFile === item.filename}
+                          disabled={verifyingFile === item.filename || isBusy}
                           onClick={() => void handleVerify(item.filename)}
                           className="mobile-touch-target inline-flex min-h-9 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-600 hover:border-emerald-300 disabled:opacity-50"
                           title="Kiểm tra tính toàn vẹn"
@@ -258,8 +468,9 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
 
                         <button
                           type="button"
+                          disabled={isBusy}
                           onClick={() => void handleDownload(item.filename)}
-                          className="mobile-touch-target inline-flex min-h-9 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-600 hover:border-emerald-300"
+                          className="mobile-touch-target inline-flex min-h-9 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-600 hover:border-emerald-300 disabled:opacity-50"
                           title="Tải về máy tính"
                         >
                           <Download size={12} /> Tải về
@@ -267,20 +478,18 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
 
                         <button
                           type="button"
-                          onClick={() => {
-                            setRestoreTarget(item);
-                            setRestoreConfirmText('');
-                          }}
-                          className="mobile-touch-target inline-flex min-h-9 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700 hover:bg-amber-100"
-                          title="Phục hồi dữ liệu từ bản sao lưu này"
+                          disabled={isBusy}
+                          onClick={(e) => handleOpenRestore(item, e.currentTarget)}
+                          className="mobile-touch-target inline-flex min-h-9 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                          title={isArchiveVerified(item.filename) ? 'Phục hồi dữ liệu từ bản sao lưu này' : 'Bản sao lưu chưa qua kiểm chứng hợp lệ (yêu cầu ok=true và status=VALID khi có trả về status). Vui lòng bấm "Kiểm chứng" trước khi phục hồi'}
                         >
                           <HardDriveDownload size={12} /> Phục hồi
                         </button>
 
                         <button
                           type="button"
-                          disabled={deletingFile === item.filename}
-                          onClick={() => void handleDelete(item.filename)}
+                          disabled={isBusy}
+                          onClick={(e) => handleOpenDelete(item, e.currentTarget)}
                           className="mobile-touch-target inline-flex min-h-9 items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
                           title="Xóa tệp sao lưu"
                         >
@@ -310,8 +519,9 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
             </div>
             <button
               type="button"
+              disabled={isBusy}
               onClick={() => setVerificationResult(null)}
-              className="text-slate-400 hover:text-slate-700"
+              className="text-slate-400 hover:text-slate-700 disabled:opacity-50"
             >
               <X size={14} />
             </button>
@@ -337,74 +547,172 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
         </div>
       )}
 
-      {/* Modal Phục hồi CSDL yêu cầu gõ KHOIPHUC */}
-      {restoreTarget && (
+      {/* Modal Xác nhận Xóa Bản sao lưu */}
+      {deleteTarget && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-labelledby="restore-modal-title"
+          aria-labelledby="delete-backup-modal-title"
+          aria-describedby="delete-backup-modal-desc"
+          aria-busy={deleting}
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
-          onKeyDown={(e) => {
-            if (e.key === 'Escape' && !restoring) setRestoreTarget(null);
-          }}
+          onKeyDown={handleDialogKeyDown}
         >
-          <div className="w-full max-w-md rounded-xl border border-amber-300 bg-white p-5 shadow-2xl space-y-4">
+          <div
+            ref={dialogRef}
+            className="w-full max-w-md rounded-xl border border-rose-300 bg-white p-5 shadow-2xl space-y-4"
+          >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2 text-amber-700 font-black text-sm">
-                <ShieldAlert size={18} />
-                <h3 id="restore-modal-title">Cảnh báo Phục hồi Dữ liệu</h3>
+              <div className="flex items-center gap-2 text-rose-700 font-black text-sm">
+                <Trash2 size={18} />
+                <h3 id="delete-backup-modal-title">Xác nhận xóa bản sao lưu</h3>
               </div>
               <button
                 type="button"
-                disabled={restoring}
-                onClick={() => setRestoreTarget(null)}
-                className="mobile-touch-target min-h-11 min-w-11 text-slate-400 hover:text-slate-700"
+                disabled={deleting || isBusy}
+                onClick={closeDialog}
+                className="mobile-touch-target min-h-11 min-w-11 text-slate-400 hover:text-slate-700 disabled:opacity-40"
                 aria-label="Đóng hộp thoại"
               >
                 <X size={16} />
               </button>
             </div>
 
-            <div className="text-xs text-slate-700 space-y-2 leading-relaxed">
-              <p>
-                Bạn đang chuẩn bị phục hồi hệ thống từ bản sao lưu:
-              </p>
+            <div id="delete-backup-modal-desc" className="text-xs text-slate-700 space-y-2 leading-relaxed">
+              <p>Bạn đang chuẩn bị xóa tệp sao lưu sau khỏi máy chủ:</p>
               <p className="rounded-lg bg-slate-100 p-2 font-mono text-[11px] font-bold text-slate-800 break-all">
-                {restoreTarget.filename} ({formatBytes(restoreTarget.sizeBytes)})
+                {deleteTarget.filename} ({formatBytes(deleteTarget.sizeBytes)})
               </p>
               <div className="rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-[11px] text-rose-800 font-medium">
-                ⚠️ Thao tác này sẽ ghi đè toàn bộ cơ sở dữ liệu hiện tại bằng dữ liệu của bản sao lưu. Các thay đổi sau thời điểm tạo bản sao lưu này có thể bị mất.
+                ⚠️ Thao tác này sẽ xóa vĩnh viễn tệp sao lưu này khỏi kho lưu trữ máy chủ. Bạn sẽ không thể tải về hoặc khôi phục từ bản sao lưu này trong tương lai. Thao tác này không làm thay đổi cơ sở dữ liệu hiện tại.
               </div>
-              <p className="font-bold text-slate-800 pt-1">
-                Để xác nhận, vui lòng gõ chính xác chữ <span className="font-mono text-rose-600 select-all">KHOIPHUC</span> vào ô dưới đây:
-              </p>
-              <input
-                type="text"
-                autoFocus
-                disabled={restoring}
-                value={restoreConfirmText}
-                onChange={(e) => setRestoreConfirmText(e.target.value)}
-                placeholder="Nhập KHOIPHUC..."
-                className="mobile-touch-target min-h-11 w-full rounded-md border border-slate-300 px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider outline-none focus:border-amber-500"
-              />
+              {dialogError && (
+                <div role="alert" className="rounded-lg border border-rose-300 bg-rose-100/70 p-2.5 text-[11px] font-bold text-rose-800">
+                  {dialogError}
+                </div>
+              )}
+              <div className="pt-1 space-y-1.5">
+                <label htmlFor="delete-backup-confirm-input" className="block font-bold text-slate-800">
+                  Để xác nhận, vui lòng nhập chính xác chuỗi <span className="font-mono text-rose-600 select-all">XAC NHAN</span> vào ô bên dưới:
+                </label>
+                <input
+                  id="delete-backup-confirm-input"
+                  ref={inputRef}
+                  type="text"
+                  autoFocus
+                  disabled={deleting || isBusy}
+                  value={confirmInput}
+                  onChange={(e) => setConfirmInput(e.target.value)}
+                  placeholder="XAC NHAN"
+                  aria-label="Nhập XAC NHAN để xóa bản sao lưu"
+                  className="mobile-touch-target min-h-11 w-full rounded-md border border-slate-300 px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider outline-none focus:border-rose-500 disabled:opacity-50"
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
-                disabled={restoring}
-                onClick={() => setRestoreTarget(null)}
-                className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                disabled={deleting || isBusy}
+                onClick={closeDialog}
+                className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
               >
-                Hủy bỏ
+                Hủy
               </button>
               <button
                 type="button"
-                disabled={restoring || restoreConfirmText.trim() !== 'KHOIPHUC'}
+                title={confirmInput !== 'XAC NHAN' ? 'Nhập chính xác XAC NHAN để mở khóa nút xóa' : 'Xóa bản sao lưu vĩnh viễn'}
+                disabled={deleting || confirmInput !== 'XAC NHAN'}
+                onClick={() => void executeDelete()}
+                className="mobile-touch-target min-h-11 rounded-lg bg-rose-600 px-4 py-2 text-xs font-black text-white hover:bg-rose-500 disabled:opacity-40 transition-colors"
+              >
+                {deleting ? 'Đang xóa…' : 'Xóa bản sao lưu'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Cảnh báo Khôi phục Dữ liệu */}
+      {restoreTarget && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="restore-modal-title"
+          aria-describedby="restore-modal-desc"
+          aria-busy={restoring}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
+          onKeyDown={handleDialogKeyDown}
+        >
+          <div
+            ref={dialogRef}
+            className="w-full max-w-md rounded-xl border border-amber-300 bg-white p-5 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-amber-700 font-black text-sm">
+                <ShieldAlert size={18} />
+                <h3 id="restore-modal-title">Cảnh báo khôi phục dữ liệu hệ thống</h3>
+              </div>
+              <button
+                type="button"
+                disabled={restoring || isBusy}
+                onClick={closeDialog}
+                className="mobile-touch-target min-h-11 min-w-11 text-slate-400 hover:text-slate-700 disabled:opacity-40"
+                aria-label="Đóng hộp thoại"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div id="restore-modal-desc" className="text-xs text-slate-700 space-y-2 leading-relaxed">
+              <p>Bạn đang chuẩn bị phục hồi hệ thống từ bản sao lưu:</p>
+              <p className="rounded-lg bg-slate-100 p-2 font-mono text-[11px] font-bold text-slate-800 break-all">
+                {restoreTarget.filename} ({formatBytes(restoreTarget.sizeBytes)})
+              </p>
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] text-amber-900 font-medium leading-normal">
+                ⚠️ Thao tác này sẽ ghi đè toàn bộ cơ sở dữ liệu và tệp tin hiện tại bằng dữ liệu của bản sao lưu được chọn. Các dữ liệu và thay đổi phát sinh sau thời điểm tạo bản sao lưu có thể bị mất hoàn toàn.
+              </div>
+              {dialogError && (
+                <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-2.5 text-[11px] font-bold text-rose-800">
+                  {dialogError}
+                </div>
+              )}
+              <div className="pt-1 space-y-1.5">
+                <label htmlFor="restore-confirm-input" className="block font-bold text-slate-800">
+                  Để xác nhận, vui lòng nhập chính xác chuỗi <span className="font-mono text-amber-700 select-all">XAC NHAN</span> vào ô bên dưới:
+                </label>
+                <input
+                  id="restore-confirm-input"
+                  ref={inputRef}
+                  type="text"
+                  autoFocus
+                  disabled={restoring || isBusy}
+                  value={confirmInput}
+                  onChange={(e) => setConfirmInput(e.target.value)}
+                  placeholder="XAC NHAN"
+                  aria-label="Nhập XAC NHAN để khôi phục dữ liệu"
+                  className="mobile-touch-target min-h-11 w-full rounded-md border border-slate-300 px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider outline-none focus:border-amber-500 disabled:opacity-50"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={restoring || isBusy}
+                onClick={closeDialog}
+                className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                title={confirmInput !== 'XAC NHAN' ? 'Nhập chính xác XAC NHAN để mở khóa nút khôi phục' : 'Khôi phục hệ thống từ bản sao lưu'}
+                disabled={restoring || confirmInput !== 'XAC NHAN'}
                 onClick={() => void executeRestore()}
                 className="mobile-touch-target min-h-11 rounded-lg bg-amber-600 px-4 py-2 text-xs font-black text-white hover:bg-amber-500 disabled:opacity-40 transition-colors"
               >
-                {restoring ? 'Đang phục hồi…' : 'Xác nhận Phục hồi'}
+                {restoring ? 'Đang khôi phục…' : 'Khôi phục'}
               </button>
             </div>
           </div>

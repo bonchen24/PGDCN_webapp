@@ -9,7 +9,7 @@ import type { AppNotification, CertificationDossier, CertificationProposal, Depa
 import type { PgdInspectionRequest } from '../utils/pgdDomain';
 import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
 import type { PgdcnRecentRecord } from '../utils/pgdcnRecent';
-import { getPgdcnDashboardProjection, getPgdcnMyWorkProjection, type DashboardPipelineTone, type PgdcnDashboardDomainSummary, type PgdcnDashboardUpcomingItem, type PgdcnMyWorkItem, type PgdcnMyWorkProjection, type PgdcnNextAction } from '../utils/pgdcnDashboard';
+import { getPgdcnDashboardProjection, getPgdcnMyWorkProjection, type DashboardPipelineTone, type PgdcnDashboardDomainSummary, type PgdcnDashboardUpcomingItem, type PgdcnMyWorkInput, type PgdcnMyWorkItem, type PgdcnMyWorkProjection, type PgdcnNextAction } from '../utils/pgdcnDashboard';
 
 type PgdcnDashboardViewProps = {
   scopes: readonly DepartmentScope[];
@@ -117,14 +117,14 @@ function WorkItemCard({ item, onOpenPcn, onOpenPgd }: { item: PgdcnMyWorkItem; o
   const isPcn = item.domain === 'PCN';
   const hasUnknownStatus = item.statusLabel === 'Chưa xác định';
   const actionHintId = `pgdcn-action-hint-${item.domain}-${encodeURIComponent(item.id)}`;
-  return <article role="row" className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-2 border-b border-slate-100 px-3 py-3 last:border-0 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,0.8fr)_minmax(0,1.1fr)_minmax(0,0.75fr)_minmax(0,1fr)] lg:items-center lg:py-2">
+  return <article role="row" className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-1.5 border-b border-slate-100 px-3 py-2 last:border-0 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,0.8fr)_minmax(0,1.1fr)_minmax(0,0.75fr)_minmax(0,1fr)] lg:items-center lg:py-1.5">
     <div role="cell" className="min-w-0">
-      <span aria-hidden="true" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Mã hồ sơ / khách hàng</span>
+      <span aria-hidden="true" className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Mã hồ sơ / khách hàng</span>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"><span className={'shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ' + (isPcn ? DOMAIN_CONFIG.PCN.badge : DOMAIN_CONFIG.PGD.badge)}>{item.domain}</span><b className="min-w-0 break-words text-sm font-semibold text-slate-900">{item.label}</b></div>
-      <p className="mt-1 break-words text-xs font-medium text-slate-700">{item.customerName}{item.productName ? ' · ' + item.productName : ''}</p>
+      <p className="mt-0.5 break-words text-xs font-medium text-slate-700">{item.customerName}{item.productName ? ' · ' + item.productName : ''}</p>
     </div>
     <div role="cell" className="min-w-0">
-      <span aria-hidden="true" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Trạng thái</span>
+      <span aria-hidden="true" className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Trạng thái</span>
       <PgdcnStatusBadge domain={item.domain} status={item.status} label={item.statusLabel} />
       {hasUnknownStatus && <p className="mt-1 break-words text-xs leading-4 text-amber-800">Trạng thái chưa xác định. Mở hồ sơ để kiểm tra bước phù hợp.</p>}
     </div>
@@ -140,19 +140,72 @@ function WorkItemCard({ item, onOpenPcn, onOpenPgd }: { item: PgdcnMyWorkItem; o
       <span aria-hidden="true" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Hành động tiếp theo</span>
       <button type="button" onClick={() => isPcn ? onOpenPcn(item.id) : onOpenPgd(item.id)} className={'mobile-touch-target inline-flex min-h-11 w-full max-w-full items-center justify-center gap-2 whitespace-normal rounded-lg px-3 py-2 text-center text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 lg:w-auto ' + (isPcn ? 'bg-emerald-600 hover:bg-emerald-700 focus-visible:ring-emerald-300' : 'bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-300')} aria-label={item.nextAction.label + ' ' + item.label} aria-describedby={actionHintId}>Mở hồ sơ · {item.nextAction.label}<ArrowRight size={15} aria-hidden="true" /></button>
       <span id={actionHintId} className="sr-only">Chọn để mở hồ sơ và thực hiện bước tiếp theo: {item.nextAction.label}.</span>
-      <p className="mt-1 break-words text-xs leading-4 text-slate-600"><span className="font-semibold text-slate-700">Bước tiếp theo:</span> {item.nextAction.label}. {item.nextAction.description}</p>
+      <p className="mt-0.5 break-words text-xs leading-4 text-slate-600"><span className="font-semibold text-slate-700">Bước tiếp theo:</span> {item.nextAction.label}. {item.nextAction.description}</p>
     </div>
   </article>;
+}
+
+const WAITING_OTHERS_PAGE_SIZE = 6;
+
+function getAllWaitingOthers(input: PgdcnMyWorkInput, initialItems: readonly PgdcnMyWorkItem[]): PgdcnMyWorkItem[] {
+  if (initialItems.length < WAITING_OTHERS_PAGE_SIZE) return [...initialItems];
+
+  const items = [...initialItems];
+  const seen = new Set(items.map((item) => `${item.domain}:${item.id}`));
+  const appendWaiting = (waitingItems: readonly PgdcnMyWorkItem[]) => {
+    for (const item of waitingItems) {
+      const key = `${item.domain}:${item.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push(item);
+    }
+  };
+
+  if (input.scopes.includes('PCN')) {
+    for (let offset = 0; offset < input.pcnDossiers.length; offset += WAITING_OTHERS_PAGE_SIZE) {
+      const dossiers = input.pcnDossiers.slice(offset, offset + WAITING_OTHERS_PAGE_SIZE);
+      const dossierIds = new Set(dossiers.map((dossier) => dossier.id));
+      const projection = getPgdcnMyWorkProjection({
+        ...input,
+        scopes: ['PCN'],
+        pcnDossiers: dossiers,
+        pcnWorkflowTasks: input.pcnWorkflowTasks?.filter((task) => dossierIds.has(task.dossierId)),
+        pgdRequests: [],
+        pgdAssignments: [],
+      });
+      appendWaiting(projection.waitingOthers);
+    }
+  }
+
+  if (input.scopes.includes('PGD')) {
+    for (let offset = 0; offset < input.pgdRequests.length; offset += WAITING_OTHERS_PAGE_SIZE) {
+      const requests = input.pgdRequests.slice(offset, offset + WAITING_OTHERS_PAGE_SIZE);
+      const requestIds = new Set(requests.map((request) => request.id));
+      const projection = getPgdcnMyWorkProjection({
+        ...input,
+        scopes: ['PGD'],
+        pcnDossiers: [],
+        pgdRequests: requests,
+        pgdAssignments: input.pgdAssignments?.filter((assignment) => requestIds.has(assignment.requestId)),
+      });
+      appendWaiting(projection.waitingOthers);
+    }
+  }
+
+  return items;
 }
 
 function MyWorkSection({ projection, currentUser, onOpenPcn, onOpenPgd }: { projection: PgdcnMyWorkProjection; currentUser?: UserAccount; onOpenPcn: (id: string) => void; onOpenPgd: (id: string) => void }) {
   const buckets = ['OVERDUE', 'TODAY', 'MY_TURN', 'APPROVAL', 'RECENT'] as const;
   const name = currentUser?.name || currentUser?.username || 'bạn';
   const count = buckets.reduce((total, bucket) => total + projection.buckets[bucket].length, 0);
+  const firstWaitingPage = projection.waitingOthers.slice(0, WAITING_OTHERS_PAGE_SIZE);
+  const remainingWaitingItems = projection.waitingOthers.slice(WAITING_OTHERS_PAGE_SIZE);
+  const renderWaitingItem = (item: PgdcnMyWorkItem) => <button key={item.domain + '-' + item.id} type="button" onClick={() => item.domain === 'PCN' ? onOpenPcn(item.id) : onOpenPgd(item.id)} className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"><span className="block break-words text-xs font-semibold text-slate-800">{item.label}</span><span className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-slate-600"><span>{item.statusLabel}</span><span className="break-words">Người xử lý: {item.ownerLabel || 'Chưa phân công'}</span></span></button>;
   return <section data-testid="pgdcn-dashboard-my-work" className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
     <div className="flex min-w-0 flex-col justify-between gap-2 lg:flex-row lg:items-center"><div className="min-w-0"><h2 className="break-words text-lg font-bold tracking-tight text-slate-900">Việc của tôi</h2><p className="mt-1 text-xs leading-4 text-slate-600">Xin chào, {name}. Các hồ sơ đang cần bạn xử lý, ưu tiên theo hạn và lượt xử lý hiện tại.</p></div><div role="group" aria-label={`${count} hồ sơ cần xử lý`} className="flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5"><span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Tổng việc cần xử lý</span><b className="text-xl font-black leading-6 text-slate-900">{formatCount(count)}</b></div></div>
     <div className="mt-3 space-y-3">{buckets.map((bucket) => { const items = projection.buckets[bucket]; if (!items.length) return null; return <div key={bucket}><div className="mb-1.5 flex items-center gap-2"><span aria-hidden="true" className={'h-2 w-2 rounded-full ' + (bucket === 'OVERDUE' ? 'bg-rose-500' : bucket === 'APPROVAL' ? 'bg-violet-500' : bucket === 'TODAY' ? 'bg-amber-500' : bucket === 'RECENT' ? 'bg-slate-400' : 'bg-emerald-500')} /><h3 className="text-xs font-bold uppercase tracking-wide text-slate-700">{WORK_BUCKET_LABELS[bucket]}</h3><span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">{items.length}</span></div><div role="table" aria-label={WORK_BUCKET_LABELS[bucket]} className="min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white"><div role="row" className="sr-only lg:not-sr-only lg:grid border-b border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,0.8fr)_minmax(0,1.1fr)_minmax(0,0.75fr)_minmax(0,1fr)] lg:gap-x-4"><span role="columnheader">Mã hồ sơ / khách hàng</span><span role="columnheader">Trạng thái</span><span role="columnheader">Bước hiện tại</span><span role="columnheader">Hạn xử lý</span><span role="columnheader">Hành động tiếp theo</span></div>{items.map((item) => <WorkItemCard key={item.domain + '-' + item.id} item={item} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} />)}</div></div>; })}{count === 0 && <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-center"><CheckCircle2 className="mx-auto text-emerald-600" size={24} aria-hidden="true" /><p className="mt-2 text-sm font-bold text-slate-800">{projection.waitingOthers.length > 0 ? 'Hiện chưa có hồ sơ đến lượt bạn xử lý.' : 'Bạn chưa có hồ sơ đến lượt xử lý.'}</p><p className="mt-1 text-xs text-slate-600">{projection.waitingOthers.length > 0 ? `${projection.waitingOthers.length} hồ sơ đang chờ người khác xử lý; mở danh sách bên dưới để theo dõi.` : 'Khi hồ sơ được giao cho bạn, bước tiếp theo sẽ xuất hiện tại đây.'}</p></div>}</div>
-    {projection.waitingOthers.length > 0 && <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-2.5"><summary className="mobile-touch-target min-h-11 w-full cursor-pointer justify-start rounded-md px-1 text-left text-sm font-bold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">Đang chờ người khác · {projection.waitingOthers.length} hồ sơ</summary><div className="mt-2 grid gap-2 md:grid-cols-2">{projection.waitingOthers.slice(0, 6).map((item) => <button key={item.domain + '-' + item.id} type="button" onClick={() => item.domain === 'PCN' ? onOpenPcn(item.id) : onOpenPgd(item.id)} className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"><span className="text-xs font-semibold text-slate-800">{item.label}</span><span className="mt-1 block text-xs text-slate-500">{item.statusLabel} · {item.ownerLabel}</span></button>)}</div></details>}
+    {projection.waitingOthers.length > 0 && <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-2.5"><summary className="mobile-touch-target min-h-11 w-full cursor-pointer justify-start rounded-md px-1 text-left text-sm font-bold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">Đang chờ người khác · {projection.waitingOthers.length} hồ sơ</summary><div className="mt-2 grid gap-2 md:grid-cols-2">{firstWaitingPage.map(renderWaitingItem)}</div>{remainingWaitingItems.length > 0 && <details className="mt-2 rounded-lg border border-slate-200 bg-white p-2"><summary className="mobile-touch-target min-h-11 w-full cursor-pointer rounded-md px-2 text-sm font-semibold text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300">Xem thêm {formatCount(remainingWaitingItems.length)} hồ sơ</summary><div className="mt-2 grid gap-2 md:grid-cols-2">{remainingWaitingItems.map(renderWaitingItem)}</div></details>}</details>}
   </section>;
 }
 
@@ -284,7 +337,9 @@ function SharedNotifications({ notifications, onOpenNotifications, onSelectNotif
 
 export default function PgdcnDashboardView({ scopes, pcnDossiers, pcnEvidenceActions, pgdRequests, currentUser, pcnProposals, pcnWorkflowTasks, pgdAssignments, notifications, onOpenPcn, onOpenPgd, onOpenPcnWorkspace, onOpenPgdWorkspace, onOpenNotifications, onSelectNotification, recentRecords = [] }: PgdcnDashboardViewProps) {
   const projection = getPgdcnDashboardProjection({ scopes, pcnDossiers, pgdRequests });
-  const myWork = currentUser ? getPgdcnMyWorkProjection({ scopes, currentUser, pcnDossiers, pcnProposals, pcnWorkflowTasks, pcnEvidenceActions, pgdRequests, pgdAssignments }) : undefined;
+  const myWorkInput: PgdcnMyWorkInput | undefined = currentUser ? { scopes, currentUser, pcnDossiers, pcnProposals, pcnWorkflowTasks, pcnEvidenceActions, pgdRequests, pgdAssignments } : undefined;
+  const projectedMyWork = myWorkInput ? getPgdcnMyWorkProjection(myWorkInput) : undefined;
+  const myWork = projectedMyWork && myWorkInput ? { ...projectedMyWork, waitingOthers: getAllWaitingOthers(myWorkInput, projectedMyWork.waitingOthers) } : projectedMyWork;
   return (
     <section className="pcn-page-surface app-compact min-w-0 space-y-3 bg-slate-50 p-3 pb-5 md:p-4 mobile-safe-bottom" aria-label="Điều hành phòng PGDCN">
       <CommandHeader scopes={scopes} onOpenPcnWorkspace={onOpenPcnWorkspace} onOpenPgdWorkspace={onOpenPgdWorkspace} />
