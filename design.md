@@ -1830,3 +1830,27 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
   - Giữ nguyên kích thước tương tác tối thiểu (touch target 44px), độ tương phản màu, cỡ chữ tối thiểu và trạng thái focus/keyboard navigation.
   - Bảo tồn toàn bộ role, permission, validation logic, API contracts, workflow và định dạng mẫu xuất DOCX.
   - `lang="vi"` được thiết lập cấp gốc tại `app/layout.tsx`; không sử dụng thêm thư viện runtime i18n bên ngoài.
+
+### 5A.41. Gia cố dependency production và nguồn SheetJS chính thức — 2026-10-27
+
+- **Nâng cấp Next.js Production**:
+  - Nâng cấp Next.js lên `16.4.3` (từ `^16.3.7`) để xử lý dứt điểm các khuyến cáo bảo mật (security advisories) trên môi trường production.
+  - Giữ nguyên toàn bộ hợp đồng API của React / React DOM (`^19.0.0`) và hợp đồng nghiệp vụ sản phẩm.
+- **Vá lỗ hổng phụ thuộc gián tiếp (Transitive Dependencies)**:
+  - Các bản vá phụ thuộc gián tiếp tương thích với production được ghi nhận trong `package-lock.json` mà không thay đổi major version.
+  - `package-lock.json` tiếp tục là nguồn chuẩn (resolution source) cho việc giải quyết gói phụ thuộc.
+- **Nguồn SheetJS Community Edition chính thức**:
+  - Gói `xlsx` phân giải sang bản phát hành chính thức SheetJS CE `0.20.3` từ tarball `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz` do bản trên npm registry (`xlsx@0.18.5`) đã ngưng bảo trì từ lâu.
+  - Toàn bộ API SheetJS hiện hữu và hành vi nhập/xuất Excel (khách hàng, dữ liệu) được bảo toàn nguyên vẹn.
+- **Ghi đè gói scoped cho `xmldom`**:
+  - Thư viện `xmldom` dùng bởi `docxtemplater-image-module-free` được phân giải thông qua npm override scoped theo gói sang `@xmldom/xmldom@0.8.15` (bản bảo trì đã được vá lỗi bảo mật).
+  - Tính năng xử lý hình ảnh trong tài liệu Word (DOCX) tiếp tục hoạt động bình thường.
+- **Trạng thái Audit & Quản lý Phụ thuộc**:
+  - `npm audit` và `npm audit --omit=dev` hiện ghi nhận 0 lỗ hổng bảo mật (zero vulnerabilities). Kết quả này không đồng nghĩa các lần quét trong tương lai sẽ luôn sạch; `package-lock.json` là căn cứ xác thực và chốt phiên bản.
+- **Duy trì Webpack cho Production Build**:
+  - Tiếp tục sử dụng `next build --webpack` cho production build vì tiến trình PostCSS worker của Turbopack gặp lỗi crash lặp lại trên môi trường Windows (`0xc0000409`); giữ vững quyết định kỹ thuật đã định hình trước đó.
+- **Bằng chứng kiểm chứng sau cập nhật**:
+  - `npm test`: 962/962 tests pass.
+  - `npm run typecheck`: Vượt qua (0 lỗi).
+  - `npm run build`: Hoàn tất thành công, sinh 42 trang tĩnh và các dynamic routes.
+  - `npm audit` / `npm audit --omit=dev`: 0 cảnh báo/lỗ hổng.
