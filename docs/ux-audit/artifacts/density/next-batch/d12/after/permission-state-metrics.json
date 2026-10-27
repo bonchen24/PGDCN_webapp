@@ -1,0 +1,17 @@
+{
+  "capturedAt": "2026-10-27T18:42:51.382Z",
+  "width": 390,
+  "height": 844,
+  "formControlCount": 16,
+  "visibleFormControlCount": 16,
+  "surfaceControlCount": 19,
+  "openGroups": [
+    "Định danh & đăng nhậpĐang mở",
+    "Quyền & phạm vi nghiệp vụĐang mở",
+    "Thông tin bổ sungĐang mở"
+  ],
+  "closedGroups": [],
+  "focusedInputLabel": "Tên đăng nhập",
+  "validationMessageVisible": true,
+  "horizontalOverflow": false
+}

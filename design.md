@@ -1883,7 +1883,7 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 
 ### 5A.43. Chuẩn hóa mật độ thông tin và trải nghiệm mobile PGDCN (Density Pass) — 2026-10-27
 
-- **Mục tiêu**: Đây là hợp đồng thiết kế và ràng buộc kỹ thuật định hướng cho các đợt tối ưu hóa mật độ thông tin (information density) và không gian hiển thị mobile sắp tới theo backlog `docs/ux-audit/2026-10-27-density-ux-backlog.md`; **không khẳng định việc triển khai mã nguồn đã hoàn tất**.
+- **Mục tiêu**: Đây là hợp đồng thiết kế và ràng buộc kỹ thuật cho các đợt tối ưu hóa mật độ thông tin (information density) và không gian hiển thị mobile theo backlog `docs/ux-audit/2026-10-27-density-ux-backlog.md`. Trạng thái triển khai/nghiệm thu cụ thể được ghi trong báo cáo audit, không suy ra từ hợp đồng này.
 - **Khử trùng lặp trên Dashboard (Single Actionable Row)**:
   - Mỗi hồ sơ nghiệp vụ chỉ có duy nhất một dòng hoặc thẻ đại diện thao tác trên toàn bộ các bề mặt làm việc của Dashboard (Tổng quan, Việc của tôi).
   - Không hiển thị trùng một mã hồ sơ giữa danh sách "Việc của tôi" và khối "Việc cần chú ý". Khối "Việc cần chú ý" dành riêng cho các hồ sơ có hạn chót gấp, cảnh báo tồn đọng hoặc cờ cần lưu tâm đặc biệt, đồng thời bảo toàn trọn vẹn ý nghĩa hạn chót (due), bước hiện tại và hành động tiếp theo (next-action).
@@ -1902,6 +1902,19 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
   - Ngưỡng tối thiểu 11px (hoặc `text-xs`) cho các nhãn quan trọng, thông báo lỗi/validation và nút CTA; cỡ chữ thân văn bản (body) duy trì mức 14–16px để đảm bảo khả năng đọc trên màn hình di động.
   - Các nút hành động chính (primary CTA) trên mobile đạt kích thước chạm tối thiểu 44px (`min-h-[44px]`).
   - Triệt tiêu hoàn toàn tràn ngang cấp body/document (`overflow-x: hidden`); mã nhận diện nghiệp vụ (mã hồ sơ, mã PYC, mã mẫu, MST) không bị bẻ dòng ngắt quãng từng ký tự (`whitespace-nowrap font-mono`).
+- **Hàng đợi PGD trên mobile (D05)**:
+  - Giữ ô tìm kiếm và sáu trạng thái nghiệp vụ cốt lõi hiển thị; trạng thái được cuộn ngang trong một hàng khi không đủ chiều rộng.
+  - Nhóm lọc sản phẩm là disclosure đóng mặc định trên màn hình dưới 768px, có badge số lọc đang chọn; đóng/mở không làm reset lựa chọn. Tablet/desktop tiếp tục cho truy cập trực tiếp cả hai nhóm lọc.
+  - Mã hồ sơ và CTA mở hồ sơ phải còn đầy đủ, CTA đạt tối thiểu 44px và body không tràn ngang.
+- **Chi tiết quy trình PGD (D09)**:
+  - Bước hiện tại và hành động tiếp theo/CTA được ưu tiên ở đầu bề mặt hồ sơ. Checklist và vùng tài liệu, mẫu, lịch sử được thu gọn theo disclosure có trạng thái mở rõ ràng.
+  - Không lược bỏ thông tin bắt buộc để qua bước; không đổi state machine, gate, validation hoặc quyền. CTA phản ánh đúng trạng thái cho phép/từ chối của business gate.
+- **Chi tiết hồ sơ PCN (D10)**:
+  - Số tài liệu thiếu trong tóm tắt ngữ cảnh là số toàn hồ sơ; checklist trực quan tổng cũng hiển thị số toàn hồ sơ. Khi tab “Tài liệu hồ sơ” đã mở checklist tổng, ẩn chip số toàn hồ sơ thứ hai trong tóm tắt header; vẫn giữ badge định tính, CTA bổ sung có số lượng và checklist.
+  - Số ở checklist/summary của bước hiện hành là số thuộc phạm vi bước, không thay thế số toàn hồ sơ và không được hợp nhất với số tổng.
+- **Form tạo người dùng PCN (D12)**:
+  - `PcnUserManagementView` sở hữu form; nhóm bằng disclosure native theo “Định danh & đăng nhập”, “Quyền & phạm vi nghiệp vụ”, “Thông tin bổ sung”. Nhóm định danh mở mặc định; hai nhóm còn lại đóng mặc định.
+  - Đóng/mở nhóm không làm mất giá trị. Required fields phải luôn truy cập được; validation hiện tại và focus lỗi được giữ. Không đổi API, RBAC, trường dữ liệu hoặc điều kiện tạo tài khoản.
 - **Bảo toàn Kiến trúc Nghiệp vụ & RBAC**:
   - Giữ nguyên vẹn toàn bộ cấu trúc routing của PCN và PGD, logic luồng chuyển bước (workflow state machine), dữ liệu hồ sơ, hợp đồng API và phân quyền người dùng (Admin, Staff, Viewer).
   - Mọi thay đổi trong đợt density pass chỉ tập trung vào tầng trình diễn (projection/UI density/layout/affordance).

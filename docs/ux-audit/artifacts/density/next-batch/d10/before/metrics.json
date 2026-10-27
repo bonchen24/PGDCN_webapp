@@ -1,0 +1,383 @@
+{
+  "capturedAt": "2026-10-27T18:36:56.489Z",
+  "phase": "before",
+  "apiMutations": [],
+  "externalRequests": [],
+  "screens": [
+    {
+      "role": "admin",
+      "scenario": "missing",
+      "width": 320,
+      "height": 800,
+      "headerGlobalMissingCount": 14,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 14,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 0,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 384.375,
+        "height": 332.375
+      },
+      "checklistBounds": {
+        "top": 2436.0625,
+        "bottom": 3538.0625,
+        "height": 1102
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 320,
+      "pageErrors": []
+    },
+    {
+      "role": "admin",
+      "scenario": "missing",
+      "width": 390,
+      "height": 844,
+      "headerGlobalMissingCount": 14,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 14,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 0,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 253.1875,
+        "height": 201.1875
+      },
+      "checklistBounds": {
+        "top": 2144.375,
+        "bottom": 3207.375,
+        "height": 1063
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 390,
+      "pageErrors": []
+    },
+    {
+      "role": "admin",
+      "scenario": "missing",
+      "width": 430,
+      "height": 932,
+      "headerGlobalMissingCount": 14,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 14,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 0,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 253.1875,
+        "height": 201.1875
+      },
+      "checklistBounds": {
+        "top": 2062.625,
+        "bottom": 3036.125,
+        "height": 973.5
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 430,
+      "pageErrors": []
+    },
+    {
+      "role": "admin",
+      "scenario": "missing",
+      "width": 1440,
+      "height": 1000,
+      "headerGlobalMissingCount": 14,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 14,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 0,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 168.6875,
+        "height": 116.6875
+      },
+      "checklistBounds": {
+        "top": 1430.375,
+        "bottom": 2065.375,
+        "height": 635
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 1440,
+      "pageErrors": []
+    },
+    {
+      "role": "admin",
+      "scenario": "one-present",
+      "width": 390,
+      "height": 844,
+      "headerGlobalMissingCount": 13,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 13,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 1,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 253.1875,
+        "height": 201.1875
+      },
+      "checklistBounds": {
+        "top": 2127.875,
+        "bottom": 3255.375,
+        "height": 1127.5
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 390,
+      "pageErrors": []
+    },
+    {
+      "role": "staff",
+      "scenario": "missing",
+      "width": 320,
+      "height": 800,
+      "headerGlobalMissingCount": 14,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 14,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 0,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 334.375,
+        "height": 282.375
+      },
+      "checklistBounds": {
+        "top": 2386.0625,
+        "bottom": 3488.0625,
+        "height": 1102
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 320,
+      "pageErrors": []
+    },
+    {
+      "role": "staff",
+      "scenario": "missing",
+      "width": 390,
+      "height": 844,
+      "headerGlobalMissingCount": 14,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 14,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 0,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 253.1875,
+        "height": 201.1875
+      },
+      "checklistBounds": {
+        "top": 2144.375,
+        "bottom": 3207.375,
+        "height": 1063
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 390,
+      "pageErrors": []
+    },
+    {
+      "role": "staff",
+      "scenario": "missing",
+      "width": 430,
+      "height": 932,
+      "headerGlobalMissingCount": 14,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 14,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 0,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 253.1875,
+        "height": 201.1875
+      },
+      "checklistBounds": {
+        "top": 2062.625,
+        "bottom": 3036.125,
+        "height": 973.5
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 430,
+      "pageErrors": []
+    },
+    {
+      "role": "staff",
+      "scenario": "missing",
+      "width": 1440,
+      "height": 1000,
+      "headerGlobalMissingCount": 14,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 14,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 0,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 168.6875,
+        "height": 116.6875
+      },
+      "checklistBounds": {
+        "top": 1430.375,
+        "bottom": 2065.375,
+        "height": 635
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 1440,
+      "pageErrors": []
+    },
+    {
+      "role": "staff",
+      "scenario": "one-present",
+      "width": 390,
+      "height": 844,
+      "headerGlobalMissingCount": 13,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 13,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 1,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 253.1875,
+        "height": 201.1875
+      },
+      "checklistBounds": {
+        "top": 2127.875,
+        "bottom": 3255.375,
+        "height": 1127.5
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 390,
+      "pageErrors": []
+    },
+    {
+      "role": "viewer",
+      "scenario": "missing",
+      "width": 320,
+      "height": 800,
+      "headerGlobalMissingCount": 14,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 14,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 0,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 334.375,
+        "height": 282.375
+      },
+      "checklistBounds": {
+        "top": 2386.0625,
+        "bottom": 3488.0625,
+        "height": 1102
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 320,
+      "pageErrors": []
+    },
+    {
+      "role": "viewer",
+      "scenario": "missing",
+      "width": 390,
+      "height": 844,
+      "headerGlobalMissingCount": 14,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 14,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 0,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 253.1875,
+        "height": 201.1875
+      },
+      "checklistBounds": {
+        "top": 2144.375,
+        "bottom": 3207.375,
+        "height": 1063
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 390,
+      "pageErrors": []
+    },
+    {
+      "role": "viewer",
+      "scenario": "missing",
+      "width": 430,
+      "height": 932,
+      "headerGlobalMissingCount": 14,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 14,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 0,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 253.1875,
+        "height": 201.1875
+      },
+      "checklistBounds": {
+        "top": 2062.625,
+        "bottom": 3036.125,
+        "height": 973.5
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 430,
+      "pageErrors": []
+    },
+    {
+      "role": "viewer",
+      "scenario": "missing",
+      "width": 1440,
+      "height": 1000,
+      "headerGlobalMissingCount": 14,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 14,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 0,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 168.6875,
+        "height": 116.6875
+      },
+      "checklistBounds": {
+        "top": 1430.375,
+        "bottom": 2065.375,
+        "height": 635
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 1440,
+      "pageErrors": []
+    },
+    {
+      "role": "viewer",
+      "scenario": "one-present",
+      "width": 390,
+      "height": 844,
+      "headerGlobalMissingCount": 13,
+      "headerRetainsMissingBadge": true,
+      "globalChecklistMissingCount": 13,
+      "globalChecklistRequiredTotal": 14,
+      "currentStepRequiredPresent": 1,
+      "currentStepRequiredTotal": 5,
+      "headerBounds": {
+        "top": 52,
+        "bottom": 253.1875,
+        "height": 201.1875
+      },
+      "checklistBounds": {
+        "top": 2127.875,
+        "bottom": 3255.375,
+        "height": 1127.5
+      },
+      "bodyOverflow": false,
+      "scrollWidth": 390,
+      "pageErrors": []
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { KeyRound, Pencil, Plus, Search, Shield, Trash2, UserCog, X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -142,6 +142,8 @@ export function PcnUserManagementView({
   const [systemRoleFilter, setSystemRoleFilter] = useState<'ALL' | PcnSystemRole>('ALL');
   const [managementRoleFilter, setManagementRoleFilter] = useState<'ALL' | OrganizationManagementRoleCode>('ALL');
   const [form, setForm] = useState<UserFormState>(EMPTY_FORM);
+  const [userFormSections, setUserFormSections] = useState({ identity: true, permissions: false, additional: false });
+  const usernameInputRef = useRef<HTMLInputElement>(null);
   const [editingUsername, setEditingUsername] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -176,11 +178,13 @@ export function PcnUserManagementView({
   const openCreate = () => {
     setEditingUsername(null);
     setForm(EMPTY_FORM);
+    setUserFormSections({ identity: true, permissions: false, additional: false });
     setFormOpen(true);
   };
 
   const openEdit = (user: PcnUserAccount) => {
     setEditingUsername(user.username);
+    setUserFormSections({ identity: true, permissions: false, additional: false });
     setFormOpen(true);
     setForm({
       username: user.username,
@@ -202,6 +206,7 @@ export function PcnUserManagementView({
   const closeForm = () => {
     setEditingUsername(null);
     setForm(EMPTY_FORM);
+    setUserFormSections({ identity: true, permissions: false, additional: false });
     setFormOpen(false);
   };
 
@@ -210,6 +215,7 @@ export function PcnUserManagementView({
     if (saving) return;
     if (!form.username.trim() || !form.name.trim()) {
       toast.error('Vui lòng nhập tên đăng nhập và họ tên.');
+      if (!form.username.trim()) usernameInputRef.current?.focus();
       return;
     }
     const input: PcnUserInput = {
@@ -370,58 +376,103 @@ export function PcnUserManagementView({
               <X size={16} />
             </button>
           </div>
-          <div className="grid gap-2 md:grid-cols-3">
-            <FormField label="Tên đăng nhập *"><input className={`${inputClass} ${editingUsername ? 'bg-slate-50 text-slate-500' : ''}`} value={form.username} disabled={Boolean(editingUsername)} onChange={(event) => setForm({ ...form, username: event.target.value })} /></FormField>
-            <FormField label="Họ và tên *"><input required aria-required="true" className={inputClass} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></FormField>
-            <FormField label="Thông tin chức danh (tuỳ chọn)"><input className={inputClass} value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} /></FormField>
-          </div>
-          <div className="mt-2 grid gap-2 md:grid-cols-3">
-            <FormField label="Vai trò hệ thống"><select className={inputClass} value={form.systemRole} onChange={(event) => setForm({ ...form, systemRole: event.target.value as PcnSystemRole })}>{Object.entries(SYSTEM_ROLE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></FormField>
-            <FormField label="Chức danh quản lý"><select className={inputClass} value={form.managementRoleCode} onChange={(event) => setForm({ ...form, managementRoleCode: event.target.value as OrganizationManagementRoleCode })}>{ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.map((role) => <option key={role.code} value={role.code}>{role.name}</option>)}</select></FormField>
-            <label className="mobile-touch-target flex min-h-11 items-center gap-2 text-[11px] font-bold text-slate-600"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} />Tài khoản đang hoạt động</label>
-          </div>
-          <div className="mt-2 rounded-lg border border-violet-100 bg-violet-50/50 p-2.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-black text-slate-600">Vai trò chuyên môn (có thể chọn nhiều):</span>
-              {PROFESSIONAL_ROLE_OPTIONS.map((role) => (
-                <label key={role.code} className={`mobile-touch-target inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-black ${form.professionalRoleCodes.includes(role.code) ? 'border-violet-300 bg-white text-violet-700' : 'border-slate-200 bg-white text-slate-500'}`}>
-                  <input type="checkbox" checked={form.professionalRoleCodes.includes(role.code)} onChange={() => toggleProfessionalRole(role.code)} />
-                  {role.name}
-                </label>
-              ))}
+          <details
+            data-testid="user-form-identity"
+            open={userFormSections.identity}
+            onToggle={(event) => { const open = event.currentTarget.open; setUserFormSections((previous) => ({ ...previous, identity: open })); }}
+            className="rounded-lg border border-slate-200 bg-white"
+          >
+            <summary
+              onClick={(event) => {
+                if (userFormSections.identity && (!form.username.trim() || !form.name.trim())) {
+                  event.preventDefault();
+                  setUserFormSections((previous) => ({ ...previous, identity: true }));
+                }
+              }}
+              className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs font-black text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+            >
+              <span>Định danh &amp; đăng nhập</span>
+              <span data-testid="user-form-identity-state" className="text-[11px] font-bold text-emerald-700">{userFormSections.identity ? 'Đang mở' : 'Mở để xem'}</span>
+            </summary>
+            <div className="grid gap-2 border-t border-slate-200 p-3 md:grid-cols-2">
+              <FormField label="Tên đăng nhập *"><input ref={usernameInputRef} aria-label="Tên đăng nhập" className={`${inputClass} ${editingUsername ? 'bg-slate-50 text-slate-500' : ''}`} value={form.username} disabled={Boolean(editingUsername)} onChange={(event) => setForm({ ...form, username: event.target.value })} /></FormField>
+              <FormField label="Họ và tên *"><input required aria-required="true" aria-label="Họ và tên" className={inputClass} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></FormField>
             </div>
-            <p className="mt-1 text-[11px] leading-4 text-violet-700">Chức danh quản lý và vai trò chuyên môn độc lập; lãnh đạo có thể đồng thời là chuyên gia.</p>
-          </div>
-          <div className="mt-2 grid gap-2 md:grid-cols-3">
-            <FormField label="Số điện thoại"><input className={inputClass} value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></FormField>
-            <FormField label="Email"><input type="email" className={inputClass} value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></FormField>
-          </div>
-          <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/50 p-2.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-black text-slate-600">Phạm vi phòng:</span>
-              {(['PCN', 'PGD'] as DepartmentScope[]).map((scope) => (
-                <label key={scope} className={`mobile-touch-target inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-black ${form.departmentScopes.includes(scope) ? 'border-blue-300 bg-white text-blue-700' : 'border-slate-200 bg-white text-slate-500'}`}>
-                  <input type="checkbox" checked={form.departmentScopes.includes(scope)} onChange={() => toggleDepartmentScope(scope)} />
-                  {scope}
-                </label>
-              ))}
-              {form.departmentScopes.includes('PGD') && (
-                <select className={`${inputClass} max-w-xs`} aria-label="Vai trò nghiệp vụ PGD" value={form.pgdRole || 'PGD_FIELD_INSPECTOR'} onChange={(event) => setForm({ ...form, pgdRole: event.target.value as PgdDepartmentRoleCode })}>
-                  {Object.entries(PGD_ROLE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
-                </select>
-              )}
+          </details>
+
+          <details
+            data-testid="user-form-permissions"
+            open={userFormSections.permissions}
+            onToggle={(event) => { const open = event.currentTarget.open; setUserFormSections((previous) => ({ ...previous, permissions: open })); }}
+            className="mt-2 rounded-lg border border-slate-200 bg-white"
+          >
+            <summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs font-black text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+              <span>Quyền &amp; phạm vi nghiệp vụ</span>
+              <span data-testid="user-form-permissions-state" className="text-[11px] font-bold text-emerald-700">{userFormSections.permissions ? 'Đang mở' : 'Mở để xem'}</span>
+            </summary>
+            <div className="space-y-2 border-t border-slate-200 p-3">
+              <div className="grid gap-2 md:grid-cols-3">
+                <FormField label="Vai trò hệ thống"><select className={inputClass} value={form.systemRole} onChange={(event) => setForm({ ...form, systemRole: event.target.value as PcnSystemRole })}>{Object.entries(SYSTEM_ROLE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></FormField>
+                <FormField label="Chức danh quản lý"><select className={inputClass} value={form.managementRoleCode} onChange={(event) => setForm({ ...form, managementRoleCode: event.target.value as OrganizationManagementRoleCode })}>{ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.map((role) => <option key={role.code} value={role.code}>{role.name}</option>)}</select></FormField>
+                <label className="mobile-touch-target flex min-h-11 items-center gap-2 text-[11px] font-bold text-slate-600"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} />Tài khoản đang hoạt động</label>
+              </div>
+              <div className="rounded-lg border border-violet-100 bg-violet-50/50 p-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-black text-slate-600">Vai trò chuyên môn (có thể chọn nhiều):</span>
+                  {PROFESSIONAL_ROLE_OPTIONS.map((role) => (
+                    <label key={role.code} className={`mobile-touch-target inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-black ${form.professionalRoleCodes.includes(role.code) ? 'border-violet-300 bg-white text-violet-700' : 'border-slate-200 bg-white text-slate-500'}`}>
+                      <input type="checkbox" checked={form.professionalRoleCodes.includes(role.code)} onChange={() => toggleProfessionalRole(role.code)} />
+                      {role.name}
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1 text-[11px] leading-4 text-violet-700">Chức danh quản lý và vai trò chuyên môn độc lập; lãnh đạo có thể đồng thời là chuyên gia.</p>
+              </div>
+              <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-black text-slate-600">Phạm vi phòng:</span>
+                  {(['PCN', 'PGD'] as DepartmentScope[]).map((scope) => (
+                    <label key={scope} className={`mobile-touch-target inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-black ${form.departmentScopes.includes(scope) ? 'border-blue-300 bg-white text-blue-700' : 'border-slate-200 bg-white text-slate-500'}`}>
+                      <input type="checkbox" checked={form.departmentScopes.includes(scope)} onChange={() => toggleDepartmentScope(scope)} />
+                      {scope}
+                    </label>
+                  ))}
+                  {form.departmentScopes.includes('PGD') && (
+                    <select className={`${inputClass} max-w-xs`} aria-label="Vai trò nghiệp vụ PGD" value={form.pgdRole || 'PGD_FIELD_INSPECTOR'} onChange={(event) => setForm({ ...form, pgdRole: event.target.value as PgdDepartmentRoleCode })}>
+                      {Object.entries(PGD_ROLE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+                    </select>
+                  )}
+                </div>
+                <p className="mt-1 text-[11px] leading-4 text-blue-700">Cùng một tài khoản có thể có cả PCN và PGD; mỗi workspace vẫn kiểm tra quyền theo đúng miền.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-black text-slate-500">Phạm vi lĩnh vực:</span>
+                {fields.map((field) => (
+                  <label key={field.code} className={`mobile-touch-target inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold ${form.fieldCodes.includes(field.code) ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}>
+                    <input type="checkbox" checked={form.fieldCodes.includes(field.code)} onChange={() => toggleField(field.code)} />
+                    {field.name}
+                  </label>
+                ))}
+              </div>
             </div>
-            <p className="mt-1 text-[11px] leading-4 text-blue-700">Cùng một tài khoản có thể có cả PCN và PGD; mỗi workspace vẫn kiểm tra quyền theo đúng miền.</p>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-black text-slate-500">Phạm vi lĩnh vực:</span>
-            {fields.map((field) => (
-              <label key={field.code} className={`mobile-touch-target inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold ${form.fieldCodes.includes(field.code) ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}>
-                <input type="checkbox" checked={form.fieldCodes.includes(field.code)} onChange={() => toggleField(field.code)} />
-                {field.name}
-              </label>
-            ))}
-          </div>
+          </details>
+
+          <details
+            data-testid="user-form-additional"
+            open={userFormSections.additional}
+            onToggle={(event) => { const open = event.currentTarget.open; setUserFormSections((previous) => ({ ...previous, additional: open })); }}
+            className="mt-2 rounded-lg border border-slate-200 bg-white"
+          >
+            <summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs font-black text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+              <span>Thông tin bổ sung</span>
+              <span data-testid="user-form-additional-state" className="text-[11px] font-bold text-emerald-700">{userFormSections.additional ? 'Đang mở' : 'Mở để xem'}</span>
+            </summary>
+            <div className="grid gap-2 border-t border-slate-200 p-3 md:grid-cols-3">
+              <FormField label="Thông tin chức danh (tuỳ chọn)"><input aria-label="Thông tin chức danh" className={inputClass} value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} /></FormField>
+              <FormField label="Số điện thoại"><input className={inputClass} value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></FormField>
+              <FormField label="Email"><input type="email" className={inputClass} value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></FormField>
+            </div>
+          </details>
           <div className="mt-3 flex justify-end gap-2">
             <button type="button" onClick={closeForm} className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-600">Hủy</button>
             <button type="submit" disabled={saving} className="mobile-touch-target min-h-11 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-black text-white disabled:opacity-50">{saving ? 'Đang lưu...' : editingUsername ? 'Lưu thay đổi' : 'Thêm nhân sự'}</button>

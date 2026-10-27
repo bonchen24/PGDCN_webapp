@@ -204,6 +204,7 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [activeChip, setActiveChip] = useState<PgdFilterChipId>('ALL');
+  const [productFiltersOpen, setProductFiltersOpen] = useState(false);
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
   const unassignedCount = rows.filter((r) => !r.ownerUsername && !r.ownerDisplayName).length;
 
@@ -252,6 +253,7 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
   }, [searchFilteredRows]);
   const hasActiveSearchOrFilter = Boolean(query.trim()) || activeChip !== 'ALL';
   const activeChipLabel = PGD_FILTER_CHIPS.find((chip) => chip.id === activeChip)?.label || '';
+  const activeProductFilterCount = PGD_PRODUCT_FILTER_IDS.has(activeChip) ? 1 : 0;
   const productGroupChips = PGD_FILTER_CHIPS.filter((chip) => PGD_PRODUCT_FILTER_IDS.has(chip.id));
   const dossierStateChips = PGD_FILTER_CHIPS.filter((chip) => !PGD_PRODUCT_FILTER_IDS.has(chip.id));
 
@@ -517,8 +519,8 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
         </div>
       </div>
 
-      {/* Responsive toolbar: search stays full-width on mobile and chips wrap. */}
-      <div className="pgd-queue-toolbar flex min-w-0 max-w-full flex-col gap-2 py-1">
+      {/* Keep search and core status filters close to the first card on mobile. */}
+      <div className="pgd-queue-toolbar flex min-w-0 max-w-full flex-col gap-1 py-0 md:gap-2 md:py-1">
         {/* Search Input */}
         <div className="flex min-w-0 items-center gap-2">
           <div className="pgdcn-toolbar-search relative min-w-0 max-w-sm flex-1">
@@ -544,17 +546,40 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
           ) : null}
         </div>
 
-        {/* Product group and dossier state filters stay distinct and wrap on mobile. */}
+        {/* Secondary product filters collapse on mobile; the core status filters remain in a single scroll row. */}
         <div className="pgd-queue-filter-pills flex min-w-0 max-w-full flex-col gap-2 md:flex-row md:items-end md:gap-4">
           <div className="min-w-0 md:flex-1">
-            <p id="pgd-queue-product-filter-label" className="mb-1 text-[9px] font-black uppercase tracking-wide text-slate-500">Nhóm sản phẩm PGD</p>
-            <div role="group" aria-labelledby="pgd-queue-product-filter-label" className="flex max-w-full flex-wrap items-center gap-1">
-              {productGroupChips.map(renderFilterChip)}
+            <p id="pgd-queue-product-filter-label" className="sr-only md:not-sr-only md:mb-1 md:text-[9px] md:font-black md:uppercase md:tracking-wide md:text-slate-500">Nhóm sản phẩm PGD</p>
+            <button
+              type="button"
+              aria-label={`Bộ lọc sản phẩm, ${activeProductFilterCount} bộ lọc đang áp dụng`}
+              aria-expanded={productFiltersOpen}
+              aria-controls="pgd-queue-product-filters"
+              onClick={() => setProductFiltersOpen((open) => !open)}
+              className="mobile-touch-target flex min-h-11 w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-bold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:hidden"
+            >
+              <span className="inline-flex items-center gap-2">
+                <SlidersHorizontal size={14} aria-hidden="true" />
+                <span>Bộ lọc sản phẩm</span>
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span aria-hidden="true" className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-black text-blue-700">{activeProductFilterCount}</span>
+                <span className="sr-only">{activeProductFilterCount} bộ lọc đang áp dụng</span>
+                <ChevronDown aria-hidden="true" size={14} className={`transition-transform ${productFiltersOpen ? 'rotate-180' : ''}`} />
+              </span>
+            </button>
+            <div
+              id="pgd-queue-product-filters"
+              className={`${productFiltersOpen ? 'block' : 'hidden'} mt-1 md:mt-0 md:block`}
+            >
+              <div role="group" aria-labelledby="pgd-queue-product-filter-label" className="flex max-w-full flex-wrap items-center gap-1">
+                {productGroupChips.map(renderFilterChip)}
+              </div>
             </div>
           </div>
           <div className="min-w-0 md:flex-[1.5]">
-            <p id="pgd-queue-state-filter-label" className="mb-1 text-[9px] font-black uppercase tracking-wide text-slate-500">Trạng thái / tiến độ hồ sơ</p>
-            <div role="group" aria-labelledby="pgd-queue-state-filter-label" className="flex max-w-full flex-wrap items-center gap-1">
+            <p id="pgd-queue-state-filter-label" className="sr-only md:not-sr-only md:mb-1 md:text-[9px] md:font-black md:uppercase md:tracking-wide md:text-slate-500">Trạng thái / tiến độ hồ sơ</p>
+            <div role="group" aria-labelledby="pgd-queue-state-filter-label" className="mobile-scroll-x flex max-w-full flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain md:flex-wrap md:overflow-visible md:pb-0">
               {dossierStateChips.map(renderFilterChip)}
             </div>
           </div>

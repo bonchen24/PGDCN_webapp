@@ -1,0 +1,46 @@
+{
+  "phase": "after",
+  "capturedAt": "2026-10-27T18:42:48.986Z",
+  "apiMutations": [],
+  "externalRequests": [],
+  "viewports": [
+    {
+      "width": 390,
+      "height": 844,
+      "formTop": 278.5,
+      "formHeight": 445.25,
+      "formControlCount": 15,
+      "visibleFormControlCount": 2,
+      "surfaceControlCount": 18,
+      "disclosureCount": 3,
+      "openDisclosureCount": 1,
+      "disclosureSummaries": [
+        "Định danh & đăng nhậpĐang mở",
+        "Quyền & phạm vi nghiệp vụMở để xem",
+        "Thông tin bổ sungMở để xem"
+      ],
+      "horizontalOverflow": false,
+      "bodyScrollHeight": 844,
+      "pageErrors": []
+    },
+    {
+      "width": 1440,
+      "height": 1000,
+      "formTop": 343,
+      "formHeight": 373.5,
+      "formControlCount": 15,
+      "visibleFormControlCount": 2,
+      "surfaceControlCount": 18,
+      "disclosureCount": 3,
+      "openDisclosureCount": 1,
+      "disclosureSummaries": [
+        "Định danh & đăng nhậpĐang mở",
+        "Quyền & phạm vi nghiệp vụMở để xem",
+        "Thông tin bổ sungMở để xem"
+      ],
+      "horizontalOverflow": false,
+      "bodyScrollHeight": 1000,
+      "pageErrors": []
+    }
+  ]
+}

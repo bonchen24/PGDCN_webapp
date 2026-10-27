@@ -1,0 +1,38 @@
+{
+  "phase": "before",
+  "capturedAt": "2026-10-27T18:24:32.313Z",
+  "apiMutations": [],
+  "externalRequests": [],
+  "viewports": [
+    {
+      "width": 390,
+      "height": 844,
+      "formTop": 278.5,
+      "formHeight": 1045.25,
+      "formControlCount": 15,
+      "visibleFormControlCount": 15,
+      "surfaceControlCount": 18,
+      "disclosureCount": 0,
+      "openDisclosureCount": 0,
+      "disclosureSummaries": [],
+      "horizontalOverflow": false,
+      "bodyScrollHeight": 844,
+      "pageErrors": []
+    },
+    {
+      "width": 1440,
+      "height": 1000,
+      "formTop": 343,
+      "formHeight": 595.5,
+      "formControlCount": 15,
+      "visibleFormControlCount": 15,
+      "surfaceControlCount": 18,
+      "disclosureCount": 0,
+      "openDisclosureCount": 0,
+      "disclosureSummaries": [],
+      "horizontalOverflow": false,
+      "bodyScrollHeight": 1000,
+      "pageErrors": []
+    }
+  ]
+}

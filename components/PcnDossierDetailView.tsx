@@ -855,7 +855,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
 <p className="mt-1 text-[11px] text-slate-500">Mã hồ sơ {dossier.dossierCode} · {proposal?.proposalCode || 'Chưa có mã Đề nghị'}</p>
 <div data-testid="pcn-dossier-context-summary" className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-600" aria-label="Tóm tắt ngữ cảnh hồ sơ">
 <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-800">Bước hiện tại: {currentStation.title}</span>
-<span className={`rounded-full border px-2 py-1 ${missingRequiredCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>{missingRequiredCount > 0 ? `Còn ${missingRequiredCount} tài liệu bắt buộc` : 'Đủ tài liệu bắt buộc'}</span>
+{activeTab !== 'documents' && <span className={`rounded-full border px-2 py-1 ${missingRequiredCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>{missingRequiredCount > 0 ? `Còn ${missingRequiredCount} tài liệu bắt buộc` : 'Đủ tài liệu bắt buộc'}</span>}
 <span className="max-w-full truncate rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">Chủ hồ sơ: {ownerLabel}</span>
 </div>
 </div>
