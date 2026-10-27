@@ -34,7 +34,14 @@ test('closing the standalone dossier route clears the selected dossier before re
   assert.match(workspace, /useEffect\(\(\) => \{\n    setSelectedDossierId\(initialDossierId\);\n    setSelectedDossierTab\(initialDossierTab\);\n  \}, \[initialDossierId, initialDossierTab\]\);/);
 });
 
-test('switching workspace navigation from a standalone dossier replaces the dossier route', () => {
+test('switching workspace navigation from a standalone dossier pushes PCN operations route and replaces other targets', () => {
   const shell = read('components/PgdcnAppShell.tsx');
-  assert.match(shell, /if \(initialPcnDossierId \|\| initialPgdRequestId\) \{\n      router\.replace\(target\.domain === 'department' \? '\/pgdcn' : target\.domain === 'PCN' \? '\/pgdcn\/pcn' : '\/pgdcn\/pgd'\);\n    \}/);
+  assert.match(
+    shell,
+    /if \(initialPcnDossierId && target\.domain === 'PCN' && target\.section === 'operations'\) \{\n\s+router\.push\('\/pgdcn\/pcn\?section=operations'\);\n\s+return;\n\s+\}/,
+  );
+  assert.match(
+    shell,
+    /if \(initialPcnDossierId \|\| initialPgdRequestId\) \{[\s\S]*?router\.replace\(target\.domain === 'department' \? '\/pgdcn' : target\.domain === 'PCN' \? '\/pgdcn\/pcn' : '\/pgdcn\/pgd'\);\n\s*\}/,
+  );
 });

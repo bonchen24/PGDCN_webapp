@@ -1854,3 +1854,29 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
   - `npm run typecheck`: Vượt qua (0 lỗi).
   - `npm run build`: Hoàn tất thành công, sinh 42 trang tĩnh và các dynamic routes.
   - `npm audit` / `npm audit --omit=dev`: 0 cảnh báo/lỗ hổng.
+
+### 5A.42. Chuẩn hóa UI/UX toàn diện PGDCN theo UX Audit 2026-10-27 (F1–F5) — 2026-10-27
+
+- **F1 · Đóng panel thông báo khi chuyển mục / route (`PgdcnAppShell`, `PgdcnNotificationDropdown`)**:
+  - Khi người dùng bấm chuyển mục trên sidebar hoặc chuyển route (PCN, PGD, Soạn thảo, Cài đặt...), popup danh sách thông báo phải tự động đóng.
+  - Trạng thái `aria-expanded="false"` được đồng bộ lại trên nút chuông thông báo; tránh hoàn toàn lỗi panel thông báo che khuất nội dung màn hình làm việc sau điều hướng.
+  - Quản lý focus: menu/mục được kích hoạt nhận focus hoặc focus trả về trigger hợp lệ.
+- **F2 · Chuẩn hóa preview nhập Excel thành Accessible Dialog (`PcnCustomersManagementView`)**:
+  - Hộp thoại xem trước nhập Excel được nâng cấp thành standard accessible dialog: `role="dialog"`, `aria-modal="true"`, `aria-labelledby="pcn-customer-import-preview-title"`.
+  - Hỗ trợ keyboard focus trap (Tab xoay vòng trong dialog, Shift+Tab đảo ngược), phím Escape đóng dialog khi không trong trạng thái đang import và khôi phục focus về nút kích hoạt ("Nhập Excel").
+  - Hoàn toàn bảo toàn logic parse Excel, validation, RBAC admin/staff, và không gây mutation dữ liệu khi chỉ xem preview.
+- **F3 · Bảo toàn hiển thị mã PYC/hồ sơ PGD trên màn hình hẹp (`PgdDossierQueueView`)**:
+  - Mã hồ sơ/PYC (ví dụ `PGD-DEMO-001`) được bảo vệ bằng thuộc tính `whitespace-nowrap font-mono` và cấu trúc flex co giãn có giới hạn hợp lý, triệt tiêu lỗi mã bị bẻ dòng từng ký tự tại các viewport 320px, 375px, 390px, 430px.
+  - Nút thao tác CTA ("Mở hồ sơ") đảm bảo kích thước chạm tối thiểu `min-h-[44px]`, không tràn trang (`overflow-x: hidden`).
+- **F4 · Điều hướng Sổ dữ liệu PCN bảo toàn ngữ cảnh & lịch sử duyệt (`app/pgdcn/pcn/page.tsx`, `PgdcnAppShell`)**:
+  - Từ màn hình chi tiết hồ sơ PCN (`/pgdcn/pcn/dossiers/[dossierId]`), khi bấm "Sổ dữ liệu PCN" trên sidebar, ứng dụng điều hướng chính xác đến `/pgdcn/pcn?section=operations` ("Sổ tổng hợp PCN") thay vì remount về section mặc định ("Quản lý Đề nghị").
+  - Sử dụng `router.push('/pgdcn/pcn?section=operations')` để bảo toàn lịch sử duyệt trình duyệt (Back/Forward quay lại đúng hồ sơ trước đó mà không làm lệch trạng thái).
+- **F5 · Tối ưu trải nghiệm quét biểu mẫu DOCX PCN trên mobile (`PgdcnUnifiedDraftingView`)**:
+  - Giao diện mobile (< 1024px) chuyển sang danh sách thẻ responsive (Card List): mã biểu mẫu, tên mẫu, phiên bản, lĩnh vực, trạng thái hiển thị rõ ràng, không wrap ngẫu nhiên.
+  - Các nút hành động ("Tải về", "Cập nhật", "Sử dụng") trên mobile đạt kích thước chạm `min-h-[44px]`.
+  - Giữ nguyên bảng so sánh biểu mẫu gọn gàng trên desktop (>= 1024px), triệt tiêu thanh cuộn ngang không cần thiết trên mobile.
+- **Bằng chứng nghiệm thu kỹ thuật**:
+  - 5 Playwright suites kiểm chứng tự động: F1, F2, F3, F4, F5 pass 100%.
+  - 35 ảnh Playwright chụp sau fix tại 7 kích thước màn hình (320px, 375px, 390px, 430px, 768px, 1280px, 1440px) lưu tại `docs/ux-audit/artifacts/after-fixes/`.
+  - Metrics Playwright: `mutations=0`, `external=0`, `pageErrors=0`.
+  - Toàn bộ 962/962 unit/integration tests vượt qua; `npm run typecheck` sạch (0 lỗi); `next build --webpack` thành công.

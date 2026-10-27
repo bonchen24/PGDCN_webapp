@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Menu, RefreshCw, User } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { toast } from 'sonner';
@@ -44,6 +44,7 @@ const PGD_TEMPLATE_REQUIREMENTS = Array.from(new Map(
 type PgdcnAppShellProps = {
   initialDomain?: PgdcnDomain;
   initialDepartmentSection?: import('./PgdcnSidebar').PgdcnSharedSection;
+  initialPcnSection?: 'operations';
   initialDraftingDomain?: 'PGD' | 'PCN';
   initialDraftingTab?: UnifiedDraftingTab;
   initialPcnDossierId?: string;
@@ -103,8 +104,9 @@ const getSharedTargetForPgdSection = (section: PgdSection): PgdcnNavigationTarge
   return undefined;
 };
 
-export default function PgdcnAppShell({ initialDomain = 'department', initialDepartmentSection, initialDraftingDomain, initialDraftingTab, initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPcnDraftRequirementId, initialPcnDraftNodeId, initialPcnDraftKind, initialPcnDraftReturnTo, initialPgdDraftingOpen, initialPgdRequestId, initialPgdRequestStep, initialPgdDraftRequestId, initialPgdDraftRequirementCode, initialPgdDraftTemplateKind, initialPgdDraftReturnTo }: PgdcnAppShellProps) {
+export default function PgdcnAppShell({ initialDomain = 'department', initialDepartmentSection, initialPcnSection, initialDraftingDomain, initialDraftingTab, initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPcnDraftRequirementId, initialPcnDraftNodeId, initialPcnDraftKind, initialPcnDraftReturnTo, initialPgdDraftingOpen, initialPgdRequestId, initialPgdRequestStep, initialPgdDraftRequestId, initialPgdDraftRequirementCode, initialPgdDraftTemplateKind, initialPgdDraftReturnTo }: PgdcnAppShellProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const setCurrentUser = usePcnSessionStore((state) => state.setCurrentUser);
   const clearCurrentUser = usePcnSessionStore((state) => state.clearCurrentUser);
@@ -116,7 +118,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
   })), [pcn.approvalSteps, pcn.documentRequirements, pcn.dossierDocuments, pcn.dossiers, pcn.issuancePackages, pcn.labRequests, pcn.proposals, pcn.returnedResults, pcn.sampleItems, pcn.sampleLots, pcn.sampleRoutes]);
   const [sessionChecked, setSessionChecked] = useState(() => Boolean(usePcnSessionStore.getState().currentUser));
   const [activeTarget, setActiveTarget] = useState<PgdcnNavigationTarget>(() => initialDomain === 'PCN'
-    ? { domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : 'proposals' }
+    ? { domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : (initialPcnSection || 'proposals') }
     : initialDomain === 'PGD' ? { domain: 'PGD', section: initialPgdDraftingOpen ? 'templates' : 'requests' } : initialDepartmentSection ? { domain: 'department', section: initialDepartmentSection } : { domain: 'department', section: 'department-dashboard' });
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -127,6 +129,10 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
   const [commandOpen, setCommandOpen] = useState(false);
   const [recentRecords, setRecentRecords] = useState<PgdcnRecentRecord[]>([]);
   const [focusedPgdRequestId, setFocusedPgdRequestId] = useState<string | undefined>(initialPgdRequestId);
+
+  useEffect(() => {
+    setNotificationOpen(false);
+  }, [activeTarget.domain, activeTarget.section, pathname]);
 
   useEffect(() => {
     setRecentRecords(readPgdcnRecentRecords(currentUser?.username));
@@ -147,9 +153,9 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
   }, []);
 
   useEffect(() => {
-    if (initialDomain === 'PCN') setActiveTarget({ domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : 'proposals' });
+    if (initialDomain === 'PCN') setActiveTarget({ domain: 'PCN', section: initialPcnDraftingOpen || initialPcnDraftDossierId ? 'drafting' : (initialPcnSection || 'proposals') });
     else if (initialDomain === 'PGD') setActiveTarget({ domain: 'PGD', section: initialPgdDraftingOpen ? 'templates' : 'requests' });
-  }, [initialDomain, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPgdDraftingOpen]);
+  }, [initialDomain, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPcnSection, initialPgdDraftingOpen]);
 
   useEffect(() => {
     if (!initialPgdRequestId) return;
@@ -234,11 +240,16 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
   };
 
   const navigate = (target: PgdcnNavigationTarget) => {
+    setNotificationOpen(false);
     setFocusedPgdRequestId(undefined);
     setAssistantContext(undefined);
     setActiveTarget(target);
     setMobileOpen(false);
     if (initialPcnDossierId || initialPgdRequestId) {
+      if (initialPcnDossierId && target.domain === 'PCN' && target.section === 'operations') {
+        router.push('/pgdcn/pcn?section=operations');
+        return;
+      }
       router.replace(target.domain === 'department' ? '/pgdcn' : target.domain === 'PCN' ? '/pgdcn/pcn' : '/pgdcn/pgd');
     }
   };
@@ -318,6 +329,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
     setNotificationOpen(true);
   };
   const openPcnDossier = (dossierId: string, initialTab?: PcnDossierDetailTab) => {
+    setNotificationOpen(false);
     setAssistantContext(undefined);
     setFocusedPgdRequestId(undefined);
     setMobileOpen(false);
@@ -326,6 +338,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
     router.push(`/pgdcn/pcn/dossiers/${encodeURIComponent(dossierId)}${query}`);
   };
   const openPgdRequest = (requestId: string) => {
+    setNotificationOpen(false);
     setAssistantContext(undefined);
     setActiveTarget({ domain: 'PGD', section: 'requests' });
     setMobileOpen(false);
@@ -333,33 +346,39 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
     router.push(`/pgdcn/pgd/dossiers/${encodeURIComponent(requestId)}`);
   };
   const openPcnWorkspace = () => {
+    setNotificationOpen(false);
     setFocusedPgdRequestId(undefined);
     setActiveTarget({ domain: 'PCN', section: 'proposals' });
     setMobileOpen(false);
   };
   const openPgdWorkspace = () => {
+    setNotificationOpen(false);
     setActiveTarget({ domain: 'PGD', section: 'requests' });
     setMobileOpen(false);
   };
 
   const openPcnContextualAssistant = (dossierId: string) => {
     if (!dossierId) return;
+    setNotificationOpen(false);
     setAssistantContext({ domain: 'PCN', recordId: dossierId });
     setActiveTarget({ domain: 'department', section: 'assistant' });
     setMobileOpen(false);
   };
   const openPgdContextualAssistant = (requestId: string) => {
     if (!requestId) return;
+    setNotificationOpen(false);
     setAssistantContext({ domain: 'PGD', recordId: requestId });
     setActiveTarget({ domain: 'department', section: 'assistant' });
     setMobileOpen(false);
   };
 
   const openPcnSection = (section: PcnSection) => {
+    setNotificationOpen(false);
     setActiveTarget(getSharedTargetForPcnSection(section) || { domain: 'PCN', section });
   };
 
   const openPgdSection = (section: PgdSection) => {
+    setNotificationOpen(false);
     setFocusedPgdRequestId(undefined);
     setActiveTarget(getSharedTargetForPgdSection(section) || { domain: 'PGD', section });
   };

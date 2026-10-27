@@ -675,8 +675,127 @@ export default function PgdcnUnifiedDraftingView({
               </div>
             </div>
 
-            {/* Template List Table */}
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-3xs">
+            {/* Mobile/Tablet Card List (< 1024px) */}
+            <section aria-label="Danh sách biểu mẫu DOCX" className="block lg:hidden">
+              {filteredDocxList.length === 0 ? (
+                <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-xs text-slate-500 shadow-3xs">
+                  Không tìm thấy biểu mẫu DOCX nào phù hợp với bộ lọc.
+                </div>
+              ) : (
+                <ul role="list" className="space-y-3" aria-label="Danh sách thẻ biểu mẫu DOCX">
+                  {filteredDocxList.map((item) => (
+                    <li
+                      key={item.id}
+                      data-testid={`template-card-${item.id}`}
+                      className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-3xs transition-colors hover:border-slate-300"
+                    >
+                      {/* Header: domain, status & version */}
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 pb-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                              item.domain === 'PGD'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : item.domain === 'PCN'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-purple-50 text-purple-700 border border-purple-200'
+                            }`}
+                          >
+                            {item.domain === 'PGD' ? 'Giám định' : item.domain === 'PCN' ? 'Chứng nhận' : 'Dùng chung'}
+                          </span>
+                          <span
+                            className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold ${item.statusClass}`}
+                          >
+                            {item.status}
+                          </span>
+                        </div>
+                        <span className="font-mono text-[11px] font-semibold text-slate-500">
+                          {item.version}
+                        </span>
+                      </div>
+
+                      {/* Code and Name */}
+                      <div className="mt-2 space-y-1">
+                        <div className="font-mono text-xs font-bold text-slate-900 break-words">
+                          {item.code}
+                        </div>
+                        <div className="text-xs font-medium text-slate-800 break-words">
+                          {item.name}
+                        </div>
+                      </div>
+
+                      {/* Metadata: Scope & Source */}
+                      <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-slate-500">
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-400">Lĩnh vực:</span>
+                          <span className="font-semibold text-slate-700">{item.scopeLabel}</span>
+                        </div>
+                        <span className="text-slate-300">·</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-400">Nguồn:</span>
+                          <span className="font-semibold text-slate-600">{item.sourceLabel}</span>
+                        </div>
+                        {item.updatedAt !== 'Chưa xác định' && (
+                          <>
+                            <span className="text-slate-300">·</span>
+                            <span className="text-slate-400">Cập nhật: {item.updatedAt}</span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="mt-3 flex items-center justify-end border-t border-slate-100 pt-2.5">
+                        <div className="inline-flex w-full flex-wrap items-center justify-end gap-1.5">
+                          {item.downloadUrl && (
+                            <a
+                              href={item.downloadUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                              title="Tải về biểu mẫu"
+                            >
+                              <Download size={14} />
+                              <span>Tải về</span>
+                            </a>
+                          )}
+                          {item.rawPcnTemplate && hasPcn && (
+                            <button
+                              type="button"
+                              onClick={() => setEditingPcnTemplate(item.rawPcnTemplate || null)}
+                              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+                              title="Tải bản mới / Cập nhật mẫu này"
+                            >
+                              <Upload size={14} />
+                              <span>Cập nhật</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={!item.canDraft}
+                            onClick={() => handleUseTemplate(item)}
+                            className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold shadow-3xs transition-colors ${
+                              item.canDraft
+                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                : 'cursor-not-allowed bg-slate-100 text-slate-400'
+                            }`}
+                            title={item.canDraft ? `Sử dụng biểu mẫu ${item.code}` : item.canDraftReason || 'Biểu mẫu chưa hỗ trợ soạn trực tiếp'}
+                          >
+                            <PenTool size={14} />
+                            <span>Sử dụng</span>
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            {/* Desktop Template List Table (>= 1024px) */}
+            <section
+              aria-label="Bảng so sánh biểu mẫu DOCX"
+              className="hidden lg:block overflow-hidden rounded-xl border border-slate-200 bg-white shadow-3xs"
+            >
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
@@ -788,7 +907,7 @@ export default function PgdcnUnifiedDraftingView({
                   </tbody>
                 </table>
               </div>
-            </div>
+            </section>
           </div>
         </div>
 

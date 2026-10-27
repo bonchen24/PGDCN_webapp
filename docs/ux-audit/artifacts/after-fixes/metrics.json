@@ -1,0 +1,886 @@
+{
+  "mode": "QA_MOCKED",
+  "generatedAt": "2026-10-27T14:04:56.562Z",
+  "baseUrl": "http://127.0.0.1:2367",
+  "totalScreenshots": 35,
+  "mutationCount": 0,
+  "externalRequestCount": 0,
+  "pageErrorCount": 0,
+  "observations": [
+    {
+      "findingId": "F1",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshotPath": "f1/320x800.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "isDialogVisible": false,
+        "dialogCount": 0,
+        "bellExpanded": "false",
+        "targetAriaCurrent": "page",
+        "targetFocused": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F2",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshotPath": "f2/320x800.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "role": "dialog",
+        "name": "Xem trước nhập khách hàng từ Excel",
+        "ariaModal": "true",
+        "focusInDialog": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F3",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshotPath": "f3/320x800.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "lineCount": 1,
+        "fullCode": "PGD-DEMO-001",
+        "cardBounds": {
+          "width": 294,
+          "height": 218.5,
+          "left": 8,
+          "right": 302,
+          "top": 566.4375,
+          "bottom": 784.9375
+        },
+        "ctaMetrics": {
+          "height": 44,
+          "width": 101.640625,
+          "left": 191.359375,
+          "right": 293,
+          "top": 731.9375,
+          "bottom": 775.9375
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F4",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshotPath": "f4/320x800.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "landingUrl": "http://127.0.0.1:2367/pgdcn/pcn?section=operations",
+        "headingText": "Sổ tổng hợp PCN",
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F5",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshotPath": "f5/320x800.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "hasCode": true,
+        "hasName": true,
+        "hasVersion": true,
+        "hasFieldCode": true,
+        "hasStatus": true,
+        "codeLineCount": 2,
+        "nameLineCount": 3,
+        "actionMetrics": {
+          "height": 44,
+          "width": 86.84375,
+          "left": 110.359375,
+          "right": 197.203125,
+          "top": 5825.6875,
+          "bottom": 5869.6875
+        },
+        "listScrollMetrics": {
+          "hasHorizontalScroll": false,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "overflowX": "visible"
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F1",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshotPath": "f1/375x812.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "isDialogVisible": false,
+        "dialogCount": 0,
+        "bellExpanded": "false",
+        "targetAriaCurrent": "page",
+        "targetFocused": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F2",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshotPath": "f2/375x812.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "role": "dialog",
+        "name": "Xem trước nhập khách hàng từ Excel",
+        "ariaModal": "true",
+        "focusInDialog": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F3",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshotPath": "f3/375x812.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "lineCount": 1,
+        "fullCode": "PGD-DEMO-001",
+        "cardBounds": {
+          "width": 349,
+          "height": 218.5,
+          "left": 8,
+          "right": 357,
+          "top": 566.4375,
+          "bottom": 784.9375
+        },
+        "ctaMetrics": {
+          "height": 44,
+          "width": 101.640625,
+          "left": 246.359375,
+          "right": 348,
+          "top": 731.9375,
+          "bottom": 775.9375
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F4",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshotPath": "f4/375x812.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "landingUrl": "http://127.0.0.1:2367/pgdcn/pcn?section=operations",
+        "headingText": "Sổ tổng hợp PCN",
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F5",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshotPath": "f5/375x812.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "hasCode": true,
+        "hasName": true,
+        "hasVersion": true,
+        "hasFieldCode": true,
+        "hasStatus": true,
+        "codeLineCount": 1,
+        "nameLineCount": 2,
+        "actionMetrics": {
+          "height": 44,
+          "width": 86.84375,
+          "left": 165.359375,
+          "right": 252.203125,
+          "top": 5765.6875,
+          "bottom": 5809.6875
+        },
+        "listScrollMetrics": {
+          "hasHorizontalScroll": false,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "overflowX": "visible"
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F1",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "f1/390x844.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "isDialogVisible": false,
+        "dialogCount": 0,
+        "bellExpanded": "false",
+        "targetAriaCurrent": "page",
+        "targetFocused": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F2",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "f2/390x844.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "role": "dialog",
+        "name": "Xem trước nhập khách hàng từ Excel",
+        "ariaModal": "true",
+        "focusInDialog": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F3",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "f3/390x844.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "lineCount": 1,
+        "fullCode": "PGD-DEMO-001",
+        "cardBounds": {
+          "width": 364,
+          "height": 218.5,
+          "left": 8,
+          "right": 372,
+          "top": 566.4375,
+          "bottom": 784.9375
+        },
+        "ctaMetrics": {
+          "height": 44,
+          "width": 101.640625,
+          "left": 261.359375,
+          "right": 363,
+          "top": 731.9375,
+          "bottom": 775.9375
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F4",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "f4/390x844.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "landingUrl": "http://127.0.0.1:2367/pgdcn/pcn?section=operations",
+        "headingText": "Sổ tổng hợp PCN",
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F5",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "f5/390x844.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "hasCode": true,
+        "hasName": true,
+        "hasVersion": true,
+        "hasFieldCode": true,
+        "hasStatus": true,
+        "codeLineCount": 1,
+        "nameLineCount": 2,
+        "actionMetrics": {
+          "height": 44,
+          "width": 86.84375,
+          "left": 180.359375,
+          "right": 267.203125,
+          "top": 5765.6875,
+          "bottom": 5809.6875
+        },
+        "listScrollMetrics": {
+          "hasHorizontalScroll": false,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "overflowX": "visible"
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F1",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshotPath": "f1/430x932.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "isDialogVisible": false,
+        "dialogCount": 0,
+        "bellExpanded": "false",
+        "targetAriaCurrent": "page",
+        "targetFocused": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F2",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshotPath": "f2/430x932.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "role": "dialog",
+        "name": "Xem trước nhập khách hàng từ Excel",
+        "ariaModal": "true",
+        "focusInDialog": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F3",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshotPath": "f3/430x932.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "lineCount": 1,
+        "fullCode": "PGD-DEMO-001",
+        "cardBounds": {
+          "width": 404,
+          "height": 218.5,
+          "left": 8,
+          "right": 412,
+          "top": 523.6875,
+          "bottom": 742.1875
+        },
+        "ctaMetrics": {
+          "height": 44,
+          "width": 101.640625,
+          "left": 301.359375,
+          "right": 403,
+          "top": 689.1875,
+          "bottom": 733.1875
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F4",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshotPath": "f4/430x932.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "landingUrl": "http://127.0.0.1:2367/pgdcn/pcn?section=operations",
+        "headingText": "Sổ tổng hợp PCN",
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F5",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshotPath": "f5/430x932.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "hasCode": true,
+        "hasName": true,
+        "hasVersion": true,
+        "hasFieldCode": true,
+        "hasStatus": true,
+        "codeLineCount": 1,
+        "nameLineCount": 2,
+        "actionMetrics": {
+          "height": 44,
+          "width": 86.84375,
+          "left": 220.359375,
+          "right": 307.203125,
+          "top": 5758.6875,
+          "bottom": 5802.6875
+        },
+        "listScrollMetrics": {
+          "hasHorizontalScroll": false,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "overflowX": "visible"
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F1",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshotPath": "f1/768x1024.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "isDialogVisible": false,
+        "dialogCount": 0,
+        "bellExpanded": "false",
+        "targetAriaCurrent": "page",
+        "targetFocused": false,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F2",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshotPath": "f2/768x1024.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "role": "dialog",
+        "name": "Xem trước nhập khách hàng từ Excel",
+        "ariaModal": "true",
+        "focusInDialog": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F3",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshotPath": "f3/768x1024.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "lineCount": 1,
+        "fullCode": "PGD-DEMO-001",
+        "cardBounds": {
+          "width": 362,
+          "height": 176,
+          "left": 12,
+          "right": 374,
+          "top": 352.6875,
+          "bottom": 528.6875
+        },
+        "ctaMetrics": {
+          "height": 36,
+          "width": 101.640625,
+          "left": 259.359375,
+          "right": 361,
+          "top": 483.6875,
+          "bottom": 519.6875
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F4",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshotPath": "f4/768x1024.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "landingUrl": "http://127.0.0.1:2367/pgdcn/pcn?section=operations",
+        "headingText": "Sổ tổng hợp PCN",
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F5",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshotPath": "f5/768x1024.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "hasCode": true,
+        "hasName": true,
+        "hasVersion": true,
+        "hasFieldCode": true,
+        "hasStatus": true,
+        "codeLineCount": 1,
+        "nameLineCount": 1,
+        "actionMetrics": {
+          "height": 44,
+          "width": 86.84375,
+          "left": 558.359375,
+          "right": 645.203125,
+          "top": 5625.1875,
+          "bottom": 5669.1875
+        },
+        "listScrollMetrics": {
+          "hasHorizontalScroll": false,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "overflowX": "visible"
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F1",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshotPath": "f1/1280x900.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "isDialogVisible": false,
+        "dialogCount": 0,
+        "bellExpanded": "false",
+        "targetAriaCurrent": "page",
+        "targetFocused": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F2",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshotPath": "f2/1280x900.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "role": "dialog",
+        "name": "Xem trước nhập khách hàng từ Excel",
+        "ariaModal": "true",
+        "focusInDialog": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F3",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshotPath": "f3/1280x900.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "lineCount": 1,
+        "fullCode": "PGD-DEMO-001",
+        "cardBounds": {
+          "width": 490,
+          "height": 160,
+          "left": 268,
+          "right": 758,
+          "top": 316.6875,
+          "bottom": 476.6875
+        },
+        "ctaMetrics": {
+          "height": 36,
+          "width": 101.640625,
+          "left": 643.359375,
+          "right": 745,
+          "top": 431.6875,
+          "bottom": 467.6875
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F4",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshotPath": "f4/1280x900.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "landingUrl": "http://127.0.0.1:2367/pgdcn/pcn?section=operations",
+        "headingText": "Sổ tổng hợp PCN",
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F5",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshotPath": "f5/1280x900.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "hasCode": true,
+        "hasName": true,
+        "hasVersion": true,
+        "hasFieldCode": true,
+        "hasStatus": true,
+        "codeLineCount": 2,
+        "nameLineCount": 3,
+        "actionMetrics": {
+          "height": 37.5,
+          "width": 66.734375,
+          "left": 1109.75,
+          "right": 1176.484375,
+          "top": 1622.125,
+          "bottom": 1659.625
+        },
+        "listScrollMetrics": {
+          "hasHorizontalScroll": false,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "overflowX": "visible"
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F1",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshotPath": "f1/1440x1000.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "isDialogVisible": false,
+        "dialogCount": 0,
+        "bellExpanded": "false",
+        "targetAriaCurrent": "page",
+        "targetFocused": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F2",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshotPath": "f2/1440x1000.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "role": "dialog",
+        "name": "Xem trước nhập khách hàng từ Excel",
+        "ariaModal": "true",
+        "focusInDialog": true,
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F3",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshotPath": "f3/1440x1000.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "lineCount": 1,
+        "fullCode": "PGD-DEMO-001",
+        "cardBounds": {
+          "width": 570,
+          "height": 160,
+          "left": 268,
+          "right": 838,
+          "top": 316.6875,
+          "bottom": 476.6875
+        },
+        "ctaMetrics": {
+          "height": 36,
+          "width": 101.640625,
+          "left": 723.359375,
+          "right": 825,
+          "top": 431.6875,
+          "bottom": 467.6875
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F4",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshotPath": "f4/1440x1000.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "landingUrl": "http://127.0.0.1:2367/pgdcn/pcn?section=operations",
+        "headingText": "Sổ tổng hợp PCN",
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "findingId": "F5",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshotPath": "f5/1440x1000.png",
+      "mode": "QA_MOCKED",
+      "measuredDomValues": {
+        "hasCode": true,
+        "hasName": true,
+        "hasVersion": true,
+        "hasFieldCode": true,
+        "hasStatus": true,
+        "codeLineCount": 2,
+        "nameLineCount": 2,
+        "actionMetrics": {
+          "height": 37.5,
+          "width": 70.421875,
+          "left": 1262.546875,
+          "right": 1332.96875,
+          "top": 1614.625,
+          "bottom": 1652.125
+        },
+        "listScrollMetrics": {
+          "hasHorizontalScroll": false,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "overflowX": "visible"
+        },
+        "hasHorizontalOverflow": false
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0
+    }
+  ]
+}

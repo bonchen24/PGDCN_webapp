@@ -298,6 +298,8 @@ export async function executeCustomerImport({
   };
 }
 
+const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function PcnCustomerImportPreview({
   preview,
   isImporting = false,
@@ -305,6 +307,7 @@ export function PcnCustomerImportPreview({
   onConfirm,
   onCancel,
   importResult,
+  triggerRef,
 }: {
   preview: {
     fileName: string;
@@ -316,6 +319,7 @@ export function PcnCustomerImportPreview({
   onConfirm: () => void;
   onCancel: () => void;
   importResult?: CustomerImportResult | null;
+  triggerRef?: React.RefObject<HTMLElement | null>;
 }) {
   const [expandedValid, setExpandedValid] = useState(false);
   const [expandedErrors, setExpandedErrors] = useState(false);
@@ -329,20 +333,115 @@ export function PcnCustomerImportPreview({
 
   const canConfirm = preview.validCustomers.length > 0 && !isImporting && !alreadyApplied;
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCancelRef = useRef(onCancel);
+  const isImportingRef = useRef(isImporting);
+  const fallbackTriggerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
+
+  useEffect(() => {
+    isImportingRef.current = isImporting;
+  }, [isImporting]);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      fallbackTriggerRef.current = document.activeElement;
+    }
+
+    const dialogEl = dialogRef.current;
+    if (dialogEl) {
+      const focusables = Array.from(dialogEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+        .filter((el) => !el.hasAttribute('disabled') && (el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0));
+      const target = focusables[0] || dialogEl;
+      target.focus();
+    }
+
+    const restoreTriggerFocus = () => {
+      const target = triggerRef?.current || fallbackTriggerRef.current;
+      target?.focus();
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (!isImportingRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          onCancelRef.current();
+          restoreTriggerFocus();
+        }
+        return;
+      }
+
+      if (event.key === 'Tab') {
+        const currentDialog = dialogRef.current;
+        if (!currentDialog) return;
+
+        const focusables = Array.from(
+          currentDialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+        ).filter((el) => !el.hasAttribute('disabled') && (el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0));
+
+        if (focusables.length === 0) {
+          event.preventDefault();
+          currentDialog.focus();
+          return;
+        }
+
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+
+        if (event.shiftKey) {
+          if (document.activeElement === first || !currentDialog.contains(document.activeElement)) {
+            event.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last || !currentDialog.contains(document.activeElement)) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      restoreTriggerFocus();
+    };
+  }, [triggerRef]);
+
+  const handleCancel = () => {
+    if (isImporting) return;
+    onCancel();
+    const target = triggerRef?.current || fallbackTriggerRef.current;
+    target?.focus();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl border border-slate-200 bg-white shadow-xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pcn-customer-import-preview-title"
+        tabIndex={-1}
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl border border-slate-200 bg-white shadow-xl outline-none"
+      >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5">
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="text-emerald-600" size={20} />
             <div>
-              <h3 className="text-sm font-black text-slate-800">Xem trước nhập khách hàng từ Excel</h3>
+              <h3 id="pcn-customer-import-preview-title" className="text-sm font-black text-slate-800">Xem trước nhập khách hàng từ Excel</h3>
               <p className="text-[11px] text-slate-500">Tệp đã chọn: <span className="font-semibold text-slate-700">{preview.fileName}</span></p>
             </div>
           </div>
           <button
             type="button"
-            onClick={onCancel}
+            onClick={handleCancel}
             disabled={isImporting}
             className="mobile-touch-target rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
             aria-label="Đóng xem trước"
@@ -460,7 +559,7 @@ export function PcnCustomerImportPreview({
         <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50/50 px-5 py-3">
           <button
             type="button"
-            onClick={onCancel}
+            onClick={handleCancel}
             disabled={isImporting}
             className="mobile-touch-target rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-[11px] font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
           >
@@ -588,6 +687,7 @@ export default function PcnCustomersManagementView({ initialSearchQuery = '' }: 
   const [currentPage, setCurrentPage] = useState(1);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importTriggerRef = useRef<HTMLButtonElement>(null);
   const [importPreview, setImportPreview] = useState<CustomerImportPreviewData | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
@@ -804,6 +904,7 @@ export default function PcnCustomersManagementView({ initialSearchQuery = '' }: 
                 onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
               />
               <button
+                ref={importTriggerRef}
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-emerald-700"
@@ -930,11 +1031,13 @@ export default function PcnCustomersManagementView({ initialSearchQuery = '' }: 
           isImporting={isImporting}
           alreadyApplied={alreadyApplied}
           importResult={importResult}
+          triggerRef={importTriggerRef}
           onConfirm={handleConfirmImport}
           onCancel={() => {
             if (!isImporting) {
               setImportPreview(null);
               setImportResult(null);
+              importTriggerRef.current?.focus();
             }
           }}
         />

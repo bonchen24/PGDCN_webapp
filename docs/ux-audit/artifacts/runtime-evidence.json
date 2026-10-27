@@ -1,0 +1,6580 @@
+{
+  "startedAt": "2026-10-27T10:53:12.972Z",
+  "target": "http://127.0.0.1:2367",
+  "mode": "QA_MOCKED",
+  "dataSource": "Synthetic fixtures only; all /api requests intercepted in Playwright",
+  "screenshots": 113,
+  "uniqueScreens": 37,
+  "evidence": [
+    {
+      "screen": "login-before-session",
+      "mode": "REAL_UI_UNAUTHENTICATED",
+      "role": "before",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/before/login-before-session-desktop-1440x1000.png",
+      "interaction": "GET session bị mock 401; trạng thái ban đầu trước QA session",
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Đăng nhập"
+        ],
+        "buttonCount": 2,
+        "linkCount": 0,
+        "smallTargetCount": 1,
+        "formCount": 1,
+        "fieldCount": 3,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 0,
+        "focus": {
+          "tag": "body",
+          "name": "Đăng nhập\n\nPhòng Giám định - Chứng nhận và Phát triển thị tr",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "login-before-session",
+      "mode": "REAL_UI_UNAUTHENTICATED",
+      "role": "before",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/before/login-before-session-mobile-390x844.png",
+      "interaction": "GET session bị mock 401; trạng thái ban đầu trước QA session",
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Đăng nhập"
+        ],
+        "buttonCount": 2,
+        "linkCount": 0,
+        "smallTargetCount": 1,
+        "formCount": 1,
+        "fieldCount": 3,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 0,
+        "focus": {
+          "tag": "body",
+          "name": "Đăng nhập\n\nPhòng Giám định - Chứng nhận và Phát triển thị tr",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "overview",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/overview-desktop-1440x1000.png",
+      "interaction": [
+        "Mock session admin tổng hợp trong Playwright",
+        "Dashboard nạp fixture PCN + PGD"
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Điều hành phòng",
+          "Việc của tôi",
+          "ĐANG CHỜ TÔI XỬ LÝ",
+          "Việc cần chú ý · Hàng đợi hành động",
+          "Pipeline theo miền",
+          "Chứng nhận PCN",
+          "Giám định PGD",
+          "Hồ sơ vừa mở",
+          "Mốc sắp tới",
+          "Thông báo phòng"
+        ],
+        "buttonCount": 26,
+        "linkCount": 1,
+        "smallTargetCount": 17,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "overview",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/overview-mobile-390x844.png",
+      "interaction": [
+        "Mock session admin tổng hợp trong Playwright",
+        "Dashboard nạp fixture PCN + PGD"
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Điều hành phòng",
+          "Việc của tôi",
+          "ĐANG CHỜ TÔI XỬ LÝ",
+          "Việc cần chú ý · Hàng đợi hành động",
+          "Pipeline theo miền",
+          "Chứng nhận PCN",
+          "Giám định PGD",
+          "Hồ sơ vừa mở",
+          "Mốc sắp tới",
+          "Thông báo phòng"
+        ],
+        "buttonCount": 25,
+        "linkCount": 1,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 8,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "mobile-navigation-open",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/mobile-navigation-open-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở menu điều hướng mobile",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Điều hành phòng",
+          "Việc của tôi",
+          "ĐANG CHỜ TÔI XỬ LÝ",
+          "Việc cần chú ý · Hàng đợi hành động",
+          "Pipeline theo miền",
+          "Chứng nhận PCN",
+          "Giám định PGD",
+          "Hồ sơ vừa mở",
+          "Mốc sắp tới",
+          "Thông báo phòng"
+        ],
+        "buttonCount": 26,
+        "linkCount": 1,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 1,
+        "dialogCount": 1,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 8,
+        "focus": {
+          "tag": "button",
+          "name": "Đóng menu phòng",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "my-work-queue",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/my-work-queue-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Mở menu điều hướng mobile",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng menu điều hướng mobile",
+          "result": "clicked"
+        },
+        {
+          "action": "Keyboard Tab trên shell",
+          "result": "focused",
+          "focus": {
+            "name": "Thu gọn / Mở rộng thanh điều hướng",
+            "outlineStyle": "solid",
+            "outlineWidth": "2px"
+          }
+        },
+        {
+          "action": "Mở Việc của tôi",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Điều hành phòng",
+          "Việc của tôi",
+          "ĐANG CHỜ TÔI XỬ LÝ",
+          "Việc cần chú ý · Hàng đợi hành động",
+          "Pipeline theo miền",
+          "Chứng nhận PCN",
+          "Giám định PGD",
+          "Hồ sơ vừa mở",
+          "Mốc sắp tới",
+          "Thông báo phòng"
+        ],
+        "buttonCount": 26,
+        "linkCount": 1,
+        "smallTargetCount": 17,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "main",
+          "name": "Không gian làm việc PCN và PGD",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "my-work-queue",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/my-work-queue-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở menu điều hướng mobile",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng menu điều hướng mobile",
+          "result": "clicked"
+        },
+        {
+          "action": "Keyboard Tab trên shell",
+          "result": "focused",
+          "focus": {
+            "name": "Thu gọn / Mở rộng thanh điều hướng",
+            "outlineStyle": "solid",
+            "outlineWidth": "2px"
+          }
+        },
+        {
+          "action": "Mở Việc của tôi",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Điều hành phòng",
+          "Việc của tôi",
+          "ĐANG CHỜ TÔI XỬ LÝ",
+          "Việc cần chú ý · Hàng đợi hành động",
+          "Pipeline theo miền",
+          "Chứng nhận PCN",
+          "Giám định PGD",
+          "Hồ sơ vừa mở",
+          "Mốc sắp tới",
+          "Thông báo phòng"
+        ],
+        "buttonCount": 25,
+        "linkCount": 1,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 8,
+        "focus": {
+          "tag": "main",
+          "name": "Không gian làm việc PCN và PGD",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "customers-list",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/customers-list-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Keyboard Tab trên shell",
+          "result": "focused",
+          "focus": {
+            "name": "Thu gọn / Mở rộng thanh điều hướng",
+            "outlineStyle": "solid",
+            "outlineWidth": "2px"
+          }
+        },
+        {
+          "action": "Mở Việc của tôi",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Khách hàng",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Danh sách khách hàng"
+        ],
+        "buttonCount": 20,
+        "linkCount": 1,
+        "smallTargetCount": 17,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Khách hàng",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "customers-list",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/customers-list-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Keyboard Tab trên shell",
+          "result": "focused",
+          "focus": {
+            "name": "Thu gọn / Mở rộng thanh điều hướng",
+            "outlineStyle": "solid",
+            "outlineWidth": "2px"
+          }
+        },
+        {
+          "action": "Mở Việc của tôi",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Khách hàng",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Danh sách khách hàng"
+        ],
+        "buttonCount": 19,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "customer-create-modal",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/customer-create-modal-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Keyboard Tab trên shell",
+          "result": "focused",
+          "focus": {
+            "name": "Thu gọn / Mở rộng thanh điều hướng",
+            "outlineStyle": "solid",
+            "outlineWidth": "2px"
+          }
+        },
+        {
+          "action": "Mở Việc của tôi",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Khách hàng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở customer-create-modal",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Danh sách khách hàng"
+        ],
+        "buttonCount": 21,
+        "linkCount": 1,
+        "smallTargetCount": 17,
+        "formCount": 0,
+        "fieldCount": 10,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "customer-create-modal",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/customer-create-modal-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Keyboard Tab trên shell",
+          "result": "focused",
+          "focus": {
+            "name": "Thu gọn / Mở rộng thanh điều hướng",
+            "outlineStyle": "solid",
+            "outlineWidth": "2px"
+          }
+        },
+        {
+          "action": "Mở Việc của tôi",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Khách hàng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở customer-create-modal",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Danh sách khách hàng"
+        ],
+        "buttonCount": 20,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 10,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "customer-import-modal",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/customer-import-modal-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Mở customer-create-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Hủy dialog QA",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Khách hàng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở customer-import-modal",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Danh sách khách hàng"
+        ],
+        "buttonCount": 20,
+        "linkCount": 1,
+        "smallTargetCount": 17,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Nhập Excel",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "customer-import-modal",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/customer-import-modal-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở customer-create-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Hủy dialog QA",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Khách hàng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở customer-import-modal",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Danh sách khách hàng"
+        ],
+        "buttonCount": 19,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "button",
+          "name": "Nhập Excel",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "customer-import-preview",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/customer-import-preview-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Mở customer-import-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Fallback đóng dialog bằng Escape",
+          "result": "pressed"
+        },
+        {
+          "action": "Mở lại modal nhập Excel để chọn file demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Tải workbook Excel synthetic vào preview",
+          "result": "local-buffer"
+        },
+        {
+          "action": "Mở preview Excel sau khi chọn tệp",
+          "result": "preview-visible"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Danh sách khách hàng",
+          "Xem trước nhập khách hàng từ Excel"
+        ],
+        "buttonCount": 23,
+        "linkCount": 1,
+        "smallTargetCount": 20,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Nhập Excel",
+          "outlineStyle": "solid",
+          "outlineWidth": "2px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "customer-import-preview",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/customer-import-preview-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở customer-import-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Fallback đóng dialog bằng Escape",
+          "result": "pressed"
+        },
+        {
+          "action": "Mở lại modal nhập Excel để chọn file demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Tải workbook Excel synthetic vào preview",
+          "result": "local-buffer"
+        },
+        {
+          "action": "Mở preview Excel sau khi chọn tệp",
+          "result": "preview-visible"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Danh sách khách hàng",
+          "Xem trước nhập khách hàng từ Excel"
+        ],
+        "buttonCount": 22,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "button",
+          "name": "Nhập Excel",
+          "outlineStyle": "solid",
+          "outlineWidth": "2px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "customer-export",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/customer-export-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Khách hàng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở luồng xuất Excel",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Danh sách khách hàng",
+          "Xuất Excel khách hàng"
+        ],
+        "buttonCount": 23,
+        "linkCount": 1,
+        "smallTargetCount": 22,
+        "formCount": 0,
+        "fieldCount": 5,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Xuất Excel",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "customer-export",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/customer-export-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Khách hàng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở luồng xuất Excel",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Danh sách khách hàng",
+          "Xuất Excel khách hàng"
+        ],
+        "buttonCount": 22,
+        "linkCount": 1,
+        "smallTargetCount": 5,
+        "formCount": 0,
+        "fieldCount": 5,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "button",
+          "name": "Xuất Excel",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "ai-assistant",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/ai-assistant-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Mở luồng xuất Excel",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Trợ lý AI",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Soát xét hồ sơ theo hai lĩnh vực",
+          "Hỗ trợ kiểm duyệt hồ sơ"
+        ],
+        "buttonCount": 20,
+        "linkCount": 1,
+        "smallTargetCount": 21,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Trợ lý AI",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "ai-assistant",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/ai-assistant-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở luồng xuất Excel",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Trợ lý AI",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Soát xét hồ sơ theo hai lĩnh vực",
+          "Hỗ trợ kiểm duyệt hồ sơ"
+        ],
+        "buttonCount": 19,
+        "linkCount": 1,
+        "smallTargetCount": 5,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "activity-log",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/activity-log-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Trợ lý AI",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Nhật ký hệ thống",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "NHẬT KÝ HOẠT ĐỘNG",
+          "BIỂU ĐỒ KPI CÔNG VIỆC"
+        ],
+        "buttonCount": 22,
+        "linkCount": 1,
+        "smallTargetCount": 30,
+        "formCount": 0,
+        "fieldCount": 7,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "button",
+          "name": "Nhật ký hệ thống",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "activity-log",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/activity-log-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Trợ lý AI",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Nhật ký hệ thống",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "NHẬT KÝ HOẠT ĐỘNG",
+          "BIỂU ĐỒ KPI CÔNG VIỆC"
+        ],
+        "buttonCount": 22,
+        "linkCount": 1,
+        "smallTargetCount": 9,
+        "formCount": 0,
+        "fieldCount": 7,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 9,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "notifications-dropdown",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/notifications-dropdown-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Trợ lý AI",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Nhật ký hệ thống",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở thông báo",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Thông báo phòng",
+          "NHẬT KÝ HOẠT ĐỘNG",
+          "BIỂU ĐỒ KPI CÔNG VIỆC"
+        ],
+        "buttonCount": 26,
+        "linkCount": 1,
+        "smallTargetCount": 33,
+        "formCount": 0,
+        "fieldCount": 7,
+        "tableCount": 0,
+        "dialogCount": 1,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "button",
+          "name": "Thông báo phòng",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "notifications-dropdown",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/notifications-dropdown-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Trợ lý AI",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Nhật ký hệ thống",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở thông báo",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Thông báo phòng",
+          "NHẬT KÝ HOẠT ĐỘNG",
+          "BIỂU ĐỒ KPI CÔNG VIỆC"
+        ],
+        "buttonCount": 26,
+        "linkCount": 1,
+        "smallTargetCount": 9,
+        "formCount": 0,
+        "fieldCount": 7,
+        "tableCount": 0,
+        "dialogCount": 1,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 9,
+        "focus": {
+          "tag": "button",
+          "name": "Thông báo phòng",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "notification-after-route-change",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/notification-after-route-change-desktop-1440x1000.png",
+      "interaction": [
+        "Đã mở popup thông báo; điều hướng sang Soạn thảo văn bản để kiểm tra trạng thái popup"
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Thông báo phòng",
+          "Hỗ trợ soạn thảo văn bản",
+          "Soạn thảo tài liệu PGD",
+          "Bộ hồ sơ & tài liệu",
+          "Phiên soạn / Bản đã lưu",
+          "Danh mục tài liệu trong hồ sơ",
+          "Hồ sơ nguồn"
+        ],
+        "buttonCount": 26,
+        "linkCount": 1,
+        "smallTargetCount": 25,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 0,
+        "dialogCount": 1,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Soạn thảo văn bản",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "notification-after-route-change",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/notification-after-route-change-mobile-390x844.png",
+      "interaction": [
+        "Đã mở popup thông báo; điều hướng sang Soạn thảo văn bản để kiểm tra trạng thái popup"
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Thông báo phòng",
+          "Hỗ trợ soạn thảo văn bản",
+          "Soạn thảo tài liệu PGD",
+          "Bộ hồ sơ & tài liệu",
+          "Phiên soạn / Bản đã lưu",
+          "Danh mục tài liệu trong hồ sơ",
+          "Hồ sơ nguồn"
+        ],
+        "buttonCount": 25,
+        "linkCount": 1,
+        "smallTargetCount": 4,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 0,
+        "dialogCount": 1,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "document-drafting",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/document-drafting-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Mở thông báo",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Soạn thảo văn bản",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng popup thông báo bằng nút đóng",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hỗ trợ soạn thảo văn bản",
+          "Soạn thảo tài liệu PGD",
+          "Bộ hồ sơ & tài liệu",
+          "Phiên soạn / Bản đã lưu",
+          "Danh mục tài liệu trong hồ sơ",
+          "Hồ sơ nguồn"
+        ],
+        "buttonCount": 22,
+        "linkCount": 1,
+        "smallTargetCount": 22,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "document-drafting",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/document-drafting-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở thông báo",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Soạn thảo văn bản",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng popup thông báo bằng nút đóng",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hỗ trợ soạn thảo văn bản",
+          "Soạn thảo tài liệu PGD",
+          "Bộ hồ sơ & tài liệu",
+          "Phiên soạn / Bản đã lưu",
+          "Danh mục tài liệu trong hồ sơ",
+          "Hồ sơ nguồn"
+        ],
+        "buttonCount": 21,
+        "linkCount": 1,
+        "smallTargetCount": 4,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "document-templates-list-pgd",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/document-templates-list-pgd-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Mở thông báo",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Soạn thảo văn bản",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng popup thông báo bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở danh sách mẫu DOCX PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hỗ trợ soạn thảo văn bản"
+        ],
+        "buttonCount": 36,
+        "linkCount": 17,
+        "smallTargetCount": 55,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "button",
+          "name": "Danh sách biểu mẫu DOCX\n16",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "document-templates-list-pgd",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/document-templates-list-pgd-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở thông báo",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Soạn thảo văn bản",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng popup thông báo bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở danh sách mẫu DOCX PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hỗ trợ soạn thảo văn bản"
+        ],
+        "buttonCount": 35,
+        "linkCount": 17,
+        "smallTargetCount": 38,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "button",
+          "name": "Danh sách biểu mẫu DOCX\n16",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "document-templates-list-pcn",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/document-templates-list-pcn-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Soạn thảo văn bản",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng popup thông báo bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở danh sách mẫu DOCX PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển khu vực soạn thảo sang PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở danh sách mẫu DOCX PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hỗ trợ soạn thảo văn bản"
+        ],
+        "buttonCount": 54,
+        "linkCount": 1,
+        "smallTargetCount": 57,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "button",
+          "name": "Danh sách biểu mẫu DOCX\n25",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "document-templates-list-pcn",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/document-templates-list-pcn-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Soạn thảo văn bản",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng popup thông báo bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở danh sách mẫu DOCX PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển khu vực soạn thảo sang PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở danh sách mẫu DOCX PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hỗ trợ soạn thảo văn bản"
+        ],
+        "buttonCount": 53,
+        "linkCount": 1,
+        "smallTargetCount": 40,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "button",
+          "name": "Danh sách biểu mẫu DOCX\n25",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "workflow-templates",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/workflow-templates-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Chuyển khu vực soạn thảo sang PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở danh sách mẫu DOCX PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Hồ sơ mẫu",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ mẫu"
+        ],
+        "buttonCount": 18,
+        "linkCount": 1,
+        "smallTargetCount": 16,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Hồ sơ mẫu",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "workflow-templates",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/workflow-templates-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Chuyển khu vực soạn thảo sang PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở danh sách mẫu DOCX PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Hồ sơ mẫu",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ mẫu"
+        ],
+        "buttonCount": 17,
+        "linkCount": 1,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "workflow-template-create-preview",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/workflow-template-create-preview-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Chuyển khu vực soạn thảo sang PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở danh sách mẫu DOCX PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Hồ sơ mẫu",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở workflow-template-create-preview",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ mẫu",
+          "Bộ hồ sơ PCN mới",
+          "Thành phần"
+        ],
+        "buttonCount": 84,
+        "linkCount": 1,
+        "smallTargetCount": 18,
+        "formCount": 0,
+        "fieldCount": 7,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "button",
+          "name": "Tạo bộ hồ sơ mới",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "workflow-template-create-preview",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/workflow-template-create-preview-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Chuyển khu vực soạn thảo sang PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở danh sách mẫu DOCX PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Hồ sơ mẫu",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở workflow-template-create-preview",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ mẫu",
+          "Bộ hồ sơ PCN mới",
+          "Thành phần"
+        ],
+        "buttonCount": 83,
+        "linkCount": 1,
+        "smallTargetCount": 4,
+        "formCount": 0,
+        "fieldCount": 7,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "button",
+          "name": "Tạo bộ hồ sơ mới",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "system-settings-users-and-backups",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/system-settings-users-and-backups-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Mở workflow-template-create-preview",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Cài đặt hệ thống",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung"
+        ],
+        "buttonCount": 23,
+        "linkCount": 1,
+        "smallTargetCount": 17,
+        "formCount": 0,
+        "fieldCount": 4,
+        "tableCount": 2,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "button",
+          "name": "Cài đặt hệ thống",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "system-settings-users-and-backups",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/system-settings-users-and-backups-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở workflow-template-create-preview",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Cài đặt hệ thống",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung"
+        ],
+        "buttonCount": 22,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 4,
+        "tableCount": 2,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "system-settings-users-and-backups",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/system-settings-users-and-backups-narrow-320x800.png",
+      "interaction": [
+        {
+          "action": "Mở workflow-template-create-preview",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Cài đặt hệ thống",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung"
+        ],
+        "buttonCount": 22,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 4,
+        "tableCount": 2,
+        "dialogCount": 0,
+        "documentClientWidth": 320,
+        "documentScrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "system-settings-users-and-backups",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/system-settings-users-and-backups-small-375x812.png",
+      "interaction": [
+        {
+          "action": "Mở workflow-template-create-preview",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Cài đặt hệ thống",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung"
+        ],
+        "buttonCount": 22,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 4,
+        "tableCount": 2,
+        "dialogCount": 0,
+        "documentClientWidth": 375,
+        "documentScrollWidth": 375,
+        "bodyScrollWidth": 375,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "system-settings-users-and-backups",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/system-settings-users-and-backups-large-mobile-430x932.png",
+      "interaction": [
+        {
+          "action": "Mở workflow-template-create-preview",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Cài đặt hệ thống",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung"
+        ],
+        "buttonCount": 22,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 4,
+        "tableCount": 2,
+        "dialogCount": 0,
+        "documentClientWidth": 430,
+        "documentScrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "system-settings-users-and-backups",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/system-settings-users-and-backups-tablet-768x1024.png",
+      "interaction": [
+        {
+          "action": "Mở workflow-template-create-preview",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Cài đặt hệ thống",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung"
+        ],
+        "buttonCount": 24,
+        "linkCount": 1,
+        "smallTargetCount": 6,
+        "formCount": 0,
+        "fieldCount": 4,
+        "tableCount": 2,
+        "dialogCount": 0,
+        "documentClientWidth": 768,
+        "documentScrollWidth": 768,
+        "bodyScrollWidth": 768,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "system-settings-users-and-backups",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/system-settings-users-and-backups-laptop-1280x900.png",
+      "interaction": [
+        {
+          "action": "Mở workflow-template-create-preview",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Cài đặt hệ thống",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung"
+        ],
+        "buttonCount": 23,
+        "linkCount": 1,
+        "smallTargetCount": 17,
+        "formCount": 0,
+        "fieldCount": 4,
+        "tableCount": 2,
+        "dialogCount": 0,
+        "documentClientWidth": 1280,
+        "documentScrollWidth": 1280,
+        "bodyScrollWidth": 1280,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "backup-read-only",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/backup-read-only-desktop-1440x1000.png",
+      "interaction": [
+        "Quan sát panel backup trong Cài đặt; không bấm restore/xóa"
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung"
+        ],
+        "buttonCount": 23,
+        "linkCount": 1,
+        "smallTargetCount": 17,
+        "formCount": 0,
+        "fieldCount": 4,
+        "tableCount": 2,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "backup-read-only",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/backup-read-only-mobile-390x844.png",
+      "interaction": [
+        "Quan sát panel backup trong Cài đặt; không bấm restore/xóa"
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung"
+        ],
+        "buttonCount": 22,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 4,
+        "tableCount": 2,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "user-admin-create-preview",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/user-admin-create-preview-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Mở workflow-template-create-preview",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Cài đặt hệ thống",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở user-admin-create-preview",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung",
+          "Thêm tài khoản PGDCN"
+        ],
+        "buttonCount": 26,
+        "linkCount": 1,
+        "smallTargetCount": 26,
+        "formCount": 1,
+        "fieldCount": 19,
+        "tableCount": 2,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "button",
+          "name": "Thêm nhân sự",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "user-admin-create-preview",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/user-admin-create-preview-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở workflow-template-create-preview",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Cài đặt hệ thống",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở user-admin-create-preview",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung",
+          "Thêm tài khoản PGDCN"
+        ],
+        "buttonCount": 25,
+        "linkCount": 1,
+        "smallTargetCount": 11,
+        "formCount": 1,
+        "fieldCount": 19,
+        "tableCount": 2,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "button",
+          "name": "Thêm nhân sự",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "personal-settings-modal",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/personal-settings-modal-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Cài đặt hệ thống",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở user-admin-create-preview",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở cài đặt cá nhân",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung",
+          "Thiết lập cá nhân"
+        ],
+        "buttonCount": 28,
+        "linkCount": 4,
+        "smallTargetCount": 22,
+        "formCount": 0,
+        "fieldCount": 7,
+        "tableCount": 2,
+        "dialogCount": 1,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "button",
+          "name": "Thiết lập cá nhân",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "personal-settings-modal",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/personal-settings-modal-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Cài đặt hệ thống",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở user-admin-create-preview",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở cài đặt cá nhân",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Cài đặt hệ thống",
+          "Sao lưu và phục hồi hệ thống",
+          "Sao lưu & Phục hồi hệ thống",
+          "Nhân sự & tài khoản dùng chung",
+          "Thiết lập cá nhân"
+        ],
+        "buttonCount": 27,
+        "linkCount": 4,
+        "smallTargetCount": 7,
+        "formCount": 0,
+        "fieldCount": 7,
+        "tableCount": 2,
+        "dialogCount": 1,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 9,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "pcn-proposals",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-proposals-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Mở cài đặt cá nhân",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Chứng nhận",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Quản lý Đề nghị",
+          "DOANH NGHIỆP DEMO"
+        ],
+        "buttonCount": 35,
+        "linkCount": 1,
+        "smallTargetCount": 30,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Chứng nhận",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-proposals",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-proposals-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở cài đặt cá nhân",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Chứng nhận",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Quản lý Đề nghị",
+          "DOANH NGHIỆP DEMO"
+        ],
+        "buttonCount": 34,
+        "linkCount": 1,
+        "smallTargetCount": 13,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-create-proposal-modal",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-create-proposal-modal-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Chứng nhận",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pcn-create-proposal-modal",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Quản lý Đề nghị",
+          "Thông tin Đề nghị / bộ hồ sơ",
+          "Dữ liệu bổ sung theo đúng vùng nghiệp vụ",
+          "DOANH NGHIỆP DEMO"
+        ],
+        "buttonCount": 40,
+        "linkCount": 1,
+        "smallTargetCount": 50,
+        "formCount": 1,
+        "fieldCount": 21,
+        "tableCount": 0,
+        "dialogCount": 1,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Đóng cửa sổ",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-create-proposal-modal",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-create-proposal-modal-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Chứng nhận",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pcn-create-proposal-modal",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Quản lý Đề nghị",
+          "Thông tin Đề nghị / bộ hồ sơ",
+          "Dữ liệu bổ sung theo đúng vùng nghiệp vụ",
+          "DOANH NGHIỆP DEMO"
+        ],
+        "buttonCount": 39,
+        "linkCount": 1,
+        "smallTargetCount": 31,
+        "formCount": 1,
+        "fieldCount": 21,
+        "tableCount": 0,
+        "dialogCount": 1,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "button",
+          "name": "Đóng cửa sổ",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pcn/dossiers/demo-dossier-001",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-dossier-detail-workflow-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Chứng nhận",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pcn-create-proposal-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PCN demo",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Thiết bị điện dân dụng mẫu · DOANH NGHIỆP DEMO",
+          "Tiếp nhận hồ sơ",
+          "Tiếp nhận hồ sơ",
+          "Tài liệu và hồ sơ liên quan",
+          "Các bước hồ sơ PCN",
+          "Xử lý từng việc theo đúng thứ tự"
+        ],
+        "buttonCount": 29,
+        "linkCount": 1,
+        "smallTargetCount": 20,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pcn/dossiers/demo-dossier-001",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-dossier-detail-workflow-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Chứng nhận",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pcn-create-proposal-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PCN demo",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Thiết bị điện dân dụng mẫu · DOANH NGHIỆP DEMO",
+          "Tiếp nhận hồ sơ",
+          "Tiếp nhận hồ sơ",
+          "Tài liệu và hồ sơ liên quan",
+          "Các bước hồ sơ PCN",
+          "Xử lý từng việc theo đúng thứ tự"
+        ],
+        "buttonCount": 28,
+        "linkCount": 1,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pcn/dossiers/demo-dossier-001",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-dossier-detail-workflow-narrow-320x800.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Chứng nhận",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pcn-create-proposal-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PCN demo",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Thiết bị điện dân dụng mẫu · DOANH NGHIỆP DEMO",
+          "Tiếp nhận hồ sơ",
+          "Tiếp nhận hồ sơ",
+          "Tài liệu và hồ sơ liên quan",
+          "Các bước hồ sơ PCN",
+          "Xử lý từng việc theo đúng thứ tự"
+        ],
+        "buttonCount": 28,
+        "linkCount": 1,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 320,
+        "documentScrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pcn/dossiers/demo-dossier-001",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-dossier-detail-workflow-small-375x812.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Chứng nhận",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pcn-create-proposal-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PCN demo",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Thiết bị điện dân dụng mẫu · DOANH NGHIỆP DEMO",
+          "Tiếp nhận hồ sơ",
+          "Tiếp nhận hồ sơ",
+          "Tài liệu và hồ sơ liên quan",
+          "Các bước hồ sơ PCN",
+          "Xử lý từng việc theo đúng thứ tự"
+        ],
+        "buttonCount": 28,
+        "linkCount": 1,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 375,
+        "documentScrollWidth": 375,
+        "bodyScrollWidth": 375,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pcn/dossiers/demo-dossier-001",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-dossier-detail-workflow-large-mobile-430x932.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Chứng nhận",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pcn-create-proposal-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PCN demo",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Thiết bị điện dân dụng mẫu · DOANH NGHIỆP DEMO",
+          "Tiếp nhận hồ sơ",
+          "Tiếp nhận hồ sơ",
+          "Tài liệu và hồ sơ liên quan",
+          "Các bước hồ sơ PCN",
+          "Xử lý từng việc theo đúng thứ tự"
+        ],
+        "buttonCount": 28,
+        "linkCount": 1,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 430,
+        "documentScrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pcn/dossiers/demo-dossier-001",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-dossier-detail-workflow-tablet-768x1024.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Chứng nhận",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pcn-create-proposal-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PCN demo",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Thiết bị điện dân dụng mẫu · DOANH NGHIỆP DEMO",
+          "Tiếp nhận hồ sơ",
+          "Tiếp nhận hồ sơ",
+          "Tài liệu và hồ sơ liên quan",
+          "Các bước hồ sơ PCN",
+          "Xử lý từng việc theo đúng thứ tự"
+        ],
+        "buttonCount": 30,
+        "linkCount": 1,
+        "smallTargetCount": 6,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 768,
+        "documentScrollWidth": 768,
+        "bodyScrollWidth": 768,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pcn/dossiers/demo-dossier-001",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-dossier-detail-workflow-laptop-1280x900.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Chứng nhận",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pcn-create-proposal-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PCN demo",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Thiết bị điện dân dụng mẫu · DOANH NGHIỆP DEMO",
+          "Tiếp nhận hồ sơ",
+          "Tiếp nhận hồ sơ",
+          "Tài liệu và hồ sơ liên quan",
+          "Các bước hồ sơ PCN",
+          "Xử lý từng việc theo đúng thứ tự"
+        ],
+        "buttonCount": 29,
+        "linkCount": 1,
+        "smallTargetCount": 20,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1280,
+        "documentScrollWidth": 1280,
+        "bodyScrollWidth": 1280,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-register-direct-from-detail",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-register-direct-from-detail-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PCN demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Quản lý Đề nghị",
+          "DOANH NGHIỆP DEMO"
+        ],
+        "buttonCount": 35,
+        "linkCount": 1,
+        "smallTargetCount": 30,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-register-direct-from-detail",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-register-direct-from-detail-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PCN demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Quản lý Đề nghị",
+          "DOANH NGHIỆP DEMO"
+        ],
+        "buttonCount": 34,
+        "linkCount": 1,
+        "smallTargetCount": 13,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-register-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ tổng hợp PCN",
+          "Mở đúng hồ sơ, xử lý đúng việc",
+          "DEMO-PCN-001"
+        ],
+        "buttonCount": 33,
+        "linkCount": 1,
+        "smallTargetCount": 24,
+        "formCount": 0,
+        "fieldCount": 6,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Sổ dữ liệu PCN",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-register-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ tổng hợp PCN",
+          "Mở đúng hồ sơ, xử lý đúng việc",
+          "DEMO-PCN-001"
+        ],
+        "buttonCount": 32,
+        "linkCount": 1,
+        "smallTargetCount": 7,
+        "formCount": 0,
+        "fieldCount": 6,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-register-narrow-320x800.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ tổng hợp PCN",
+          "Mở đúng hồ sơ, xử lý đúng việc",
+          "DEMO-PCN-001"
+        ],
+        "buttonCount": 32,
+        "linkCount": 1,
+        "smallTargetCount": 7,
+        "formCount": 0,
+        "fieldCount": 6,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 320,
+        "documentScrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-register-small-375x812.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ tổng hợp PCN",
+          "Mở đúng hồ sơ, xử lý đúng việc",
+          "DEMO-PCN-001"
+        ],
+        "buttonCount": 32,
+        "linkCount": 1,
+        "smallTargetCount": 7,
+        "formCount": 0,
+        "fieldCount": 6,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 375,
+        "documentScrollWidth": 375,
+        "bodyScrollWidth": 375,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-register-large-mobile-430x932.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ tổng hợp PCN",
+          "Mở đúng hồ sơ, xử lý đúng việc",
+          "DEMO-PCN-001"
+        ],
+        "buttonCount": 32,
+        "linkCount": 1,
+        "smallTargetCount": 7,
+        "formCount": 0,
+        "fieldCount": 6,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 430,
+        "documentScrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-register-tablet-768x1024.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ tổng hợp PCN",
+          "Mở đúng hồ sơ, xử lý đúng việc",
+          "DEMO-PCN-001"
+        ],
+        "buttonCount": 34,
+        "linkCount": 1,
+        "smallTargetCount": 10,
+        "formCount": 0,
+        "fieldCount": 6,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 768,
+        "documentScrollWidth": 768,
+        "bodyScrollWidth": 768,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-register-laptop-1280x900.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ tổng hợp PCN",
+          "Mở đúng hồ sơ, xử lý đúng việc",
+          "DEMO-PCN-001"
+        ],
+        "buttonCount": 33,
+        "linkCount": 1,
+        "smallTargetCount": 24,
+        "formCount": 0,
+        "fieldCount": 6,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1280,
+        "documentScrollWidth": 1280,
+        "bodyScrollWidth": 1280,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-samples-lab-kpi",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-samples-lab-kpi-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 21,
+        "linkCount": 1,
+        "smallTargetCount": 24,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Sổ quản lý mẫu PCN",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-samples-lab-kpi",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-samples-lab-kpi-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 20,
+        "linkCount": 1,
+        "smallTargetCount": 7,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-samples-lab-kpi",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-samples-lab-kpi-narrow-320x800.png",
+      "interaction": [
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 20,
+        "linkCount": 1,
+        "smallTargetCount": 7,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 320,
+        "documentScrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-samples-lab-kpi",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-samples-lab-kpi-small-375x812.png",
+      "interaction": [
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 20,
+        "linkCount": 1,
+        "smallTargetCount": 7,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 375,
+        "documentScrollWidth": 375,
+        "bodyScrollWidth": 375,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-samples-lab-kpi",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-samples-lab-kpi-large-mobile-430x932.png",
+      "interaction": [
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 20,
+        "linkCount": 1,
+        "smallTargetCount": 7,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 430,
+        "documentScrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-samples-lab-kpi",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-samples-lab-kpi-tablet-768x1024.png",
+      "interaction": [
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 22,
+        "linkCount": 1,
+        "smallTargetCount": 10,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 768,
+        "documentScrollWidth": 768,
+        "bodyScrollWidth": 768,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pcn-samples-lab-kpi",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pcn-samples-lab-kpi-laptop-1280x900.png",
+      "interaction": [
+        {
+          "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+          "result": "returned-to-other-section"
+        },
+        {
+          "action": "Mở nhóm Chứng nhận · PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PCN",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 21,
+        "linkCount": 1,
+        "smallTargetCount": 24,
+        "formCount": 0,
+        "fieldCount": 3,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1280,
+        "documentScrollWidth": 1280,
+        "bodyScrollWidth": 1280,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-requests-queue",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-requests-queue-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Giám định",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Quản lý Giám định (PYC)",
+          "Sổ đăng ký PGD",
+          "DOANH NGHIỆP DEMO"
+        ],
+        "buttonCount": 38,
+        "linkCount": 1,
+        "smallTargetCount": 37,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "button",
+          "name": "Giám định",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-requests-queue",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-requests-queue-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Sổ dữ liệu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Giám định",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Quản lý Giám định (PYC)",
+          "Sổ đăng ký PGD",
+          "DOANH NGHIỆP DEMO"
+        ],
+        "buttonCount": 37,
+        "linkCount": 1,
+        "smallTargetCount": 17,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-create-intake-modal",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-create-intake-modal-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Giám định",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pgd-create-intake-modal",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Quản lý Giám định (PYC)",
+          "Sổ đăng ký PGD",
+          "DOANH NGHIỆP DEMO",
+          "Tạo PYC và bắt đầu bộ hồ sơ",
+          "Thông tin bên yêu cầu",
+          "Đơn vị yêu cầu / khách hàng",
+          "Hàng hóa / phạm vi giám định",
+          "Thông tin lô / sản phẩm và chứng từ",
+          "Bảng tổng hợp mẫu",
+          "Sổ đăng ký PGD"
+        ],
+        "buttonCount": 45,
+        "linkCount": 1,
+        "smallTargetCount": 41,
+        "formCount": 1,
+        "fieldCount": 69,
+        "tableCount": 1,
+        "dialogCount": 1,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "button",
+          "name": "Đóng cửa sổ",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-create-intake-modal",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-create-intake-modal-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PCN",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Giám định",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pgd-create-intake-modal",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Quản lý Giám định (PYC)",
+          "Sổ đăng ký PGD",
+          "DOANH NGHIỆP DEMO",
+          "Tạo PYC và bắt đầu bộ hồ sơ",
+          "Thông tin bên yêu cầu",
+          "Đơn vị yêu cầu / khách hàng",
+          "Hàng hóa / phạm vi giám định",
+          "Thông tin lô / sản phẩm và chứng từ",
+          "Bảng tổng hợp mẫu",
+          "Sổ đăng ký PGD"
+        ],
+        "buttonCount": 44,
+        "linkCount": 1,
+        "smallTargetCount": 27,
+        "formCount": 1,
+        "fieldCount": 69,
+        "tableCount": 1,
+        "dialogCount": 1,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 2,
+        "clippedOrTruncatedElementCount": 8,
+        "focus": {
+          "tag": "button",
+          "name": "Đóng cửa sổ",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pgd/dossiers/demo-pgd-request-001",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-dossier-detail-workflow-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Giám định",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pgd-create-intake-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Lô thép mẫu QA · DOANH NGHIỆP DEMO",
+          "Tiếp nhận KQTN",
+          "Tài liệu cần hoàn thiện",
+          "Phiếu giao nhận mẫu",
+          "Tiếp nhận KQTN",
+          "Đánh giá KQTN",
+          "Xử lý từng việc theo đúng thứ tự",
+          "Bản đồ bộ hồ sơ PGD"
+        ],
+        "buttonCount": 66,
+        "linkCount": 4,
+        "smallTargetCount": 22,
+        "formCount": 0,
+        "fieldCount": 24,
+        "tableCount": 3,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 2,
+        "clippedOrTruncatedElementCount": 12,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pgd/dossiers/demo-pgd-request-001",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-dossier-detail-workflow-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Giám định",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pgd-create-intake-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Lô thép mẫu QA · DOANH NGHIỆP DEMO",
+          "Tiếp nhận KQTN",
+          "Tài liệu cần hoàn thiện",
+          "Phiếu giao nhận mẫu",
+          "Tiếp nhận KQTN",
+          "Đánh giá KQTN",
+          "Xử lý từng việc theo đúng thứ tự",
+          "Bản đồ bộ hồ sơ PGD"
+        ],
+        "buttonCount": 65,
+        "linkCount": 4,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 24,
+        "tableCount": 3,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 14,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pgd/dossiers/demo-pgd-request-001",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-dossier-detail-workflow-narrow-320x800.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Giám định",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pgd-create-intake-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Lô thép mẫu QA · DOANH NGHIỆP DEMO",
+          "Tiếp nhận KQTN",
+          "Tài liệu cần hoàn thiện",
+          "Phiếu giao nhận mẫu",
+          "Tiếp nhận KQTN",
+          "Đánh giá KQTN",
+          "Xử lý từng việc theo đúng thứ tự",
+          "Bản đồ bộ hồ sơ PGD"
+        ],
+        "buttonCount": 65,
+        "linkCount": 4,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 24,
+        "tableCount": 3,
+        "dialogCount": 0,
+        "documentClientWidth": 320,
+        "documentScrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 15,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pgd/dossiers/demo-pgd-request-001",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-dossier-detail-workflow-small-375x812.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Giám định",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pgd-create-intake-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Lô thép mẫu QA · DOANH NGHIỆP DEMO",
+          "Tiếp nhận KQTN",
+          "Tài liệu cần hoàn thiện",
+          "Phiếu giao nhận mẫu",
+          "Tiếp nhận KQTN",
+          "Đánh giá KQTN",
+          "Xử lý từng việc theo đúng thứ tự",
+          "Bản đồ bộ hồ sơ PGD"
+        ],
+        "buttonCount": 65,
+        "linkCount": 4,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 24,
+        "tableCount": 3,
+        "dialogCount": 0,
+        "documentClientWidth": 375,
+        "documentScrollWidth": 375,
+        "bodyScrollWidth": 375,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 15,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pgd/dossiers/demo-pgd-request-001",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-dossier-detail-workflow-large-mobile-430x932.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Giám định",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pgd-create-intake-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Lô thép mẫu QA · DOANH NGHIỆP DEMO",
+          "Tiếp nhận KQTN",
+          "Tài liệu cần hoàn thiện",
+          "Phiếu giao nhận mẫu",
+          "Tiếp nhận KQTN",
+          "Đánh giá KQTN",
+          "Xử lý từng việc theo đúng thứ tự",
+          "Bản đồ bộ hồ sơ PGD"
+        ],
+        "buttonCount": 65,
+        "linkCount": 4,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 24,
+        "tableCount": 3,
+        "dialogCount": 0,
+        "documentClientWidth": 430,
+        "documentScrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 14,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pgd/dossiers/demo-pgd-request-001",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-dossier-detail-workflow-tablet-768x1024.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Giám định",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pgd-create-intake-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Lô thép mẫu QA · DOANH NGHIỆP DEMO",
+          "Tiếp nhận KQTN",
+          "Tài liệu cần hoàn thiện",
+          "Phiếu giao nhận mẫu",
+          "Tiếp nhận KQTN",
+          "Đánh giá KQTN",
+          "Xử lý từng việc theo đúng thứ tự",
+          "Bản đồ bộ hồ sơ PGD"
+        ],
+        "buttonCount": 67,
+        "linkCount": 4,
+        "smallTargetCount": 8,
+        "formCount": 0,
+        "fieldCount": 24,
+        "tableCount": 3,
+        "dialogCount": 0,
+        "documentClientWidth": 768,
+        "documentScrollWidth": 768,
+        "bodyScrollWidth": 768,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 13,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-dossier-detail-workflow",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn/pgd/dossiers/demo-pgd-request-001",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-dossier-detail-workflow-laptop-1280x900.png",
+      "interaction": [
+        {
+          "action": "Điều hướng Giám định",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở pgd-create-intake-modal",
+          "result": "clicked"
+        },
+        {
+          "action": "Đóng dialog QA bằng nút đóng",
+          "result": "clicked"
+        },
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Lô thép mẫu QA · DOANH NGHIỆP DEMO",
+          "Tiếp nhận KQTN",
+          "Tài liệu cần hoàn thiện",
+          "Phiếu giao nhận mẫu",
+          "Tiếp nhận KQTN",
+          "Đánh giá KQTN",
+          "Xử lý từng việc theo đúng thứ tự",
+          "Bản đồ bộ hồ sơ PGD"
+        ],
+        "buttonCount": 66,
+        "linkCount": 4,
+        "smallTargetCount": 22,
+        "formCount": 0,
+        "fieldCount": 24,
+        "tableCount": 3,
+        "dialogCount": 0,
+        "documentClientWidth": 1280,
+        "documentScrollWidth": 1280,
+        "bodyScrollWidth": 1280,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 2,
+        "clippedOrTruncatedElementCount": 12,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-register-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Mở đúng hồ sơ, xử lý đúng việc",
+          "PGD-DEMO-001"
+        ],
+        "buttonCount": 35,
+        "linkCount": 1,
+        "smallTargetCount": 30,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "button",
+          "name": "Sổ dữ liệu PGD",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-register-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Mở đúng hồ sơ, xử lý đúng việc"
+        ],
+        "buttonCount": 34,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-register-narrow-320x800.png",
+      "interaction": [
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Mở đúng hồ sơ, xử lý đúng việc"
+        ],
+        "buttonCount": 34,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 320,
+        "documentScrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-register-small-375x812.png",
+      "interaction": [
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Mở đúng hồ sơ, xử lý đúng việc"
+        ],
+        "buttonCount": 34,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 375,
+        "documentScrollWidth": 375,
+        "bodyScrollWidth": 375,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-register-large-mobile-430x932.png",
+      "interaction": [
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Mở đúng hồ sơ, xử lý đúng việc"
+        ],
+        "buttonCount": 34,
+        "linkCount": 1,
+        "smallTargetCount": 3,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 430,
+        "documentScrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-register-tablet-768x1024.png",
+      "interaction": [
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Mở đúng hồ sơ, xử lý đúng việc",
+          "PGD-DEMO-001"
+        ],
+        "buttonCount": 36,
+        "linkCount": 1,
+        "smallTargetCount": 16,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 768,
+        "documentScrollWidth": 768,
+        "bodyScrollWidth": 768,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-register-laptop-1280x900.png",
+      "interaction": [
+        {
+          "action": "Mở hồ sơ PGD demo",
+          "result": "clicked"
+        },
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Mở đúng hồ sơ, xử lý đúng việc",
+          "PGD-DEMO-001"
+        ],
+        "buttonCount": 35,
+        "linkCount": 1,
+        "smallTargetCount": 30,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1280,
+        "documentScrollWidth": 1280,
+        "bodyScrollWidth": 1280,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-data-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-data-register-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Sổ tổng hợp PGD"
+        ],
+        "buttonCount": 136,
+        "linkCount": 1,
+        "smallTargetCount": 22,
+        "formCount": 0,
+        "fieldCount": 9,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Sổ dữ liệu",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-data-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-data-register-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Sổ tổng hợp PGD"
+        ],
+        "buttonCount": 135,
+        "linkCount": 1,
+        "smallTargetCount": 5,
+        "formCount": 0,
+        "fieldCount": 9,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "button",
+          "name": "Sổ dữ liệu",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-data-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-data-register-narrow-320x800.png",
+      "interaction": [
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Sổ tổng hợp PGD"
+        ],
+        "buttonCount": 135,
+        "linkCount": 1,
+        "smallTargetCount": 5,
+        "formCount": 0,
+        "fieldCount": 9,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 320,
+        "documentScrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "button",
+          "name": "Sổ dữ liệu",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-data-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-data-register-small-375x812.png",
+      "interaction": [
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Sổ tổng hợp PGD"
+        ],
+        "buttonCount": 135,
+        "linkCount": 1,
+        "smallTargetCount": 5,
+        "formCount": 0,
+        "fieldCount": 9,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 375,
+        "documentScrollWidth": 375,
+        "bodyScrollWidth": 375,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "button",
+          "name": "Sổ dữ liệu",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-data-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-data-register-large-mobile-430x932.png",
+      "interaction": [
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Sổ tổng hợp PGD"
+        ],
+        "buttonCount": 135,
+        "linkCount": 1,
+        "smallTargetCount": 5,
+        "formCount": 0,
+        "fieldCount": 9,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 430,
+        "documentScrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "button",
+          "name": "Sổ dữ liệu",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-data-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-data-register-tablet-768x1024.png",
+      "interaction": [
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Sổ tổng hợp PGD"
+        ],
+        "buttonCount": 137,
+        "linkCount": 1,
+        "smallTargetCount": 8,
+        "formCount": 0,
+        "fieldCount": 9,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 768,
+        "documentScrollWidth": 768,
+        "bodyScrollWidth": 768,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "button",
+          "name": "Sổ dữ liệu",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-data-register",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-data-register-laptop-1280x900.png",
+      "interaction": [
+        {
+          "action": "Xác nhận màn hình chi tiết PGD",
+          "result": "detail-visible"
+        },
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Hồ sơ cần xử lý",
+          "Sổ tổng hợp PGD"
+        ],
+        "buttonCount": 136,
+        "linkCount": 1,
+        "smallTargetCount": 22,
+        "formCount": 0,
+        "fieldCount": 9,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1280,
+        "documentScrollWidth": 1280,
+        "bodyScrollWidth": 1280,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 3,
+        "focus": {
+          "tag": "button",
+          "name": "Sổ dữ liệu",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-samples-lab",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-samples-lab-desktop-1440x1000.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 20,
+        "linkCount": 1,
+        "smallTargetCount": 22,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "button",
+          "name": "Sổ quản lý mẫu PGD",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-samples-lab",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-samples-lab-mobile-390x844.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 19,
+        "linkCount": 1,
+        "smallTargetCount": 5,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-samples-lab",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-samples-lab-narrow-320x800.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 19,
+        "linkCount": 1,
+        "smallTargetCount": 5,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 320,
+        "documentScrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-samples-lab",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-samples-lab-small-375x812.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 19,
+        "linkCount": 1,
+        "smallTargetCount": 5,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 375,
+        "documentScrollWidth": 375,
+        "bodyScrollWidth": 375,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 7,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-samples-lab",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-samples-lab-large-mobile-430x932.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 19,
+        "linkCount": 1,
+        "smallTargetCount": 5,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 430,
+        "documentScrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-samples-lab",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-samples-lab-tablet-768x1024.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 21,
+        "linkCount": 1,
+        "smallTargetCount": 8,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 768,
+        "documentScrollWidth": 768,
+        "bodyScrollWidth": 768,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 6,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "pgd-samples-lab",
+      "mode": "QA_MOCKED",
+      "role": "admin",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshot": "docs/ux-audit/artifacts/admin/pgd-samples-lab-laptop-1280x900.png",
+      "interaction": [
+        {
+          "action": "Mở nhóm Giám định · PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ dữ liệu PGD",
+          "result": "clicked"
+        },
+        {
+          "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+          "result": "clicked"
+        },
+        {
+          "action": "Điều hướng Sổ quản lý mẫu PGD",
+          "result": "clicked"
+        }
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Sổ quản lý mẫu"
+        ],
+        "buttonCount": 20,
+        "linkCount": 1,
+        "smallTargetCount": 22,
+        "formCount": 0,
+        "fieldCount": 1,
+        "tableCount": 1,
+        "dialogCount": 0,
+        "documentClientWidth": 1280,
+        "documentScrollWidth": 1280,
+        "bodyScrollWidth": 1280,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "viewer-overview-and-rbac-menu",
+      "mode": "QA_MOCKED",
+      "role": "viewer",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/viewer/viewer-overview-and-rbac-menu-desktop-1440x1000.png",
+      "interaction": [
+        "Session route đổi sang viewer synthetic PCN-only; không dùng credential"
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Điều hành phòng",
+          "Việc của tôi",
+          "Việc cần chú ý · Hàng đợi hành động",
+          "Pipeline theo miền",
+          "Chứng nhận PCN",
+          "Hồ sơ vừa mở",
+          "Mốc sắp tới",
+          "Thông báo phòng"
+        ],
+        "buttonCount": 19,
+        "linkCount": 1,
+        "smallTargetCount": 14,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "viewer-overview-and-rbac-menu",
+      "mode": "QA_MOCKED",
+      "role": "viewer",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/viewer/viewer-overview-and-rbac-menu-mobile-390x844.png",
+      "interaction": [
+        "Session route đổi sang viewer synthetic PCN-only; không dùng credential"
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Điều hành phòng",
+          "Việc của tôi",
+          "Việc cần chú ý · Hàng đợi hành động",
+          "Pipeline theo miền",
+          "Chứng nhận PCN",
+          "Hồ sơ vừa mở",
+          "Mốc sắp tới",
+          "Thông báo phòng"
+        ],
+        "buttonCount": 18,
+        "linkCount": 1,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "staff-overview",
+      "mode": "QA_MOCKED",
+      "role": "staff",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/staff/staff-overview-desktop-1440x1000.png",
+      "interaction": [
+        "Session synthetic staff: PCN + PGD scopes"
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Điều hành phòng",
+          "Việc của tôi",
+          "Việc cần chú ý · Hàng đợi hành động",
+          "Pipeline theo miền",
+          "Chứng nhận PCN",
+          "Giám định PGD",
+          "Hồ sơ vừa mở",
+          "Mốc sắp tới",
+          "Thông báo phòng"
+        ],
+        "buttonCount": 24,
+        "linkCount": 1,
+        "smallTargetCount": 15,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "staff-overview",
+      "mode": "QA_MOCKED",
+      "role": "staff",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/staff/staff-overview-mobile-390x844.png",
+      "interaction": [
+        "Session synthetic staff: PCN + PGD scopes"
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Điều hành phòng",
+          "Việc của tôi",
+          "Việc cần chú ý · Hàng đợi hành động",
+          "Pipeline theo miền",
+          "Chứng nhận PCN",
+          "Giám định PGD",
+          "Hồ sơ vừa mở",
+          "Mốc sắp tới",
+          "Thông báo phòng"
+        ],
+        "buttonCount": 23,
+        "linkCount": 1,
+        "smallTargetCount": 2,
+        "formCount": 0,
+        "fieldCount": 0,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": false
+      }
+    },
+    {
+      "screen": "staff-pgd-queue",
+      "mode": "QA_MOCKED",
+      "role": "staff",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshot": "docs/ux-audit/artifacts/staff/staff-pgd-queue-desktop-1440x1000.png",
+      "interaction": [
+        "Nhân sự PGD synthetic; chỉ quan sát, không lưu"
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Quản lý Giám định (PYC)",
+          "Sổ đăng ký PGD",
+          "DOANH NGHIỆP DEMO"
+        ],
+        "buttonCount": 33,
+        "linkCount": 1,
+        "smallTargetCount": 32,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 0,
+        "clippedOrTruncatedElementCount": 4,
+        "focus": {
+          "tag": "button",
+          "name": "Giám định",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    },
+    {
+      "screen": "staff-pgd-queue",
+      "mode": "QA_MOCKED",
+      "role": "staff",
+      "route": "/pgdcn",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "docs/ux-audit/artifacts/staff/staff-pgd-queue-mobile-390x844.png",
+      "interaction": [
+        "Nhân sự PGD synthetic; chỉ quan sát, không lưu"
+      ],
+      "diagnostics": {
+        "title": "Phòng Giám định - Chứng nhận - TVCI",
+        "headings": [
+          "Quản lý Giám định (PYC)",
+          "Sổ đăng ký PGD",
+          "DOANH NGHIỆP DEMO"
+        ],
+        "buttonCount": 32,
+        "linkCount": 1,
+        "smallTargetCount": 17,
+        "formCount": 0,
+        "fieldCount": 2,
+        "tableCount": 0,
+        "dialogCount": 0,
+        "documentClientWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "horizontalOverflowPx": 0,
+        "horizontalScrollContainerCount": 1,
+        "clippedOrTruncatedElementCount": 5,
+        "focus": {
+          "tag": "body",
+          "name": "Bỏ qua điều hướng đến nội dung chính\nIEMM • TVCI\nGiám định ·",
+          "outlineStyle": "none",
+          "outlineWidth": "3px"
+        },
+        "containsSyntheticFixture": true
+      }
+    }
+  ],
+  "actions": [
+    {
+      "action": "Mở menu điều hướng mobile",
+      "result": "clicked"
+    },
+    {
+      "action": "Đóng menu điều hướng mobile",
+      "result": "clicked"
+    },
+    {
+      "action": "Keyboard Tab trên shell",
+      "result": "focused",
+      "focus": {
+        "name": "Thu gọn / Mở rộng thanh điều hướng",
+        "outlineStyle": "solid",
+        "outlineWidth": "2px"
+      }
+    },
+    {
+      "action": "Mở Việc của tôi",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Khách hàng",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở customer-create-modal",
+      "result": "clicked"
+    },
+    {
+      "action": "Hủy dialog QA",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Khách hàng",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở customer-import-modal",
+      "result": "clicked"
+    },
+    {
+      "action": "Fallback đóng dialog bằng Escape",
+      "result": "pressed"
+    },
+    {
+      "action": "Mở lại modal nhập Excel để chọn file demo",
+      "result": "clicked"
+    },
+    {
+      "action": "Tải workbook Excel synthetic vào preview",
+      "result": "local-buffer"
+    },
+    {
+      "action": "Mở preview Excel sau khi chọn tệp",
+      "result": "preview-visible"
+    },
+    {
+      "action": "Đóng dialog QA bằng nút đóng",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Khách hàng",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở luồng xuất Excel",
+      "result": "clicked"
+    },
+    {
+      "action": "Đóng dialog QA bằng nút đóng",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Trợ lý AI",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Nhật ký hệ thống",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở thông báo",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Soạn thảo văn bản",
+      "result": "clicked"
+    },
+    {
+      "action": "Đóng popup thông báo bằng nút đóng",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở danh sách mẫu DOCX PGD",
+      "result": "clicked"
+    },
+    {
+      "action": "Chuyển khu vực soạn thảo sang PCN",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở danh sách mẫu DOCX PCN",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Hồ sơ mẫu",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở workflow-template-create-preview",
+      "result": "clicked"
+    },
+    {
+      "action": "Đóng dialog QA bằng nút đóng",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Cài đặt hệ thống",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở user-admin-create-preview",
+      "result": "clicked"
+    },
+    {
+      "action": "Đóng dialog QA bằng nút đóng",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở cài đặt cá nhân",
+      "result": "clicked"
+    },
+    {
+      "action": "Đóng dialog QA bằng nút đóng",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở nhóm Chứng nhận · PCN",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Chứng nhận",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở pcn-create-proposal-modal",
+      "result": "clicked"
+    },
+    {
+      "action": "Đóng dialog QA bằng nút đóng",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở hồ sơ PCN demo",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Sổ dữ liệu PCN",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng thẳng từ chi tiết hồ sơ PCN tới Sổ dữ liệu PCN",
+      "result": "returned-to-other-section"
+    },
+    {
+      "action": "Mở nhóm Chứng nhận · PCN",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Sổ dữ liệu PCN",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Sổ quản lý mẫu PCN",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở nhóm Giám định · PGD",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Giám định",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở pgd-create-intake-modal",
+      "result": "clicked"
+    },
+    {
+      "action": "Đóng dialog QA bằng nút đóng",
+      "result": "clicked"
+    },
+    {
+      "action": "Mở hồ sơ PGD demo",
+      "result": "clicked"
+    },
+    {
+      "action": "Xác nhận màn hình chi tiết PGD",
+      "result": "detail-visible"
+    },
+    {
+      "action": "Mở nhóm Giám định · PGD",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Sổ dữ liệu PGD",
+      "result": "clicked"
+    },
+    {
+      "action": "Chuyển chế độ PGD sang Sổ dữ liệu",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Sổ quản lý mẫu PGD",
+      "result": "clicked"
+    },
+    {
+      "action": "Kiểm tra mục bị giới hạn với viewer",
+      "result": "measured",
+      "matchingButtons": 0
+    },
+    {
+      "action": "Mở nhóm Giám định · PGD",
+      "result": "clicked"
+    },
+    {
+      "action": "Điều hướng Giám định",
+      "result": "clicked"
+    }
+  ],
+  "externalBlocks": [],
+  "interceptedMutations": [],
+  "browserErrors": [
+    {
+      "type": "console",
+      "url": "http://127.0.0.1:2367/pgdcn",
+      "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "console",
+      "url": "http://127.0.0.1:2367/pgdcn",
+      "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    }
+  ]
+}

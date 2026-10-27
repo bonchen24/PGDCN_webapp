@@ -139,8 +139,8 @@ function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail,
         isExpanded ? 'border-blue-300 ring-2 ring-blue-100' : 'border-slate-200 hover:border-blue-200'
       }`}
     >
-      <div data-testid="dossier-header-zone" className="flex min-w-0 items-start justify-between gap-2">
-        <div className="min-w-0">
+      <div data-testid="dossier-header-zone" className="flex min-w-0 flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0 w-full md:w-auto">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <h3 className="min-w-0 break-words font-mono text-xs font-black tracking-wide text-slate-900">
               <HighlightText text={item.primaryCode} search={searchQuery} />
