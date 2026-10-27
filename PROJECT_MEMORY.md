@@ -6,6 +6,24 @@ Description: Persistent project memory and verified deployment observations for 
 
 # TVCI — Project Memory & Observations
 
+## Cập nhật 2026-10-27 — Triển khai hoàn thiện UI/UX PGDCN sau UX Audit (F1–F5)
+
+- **Triển khai & Nghiệm thu toàn diện F1 – F5**:
+  - **F1 (P2)**: Đóng panel thông báo khi chuyển mục/route (`PgdcnAppShell.tsx`, `PgdcnNotificationDropdown.tsx`), reset `aria-expanded="false"`, quản lý focus hợp lệ.
+  - **F2 (P2)**: Chuẩn hóa preview nhập Excel thành accessible dialog (`PcnCustomersManagementView.tsx`), `role="dialog"`, `aria-modal="true"`, focus trap Tab/Shift+Tab, phím Escape khôi phục focus trigger.
+  - **F3 (P2)**: Bảo toàn hiển thị mã hồ sơ PGD (`PgdDossierQueueView.tsx`), không wrap từng ký tự trên 320/375/390/430px, touch target nút CTA >= 44px, không tràn document.
+  - **F4 (P2)**: Điều hướng từ chi tiết hồ sơ PCN tới "Sổ dữ liệu PCN" vào đúng "Sổ tổng hợp PCN" (`app/pgdcn/pcn/page.tsx`, `PgdcnAppShell.tsx`), `router.push('/pgdcn/pcn?section=operations')`, giữ lịch sử browser back/forward.
+  - **F5 (P3)**: Danh sách mẫu DOCX PCN trên mobile (< 1024px) chuyển sang dạng thẻ (Card view) rõ ràng (`PgdcnUnifiedDraftingView.tsx`), giữ bảng so sánh trên desktop (>= 1024px), nút bấm mobile >= 44px.
+- **Bằng chứng kỹ thuật & Tiêu chí Gate**:
+  - Playwright suites F1–F5: 5/5 pass.
+  - Chụp 35 screenshots sau fix trên 7 viewport (320px -> 1440px) lưu tại `docs/ux-audit/artifacts/after-fixes/`.
+  - Metrics: mutations=0, external=0, pageErrors=0.
+  - Unit/Integration tests: 962/962 pass (3 skipped).
+  - TypeScript: 0 error (`npm run typecheck`).
+  - Production build: `next build --webpack` thành công 42 pages.
+  - Cập nhật SSOT: `design.md` §5A.42.
+  - Docker Production (`localhost:2357`): Không can thiệp, nguyên vẹn.
+
 ## Cập nhật 2026-09-30 — Nâng cấp toàn diện Next.js 16.3.7 Stable (Turbopack Default)
 
 - **Nâng cấp công nghệ**:
