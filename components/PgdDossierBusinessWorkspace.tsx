@@ -127,7 +127,7 @@ export function PgdDossierBusinessWorkspace({ request, onOpenCurrentWork, onOpen
     ]}
     blockers={blockers}
     suggestedActions={contextualActions}
-    evidenceTracker={{ title: 'Evidence Tracker · bộ chứng từ hiện hành', groups: buildPgdEvidenceGroups(requirements, checklist, dossierDocuments, onOpenCurrentWork), emptyText: 'Chưa có checklist chứng từ trong hồ sơ PGD.' }}
+    evidenceTracker={{ title: 'Evidence Tracker · bộ chứng từ hiện hành', groups: buildPgdEvidenceGroups(requirements, checklist, dossierDocuments, onOpenCurrentWork), emptyText: 'Chưa có danh mục chứng từ trong hồ sơ PGD.' }}
     groups={[
       { id: 'pgd-request', title: '1. PYC / khách hàng', description: 'Mã PYC, khách hàng, hàng hóa, lô, phạm vi và chứng từ thương mại đầu vào.', status: request.customerSnapshot.name && request.productName ? 'DONE' : 'BLOCKED', statusLabel: request.customerSnapshot.name && request.productName ? 'Đã nhận diện' : 'Thiếu đầu vào', countLabel: request.requestCode, meta: request.customerSnapshot.name, actionLabel: 'Mở việc hiện tại', onAction: onOpenCurrentWork },
       { id: 'pgd-assignment', title: '2. Phân công & năng lực', description: 'KTV, trưởng đoàn, người soát xét và phương thức giám định gắn với PYC.', status: assignment?.status === 'APPROVED' ? 'DONE' : assignment ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: assignment?.status === 'APPROVED' ? 'Đã duyệt' : assignment ? 'Đang xử lý' : 'Chưa có', countLabel: assignment ? assignment.inspectorUsernames.length + ' KTV' : 'Chưa phân công', meta: assignment?.technicalReviewerUsername || 'Chưa có người soát xét', actionLabel: 'Mở việc hiện tại', onAction: onOpenCurrentWork },

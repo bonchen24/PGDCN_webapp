@@ -11,7 +11,7 @@ test('business dossier workspace keeps the business-first projection contract', 
   const pcnUtils = read('../utils/pcnBusinessWorkspace.ts');
   const design = read('../design.md');
 
-  for (const marker of ['Next Action', 'dossier-hard-blockers', 'dossier-field-session', 'dossier-evidence-tracker', 'dossier-contextual-actions', "kind === 'sample'", 'dossier-event-timeline', 'Projection từ dữ liệu hiện có']) assert.ok(shared.includes(marker), marker);
+  for (const marker of ['Hành động tiếp theo', 'dossier-hard-blockers', 'dossier-field-session', 'dossier-evidence-tracker', 'dossier-contextual-actions', "kind === 'sample'", 'dossier-event-timeline', 'Tổng hợp từ dữ liệu hiện có']) assert.ok(shared.includes(marker), marker);
   assert.ok(pcnUtils.includes("REQUEST: 'Yêu cầu & phân công'"), "REQUEST: 'Yêu cầu & phân công'");
   assert.ok(pcn.includes("title: '1. ' + PCN_BUSINESS_SECTION_LABELS.REQUEST"), "title: '1. ' + PCN_BUSINESS_SECTION_LABELS.REQUEST");
   for (const marker of ['Yêu cầu & phân công', 'Chứng từ thương mại/hải quan', 'Mẫu & thử nghiệm', 'PYC và KQTN', 'Kiểm tra trước thẩm xét', 'Mở mẫu & PYC', 'Mở soạn báo cáo', 'Sinh báo cáo']) assert.ok(pcn.includes(marker), marker);

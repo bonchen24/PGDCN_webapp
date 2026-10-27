@@ -108,7 +108,7 @@ function missingSourceRow(template: PcnTemplateDefinition, expectedTemplate: Pcn
     expectedByteSize: expectedTemplate.sourceFingerprint.byteSize || undefined,
     ...(expectedTemplate.sourceFingerprint.sha256 ? { expectedSha256: expectedTemplate.sourceFingerprint.sha256 } : {}),
     missingRequiredKeys: [],
-    message: 'Không tìm thấy hoặc không thể đọc file nguồn trong thư mục PCN.',
+    message: 'Không tìm thấy hoặc không thể đọc tệp nguồn trong thư mục PCN.',
   };
 }
 
@@ -190,9 +190,9 @@ export function buildPcnTemplateSourceCoverage(
       missingRequiredKeys,
       message: imported
         ? runtimeAnnotationComplete && template.status === 'NEEDS_ANNOTATION'
-          ? 'Nguồn đã được import và chú thích vào kho riêng PCN; bản template còn chờ Admin phê duyệt.'
-          : 'Nguồn đã được import vào kho riêng PCN.'
-        : 'Nguồn hợp lệ, sẵn sàng Apply vào kho riêng PCN.',
+          ? 'Nguồn đã được nhập và chú thích vào kho riêng PCN; mẫu tài liệu còn chờ Quản trị viên phê duyệt.'
+          : 'Nguồn đã được nhập vào kho riêng PCN.'
+        : 'Nguồn hợp lệ, sẵn sàng áp dụng vào kho riêng PCN.',
     };
   });
   const emptyCounts = (): PcnTemplateSourceCoverageCounts => ({ total: 0, found: 0, missing: 0, fingerprintMismatch: 0, needsAnnotation: 0, readyToApply: 0 });

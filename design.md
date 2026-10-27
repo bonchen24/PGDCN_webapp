@@ -1807,3 +1807,22 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 - **Kiểm chứng**:
   - `npm run typecheck`: 0 lỗi.
   - `npm test`: 944/944 tests pass.
+
+### 5A.40. Chuẩn hóa tiếng Việt toàn diện giao diện người dùng (UI Localization) — 2026-10-27
+
+- **Quy chuẩn ngôn ngữ hiển thị**:
+  - Toàn bộ giao diện người dùng (UI) hiện hành và mới của ứng dụng PGDCN phải sử dụng tiếng Việt có dấu, tự nhiên, nhất quán và dễ hiểu cho nhân viên Giám định/Chứng nhận trên toàn bộ các bề mặt: route/page UI, menu, tab, nút bấm, nhãn, placeholder, tooltip, bộ lọc, trạng thái, bảng dữ liệu, trạng thái rỗng/đang tải/lỗi/thành công, dialog xác nhận, cảnh báo, hướng dẫn, toast/notification, metadata trang, và văn bản hỗ trợ tiếp cận (alt, aria-label, aria-description, live-region).
+  - Thuật ngữ nhất quán: `Dashboard` → `Tổng quan`; `Next Action` → `Hành động tiếp theo`; `Save Filters` → `Lưu bộ lọc`; `Saved Filters` → `Bộ lọc đã lưu`; `Copy` → `Sao chép`; `Import`/`Export` → `Nhập`/`Xuất`; `Preview` → `Xem trước`; `Cancel`/`Delete` → `Hủy`/`Xóa`; `Blocker` → `Trở ngại/Vướng mắc`; `Checklist` → `Danh sách kiểm tra`; `Upload` → `Tải lên`; `Template` → `Biểu mẫu/Mẫu hồ sơ`; `Projection` → `Tổng hợp`; `Mapping` → `Đối chiếu/Ánh xạ`.
+- **Ngoại lệ kỹ thuật và pháp lý (Giữ nguyên không dịch)**:
+  - Tên thương hiệu/tên riêng (ví dụ: Gemini, Google).
+  - Tên tiêu chuẩn chính thức và văn bản quy định trong mẫu DOCX (TCVN, ISO/IEC, QCVN,...).
+  - Định dạng tệp kỹ thuật: DOCX, PDF, CSV, JSON, PNG, SVG,...
+  - Mã hồ sơ, mã số nghiệp vụ: PCN, PGD, PYC, KQTN, ID hệ thống.
+  - Tên trường dữ liệu, schema, route, HTTP methods, API endpoints, hằng số, enum, trạng thái nghiệp vụ trong code (ví dụ `status === 'PENDING'`, chỉ đổi nhãn hiển thị cho người dùng).
+  - Cấu trúc response, HTTP status, mã lỗi API và log kỹ thuật server/client.
+- **Hợp đồng UX, Responsive và Khả năng tiếp cận (Accessibility)**:
+  - Nhãn dài tự nhiên phải được wrap phù hợp trên desktop và mobile (sử dụng `min-w-0`, `break-words`, `flex-wrap`, chiều rộng linh hoạt; tránh `truncate`/`whitespace-nowrap` khi người dùng cần đọc đủ thông tin).
+  - Không tạo thanh cuộn ngang ngoài ý muốn cho toàn trang; bảo tồn vùng cuộn bảng dữ liệu (spreadsheet grid).
+  - Giữ nguyên kích thước tương tác tối thiểu (touch target 44px), độ tương phản màu, cỡ chữ tối thiểu và trạng thái focus/keyboard navigation.
+  - Bảo tồn toàn bộ role, permission, validation logic, API contracts, workflow và định dạng mẫu xuất DOCX.
+  - `lang="vi"` được thiết lập cấp gốc tại `app/layout.tsx`; không sử dụng thêm thư viện runtime i18n bên ngoài.

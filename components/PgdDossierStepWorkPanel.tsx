@@ -48,7 +48,7 @@ type Props = {
 const STEP_META: Record<PgdDossierFlowStepId, { number: number; title: string; description: string }> = {
   intake: { number: 1, title: 'Tiếp nhận PYC', description: 'Xác nhận bộ hồ sơ đầu vào, người phụ trách và các chứng từ cần bổ sung.' },
   capability: { number: 2, title: 'Kiểm tra phạm vi & năng lực', description: 'Đối chiếu phạm vi giám định, tiêu chuẩn áp dụng và khả năng thực hiện.' },
-  assignment: { number: 3, title: 'Phân công giám định', description: 'Chọn giám định viên và người soát xét kỹ thuật theo scope PGD.' },
+  assignment: { number: 3, title: 'Phân công giám định', description: 'Chọn giám định viên và người soát xét kỹ thuật theo phạm vi PGD.' },
   plan: { number: 4, title: 'Lập kế hoạch', description: 'Xác nhận ngày hiện trường, nội dung trọng tâm và lịch làm việc.' },
   field: { number: 5, title: 'Kiểm tra hiện trường', description: 'Ghi nhận hiện trạng, đo kiểm và xác nhận với đại diện khách hàng.' },
   sampling: { number: 6, title: 'Lấy mẫu & niêm phong', description: 'Tách mẫu gửi PTN, mẫu lưu, mã mẫu và số niêm phong.' },

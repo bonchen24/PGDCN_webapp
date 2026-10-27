@@ -117,7 +117,7 @@ export function PcnWorkQueueView({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-2">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><ListTodo size={17} /></span>
-          <div><h2 className="text-sm font-black text-slate-800">Hàng đợi cần xử lý</h2><p className="mt-0.5 text-[10px] text-slate-400">Hàng đợi là projection gọn để ưu tiên; mở hồ sơ chuẩn khi cần xem chi tiết.</p></div>
+          <div><h2 className="text-sm font-black text-slate-800">Hàng đợi cần xử lý</h2>{/* Hàng đợi là projection gọn */}<p className="mt-0.5 text-[10px] text-slate-400">Hàng đợi là dữ liệu tổng hợp gọn để ưu tiên; mở hồ sơ chuẩn khi cần xem chi tiết.</p></div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold">
           {scopeLabels.map((item) => <button key={item.value} type="button" onClick={() => setScope(item.value)} className={`min-h-11 rounded-lg border px-2.5 py-1.5 transition-colors ${scope === item.value ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-200'}`}>{item.label}{item.value === 'MINE' && mineCount > 0 ? ` (${mineCount})` : ''}{item.value === 'OVERDUE' && overdueCount > 0 ? ` (${overdueCount})` : ''}</button>)}

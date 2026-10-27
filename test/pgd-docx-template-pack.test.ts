@@ -55,7 +55,7 @@ test('PGD source inspector detects missing files and placeholder drift', () => {
 
   const missing = inspectPgdTemplateSource({ ...template, fileName: 'missing-pgd-source.docx' }, root);
   assert.equal(missing.status, 'MISSING');
-  assert.match(missing.message || '', /Không tìm thấy file nguồn/);
+  assert.match(missing.message || '', /Không tìm thấy (?:file|tệp) nguồn/);
 });
 
 test('PGD DOCX output fills the real form and does not emit the legacy Cell/Giá trị table', async () => {

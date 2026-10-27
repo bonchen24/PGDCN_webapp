@@ -45,7 +45,7 @@ test('authoring metadata maps every blank-pack requirement to the observed PCN s
 
 test('PCN settings exposes only the active field packs without importing dossier data', () => {
   const settingsView = fs.readFileSync(new URL('../components/PcnSettingsView.tsx', import.meta.url), 'utf8');
-  assert.match(settingsView, /Khung checklist theo QC4\/QC9/);
+  assert.match(settingsView, /Khung danh mục tài liệu theo QC4\/QC9/);
   assert.match(settingsView, /getPcnDossierTemplateProfiles/);
   assert.match(settingsView, /Mẫu trống/);
   assert.doesNotMatch(settingsView, /QC20|sourceFormReferences|sourceMappings|customerName|taxId|phone/);

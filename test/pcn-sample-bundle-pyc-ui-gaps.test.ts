@@ -24,7 +24,7 @@ test('sample ledger KPIs count rows by the sample workflow states', () => {
 test('bundle modal exposes the three workflow regions and independent scroll contracts', () => {
   assert.match(modalSource, /data-testid="pyc-step-source"[\s\S]*Nguồn mẫu/);
   assert.match(modalSource, /data-testid="pyc-step-routing"[\s\S]*Thông tin (?:&|&amp;) tuyến gửi/);
-  assert.match(modalSource, /data-testid="pyc-step-mapping"[\s\S]*Kiểm tra mapping/);
+  assert.match(modalSource, /data-testid="pyc-step-mapping"[\s\S]*Kiểm tra đối chiếu trường/);
   assert.match(modalSource, /initialSampleItemIds/);
   assert.match(modalSource, /mobile-scroll-y/);
   assert.match(modalSource, /mobile-scroll-x/);

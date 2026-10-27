@@ -895,7 +895,7 @@ export default function PgdcnUnifiedDraftingView({
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-[11px] text-slate-400">Chưa sinh file</span>
+                              <span className="text-[11px] text-slate-400">Chưa sinh tệp</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-right">

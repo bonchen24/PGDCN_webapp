@@ -11,7 +11,7 @@ test('PYC modal previews explicit route mapping and target applications', () => 
   assert.match(modalSource, /routeIdsByLab/);
   assert.match(modalSource, /LABFTEE/);
   assert.match(modalSource, /DDT/);
-  assert.match(modalSource, /Kiểm tra mapping/);
+  assert.match(modalSource, /Kiểm tra đối chiếu trường/);
   assert.match(modalSource, /Hạn trả KQTN/);
   assert.match(modalSource, /Chỉ tiêu\/tiêu chuẩn/);
 });

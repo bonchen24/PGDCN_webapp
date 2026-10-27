@@ -338,7 +338,7 @@ export default function PcnSampleRequestBundleModal({
       return;
     }
     if (send && mappingPreview.issues.length > 0) {
-      setError('Chưa thể gửi PYC: hãy xử lý hết cảnh báo trong mục Kiểm tra mapping.');
+      setError('Chưa thể gửi PYC: hãy xử lý hết cảnh báo trong mục Kiểm tra đối chiếu trường.');
       return;
     }
     setIsSubmitting(true);
@@ -383,7 +383,7 @@ export default function PcnSampleRequestBundleModal({
 
       <div className="mobile-scroll-y min-h-0 flex-1 overflow-y-auto p-4">
         <div className="mb-3 grid grid-cols-3 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1" aria-label="Tiến trình tạo PYC">
-          {[['1', 'Nguồn mẫu'], ['2', 'Thông tin & tuyến gửi'], ['3', 'Kiểm tra mapping']].map(([step, label], index) => <div key={step} className={`flex items-center justify-center gap-1 rounded-md px-2 py-2 text-[11px] font-black ${index === 2 ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}><span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[11px]">{step}</span>{label}{index < 2 && <ChevronRight size={12} className="ml-auto text-slate-300" />}</div>)}
+          {[['1', 'Nguồn mẫu'], ['2', 'Thông tin & tuyến gửi'], ['3', 'Kiểm tra đối chiếu trường']].map(([step, label], index) => <div key={step} className={`flex items-center justify-center gap-1 rounded-md px-2 py-2 text-[11px] font-black ${index === 2 ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}><span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[11px]">{step}</span>{label}{index < 2 && <ChevronRight size={12} className="ml-auto text-slate-300" />}</div>)}
         </div>
 
         <section data-testid="pyc-step-source" className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-3" aria-labelledby="pyc-step-source-title">
@@ -448,7 +448,7 @@ export default function PcnSampleRequestBundleModal({
         <div data-testid="pyc-step-mapping" className="mt-3">
         <section data-testid="pyc-mapping-preview" className="rounded-xl border border-slate-200 bg-white" aria-labelledby="pyc-mapping-title">
           <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2.5">
-            <div><h3 id="pyc-mapping-title" className="text-[11px] font-black text-slate-900">Kiểm tra mapping</h3><p className="mt-0.5 text-[11px] text-slate-500">Đối chiếu trường PCN trước khi tạo PYC con · mappingVersion: <span className="font-mono">pcn-lab-map-v1</span></p></div>
+            <div><h3 id="pyc-mapping-title" className="text-[11px] font-black text-slate-900">Kiểm tra đối chiếu trường</h3><p className="mt-0.5 text-[11px] text-slate-500">Đối chiếu trường PCN trước khi tạo PYC con · phiên bản đối chiếu: <span className="font-mono">pcn-lab-map-v1</span></p></div>
             <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-black text-indigo-700">{mappingPreview.dispatches.length} ứng dụng đích</span>
           </div>
           <div className="divide-y divide-slate-100">
@@ -456,7 +456,7 @@ export default function PcnSampleRequestBundleModal({
               <div className="mb-2 flex flex-wrap items-center gap-2"><span className="text-[11px] font-black text-slate-800">{dispatch.labName}</span><span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-black text-indigo-700">{dispatch.targetSystemCode || 'Chưa cấu hình app đích'}</span><span className="text-[11px] text-slate-500">{dispatch.rows.length} dòng dữ liệu</span></div>
               <div className="grid gap-2 lg:grid-cols-2">{dispatch.rows.map((row) => { const rowIssues = issuesForPtn(row.lineIndex, row.labCode); return <div key={`${row.lineIndex}-${row.labCode}`} className={`rounded-lg border p-2.5 ${rowIssues.length ? 'border-rose-200 bg-rose-50/60' : 'border-slate-200'}`}><div className="flex items-start justify-between gap-2"><div><p className="font-mono text-[11px] font-black text-slate-800">{row.sampleCode}</p><p className="text-[11px] text-slate-500">{row.model || 'Chưa có model'}</p></div><span className={`rounded-full border px-2 py-0.5 text-[11px] font-black ${routeTone(row.routeStatus)}`}>{row.routeStatus}</span></div><dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">{row.values.map((field) => <div key={field.key} className="min-w-0"><dt className="text-[11px] font-black uppercase tracking-wide text-slate-400">{field.label}</dt><dd className="truncate text-[11px] font-bold text-slate-700" title={field.value}>{field.value}</dd></div>)}</dl>{rowIssues.length > 0 && <ul data-testid="mapping-ptn-issue" role="alert" className="mt-2 space-y-0.5 border-t border-rose-200 pt-1.5 text-[11px] font-bold text-rose-700">{rowIssues.map((issue) => <li key={`${issue.path}-${issue.code}`}>{issue.message}</li>)}</ul>}</div>; })}</div>
             </div>)}
-            {mappingPreview.dispatches.length === 0 && <p className="px-3 py-5 text-center text-[11px] text-slate-400">Thêm mẫu để xem mapping sang từng phòng thử nghiệm.</p>}
+            {mappingPreview.dispatches.length === 0 && <p className="px-3 py-5 text-center text-[11px] text-slate-400">Thêm mẫu để xem đối chiếu trường sang từng phòng thử nghiệm.</p>}
           </div>
           {mappingPreview.issues.length > 0 && <div role="alert" className="border-t border-rose-200 bg-rose-50 px-3 py-2"><p className="flex items-center gap-1 text-[11px] font-black text-rose-800"><AlertTriangle size={13} /> Cần xử lý trước khi gửi</p><ul className="mt-1 space-y-0.5 text-[11px] font-bold text-rose-700">{mappingPreview.issues.map((issue) => <li key={`${issue.path}-${issue.code}`}>• {issue.message}</li>)}</ul></div>}
         </section></div>

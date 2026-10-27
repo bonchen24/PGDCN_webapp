@@ -426,7 +426,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
                 <p className={canOpenPgdcnActivitySource(selectedLog, currentDepartmentScopes) ? 'text-emerald-700' : 'text-slate-500'}>
                   {selectedLog.navigationTarget && canOpenPgdcnActivitySource(selectedLog, currentDepartmentScopes)
                     ? `Có thể mở nguồn ${selectedLog.navigationTarget.domain}`
-                    : 'Chỉ hiển thị audit projection theo quyền phiên hiện tại.'}
+                    : 'Chỉ hiển thị bản ghi kiểm toán theo quyền phiên làm việc hiện tại.'}
                 </p>
               </div>
               <div className="mt-5">

@@ -491,7 +491,7 @@ function ProposalView({
       ...(receivedAt ? { receivedAt } : {}),
       ...(recognizedFieldCodes.length > 0 ? { fieldCodes: recognizedFieldCodes } : {}),
     }));
-    toast.success('Đã điền bản nháp OCR vào form; hãy kiểm tra trước khi tạo Đề nghị.');
+    toast.success('Đã điền bản nháp OCR vào biểu mẫu; hãy kiểm tra trước khi tạo Đề nghị.');
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -968,7 +968,7 @@ function ProposalView({
 <h3 id="pcn-proposal-domain-boundaries" className="font-black">Dữ liệu bổ sung theo đúng vùng nghiệp vụ</h3>
 <p className="mt-1 leading-4">Đơn vị mẫu sẽ được ghi trong thông tin lô/mẫu sau khi hồ sơ được tiếp nhận; biểu mẫu Đề nghị không yêu cầu nhập đơn vị riêng.</p>
 <p className="mt-1 leading-4">Lĩnh vực được xác nhận ngay tại đây; tiêu chuẩn và phương thức chứng nhận được chốt trong phần Tổng quan hồ sơ.</p>
-<p className="mt-1 leading-4">Tài liệu, chứng cứ và ghi chú vận hành được bổ sung tại checklist hồ sơ sau khi tạo Đề nghị.</p>
+<p className="mt-1 leading-4">Tài liệu, chứng cứ và ghi chú vận hành được bổ sung tại danh mục tài liệu hồ sơ sau khi tạo Đề nghị.</p>
 <p className="mt-1 leading-4">Trạng thái do hệ thống quản lý theo quy trình; biểu mẫu không cho phép tự đổi trạng thái.</p>
 </section>
 </form>

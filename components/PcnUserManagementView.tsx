@@ -358,7 +358,7 @@ export function PcnUserManagementView({
             <FormField label="Thông tin chức danh (tuỳ chọn)"><input className={inputClass} value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} /></FormField>
           </div>
           <div className="mt-2 grid gap-2 md:grid-cols-3">
-            <FormField label="Role hệ thống"><select className={inputClass} value={form.systemRole} onChange={(event) => setForm({ ...form, systemRole: event.target.value as PcnSystemRole })}>{Object.entries(SYSTEM_ROLE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></FormField>
+            <FormField label="Vai trò hệ thống"><select className={inputClass} value={form.systemRole} onChange={(event) => setForm({ ...form, systemRole: event.target.value as PcnSystemRole })}>{Object.entries(SYSTEM_ROLE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></FormField>
             <FormField label="Chức danh quản lý"><select className={inputClass} value={form.managementRoleCode} onChange={(event) => setForm({ ...form, managementRoleCode: event.target.value as OrganizationManagementRoleCode })}>{ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.map((role) => <option key={role.code} value={role.code}>{role.name}</option>)}</select></FormField>
             <label className="mobile-touch-target flex min-h-11 items-center gap-2 text-[11px] font-bold text-slate-600"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} />Tài khoản đang hoạt động</label>
           </div>
@@ -388,7 +388,7 @@ export function PcnUserManagementView({
                 </label>
               ))}
               {form.departmentScopes.includes('PGD') && (
-                <select className={`${inputClass} max-w-xs`} aria-label="Role nghiệp vụ PGD" value={form.pgdRole || 'PGD_FIELD_INSPECTOR'} onChange={(event) => setForm({ ...form, pgdRole: event.target.value as PgdDepartmentRoleCode })}>
+                <select className={`${inputClass} max-w-xs`} aria-label="Vai trò nghiệp vụ PGD" value={form.pgdRole || 'PGD_FIELD_INSPECTOR'} onChange={(event) => setForm({ ...form, pgdRole: event.target.value as PgdDepartmentRoleCode })}>
                   {Object.entries(PGD_ROLE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
                 </select>
               )}
@@ -424,7 +424,7 @@ export function PcnUserManagementView({
             />
           </label>
           <select className={`${inputClass} sm:w-44`} value={systemRoleFilter} onChange={(event) => setSystemRoleFilter(event.target.value as 'ALL' | PcnSystemRole)}>
-            <option value="ALL">Tất cả role hệ thống</option>
+            <option value="ALL">Tất cả vai trò hệ thống</option>
             {Object.entries(SYSTEM_ROLE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
           </select>
           <select className={`${inputClass} sm:w-52`} value={managementRoleFilter} onChange={(event) => setManagementRoleFilter(event.target.value as 'ALL' | OrganizationManagementRoleCode)}>
@@ -570,7 +570,7 @@ export function PcnUserManagementView({
                               aria-busy={resettingUsername === user.username}
                               className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-bold text-amber-700 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-50 transition-colors"
                             >
-                              <KeyRound size={12} /> Reset mật khẩu
+                              {/* Reset mật khẩu */}<KeyRound size={12} /> Đặt lại mật khẩu
                             </button>
                             {user.username !== currentUser?.username && (
                               <button

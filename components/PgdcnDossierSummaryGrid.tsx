@@ -300,7 +300,7 @@ export default function PgdcnDossierSummaryGrid({
         <div className="pgdcn-toolbar-actions flex items-center justify-between gap-2 text-[10px] font-bold text-slate-500 lg:justify-end">
           <span>{filteredRows.length}/{rows.length} hồ sơ</span>
           <button type="button" onClick={() => setShowColumnConfig((value) => !value)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-2 hover:border-emerald-300 hover:text-emerald-700"><SlidersHorizontal size={13} /> Cột</button>
-          <button type="button" onClick={exportCsv} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-2 hover:border-emerald-300 hover:text-emerald-700"><Download size={13} /> CSV</button>
+          <button type="button" onClick={exportCsv} aria-label="Xuất CSV" className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-2 hover:border-emerald-300 hover:text-emerald-700"><Download size={13} /> Xuất CSV</button>
         </div>
       </div>
 

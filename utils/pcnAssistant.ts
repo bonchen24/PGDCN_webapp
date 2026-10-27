@@ -184,7 +184,7 @@ export function buildPcnAssistantRecommendations(input: PcnAssistantInput): PcnA
       recommendations.push({ id: `${dossier.id}:issue`, kind: 'SAMPLE_ISSUE', severity: 'URGENT', title: 'Có sự cố mẫu cần giải quyết', description: 'Kiểm tra biên bản giao nhận, tình trạng mẫu và ghi nhận hướng xử lý trong card hồ sơ.', dossierId: dossier.id, dossierCode: dossier.dossierCode, actionLabel: 'Mở Mẫu & PYC', initialTab: 'lab' });
     }
     if (dossier.status === 'TECHNICAL_REVIEW' && completeness.missingRequirementIds.length === 0) {
-      recommendations.push({ id: `${dossier.id}:review`, kind: 'READY_FOR_REVIEW', severity: 'INFO', title: 'Hồ sơ đủ điều kiện soát xét', description: 'Checklist bắt buộc đã đủ; người soát xét có thể kiểm tra trực quan và chuyển bộ trình phê duyệt.', dossierId: dossier.id, dossierCode: dossier.dossierCode, actionLabel: 'Mở hồ sơ', initialTab: 'documents' });
+      recommendations.push({ id: `${dossier.id}:review`, kind: 'READY_FOR_REVIEW', severity: 'INFO', title: 'Hồ sơ đủ điều kiện soát xét', description: 'Danh mục tài liệu bắt buộc đã đủ; người soát xét có thể kiểm tra trực quan và chuyển bộ trình phê duyệt.', dossierId: dossier.id, dossierCode: dossier.dossierCode, actionLabel: 'Mở hồ sơ', initialTab: 'documents' });
     }
   }
   return recommendations.sort((left, right) => (left.severity === 'URGENT' ? -1 : left.severity === 'ATTENTION' && right.severity !== 'URGENT' ? -1 : 1) || left.dossierCode.localeCompare(right.dossierCode, 'vi'));

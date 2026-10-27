@@ -171,7 +171,7 @@ function LabCell({ labCode, cell, onRetryBundleDispatch }: { labCode: PcnSampleL
           {(cell.sampleConditionCode || cell.sampleConditionNote) && <p className="text-[9px] text-slate-600">Tình trạng: {conditionLabel(cell.sampleConditionCode, cell.sampleConditionNote)}</p>}
           {(cell.receivedAt || cell.receivedBy || cell.receivedQuantity !== undefined) && <p className="text-[9px] text-slate-600">PTN nhận: {cell.receivedAt ? displayDate(cell.receivedAt) : 'Đã ghi nhận'}{cell.receivedQuantity !== undefined ? ` · ${cell.receivedQuantity} ${cell.receivedUnit || 'mẫu'}` : ''}{cell.receivedBy ? ` · ${cell.receivedBy}` : ''}</p>}
           {cell.syncStatus && <p className="text-[9px] font-bold text-slate-500">Liên thông: {cell.syncStatus}</p>}
-          {cell.dispatchStatus === 'ERROR' || cell.dispatchStatus === 'RECONCILE_REQUIRED' ? <button type="button" onClick={() => cell.bundleId && cell.dispatchId && void onRetryBundleDispatch(cell.bundleId, cell.dispatchId)} className="mobile-touch-target rounded bg-white px-2 py-1 text-[9px] font-black text-rose-700 shadow-sm hover:bg-rose-100">Retry PTN</button> : null}
+          {cell.dispatchStatus === 'ERROR' || cell.dispatchStatus === 'RECONCILE_REQUIRED' ? <button type="button" onClick={() => cell.bundleId && cell.dispatchId && void onRetryBundleDispatch(cell.bundleId, cell.dispatchId)} className="mobile-touch-target rounded bg-white px-2 py-1 text-[9px] font-black text-rose-700 shadow-sm hover:bg-rose-100">{/* Retry PTN */}Gửi lại PTN</button> : null}
         </div>
       </details>
     </div>

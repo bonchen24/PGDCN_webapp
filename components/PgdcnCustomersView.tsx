@@ -64,7 +64,7 @@ function PgdCustomerSearchProjection({ customers }: { customers: CustomerRef[] }
       <div>
         <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500"><Building2 size={14} className="text-blue-600" /> Dùng chung PGDCN</div>
         <h1 className="mt-1 text-xl font-black tracking-tight text-slate-900">Khách hàng</h1>
-        <p className="mt-1 text-[11px] text-slate-500">Danh mục liên hệ dùng để chọn khi lập PYC. Tài khoản chỉ có scope PGD xem projection này; chỉnh sửa danh mục thực hiện ở boundary dữ liệu dùng chung.</p>
+        <p className="mt-1 text-[11px] text-slate-500">Danh mục liên hệ dùng để chọn khi lập PYC. Tài khoản chỉ có phạm vi PGD xem danh sách tổng hợp này; chỉnh sửa danh mục thực hiện ở vùng dữ liệu dùng chung.</p>
       </div>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2.5">

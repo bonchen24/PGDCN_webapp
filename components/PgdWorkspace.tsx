@@ -172,7 +172,7 @@ type IntakeForm = {
 const REGISTRY_DOCUMENT_FIELDS: ReadonlyArray<{ kind: PgdRegistryDocumentKind; label: string }> = [
   { kind: 'CONTRACT', label: 'Hợp đồng' },
   { kind: 'INVOICE', label: 'Hóa đơn' },
-  { kind: 'PACKING_LIST', label: 'Packing list' },
+  { kind: 'PACKING_LIST', label: 'Danh sách đóng gói' },
   { kind: 'BILL_OF_LADING', label: 'Vận đơn' },
   { kind: 'CUSTOMS_DECLARATION', label: 'Tờ khai hải quan' },
   { kind: 'CERTIFICATE_OF_ORIGIN', label: 'C/O' },
@@ -542,7 +542,7 @@ function PgdIntakeForm({
       <PgdIntakeSampleTable productGroup={form.productGroup} rows={sampleDrafts} onChange={setSampleDrafts} disabled={saving || !canMutate} />
       <section className="border-t border-slate-100 pt-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <div><h2 className="mb-1 text-xs font-black text-slate-800">Sổ đăng ký PGD</h2><p className="text-[11px] text-slate-500">Các trường dưới đây được chuẩn hóa từ sổ đăng ký của phòng; chứng từ là tùy chọn và có thể bổ sung ở checklist hồ sơ.</p></div>
+          <div><h2 className="mb-1 text-xs font-black text-slate-800">Sổ đăng ký PGD</h2><p className="text-[11px] text-slate-500">Các trường dưới đây được chuẩn hóa từ sổ đăng ký của phòng; chứng từ là tùy chọn và có thể bổ sung ở danh sách tài liệu hồ sơ.</p></div>
           <span className="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-[9px] font-black text-blue-700">Bản chụp khi tạo PYC</span>
         </div>
         <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -1315,7 +1315,7 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
   const saveAssignment = () => run(async () => {
     const inspectorUsernames = inspectorInput.split(',').map((item) => item.trim()).filter(Boolean);
     const technicalReviewerUsername = reviewerInput.trim() || reviewerCandidates[0]?.username || (isManager ? currentUser.username : '');
-    if (!technicalReviewerUsername) throw new Error('Cần chọn người soát xét kỹ thuật PGD từ danh mục nhân sự có scope PGD.');
+    if (!technicalReviewerUsername) throw new Error('Cần chọn người soát xét kỹ thuật PGD từ danh mục nhân sự có phạm vi PGD.');
     const now = new Date().toISOString();
     await pgd.saveAssignment({ id: assignment?.id || makeId('pgd-assignment'), domain: PGD_DOMAIN, requestId: request.id, leadInspectorUsername: inspectorUsernames[0], inspectorUsernames, technicalReviewerUsername, method: request.method, status: isManager ? 'APPROVED' : 'PENDING_APPROVAL', approvedByUsername: isManager ? currentUser.username : undefined, approvedAt: isManager ? now : undefined, createdAt: assignment?.createdAt || now, updatedAt: now });
   }, isManager ? 'Đã phê duyệt phân công PGD.' : 'Đã lưu phân công chờ phê duyệt.');
@@ -1614,7 +1614,7 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
   if (!currentUser) return <PgdLoginScreen />;
 
   const hasAccess = hasPgdAccess;
-  if (!hasAccess) return <div className="flex min-h-[100dvh] items-center justify-center bg-slate-50 px-4"><div className="max-w-md rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-xl"><ShieldCheck className="mx-auto text-amber-500" size={28} /><h1 className="mt-3 text-lg font-black text-slate-900">Chưa được cấp phạm vi PGD</h1><p className="mt-2 text-xs leading-5 text-slate-600">Tài khoản này chỉ có quyền PCN. Hãy nhờ quản trị Phòng Giám định, Chứng nhận, Phát triển thị trường cấp scope PGD; dữ liệu PCN vẫn được bảo vệ riêng.</p><button type="button" onClick={async () => { await clearPcnSession().catch(() => undefined); clearCurrentUser(); }} className="mt-4 min-h-11 rounded-lg bg-blue-600 px-4 text-xs font-black text-white">Đăng xuất</button></div></div>;
+  if (!hasAccess) return <div className="flex min-h-[100dvh] items-center justify-center bg-slate-50 px-4"><div className="max-w-md rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-xl"><ShieldCheck className="mx-auto text-amber-500" size={28} /><h1 className="mt-3 text-lg font-black text-slate-900">Chưa được cấp phạm vi PGD</h1><p className="mt-2 text-xs leading-5 text-slate-600">Tài khoản này chỉ có quyền PCN. Hãy nhờ quản trị Phòng Giám định, Chứng nhận, Phát triển thị trường cấp phạm vi PGD; dữ liệu PCN vẫn được bảo vệ riêng.</p><button type="button" onClick={async () => { await clearPcnSession().catch(() => undefined); clearCurrentUser(); }} className="mt-4 min-h-11 rounded-lg bg-blue-600 px-4 text-xs font-black text-white">Đăng xuất</button></div></div>;
 
   const isAdmin = currentUser.systemRole === 'admin' || currentUser.role === 'admin' || currentUser.pgdRole === 'PGD_ADMIN' || currentUser.pgdRole === 'PGD_MANAGER';
   const canMutate = currentUser.pgdRole !== 'PGD_VIEWER' && currentUser.systemRole !== 'viewer' && currentUser.role !== 'viewer';

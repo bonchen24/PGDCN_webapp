@@ -340,7 +340,7 @@ export function PcnDossierNodeWorkPanel({
             </span>
           </div>
         </div>
-        {onClose ? <button type="button" className="mobile-touch-target min-h-11 rounded-md px-3 py-2 text-sm text-slate-500 hover:bg-slate-100" onClick={onClose} aria-label="Đóng panel">Đóng</button> : null}
+        {onClose ? <button type="button" className="mobile-touch-target min-h-11 rounded-md px-3 py-2 text-sm text-slate-500 hover:bg-slate-100" onClick={onClose} aria-label="Đóng bảng chi tiết bước">Đóng</button> : null}
       </div>
 
       {projection.blockedReason || projection.suggestions.length > 0 ? (

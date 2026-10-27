@@ -51,7 +51,7 @@ export const PCN_WORKFLOW_STAGES: readonly PcnWorkflowStage[] = [
     key: 'TECHNICAL_REVIEW',
     number: 4,
     title: 'Hoàn thiện & soát xét trước duyệt',
-    description: 'Hoàn thiện bộ hồ sơ, kiểm tra checklist và soát xét kỹ thuật trước khi trình lãnh đạo.',
+    description: 'Hoàn thiện bộ hồ sơ, kiểm tra danh mục tài liệu và soát xét kỹ thuật trước khi trình lãnh đạo.',
     actionLabel: 'Hoàn thiện & soát xét',
     statuses: ['TECHNICAL_REVIEW'],
     detailedStationKeys: ['TECHNICAL_REVIEW'],

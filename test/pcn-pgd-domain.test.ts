@@ -319,10 +319,10 @@ test('PGD assignment validation requires active PGD-scoped personnel and a techn
     { username: 'pcn-only', active: true, departmentScopes: ['PCN'], pgdRole: undefined },
   ];
   assert.deepEqual(validatePgdAssignment({ inspectorUsernames: ['inspector'], technicalReviewerUsername: 'reviewer' }, users), []);
-  assert.match(validatePgdAssignment({ inspectorUsernames: ['pcn-only'], technicalReviewerUsername: 'reviewer' }, users)[0]?.message || '', /scope PGD/);
+  assert.match(validatePgdAssignment({ inspectorUsernames: ['pcn-only'], technicalReviewerUsername: 'reviewer' }, users)[0]?.message || '', /(?:scope|phạm vi) PGD/);
   assert.match(validatePgdAssignment({ inspectorUsernames: ['inspector'], technicalReviewerUsername: 'pcn-only' }, users)[0]?.message || '', /soát xét kỹ thuật/);
   assert.deepEqual(validatePgdInspectors(['inspector'], users), []);
-  assert.match(validatePgdInspectors(['pcn-only'], users)[0]?.message || '', /scope PGD/);
+  assert.match(validatePgdInspectors(['pcn-only'], users)[0]?.message || '', /(?:scope|phạm vi) PGD/);
 });
 
 test('PGD document pointers carry domain and immutable provenance metadata', () => {

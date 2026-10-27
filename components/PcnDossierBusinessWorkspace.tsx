@@ -140,7 +140,7 @@ export function PcnDossierBusinessWorkspace({
     severity: blocker.severity,
     source: blocker.source,
     target: blocker.target,
-    actionLabel: blocker.target === 'DOCUMENTS' ? 'Mở checklist' : blocker.target === 'LAB' ? 'Mở mẫu & PYC' : blocker.target === 'REVIEW' ? 'Mở xem xét' : 'Mở việc hiện tại',
+    actionLabel: blocker.target === 'DOCUMENTS' ? 'Mở danh sách tài liệu' : blocker.target === 'LAB' ? 'Mở mẫu & PYC' : blocker.target === 'REVIEW' ? 'Mở xem xét' : 'Mở việc hiện tại',
     onAction: () => openTarget(blocker.target),
   }));
   const contextualActions: DossierSuggestedAction[] = [
@@ -148,7 +148,7 @@ export function PcnDossierBusinessWorkspace({
       id: 'pcn-missing-documents',
       title: 'Hồ sơ còn thiếu',
       reason: 'Kiểm tra các yêu cầu bắt buộc chưa có bản hiện hành hoặc miễn lệ.',
-      actionLabel: 'Mở checklist',
+      actionLabel: 'Mở danh sách tài liệu',
       onAction: () => onOpenTab('documents'),
       tone: 'warning' as const,
     }] : []),
@@ -190,7 +190,7 @@ export function PcnDossierBusinessWorkspace({
   return <PgdcnDossierBusinessWorkspace
     domain="PCN"
     title="Bản đồ bộ hồ sơ PCN"
-    description="Ngữ cảnh → Next Action → Blocker → Dữ liệu hỗ trợ → Chi tiết; mỗi vùng là projection của entity hiện hành."
+    description="Ngữ cảnh → Hành động tiếp theo → Trở ngại → Dữ liệu hỗ trợ → Chi tiết; mỗi vùng là dữ liệu tổng hợp của thực thể hiện hành."
     nextAction={{
       title: evidenceNextAction.label,
       reason: evidenceNextAction.reason,
@@ -210,7 +210,7 @@ export function PcnDossierBusinessWorkspace({
     evidenceTracker={{
       title: 'Evidence Tracker · theo nhóm nghiệp vụ',
       groups: buildPcnEvidenceGroups(requirements, documents, dossier.documentWaivers, onOpenTab),
-      emptyText: 'Chưa có checklist chứng từ trong hồ sơ này.',
+      emptyText: 'Chưa có danh mục chứng từ trong hồ sơ này.',
     }}
     groups={[
       { id: 'pcn-request', title: '1. ' + PCN_BUSINESS_SECTION_LABELS.REQUEST, description: 'Đề nghị, phân công và dữ liệu đầu vào để xác định chủ hồ sơ.', status: proposal ? section('REQUEST').status : 'BLOCKED', statusLabel: proposal ? section('REQUEST').reason : 'Thiếu Đề nghị', countLabel: proposal ? '1 Đề nghị' : 'Chưa có Đề nghị', meta: customerSnapshot?.name || 'Chưa gắn khách hàng', actionLabel: 'Xem tổng quan', onAction: () => onOpenTab('overview') },

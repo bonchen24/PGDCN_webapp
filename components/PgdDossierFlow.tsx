@@ -60,7 +60,7 @@ type StatusMeta = {
 };
 
 export const PGD_DOSSIER_FLOW_STEPS: readonly FlowStep[] = [
-  { id: 'intake', label: 'Tiếp nhận PYC', description: 'Kiểm tra hồ sơ đầu vào và checklist chứng từ.', type: 'FILE' },
+  { id: 'intake', label: 'Tiếp nhận PYC', description: 'Kiểm tra hồ sơ đầu vào và danh mục chứng từ.', type: 'FILE' },
   { id: 'capability', label: 'Kiểm tra phạm vi & năng lực', description: 'Đối chiếu phạm vi, tiêu chuẩn và khả năng thực hiện.', type: 'ACTION' },
   { id: 'assignment', label: 'Phân công giám định', description: 'Chọn đoàn giám định và người soát xét kỹ thuật.', type: 'APPROVAL' },
   { id: 'plan', label: 'Lập kế hoạch', description: 'Xác nhận ngày, nội dung và lịch giám định.', type: 'FILE' },

@@ -206,7 +206,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
       const items = await fetchPgdcnNotifications();
       setNotifications(items);
     } catch (error: any) {
-      toast.error(error?.message || 'Không thể tải notification phòng.');
+      toast.error(error?.message || 'Không thể tải thông báo phòng ban.');
     }
   };
 
@@ -255,7 +255,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
       await markPgdcnNotificationRead(notificationId);
       setNotifications((items) => items.map((item) => item.id === notificationId ? { ...item, read: true } : item));
     } catch (error: any) {
-      toast.error(error?.message || 'Không thể đánh dấu notification đã đọc.');
+      toast.error(error?.message || 'Không thể đánh dấu thông báo đã đọc.');
     }
   };
   const handleMarkAllNotificationsRead = async () => {
@@ -263,7 +263,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
       await markAllPgdcnNotificationsRead();
       setNotifications((items) => items.map((item) => ({ ...item, read: true })));
     } catch (error: any) {
-      toast.error(error?.message || 'Không thể đánh dấu tất cả notification đã đọc.');
+      toast.error(error?.message || 'Không thể đánh dấu tất cả thông báo đã đọc.');
     }
   };
   const handleClearNotifications = async () => {
@@ -271,7 +271,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
       await clearPgdcnNotifications();
       setNotifications([]);
     } catch (error: any) {
-      toast.error(error?.message || 'Không thể xóa notification.');
+      toast.error(error?.message || 'Không thể xóa thông báo.');
     }
   };
   const handleNotificationSelect = (notification: AppNotification) => {

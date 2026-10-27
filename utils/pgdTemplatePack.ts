@@ -46,7 +46,7 @@ export function inspectPgdTemplateSource(template: Pick<PgdDocumentTemplate, 'fi
       placeholderKeys: [],
       missingPlaceholderKeys: expectedKeys,
       extraPlaceholderKeys: [],
-      message: 'Tên file template phải là DOCX và không chứa thư mục.',
+      message: 'Tên tệp biểu mẫu phải là DOCX và không chứa thư mục.',
     };
   }
   if (!existsSync(filePath)) {
@@ -56,7 +56,7 @@ export function inspectPgdTemplateSource(template: Pick<PgdDocumentTemplate, 'fi
       placeholderKeys: [],
       missingPlaceholderKeys: expectedKeys,
       extraPlaceholderKeys: [],
-      message: `Không tìm thấy file nguồn trong templates/pgd: ${fileName}`,
+      message: `Không tìm thấy tệp nguồn trong templates/pgd: ${fileName}`,
     };
   }
   try {

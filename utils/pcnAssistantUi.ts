@@ -27,7 +27,7 @@ export function classifyPcnAssistantError(input: PcnAssistantErrorInput): PcnAss
   if (normalized.includes('storage is not configured') || normalized.includes('supabase_service_role_key') || normalized.includes('storage supabase')) {
     return {
       kind: 'STORAGE_CONFIG',
-      title: 'Chưa sẵn sàng đọc file private',
+      title: 'Chưa sẵn sàng đọc tệp riêng tư',
       action: 'Quản trị viên cần kiểm tra cấu hình Storage Supabase.',
     };
   }
@@ -35,7 +35,7 @@ export function classifyPcnAssistantError(input: PcnAssistantErrorInput): PcnAss
   if (code === 'PADDLE_OCR_EMPTY' || normalized.includes('không có nội dung để kiểm tra')) {
     return {
       kind: 'EMPTY_DOCUMENT',
-      title: 'File chưa có nội dung văn bản để đọc',
+      title: 'Tệp chưa có nội dung văn bản để đọc',
       action: 'Mở tệp bằng chứng để kiểm tra nội dung.',
       detail: detailFromMessage(message),
     };
@@ -45,7 +45,7 @@ export function classifyPcnAssistantError(input: PcnAssistantErrorInput): PcnAss
     return {
       kind: 'OCR_UNAVAILABLE',
       title: 'Chưa thể đọc bằng chứng bằng OCR',
-      action: 'Kiểm tra dịch vụ OCR hoặc mở file để đối chiếu thủ công.',
+      action: 'Kiểm tra dịch vụ OCR hoặc mở tệp để đối chiếu thủ công.',
       detail: detailFromMessage(message),
     };
   }

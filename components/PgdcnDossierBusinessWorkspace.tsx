@@ -328,7 +328,7 @@ export function PgdcnDossierBusinessWorkspace({ domain, title = 'Bản đồ h�
         <h3 id={'dossier-business-workspace-title-' + domain.toLowerCase()} className="mt-1 text-base font-black text-slate-900">{title}</h3>
         <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">{description}</p>
       </div>
-      <span className="w-fit shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-500">Projection từ dữ liệu hiện có</span>
+      <span className="w-fit shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-500">Tổng hợp từ dữ liệu hiện có</span>
     </header>
 
     {metrics.length > 0 ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4" aria-label="Chỉ số hồ sơ">{metrics.map((item) => <MetricCard key={item.id} item={item} />)}</div> : null}
@@ -353,7 +353,7 @@ export function PgdcnDossierBusinessWorkspace({ domain, title = 'Bản đồ h�
           <div className="flex items-start gap-2">
             <ArrowRight size={16} className={'mt-0.5 shrink-0 ' + accentTextClass} aria-hidden="true" />
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Next Action · Việc tiếp theo</p>
+              <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Hành động tiếp theo</p>
               <h4 id="dossier-next-action-title" className="mt-1 break-words text-sm font-black text-slate-900">{nextAction.title}</h4>
               <p className="mt-1 text-[11px] leading-4 text-slate-600">{nextAction.reason}</p>
               <dl className="mt-2 grid gap-x-3 gap-y-1 text-[11px] sm:grid-cols-2">

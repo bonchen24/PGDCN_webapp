@@ -232,7 +232,7 @@ export function PcnResultReturnView({
     }));
     setOcrDraft(draft);
     setOcrConfirmed(true);
-    toast.success('Đã điền bản nháp OCR vào form KQTN; hãy kiểm tra trước khi lưu.');
+    toast.success('Đã điền bản nháp OCR vào biểu mẫu KQTN; hãy kiểm tra trước khi lưu.');
   };
 
   const selectResultFile = (file?: File) => {

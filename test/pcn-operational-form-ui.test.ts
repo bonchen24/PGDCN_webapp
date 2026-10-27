@@ -20,7 +20,7 @@ test('operational form modal covers every PCN station form and uses structured c
     assert.match(modalSource, new RegExp(field));
   }
   assert.match(modalSource, /validatePcnOperationalForm/);
-  assert.match(modalSource, /aria-label="Đóng form nghiệp vụ"/);
+  assert.match(modalSource, /aria-label="Đóng biểu mẫu nghiệp vụ"/);
   assert.match(modalSource, /type="submit"/);
 });
 

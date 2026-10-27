@@ -226,7 +226,7 @@ export function validatePgdTemplateCells(cells: readonly PgdTemplateCellInput[])
       issues.push({ key: cell.key, code: 'INVALID_KEY', message: 'Mã cell “' + (cell.key || '(trống)') + '” không hợp lệ.' });
     }
     if ((counts.get(cell.key) || 0) > 1 && !issues.some((issue) => issue.code === 'DUPLICATE_KEY' && issue.key === cell.key)) {
-      issues.push({ key: cell.key, code: 'DUPLICATE_KEY', message: 'Mã cell “' + cell.key + '” bị trùng trong template.' });
+      issues.push({ key: cell.key, code: 'DUPLICATE_KEY', message: 'Mã cell “' + cell.key + '” bị trùng trong biểu mẫu.' });
     }
     if (cell.productGroups?.some((group) => !ALL_PRODUCT_GROUPS.includes(group))) {
       issues.push({ key: cell.key, code: 'INVALID_TYPE', message: 'Cell “' + cell.label + '” có nhóm sản phẩm PGD không hợp lệ.' });
@@ -308,7 +308,7 @@ export function validatePgdCellValues(cells: readonly PgdTemplateCell[], values:
 
   for (const value of values) {
     if (!cellsByKey.has(value.key)) {
-      issues.push({ key: value.key, code: 'UNKNOWN_KEY', message: 'Giá trị cell “' + value.key + '” không thuộc template.' });
+      issues.push({ key: value.key, code: 'UNKNOWN_KEY', message: 'Giá trị cell “' + value.key + '” không thuộc biểu mẫu.' });
     }
   }
   for (const cell of cells) {
@@ -656,17 +656,17 @@ export function isPgdDocumentTemplateRecordAllowed(value: unknown): value is Pgd
 
 export function validatePgdDocumentTemplate(template: Partial<PgdDocumentTemplate>): string[] {
   const issues: string[] = [];
-  if (template.domain !== PGD_DOMAIN) issues.push('Template phải thuộc miền PGD.');
-  if (!String(template.id || '').trim() || !String(template.code || '').trim() || !String(template.name || '').trim()) issues.push('Template cần có mã định danh, mã biểu mẫu và tên.');
-  if (!String(template.version || '').trim()) issues.push('Template cần có phiên bản.');
-  if (!['INTAKE_REQUEST', 'ASSIGNMENT', 'INSPECTION_PLAN', 'FIELD_INSPECTION', 'SAMPLE_TAKING', 'LAB_REQUEST', 'INSPECTION_REPORT', 'DECISION', 'INSPECTION_CERTIFICATE', 'DOSSIER_COVER', 'CASE_TIMELINE', 'FIELD_ACTIVITY_LOG', 'LAB_RESULT_REVIEW', 'INSPECTION_MINUTES', 'SAMPLE_HANDOVER'].includes(String(template.kind || ''))) issues.push('Loại template PGD không hợp lệ.');
-  if (!Array.isArray(template.productGroups) || template.productGroups.length === 0 || template.productGroups.some((item) => !ALL_PRODUCT_GROUPS.includes(item as PgdProductGroup))) issues.push('Nhóm sản phẩm của template không hợp lệ.');
-  if (!Array.isArray(template.formats) || template.formats.length === 0 || template.formats.some((format) => !['DOCX', 'PDF'].includes(String(format)))) issues.push('Định dạng template phải là DOCX hoặc PDF.');
+  if (template.domain !== PGD_DOMAIN) issues.push('Mẫu tài liệu phải thuộc miền PGD.');
+  if (!String(template.id || '').trim() || !String(template.code || '').trim() || !String(template.name || '').trim()) issues.push('Mẫu tài liệu cần có mã định danh, mã biểu mẫu và tên.');
+  if (!String(template.version || '').trim()) issues.push('Mẫu tài liệu cần có phiên bản.');
+  if (!['INTAKE_REQUEST', 'ASSIGNMENT', 'INSPECTION_PLAN', 'FIELD_INSPECTION', 'SAMPLE_TAKING', 'LAB_REQUEST', 'INSPECTION_REPORT', 'DECISION', 'INSPECTION_CERTIFICATE', 'DOSSIER_COVER', 'CASE_TIMELINE', 'FIELD_ACTIVITY_LOG', 'LAB_RESULT_REVIEW', 'INSPECTION_MINUTES', 'SAMPLE_HANDOVER'].includes(String(template.kind || ''))) issues.push('Loại mẫu tài liệu PGD không hợp lệ.');
+  if (!Array.isArray(template.productGroups) || template.productGroups.length === 0 || template.productGroups.some((item) => !ALL_PRODUCT_GROUPS.includes(item as PgdProductGroup))) issues.push('Nhóm sản phẩm của mẫu tài liệu không hợp lệ.');
+  if (!Array.isArray(template.formats) || template.formats.length === 0 || template.formats.some((format) => !['DOCX', 'PDF'].includes(String(format)))) issues.push('Định dạng mẫu tài liệu phải là DOCX hoặc PDF.');
   if (template.fileName !== undefined && (!String(template.fileName || '').trim() || /[\\/]/.test(String(template.fileName)))) issues.push('Mẫu cần có tên tệp DOCX tương đối, không chứa thư mục.');
   if (template.placeholderKeys !== undefined && (!Array.isArray(template.placeholderKeys) || template.placeholderKeys.some((key) => !/^[a-z][a-zA-Z0-9_]*$/.test(String(key))))) issues.push('Danh sách placeholder DOCX không hợp lệ.');
   if (template.requiredPlaceholderKeys !== undefined && (!Array.isArray(template.requiredPlaceholderKeys) || template.requiredPlaceholderKeys.some((key) => !/^[a-z][a-zA-Z0-9_]*$/.test(String(key))))) issues.push('Danh sách placeholder bắt buộc DOCX không hợp lệ.');
-  if (!String(template.sourceFormLabel || '').trim()) issues.push('Template cần ghi nhận tên biểu mẫu nghiệp vụ đã chuẩn hóa.');
-  if (!Array.isArray(template.cells) || template.cells.length === 0) issues.push('Template cần có ít nhất một cell.');
+  if (!String(template.sourceFormLabel || '').trim()) issues.push('Mẫu tài liệu cần ghi nhận tên biểu mẫu nghiệp vụ đã chuẩn hóa.');
+  if (!Array.isArray(template.cells) || template.cells.length === 0) issues.push('Mẫu tài liệu cần có ít nhất một cell.');
   else {
     issues.push(...validatePgdTemplateCells(template.cells).map((issue) => issue.message));
     if (Array.isArray(template.requiredPlaceholderKeys)) {
@@ -678,7 +678,7 @@ export function validatePgdDocumentTemplate(template: Partial<PgdDocumentTemplat
       }
     }
   }
-  if (/QC20|TVCI_NAS|Desktop|UNC/i.test(JSON.stringify(template))) issues.push('Template PGD không được chứa QC20 hoặc đường dẫn nguồn cũ.');
+  if (/QC20|TVCI_NAS|Desktop|UNC/i.test(JSON.stringify(template))) issues.push('Mẫu tài liệu PGD không được chứa QC20 hoặc đường dẫn nguồn cũ.');
   return issues;
 }
 

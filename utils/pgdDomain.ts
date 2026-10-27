@@ -1391,12 +1391,12 @@ export function validatePgdAssignment(
   const issues: PgdValidationIssue[] = [];
   const byUsername = new Map(users.map((user) => [String(user.username || '').trim().toLowerCase(), user]));
   const inspectorUsernames = Array.from(new Set((input.inspectorUsernames || []).map((username) => String(username || '').trim().toLowerCase()).filter(Boolean)));
-  if (inspectorUsernames.length === 0) issues.push({ field: 'inspectorUsernames', message: 'Cần chọn ít nhất một giám định viên có scope PGD.' });
+  if (inspectorUsernames.length === 0) issues.push({ field: 'inspectorUsernames', message: 'Cần chọn ít nhất một giám định viên có phạm vi PGD.' });
   for (const username of inspectorUsernames) {
     const user = byUsername.get(username);
     const scopes = new Set((user?.departmentScopes || []).map((scope) => String(scope).trim().toUpperCase()));
     if (!user || user.active === false || !scopes.has('PGD') || String(user.pgdRole || '').toUpperCase() === 'PGD_VIEWER') {
-      issues.push({ field: 'inspectorUsernames', message: `Nhân sự ${username} không có tài khoản hoạt động với scope PGD.` });
+      issues.push({ field: 'inspectorUsernames', message: `Nhân sự ${username} không có tài khoản hoạt động thuộc phạm vi PGD.` });
     }
   }
   const reviewerUsername = String(input.technicalReviewerUsername || '').trim().toLowerCase();
@@ -1428,7 +1428,7 @@ export function validatePgdInspectors(
     const user = byUsername.get(username);
     const scopes = new Set((user?.departmentScopes || []).map((scope) => String(scope).trim().toUpperCase()));
     if (!user || user.active === false || !scopes.has('PGD') || String(user.pgdRole || '').toUpperCase() === 'PGD_VIEWER') {
-      issues.push({ field: 'inspectorUsernames', message: `Nhân sự ${username} không có tài khoản hoạt động với scope PGD.` });
+      issues.push({ field: 'inspectorUsernames', message: `Nhân sự ${username} không có tài khoản hoạt động thuộc phạm vi PGD.` });
     }
   }
   return issues;

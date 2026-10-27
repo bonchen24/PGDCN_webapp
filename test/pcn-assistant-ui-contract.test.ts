@@ -9,7 +9,7 @@ test('classifies missing private storage as an administrator action', () => {
     message: 'PCN file storage is not configured. Set SUPABASE_STORAGE_URL and SUPABASE_SERVICE_ROLE_KEY.',
   }), {
     kind: 'STORAGE_CONFIG',
-    title: 'Chưa sẵn sàng đọc file private',
+    title: 'Chưa sẵn sàng đọc tệp riêng tư',
     action: 'Quản trị viên cần kiểm tra cấu hình Storage Supabase.',
   });
 });

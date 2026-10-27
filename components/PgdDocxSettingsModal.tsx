@@ -25,11 +25,11 @@ export default function PgdDocxSettingsModal({ templates, canMutate, onClose }: 
         </header>
         <main data-testid="pgd-docx-settings-body" className="mobile-scroll-y min-h-0 flex-1 overflow-y-auto p-3 md:p-5">
           <PgdTemplateSettingsWorkspace templates={templates} canMutate={canMutate} />
-          <section className="border-t border-slate-200 bg-white p-3 md:p-5" aria-label="Thông tin mapping DOCX PGD">
+          <section className="border-t border-slate-200 bg-white p-3 md:p-5" aria-label="Thông tin đối chiếu mẫu DOCX PGD">
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3"><div className="text-[11px] font-black uppercase tracking-wide text-blue-700">Mẫu hiện hành</div><div className="mt-1 text-xs font-black text-slate-800">{templates.length}</div><div className="mt-1 text-[12px] text-slate-500">Các tệp được quản lý theo danh mục PGD.</div></div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="text-[11px] font-black uppercase tracking-wide text-slate-500">Nguồn mapping</div><div className="mt-1 text-xs font-black text-slate-800">Code + DOCX</div><div className="mt-1 text-[12px] text-slate-500">Không cần gắn hoặc sửa từng khóa trên màn hình.</div></div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="text-[11px] font-black uppercase tracking-wide text-slate-500">Form nhập liệu</div><div className="mt-1 text-xs font-black text-slate-800">Theo nhãn nghiệp vụ</div><div className="mt-1 text-[12px] text-slate-500">Người dùng chỉ nhập giá trị theo field đã định nghĩa.</div></div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="text-[11px] font-black uppercase tracking-wide text-slate-500">Nguồn đối chiếu</div><div className="mt-1 text-xs font-black text-slate-800">Code + DOCX</div><div className="mt-1 text-[12px] text-slate-500">Không cần gắn hoặc sửa từng khóa trên màn hình.</div></div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="text-[11px] font-black uppercase tracking-wide text-slate-500">Biểu mẫu nhập liệu</div><div className="mt-1 text-xs font-black text-slate-800">Theo nhãn nghiệp vụ</div><div className="mt-1 text-[12px] text-slate-500">Người dùng chỉ nhập giá trị theo field đã định nghĩa.</div></div>
               <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3"><div className="text-[11px] font-black uppercase tracking-wide text-emerald-700">Kiểm tra</div><div className="mt-1 text-xs font-black text-slate-800">Trước khi sinh tài liệu</div><div className="mt-1 text-[12px] text-slate-500">Hệ thống kiểm tra ánh xạ và dữ liệu trước khi sinh tệp.</div></div>
             </div>
           </section>

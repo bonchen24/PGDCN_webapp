@@ -149,7 +149,7 @@ test('PCN visual inspection resolves uploader usernames to display names', () =>
 
 test('PCN configuration keeps template configuration in the single admin surface', () => {
   assert.match(pcnSettings, /Cấu hình PCN/);
-  assert.match(pcnSettings, /Khung checklist theo QC4\/QC9/);
+  assert.match(pcnSettings, /Khung danh mục tài liệu theo QC4\/QC9/);
   assert.doesNotMatch(pcnSettings, /QC20/);
   assert.match(pcnSettings, /getPcnDossierTemplateProfiles/);
   assert.match(pcnSettings, /stationGroups/);

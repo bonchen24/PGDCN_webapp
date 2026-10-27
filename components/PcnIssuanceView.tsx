@@ -151,7 +151,7 @@ function buildApprovalPackageEvidence({ dossier, issuance, dossierDocuments, off
           ? `Cần hệ thống xác minh ${unknownMetadataCount} liên kết tệp còn thiếu nguồn gốc/mã kiểm tra.`
           : 'Dữ liệu hiện tại đã đủ để hệ thống xác minh bản kê và mã kiểm tra.',
     action: missingRequiredCount > 0
-      ? 'Mở checklist, bổ sung phiên hiện hành hoặc đánh dấu bỏ qua kèm lý do.'
+      ? 'Mở danh sách kiểm tra, bổ sung phiên hiện hành hoặc đánh dấu bỏ qua kèm lý do.'
       : unknownMetadataCount > 0
         ? 'Mở kiểm tra trực quan và yêu cầu kiểm tra nguồn gốc/mã kiểm tra trước khi quyết định.'
         : 'Tiếp tục theo trình tự; hệ thống vẫn dựng bản kê cuối cùng trước khi ghi nhận thay đổi.',
