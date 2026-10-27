@@ -182,6 +182,8 @@ test('mobile navigation drawer has a dismissible backdrop and keyboard focus lif
 test('mobile shell exposes the active context while page scroll remains locally contained', () => {
   const shell = read('../components/PgdcnAppShell.tsx');
   assert.match(shell, /data-testid="pgdcn-mobile-context"/);
+  assert.match(shell, /<span className="lg:hidden">PGDCN · TVCI<\/span>/);
+  assert.match(shell, /<span className="hidden lg:inline">Phòng Giám định - Chứng nhận và Phát triển thị trường · TVCI<\/span>/);
   assert.match(shell, /mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto/);
   assert.match(shell, /app-compact flex h-\[100dvh\] w-full overflow-hidden/);
 });

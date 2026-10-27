@@ -1,0 +1,1600 @@
+{
+  "mode": "QA_MOCKED",
+  "timestamp": "2026-10-27T16:22:20.758Z",
+  "baseUrl": "http://localhost:2467",
+  "expectUniqueAttention": false,
+  "totalScreenshots": 21,
+  "totalRoles": 3,
+  "totalViewports": 7,
+  "observations": [
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:21:55.768Z",
+      "role": "admin",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshotPath": "admin-320x800.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 23,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h3",
+            "text": "QUÁ HẠN"
+          },
+          {
+            "level": "h3",
+            "text": "GẦN ĐÂY"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:21:56.987Z",
+      "role": "admin",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshotPath": "admin-375x812.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 23,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h3",
+            "text": "QUÁ HẠN"
+          },
+          {
+            "level": "h3",
+            "text": "GẦN ĐÂY"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:21:58.552Z",
+      "role": "admin",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "admin-390x844.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 23,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h3",
+            "text": "QUÁ HẠN"
+          },
+          {
+            "level": "h3",
+            "text": "GẦN ĐÂY"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:21:59.743Z",
+      "role": "admin",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshotPath": "admin-430x932.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 23,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h3",
+            "text": "QUÁ HẠN"
+          },
+          {
+            "level": "h3",
+            "text": "GẦN ĐÂY"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:00.929Z",
+      "role": "admin",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshotPath": "admin-768x1024.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 25,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h3",
+            "text": "QUÁ HẠN"
+          },
+          {
+            "level": "h3",
+            "text": "GẦN ĐÂY"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:02.125Z",
+      "role": "admin",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshotPath": "admin-1280x900.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 24,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h3",
+            "text": "QUÁ HẠN"
+          },
+          {
+            "level": "h3",
+            "text": "GẦN ĐÂY"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:03.518Z",
+      "role": "admin",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshotPath": "admin-1440x1000.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 24,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h3",
+            "text": "QUÁ HẠN"
+          },
+          {
+            "level": "h3",
+            "text": "GẦN ĐÂY"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:04.715Z",
+      "role": "staff",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshotPath": "staff-320x800.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 21,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:05.899Z",
+      "role": "staff",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshotPath": "staff-375x812.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 21,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:07.417Z",
+      "role": "staff",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "staff-390x844.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 21,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:08.601Z",
+      "role": "staff",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshotPath": "staff-430x932.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 21,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:09.759Z",
+      "role": "staff",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshotPath": "staff-768x1024.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 23,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:10.953Z",
+      "role": "staff",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshotPath": "staff-1280x900.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 22,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:12.158Z",
+      "role": "staff",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshotPath": "staff-1440x1000.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 22,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h3",
+            "text": "Giám định PGD"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001",
+          "PGD-DEMO-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:13.398Z",
+      "role": "viewer",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "screenshotPath": "viewer-320x800.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 16,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:14.648Z",
+      "role": "viewer",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "screenshotPath": "viewer-375x812.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 16,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:15.900Z",
+      "role": "viewer",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotPath": "viewer-390x844.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 16,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:17.120Z",
+      "role": "viewer",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "screenshotPath": "viewer-430x932.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 16,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:18.341Z",
+      "role": "viewer",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "screenshotPath": "viewer-768x1024.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 18,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:19.568Z",
+      "role": "viewer",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "screenshotPath": "viewer-1280x900.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 17,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    },
+    {
+      "mode": "QA_MOCKED",
+      "timestamp": "2026-10-27T16:22:20.755Z",
+      "role": "viewer",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "screenshotPath": "viewer-1440x1000.png",
+      "measuredDomValues": {
+        "dashboardRendered": true,
+        "hasHorizontalOverflow": false,
+        "visibleButtonCount": 17,
+        "headings": [
+          {
+            "level": "h1",
+            "text": "Điều hành phòng"
+          },
+          {
+            "level": "h2",
+            "text": "Việc của tôi"
+          },
+          {
+            "level": "h2",
+            "text": "Việc cần chú ý · Hàng đợi hành động"
+          },
+          {
+            "level": "h2",
+            "text": "Pipeline theo miền"
+          },
+          {
+            "level": "h3",
+            "text": "Chứng nhận PCN"
+          },
+          {
+            "level": "h2",
+            "text": "Hồ sơ vừa mở"
+          },
+          {
+            "level": "h2",
+            "text": "Mốc sắp tới"
+          },
+          {
+            "level": "h2",
+            "text": "Thông báo phòng"
+          }
+        ],
+        "primaryFocusAfterTab": {
+          "tagName": "a",
+          "text": "Bỏ qua điều hướng đến nội dung chính",
+          "ariaLabel": null,
+          "role": null,
+          "id": null
+        },
+        "visibleModalCount": 0,
+        "recordCodesInMyWork": [
+          "DEMO-PCN-001"
+        ],
+        "recordCodesInActionableWork": [],
+        "recordCodesInAttention": [
+          "DEMO-PCN-001"
+        ]
+      },
+      "mutationCount": 0,
+      "externalRequestCount": 0,
+      "pageErrorCount": 0,
+      "pageErrors": []
+    }
+  ]
+}

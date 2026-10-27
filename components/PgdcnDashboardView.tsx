@@ -117,27 +117,30 @@ function WorkItemCard({ item, onOpenPcn, onOpenPgd }: { item: PgdcnMyWorkItem; o
   const isPcn = item.domain === 'PCN';
   const hasUnknownStatus = item.statusLabel === 'Chưa xác định';
   const actionHintId = `pgdcn-action-hint-${item.domain}-${encodeURIComponent(item.id)}`;
-  return <article role="row" className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-1.5 border-b border-slate-100 px-3 py-2 last:border-0 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,0.8fr)_minmax(0,1.1fr)_minmax(0,0.75fr)_minmax(0,1fr)] lg:items-center lg:py-1.5">
+  return <article role="row" className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-2 border-b border-slate-100 px-3 py-2.5 last:border-0 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,0.8fr)_minmax(0,1.1fr)_minmax(0,0.75fr)_minmax(0,1fr)] lg:items-center lg:py-1.5">
     <div role="cell" className="min-w-0">
-      <span aria-hidden="true" className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Mã hồ sơ / khách hàng</span>
+      <span aria-hidden="true" className="sr-only lg:hidden">Mã hồ sơ / khách hàng</span>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"><span className={'shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ' + (isPcn ? DOMAIN_CONFIG.PCN.badge : DOMAIN_CONFIG.PGD.badge)}>{item.domain}</span><b className="min-w-0 break-words text-sm font-semibold text-slate-900">{item.label}</b></div>
       <p className="mt-0.5 break-words text-xs font-medium text-slate-700">{item.customerName}{item.productName ? ' · ' + item.productName : ''}</p>
     </div>
     <div role="cell" className="min-w-0">
-      <span aria-hidden="true" className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Trạng thái</span>
-      <PgdcnStatusBadge domain={item.domain} status={item.status} label={item.statusLabel} />
+      <span aria-hidden="true" className="sr-only lg:hidden">Trạng thái</span>
+      <div className="flex items-center gap-1.5">
+        <span className="text-[11px] font-medium text-slate-500 lg:hidden">Trạng thái:</span>
+        <PgdcnStatusBadge domain={item.domain} status={item.status} label={item.statusLabel} />
+      </div>
       {hasUnknownStatus && <p className="mt-1 break-words text-xs leading-4 text-amber-800">Trạng thái chưa xác định. Mở hồ sơ để kiểm tra bước phù hợp.</p>}
     </div>
     <div role="cell" className="min-w-0 break-words text-xs leading-4 text-slate-700">
-      <span aria-hidden="true" className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Bước hiện tại</span>
+      <span aria-hidden="true" className="text-[11px] font-medium text-slate-500 lg:hidden">Bước: </span>
       {item.currentStepLabel}
     </div>
     <div role="cell" className="min-w-0 break-words text-xs leading-4 text-slate-700">
-      <span aria-hidden="true" className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Hạn xử lý</span>
+      <span aria-hidden="true" className="text-[11px] font-medium text-slate-500 lg:hidden">Hạn: </span>
       {item.isOverdue ? <span className="inline-flex min-w-0 flex-wrap items-center gap-1 font-semibold text-rose-700"><AlertTriangle size={13} aria-hidden="true" />Quá hạn · <span className="font-normal text-slate-700">{item.dueLabel || 'Chưa đặt hạn'}</span></span> : item.dueLabel || 'Chưa đặt hạn'}
     </div>
-    <div role="cell" className="min-w-0">
-      <span aria-hidden="true" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Hành động tiếp theo</span>
+    <div role="cell" className="min-w-0 pt-0.5 lg:pt-0">
+      <span aria-hidden="true" className="sr-only lg:hidden">Hành động tiếp theo</span>
       <button type="button" onClick={() => isPcn ? onOpenPcn(item.id) : onOpenPgd(item.id)} className={'mobile-touch-target inline-flex min-h-11 w-full max-w-full items-center justify-center gap-2 whitespace-normal rounded-lg px-3 py-2 text-center text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 lg:w-auto ' + (isPcn ? 'bg-emerald-600 hover:bg-emerald-700 focus-visible:ring-emerald-300' : 'bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-300')} aria-label={item.nextAction.label + ' ' + item.label} aria-describedby={actionHintId}>Mở hồ sơ · {item.nextAction.label}<ArrowRight size={15} aria-hidden="true" /></button>
       <span id={actionHintId} className="sr-only">Chọn để mở hồ sơ và thực hiện bước tiếp theo: {item.nextAction.label}.</span>
       <p className="mt-0.5 break-words text-xs leading-4 text-slate-600"><span className="font-semibold text-slate-700">Bước tiếp theo:</span> {item.nextAction.label}. {item.nextAction.description}</p>
@@ -210,6 +213,7 @@ function MyWorkSection({ projection, currentUser, onOpenPcn, onOpenPgd }: { proj
 }
 
 function AttentionQueue({ items, onOpenPcn, onOpenPgd }: Pick<PgdcnDashboardViewProps, 'onOpenPcn' | 'onOpenPgd'> & { items: ReturnType<typeof getPgdcnDashboardProjection>['attention'] }) {
+  if (items.length === 0) return null;
   return (
     <section data-testid="pgdcn-dashboard-attention-queue" className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       <div className="flex min-w-0 items-start justify-between gap-3">
@@ -340,12 +344,19 @@ export default function PgdcnDashboardView({ scopes, pcnDossiers, pcnEvidenceAct
   const myWorkInput: PgdcnMyWorkInput | undefined = currentUser ? { scopes, currentUser, pcnDossiers, pcnProposals, pcnWorkflowTasks, pcnEvidenceActions, pgdRequests, pgdAssignments } : undefined;
   const projectedMyWork = myWorkInput ? getPgdcnMyWorkProjection(myWorkInput) : undefined;
   const myWork = projectedMyWork && myWorkInput ? { ...projectedMyWork, waitingOthers: getAllWaitingOthers(myWorkInput, projectedMyWork.waitingOthers) } : projectedMyWork;
+  const actionableWorkKeys = new Set(
+    myWork
+      ? Object.values(myWork.buckets).flatMap((items) => items.map((item) => `${item.domain}:${item.id}`))
+      : []
+  );
+  const attentionItems = projection.attention.filter((item) => !actionableWorkKeys.has(`${item.domain}:${item.id}`));
+  const hasAttention = attentionItems.length > 0;
   return (
     <section className="pcn-page-surface app-compact min-w-0 space-y-3 bg-slate-50 p-3 pb-5 md:p-4 mobile-safe-bottom" aria-label="Điều hành phòng PGDCN">
       <CommandHeader scopes={scopes} onOpenPcnWorkspace={onOpenPcnWorkspace} onOpenPgdWorkspace={onOpenPgdWorkspace} />
       {myWork ? <MyWorkSection projection={myWork} currentUser={currentUser} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} /> : null}
       <div data-testid="pgdcn-dashboard-kpi-grid" className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-6"><Kpi label="Hồ sơ PCN" value={projection.kpis.pcnDossiers} icon={Award} tone="bg-emerald-50 text-emerald-600" /><Kpi label="Hồ sơ PGD" value={projection.kpis.pgdRequests} icon={ClipboardCheck} tone="bg-blue-50 text-blue-600" /><Kpi label="PCN cần xử lý" value={projection.kpis.pcnWork} icon={FolderOpen} tone="bg-slate-100 text-slate-600" /><Kpi label="PGD cần xử lý" value={projection.kpis.pgdWork} icon={FileCheck2} tone="bg-slate-100 text-slate-600" /><Kpi label="Cần AI hỗ trợ" value={projection.kpis.aiCandidates} icon={Bot} tone="bg-slate-100 text-slate-600" /><Kpi label="Quá hạn / chú ý" value={projection.kpis.attention} icon={AlertTriangle} tone="bg-rose-50 text-rose-600" /></div>
-      <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(21rem,0.85fr)]"><AttentionQueue items={projection.attention} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} /><DomainPipeline summaries={projection.domainSummaries} onOpenPcnWorkspace={onOpenPcnWorkspace} onOpenPgdWorkspace={onOpenPgdWorkspace} /></div>
+      <div className={`grid min-w-0 gap-3 ${hasAttention ? 'lg:grid-cols-[minmax(0,1.35fr)_minmax(21rem,0.85fr)]' : ''}`}>{hasAttention && <AttentionQueue items={attentionItems} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} />}<DomainPipeline summaries={projection.domainSummaries} onOpenPcnWorkspace={onOpenPcnWorkspace} onOpenPgdWorkspace={onOpenPgdWorkspace} /></div>
       <RecentItemsSection recentRecords={recentRecords} pcnDossiers={pcnDossiers} pgdRequests={pgdRequests} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} />
       <div className="grid min-w-0 gap-4 lg:grid-cols-2"><UpcomingMilestones items={projection.upcoming} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} /><SharedNotifications notifications={notifications} onOpenNotifications={onOpenNotifications} onSelectNotification={onSelectNotification} /></div>
     </section>

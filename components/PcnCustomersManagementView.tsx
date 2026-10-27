@@ -938,7 +938,7 @@ export default function PcnCustomersManagementView({ initialSearchQuery = '' }: 
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-[11px]">
+          <table className="hidden md:table w-full border-collapse text-left text-[11px]">
             <thead><tr className="border-b border-slate-200 bg-slate-50 font-black uppercase tracking-wider text-slate-500"><th className="w-28 p-3 pl-4">Mã KH</th><th className="w-56 p-3">Tên doanh nghiệp</th><th className="w-56 p-3">Địa chỉ & MST</th><th className="p-3">Thông tin liên hệ</th><th className="w-32 p-3 pr-4 text-right">Thao tác</th></tr></thead>
             <tbody className="divide-y divide-slate-100">
               {isAdding && canEditCustomers && <tr className="bg-emerald-50/30">
@@ -964,6 +964,98 @@ export default function PcnCustomersManagementView({ initialSearchQuery = '' }: 
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card List View (< 768px) */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {isAdding && canEditCustomers && (
+            <div className="bg-emerald-50/30 p-3 space-y-2">
+              <div className="font-bold text-xs text-emerald-800">Thêm khách hàng mới</div>
+              <CustomerInput value={addForm.customerCode} placeholder="Mã KH" ariaLabel="Mã khách hàng mới" onChange={(value) => setAddForm({ ...addForm, customerCode: value })} />
+              <CustomerInput value={addForm.name} placeholder="Tên doanh nghiệp" ariaLabel="Tên doanh nghiệp mới" onChange={(value) => setAddForm({ ...addForm, name: value })} />
+              <CustomerInput value={addForm.taxId} placeholder="Mã số thuế" ariaLabel="Mã số thuế" onChange={(value) => setAddForm({ ...addForm, taxId: value })} />
+              <CustomerInput value={addForm.address} placeholder="Địa chỉ" ariaLabel="Địa chỉ" onChange={(value) => setAddForm({ ...addForm, address: value })} />
+              <div className="grid grid-cols-2 gap-1.5">
+                <CustomerInput value={addForm.phone} placeholder="Số điện thoại" ariaLabel="Số điện thoại" onChange={(value) => setAddForm({ ...addForm, phone: value })} />
+                <CustomerInput type="email" value={addForm.email} placeholder="Email" ariaLabel="Email" onChange={(value) => setAddForm({ ...addForm, email: value })} />
+              </div>
+              <CustomerInput value={addForm.contactPerson} placeholder="Người liên hệ" ariaLabel="Người liên hệ" onChange={(value) => setAddForm({ ...addForm, contactPerson: value })} />
+              <div className="flex justify-end gap-2 pt-1">
+                <button disabled={isSaving} onClick={handleSaveAdd} className="mobile-touch-target min-h-11 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50">Lưu</button>
+                <button disabled={isSaving} onClick={() => { setIsAdding(false); setAddForm(emptyCustomerForm); }} className="mobile-touch-target min-h-11 rounded-lg bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-50">Hủy</button>
+              </div>
+            </div>
+          )}
+
+          {filteredCustomers.length === 0 && !isAdding ? (
+            <div className="p-6 text-center text-xs italic text-slate-400">Không tìm thấy khách hàng nào phù hợp.</div>
+          ) : (
+            paginatedCustomers.map((customer, index) => {
+              const customerId = getPcnDocumentId(customer);
+              const cardKey = customerId || `pcn-customer-card-${index}`;
+              const isEditing = editingId === customerId;
+              const emptyRecord = isEmptyCustomer(customer);
+
+              if (isEditing) {
+                return (
+                  <div key={cardKey} className="bg-emerald-50/20 p-3 space-y-2">
+                    <div className="font-bold text-xs text-emerald-800">Chỉnh sửa khách hàng</div>
+                    <CustomerInput value={editForm.name} ariaLabel="Tên khách hàng" onChange={(value) => setEditForm({ ...editForm, name: value })} />
+                    <CustomerInput value={editForm.taxId} placeholder="Mã số thuế" ariaLabel="Mã số thuế" onChange={(value) => setEditForm({ ...editForm, taxId: value })} />
+                    <CustomerInput value={editForm.address} placeholder="Địa chỉ" ariaLabel="Địa chỉ" onChange={(value) => setEditForm({ ...editForm, address: value })} />
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <CustomerInput value={editForm.phone} placeholder="Số điện thoại" ariaLabel="Số điện thoại" onChange={(value) => setEditForm({ ...editForm, phone: value })} />
+                      <CustomerInput type="email" value={editForm.email} placeholder="Email" ariaLabel="Email" onChange={(value) => setEditForm({ ...editForm, email: value })} />
+                    </div>
+                    <CustomerInput value={editForm.contactPerson} placeholder="Người liên hệ" ariaLabel="Người liên hệ" onChange={(value) => setEditForm({ ...editForm, contactPerson: value })} />
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button disabled={isSaving} onClick={handleSaveEdit} className="mobile-touch-target min-h-11 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50">Lưu</button>
+                      <button disabled={isSaving} onClick={cancelEditing} className="mobile-touch-target min-h-11 rounded-lg bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-50">Hủy</button>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={cardKey} className={`p-3 space-y-2 transition-colors hover:bg-slate-50/60 ${emptyRecord ? "bg-amber-50/40" : ""}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <PcnCustomerCodeDisplay customer={customer} />
+                        {emptyRecord && <span title="Không có dữ liệu nghiệp vụ" className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-100 px-1.5 py-0.5 text-[10px] font-black text-amber-800"><AlertCircle size={10} /> Cần rà soát</span>}
+                      </div>
+                      <div className="text-sm font-bold text-slate-900 break-words">{customer.name || "Chưa có tên khách hàng"}</div>
+                    </div>
+                    {canEditCustomers && (
+                      <div className="flex shrink-0 items-center gap-1">
+                        {confirmDelete === customerId ? (
+                          <div className="flex items-center gap-1 rounded-md border border-red-100 bg-red-50 p-1">
+                            <span className="text-[10px] font-bold text-red-600">Xóa?</span>
+                            <button disabled={isSaving} onClick={() => handleDelete(customerId)} className="mobile-touch-target min-h-9 rounded bg-red-500 px-2 text-[10px] font-bold text-white hover:bg-red-600 disabled:opacity-50">Có</button>
+                            <button disabled={isSaving} onClick={() => setConfirmDelete(null)} className="mobile-touch-target min-h-9 rounded bg-slate-200 px-2 text-[10px] font-bold text-slate-700 hover:bg-slate-300">Không</button>
+                          </div>
+                        ) : (
+                          <>
+                            <button onClick={() => handleStartEdit(customer)} className="mobile-touch-target min-h-11 min-w-11 rounded-md p-2 text-slate-500 hover:bg-emerald-50 hover:text-emerald-700" title="Sửa khách hàng" aria-label={`Sửa khách hàng ${customer.name || customer.customerCode}`}><Edit2 size={15} /></button>
+                            <button onClick={() => setConfirmDelete(customerId)} className="mobile-touch-target min-h-11 min-w-11 rounded-md p-2 text-slate-500 hover:bg-red-50 hover:text-red-600" title="Xóa khách hàng" aria-label={`Xóa khách hàng ${customer.name || customer.customerCode}`}><Trash2 size={15} /></button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1 text-xs text-slate-600">
+                    {customer.taxId && <div className="font-mono font-semibold text-slate-800"><span className="text-slate-400 font-sans font-normal">MST:</span> {customer.taxId}</div>}
+                    {customer.address && <div><span className="text-slate-400">ĐC:</span> {customer.address}</div>}
+                  </div>
+
+                  <div className="pt-1 border-t border-slate-100">
+                    <PcnCustomerContactDisplay customer={customer} />
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Thanh phân trang Pagination */}

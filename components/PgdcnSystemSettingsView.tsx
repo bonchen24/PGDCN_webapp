@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Settings2, ShieldCheck, Users } from 'lucide-react';
 
 import type { PcnCertificationField, PcnUserAccount, UserAccount } from '../types';
@@ -23,6 +24,7 @@ export default function PgdcnSystemSettingsView({ currentUser, users, roles, fie
   const canView = canViewSystemSettings(currentUser);
   const canManage = canManageSystemUsers(currentUser);
   const isAdmin = currentUser?.systemRole === 'admin';
+  const [activeTab, setActiveTab] = useState<'users' | 'backup'>('users');
 
   if (!canView) return <div className="pcn-page-surface min-w-0 p-5 text-sm font-bold text-rose-700">Tài khoản hiện tại không có quyền xem Cài đặt hệ thống.</div>;
 
@@ -53,13 +55,40 @@ export default function PgdcnSystemSettingsView({ currentUser, users, roles, fie
       </header>
 
       {isAdmin && (
-        <section aria-labelledby="system-backup-heading">
+        <div className="flex rounded-lg border border-slate-200 bg-white p-1 md:hidden" role="tablist" aria-label="Phân hệ cài đặt">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'users'}
+            onClick={() => setActiveTab('users')}
+            className={`mobile-touch-target flex-1 rounded-md py-2 text-xs font-bold transition-colors ${
+              activeTab === 'users' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Quản trị nhân sự
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'backup'}
+            onClick={() => setActiveTab('backup')}
+            className={`mobile-touch-target flex-1 rounded-md py-2 text-xs font-bold transition-colors ${
+              activeTab === 'backup' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Sao lưu & Dữ liệu
+          </button>
+        </div>
+      )}
+
+      {isAdmin && (
+        <section aria-labelledby="system-backup-heading" className={activeTab === 'backup' ? 'block' : 'hidden md:block'}>
           <h2 id="system-backup-heading" className="sr-only">Sao lưu và phục hồi hệ thống</h2>
           <BackupRestoreAdminPanel currentUser={currentUser as UserAccount} />
         </section>
       )}
 
-      <section aria-labelledby="system-personnel-heading">
+      <section aria-labelledby="system-personnel-heading" className={!isAdmin || activeTab === 'users' ? 'block' : 'hidden md:block'}>
         <h2 id="system-personnel-heading" className="sr-only">Nhân sự &amp; tài khoản dùng chung</h2>
         <PcnUserManagementView
           users={users}

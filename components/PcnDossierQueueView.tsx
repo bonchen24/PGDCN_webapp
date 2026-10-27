@@ -68,6 +68,7 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [activeChip, setActiveChip] = useState<PcnFilterChipId>('ALL');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [showFilters, setShowFilters] = useState(false);
 
   const actionCount = rows.filter(isActionable).length;
   const incompleteCount = rows.filter((row) => row.missingRequiredCount > 0).length;
@@ -385,7 +386,7 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
         </div>
 
         {/* Filter Pills */}
-        <div role="group" aria-label="Lọc hồ sơ theo trạng thái" className="pgdcn-toolbar-pills flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+        <div role="group" aria-label="Lọc hồ sơ theo trạng thái" className="pgdcn-toolbar-pills flex w-full min-w-0 flex-nowrap overflow-x-auto mobile-scroll-x items-center gap-1.5 py-0.5 sm:flex-wrap sm:w-auto sm:flex-1">
           {PCN_FILTER_CHIPS.map((chip) => {
             const active = activeChip === chip.id;
             const count =
@@ -430,8 +431,25 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
 
         {/* Filter Controls */}
         {filterControls && (
-          <div className="pgdcn-toolbar-group flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto">
-            {filterControls}
+          <div className="w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setShowFilters((prev) => !prev)}
+              aria-expanded={showFilters}
+              aria-controls="pcn-advanced-filters"
+              className="sm:hidden mobile-touch-target flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            >
+              <span>Bộ lọc chi tiết</span>
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                {showFilters ? "Thu gọn ▲" : "Mở rộng ▼"}
+              </span>
+            </button>
+            <div
+              id="pcn-advanced-filters"
+              className={`${showFilters ? "flex" : "hidden"} sm:flex pgdcn-toolbar-group mt-2 sm:mt-0 w-full min-w-0 flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-1.5 sm:w-auto`}
+            >
+              {filterControls}
+            </div>
           </div>
         )}
       </div>

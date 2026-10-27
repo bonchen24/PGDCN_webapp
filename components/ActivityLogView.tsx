@@ -124,7 +124,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
   const [selectedLog, setSelectedLog] = useState<PgdcnActivityLog | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const logRequestSequence = useRef(0);
 
   useEffect(() => {
@@ -353,7 +353,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
               {isFiltersOpen ? 'Thu gọn' : 'Mở bộ lọc'}
             </button>
           </div>
-          <div className={`${isFiltersOpen ? 'pgdcn-toolbar-nowrap' : 'hidden'}`} role="search" aria-label="Bộ lọc nhật ký">
+          <div className={`${isFiltersOpen ? 'pgdcn-toolbar-nowrap' : 'hidden md:pgdcn-toolbar-nowrap'}`} role="search" aria-label="Bộ lọc nhật ký">
             <label className="pgdcn-toolbar-filter">
               <span className="sr-only">Miền nghiệp vụ</span>
               <select value={filters.domain} onChange={event => updateFilter('domain', event.target.value as ActivityLogDomain | 'ALL')} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold outline-none focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 sm:min-h-9" aria-label="Miền nghiệp vụ">
@@ -420,7 +420,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
             </button>
           </div>
           {currentUsername && loadedFilterUsername === currentUsername && (
-            <div data-testid="activity-log-saved-filters" className={`${isFiltersOpen ? 'block' : 'hidden'} mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5`}>
+            <div data-testid="activity-log-saved-filters" className={`${isFiltersOpen ? 'block' : 'hidden md:block'} mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label htmlFor="activity-log-saved-filter-name" className="text-[10px] font-black uppercase tracking-wide text-slate-600">
                   Bộ lọc đã lưu
@@ -470,7 +470,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
                     }
                   }}
                   placeholder="Ví dụ: Giám định tuần này"
-                  className="min-h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                  className="min-h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
                 />
                 <button
                   type="button"

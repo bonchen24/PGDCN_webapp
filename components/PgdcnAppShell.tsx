@@ -450,7 +450,8 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
           </div>
           <div className="min-w-0">
             <div className="truncate text-xs font-semibold tracking-wide text-slate-800">
-              Phòng Giám định - Chứng nhận và Phát triển thị trường · TVCI
+              <span className="lg:hidden">PGDCN · TVCI</span>
+              <span className="hidden lg:inline">Phòng Giám định - Chứng nhận và Phát triển thị trường · TVCI</span>
             </div>
             <div data-testid="pgdcn-mobile-context" className="truncate text-[11px] font-semibold text-slate-600 lg:hidden">
               {getActiveContextLabel(activeTarget)}
