@@ -107,13 +107,16 @@ test('dossier detail routes issued and delivered lifecycle actions to the issuan
   assert.match(source, /'lưu trữ'/);
 });
 
-test('dossier detail uses one compact region selector instead of a visible tab strip', () => {
+test('dossier detail uses shared workspace tabs and retains compact business-area navigation', () => {
   const source = fs.readFileSync(detailPath, 'utf8');
   assert.match(source, /Khu vực hồ sơ/);
   assert.match(source, /aria-label="Khu vực hồ sơ"/);
   assert.match(source, /value=\{activeTab\}/);
   assert.match(source, /onChange=\{setActiveTab\}/);
   assert.match(source, /selectableTabs\.filter/);
+  assert.match(source, /PgdcnDossierWorkspace/);
+  assert.match(source, /activeTab=\{workspaceTab\}/);
+  assert.match(source, /onTabChange=\{setWorkspaceTab\}/);
 });
 
 test('dossier detail opens the current workflow region and only presents step-five preparation from technical review', () => {
