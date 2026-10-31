@@ -1,6 +1,8 @@
 import { PGD_COLLECTIONS, PGD_DOMAIN, type PgdDossierChecklistItem, type PgdProductGroup, type PgdSample, type PgdSampleDisposition, type PgdValidationIssue } from './pgdDomain.ts';
 import type { PgdDocumentTemplateKind } from './pgdDocumentTemplates.ts';
 import type { PgdOperationalStationKey } from './pgdWorkflow.ts';
+import type { PgdcnDossierRequirementPolicy } from '../types.ts';
+import { projectDossierRequirementPolicy } from './pgdcnDossierRequirementPolicy.ts';
 
 // Intake sample snapshots retain sampleCode, description, quantity, unit, disposition, and sealNumber.
 
@@ -22,16 +24,35 @@ export interface PgdDossierRequirement {
   description?: string;
 }
 
-export function buildPgdDossierChecklist(productGroup: PgdProductGroup, now = new Date().toISOString()): PgdDossierChecklistItem[] {
-  return getPgdDossierRequirements(productGroup).map((item) => ({
+export function buildPgdDossierChecklist(
+  productGroup: PgdProductGroup,
+  now = new Date().toISOString(),
+  options: { method?: string; requirementPolicies?: Record<string, PgdcnDossierRequirementPolicy> } = {},
+): PgdDossierChecklistItem[] {
+  return getPgdDossierRequirements(productGroup).map((item) => {
+    const policy = options.requirementPolicies?.[item.code];
+    const requirementPolicy = policy
+      ? JSON.parse(JSON.stringify(policy)) as PgdcnDossierRequirementPolicy
+      : {
+        defaultClass: item.required ? 'DEFAULT_REQUIRED' as const : 'DEFAULT_OPTIONAL' as const,
+        sourceMode: 'UPLOAD' as const,
+        cardinality: { min: 1 },
+      };
+    return {
+    ...(() => {
+      if (!policy) return { required: item.required, applicability: 'APPLICABLE' as const };
+      const projection = projectDossierRequirementPolicy(policy, { domain: 'PGD', productGroup, method: options.method });
+      return { required: projection.required, applicability: projection.applicability };
+    })(),
     domain: PGD_DOMAIN,
     requirementCode: item.code,
     group: item.group,
     title: item.title,
-    required: item.required,
+    requirementPolicy,
     status: 'MISSING' as const,
     updatedAt: now,
-  }));
+    };
+  });
 }
 
 export function reconcilePgdDossierChecklist(
@@ -48,6 +69,9 @@ export function reconcilePgdDossierChecklist(
     if (document) {
       return {
         ...item,
+        ...(previous?.required !== undefined ? { required: previous.required } : {}),
+        ...(previous?.applicability ? { applicability: previous.applicability } : {}),
+        ...(previous?.requirementPolicy ? { requirementPolicy: previous.requirementPolicy } : {}),
         status: 'PRESENT' as const,
         currentDocumentId: document.id,
         currentDocumentVersion: document.version,
@@ -57,6 +81,9 @@ export function reconcilePgdDossierChecklist(
     if (previous?.status === 'WAIVED' && previous.waiverReason?.trim()) {
       return {
         ...item,
+        ...(previous.required !== undefined ? { required: previous.required } : {}),
+        ...(previous.applicability ? { applicability: previous.applicability } : {}),
+        ...(previous.requirementPolicy ? { requirementPolicy: previous.requirementPolicy } : {}),
         status: 'WAIVED' as const,
         waiverReason: previous.waiverReason.trim(),
         ...(previous.waivedByUsername?.trim() ? { waivedByUsername: previous.waivedByUsername.trim() } : {}),
@@ -64,7 +91,13 @@ export function reconcilePgdDossierChecklist(
         updatedAt: previous.updatedAt || now,
       };
     }
-    return { ...item, updatedAt: previous?.updatedAt || now };
+    return {
+      ...item,
+      ...(previous?.required !== undefined ? { required: previous.required } : {}),
+      ...(previous?.applicability ? { applicability: previous.applicability } : {}),
+      ...(previous?.requirementPolicy ? { requirementPolicy: previous.requirementPolicy } : {}),
+      updatedAt: previous?.updatedAt || now,
+    };
   });
 }
 

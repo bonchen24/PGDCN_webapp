@@ -7,6 +7,7 @@ import type {
   PcnWorkflowTransitionDefinition,
 } from '../types.ts';
 import { PCN_PIPELINE_STATIONS } from './pcnDossierPipeline.ts';
+import { validateDossierRequirementPolicy } from './pgdcnDossierRequirementPolicy.ts';
 
 export const PCN_WORKFLOW_CONDITIONS = {
   ALWAYS: 'ALWAYS',
@@ -46,6 +47,12 @@ export function validatePcnWorkflowTemplate(template: PcnWorkflowTemplate): PcnW
 
   const nodes = Array.isArray(template?.nodes) ? template.nodes : [];
   const transitions = Array.isArray(template?.transitions) ? template.transitions : [];
+  const requirementRefs = new Set(nodes.flatMap((node) => Array.isArray(node.requirementIds) ? node.requirementIds : []));
+  for (const [requirementId, policy] of Object.entries(template?.requirementPolicies || {})) {
+    if (!/^QC[49]-[A-Z0-9_]+$/.test(requirementId)) errors.push(`Yêu cầu ${requirementId} không thuộc danh mục PCN.`);
+    if (!requirementRefs.has(requirementId)) errors.push(`Cấu hình yêu cầu ${requirementId} chưa được gắn vào bước nào.`);
+    for (const error of validateDossierRequirementPolicy(policy, 'PCN')) errors.push(`Yêu cầu ${requirementId}: ${error}`);
+  }
   const nodeIds = new Set<string>();
   for (const node of nodes) {
     const id = normalized(node.id);
@@ -150,6 +157,7 @@ export function snapshotPcnWorkflowTemplate(
     templateVersion: template.version,
     nodes: template.nodes,
     transitions: template.transitions,
+    ...(template.requirementPolicies ? { requirementPolicies: template.requirementPolicies } : {}),
     capturedAt: metadata.capturedAt,
     capturedBy: metadata.capturedBy,
   })) as PcnWorkflowSnapshot;

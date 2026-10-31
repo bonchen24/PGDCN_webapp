@@ -97,6 +97,7 @@ export function getActiveContextLabel(target: { domain: string; section?: string
     if (target.section === 'customers') return 'Khách hàng';
     if (target.section === 'assistant') return 'Trợ lý AI';
     if (target.section === 'activityLogs') return 'Nhật ký hệ thống';
+    if (target.section === 'dossier-library') return 'Hồ sơ';
     if (target.section === 'dossier-templates') return 'Hồ sơ mẫu';
     if (target.section === 'document-drafting') return 'Soạn thảo văn bản';
     if (target.section === 'system-settings') return 'Cài đặt hệ thống';

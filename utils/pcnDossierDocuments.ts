@@ -8,8 +8,10 @@ import type {
   PcnGeneratedDocumentKind,
   PcnDraftFormKind,
   PcnHistoricalFileKind,
+  PgdcnDossierRequirementPolicy,
 } from '../types.ts';
 import { PCN_CERTIFICATION_FIELD_CODES } from './pcnWorkflow.ts';
+import { projectDossierRequirementPolicy } from './pgdcnDossierRequirementPolicy.ts';
 
 const INTAKE = ['INTAKE'] as const;
 const LAB = ['LAB_ROUTING'] as const;
@@ -215,18 +217,35 @@ export function buildPcnDossierChecklist(
   fieldCodes: PcnCertificationFieldCode[],
   requirements: PcnDocumentRequirement[] = DEFAULT_PCN_DOCUMENT_REQUIREMENTS,
   now = new Date().toISOString(),
+  options: { requirementPolicies?: Record<string, PgdcnDossierRequirementPolicy> } = {},
 ): PcnDossierDocument[] {
-  return getPcnDocumentRequirements(fieldCodes, requirements).map((item) => ({
-    id: buildPcnDossierDocumentId(dossierId, item.id),
-    dossierId,
-    requirementId: item.id,
-    fieldCode: item.fieldCode,
-    currentVersionId: undefined,
-    versions: [],
-    status: 'MISSING' as const,
-    createdAt: now,
-    updatedAt: now,
-  }));
+  return getPcnDocumentRequirements(fieldCodes, requirements).map((item) => {
+    const policy = options.requirementPolicies?.[item.id];
+    const projection = policy
+      ? projectDossierRequirementPolicy(policy, { domain: 'PCN', fieldCodes })
+      : { applicability: 'APPLICABLE' as const, required: item.required };
+    const requirementPolicy = policy
+      ? JSON.parse(JSON.stringify(policy)) as PgdcnDossierRequirementPolicy
+      : {
+        defaultClass: item.required ? 'DEFAULT_REQUIRED' as const : 'DEFAULT_OPTIONAL' as const,
+        sourceMode: 'UPLOAD' as const,
+        cardinality: { min: 1 },
+      };
+    return {
+      id: buildPcnDossierDocumentId(dossierId, item.id),
+      dossierId,
+      requirementId: item.id,
+      fieldCode: item.fieldCode,
+      currentVersionId: undefined,
+      versions: [],
+      status: 'MISSING' as const,
+      required: projection.required,
+      applicability: projection.applicability,
+      requirementPolicy,
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
 }
 
 export function mergePcnDossierChecklist(

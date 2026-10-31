@@ -1,5 +1,6 @@
-import type { CustomerRef, OrganizationManagementRoleCode, ProfessionalRoleCode } from '../types.ts';
+import type { CustomerRef, OrganizationManagementRoleCode, PgdcnDossierRequirementPolicy, ProfessionalRoleCode } from '../types.ts';
 import type { PgdDocumentTemplateSnapshot } from './pgdDocumentTemplates.ts';
+import type { PgdWorkflowSnapshot } from './pgdWorkflowTemplate.ts';
 import { isOrganizationLeader } from './pcnRbac.ts';
 
 export const PGD_DOMAIN = 'pgd' as const;
@@ -695,6 +696,8 @@ export interface PgdDossierChecklistItem {
   group: string;
   title: string;
   required: boolean;
+  applicability?: 'APPLICABLE' | 'NOT_APPLICABLE';
+  requirementPolicy?: PgdcnDossierRequirementPolicy;
   status: PgdDossierChecklistStatus;
   currentDocumentId?: string;
   currentDocumentVersion?: number;
@@ -790,6 +793,9 @@ export interface PgdInspectionRequest extends Omit<PgdInspectionRequestInput, 's
   fieldActivityLogIds?: string[];
   labResultReviewId?: string;
   dossierIndexId?: string;
+  workflowTemplateId?: string;
+  workflowTemplateVersion?: number;
+  workflowSnapshot?: PgdWorkflowSnapshot;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;

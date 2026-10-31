@@ -8,6 +8,8 @@ const storeSource = readFileSync(new URL('../store-pgd.ts', import.meta.url), 'u
 const serverSource = readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const domainSource = readFileSync(new URL('../utils/pgdDomain.ts', import.meta.url), 'utf8');
 const sqlSource = readFileSync(new URL('../sql/pcn-schema.sql', import.meta.url), 'utf8');
+const workflowBoundarySource = readFileSync(new URL('../lib/server/workflow-templates.ts', import.meta.url), 'utf8');
+const createRequestRouteSource = readFileSync(new URL('../app/api/pgd/requests/route.ts', import.meta.url), 'utf8');
 
 test('PGD workflow template API exposes dedicated CRUD and lifecycle endpoints', () => {
   for (const name of [
@@ -47,4 +49,16 @@ test('fresh PGD databases seed a published standard workflow template', () => {
   assert.match(sqlSource, /"domain":"pgd"/);
   assert.match(sqlSource, /"requirementCodes"/);
   assert.match(sqlSource, /"ARCHIVE_INDEX"/);
+});
+
+test('PGD and PCN workflow template boundaries preserve versioned requirement policies', () => {
+  assert.match(workflowBoundarySource, /requirementPolicies/);
+  assert.match(workflowBoundarySource, /source\.requirementPolicies/);
+});
+
+test('PGD PYC creation selects a published workflow and freezes its snapshot in the same request record', () => {
+  assert.match(createRequestRouteSource, /selectPgdPublishedWorkflowTemplate/);
+  assert.match(createRequestRouteSource, /snapshotPgdWorkflowTemplate/);
+  assert.match(createRequestRouteSource, /workflowTemplateId/);
+  assert.match(createRequestRouteSource, /workflowSnapshot/);
 });

@@ -6,11 +6,14 @@ import { getPgdDossierRequirements } from '../utils/pgdDossier.ts';
 import {
   connectDossierTemplateEditorNodes,
   countTemplateRequirements,
+  fromPcnDossierTemplateEditorModel,
+  fromPgdDossierTemplateEditorModel,
   moveDossierTemplateEditorNode,
   toPcnDossierTemplateEditorModel,
   toPgdDossierTemplateEditorModel,
   validateDossierTemplateEditorModel,
 } from '../utils/pgdcnDossierTemplate.ts';
+import type { DossierRequirementPolicy } from '../utils/pgdcnDossierRequirementPolicy.ts';
 
 const pcnRequirement = (id: string): PcnDocumentRequirement => ({
   id,
@@ -95,6 +98,30 @@ test('editor validator rejects cross-domain requirements and accepts the PCN mod
   const result = validateDossierTemplateEditorModel(invalid);
   assert.equal(result.valid, false);
   assert.ok(result.errors.some((error) => error.includes('domain')));
+});
+
+test('dossier-template adapters keep per-requirement policies in both domain revisions', () => {
+  const policy: DossierRequirementPolicy = {
+    defaultClass: 'DEFAULT_OPTIONAL',
+    sourceMode: 'MULTI',
+    cardinality: { min: 1, max: 4 },
+  };
+  const pcnSource = { ...pcnTemplate, requirementPolicies: { 'QC4-PROPOSAL': policy } } as unknown as PcnWorkflowTemplate;
+  const pcnModel = toPcnDossierTemplateEditorModel(pcnSource);
+  const pcnRoundTrip = fromPcnDossierTemplateEditorModel(pcnModel, pcnSource);
+  assert.deepEqual(pcnModel.requirementPolicies?.['QC4-PROPOSAL'], policy);
+  assert.deepEqual(pcnRoundTrip.requirementPolicies?.['QC4-PROPOSAL'], policy);
+
+  const pgdSource = {
+    domain: 'pgd', id: 'pgd-v1', code: 'PGD-V1', name: 'PGD', appliesTo: { productGroups: ['OTHER'] }, version: 1,
+    status: 'DRAFT', nodes: [{ id: 'intake', kind: 'DOCUMENT_TASK', label: 'Intake', requirementCodes: ['REQUEST_PYC'], active: true, sortOrder: 1 }],
+    transitions: [], createdAt: '2026-09-06T00:00:00.000Z', createdBy: 'admin', updatedAt: '2026-09-06T00:00:00.000Z', updatedBy: 'admin',
+    requirementPolicies: { REQUEST_PYC: policy },
+  } as unknown as Parameters<typeof toPgdDossierTemplateEditorModel>[0];
+  const pgdModel = toPgdDossierTemplateEditorModel(pgdSource);
+  const pgdRoundTrip = fromPgdDossierTemplateEditorModel(pgdModel, pgdSource);
+  assert.deepEqual(pgdModel.requirementPolicies?.REQUEST_PYC, policy);
+  assert.deepEqual(pgdRoundTrip.requirementPolicies?.REQUEST_PYC, policy);
 });
 
 test('editor validator requires visible parameters for conditional transitions', () => {

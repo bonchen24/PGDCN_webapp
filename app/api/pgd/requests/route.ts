@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { pool, withPgTransaction } from '@/lib/server/db';
 import { getPgdSessionUser, requirePgdCollectionMutation } from '@/lib/server/pgd';
 import { getDocumentPayload, mapDocumentRow } from '@/lib/server/collections';
-import { jsonBadRequest, jsonCreated } from '@/lib/server/response';
+import { jsonBadRequest, jsonCreated, jsonError } from '@/lib/server/response';
 import {
   DEFAULT_PGD_CATALOG,
   formatPgdRequestCode,
@@ -22,6 +22,7 @@ import {
 import { buildPgdDossierChecklist } from '@/utils/pgdDossier';
 import { writePgdActivity } from '@/lib/server/pgd-operations';
 import { buildPgdNotificationDraft } from '@/utils/pgdcnNotification';
+import { selectPgdPublishedWorkflowTemplate, snapshotPgdWorkflowTemplate, type PgdWorkflowTemplate } from '@/utils/pgdWorkflowTemplate';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,14 +85,39 @@ export async function POST(req: NextRequest) {
         catalog,
       );
 
+      const workflowTemplateResult = await client.query(
+        `SELECT document_id, data FROM app_documents
+         WHERE collection_name = $1 AND data->>'domain' = 'pgd' AND data->>'status' = 'PUBLISHED'
+         ORDER BY document_id`,
+        [PGD_COLLECTIONS.workflowTemplates],
+      );
+      const workflowTemplates = workflowTemplateResult.rows.map((row: any) => mapDocumentRow(row) as PgdWorkflowTemplate);
+      const workflowTemplate = selectPgdPublishedWorkflowTemplate(workflowTemplates, {
+        productGroup: createdRequest.productGroup,
+        method: createdRequest.method,
+      });
+      if (!workflowTemplate) {
+        throw Object.assign(new Error('Chưa có bộ hồ sơ mẫu PGD đã phát hành phù hợp với nhóm sản phẩm và phương pháp.'), { statusCode: 409 });
+      }
+      const workflowSnapshot = snapshotPgdWorkflowTemplate(workflowTemplate, {
+        capturedAt: now,
+        capturedBy: actor.username,
+      });
+
       const samples = sampleDrafts.map((draft) =>
         createPgdSampleFromIntakeDraft(createdRequest.id, draft, actor.username, now),
       );
 
       const request = {
         ...createdRequest,
+        workflowTemplateId: workflowTemplate.id,
+        workflowTemplateVersion: workflowTemplate.version,
+        workflowSnapshot,
         sampleIds: samples.map((sample) => sample.id),
-        dossierChecklist: buildPgdDossierChecklist(createdRequest.productGroup, now),
+        dossierChecklist: buildPgdDossierChecklist(createdRequest.productGroup, now, {
+          method: createdRequest.method,
+          requirementPolicies: workflowSnapshot.requirementPolicies,
+        }),
       };
 
       const duplicateCode = await client.query(
@@ -138,6 +164,6 @@ export async function POST(req: NextRequest) {
     return jsonCreated(result);
   } catch (error: any) {
     console.error('PGD request create error:', error);
-    return jsonBadRequest(error?.message || String(error));
+    return jsonError(error?.message || String(error), Number(error?.statusCode) || 400);
   }
 }

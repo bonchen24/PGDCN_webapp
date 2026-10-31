@@ -226,7 +226,9 @@ export async function POST(req: NextRequest) {
       const requirements = requirementResult.rows.map(
         (row: any) => mapDocumentRow(row) as PcnDocumentRequirement
       );
-      const dossierDocuments = buildPcnDossierChecklist(dossierId, storedDossier.fieldCodes, requirements, now);
+      const dossierDocuments = buildPcnDossierChecklist(dossierId, storedDossier.fieldCodes, requirements, now, {
+        requirementPolicies: workflowSnapshot.requirementPolicies,
+      });
       for (const document of dossierDocuments) {
         await client.query(
           `INSERT INTO app_documents (collection_name, document_id, data, updated_at)

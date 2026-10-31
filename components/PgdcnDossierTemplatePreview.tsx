@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { ArrowRight, CheckCircle2, Eye, FileText, Info, PauseCircle, X } from 'lucide-react';
+import type { PgdcnDossierRequirementPolicy } from '../types.ts';
 import type { DossierTemplateEditorModel, DossierTemplateEditorNode, DossierTemplateEditorTransition } from '../utils/pgdcnDossierTemplate.ts';
 import type { DossierTemplateRequirementOption } from './PgdcnDossierTemplateInspector.tsx';
 
@@ -78,6 +79,29 @@ const RETURN_POLICY_LABELS: Record<string, string> = {
   RESTART_DEPENDENCIES: 'Khởi động lại các nhánh phụ thuộc',
   RESTART_TEMPLATE: 'Khởi động lại toàn bộ lưu trình',
 };
+
+const REQUIREMENT_CLASS_LABELS: Record<PgdcnDossierRequirementPolicy['defaultClass'], string> = {
+  DEFAULT_REQUIRED: 'Mặc định bắt buộc',
+  DEFAULT_CONDITIONAL: 'Mặc định bắt buộc có điều kiện',
+  DEFAULT_OPTIONAL: 'Mặc định tùy chọn',
+  FREE_ADDITIONAL: 'Bổ sung tự do',
+};
+const REQUIREMENT_SOURCE_LABELS: Record<PgdcnDossierRequirementPolicy['sourceMode'], string> = {
+  CREATE_DOCX: 'Tạo từ biểu mẫu DOCX',
+  UPLOAD: 'Tải tệp lên',
+  EXTERNAL_PTN: 'Nhận từ PTN',
+  MULTI: 'Nhiều nguồn',
+};
+
+function requirementConditionLabel(policy: PgdcnDossierRequirementPolicy): string {
+  if (!policy.appliesWhen?.conditions.length) return '';
+  return policy.appliesWhen.conditions.map((condition) => {
+    const values = condition.values.map(String).join(', ');
+    const label = condition.key === 'PCN_FIELD' ? 'Lĩnh vực PCN'
+      : condition.key === 'PGD_PRODUCT_GROUP' ? 'Nhóm sản phẩm PGD' : 'Phương pháp PGD';
+    return `${label}: ${values}`;
+  }).join(policy.appliesWhen.operator === 'ANY' ? ' hoặc ' : ' và ');
+}
 
 function statusLabel(status: DossierTemplateEditorModel['status']): string {
   return status === 'PUBLISHED' ? 'Đang áp dụng' : status === 'RETIRED' ? 'Đã ngừng' : 'Bản nháp';
@@ -377,13 +401,20 @@ export default function PgdcnDossierTemplatePreview(props: PgdcnDossierTemplateP
                                     <ul className="mt-1 space-y-1">
                                       {node.requirementRefs.map((ref) => {
                                         const label = requirementMap.get(ref);
+                                        const option = requirements.find((item) => item.id === ref);
+                                        const policy = model.requirementPolicies?.[ref];
+                                        const defaultClass = policy?.defaultClass || (option?.required ? 'DEFAULT_REQUIRED' : 'DEFAULT_OPTIONAL');
+                                        const cardinality = policy?.cardinality || { min: 1 };
+                                        const cardinalityLabel = cardinality.max !== undefined
+                                          ? `${cardinality.min}–${cardinality.max} tệp`
+                                          : `${cardinality.min} tệp trở lên`;
                                         return (
                                           <li
                                             key={ref}
                                             className="break-words text-slate-700"
                                           >
                                             {label ? (
-                                              <span>• {label}</span>
+                                              <div className="min-w-0"><span>• {label}</span><div className="ml-3 mt-1 grid gap-0.5 text-[10px] text-slate-600"><span>{REQUIREMENT_CLASS_LABELS[defaultClass]} · {REQUIREMENT_SOURCE_LABELS[policy?.sourceMode || 'UPLOAD']} · {cardinalityLabel}</span><span>Trạng thái ban đầu: Chưa có</span>{policy?.defaultClass === 'DEFAULT_CONDITIONAL' && <span>Áp dụng khi: {requirementConditionLabel(policy)}</span>}</div></div>
                                             ) : (
                                               <span className="text-slate-500">
                                                 • {ref} (Chưa có trong danh mục)

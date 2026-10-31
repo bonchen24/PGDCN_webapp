@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -27,6 +27,7 @@ import PgdcnCommandPalette, { type PgdcnCommandRecord } from './PgdcnCommandPale
 import PgdcnCustomersView from './PgdcnCustomersView';
 import PgdcnSystemSettingsView from './PgdcnSystemSettingsView';
 import PgdcnDossierTemplateManagementView from './PgdcnDossierTemplateManagementView';
+import PgdcnDossierLibraryView from './PgdcnDossierLibraryView';
 import PgdcnUnifiedDraftingView, { type UnifiedDraftingTab } from './PgdcnUnifiedDraftingView';
 import { PgdcnNotificationDropdown } from './PgdcnNotificationDropdown';
 import PcnPersonalSettingsPanel from './PcnPersonalSettingsPanel';
@@ -70,7 +71,6 @@ type PgdcnAppShellProps = {
 // Canonical PGD dossier entry: initialDomain === 'PGD' ? { domain: 'PGD', section: 'requests' }.
 
 const getScopes = (value: readonly DepartmentScope[] | undefined): DepartmentScope[] => Array.from(new Set((value || []).filter((scope): scope is DepartmentScope => scope === 'PCN' || scope === 'PGD')));
-
 
 const getSharedTargetForPcnSection = (section: PcnSection): PgdcnNavigationTarget | undefined => {
   if (section === 'dashboard') return { domain: 'department', section: 'department-dashboard' };
@@ -438,10 +438,48 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
 
   const content = activeTarget.domain === 'department' && (activeTarget.section === 'department-dashboard' || activeTarget.section === 'my-work') ? (
     <PgdcnDashboardView scopes={scopes} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pcnWorkflowTasks={pcn.workflowTasks} pgdRequests={pgd.requests} pgdAssignments={pgd.assignments} pcnEvidenceActions={pcnEvidenceActions} currentUser={currentUser} notifications={notifications} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} onOpenNotifications={handleOpenNotifications} onSelectNotification={handleDashboardNotificationSelect} recentRecords={recentRecords} />
+  ) : activeTarget.domain === 'department' && activeTarget.section === 'dossier-library' ? (
+    <PgdcnDossierLibraryView scopes={scopes} currentUser={currentUser} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pgdRequests={pgd.requests} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'customers' ? (
     <PgdcnCustomersView scopes={scopes} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'dossier-templates' ? (
-    <PgdcnDossierTemplateManagementView currentUser={currentUser} pcnTemplates={pcn.workflowTemplates} pcnRequirements={pcn.documentRequirements} pgdTemplates={pgd.workflowTemplates} pgdRequirements={PGD_TEMPLATE_REQUIREMENTS} onCreatePcnWorkflowTemplate={pcn.createWorkflowTemplate} onUpdatePcnWorkflowTemplate={pcn.updateWorkflowTemplate} onCreatePcnWorkflowRevision={pcn.createWorkflowRevision} onPublishPcnWorkflowTemplate={pcn.publishWorkflowTemplate} onRetirePcnWorkflowTemplate={pcn.retireWorkflowTemplate} onCreatePgdWorkflowTemplate={pgd.createWorkflowTemplate} onUpdatePgdWorkflowTemplate={pgd.updateWorkflowTemplate} onCreatePgdWorkflowRevision={pgd.createWorkflowRevision} onPublishPgdWorkflowTemplate={pgd.publishWorkflowTemplate} onRetirePgdWorkflowTemplate={pgd.retireWorkflowTemplate} />
+    <PgdcnDossierTemplateManagementView
+      currentUser={currentUser}
+      pcnTemplates={pcn.workflowTemplates}
+      pcnRequirements={pcn.documentRequirements}
+      pgdTemplates={pgd.workflowTemplates}
+      pgdRequirements={PGD_TEMPLATE_REQUIREMENTS}
+      onCreatePcnWorkflowTemplate={pcn.createWorkflowTemplate}
+      onUpdatePcnWorkflowTemplate={pcn.updateWorkflowTemplate}
+      onCreatePcnWorkflowRevision={pcn.createWorkflowRevision}
+      onPublishPcnWorkflowTemplate={pcn.publishWorkflowTemplate}
+      onRetirePcnWorkflowTemplate={pcn.retireWorkflowTemplate}
+      onCreatePgdWorkflowTemplate={pgd.createWorkflowTemplate}
+      onUpdatePgdWorkflowTemplate={pgd.updateWorkflowTemplate}
+      onCreatePgdWorkflowRevision={pgd.createWorkflowRevision}
+      onPublishPgdWorkflowTemplate={pgd.publishWorkflowTemplate}
+      onRetirePgdWorkflowTemplate={pgd.retireWorkflowTemplate}
+      docxLibraryView={<PgdcnUnifiedDraftingView
+        currentUser={currentUser}
+        scopes={scopes}
+        pcnProposals={pcn.proposals}
+        pcnDossiers={pcn.dossiers}
+        pcnTemplates={pcn.templates}
+        pcnRequirements={pcn.documentRequirements}
+        pcnDocuments={pcn.dossierDocuments}
+        pcnSampleLots={pcn.sampleLots}
+        pcnSampleRoutes={pcn.sampleRoutes}
+        pcnLabRequests={pcn.labRequests}
+        pcnReturnedResults={pcn.returnedResults}
+        onUploadPcnTemplate={pcn.uploadPcnTemplate}
+        onReviewPcnTemplate={pcn.reviewPcnTemplate}
+        pgdRequests={pgd.requests}
+        pgdTemplates={pgd.documentTemplates}
+        pgdDocuments={pgd.documents}
+        canMutatePgd={currentUser.pgdRole !== 'PGD_VIEWER' && currentUser.systemRole !== 'viewer' && currentUser.role !== 'viewer'}
+        initialTab="docx"
+      />}
+    />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'system-settings' ? (
     <PgdcnSystemSettingsView currentUser={currentUser} users={systemUsers} roles={pcn.departmentRoles} fields={pcn.fields} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'activityLogs' ? (

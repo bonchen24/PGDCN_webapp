@@ -18,6 +18,13 @@ test('shared navigation exposes Hồ sơ mẫu to eligible managers', () => {
   assert.match(shell, /PgdcnDossierTemplateManagementView/);
 });
 
+test('template administration keeps workflow structure and DOCX library in separate tabs', () => {
+  assert.match(management, /Bộ hồ sơ mẫu/);
+  assert.match(management, /Biểu mẫu DOCX/);
+  assert.match(management, /docxLibraryView/);
+  assert.match(shell, /initialTab="docx"/);
+});
+
 test('management workspace separates PCN and PGD requirements and lifecycle actions', () => {
   assert.match(management, /PCN/);
   assert.match(management, /PGD/);

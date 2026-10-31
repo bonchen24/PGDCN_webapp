@@ -69,6 +69,18 @@ export default function PgdcnDossierTemplateEditor(props: PgdcnDossierTemplateEd
   const updateDraft = (next: DossierTemplateEditorModel) => { setDraft(next); props.onChange(next); setSaveMessage(''); };
 
   const updateNode = (nodeId: string, changes: Partial<DossierTemplateEditorNode>) => updateDraft({ ...draft, nodes: draft.nodes.map((node) => node.id === nodeId ? { ...node, ...changes } : node) });
+  const toggleRequirement = (nodeId: string, requirementId: string, checked: boolean) => {
+    const nodes = draft.nodes.map((node) => node.id === nodeId
+      ? { ...node, requirementRefs: checked ? [...new Set([...node.requirementRefs, requirementId])] : node.requirementRefs.filter((id) => id !== requirementId) }
+      : node);
+    const requirementPolicies = { ...(draft.requirementPolicies || {}) };
+    if (!checked && !nodes.some((node) => node.requirementRefs.includes(requirementId))) delete requirementPolicies[requirementId];
+    updateDraft({ ...draft, nodes, requirementPolicies });
+  };
+  const updateRequirementPolicy = (requirementId: string, policy: NonNullable<DossierTemplateEditorModel['requirementPolicies']>[string]) => updateDraft({
+    ...draft,
+    requirementPolicies: { ...(draft.requirementPolicies || {}), [requirementId]: policy },
+  });
   const updateMetadata = (changes: Partial<Pick<DossierTemplateEditorModel, 'code' | 'name' | 'description'>>) => updateDraft({ ...draft, ...changes });
   const toggleScope = (value: string, checked: boolean) => {
     if (draft.domain === 'PCN') {
@@ -91,7 +103,10 @@ export default function PgdcnDossierTemplateEditor(props: PgdcnDossierTemplateEd
   const selectNode = (nodeId: string) => { setSelectedNodeId(nodeId); setSelectedTransitionId(undefined); };
   const selectTransition = (transitionId: string) => { setSelectedTransitionId(transitionId); setSelectedNodeId(undefined); setConnectionSourceId(undefined); };
   const deleteNode = (nodeId: string) => {
-    const next = { ...draft, nodes: draft.nodes.filter((node) => node.id !== nodeId), transitions: draft.transitions.filter((transition) => transition.fromNodeId !== nodeId && transition.toNodeId !== nodeId) };
+    const nodes = draft.nodes.filter((node) => node.id !== nodeId);
+    const referenced = new Set(nodes.flatMap((node) => node.requirementRefs));
+    const requirementPolicies = Object.fromEntries(Object.entries(draft.requirementPolicies || {}).filter(([requirementId]) => referenced.has(requirementId)));
+    const next = { ...draft, nodes, requirementPolicies, transitions: draft.transitions.filter((transition) => transition.fromNodeId !== nodeId && transition.toNodeId !== nodeId) };
     updateDraft(next);
     if (selectedNodeId === nodeId) setSelectedNodeId(undefined);
   };
@@ -113,7 +128,7 @@ export default function PgdcnDossierTemplateEditor(props: PgdcnDossierTemplateEd
       <div className="grid gap-4 xl:grid-cols-[220px,minmax(0,1fr),340px]">
         <aside data-testid="pgdcn-dossier-template-palette" className="rounded-2xl border border-slate-200 bg-white p-4"><h3 className="font-semibold text-slate-800">Thành phần</h3><p className="mt-1 text-xs text-slate-500">Bấm để thêm vào canvas.</p><div className="mt-3 space-y-2">{PALETTE.map((item) => <button key={item.kind} type="button" className="min-h-11 w-full rounded-xl border border-slate-200 p-3 text-left hover:border-blue-300 hover:bg-blue-50" onClick={() => addNode(item.kind)}><span className="block text-sm font-medium text-slate-700">{item.label}</span><span className="mt-1 block text-xs text-slate-400">{item.description}</span></button>)}</div><div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">Tài liệu gán ở đây là tham chiếu đến danh mục. Tệp thật sẽ được tải lên khi hồ sơ chạy.</div></aside>
         <div className="min-w-0"><PgdcnDossierTemplateCanvas model={draft} selectedNodeId={selectedNodeId} selectedTransitionId={selectedTransitionId} connectionSourceId={connectionSourceId} onSelectNode={selectNode} onSelectTransition={selectTransition} onMoveNode={(nodeId, position) => updateDraft(moveDossierTemplateEditorNode(draft, nodeId, position))} onBeginConnection={(nodeId) => { selectNode(nodeId); setConnectionSourceId(nodeId); }} onCompleteConnection={connect} onAddNode={addNode} onDeleteNode={deleteNode} onDeleteTransition={(transitionId) => { updateDraft({ ...draft, transitions: draft.transitions.filter((transition) => transition.id !== transitionId) }); if (selectedTransitionId === transitionId) setSelectedTransitionId(undefined); }} /></div>
-        <PgdcnDossierTemplateInspector domain={draft.domain} conditionScopeOptions={draft.domain === 'PCN' ? (draft.appliesTo as { fieldCodes: string[] }).fieldCodes : (draft.appliesTo as { productGroups: string[] }).productGroups} selectedNode={selectedNode} selectedTransition={selectedTransition} requirementOptions={props.requirements} onChangeNode={(changes) => selectedNode && updateNode(selectedNode.id, changes)} onChangeTransition={(changes) => selectedTransition && updateTransition(selectedTransition.id, changes)} onToggleRequirement={(requirementId, checked) => selectedNode && updateNode(selectedNode.id, { requirementRefs: checked ? [...new Set([...selectedNode.requirementRefs, requirementId])] : selectedNode.requirementRefs.filter((id) => id !== requirementId) })} onBeginConnection={() => selectedNode && setConnectionSourceId(selectedNode.id)} onDeleteNode={() => selectedNode && deleteNode(selectedNode.id)} onClose={() => { setSelectedNodeId(undefined); setSelectedTransitionId(undefined); setConnectionSourceId(undefined); }} />
+        <PgdcnDossierTemplateInspector domain={draft.domain} conditionScopeOptions={draft.domain === 'PCN' ? (draft.appliesTo as { fieldCodes: string[] }).fieldCodes : (draft.appliesTo as { productGroups: string[] }).productGroups} selectedNode={selectedNode} selectedTransition={selectedTransition} requirementOptions={props.requirements} requirementPolicies={draft.requirementPolicies} onChangeNode={(changes) => selectedNode && updateNode(selectedNode.id, changes)} onChangeTransition={(changes) => selectedTransition && updateTransition(selectedTransition.id, changes)} onToggleRequirement={(requirementId, checked) => selectedNode && toggleRequirement(selectedNode.id, requirementId, checked)} onChangeRequirementPolicy={updateRequirementPolicy} onBeginConnection={() => selectedNode && setConnectionSourceId(selectedNode.id)} onDeleteNode={() => selectedNode && deleteNode(selectedNode.id)} onClose={() => { setSelectedNodeId(undefined); setSelectedTransitionId(undefined); setConnectionSourceId(undefined); }} />
       </div>
     </section>
   );

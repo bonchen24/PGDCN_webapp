@@ -1,4 +1,6 @@
 import type { PgdProductGroup } from './pgdDomain.ts';
+import type { PgdcnDossierRequirementPolicy } from '../types.ts';
+import { validateDossierRequirementPolicy } from './pgdcnDossierRequirementPolicy.ts';
 
 export type PgdWorkflowTemplateStatus = 'DRAFT' | 'PUBLISHED' | 'RETIRED';
 export type PgdWorkflowNodeKind = 'DOCUMENT_TASK' | 'APPROVAL_TASK' | 'DECISION' | 'PARALLEL_SPLIT' | 'PARALLEL_JOIN' | 'END';
@@ -59,6 +61,8 @@ export interface PgdWorkflowTemplate {
   name: string;
   description?: string;
   appliesTo: PgdWorkflowTemplateAppliesTo;
+  /** Requirement policy is versioned with this dossier template, not with the DOCX library. */
+  requirementPolicies?: Record<string, PgdcnDossierRequirementPolicy>;
   version: number;
   status: PgdWorkflowTemplateStatus;
   nodes: PgdWorkflowNodeDefinition[];
@@ -96,6 +100,17 @@ export interface PgdWorkflowValidationResult {
   errors: string[];
 }
 
+export interface PgdWorkflowSnapshot {
+  templateId: string;
+  templateCode: string;
+  templateVersion: number;
+  nodes: PgdWorkflowNodeDefinition[];
+  transitions: PgdWorkflowTransitionDefinition[];
+  requirementPolicies?: Record<string, PgdcnDossierRequirementPolicy>;
+  capturedAt: string;
+  capturedBy: string;
+}
+
 function normalized(value: unknown): string {
   return String(value || '').trim();
 }
@@ -119,6 +134,12 @@ export function validatePgdWorkflowTemplate(template: PgdWorkflowTemplate): PgdW
 
   const nodes = Array.isArray(template?.nodes) ? template.nodes : [];
   const transitions = Array.isArray(template?.transitions) ? template.transitions : [];
+  const requirementRefs = new Set(nodes.flatMap((node) => Array.isArray(node.requirementCodes) ? node.requirementCodes : []));
+  for (const [requirementCode, policy] of Object.entries(template?.requirementPolicies || {})) {
+    if (!PGD_REQUIREMENT_CODE.test(requirementCode)) errors.push(`Yêu cầu PGD ${requirementCode} không có mã hợp lệ.`);
+    if (!requirementRefs.has(requirementCode)) errors.push(`Cấu hình yêu cầu ${requirementCode} chưa được gắn vào bước nào.`);
+    for (const error of validateDossierRequirementPolicy(policy, 'PGD')) errors.push(`Yêu cầu ${requirementCode}: ${error}`);
+  }
   const nodeIds = new Set<string>();
   for (const node of nodes) {
     const id = normalized(node.id);
@@ -175,4 +196,44 @@ export function validatePgdWorkflowTemplate(template: PgdWorkflowTemplate): PgdW
     if (node.kind === 'PARALLEL_JOIN' && (incoming.get(normalized(node.id)) || 0) < 2) errors.push(`Node join PGD ${node.id} phải nhận ít nhất hai nhánh.`);
   }
   return { valid: errors.length === 0, errors };
+}
+
+export function selectPgdPublishedWorkflowTemplate(
+  templates: readonly PgdWorkflowTemplate[],
+  context: { productGroup: PgdProductGroup; method?: string },
+): PgdWorkflowTemplate | undefined {
+  const productGroup = String(context.productGroup || '').trim().toUpperCase();
+  const method = String(context.method || '').trim();
+  return templates
+    .filter((template) => template.status === 'PUBLISHED'
+      && validatePgdWorkflowTemplate(template).valid
+      && (!(template.appliesTo?.productGroups || []).length || template.appliesTo.productGroups.includes(productGroup as PgdProductGroup))
+      && (!(template.appliesTo?.methodCodes || []).length || Boolean(method && template.appliesTo.methodCodes.includes(method)))
+    )
+    .sort((left, right) => {
+      const specificity = (template: PgdWorkflowTemplate) => (
+        ((template.appliesTo?.productGroups || []).length ? 10 : 0)
+        + ((template.appliesTo?.methodCodes || []).length ? 5 : 0)
+      );
+      return specificity(right) - specificity(left)
+        || right.version - left.version
+        || right.updatedAt.localeCompare(left.updatedAt)
+        || left.id.localeCompare(right.id);
+    })[0];
+}
+
+export function snapshotPgdWorkflowTemplate(
+  template: PgdWorkflowTemplate,
+  input: { capturedAt: string; capturedBy: string },
+): PgdWorkflowSnapshot {
+  return {
+    templateId: template.id,
+    templateCode: template.code,
+    templateVersion: template.version,
+    nodes: JSON.parse(JSON.stringify(template.nodes)) as PgdWorkflowNodeDefinition[],
+    transitions: JSON.parse(JSON.stringify(template.transitions)) as PgdWorkflowTransitionDefinition[],
+    ...(template.requirementPolicies ? { requirementPolicies: JSON.parse(JSON.stringify(template.requirementPolicies)) as Record<string, PgdcnDossierRequirementPolicy> } : {}),
+    capturedAt: input.capturedAt,
+    capturedBy: input.capturedBy,
+  };
 }

@@ -32,6 +32,18 @@ test('inspector provides searchable checklist references and visual node actions
   assert.doesNotMatch(inspector, /JSON editor|JSON Editor/);
 });
 
+test('inspector configures requirement classification, applicability, source, and cardinality', () => {
+  assert.match(inspector, /DEFAULT_REQUIRED/);
+  assert.match(inspector, /DEFAULT_CONDITIONAL/);
+  assert.match(inspector, /DEFAULT_OPTIONAL/);
+  assert.match(inspector, /FREE_ADDITIONAL/);
+  assert.match(inspector, /CREATE_DOCX/);
+  assert.match(inspector, /EXTERNAL_PTN/);
+  assert.match(inspector, /appliesWhen/);
+  assert.match(inspector, /cardinality/);
+  assert.match(editor, /onChangeRequirementPolicy/);
+});
+
 test('workflow connections can be selected and configured without JSON', () => {
   assert.match(editor, /selectedTransitionId/);
   assert.match(editor, /setSelectedTransitionId/);

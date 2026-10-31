@@ -42,6 +42,7 @@ export const buildPcnWorkflowTemplateRecord = (
   base?: PcnWorkflowTemplate
 ): PcnWorkflowTemplate => {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const requirementPolicies = source.requirementPolicies !== undefined ? source.requirementPolicies : base?.requirementPolicies;
   return {
     id: String(source.id || base?.id || `pcn-workflow-${randomUUID()}`).trim(),
     code: String(source.code || base?.code || '').trim().toUpperCase(),
@@ -78,6 +79,7 @@ export const buildPcnWorkflowTemplateRecord = (
         ? { dossierType: String(source.appliesTo?.dossierType || base?.appliesTo?.dossierType).trim() }
         : {}),
     },
+    ...(requirementPolicies !== undefined ? { requirementPolicies } : {}),
     version: Number(source.version || base?.version || 1),
     status: source.status === 'PUBLISHED' || source.status === 'RETIRED' ? source.status : 'DRAFT',
     nodes: Array.isArray(source.nodes) ? source.nodes : base?.nodes || [],
@@ -165,6 +167,7 @@ export const buildPgdWorkflowTemplateRecord = (
   const sourceAppliesTo = source.appliesTo && typeof source.appliesTo === 'object' ? source.appliesTo : {};
   const sourceNodes = Array.isArray(source.nodes) ? source.nodes : base?.nodes || [];
   const sourceTransitions = Array.isArray(source.transitions) ? source.transitions : base?.transitions || [];
+  const requirementPolicies = source.requirementPolicies !== undefined ? source.requirementPolicies : base?.requirementPolicies;
   return {
     domain: 'pgd',
     id: String(source.id || base?.id || `pgd-workflow-${randomUUID()}`).trim(),
@@ -199,6 +202,7 @@ export const buildPgdWorkflowTemplateRecord = (
           }
         : {}),
     },
+    ...(requirementPolicies !== undefined ? { requirementPolicies } : {}),
     version: Number(source.version || base?.version || 1),
     status: source.status === 'PUBLISHED' || source.status === 'RETIRED' ? source.status : 'DRAFT',
     nodes: sourceNodes.map((node: any, index: number) => ({

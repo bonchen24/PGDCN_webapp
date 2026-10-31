@@ -18,6 +18,9 @@ const fixtureModel: DossierTemplateEditorModel = {
     fieldCodes: ['QC4'],
     methods: ['METHOD_5'],
   },
+  requirementPolicies: {
+    'REQ-PCN-01': { defaultClass: 'DEFAULT_OPTIONAL', sourceMode: 'UPLOAD', cardinality: { min: 1, max: 2 } },
+  },
   nodes: [
     {
       id: 'node-intake-01',
@@ -187,6 +190,10 @@ test('PgdcnDossierTemplatePreview renders read-only topology, metadata, requirem
   assert.match(markup, /Giấy chứng nhận xuất xưởng/);
   assert.match(markup, /Báo cáo thử nghiệm cơ lý/);
   assert.match(markup, /REQ-UNKNOWN-99/);
+  assert.match(markup, /Mặc định tùy chọn/);
+  assert.match(markup, /Tải tệp lên/);
+  assert.match(markup, /1–2 tệp/);
+  assert.match(markup, /Trạng thái ban đầu: Chưa có/);
 
   // Transitions & connection endpoints
   assert.match(markup, /Tiếp nhận hồ sơ thép/);

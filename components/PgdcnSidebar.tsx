@@ -27,7 +27,7 @@ import { canViewSystemSettings } from '../utils/systemSettingsPolicy';
 import { canManagePgdcnDossierTemplates } from '../utils/pgdcnNavigation';
 import { isPcnSystemManager } from '../utils/pcnRbac';
 
-export type PgdcnSharedSection = 'department-dashboard' | 'my-work' | 'customers' | 'assistant' | 'activityLogs' | 'system-settings' | 'dossier-templates' | 'document-drafting';
+export type PgdcnSharedSection = 'department-dashboard' | 'my-work' | 'dossier-library' | 'customers' | 'assistant' | 'activityLogs' | 'system-settings' | 'dossier-templates' | 'document-drafting';
 export type PgdcnDomain = 'department' | 'PCN' | 'PGD';
 export type PgdcnNavigationTarget =
   | { domain: 'department'; section: PgdcnSharedSection }
@@ -195,10 +195,11 @@ export default function PgdcnSidebar({
         <section className="space-y-0.5" aria-label="Dùng chung">
           {expanded && <p className="mb-1 px-2 text-[11px] font-semibold tracking-wide text-slate-500">Dùng chung</p>}
           {renderSharedButton('Tổng quan', LayoutDashboard, { domain: 'department', section: 'department-dashboard' })}
+          {renderSharedButton('Hồ sơ', ClipboardList, { domain: 'department', section: 'dossier-library' })}
           {renderSharedButton('Khách hàng', Building2, { domain: 'department', section: 'customers' })}
           {renderSharedButton('Trợ lý AI', Bot, { domain: 'department', section: 'assistant' })}
           {renderSharedButton('Nhật ký hệ thống', Activity, { domain: 'department', section: 'activityLogs' })}
-          {renderSharedButton('Soạn thảo văn bản', FileEdit, { domain: 'department', section: 'document-drafting' })}
+          {renderSharedButton('Tài liệu & Biểu mẫu', FileEdit, { domain: 'department', section: 'document-drafting' })}
         </section>
 
         {hasPcn && (

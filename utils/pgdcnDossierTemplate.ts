@@ -1,5 +1,6 @@
 import type {
   PcnDocumentRequirement,
+  PgdcnDossierRequirementPolicy,
   PcnWorkflowCondition,
   PcnWorkflowJoinPolicy,
   PcnWorkflowNodeDefinition,
@@ -8,6 +9,7 @@ import type {
   PcnWorkflowTransitionDefinition,
 } from '../types.ts';
 import type { PgdDossierRequirement } from './pgdDossier.ts';
+import { validateDossierRequirementPolicy } from './pgdcnDossierRequirementPolicy.ts';
 import type {
   PgdWorkflowCondition,
   PgdWorkflowJoinPolicy,
@@ -60,6 +62,7 @@ export interface DossierTemplateEditorModel {
   version: number;
   status: 'DRAFT' | 'PUBLISHED' | 'RETIRED';
   appliesTo: PcnWorkflowTemplate['appliesTo'] | PgdWorkflowTemplate['appliesTo'];
+  requirementPolicies?: Record<string, PgdcnDossierRequirementPolicy>;
   nodes: DossierTemplateEditorNode[];
   transitions: DossierTemplateEditorTransition[];
   updatedAt?: string;
@@ -116,6 +119,7 @@ export function toPcnDossierTemplateEditorModel(template: PcnWorkflowTemplate, _
     version: template.version,
     status: template.status,
     appliesTo: clone(template.appliesTo),
+    ...(template.requirementPolicies ? { requirementPolicies: clone(template.requirementPolicies) } : {}),
     nodes: template.nodes.map((node) => editorNode(node, node.requirementIds)),
     transitions: template.transitions.map(editorTransition),
     updatedAt: template.updatedAt,
@@ -132,6 +136,7 @@ export function toPgdDossierTemplateEditorModel(template: PgdWorkflowTemplate, _
     version: template.version,
     status: template.status,
     appliesTo: clone(template.appliesTo),
+    ...(template.requirementPolicies ? { requirementPolicies: clone(template.requirementPolicies) } : {}),
     nodes: template.nodes.map((node) => editorNode(node, node.requirementCodes)),
     transitions: template.transitions.map(editorTransition),
     updatedAt: template.updatedAt,
@@ -149,6 +154,7 @@ export function fromPcnDossierTemplateEditorModel(model: DossierTemplateEditorMo
     version: model.version,
     status: model.status,
     appliesTo: clone(model.appliesTo) as PcnWorkflowTemplate['appliesTo'],
+    ...(model.requirementPolicies ? { requirementPolicies: clone(model.requirementPolicies) } : {}),
     nodes: model.nodes.map((node) => ({
       id: node.id,
       kind: node.kind as PcnWorkflowNodeDefinition['kind'],
@@ -184,6 +190,7 @@ export function fromPgdDossierTemplateEditorModel(model: DossierTemplateEditorMo
     version: model.version,
     status: model.status,
     appliesTo: clone(model.appliesTo) as PgdWorkflowTemplate['appliesTo'],
+    ...(model.requirementPolicies ? { requirementPolicies: clone(model.requirementPolicies) } : {}),
     nodes: model.nodes.map((node) => ({
       id: node.id,
       kind: node.kind as PgdWorkflowNodeDefinition['kind'],
@@ -240,6 +247,12 @@ export function validateDossierTemplateEditorModel(model: DossierTemplateEditorM
 
   const nodes = Array.isArray(model?.nodes) ? model.nodes : [];
   const transitions = Array.isArray(model?.transitions) ? model.transitions : [];
+  const referencedRequirements = new Set(nodes.flatMap((node) => Array.isArray(node.requirementRefs) ? node.requirementRefs : []));
+  for (const [requirementId, policy] of Object.entries(model?.requirementPolicies || {})) {
+    if (!referencedRequirements.has(requirementId)) errors.push(`Cấu hình yêu cầu ${requirementId} chưa được gắn vào bước nào.`);
+    const policyErrors = validateDossierRequirementPolicy(policy, model.domain);
+    for (const error of policyErrors) errors.push(`Yêu cầu ${requirementId}: ${error}`);
+  }
   const nodeIds = new Set<string>();
   for (const node of nodes) {
     const id = String(node.id || '').trim();
