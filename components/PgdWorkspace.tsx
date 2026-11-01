@@ -172,7 +172,7 @@ type IntakeForm = {
 const REGISTRY_DOCUMENT_FIELDS: ReadonlyArray<{ kind: PgdRegistryDocumentKind; label: string }> = [
   { kind: 'CONTRACT', label: 'Hợp đồng' },
   { kind: 'INVOICE', label: 'Hóa đơn' },
-  { kind: 'PACKING_LIST', label: 'Danh sách đóng gói' },
+  { kind: 'PACKING_LIST', label: 'Danh sách đóng gói (Packing list)' },
   { kind: 'BILL_OF_LADING', label: 'Vận đơn' },
   { kind: 'CUSTOMS_DECLARATION', label: 'Tờ khai hải quan' },
   { kind: 'CERTIFICATE_OF_ORIGIN', label: 'C/O' },
@@ -1164,7 +1164,7 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
   const [reportInputs, setReportInputs] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [stepWorkOpen, setStepWorkOpen] = useState(false);
+  const [stepWorkOpen, setStepWorkOpen] = useState(true);
   const [workflowMapOpen, setWorkflowMapOpen] = useState(false);
   const [businessWorkspaceOpen, setBusinessWorkspaceOpen] = useState(false);
   const [selectedStepId, setSelectedStepId] = useState<PgdDossierFlowStepId>(() => reconcilePgdDossierStepSelection({
@@ -1482,6 +1482,16 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
         {completeCurrentStep ? <button data-testid="pgd-dossier-priority-cta" type="button" onClick={completeCurrentStep} disabled={primaryActionDisabled} aria-busy={busy ? 'true' : undefined} aria-describedby="pgd-dossier-priority-guidance" className="mobile-touch-target inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-xs font-black text-white shadow-sm hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">{busy ? 'Đang xử lý…' : primaryActionLabel || 'Hoàn tất việc'}</button> : <p className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-800">Hồ sơ đã ở cuối quy trình.</p>}
       </section>
 
+      {/* 2. Workflow rail ngang tự nhiên */}
+      <section data-testid="pgd-dossier-workflow-rail" className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3" aria-labelledby="pgd-dossier-workflow-title">
+        <div className="mb-2 flex min-h-11 items-center justify-between gap-2 border-b border-slate-200 pb-2">
+          <h2 id="pgd-dossier-workflow-title" className="text-xs font-black text-slate-900">Tiến trình 12 bước PGD</h2>
+          <span className="text-[11px] font-bold text-slate-500">Chọn bước để xem chi tiết</span>
+        </div>
+        <PgdDossierFlow status={request.status} evidence={context} selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
+      </section>
+
+      {/* 3. Nội dung node đang chọn / checklist */}
       <details data-testid="pgd-dossier-step-work-disclosure" open={stepWorkOpen} onToggle={(event) => setStepWorkOpen(event.currentTarget.open)} className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-xs font-black text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><span className="min-w-0">Checklist, tài liệu & biểu mẫu · Bước {selectedStepNumber}/12 · {selectedStepMeta.label}</span><span data-testid="pgd-dossier-step-work-state" className="shrink-0 text-[11px] font-bold text-blue-700">{stepWorkOpen ? 'Đang mở' : 'Mở để xem'}</span></summary>
         <div data-testid="pgd-dossier-step-work-panel" className="border-t border-slate-200 p-3 md:p-4"><div id="pgd-dossier-current-work" className="min-w-0">
@@ -1490,13 +1500,6 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
           <PgdDossierStepWorkPanel request={request} currentUser={currentUser} selectedStepId={selectedStepId} dossierRequirements={dossierRequirements} dossierDocuments={dossierDocuments} dossierLoadStatus={dossierLoading ? 'loading' : dossierError ? 'error' : 'loaded'} samples={samples} canMutate={canMutate} completeDisabled={!selectedStepIsCurrent || Boolean(nextDenial) || busy || !canMutate} isProcessing={busy} completeLabel={primaryActionLabel} onCompleteCurrent={completeCurrentStep} onOpenChecklist={() => { setSelectedStepId('intake'); setStepWorkOpen(true); }} onOpenDrafting={(input) => onOpenDrafting?.(request, input, selectedStepId)} onRequestException={requestException} exceptionBusy={busy} />
         </div></div>
       </details>
-
-      <details data-testid="pgd-dossier-workflow-disclosure" open={workflowMapOpen} onToggle={(event) => setWorkflowMapOpen(event.currentTarget.open)} className="mt-3 rounded-xl border border-slate-200 bg-slate-50">
-<summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-black text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">Xem tiến trình hồ sơ PGD <span data-testid="pgd-dossier-workflow-state" className="text-[11px] font-bold text-slate-500">{workflowMapOpen ? 'Đang mở · chọn bước để xem lại' : 'Mở để chọn bước khác'}</span></summary>
-<div className="border-t border-slate-200 p-3">
-<PgdDossierFlow status={request.status} evidence={context} selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
-</div>
-</details>
       <details data-testid="pgd-dossier-business-disclosure" open={businessWorkspaceOpen} onToggle={(event) => setBusinessWorkspaceOpen(event.currentTarget.open)} className="mt-3 rounded-xl border border-slate-200 bg-white shadow-sm">
         <summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-xs font-black text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><span>Bộ hồ sơ, mẫu & lịch sử</span><span data-testid="pgd-dossier-business-state" className="text-[11px] font-bold text-slate-500">{businessWorkspaceOpen ? 'Đang mở' : 'Mở để xem'}</span></summary>
         <div className="border-t border-slate-200 p-3 md:p-4"><PgdDossierBusinessWorkspace request={request} currentUser={currentUser} onOpenDrafting={onOpenDrafting ? (input) => onOpenDrafting(request, input, selectedStepId) : undefined} onOpenCurrentWork={openCurrentStepWork} /></div>
@@ -1621,6 +1624,9 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
       requiredDocumentPresent,
       requiredDocumentTotal: requirements.length,
       missingRequiredCount: Math.max(0, requirements.length - requiredDocumentPresent),
+      nextActionLabel: getPgdcnNextAction('PGD', request.status, { missingRequiredCount: Math.max(0, requirements.length - requiredDocumentPresent) }).label,
+      inspectionScheduledAt: request.inspectionScheduledAt,
+      dueDate: request.inspectionScheduledAt,
       ownerUsername: request.ownerUsername,
       ownerDisplayName: getPgdUserDisplayName(request.ownerUsername, pgd.users),
       productGroup: PGD_PRODUCT_GROUP_LABELS[request.productGroup],

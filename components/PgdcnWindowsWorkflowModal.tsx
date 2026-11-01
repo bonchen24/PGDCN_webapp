@@ -132,9 +132,9 @@ export function PgdcnWindowsWorkflowModal({
         <div className="flex min-w-0 items-center gap-2.5">
           <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${colors.icon}`} aria-hidden="true"><span className="text-sm font-black">▣</span></span>
           <div className="min-w-0">
-            <div className={`truncate text-[9px] font-black uppercase tracking-[0.16em] ${colors.eyebrow}`}>{eyebrow}</div>
+            <div className={`min-w-0 break-words text-[9px] font-black uppercase tracking-[0.16em] ${colors.eyebrow}`}>{eyebrow}</div>
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              <h2 id={titleId} className="truncate text-sm font-black text-slate-900">{title}</h2>
+              <h2 id={titleId} className="min-w-0 w-full break-words text-sm font-black text-slate-900 sm:w-auto">{title}</h2>
               {contextLabel && <span className="max-w-[18rem] truncate rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-bold text-slate-500" title={contextLabel}>{contextLabel}</span>}
             </div>
             {description && <p id={`${titleId}-description`} className="mt-0.5 max-w-3xl text-[10px] leading-4 text-slate-500">{description}</p>}

@@ -354,7 +354,7 @@ export function PcnDossierNodeWorkPanel({
       ) : null}
 
       <section data-testid="pcn-dossier-review-summary" className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-slate-200 bg-emerald-50/50 px-4 py-3 text-xs" aria-label="Soát xét hồ sơ PCN">
-        <div><span className="mr-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">Soát xét</span><strong className="text-slate-800">{projection.unresolvedRequiredCount ? `Còn ${projection.unresolvedRequiredCount} mục bắt buộc chưa được xử lý` : 'Không thiếu mục bắt buộc'}</strong></div>
+        <div><span className="mr-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">Soát xét bước này</span><strong className="text-slate-800">{projection.unresolvedRequiredCount ? `Tại bước này: Còn ${projection.unresolvedRequiredCount} mục bắt buộc chưa được xử lý` : 'Tại bước này: Không thiếu mục bắt buộc'}</strong></div>
         <div role="group" aria-label="Vai trò và thao tác trong phiên hiện tại">
           <span className="mr-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">Vai trò hiện tại</span>
           <strong className="text-slate-800" data-testid="pcn-node-current-role">{currentRole}</strong>

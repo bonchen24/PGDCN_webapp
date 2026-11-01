@@ -70,9 +70,9 @@ const PIPELINE_TONE_CLASS: Record<DashboardPipelineTone, string> = {
 
 const formatCount = (value: number): string => new Intl.NumberFormat('vi-VN').format(value);
 
-function Kpi({ label, value, icon: Icon, tone }: { label: string; value: number; icon: LucideIcon; tone: string }) {
+function Kpi({ label, value, icon: Icon, tone, title }: { label: string; value: number; icon: LucideIcon; tone: string; title?: string }) {
   return (
-    <article className="pgdcn-kpi-card gap-2 rounded-lg px-2 py-2">
+    <article className="pgdcn-kpi-card gap-2 rounded-lg px-2 py-2" title={title || label}>
       <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${tone}`}><Icon size={14} /></div>
       <div className="min-w-0 flex-1">
         <p className="break-words text-[11px] font-bold leading-4 text-slate-500">{label}</p>
@@ -132,10 +132,12 @@ function WorkItemCard({ item, onOpenPcn, onOpenPgd }: { item: PgdcnMyWorkItem; o
       {hasUnknownStatus && <p className="mt-1 break-words text-xs leading-4 text-amber-800">Trạng thái chưa xác định. Mở hồ sơ để kiểm tra bước phù hợp.</p>}
     </div>
     <div role="cell" className="min-w-0 break-words text-xs leading-4 text-slate-700">
+      <span aria-hidden="true" className="sr-only lg:hidden">Bước hiện tại</span>
       <span aria-hidden="true" className="text-[11px] font-medium text-slate-500 lg:hidden">Bước: </span>
       {item.currentStepLabel}
     </div>
     <div role="cell" className="min-w-0 break-words text-xs leading-4 text-slate-700">
+      <span aria-hidden="true" className="sr-only lg:hidden">Hạn xử lý</span>
       <span aria-hidden="true" className="text-[11px] font-medium text-slate-500 lg:hidden">Hạn: </span>
       {item.isOverdue ? <span className="inline-flex min-w-0 flex-wrap items-center gap-1 font-semibold text-rose-700"><AlertTriangle size={13} aria-hidden="true" />Quá hạn · <span className="font-normal text-slate-700">{item.dueLabel || 'Chưa đặt hạn'}</span></span> : item.dueLabel || 'Chưa đặt hạn'}
     </div>
@@ -355,7 +357,7 @@ export default function PgdcnDashboardView({ scopes, pcnDossiers, pcnEvidenceAct
     <section className="pcn-page-surface app-compact min-w-0 space-y-3 bg-slate-50 p-3 pb-5 md:p-4 mobile-safe-bottom" aria-label="Điều hành phòng PGDCN">
       <CommandHeader scopes={scopes} onOpenPcnWorkspace={onOpenPcnWorkspace} onOpenPgdWorkspace={onOpenPgdWorkspace} />
       {myWork ? <MyWorkSection projection={myWork} currentUser={currentUser} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} /> : null}
-      <div data-testid="pgdcn-dashboard-kpi-grid" className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-6"><Kpi label="Hồ sơ PCN" value={projection.kpis.pcnDossiers} icon={Award} tone="bg-emerald-50 text-emerald-600" /><Kpi label="Hồ sơ PGD" value={projection.kpis.pgdRequests} icon={ClipboardCheck} tone="bg-blue-50 text-blue-600" /><Kpi label="PCN cần xử lý" value={projection.kpis.pcnWork} icon={FolderOpen} tone="bg-slate-100 text-slate-600" /><Kpi label="PGD cần xử lý" value={projection.kpis.pgdWork} icon={FileCheck2} tone="bg-slate-100 text-slate-600" /><Kpi label="Cần AI hỗ trợ" value={projection.kpis.aiCandidates} icon={Bot} tone="bg-slate-100 text-slate-600" /><Kpi label="Quá hạn / chú ý" value={projection.kpis.attention} icon={AlertTriangle} tone="bg-rose-50 text-rose-600" /></div>
+      <div data-testid="pgdcn-dashboard-kpi-grid" className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-6"><Kpi label="Hồ sơ PCN" value={projection.kpis.pcnDossiers} icon={Award} tone="bg-emerald-50 text-emerald-600" /><Kpi label="Hồ sơ PGD" value={projection.kpis.pgdRequests} icon={ClipboardCheck} tone="bg-blue-50 text-blue-600" /><Kpi label="PCN cần xử lý" value={projection.kpis.pcnWork} icon={FolderOpen} tone="bg-slate-100 text-slate-600" /><Kpi label="PGD cần xử lý" value={projection.kpis.pgdWork} icon={FileCheck2} tone="bg-slate-100 text-slate-600" /><Kpi label="Hồ sơ cần AI hỗ trợ" title="Cần AI hỗ trợ" value={projection.kpis.aiCandidates} icon={Bot} tone="bg-slate-100 text-slate-600" /><Kpi label="Quá hạn/cần chú ý" title="Quá hạn / chú ý" value={projection.kpis.attention} icon={AlertTriangle} tone="bg-rose-50 text-rose-600" /></div>
       <div className={`grid min-w-0 gap-3 ${hasAttention ? 'lg:grid-cols-[minmax(0,1.35fr)_minmax(21rem,0.85fr)]' : ''}`}>{hasAttention && <AttentionQueue items={attentionItems} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} />}<DomainPipeline summaries={projection.domainSummaries} onOpenPcnWorkspace={onOpenPcnWorkspace} onOpenPgdWorkspace={onOpenPgdWorkspace} /></div>
       <RecentItemsSection recentRecords={recentRecords} pcnDossiers={pcnDossiers} pgdRequests={pgdRequests} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} />
       <div className="grid min-w-0 gap-4 lg:grid-cols-2"><UpcomingMilestones items={projection.upcoming} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} /><SharedNotifications notifications={notifications} onOpenNotifications={onOpenNotifications} onSelectNotification={onSelectNotification} /></div>

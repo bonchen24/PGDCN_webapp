@@ -23,11 +23,13 @@ import {
 } from 'lucide-react';
 import { useMemo, useState, useEffect, type MouseEvent } from 'react';
 import { toast } from 'sonner';
+import { formatDateTimeDdMmYyyy } from '../utils/formatter';
 
 import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
 import {
   PgdcnDossierCardExpanded,
   PgdcnDossierQuickActions,
+  PgdcnDossierQuickPeek,
   HighlightText,
   type PgdcnDossierItemModel,
   type DossierComponentStage,
@@ -52,6 +54,8 @@ export interface PgdDossierQueueRow {
   ownerDisplayName?: string;
   productGroup: string;
   catalogLabel: string;
+  inspectionScheduledAt?: string;
+  dueDate?: string;
 }
 
 export interface PgdDossierQueueViewProps {
@@ -110,11 +114,14 @@ interface PgdDossierSummaryCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onOpenDetail: () => void;
+  onOpenPeek?: () => void;
   searchQuery: string;
 }
 
 // PGD uses a focused summary here instead of the shared PgdcnDossierCard; PCN keeps its existing shared card.
-function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail, searchQuery }: PgdDossierSummaryCardProps) {
+function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail, onOpenPeek, searchQuery }: PgdDossierSummaryCardProps) {
+  const schedule = item.deadlineDisplay || item.targetDate;
+  const scheduleLabel = schedule ? formatDateTimeDdMmYyyy(schedule) || 'Chưa xác định' : '';
   const handleCardClick = (event: MouseEvent<HTMLElement>) => {
     const target = event.target as HTMLElement;
     if (target.closest('button, a, input, select, textarea, [data-no-card-expand]')) return;
@@ -152,6 +159,8 @@ function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail,
           actions={[]}
           isExpanded={isExpanded}
           onToggleExpand={() => onToggleExpand()}
+          onOpenPeek={onOpenPeek}
+          peekLabel={`Xem nhanh ${item.primaryCode}`}
           onCopyCode={handleCopyCode}
         />
       </div>
@@ -165,10 +174,39 @@ function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail,
           <span className="mr-1 font-semibold text-slate-500">Đối tượng:</span>
           <span className="font-medium text-slate-800"><HighlightText text={item.productName || 'Chưa có đối tượng'} search={searchQuery} /></span>
         </p>
-        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700 sm:col-span-2">
+        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700">
           <span className="mr-1 font-semibold text-slate-500">Bước hiện tại:</span>
           <span className="font-semibold text-blue-900">{item.currentStepLabel || 'Chưa có dữ liệu'}</span>
         </p>
+        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700">
+          <span className="mr-1 font-semibold text-slate-500">Chủ hồ sơ:</span>
+          <span className="font-medium text-slate-800">{item.ownerName || 'Chưa phân công'}</span>
+        </p>
+        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700 sm:col-span-2">
+          <span className="mr-1 font-semibold text-slate-500">Tiếp theo:</span>
+          <span className="font-semibold text-slate-900">{item.nextAction?.actionLabel || item.nextAction?.title || 'Chờ xử lý tiếp'}</span>
+        </p>
+        {(typeof item.missingRequiredCount === 'number' || Boolean(schedule)) && (
+          <div className="flex min-w-0 flex-wrap items-center gap-2 pt-0.5 sm:col-span-2">
+            {typeof item.missingRequiredCount === 'number' && (
+              <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                item.missingRequiredCount > 0
+                  ? 'border border-amber-200 bg-amber-50 text-amber-800'
+                  : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+              }`}>
+                {item.missingRequiredCount > 0
+                  ? `Còn thiếu ${item.missingRequiredCount} đầu mục`
+                  : 'Đủ đầu mục bắt buộc'}
+              </span>
+            )}
+            {scheduleLabel && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-slate-600">
+                <span className="font-semibold text-slate-500">Hạn/Lịch:</span>
+                <span className="font-bold text-blue-800">{scheduleLabel}</span>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mt-2 flex justify-end">
@@ -206,6 +244,7 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
   const [activeChip, setActiveChip] = useState<PgdFilterChipId>('ALL');
   const [productFiltersOpen, setProductFiltersOpen] = useState(false);
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
+  const [peekItem, setPeekItem] = useState<PgdcnDossierItemModel | null>(null);
   const unassignedCount = rows.filter((r) => !r.ownerUsername && !r.ownerDisplayName).length;
 
   const toggleCard = (id: string) => {
@@ -406,6 +445,8 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
         fieldOrCatalogBadge: row.catalogLabel,
         sampleCountLabel: row.productGroup || 'Hồ sơ GĐ',
         ownerName: row.ownerDisplayName || row.ownerUsername,
+        targetDate: row.dueDate || row.inspectionScheduledAt,
+        deadlineDisplay: row.dueDate || row.inspectionScheduledAt,
         currentStepNumber: row.currentStepNumber,
         currentStepLabel: row.currentStepLabel,
         completenessPercent: score,
@@ -598,6 +639,7 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
                   isExpanded={expandedCardIds.has(item.id)}
                   onToggleExpand={() => toggleCard(item.id)}
                   onOpenDetail={() => onOpenDossier(item.id)}
+                  onOpenPeek={() => setPeekItem(item)}
                   searchQuery={query}
                 />
               );
@@ -715,6 +757,11 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
           )}
         </div>
       )}
+      <PgdcnDossierQuickPeek
+        item={peekItem}
+        onClose={() => setPeekItem(null)}
+        onOpenDossier={onOpenDossier}
+      />
     </section>
   );
 }

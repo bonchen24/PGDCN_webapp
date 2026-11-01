@@ -100,6 +100,13 @@
 }
 
 @layer components {
+  .pgdcn-semantic-surface {
+    background-color: var(--pcn-surface);
+    border-color: var(--pcn-border);
+    border-radius: var(--pcn-radius-lg);
+    box-shadow: var(--pcn-shadow);
+  }
+
   section[role="dialog"] > header > div:first-child > span[aria-hidden="true"] > span.text-sm.font-black {
     display: block;
     width: 1rem;
@@ -113,6 +120,27 @@
   }
   :root {
     --pcn-focus-ring: #2563eb;
+    --pcn-surface: #ffffff;
+    --pcn-surface-subtle: #f8fafc;
+    --pcn-surface-muted: #f1f5f9;
+    --pcn-border: #e2e8f0;
+    --pcn-border-subtle: #f1f5f9;
+    --pcn-radius: 0.5rem;
+    --pcn-radius-sm: 0.375rem;
+    --pcn-radius-lg: 0.75rem;
+    --pcn-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+    --pcn-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08);
+
+    /* Domain brand colors (separate from status tones) */
+    --domain-pcn: #059669;
+    --domain-pcn-hover: #047857;
+    --domain-pcn-surface: #ecfdf5;
+    --domain-pcn-text: #065f46;
+
+    --domain-pgd: #2563eb;
+    --domain-pgd-hover: #1d4ed8;
+    --domain-pgd-surface: #eff6ff;
+    --domain-pgd-text: #1e40af;
     --pcn-surface-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
     --pcn-scrollbar-thumb: #94a3b8;
     --pcn-scrollbar-track: transparent;

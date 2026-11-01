@@ -1,0 +1,660 @@
+{
+  "auditTimestamp": "2026-11-01T02:46:14.123Z",
+  "viewportsTested": [
+    "320x568",
+    "375x667",
+    "390x844",
+    "430x932",
+    "768x1024",
+    "1280x800",
+    "1440x1000"
+  ],
+  "journeys": {
+    "journey1Intake": {
+      "title": "Tạo hồ sơ / Tiếp nhận PYC",
+      "viewports": [
+        {
+          "viewport": {
+            "width": 320,
+            "height": 568,
+            "name": "320"
+          },
+          "docWidth": 320,
+          "clientWidth": 320,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 41,
+          "sub44TargetsCount": 14,
+          "sampleSub44Targets": [
+            {
+              "text": "Bỏ qua điều hướng đến nội dung chính",
+              "width": 1,
+              "height": 1
+            },
+            {
+              "text": "",
+              "width": 33,
+              "height": 21
+            },
+            {
+              "text": "",
+              "width": 33,
+              "height": 21
+            },
+            {
+              "text": "Nhận Phiếu / Tạo PYC",
+              "width": 177,
+              "height": 27
+            },
+            {
+              "text": "Tổng PYC\n1",
+              "width": 94,
+              "height": 27
+            }
+          ],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 375,
+            "height": 667,
+            "name": "375"
+          },
+          "docWidth": 375,
+          "clientWidth": 375,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 41,
+          "sub44TargetsCount": 14,
+          "sampleSub44Targets": [
+            {
+              "text": "Bỏ qua điều hướng đến nội dung chính",
+              "width": 1,
+              "height": 1
+            },
+            {
+              "text": "",
+              "width": 33,
+              "height": 21
+            },
+            {
+              "text": "",
+              "width": 33,
+              "height": 21
+            },
+            {
+              "text": "Nhận Phiếu / Tạo PYC",
+              "width": 177,
+              "height": 27
+            },
+            {
+              "text": "Tổng PYC\n1",
+              "width": 94,
+              "height": 27
+            }
+          ],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 390,
+            "height": 844,
+            "name": "390"
+          },
+          "docWidth": 390,
+          "clientWidth": 390,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 41,
+          "sub44TargetsCount": 14,
+          "sampleSub44Targets": [
+            {
+              "text": "Bỏ qua điều hướng đến nội dung chính",
+              "width": 1,
+              "height": 1
+            },
+            {
+              "text": "",
+              "width": 33,
+              "height": 21
+            },
+            {
+              "text": "",
+              "width": 33,
+              "height": 21
+            },
+            {
+              "text": "Nhận Phiếu / Tạo PYC",
+              "width": 177,
+              "height": 27
+            },
+            {
+              "text": "Tổng PYC\n1",
+              "width": 94,
+              "height": 27
+            }
+          ],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 430,
+            "height": 932,
+            "name": "430"
+          },
+          "docWidth": 430,
+          "clientWidth": 430,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 41,
+          "sub44TargetsCount": 14,
+          "sampleSub44Targets": [
+            {
+              "text": "Bỏ qua điều hướng đến nội dung chính",
+              "width": 1,
+              "height": 1
+            },
+            {
+              "text": "",
+              "width": 33,
+              "height": 21
+            },
+            {
+              "text": "",
+              "width": 33,
+              "height": 21
+            },
+            {
+              "text": "Nhận Phiếu / Tạo PYC",
+              "width": 177,
+              "height": 27
+            },
+            {
+              "text": "Tổng PYC\n1",
+              "width": 94,
+              "height": 27
+            }
+          ],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 768,
+            "height": 1024,
+            "name": "768"
+          },
+          "docWidth": 768,
+          "clientWidth": 768,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 43,
+          "sub44TargetsCount": 0,
+          "sampleSub44Targets": [],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 1280,
+            "height": 800,
+            "name": "1280"
+          },
+          "docWidth": 1280,
+          "clientWidth": 1280,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 42,
+          "sub44TargetsCount": 0,
+          "sampleSub44Targets": [],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 1440,
+            "height": 1000,
+            "name": "1440"
+          },
+          "docWidth": 1440,
+          "clientWidth": 1440,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 42,
+          "sub44TargetsCount": 0,
+          "sampleSub44Targets": [],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        }
+      ]
+    },
+    "journey2Supplement": {
+      "title": "Bổ sung tài liệu / Checklist chứng từ",
+      "viewports": [
+        {
+          "viewport": {
+            "width": 320,
+            "height": 568,
+            "name": "320"
+          },
+          "docWidth": 320,
+          "clientWidth": 320,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 66,
+          "sub44TargetsCount": 1,
+          "sampleSub44Targets": [
+            {
+              "text": "Bỏ qua điều hướng đến nội dung chính",
+              "width": 1,
+              "height": 1
+            }
+          ],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "Tải tệp chứng từ PGD",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 375,
+            "height": 667,
+            "name": "375"
+          },
+          "docWidth": 375,
+          "clientWidth": 375,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 66,
+          "sub44TargetsCount": 1,
+          "sampleSub44Targets": [
+            {
+              "text": "Bỏ qua điều hướng đến nội dung chính",
+              "width": 1,
+              "height": 1
+            }
+          ],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "Tải tệp chứng từ PGD",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 390,
+            "height": 844,
+            "name": "390"
+          },
+          "docWidth": 390,
+          "clientWidth": 390,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 66,
+          "sub44TargetsCount": 1,
+          "sampleSub44Targets": [
+            {
+              "text": "Bỏ qua điều hướng đến nội dung chính",
+              "width": 1,
+              "height": 1
+            }
+          ],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "Tải tệp chứng từ PGD",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 430,
+            "height": 932,
+            "name": "430"
+          },
+          "docWidth": 430,
+          "clientWidth": 430,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 66,
+          "sub44TargetsCount": 1,
+          "sampleSub44Targets": [
+            {
+              "text": "Bỏ qua điều hướng đến nội dung chính",
+              "width": 1,
+              "height": 1
+            }
+          ],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "Tải tệp chứng từ PGD",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 768,
+            "height": 1024,
+            "name": "768"
+          },
+          "docWidth": 768,
+          "clientWidth": 768,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 68,
+          "sub44TargetsCount": 0,
+          "sampleSub44Targets": [],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "Tải tệp chứng từ PGD",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 1280,
+            "height": 800,
+            "name": "1280"
+          },
+          "docWidth": 1280,
+          "clientWidth": 1280,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 67,
+          "sub44TargetsCount": 0,
+          "sampleSub44Targets": [],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "Tải tệp chứng từ PGD",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 1440,
+            "height": 1000,
+            "name": "1440"
+          },
+          "docWidth": 1440,
+          "clientWidth": 1440,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 67,
+          "sub44TargetsCount": 0,
+          "sampleSub44Targets": [],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "Tải tệp chứng từ PGD",
+            "visible": true
+          }
+        }
+      ]
+    },
+    "journey3DraftingApproval": {
+      "title": "Soạn thảo DOCX -> Soát xét -> Gắn theo quyền",
+      "viewports": [
+        {
+          "viewport": {
+            "width": 320,
+            "height": 568,
+            "name": "320"
+          },
+          "docWidth": 320,
+          "clientWidth": 320,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 49,
+          "sub44TargetsCount": 3,
+          "sampleSub44Targets": [
+            {
+              "text": "Bỏ qua điều hướng đến nội dung chính",
+              "width": 1,
+              "height": 1
+            },
+            {
+              "text": "Giám định (PGD)",
+              "width": 121,
+              "height": 36
+            },
+            {
+              "text": "Chứng nhận (PCN)",
+              "width": 132,
+              "height": 36
+            }
+          ],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 375,
+            "height": 667,
+            "name": "375"
+          },
+          "docWidth": 375,
+          "clientWidth": 375,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 49,
+          "sub44TargetsCount": 3,
+          "sampleSub44Targets": [
+            {
+              "text": "Bỏ qua điều hướng đến nội dung chính",
+              "width": 1,
+              "height": 1
+            },
+            {
+              "text": "Giám định (PGD)",
+              "width": 121,
+              "height": 36
+            },
+            {
+              "text": "Chứng nhận (PCN)",
+              "width": 132,
+              "height": 36
+            }
+          ],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 390,
+            "height": 844,
+            "name": "390"
+          },
+          "docWidth": 390,
+          "clientWidth": 390,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 49,
+          "sub44TargetsCount": 3,
+          "sampleSub44Targets": [
+            {
+              "text": "Bỏ qua điều hướng đến nội dung chính",
+              "width": 1,
+              "height": 1
+            },
+            {
+              "text": "Giám định (PGD)",
+              "width": 121,
+              "height": 36
+            },
+            {
+              "text": "Chứng nhận (PCN)",
+              "width": 132,
+              "height": 36
+            }
+          ],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 430,
+            "height": 932,
+            "name": "430"
+          },
+          "docWidth": 430,
+          "clientWidth": 430,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 49,
+          "sub44TargetsCount": 3,
+          "sampleSub44Targets": [
+            {
+              "text": "Bỏ qua điều hướng đến nội dung chính",
+              "width": 1,
+              "height": 1
+            },
+            {
+              "text": "Giám định (PGD)",
+              "width": 121,
+              "height": 36
+            },
+            {
+              "text": "Chứng nhận (PCN)",
+              "width": 132,
+              "height": 36
+            }
+          ],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 768,
+            "height": 1024,
+            "name": "768"
+          },
+          "docWidth": 768,
+          "clientWidth": 768,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 51,
+          "sub44TargetsCount": 0,
+          "sampleSub44Targets": [],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 1280,
+            "height": 800,
+            "name": "1280"
+          },
+          "docWidth": 1280,
+          "clientWidth": 1280,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 50,
+          "sub44TargetsCount": 0,
+          "sampleSub44Targets": [],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        },
+        {
+          "viewport": {
+            "width": 1440,
+            "height": 1000,
+            "name": "1440"
+          },
+          "docWidth": 1440,
+          "clientWidth": 1440,
+          "overflowPx": 0,
+          "hasHorizontalOverflow": false,
+          "visibleActionsCount": 50,
+          "sub44TargetsCount": 0,
+          "sampleSub44Targets": [],
+          "focus": {
+            "tagName": "INPUT",
+            "role": null,
+            "label": "",
+            "visible": true
+          }
+        }
+      ]
+    },
+    "viewerPermissionCheck": {
+      "viewport": "390x844",
+      "generationDisabled": true,
+      "attachDisabled": true
+    },
+    "aiAdvisoryCheck": {
+      "readOnlyPostCalls": 1,
+      "persistenceCallsDuringAiReview": 0
+    }
+  },
+  "auditSummary": {
+    "totalScreenshotsCaptured": 29,
+    "horizontalOverflowIncidents": 0,
+    "simulatedWritesIntercepted": 28,
+    "realServerWrites": 0,
+    "readOnlyAdvisoryCalls": 1,
+    "externalRequests": 0,
+    "pageErrors": 0,
+    "consoleErrors": 0
+  }
+}

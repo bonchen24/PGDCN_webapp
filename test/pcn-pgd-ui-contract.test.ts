@@ -36,9 +36,13 @@ test('PGD workspace has its own shell/sidebar and does not import PCN catalog st
 });
 
 test('PGD and PCN navigation are visible as distinct department workspaces', () => {
-  const landing = read('app/pgdcn/page.tsx');
-  assert.match(landing, /pgdcn\/pcn/);
-  assert.match(landing, /pgdcn\/pgd/);
+  const pcnRoute = read('app/pgdcn/pcn/page.tsx');
+  const pgdRoute = read('app/pgdcn/pgd/page.tsx');
+  const navigation = read('utils/pgdcnNavigation.ts');
+  assert.match(pcnRoute, /PgdcnAppShell initialDomain="PCN" initialPcnSection/);
+  assert.match(pgdRoute, /PgdcnAppShell initialDomain="PGD" initialPgdSection/);
+  assert.match(navigation, /PCN_NAVIGATION_ITEMS:[\s\S]*?domain: 'PCN'/);
+  assert.match(navigation, /PGD_NAVIGATION_ITEMS:[\s\S]*?domain: 'PGD'/);
   assert.match(read('components/PcnSidebar.tsx'), /PHÒNG GIÁM ĐỊNH, CHỨNG NHẬN, PHÁT TRIỂN THỊ TRƯỜNG/);
   assert.match(read('components/PgdSidebar.tsx'), /PHÒNG GIÁM ĐỊNH/);
 });

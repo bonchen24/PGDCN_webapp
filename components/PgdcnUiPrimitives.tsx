@@ -39,8 +39,7 @@ const stateIcon: Record<'loading' | 'empty' | 'error' | 'success', LucideIcon> =
   success: CheckCircle2,
 };
 
-const surfaceClass = 'min-w-0 rounded-xl border border-slate-200 shadow-sm';
-const whiteSurfaceClass = 'bg-white';
+const surfaceClass = 'pgdcn-semantic-surface min-w-0 border';
 
 const statePanelToneClass: Record<'loading' | 'empty' | 'error' | 'success', string> = {
   loading: 'bg-blue-50 text-blue-800',
@@ -54,7 +53,7 @@ export function PgdcnPageHeader({ eyebrow, title, description, actions }: { eyeb
 }
 
 export function PgdcnToolbar({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
-  return <div className={`${surfaceClass} ${whiteSurfaceClass} pgdcn-toolbar-nowrap p-3`}><div className="contents">{children}</div>{actions && <div className="pgdcn-toolbar-actions flex min-w-0 items-center justify-start gap-2">{actions}</div>}</div>;
+  return <div className={`${surfaceClass} pgdcn-toolbar-nowrap p-3`}><div className="contents">{children}</div>{actions && <div className="pgdcn-toolbar-actions flex min-w-0 items-center justify-start gap-2">{actions}</div>}</div>;
 }
 
 export function PgdcnStatusBadge({ label, tone, domain, status, compact = false, className = '' }: { label?: string; tone?: StateTone; domain?: PgdcnDashboardDomain; status?: string; compact?: boolean; className?: string }) {

@@ -498,3 +498,93 @@ test('PCN and PGD workspaces route operations to separate summary-register views
   assert.match(pgdWorkspace, /PgdSummaryRegisterView[^>]*documents=/);
   assert.doesNotMatch(pgdWorkspace, /operationProjection[\s\S]*RequestCard/);
 });
+
+test('PCN and PGD summary registers strictly enforce read-only projections for workflow, lifecycle, results, and issuance', () => {
+  const pcnView = readFileSync(new URL('../components/PcnOperationsRegisterView.tsx', import.meta.url), 'utf8');
+  const pgdView = readFileSync(new URL('../components/PgdSummaryRegisterView.tsx', import.meta.url), 'utf8');
+
+  // Verify PCN read-only fields
+  const pcnReadOnlyFields = [
+    'dossierStatus',
+    'stationTitle',
+    'completenessScore',
+    'missingRequiredCount',
+    'sampleQuantity',
+    'sampleLocations',
+    'sampleReceivedAt',
+    'labStatuses',
+    'testCriteria',
+    'reportNumbers',
+    'lastResultReceivedAt',
+    'lastResultOutcome',
+    'issuanceNumber',
+    'issuedAt',
+    'sampleReturnedAt',
+  ];
+  for (const field of pcnReadOnlyFields) {
+    const fieldRegex = new RegExp(`{\\s*id:\\s*['"]${field}['"][^}]*}`);
+    const match = pcnView.match(fieldRegex);
+    assert.ok(match, `PCN column config for ${field} must exist`);
+    assert.doesNotMatch(match[0], /editable:\s*true/, `PCN column ${field} must NOT be editable`);
+  }
+
+  // Verify PGD read-only fields
+  const pgdReadOnlyFields = [
+    'requestCode',
+    'status',
+    'currentStepLabel',
+    'currentStationLabel',
+    'productGroup',
+    'pgdGroupCode',
+    'catalogItemId',
+    'sampleCount',
+    'sampleQuantity',
+    'sampledAt',
+    'lastSampledAt',
+    'sampledBy',
+    'labSampleCount',
+    'retainedSampleCount',
+    'labRequestCount',
+    'laboratoryNames',
+    'labSenderUnits',
+    'labHandoverAt',
+    'labResultCount',
+    'latestLabReportNumber',
+    'latestLabReceivedAt',
+    'latestLabAcceptedAt',
+    'reportCount',
+    'latestReportNumber',
+    'latestReportStatus',
+    'latestReportDate',
+    'decisionNumber',
+    'decisionDate',
+    'certificateNumber',
+    'certificateSignedAt',
+    'certificateReturnedAt',
+    'completionPercent',
+    'completionLabel',
+    'checklistMissingCount',
+  ];
+  for (const field of pgdReadOnlyFields) {
+    const fieldRegex = new RegExp(`{\\s*id:\\s*['"]${field}['"][^}]*}`);
+    const match = pgdView.match(fieldRegex);
+    assert.ok(match, `PGD column config for ${field} must exist`);
+    assert.doesNotMatch(match[0], /editable:\s*true/, `PGD column ${field} must NOT be editable`);
+  }
+});
+
+test('Shared summary grid provides accessible search, sort, filter controls and local-only saved filter state', () => {
+  const gridSource = readFileSync(new URL('../components/PgdcnDossierSummaryGrid.tsx', import.meta.url), 'utf8');
+
+  // Search accessibility & keyboard
+  assert.match(gridSource, /htmlFor=\{`summary-grid-search-\$\{domain\}`\}/);
+  assert.match(gridSource, /aria-label=\{`Tìm Sổ tổng hợp \$\{domain\}`\}/);
+
+  // Saved filters local storage only, no backend mutation
+  assert.match(gridSource, /readPgdcnSavedFilters/);
+  assert.match(gridSource, /writePgdcnSavedFilters/);
+  assert.doesNotMatch(gridSource, /fetch\(|axios|\/api\/saved-filters/);
+
+  // Meaningful labels >= 11px
+  assert.match(gridSource, /text-\[11px\] font-black text-slate-600/);
+});

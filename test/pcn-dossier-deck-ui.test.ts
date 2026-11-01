@@ -387,7 +387,7 @@ test('shared dossier quick actions maintain persistent >=44px touch targets and 
   const actionClasses = [...quickActions.matchAll(/className=\{`([^`]*inline-flex[^`]*)`|className="([^"]*inline-flex[^"]*)"/g)]
     .map((match) => match[1] || match[2]);
 
-  assert.equal(actionClasses.length, 4, 'dynamic, copy, open, and expand actions should share one control contract');
+  assert.equal(actionClasses.length, 5, 'dynamic, peek, copy, open, and expand actions should share one control contract');
   for (const className of actionClasses) {
     assert.match(className, /min-h-11 min-w-11/, 'all control variants retain >=44px control sizing');
     assert.doesNotMatch(className, /md:min-h-0|md:min-w-0|md:h-|md:w-/, 'no desktop breakpoint shrinks control sizing below 44px');

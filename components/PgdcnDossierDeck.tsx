@@ -33,6 +33,8 @@ import {
   Pencil,
   Award,
   Circle,
+  Eye,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
@@ -156,7 +158,9 @@ export interface PgdcnDossierQuickActionsProps {
   isExpanded?: boolean;
   onToggleExpand?: (e: React.MouseEvent) => void;
   onOpenDetail?: (e: React.MouseEvent) => void;
+  onOpenPeek?: (e: React.MouseEvent) => void;
   onCopyCode?: (e: React.MouseEvent) => void;
+  peekLabel?: string;
 }
 
 export function PgdcnDossierQuickActions({
@@ -164,7 +168,9 @@ export function PgdcnDossierQuickActions({
   isExpanded,
   onToggleExpand,
   onOpenDetail,
+  onOpenPeek,
   onCopyCode,
+  peekLabel,
 }: PgdcnDossierQuickActionsProps) {
   return (
     <div
@@ -200,6 +206,21 @@ export function PgdcnDossierQuickActions({
           </button>
         );
       })}
+
+      {onOpenPeek && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenPeek(e);
+          }}
+          title={peekLabel || 'Xem nhanh'}
+          aria-label={peekLabel || 'Xem nhanh'}
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-200 hover:text-slate-900 hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 transition-colors cursor-pointer"
+        >
+          <Eye size={16} strokeWidth={2} />
+        </button>
+      )}
 
       {onCopyCode && (
         <button
@@ -262,6 +283,7 @@ export interface PgdcnDossierCardHeaderProps {
   isExpanded: boolean;
   onToggleExpand: (e: React.MouseEvent) => void;
   onOpenDetail: () => void;
+  onOpenPeek?: (item: PgdcnDossierItemModel, e: React.MouseEvent) => void;
   searchQuery?: string;
 }
 
@@ -271,6 +293,7 @@ export function PgdcnDossierCardHeader({
   isExpanded,
   onToggleExpand,
   onOpenDetail,
+  onOpenPeek,
   searchQuery = '',
 }: PgdcnDossierCardHeaderProps) {
   const handleCopy = (e: React.MouseEvent) => {
@@ -347,6 +370,8 @@ export function PgdcnDossierCardHeader({
             e.stopPropagation();
             onOpenDetail();
           }}
+          onOpenPeek={onOpenPeek ? (e) => onOpenPeek(item, e) : undefined}
+          peekLabel={`Xem nhanh ${item.primaryCode}`}
           onCopyCode={handleCopy}
         />
       </div>
@@ -424,7 +449,7 @@ export function PgdcnDossierCardHeader({
               : 'border-emerald-200 bg-emerald-50 text-emerald-800'
           }`}>
             {item.missingRequiredCount > 0
-              ? `Thiếu ${item.missingRequiredCount} tài liệu`
+              ? `Thiếu ${item.missingRequiredCount} tài liệu bắt buộc`
               : 'Đủ tài liệu'}
           </span>
         )}
@@ -720,6 +745,7 @@ export interface PgdcnDossierCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onOpenDetail: () => void;
+  onOpenPeek?: (item: PgdcnDossierItemModel, e?: React.MouseEvent) => void;
   searchQuery?: string;
 }
 
@@ -729,6 +755,7 @@ export function PgdcnDossierCard({
   isExpanded,
   onToggleExpand,
   onOpenDetail,
+  onOpenPeek,
   searchQuery = '',
 }: PgdcnDossierCardProps) {
   const handleCardClick = (e: React.MouseEvent) => {
@@ -756,6 +783,7 @@ export function PgdcnDossierCard({
         isExpanded={isExpanded}
         onToggleExpand={onToggleExpand}
         onOpenDetail={onOpenDetail}
+        onOpenPeek={onOpenPeek}
         searchQuery={searchQuery}
       />
 
@@ -766,6 +794,243 @@ export function PgdcnDossierCard({
           onToggleExpand={onToggleExpand}
         />
       )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Read-only Dossier Quick Peek (Selected Record Panel / Bottom Sheet)
+// ============================================================================
+
+export interface PgdcnDossierQuickPeekProps {
+  item: PgdcnDossierItemModel | null;
+  onClose: () => void;
+  onOpenDossier: (dossierId: string) => void;
+}
+
+export function PgdcnDossierQuickPeek({
+  item,
+  onClose,
+  onOpenDossier,
+}: PgdcnDossierQuickPeekProps) {
+  const dialogRef = React.useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
+
+  React.useEffect(() => {
+    if (!item) return;
+    const triggerEl = document.activeElement as HTMLElement | null;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        triggerEl?.focus();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const dialog = dialogRef.current;
+        if (!dialog) return;
+        const focusable = Array.from(
+          dialog.querySelectorAll<HTMLElement>('button:not([disabled]), [tabindex]:not([tabindex="-1"])')
+        ).filter((el) => el.offsetParent !== null || el === closeButtonRef.current);
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first || !dialog.contains(document.activeElement)) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last || !dialog.contains(document.activeElement)) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    closeButtonRef.current?.focus();
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      triggerEl?.focus();
+    };
+  }, [item, onClose]);
+
+  if (!item) return null;
+
+  const deadlineDisplay = item.deadlineDisplay || item.targetDate;
+  const blockers = item.blockers || [];
+  const nextAction = item.nextAction;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end lg:items-stretch lg:justify-end">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Dialog */}
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pgdcn-peek-title"
+        aria-label={`Xem nhanh ${item.primaryCode}`}
+        tabIndex={-1}
+        className="relative z-10 flex w-full flex-col bg-white shadow-2xl h-[85dvh] max-h-[85dvh] rounded-t-2xl border-t border-slate-200 lg:h-full lg:max-h-full lg:w-[400px] lg:rounded-none lg:border-t-0 lg:border-l lg:border-slate-200 focus:outline-none"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 shrink-0">
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+              {item.domain === 'PCN' ? 'Hồ sơ chứng nhận' : 'Hồ sơ giám định'}
+            </span>
+            <h2 id="pgdcn-peek-title" className="text-sm font-black text-slate-900 truncate">
+              Xem nhanh {item.primaryCode}
+            </h2>
+          </div>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Đóng"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+          >
+            <X size={16} strokeWidth={2} />
+          </button>
+        </div>
+
+        {/* Scrollable Body: Read-only projection */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+          {/* Domain / Code / Status */}
+          <div className="flex flex-wrap items-center gap-2">
+            <PgdcnStatusBadge domain={item.domain} status={item.status} label={item.statusLabel} />
+            {item.secondaryCode && (
+              <span className="rounded border border-slate-200/80 bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700">
+                {item.secondaryCode}
+              </span>
+            )}
+            {item.fieldOrCatalogBadge && (
+              <span className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 uppercase">
+                {item.fieldOrCatalogBadge}
+              </span>
+            )}
+          </div>
+
+          {/* Customer / Product */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 space-y-2">
+            <div>
+              <span className="block text-[10px] font-semibold text-slate-500 uppercase">Khách hàng</span>
+              <p className="font-bold text-slate-900 text-xs mt-0.5">
+                {item.customerName || 'Chưa gắn khách hàng'}
+              </p>
+            </div>
+            <div>
+              <span className="block text-[10px] font-semibold text-slate-500 uppercase">Đối tượng / Sản phẩm</span>
+              <p className="font-medium text-slate-800 text-xs mt-0.5">
+                {item.productName || 'Chưa có đối tượng'}
+              </p>
+              {item.brandOrGroup && (
+                <p className="text-[11px] text-slate-600 mt-0.5">{item.brandOrGroup}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Workflow & Assignment */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-slate-200 p-2.5">
+              <span className="block text-[10px] font-semibold text-slate-500 uppercase">Bước hiện tại</span>
+              <p className="font-bold text-slate-900 text-xs mt-0.5">
+                {item.currentStepLabel || 'Chưa có dữ liệu'}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 p-2.5">
+              <span className="block text-[10px] font-semibold text-slate-500 uppercase">Người phụ trách</span>
+              <p className="font-bold text-slate-900 text-xs mt-0.5">
+                {item.ownerName || 'Chưa phân công'}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 p-2.5">
+              <span className="block text-[10px] font-semibold text-slate-500 uppercase">Hạn hoàn tất</span>
+              <p className="font-bold text-blue-900 text-xs mt-0.5">
+                {deadlineDisplay || 'Chưa có hạn'}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 p-2.5">
+              <span className="block text-[10px] font-semibold text-slate-500 uppercase">Tài liệu bắt buộc</span>
+              <p className="font-bold text-xs mt-0.5">
+                {typeof item.missingRequiredCount === 'number' && Number.isFinite(item.missingRequiredCount) ? (
+                  item.missingRequiredCount > 0 ? (
+                    <span className="text-amber-700">Thiếu {item.missingRequiredCount} tài liệu</span>
+                  ) : (
+                    <span className="text-emerald-700">Đã đủ tài liệu</span>
+                  )
+                ) : (
+                  <span className="text-slate-500">Chưa kiểm tra</span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Next Action Summary / Reason */}
+          {nextAction && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50/80 p-3 space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-900">
+                Việc cần làm tiếp theo
+              </span>
+              <h4 className="font-bold text-blue-950 text-xs">{nextAction.title}</h4>
+              <p className="text-[11px] text-blue-800 leading-relaxed">{nextAction.reason}</p>
+              {nextAction.owner && (
+                <p className="text-[10px] text-blue-700 font-medium">
+                  Phụ trách: {nextAction.owner}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Blockers */}
+          {blockers.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-900">
+                Cảnh báo & Điểm nghẽn ({blockers.length})
+              </span>
+              <div className="space-y-1.5">
+                {blockers.map((b) => (
+                  <div
+                    key={b.id}
+                    className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-amber-900"
+                  >
+                    <strong className="block font-bold text-xs">{b.title}</strong>
+                    <p className="mt-0.5 text-[11px] text-amber-800 leading-relaxed">{b.reason}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-slate-200 p-3 bg-slate-50 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onOpenDossier(item.id);
+            }}
+            className="w-full inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-blue-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 transition-colors cursor-pointer"
+          >
+            <FolderOpen size={15} />
+            <span>Mở hồ sơ đầy đủ</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -789,6 +1054,7 @@ export interface PgdcnDossierDeckProps {
   onSearchChange?: (query: string) => void;
   searchPlaceholder?: string;
   onOpenDossier: (dossierId: string) => void;
+  onOpenPeek?: (item: PgdcnDossierItemModel) => void;
   getQuickActions?: (item: PgdcnDossierItemModel) => DossierQuickAction[];
   renderToolbarExtra?: ReactNode;
   emptyTitle?: string;
@@ -804,6 +1070,7 @@ export function PgdcnDossierDeck({
   onSearchChange,
   searchPlaceholder = 'Tìm mã hồ sơ, PYC, số lô, khách hàng, sản phẩm...',
   onOpenDossier,
+  onOpenPeek,
   getQuickActions,
   renderToolbarExtra,
   emptyTitle = 'Không tìm thấy hồ sơ nào',
@@ -811,6 +1078,7 @@ export function PgdcnDossierDeck({
 }: PgdcnDossierDeckProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [internalPeekItem, setInternalPeekItem] = useState<PgdcnDossierItemModel | null>(null);
 
   // Auto-expand on search match (matching DDT interaction)
   useEffect(() => {
@@ -932,6 +1200,7 @@ export function PgdcnDossierDeck({
               isExpanded={expandedIds.has(item.id)}
               onToggleExpand={() => toggleExpand(item.id)}
               onOpenDetail={() => onOpenDossier(item.id)}
+              onOpenPeek={(item) => onOpenPeek ? onOpenPeek(item) : setInternalPeekItem(item)}
               searchQuery={searchQuery}
             />
           ))}
@@ -942,6 +1211,13 @@ export function PgdcnDossierDeck({
           <h3 className="mt-2 text-sm font-bold text-slate-800">{emptyTitle}</h3>
           <p className="mt-1 text-xs text-slate-500">{emptyDescription}</p>
         </div>
+      )}
+      {!onOpenPeek && (
+        <PgdcnDossierQuickPeek
+          item={internalPeekItem}
+          onClose={() => setInternalPeekItem(null)}
+          onOpenDossier={onOpenDossier}
+        />
       )}
     </div>
   );

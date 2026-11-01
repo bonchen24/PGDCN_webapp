@@ -30,6 +30,7 @@ import {
   PgdcnDossierCard,
   PgdcnDossierCardExpanded,
   PgdcnDossierQuickActions,
+  PgdcnDossierQuickPeek,
   type PgdcnDossierItemModel,
   type DossierComponentStage,
   type DossierBlockerItem,
@@ -67,6 +68,7 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [activeChip, setActiveChip] = useState<PcnFilterChipId>('ALL');
+  const [peekItem, setPeekItem] = useState<PgdcnDossierItemModel | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
 
@@ -485,6 +487,7 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
                   isExpanded={expandedIds.has(item.id)}
                   onToggleExpand={() => toggleExpand(item.id)}
                   onOpenDetail={() => onOpenDossier(item.id)}
+                  onOpenPeek={(item) => setPeekItem(item)}
                   searchQuery={query}
                 />
               );
@@ -587,6 +590,11 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
           </button>
         </div>
       )}
+      <PgdcnDossierQuickPeek
+        item={peekItem}
+        onClose={() => setPeekItem(null)}
+        onOpenDossier={onOpenDossier}
+      />
     </section>
   );
 }

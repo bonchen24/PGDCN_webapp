@@ -12,13 +12,11 @@ test('dossier detail exposes a compact context summary before secondary content'
   assert.match(detailSource, /missingRequiredCount > 0/);
 });
 
-test('workflow-first detail keeps the current work ahead of the collapsed step flow', () => {
+test('workflow-first detail renders next action ahead of natural step flow', () => {
   assert.match(workflowSource, /data-testid="pcn-current-step-summary"/);
   assert.match(workflowSource, /Bước cần xử lý/);
-  assert.match(workflowSource, /data-testid="pcn-workflow-map"/);
-  assert.match(workflowSource, /Các bước hồ sơ PCN/);
-  assert.match(workflowSource, /data-testid="pcn-workflow-map-disclosure"/);
-  assert.match(workflowSource, /Xem tiến trình hồ sơ/);
+  assert.match(workflowSource, /PcnDossierFlow/);
+  assert.ok(workflowSource.indexOf('data-testid="pcn-current-step-summary"') < workflowSource.indexOf('<PcnDossierFlow'));
 });
 
 test('detail primary work region uses action-first language', () => {

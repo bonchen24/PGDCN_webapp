@@ -49,3 +49,43 @@ test('authenticated app applies the shared 10 percent type scale without zooming
 });
 
 // --- End of pcn-pgd-sample-ledger-ui.test.ts ---
+
+test('PCN sample ledger keeps distinct lot, sample, PTN/PYC, result identity, location and collapsed disclosure', () => {
+  const source = read('../components/PcnLabOperationsView.tsx');
+
+  // Distinct identities present
+  assert.match(source, /row\.lotCode/);
+  assert.match(source, /row\.sampleCode/);
+  assert.match(source, /cell\.pycNumber/);
+  assert.match(source, /cell\.labSampleCode/);
+  assert.match(source, /cell\.resultOutcome/);
+  assert.match(source, /row\.currentLocation/);
+
+  // Lab details collapsed by default (no open attribute on details)
+  assert.match(source, /<details className=/);
+  assert.doesNotMatch(source, /<details[^>]*open/);
+
+  // Accessible search and filter controls
+  assert.match(source, /aria-label="Tìm trong Sổ quản lý mẫu"/);
+  assert.match(source, /aria-label="Lọc theo phòng thử nghiệm"/);
+});
+
+test('PGD sample ledger maintains distinct identities for lot, sample, PTN/PYC, result, and location', () => {
+  const ledger = read('../components/PgdSampleOperationsView.tsx');
+
+  // Distinct identities
+  assert.match(ledger, /sample\.sampleCode/);
+  assert.match(ledger, /request\?\.requestCode/);
+  assert.match(ledger, /request\?\.lotCode/);
+  assert.match(ledger, /sample\.samplingLocation|request\?\.inspectionLocation/);
+  assert.match(ledger, /labRequest\.status/);
+  assert.match(ledger, /result\?\.reportNumber/);
+
+  // Disclosure collapsed by default
+  assert.match(ledger, /<details className="rounded-md/);
+  assert.doesNotMatch(ledger, /<details[^>]*open/);
+
+  // Meaningful labels >= 11px and mobile touch targets >= 44px
+  assert.match(ledger, /text-\[11px\] font-black text-slate-600/);
+  assert.match(ledger, /mobile-touch-target/);
+});

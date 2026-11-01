@@ -325,10 +325,13 @@ test('D09 disclosures keep checklist evidence available and keyboard navigation 
 
       const workDetails = page.getByTestId('pgd-dossier-step-work-disclosure');
       assert.equal(await workDetails.count(), 1, `${role.id}: the current-step checklist disclosure is present`);
+      assert.equal(await workDetails.evaluate((element) => element.open), true, `${role.id}: the current-step checklist is available by default`);
       const workSummary = workDetails.locator(':scope > summary');
       await workSummary.focus();
       await page.keyboard.press('Enter');
-      assert.equal(await workDetails.evaluate((element) => element.open), true, `${role.id}: keyboard opens the current-step checklist disclosure`);
+      assert.equal(await workDetails.evaluate((element) => element.open), false, `${role.id}: keyboard can close the current-step checklist disclosure`);
+      await page.keyboard.press('Enter');
+      assert.equal(await workDetails.evaluate((element) => element.open), true, `${role.id}: keyboard reopens the current-step checklist disclosure`);
       await page.getByRole('heading', { name: 'Tài liệu cần hoàn thiện' }).waitFor({ state: 'visible' });
       await page.getByText(/Soát xét bước này/).waitFor({ state: 'visible' });
 
@@ -343,8 +346,8 @@ test('D09 disclosures keep checklist evidence available and keyboard navigation 
       await eventTimeline.locator(':scope > summary').click();
       await page.getByText(/Chưa có sự kiện nghiệp vụ/).waitFor({ state: 'visible' });
 
-      const workflowDetails = page.getByTestId('pgd-dossier-workflow-disclosure');
-      await workflowDetails.locator(':scope > summary').click();
+      const workflowRail = page.getByTestId('pgd-dossier-workflow-rail');
+      await workflowRail.waitFor({ state: 'visible' });
       const flow = page.getByRole('tablist', { name: 'Các việc xử lý hồ sơ PGD' });
       const currentTab = flow.getByRole('tab', { name: /Tiếp nhận KQTN/ });
       const intakeTab = flow.getByRole('tab', { name: /Giao mẫu \/ lập PYC PTN/ });
@@ -358,7 +361,7 @@ test('D09 disclosures keep checklist evidence available and keyboard navigation 
       assert.equal(await priorityCta.isVisible(), true, `${role.id}: the current action remains visible after returning to its step`);
       assert.equal(await page.getByTestId('pgd-dossier-step-work-state').textContent(), 'Đang mở');
       assert.equal(await page.getByTestId('pgd-dossier-business-state').textContent(), 'Đang mở');
-      assert.equal(await page.getByTestId('pgd-dossier-workflow-state').textContent(), 'Đang mở · chọn bước để xem lại');
+      assert.equal(await workflowRail.isVisible(), true, `${role.id}: the selected-step rail remains visible after review`);
       assert.deepEqual(pageErrors, [], `${role.id}: no browser runtime errors`);
 
       if (role.id === 'admin') {
@@ -400,7 +403,7 @@ test('D09 loading and evidence errors remain visible while the next action stays
   try {
     const loadingPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await openD09Detail(loadingPage, base, role, audit, 'loading');
-    const loadingStatus = loadingPage.getByRole('status').filter({ hasText: 'Đang tải trạng thái chứng từ hồ sơ' });
+    const loadingStatus = loadingPage.getByTestId('pgd-dossier-priority-action').getByRole('status');
     await loadingStatus.waitFor({ state: 'visible', timeout: 5000 });
     const loadingCta = loadingPage.getByTestId('pgd-dossier-priority-cta');
     assert.equal(await loadingCta.count(), 1, 'The primary action stays visible while evidence is loading');
@@ -411,12 +414,12 @@ test('D09 loading and evidence errors remain visible while the next action stays
 
     const errorPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await openD09Detail(errorPage, base, role, audit, 'error');
-    const loadError = errorPage.getByRole('alert').filter({ hasText: 'Không thể tải trạng thái chứng từ' });
+    const loadError = errorPage.getByTestId('pgd-dossier-priority-action').getByRole('alert');
     await loadError.waitFor({ state: 'visible', timeout: 5000 });
     const errorCta = errorPage.getByTestId('pgd-dossier-priority-cta');
     assert.equal(await errorCta.count(), 1, 'The primary action stays visible while evidence is unavailable');
     assert.equal(await errorCta.isDisabled(), true);
-    assert.equal(await errorPage.getByRole('button', { name: 'Tải lại tài liệu' }).isVisible(), true);
+    assert.equal(await errorPage.getByTestId('pgd-dossier-priority-action').getByRole('button', { name: 'Tải lại tài liệu' }).isVisible(), true);
     await saveScreenshot(errorPage, process.env.PGDCN_DENSITY_PHASE, role.id, { width: 390, height: 844 }, 'error');
     await errorPage.close();
 

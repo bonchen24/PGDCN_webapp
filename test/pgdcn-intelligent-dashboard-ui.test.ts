@@ -6,7 +6,9 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { chromium } from 'playwright';
 
+import * as cheerio from 'cheerio';
 import PgdcnDashboardView from '../components/PgdcnDashboardView';
+import PgdDossierQueueView from '../components/PgdDossierQueueView';
 
 const dashboardProps = (overrides: Record<string, unknown> = {}) => ({
   scopes: ['PCN', 'PGD'],
@@ -179,6 +181,83 @@ test('work rows remain mobile-first and keyboard reachable with accessible table
   expectMarkup(markup, /<summary class="mobile-touch-target min-h-11 w-full[^\"]*focus-visible:ring-2/, 'The waiting-work disclosure should remain keyboard operable and visibly focused.');
   expectMarkup(markup, /role="row" class="sr-only lg:not-sr-only[^\"]*"[^>]*>[\s\S]*?role="columnheader"/, 'Table labels should remain available to screen readers when hidden visually on mobile.');
   expectMarkup(markup, /role="row" class="grid min-w-0 grid-cols-1[^\"]*py-2[^\"]*lg:grid-cols-\[[^\]]+\][^\"]*lg:py-1\.5/, 'Work rows should keep complete mobile content while using compact vertical spacing at both breakpoints.');
+});
+
+test('dashboard retains exactly the six approved KPIs in strict order', () => {
+  const markup = renderDashboard();
+  const $ = cheerio.load(markup);
+  const kpiLabels = $('[data-testid="pgdcn-dashboard-kpi-grid"] article p:first-child')
+    .map((_, el) => $(el).text().trim())
+    .get();
+
+  assert.deepEqual(kpiLabels, [
+    'Hồ sơ PCN',
+    'Hồ sơ PGD',
+    'PCN cần xử lý',
+    'PGD cần xử lý',
+    'Hồ sơ cần AI hỗ trợ',
+    'Quá hạn/cần chú ý',
+  ]);
+});
+
+test('dashboard strictly filters metrics and actions according to departmentScopes', () => {
+  const pcnDossiers = [dossier({ id: 'pcn-1' })];
+  const pgdRequests = [{ id: 'pgd-1', requestCode: 'PYC-1', status: 'FIELD_INSPECTION' }];
+
+  const pcnOnlyMarkup = renderDashboard({ scopes: ['PCN'], pcnDossiers, pgdRequests });
+  const $pcn = cheerio.load(pcnOnlyMarkup);
+  assert.equal($pcn('button:contains("Tạo Đề nghị")').length >= 1, true);
+  assert.equal($pcn('button:contains("Tạo PYC")').length, 0);
+
+  const pgdOnlyMarkup = renderDashboard({ scopes: ['PGD'], pcnDossiers, pgdRequests });
+  const $pgd = cheerio.load(pgdOnlyMarkup);
+  assert.equal($pgd('button:contains("Tạo Đề nghị")').length, 0);
+  assert.equal($pgd('button:contains("Tạo PYC")').length >= 1, true);
+
+  const emptyScopeMarkup = renderDashboard({ scopes: [], pcnDossiers, pgdRequests });
+  const $empty = cheerio.load(emptyScopeMarkup);
+  assert.equal($empty('button:contains("Tạo Đề nghị")').length, 0);
+  assert.equal($empty('button:contains("Tạo PYC")').length, 0);
+});
+
+test('dossier queue views provide read-only entrypoints with priority context and no business state mutation', () => {
+  const pgdMarkup = renderToStaticMarkup(createElement(PgdDossierQueueView, {
+    rows: [{
+      requestId: 'req-1',
+      requestCode: 'PYC-TEST-001',
+      customerName: 'Công ty Alpha',
+      productName: 'Thép dự ứng lực',
+      status: 'FIELD_INSPECTION',
+      statusLabel: 'Giám định hiện trường',
+      currentStepNumber: 4,
+      currentStepLabel: 'Hiện trường',
+      nextActionLabel: 'Lấy mẫu thử nghiệm',
+      requiredDocumentPresent: 3,
+      requiredDocumentTotal: 5,
+      missingRequiredCount: 2,
+      ownerUsername: 'hoang',
+      ownerDisplayName: 'Hoàng Minh',
+      productGroup: 'Thép / kim loại',
+      catalogLabel: 'Thép dự ứng lực',
+      dueDate: '2026-11-05T09:30:00',
+    }],
+    onOpenDossier: () => undefined,
+  }));
+
+  const $pgd = cheerio.load(pgdMarkup);
+  const card = $pgd('[data-testid="pgdcn-dossier-card"]');
+  assert.ok(card.text().includes('Công ty Alpha'));
+  assert.ok(card.text().includes('Thép dự ứng lực'));
+  assert.ok(card.text().includes('Hiện trường'));
+  assert.ok(card.text().includes('Hoàng Minh'));
+  assert.ok(card.text().includes('Lấy mẫu thử nghiệm'));
+  assert.ok(card.text().includes('05/11/2026 09:30'));
+  assert.equal(card.text().includes('2026-11-05T09:30:00'), false);
+  assert.ok(card.text().includes('2'));
+
+  const buttons = $pgd('button').map((_, el) => $pgd(el).text().trim()).get();
+  assert.ok(buttons.some((text) => text.includes('Mở hồ sơ')));
+  assert.equal(buttons.some((text) => /phê duyệt|xác nhận kết quả|chấp thuận|hoàn thành bước/i.test(text)), false);
 });
 
 const rawUxBaseUrl = process.env.PGDCN_UX_BASE_URL;

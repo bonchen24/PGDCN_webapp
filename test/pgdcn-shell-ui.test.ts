@@ -40,7 +40,7 @@ test('department dashboard exposes six KPIs, domain cards and a shared activity 
 test('shared shell exposes a readable active context for the current target', () => {
   const source = read('../components/PgdcnAppShell.tsx');
   assert.match(source, /activeTarget\.section/);
-  assert.match(source, /Tổng quan/);
+  assert.match(source, /getActiveContextLabel\(activeTarget\)/);
   assert.match(source, /aria-label/);
 });
 
@@ -67,6 +67,6 @@ test('shared shell provides mobile navigation, sync status and explicit domain c
   assert.match(dashboard, /mobile-safe-bottom/);
   assert.match(pcnWorkspace, /mobile-safe-bottom/);
   assert.match(pgdWorkspace, /data-testid="pgd-dossier-mobile-footer" className="mobile-safe-bottom/);
-  assert.ok(sidebar.includes('bg-slate-950/95'));
+  assert.ok(sidebar.includes('border-slate-200'));
   assert.ok(sidebar.includes('aria-label='));
 });
