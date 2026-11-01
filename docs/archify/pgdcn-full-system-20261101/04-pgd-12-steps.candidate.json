@@ -1,0 +1,419 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "04 · PGD: đúng 12 tác vụ công việc",
+    "subtitle": "Rail tác vụ chuẩn được map qua 5 business stage; trạng thái trả kết quả/lưu trữ được phân biệt với handover trực tiếp chưa xác minh.",
+    "output": "docs/archify/pgdcn-full-system-20261101/04-pgd-12-steps.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    },
+    "views": [
+      {
+        "id": "rail",
+        "label": "12 tác vụ",
+        "focus": [
+          "task-01",
+          "task-02",
+          "task-03",
+          "task-04",
+          "task-05",
+          "task-06",
+          "task-07",
+          "task-08",
+          "task-09",
+          "task-10",
+          "task-11",
+          "task-12"
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [
+      80,
+      80
+    ],
+    "cols": 3,
+    "cellW": 220,
+    "cellH": 92,
+    "gapX": 56,
+    "gapY": 96
+  },
+  "components": [
+    {
+      "id": "task-01",
+      "type": "backend",
+      "label": "01 · Tiếp nhận PYC",
+      "sublabel": "Canonical task 1 of 12",
+      "tag": "PGD · 01",
+      "row": 0,
+      "col": 0,
+      "size": [
+        208,
+        86
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/requests/route.ts",
+          "line": 28,
+          "end_line": 138
+        }
+      ]
+    },
+    {
+      "id": "task-02",
+      "type": "backend",
+      "label": "02 · Phạm vi + năng lực",
+      "sublabel": "Canonical task 2 of 12",
+      "tag": "PGD · 02",
+      "row": 0,
+      "col": 1,
+      "size": [
+        208,
+        86
+      ],
+      "sources": [
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        },
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "task-03",
+      "type": "backend",
+      "label": "03 · Phân công",
+      "sublabel": "Canonical task 3 of 12",
+      "tag": "PGD · 03",
+      "row": 0,
+      "col": 2,
+      "size": [
+        208,
+        86
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/assignments/route.ts",
+          "line": 31,
+          "end_line": 98
+        },
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "task-04",
+      "type": "backend",
+      "label": "04 · Lập kế hoạch",
+      "sublabel": "Canonical task 4 of 12",
+      "tag": "PGD · 04",
+      "row": 1,
+      "col": 2,
+      "size": [
+        208,
+        86
+      ],
+      "sources": [
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        },
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "task-05",
+      "type": "backend",
+      "label": "05 · Kiểm tra hiện trường",
+      "sublabel": "Canonical task 5 of 12",
+      "tag": "PGD · 05",
+      "row": 1,
+      "col": 1,
+      "size": [
+        208,
+        86
+      ],
+      "sources": [
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        },
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "task-06",
+      "type": "backend",
+      "label": "06 · Lấy mẫu / niêm phong",
+      "sublabel": "Canonical task 6 of 12",
+      "tag": "PGD · 06",
+      "row": 1,
+      "col": 0,
+      "size": [
+        208,
+        86
+      ],
+      "sources": [
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        },
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "task-07",
+      "type": "backend",
+      "label": "07 · Bàn giao + PYC PTN",
+      "sublabel": "Canonical task 7 of 12",
+      "tag": "PGD · 07",
+      "row": 2,
+      "col": 0,
+      "size": [
+        208,
+        86
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-requests/route.ts",
+          "line": 22,
+          "end_line": 95
+        },
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "task-08",
+      "type": "backend",
+      "label": "08 · Nhận KQTN",
+      "sublabel": "Canonical task 8 of 12",
+      "tag": "PGD · 08",
+      "row": 2,
+      "col": 1,
+      "size": [
+        208,
+        86
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-results/route.ts",
+          "line": 21,
+          "end_line": 86
+        },
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "task-09",
+      "type": "backend",
+      "label": "09 · Review KQTN",
+      "sublabel": "Canonical task 9 of 12",
+      "tag": "PGD · 09",
+      "row": 2,
+      "col": 2,
+      "size": [
+        208,
+        86
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-result-reviews/route.ts",
+          "line": 18,
+          "end_line": 68
+        },
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "task-10",
+      "type": "backend",
+      "label": "10 · Dự thảo báo cáo",
+      "sublabel": "Canonical task 10 of 12",
+      "tag": "PGD · 10",
+      "row": 3,
+      "col": 2,
+      "size": [
+        208,
+        86
+      ],
+      "sources": [
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        },
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "task-11",
+      "type": "security",
+      "label": "11 · Duyệt / ký",
+      "sublabel": "Canonical task 11 of 12",
+      "tag": "PGD · 11",
+      "row": 3,
+      "col": 1,
+      "size": [
+        208,
+        86
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/approvals/route.ts",
+          "line": 31,
+          "end_line": 150
+        },
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "task-12",
+      "type": "backend",
+      "label": "12 · Trả kết quả / lưu trữ",
+      "sublabel": "Code status / package; direct handover path unverified",
+      "tag": "PGD · 12",
+      "row": 3,
+      "col": 0,
+      "size": [
+        208,
+        86
+      ],
+      "sources": [
+        {
+          "path": "utils/pgdWorkflow.ts",
+          "line": 67,
+          "end_line": 76
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "step-1-2",
+      "from": "task-01",
+      "to": "task-02",
+      "label": "step 1 → 2",
+      "variant": "default"
+    },
+    {
+      "id": "step-2-3",
+      "from": "task-02",
+      "to": "task-03",
+      "label": "step 2 → 3",
+      "variant": "default"
+    },
+    {
+      "id": "step-3-4",
+      "from": "task-03",
+      "to": "task-04",
+      "label": "step 3 → 4",
+      "variant": "default"
+    },
+    {
+      "id": "step-4-5",
+      "from": "task-04",
+      "to": "task-05",
+      "label": "step 4 → 5",
+      "variant": "default"
+    },
+    {
+      "id": "step-5-6",
+      "from": "task-05",
+      "to": "task-06",
+      "label": "step 5 → 6",
+      "variant": "default"
+    },
+    {
+      "id": "step-6-7",
+      "from": "task-06",
+      "to": "task-07",
+      "label": "step 6 → 7",
+      "variant": "default"
+    },
+    {
+      "id": "step-7-8",
+      "from": "task-07",
+      "to": "task-08",
+      "label": "step 7 → 8",
+      "variant": "default"
+    },
+    {
+      "id": "step-8-9",
+      "from": "task-08",
+      "to": "task-09",
+      "label": "step 8 → 9",
+      "variant": "default"
+    },
+    {
+      "id": "step-9-10",
+      "from": "task-09",
+      "to": "task-10",
+      "label": "step 9 → 10",
+      "variant": "default"
+    },
+    {
+      "id": "step-10-11",
+      "from": "task-10",
+      "to": "task-11",
+      "label": "step 10 → 11",
+      "variant": "default"
+    },
+    {
+      "id": "step-11-12",
+      "from": "task-11",
+      "to": "task-12",
+      "label": "step 11 → 12",
+      "variant": "security"
+    }
+  ]
+}

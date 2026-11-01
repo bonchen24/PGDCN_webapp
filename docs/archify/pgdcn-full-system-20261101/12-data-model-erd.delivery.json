@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "f9d124e1-4732-49b2-87b2-8dd6bbe73540",
+  "status": "current",
+  "command": "deliver",
+  "type": "erd",
+  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\12-data-model-erd.candidate.json",
+  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\12-data-model-erd.html",
+  "specification": {
+    "sha256": "56e1b52b7da7ca08cd39c552ca43eddbd75f1b366dfeea2d27965032225d4f19",
+    "bytes": 3022
+  },
+  "artifact": {
+    "sha256": "4f7f7f25c0b96a0a89a34097c11703997fb7acbc3394e63a3ef7e0278205b376",
+    "bytes": 829537
+  }
+}

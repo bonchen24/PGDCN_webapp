@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "e662b5c7-ea59-45e7-a458-c123b5d32475",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\14-customers-and-work-queues.candidate.json",
+  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\14-customers-and-work-queues.html",
+  "specification": {
+    "sha256": "8451ff69038285ef055339215372fe6e729a5512ac6c2682472ca636c9bfd459",
+    "bytes": 5586
+  },
+  "artifact": {
+    "sha256": "e1fd18fa4560b1a7f3aff08af3654d1324e37d6a62abe333db03271344fe3d10",
+    "bytes": 834430
+  }
+}

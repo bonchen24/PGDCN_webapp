@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "261d498a-85c3-4ec5-b66a-eab5b0e9543f",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\07-pgd-evidence-approval-package.candidate.json",
+  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\07-pgd-evidence-approval-package.html",
+  "specification": {
+    "sha256": "00783879fa392ab220f599d25fc9b1b2defb5ae0d73d7a3b17f6af8b2bd07d1a",
+    "bytes": 5413
+  },
+  "artifact": {
+    "sha256": "931c9af57c6b6466562e8f44c265bd4cdde6468350276ade1590bbfca9f12ea6",
+    "bytes": 836032
+  }
+}

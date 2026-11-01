@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "14 · Khách hàng, import và hàng đợi công việc",
+    "subtitle": "PCN customer CRUD/import is distinct from PGD PYC intake. Register/dashboard views are read projections; import preview precedes apply.",
+    "output": "docs/archify/pgdcn-full-system-20261101/14-customers-and-work-queues.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [
+      72,
+      72
+    ],
+    "cols": 3,
+    "cellW": 220,
+    "cellH": 92,
+    "gapX": 56,
+    "gapY": 90
+  },
+  "components": [
+    {
+      "id": "customer-ui",
+      "type": "frontend",
+      "label": "Customers UI",
+      "sublabel": "Shared navigation destination",
+      "row": 0,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "components/PgdcnCustomersView.tsx",
+          "line": 1,
+          "end_line": 1
+        },
+        {
+          "path": "components/PcnCustomersManagementView.tsx",
+          "line": 1,
+          "end_line": 1
+        }
+      ]
+    },
+    {
+      "id": "customer-api",
+      "type": "backend",
+      "label": "PCN customer CRUD API",
+      "sublabel": "Create / update / delete gates",
+      "row": 0,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/customers/route.ts",
+          "line": 1,
+          "end_line": 1
+        },
+        {
+          "path": "app/api/pcn/customers/[customerId]/route.ts",
+          "line": 1,
+          "end_line": 1
+        }
+      ]
+    },
+    {
+      "id": "import-preview",
+      "type": "backend",
+      "label": "Import preview",
+      "sublabel": "Validate / reconcile before apply",
+      "row": 0,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/customer-import/preview/route.ts",
+          "line": 1,
+          "end_line": 1
+        },
+        {
+          "path": "utils/pcnCustomerImportService.ts",
+          "line": 1,
+          "end_line": 86
+        }
+      ]
+    },
+    {
+      "id": "import-apply",
+      "type": "backend",
+      "label": "Import apply",
+      "sublabel": "Write and audit result",
+      "row": 1,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/customer-import/apply/route.ts",
+          "line": 1,
+          "end_line": 1
+        },
+        {
+          "path": "utils/pcnCustomerImportService.ts",
+          "line": 87,
+          "end_line": 170
+        }
+      ]
+    },
+    {
+      "id": "dedupe",
+      "type": "backend",
+      "label": "Dedupe / reconciliation",
+      "sublabel": "Import match contract",
+      "row": 1,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnCustomerReconciliation.ts",
+          "line": 1,
+          "end_line": 1
+        },
+        {
+          "path": "utils/pcnCustomerImportContract.ts",
+          "line": 1,
+          "end_line": 1
+        }
+      ]
+    },
+    {
+      "id": "pgd-pyc",
+      "type": "backend",
+      "label": "PGD PYC intake",
+      "sublabel": "Separate business request resource",
+      "row": 1,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/requests/route.ts",
+          "line": 28,
+          "end_line": 138
+        }
+      ]
+    },
+    {
+      "id": "pcn-register",
+      "type": "backend",
+      "label": "PCN operations register",
+      "sublabel": "Queue / register projection",
+      "row": 3,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "components/PcnOperationsRegisterView.tsx",
+          "line": 1,
+          "end_line": 1
+        },
+        {
+          "path": "utils/pcnBusinessWorkspace.ts",
+          "line": 1,
+          "end_line": 80
+        }
+      ]
+    },
+    {
+      "id": "pgd-queues",
+      "type": "backend",
+      "label": "PGD workflow work panel",
+      "sublabel": "12 task rail; role-aware evidence",
+      "row": 3,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "dashboard",
+      "type": "frontend",
+      "label": "Dashboard + quick peek",
+      "sublabel": "Six KPIs / read-only detail projection",
+      "row": 3,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "components/PgdcnDashboardView.tsx",
+          "line": 14,
+          "end_line": 30
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "ui-crud",
+      "from": "customer-ui",
+      "to": "customer-api",
+      "label": "CRUD"
+    },
+    {
+      "id": "preview-apply",
+      "from": "import-preview",
+      "to": "import-apply",
+      "label": "confirmed apply"
+    },
+    {
+      "id": "dedupe-apply",
+      "from": "dedupe",
+      "to": "import-apply",
+      "label": "reconcile"
+    },
+    {
+      "id": "register-dashboard",
+      "from": "pcn-register",
+      "to": "dashboard",
+      "label": "read projection",
+      "variant": "dashed"
+    }
+  ]
+}

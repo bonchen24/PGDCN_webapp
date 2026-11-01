@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "9701f8b2-7b8c-4f62-ba19-3d426207fe01",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\23-pgd-steel-tt58.workflow.json",
+  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\23-pgd-steel-tt58.html",
+  "specification": {
+    "sha256": "595c4f2fbe7d4e9115251d3e711a2d19969a32a8b70641f7585fb7b08b1f2ea8",
+    "bytes": 8792
+  },
+  "artifact": {
+    "sha256": "196b8dcb109821423010ffe89ebff45e09de2c9fdb74f665bcb5a716e7e13566",
+    "bytes": 849226
+  }
+}

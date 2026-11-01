@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "18 · Sequence API: PGD PYC, KQTN và review",
+    "subtitle": "Các API PGD lưu PYC, lab request, KQTN và review. Nguồn truyền KQTN từ PTN vào ứng dụng không được suy đoán từ route.",
+    "output": "docs/archify/pgdcn-full-system-20261101/18-sequence-pgd-pyc-kqtn.html",
+    "quality_profile": "standard",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    },
+    "column_fit": "spread"
+  },
+  "participants": [
+    {
+      "id": "operator",
+      "type": "external",
+      "label": "PGD operator",
+      "sources": [
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "requests",
+      "type": "backend",
+      "label": "PGD requests API",
+      "sources": [
+        {
+          "path": "app/api/pgd/requests/route.ts",
+          "line": 28,
+          "end_line": 138
+        }
+      ]
+    },
+    {
+      "id": "lab-requests",
+      "type": "backend",
+      "label": "PGD lab-requests API",
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-requests/route.ts",
+          "line": 22,
+          "end_line": 95
+        }
+      ]
+    },
+    {
+      "id": "results",
+      "type": "backend",
+      "label": "PGD lab-results API",
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-results/route.ts",
+          "line": 21,
+          "end_line": 86
+        }
+      ]
+    },
+    {
+      "id": "reviews",
+      "type": "backend",
+      "label": "PGD result-review API",
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-result-reviews/route.ts",
+          "line": 18,
+          "end_line": 68
+        }
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "app_documents",
+      "sources": [
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 5,
+          "end_line": 10
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "from": "operator",
+      "to": "requests",
+      "y": 160,
+      "label": "POST PYC request"
+    },
+    {
+      "from": "requests",
+      "to": "db",
+      "y": 205,
+      "label": "Persist PGD request and owner"
+    },
+    {
+      "from": "db",
+      "to": "operator",
+      "y": 250,
+      "label": "Return request result"
+    },
+    {
+      "from": "operator",
+      "to": "lab-requests",
+      "y": 305,
+      "label": "Create PGD lab request record"
+    },
+    {
+      "from": "lab-requests",
+      "to": "db",
+      "y": 350,
+      "label": "Persist lab request"
+    },
+    {
+      "from": "operator",
+      "to": "results",
+      "y": 405,
+      "label": "Record / submit KQTN"
+    },
+    {
+      "from": "results",
+      "to": "db",
+      "y": 450,
+      "label": "Persist result resource"
+    },
+    {
+      "from": "operator",
+      "to": "reviews",
+      "y": 505,
+      "label": "Review recorded KQTN"
+    },
+    {
+      "from": "reviews",
+      "to": "db",
+      "y": 550,
+      "label": "Persist result review"
+    },
+    {
+      "from": "reviews",
+      "to": "operator",
+      "y": 595,
+      "label": "Return review state",
+      "note": "External callback or transport mechanism is unspecified by these routes."
+    }
+  ]
+}

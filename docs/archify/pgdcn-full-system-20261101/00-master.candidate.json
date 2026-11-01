@@ -1,0 +1,785 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "00 · Bản đồ nghiệp vụ và kiến trúc PGDCN",
+    "subtitle": "Hai tuyến PCN / PGD, các mốc kết quả, phê duyệt, phát hành và nền tảng dùng chung. Mở sơ đồ con qua atlas index.",
+    "output": "docs/archify/pgdcn-full-system-20261101/00-master.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    },
+    "views": [
+      {
+        "id": "all",
+        "label": "Toàn ứng dụng",
+        "focus": [
+          "pcn-proposal",
+          "pcn-dossier",
+          "pcn-sample",
+          "pcn-pyc",
+          "pcn-lab",
+          "pcn-kqtn",
+          "pcn-review",
+          "pcn-approval",
+          "pcn-issue",
+          "pcn-close",
+          "pgd-pyc",
+          "pgd-scope",
+          "pgd-field",
+          "pgd-handoff",
+          "pgd-lab",
+          "pgd-kqtn",
+          "pgd-approve",
+          "pgd-release",
+          "shell",
+          "api",
+          "db",
+          "files",
+          "audit",
+          "ai"
+        ]
+      },
+      {
+        "id": "pcn",
+        "label": "Luồng PCN",
+        "focus": [
+          "pcn-proposal",
+          "pcn-dossier",
+          "pcn-sample",
+          "pcn-pyc",
+          "pcn-kqtn",
+          "pcn-review",
+          "pcn-approval",
+          "pcn-issue",
+          "pcn-close"
+        ]
+      },
+      {
+        "id": "pgd",
+        "label": "Luồng PGD",
+        "focus": [
+          "pgd-pyc",
+          "pgd-scope",
+          "pgd-field",
+          "pgd-handoff",
+          "pgd-kqtn",
+          "pgd-approve",
+          "pgd-release"
+        ]
+      },
+      {
+        "id": "platform",
+        "label": "Nền tảng",
+        "focus": [
+          "shell",
+          "api",
+          "db",
+          "files",
+          "audit",
+          "ai"
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [
+      80,
+      80
+    ],
+    "cols": 3,
+    "cellW": 220,
+    "cellH": 96,
+    "gapX": 56,
+    "gapY": 96
+  },
+  "components": [
+    {
+      "id": "pcn-proposal",
+      "type": "backend",
+      "label": "PCN 01 · Tiếp nhận đề nghị",
+      "sublabel": "CertificationProposal · khách hàng và phạm vi",
+      "tag": "PCN · hồ sơ",
+      "row": 0,
+      "col": 0,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 49,
+          "end_line": 63
+        }
+      ]
+    },
+    {
+      "id": "pcn-dossier",
+      "type": "backend",
+      "label": "PCN 02 · Tạo hồ sơ",
+      "sublabel": "Dossier + checklist + snapshot đã phát hành",
+      "tag": "PCN · hồ sơ",
+      "row": 0,
+      "col": 1,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 154,
+          "end_line": 247
+        },
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 141,
+          "end_line": 198
+        }
+      ]
+    },
+    {
+      "id": "pcn-sample",
+      "type": "backend",
+      "label": "PCN 03 · Lô và mẫu",
+      "sublabel": "Theo dõi mẫu, item và tuyến PTN",
+      "tag": "PCN · mẫu",
+      "row": 0,
+      "col": 2,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnSampleFlow.ts",
+          "line": 86,
+          "end_line": 142
+        }
+      ]
+    },
+    {
+      "id": "pcn-pyc",
+      "type": "backend",
+      "label": "PCN 04 · Tổng hợp PYC",
+      "sublabel": "Gom dữ liệu theo PTN trước khi dispatch",
+      "tag": "PCN · PTN",
+      "row": 1,
+      "col": 2,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnLabIntegration.ts",
+          "line": 245,
+          "end_line": 339
+        }
+      ]
+    },
+    {
+      "id": "pcn-lab",
+      "type": "external",
+      "label": "PCN 05 · PTN ngoài",
+      "sublabel": "DDT / HSNL; phản hồi được theo dõi theo PTN",
+      "tag": "Ngoài hệ thống",
+      "row": 1,
+      "col": 1,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnLabIntegration.ts",
+          "line": 393,
+          "end_line": 461
+        }
+      ]
+    },
+    {
+      "id": "pcn-kqtn",
+      "type": "backend",
+      "label": "PCN 06 · Nhận và đối soát KQTN",
+      "sublabel": "ACK, kết quả và trạng thái theo mẫu / PTN",
+      "tag": "PCN · kết quả",
+      "row": 1,
+      "col": 0,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnLabIntegration.ts",
+          "line": 393,
+          "end_line": 461
+        }
+      ]
+    },
+    {
+      "id": "pcn-review",
+      "type": "backend",
+      "label": "PCN 07 · Soát xét kỹ thuật",
+      "sublabel": "Đánh giá workflow và xử lý trả lại",
+      "tag": "PCN · review",
+      "row": 2,
+      "col": 0,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 267,
+          "end_line": 325
+        },
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 334,
+          "end_line": 428
+        }
+      ]
+    },
+    {
+      "id": "pcn-approval",
+      "type": "security",
+      "label": "PCN 08 · Phê duyệt",
+      "sublabel": "Các bước duyệt có quyền theo vai trò",
+      "tag": "PCN · quyền",
+      "row": 2,
+      "col": 1,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/approval/[stepId]/route.ts",
+          "line": 1,
+          "end_line": 210
+        }
+      ]
+    },
+    {
+      "id": "pcn-issue",
+      "type": "backend",
+      "label": "PCN 09 · Cấp số",
+      "sublabel": "Chuyển hồ sơ sang trạng thái ISSUED",
+      "tag": "PCN · phát hành",
+      "row": 2,
+      "col": 2,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/issue/route.ts",
+          "line": 141,
+          "end_line": 343
+        }
+      ]
+    },
+    {
+      "id": "pcn-close",
+      "type": "backend",
+      "label": "PCN 10 · Giao và lưu trữ",
+      "sublabel": "DELIVERED và ARCHIVED là các bước riêng",
+      "tag": "PCN · kết thúc",
+      "row": 3,
+      "col": 2,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/deliver/route.ts",
+          "line": 21,
+          "end_line": 98
+        },
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/archive/route.ts",
+          "line": 21,
+          "end_line": 98
+        }
+      ]
+    },
+    {
+      "id": "pgd-pyc",
+      "type": "backend",
+      "label": "PGD 01 · Tiếp nhận PYC",
+      "sublabel": "Đường yêu cầu PGD riêng với CertificationProposal",
+      "tag": "PGD · hồ sơ",
+      "row": 5,
+      "col": 0,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/requests/route.ts",
+          "line": 28,
+          "end_line": 138
+        }
+      ]
+    },
+    {
+      "id": "pgd-scope",
+      "type": "backend",
+      "label": "PGD 02–04 · Phạm vi và kế hoạch",
+      "sublabel": "Năng lực và owner trước khi triển khai",
+      "tag": "PGD · thực hiện",
+      "row": 5,
+      "col": 1,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        },
+        {
+          "path": "utils/pgdWorkflow.ts",
+          "line": 33,
+          "end_line": 68
+        }
+      ]
+    },
+    {
+      "id": "pgd-field",
+      "type": "backend",
+      "label": "PGD 05–06 · Hiện trường và mẫu",
+      "sublabel": "Kiểm tra hiện trường, lấy mẫu / niêm phong",
+      "tag": "PGD · thực hiện",
+      "row": 5,
+      "col": 2,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "pgd-handoff",
+      "type": "backend",
+      "label": "PGD 07 · Bàn giao và yêu cầu PTN",
+      "sublabel": "PYC PTN theo tuyến PGD",
+      "tag": "PGD · PTN",
+      "row": 6,
+      "col": 2,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-requests/route.ts",
+          "line": 22,
+          "end_line": 95
+        }
+      ]
+    },
+    {
+      "id": "pgd-lab",
+      "type": "external",
+      "label": "PGD · PTN ngoài",
+      "sublabel": "Tuyến tích hợp hiện có; nguồn callback chưa xác minh",
+      "tag": "Ngoài hệ thống",
+      "row": 6,
+      "col": 1,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-requests/route.ts",
+          "line": 22,
+          "end_line": 95
+        }
+      ]
+    },
+    {
+      "id": "pgd-kqtn",
+      "type": "backend",
+      "label": "PGD 08–10 · KQTN / báo cáo",
+      "sublabel": "Nhận KQTN, review và lập dự thảo",
+      "tag": "PGD · kết quả",
+      "row": 6,
+      "col": 0,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-results/route.ts",
+          "line": 21,
+          "end_line": 86
+        },
+        {
+          "path": "app/api/pgd/lab-result-reviews/route.ts",
+          "line": 18,
+          "end_line": 68
+        },
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "pgd-approve",
+      "type": "security",
+      "label": "PGD 11 · Duyệt và ký",
+      "sublabel": "Chuỗi technical → leadership; ghi trạng thái SIGNED",
+      "tag": "PGD · quyền",
+      "row": 7,
+      "col": 0,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/approvals/route.ts",
+          "line": 31,
+          "end_line": 150
+        },
+        {
+          "path": "utils/pgdDomain.ts",
+          "line": 1133,
+          "end_line": 1136
+        }
+      ]
+    },
+    {
+      "id": "pgd-release",
+      "type": "backend",
+      "label": "PGD 12 · Trả kết quả / lưu trữ",
+      "sublabel": "Có status và ZIP; giao trực tiếp chưa rõ",
+      "tag": "PGD · kết thúc",
+      "row": 7,
+      "col": 1,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "utils/pgdWorkflow.ts",
+          "line": 67,
+          "end_line": 76
+        },
+        {
+          "path": "app/api/pgd/requests/[requestId]/package/route.ts",
+          "line": 145,
+          "end_line": 184
+        }
+      ]
+    },
+    {
+      "id": "shell",
+      "type": "frontend",
+      "label": "Superneat Workbench",
+      "sublabel": "13 destination theo role và scope",
+      "tag": "Nền tảng",
+      "row": 9,
+      "col": 0,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "components/PgdcnSidebar.tsx",
+          "line": 53,
+          "end_line": 55
+        }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "Next.js API routes",
+      "sublabel": "Validation, business transitions và adapter",
+      "tag": "Nền tảng",
+      "row": 9,
+      "col": 1,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 49,
+          "end_line": 63
+        },
+        {
+          "path": "app/api/pgd/requests/route.ts",
+          "line": 28,
+          "end_line": 47
+        }
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "PostgreSQL · app_documents",
+      "sublabel": "JSONB document store; schema vật lý đã xác minh",
+      "tag": "Nền tảng",
+      "row": 9,
+      "col": 2,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 5,
+          "end_line": 10
+        }
+      ]
+    },
+    {
+      "id": "files",
+      "type": "cloud",
+      "label": "Private file assets",
+      "sublabel": "Đối tượng file tách khỏi JSON metadata",
+      "tag": "Nền tảng",
+      "row": 10,
+      "col": 2,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 115,
+          "end_line": 131
+        }
+      ]
+    },
+    {
+      "id": "audit",
+      "type": "backend",
+      "label": "Audit và notification",
+      "sublabel": "Activity/audit records, notification surface",
+      "tag": "Nền tảng",
+      "row": 10,
+      "col": 0,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 13,
+          "end_line": 113
+        }
+      ]
+    },
+    {
+      "id": "ai",
+      "type": "external",
+      "label": "AI / OCR hỗ trợ",
+      "sublabel": "Gợi ý có nguồn; không tự phê duyệt",
+      "tag": "Hỗ trợ",
+      "row": 10,
+      "col": 1,
+      "size": [
+        208,
+        90
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/assistant/review/route.ts",
+          "line": 88,
+          "end_line": 118
+        },
+        {
+          "path": "app/api/pcn/ocr/route.ts",
+          "line": 49,
+          "end_line": 125
+        },
+        {
+          "path": "app/api/pgd/ocr/route.ts",
+          "line": 43,
+          "end_line": 114
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "pcn-proposal-pcn-dossier",
+      "from": "pcn-proposal",
+      "to": "pcn-dossier",
+      "label": "snapshot",
+      "variant": "default"
+    },
+    {
+      "id": "pcn-dossier-pcn-sample",
+      "from": "pcn-dossier",
+      "to": "pcn-sample",
+      "label": "mẫu",
+      "variant": "default"
+    },
+    {
+      "id": "pcn-sample-pcn-pyc",
+      "from": "pcn-sample",
+      "to": "pcn-pyc",
+      "label": "tổng hợp",
+      "variant": "default"
+    },
+    {
+      "id": "pcn-pyc-pcn-lab",
+      "from": "pcn-pyc",
+      "to": "pcn-lab",
+      "label": "dispatch",
+      "variant": "default"
+    },
+    {
+      "id": "pcn-lab-pcn-kqtn",
+      "from": "pcn-lab",
+      "to": "pcn-kqtn",
+      "label": "KQTN",
+      "variant": "default"
+    },
+    {
+      "id": "pcn-kqtn-pcn-review",
+      "from": "pcn-kqtn",
+      "to": "pcn-review",
+      "label": "review",
+      "variant": "default"
+    },
+    {
+      "id": "pcn-review-pcn-approval",
+      "from": "pcn-review",
+      "to": "pcn-approval",
+      "label": "approve",
+      "variant": "default"
+    },
+    {
+      "id": "pcn-approval-pcn-issue",
+      "from": "pcn-approval",
+      "to": "pcn-issue",
+      "label": "issue",
+      "variant": "default"
+    },
+    {
+      "id": "pcn-issue-pcn-close",
+      "from": "pcn-issue",
+      "to": "pcn-close",
+      "label": "handover",
+      "variant": "default"
+    },
+    {
+      "id": "pgd-pyc-pgd-scope",
+      "from": "pgd-pyc",
+      "to": "pgd-scope",
+      "label": "12 task",
+      "variant": "default"
+    },
+    {
+      "id": "pgd-scope-pgd-field",
+      "from": "pgd-scope",
+      "to": "pgd-field",
+      "label": "hiện trường",
+      "variant": "default"
+    },
+    {
+      "id": "pgd-field-pgd-handoff",
+      "from": "pgd-field",
+      "to": "pgd-handoff",
+      "label": "handoff",
+      "variant": "default"
+    },
+    {
+      "id": "pgd-handoff-pgd-lab",
+      "from": "pgd-handoff",
+      "to": "pgd-lab",
+      "label": "PYC PTN",
+      "variant": "default"
+    },
+    {
+      "id": "pgd-lab-pgd-kqtn",
+      "from": "pgd-lab",
+      "to": "pgd-kqtn",
+      "label": "KQTN",
+      "variant": "default"
+    },
+    {
+      "id": "pgd-kqtn-pgd-approve",
+      "from": "pgd-kqtn",
+      "to": "pgd-approve",
+      "label": "duyệt 1→2",
+      "variant": "default"
+    },
+    {
+      "id": "pgd-approve-pgd-release",
+      "from": "pgd-approve",
+      "to": "pgd-release",
+      "label": "SIGNED / ZIP",
+      "variant": "default"
+    },
+    {
+      "id": "shell-api",
+      "from": "shell",
+      "to": "api",
+      "label": "route action",
+      "variant": "security"
+    },
+    {
+      "id": "api-db",
+      "from": "api",
+      "to": "db",
+      "label": "server persistence",
+      "variant": "security"
+    },
+    {
+      "id": "db-files",
+      "from": "db",
+      "to": "files",
+      "label": "metadata pointer"
+    },
+    {
+      "id": "api-audit",
+      "from": "api",
+      "to": "audit",
+      "label": "mutation events",
+      "variant": "dashed"
+    },
+    {
+      "id": "api-ai",
+      "from": "api",
+      "to": "ai",
+      "label": "optional assistance",
+      "variant": "dashed"
+    }
+  ]
+}

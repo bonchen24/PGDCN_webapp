@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "0a2d6bf3-56cc-4aca-947f-8826e6e90476",
+  "status": "current",
+  "command": "deliver",
+  "type": "sequence",
+  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\18-sequence-pgd-pyc-kqtn.candidate.json",
+  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\18-sequence-pgd-pyc-kqtn.html",
+  "specification": {
+    "sha256": "79bcedf8eff7d2750f99d9c77af4c7559db11fed58cfb043c082b3de10be01aa",
+    "bytes": 3412
+  },
+  "artifact": {
+    "sha256": "f5bf111eb8c09f18e1bf7e6c592d4103bb7f78139e8330cd7635d600108ab0ba",
+    "bytes": 825399
+  }
+}

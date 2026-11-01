@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "diagram_type": "erd",
+  "meta": {
+    "title": "12 · ERD vật lý đã xác minh",
+    "subtitle": "SQL chỉ định nghĩa app_documents và file_assets. Các collection nghiệp vụ nằm trong JSONB; không có FK khai báo giữa hai bảng.",
+    "output": "docs/archify/pgdcn-full-system-20261101/12-data-model-erd.html",
+    "quality_profile": "standard",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [
+      60,
+      60
+    ],
+    "entityW": 360,
+    "headerH": 36,
+    "rowH": 28,
+    "gapX": 90,
+    "gapY": 80
+  },
+  "entities": [
+    {
+      "id": "app_documents",
+      "label": "app_documents",
+      "sublabel": "Collection/document JSONB store",
+      "tag": "Physical table",
+      "row": 0,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "collection_name",
+          "type": "VARCHAR(100)",
+          "key": [
+            "pk"
+          ]
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT",
+          "key": [
+            "pk"
+          ]
+        },
+        {
+          "name": "data",
+          "type": "JSONB"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMPTZ"
+        }
+      ],
+      "sources": [
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 5,
+          "end_line": 10
+        }
+      ]
+    },
+    {
+      "id": "file_assets",
+      "label": "file_assets",
+      "sublabel": "Pointer metadata; bytes in private storage",
+      "tag": "Physical table",
+      "row": 0,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "VARCHAR(100)",
+          "key": [
+            "pk"
+          ]
+        },
+        {
+          "name": "bucket_name",
+          "type": "VARCHAR(100)",
+          "key": [
+            "uk"
+          ]
+        },
+        {
+          "name": "object_path",
+          "type": "TEXT",
+          "key": [
+            "uk"
+          ]
+        },
+        {
+          "name": "source_collection",
+          "type": "VARCHAR(100)"
+        },
+        {
+          "name": "source_document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "source_json_path",
+          "type": "TEXT"
+        },
+        {
+          "name": "mime_type",
+          "type": "VARCHAR(255)"
+        },
+        {
+          "name": "byte_size",
+          "type": "BIGINT"
+        },
+        {
+          "name": "sha256",
+          "type": "CHAR(64)"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMPTZ"
+        }
+      ],
+      "sources": [
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 115,
+          "end_line": 131
+        }
+      ]
+    }
+  ],
+  "relationships": []
+}

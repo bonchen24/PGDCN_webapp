@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "07 · PGD evidence, duyệt và package",
+    "subtitle": "Approval checks manifest completeness, stores its snapshot/hash, then two-step approval signs. ZIP package download is not a delivery confirmation.",
+    "output": "docs/archify/pgdcn-full-system-20261101/07-pgd-evidence-approval-package.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [
+      72,
+      72
+    ],
+    "cols": 3,
+    "cellW": 220,
+    "cellH": 92,
+    "gapX": 56,
+    "gapY": 90
+  },
+  "components": [
+    {
+      "id": "checklist",
+      "type": "backend",
+      "label": "PGD checklist",
+      "sublabel": "Required task evidence",
+      "row": 0,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pgdWorkflow.ts",
+          "line": 148,
+          "end_line": 199
+        }
+      ]
+    },
+    {
+      "id": "documents",
+      "type": "backend",
+      "label": "Dossier documents",
+      "sublabel": "Private asset + versioned metadata",
+      "row": 0,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/requests/[requestId]/dossier-documents/route.ts",
+          "line": 148,
+          "end_line": 239
+        }
+      ]
+    },
+    {
+      "id": "manifest",
+      "type": "backend",
+      "label": "Package manifest",
+      "sublabel": "Missing checklist / private file gates",
+      "row": 0,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/approvals/route.ts",
+          "line": 69,
+          "end_line": 87
+        }
+      ]
+    },
+    {
+      "id": "step1",
+      "type": "backend",
+      "label": "Technical approval · 1",
+      "sublabel": "Role step in approval chain",
+      "row": 1,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/approvals/route.ts",
+          "line": 31,
+          "end_line": 106
+        },
+        {
+          "path": "utils/pgdDomain.ts",
+          "line": 1133,
+          "end_line": 1136
+        }
+      ]
+    },
+    {
+      "id": "step2",
+      "type": "backend",
+      "label": "Leadership approval · 2",
+      "sublabel": "Second step before SIGNED",
+      "row": 1,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/approvals/route.ts",
+          "line": 106,
+          "end_line": 150
+        }
+      ]
+    },
+    {
+      "id": "signed",
+      "type": "backend",
+      "label": "SIGNED",
+      "sublabel": "Certificate status + signer timestamp",
+      "row": 1,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/approvals/route.ts",
+          "line": 117,
+          "end_line": 130
+        }
+      ]
+    },
+    {
+      "id": "zip",
+      "type": "backend",
+      "label": "Package ZIP",
+      "sublabel": "Manifest + verified private assets",
+      "row": 3,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/requests/[requestId]/package/route.ts",
+          "line": 110,
+          "end_line": 184
+        }
+      ]
+    },
+    {
+      "id": "returned",
+      "type": "backend",
+      "label": "RESULT_RETURNED",
+      "sublabel": "Status transition; direct handover action unverified",
+      "row": 3,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pgdWorkflow.ts",
+          "line": 67,
+          "end_line": 76
+        },
+        {
+          "path": "utils/pgdDomain.ts",
+          "line": 1475,
+          "end_line": 1521
+        }
+      ]
+    },
+    {
+      "id": "archived",
+      "type": "backend",
+      "label": "ARCHIVED",
+      "sublabel": "PGD status; edits locked",
+      "row": 3,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pgdWorkflow.ts",
+          "line": 67,
+          "end_line": 76
+        },
+        {
+          "path": "utils/pgdDomain.ts",
+          "line": 1694,
+          "end_line": 1694
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "checklist-docs",
+      "from": "checklist",
+      "to": "documents",
+      "label": "gather"
+    },
+    {
+      "id": "docs-manifest",
+      "from": "documents",
+      "to": "manifest",
+      "label": "verify assets"
+    },
+    {
+      "id": "manifest-step1",
+      "from": "manifest",
+      "to": "step1",
+      "label": "complete"
+    },
+    {
+      "id": "step1-step2",
+      "from": "step1",
+      "to": "step2",
+      "label": "approve"
+    },
+    {
+      "id": "step2-signed",
+      "from": "step2",
+      "to": "signed",
+      "label": "sign"
+    },
+    {
+      "id": "signed-zip",
+      "from": "signed",
+      "to": "zip",
+      "label": "package export"
+    },
+    {
+      "id": "returned-archived",
+      "from": "returned",
+      "to": "archived",
+      "label": "terminal transition"
+    }
+  ]
+}

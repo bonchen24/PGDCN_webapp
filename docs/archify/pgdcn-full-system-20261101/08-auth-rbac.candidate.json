@@ -1,0 +1,277 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "08 · Authentication, scopes và RBAC",
+    "subtitle": "Menu visibility is a navigation gate; server routes independently check identity, role, ownership and department scope.",
+    "output": "docs/archify/pgdcn-full-system-20261101/08-auth-rbac.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [
+      72,
+      72
+    ],
+    "cols": 3,
+    "cellW": 220,
+    "cellH": 92,
+    "gapX": 56,
+    "gapY": 90
+  },
+  "components": [
+    {
+      "id": "login",
+      "type": "backend",
+      "label": "Login / session",
+      "sublabel": "PCN session entry",
+      "tag": "Identity",
+      "row": 0,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/auth/pcn-session/route.ts",
+          "line": 1,
+          "end_line": 1
+        },
+        {
+          "path": "lib/server/auth.ts",
+          "line": 1,
+          "end_line": 1
+        }
+      ]
+    },
+    {
+      "id": "user",
+      "type": "backend",
+      "label": "User + department scopes",
+      "sublabel": "PCN / PGD context",
+      "tag": "Identity",
+      "row": 0,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pgdcnNavigation.ts",
+          "line": 16,
+          "end_line": 41
+        },
+        {
+          "path": "lib/server/auth.ts",
+          "line": 1,
+          "end_line": 1
+        }
+      ]
+    },
+    {
+      "id": "visible-nav",
+      "type": "backend",
+      "label": "Visible navigation",
+      "sublabel": "5 shared + scoped PCN / PGD + admin",
+      "tag": "Client gate",
+      "row": 0,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pgdcnNavigation.ts",
+          "line": 61,
+          "end_line": 83
+        },
+        {
+          "path": "components/PgdcnSidebar.tsx",
+          "line": 194,
+          "end_line": 240
+        }
+      ]
+    },
+    {
+      "id": "manager",
+      "type": "backend",
+      "label": "Manager roles",
+      "sublabel": "PCN manager / PGD admin or manager",
+      "tag": "Role",
+      "row": 1,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnRbac.ts",
+          "line": 1,
+          "end_line": 120
+        },
+        {
+          "path": "utils/pgdcnNavigation.ts",
+          "line": 61,
+          "end_line": 77
+        }
+      ]
+    },
+    {
+      "id": "staff",
+      "type": "backend",
+      "label": "Staff / owner",
+      "sublabel": "Assignment and self-claim checks",
+      "tag": "Role",
+      "row": 1,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnDossierAssignment.ts",
+          "line": 74,
+          "end_line": 95
+        },
+        {
+          "path": "utils/pcnDossierStepAccess.ts",
+          "line": 50,
+          "end_line": 88
+        }
+      ]
+    },
+    {
+      "id": "viewer",
+      "type": "backend",
+      "label": "Read-only / viewer",
+      "sublabel": "Only where route/UI contract exposes it",
+      "tag": "Role",
+      "row": 1,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnRbac.ts",
+          "line": 1,
+          "end_line": 120
+        }
+      ]
+    },
+    {
+      "id": "route",
+      "type": "backend",
+      "label": "Server route guard",
+      "sublabel": "Authn + scope + role checks",
+      "tag": "Server boundary",
+      "row": 3,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/dossiers/[dossierId]/route.ts",
+          "line": 217,
+          "end_line": 310
+        },
+        {
+          "path": "app/api/pgd/approvals/route.ts",
+          "line": 31,
+          "end_line": 67
+        }
+      ]
+    },
+    {
+      "id": "owner",
+      "type": "backend",
+      "label": "Owner / workflow access",
+      "sublabel": "Step and dossier scope gates",
+      "tag": "Authorization",
+      "row": 3,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnDossierStepAccess.ts",
+          "line": 50,
+          "end_line": 88
+        },
+        {
+          "path": "utils/pgdWorkflow.ts",
+          "line": 148,
+          "end_line": 199
+        }
+      ]
+    },
+    {
+      "id": "denied",
+      "type": "backend",
+      "label": "Unauthorized / disabled",
+      "sublabel": "UI-hidden does not replace API denial",
+      "tag": "Failure state",
+      "row": 3,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/dossiers/[dossierId]/route.ts",
+          "line": 283,
+          "end_line": 310
+        },
+        {
+          "path": "utils/pgdcnNavigation.ts",
+          "line": 61,
+          "end_line": 83
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "login-user",
+      "from": "login",
+      "to": "user",
+      "label": "session"
+    },
+    {
+      "id": "user-nav",
+      "from": "user",
+      "to": "visible-nav",
+      "label": "scope-aware"
+    },
+    {
+      "id": "route-owner",
+      "from": "route",
+      "to": "owner",
+      "label": "authorize"
+    },
+    {
+      "id": "owner-denied",
+      "from": "owner",
+      "to": "denied",
+      "label": "deny when gate fails",
+      "variant": "dashed"
+    }
+  ]
+}

@@ -1,0 +1,683 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "SƠ ĐỒ VẬN HÀNH HỆ THỐNG",
+    "subtitle": "Sơ đồ điều hành theo lane vai trò, PCN/PGD handoff, mẫu–PTN–KQTN, DOCX/checklist, AI/OCR, review/ký, phát hành/audit/dữ liệu; 13 đích menu được liệt kê theo scope trong bốn card điều hướng.",
+    "output": "docs/archify/pgdcn-full-system-20261101/00-system-operation.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    }
+  },
+  "lanes": [
+    {
+      "id": "client_lab",
+      "label": "Khách hàng & PTN ngoài"
+    },
+    {
+      "id": "pcn_ops",
+      "label": "Khối Chứng nhận (PCN)"
+    },
+    {
+      "id": "pgd_ops",
+      "label": "Khối Giám định (PGD)"
+    },
+    {
+      "id": "admin_mgmt",
+      "label": "Quản lý & Quản trị"
+    },
+    {
+      "id": "platform_data",
+      "label": "API, AI & Dữ liệu"
+    }
+  ],
+  "phases": [
+    {
+      "id": "phase_intake",
+      "label": "1 · Tiếp nhận & phân quyền",
+      "fromCol": 0,
+      "toCol": 0
+    },
+    {
+      "id": "phase_case",
+      "label": "2 · Proposal / PYC & hồ sơ",
+      "fromCol": 1,
+      "toCol": 1,
+      "variant": "emphasis"
+    },
+    {
+      "id": "phase_evidence",
+      "label": "3 · Thực hiện & bằng chứng",
+      "fromCol": 2,
+      "toCol": 2
+    },
+    {
+      "id": "phase_release",
+      "label": "4 · Review / ký / lưu",
+      "fromCol": 3,
+      "toCol": 3,
+      "variant": "security"
+    }
+  ],
+  "mainPath": [
+    "client_intake",
+    "pcn_proposal",
+    "pcn_dossier",
+    "sample_lab_pcn",
+    "pcn_drafting",
+    "mgmt_signature",
+    "pcn_issue_archive",
+    "client_receipt"
+  ],
+  "nodes": [
+    {
+      "id": "client_intake",
+      "lane": "client_lab",
+      "col": 0,
+      "type": "external",
+      "label": "Gửi yêu cầu",
+      "tag": "Khách hàng",
+      "sources": [
+        {
+          "path": "utils/pgdcnNavigation.ts",
+          "line": 16,
+          "end_line": 34
+        }
+      ]
+    },
+    {
+      "id": "nav_shared",
+      "lane": "admin_mgmt",
+      "col": 0,
+      "type": "frontend",
+      "label": "01 Tổng quan · 02 Khách",
+      "tag": "Menu 01, 02 · Ref 14",
+      "sources": [
+        {
+          "path": "utils/pgdcnNavigation.ts",
+          "line": 16,
+          "end_line": 22
+        },
+        {
+          "path": "components/PgdcnDashboardView.tsx",
+          "line": 14,
+          "end_line": 30
+        }
+      ]
+    },
+    {
+      "id": "rbac_session",
+      "lane": "platform_data",
+      "col": 0,
+      "type": "security",
+      "label": "HttpOnly & RBAC",
+      "tag": "Bảo mật · Ref 08",
+      "sources": [
+        {
+          "path": "design.md",
+          "line": 80,
+          "end_line": 81
+        },
+        {
+          "path": "utils/pcnRbac.ts",
+          "line": 75,
+          "end_line": 83
+        }
+      ]
+    },
+    {
+      "id": "pcn_proposal",
+      "lane": "pcn_ops",
+      "col": 1,
+      "type": "frontend",
+      "label": "06 · Đề nghị PCN",
+      "tag": "Menu 06 · Ref 02, 16",
+      "sources": [
+        {
+          "path": "utils/pgdcnNavigation.ts",
+          "line": 24,
+          "end_line": 28
+        },
+        {
+          "path": "design.md",
+          "line": 90,
+          "end_line": 92
+        }
+      ],
+      "yOffset": -50
+    },
+    {
+      "id": "pgd_request",
+      "lane": "pgd_ops",
+      "col": 1,
+      "type": "frontend",
+      "label": "09 · Yêu cầu PGD",
+      "tag": "Menu 09 · Ref 04, 18",
+      "sources": [
+        {
+          "path": "utils/pgdcnNavigation.ts",
+          "line": 30,
+          "end_line": 34
+        },
+        {
+          "path": "design.md",
+          "line": 374,
+          "end_line": 379
+        }
+      ],
+      "yOffset": -50
+    },
+    {
+      "id": "admin_assign",
+      "lane": "admin_mgmt",
+      "col": 1,
+      "type": "security",
+      "label": "12 Mẫu · 13 Cài đặt",
+      "tag": "Menu 12, 13 · Ref 08",
+      "sources": [
+        {
+          "path": "utils/pgdcnNavigation.ts",
+          "line": 61,
+          "end_line": 83
+        },
+        {
+          "path": "utils/pcnRbac.ts",
+          "line": 58,
+          "end_line": 83
+        }
+      ]
+    },
+    {
+      "id": "pcn_dossier",
+      "lane": "pcn_ops",
+      "col": 1,
+      "type": "backend",
+      "label": "07 · Sổ dữ liệu PCN",
+      "tag": "Menu 07 · Ref 03, 16",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 141,
+          "end_line": 156
+        },
+        {
+          "path": "design.md",
+          "line": 90,
+          "end_line": 91
+        }
+      ],
+      "yOffset": 50
+    },
+    {
+      "id": "pgd_plan",
+      "lane": "pgd_ops",
+      "col": 1,
+      "type": "backend",
+      "label": "10 · Sổ dữ liệu PGD",
+      "tag": "Menu 10 · Ref 04, 07",
+      "sources": [
+        {
+          "path": "utils/pgdDomain.ts",
+          "line": 24,
+          "end_line": 31
+        },
+        {
+          "path": "design.md",
+          "line": 370,
+          "end_line": 373
+        }
+      ],
+      "yOffset": 50
+    },
+    {
+      "id": "db_dossier",
+      "lane": "platform_data",
+      "col": 1,
+      "type": "database",
+      "label": "Lưu trữ app_documents",
+      "tag": "Dữ liệu · Ref 11, 12",
+      "sources": [
+        {
+          "path": "design.md",
+          "line": 84,
+          "end_line": 88
+        },
+        {
+          "path": "utils/pgdDomain.ts",
+          "line": 7,
+          "end_line": 31
+        }
+      ]
+    },
+    {
+      "id": "ext_lab_handoff",
+      "lane": "client_lab",
+      "col": 2,
+      "type": "external",
+      "label": "Bàn giao PTN ngoài",
+      "tag": "PTN ngoài · Ref 06, 18",
+      "sources": [
+        {
+          "path": "templates/pcn/manifest.json",
+          "line": 13,
+          "end_line": 14
+        },
+        {
+          "path": "utils/pgdDomain.ts",
+          "line": 372,
+          "end_line": 373
+        }
+      ],
+      "yOffset": -50
+    },
+    {
+      "id": "sample_lab_pcn",
+      "lane": "pcn_ops",
+      "col": 2,
+      "type": "backend",
+      "label": "08 · Sổ mẫu / PYC PCN",
+      "tag": "Menu 08 · Ref 06",
+      "sources": [
+        {
+          "path": "utils/pcnDossierDocuments.ts",
+          "line": 50,
+          "end_line": 52
+        },
+        {
+          "path": "templates/pcn/manifest.json",
+          "line": 11,
+          "end_line": 14
+        }
+      ],
+      "yOffset": 50
+    },
+    {
+      "id": "field_sample_pgd",
+      "lane": "pgd_ops",
+      "col": 2,
+      "type": "backend",
+      "label": "Hiện trường & lấy mẫu",
+      "tag": "BM-04/05 · Ref 04",
+      "sources": [
+        {
+          "path": "utils/pgdWorkflow.ts",
+          "line": 49,
+          "end_line": 54
+        },
+        {
+          "path": "design.md",
+          "line": 380,
+          "end_line": 381
+        }
+      ],
+      "yOffset": 50
+    },
+    {
+      "id": "pgd_sample_ledger",
+      "lane": "platform_data",
+      "col": 2,
+      "type": "database",
+      "label": "11 · Sổ mẫu PGD",
+      "tag": "Menu 11 · Ref 04",
+      "sources": [
+        {
+          "path": "utils/pgdDomain.ts",
+          "line": 139,
+          "end_line": 140
+        },
+        {
+          "path": "design.md",
+          "line": 381,
+          "end_line": 381
+        }
+      ],
+      "yOffset": -50
+    },
+    {
+      "id": "ext_lab_result",
+      "lane": "client_lab",
+      "col": 2,
+      "type": "external",
+      "label": "KQTN phòng thử nghiệm",
+      "tag": "File ngoài · Ref 06",
+      "sources": [
+        {
+          "path": "templates/pcn/manifest.json",
+          "line": 15,
+          "end_line": 15
+        },
+        {
+          "path": "design.md",
+          "line": 385,
+          "end_line": 385
+        }
+      ],
+      "yOffset": 50
+    },
+    {
+      "id": "pcn_drafting",
+      "lane": "pcn_ops",
+      "col": 2,
+      "type": "backend",
+      "label": "05 · Soạn thảo văn bản",
+      "tag": "Menu 05 · Ref 05, 17",
+      "sources": [
+        {
+          "path": "utils/pgdcnNavigation.ts",
+          "line": 43,
+          "end_line": 46
+        },
+        {
+          "path": "templates/pcn/manifest.json",
+          "line": 16,
+          "end_line": 17
+        }
+      ],
+      "yOffset": -50
+    },
+    {
+      "id": "pgd_review_kqtn",
+      "lane": "pgd_ops",
+      "col": 2,
+      "type": "backend",
+      "label": "Xem xét KQTN & Dự thảo",
+      "tag": "BM-13, 07 · Ref 07",
+      "sources": [
+        {
+          "path": "utils/pgdWorkflow.ts",
+          "line": 56,
+          "end_line": 61
+        },
+        {
+          "path": "design.md",
+          "line": 388,
+          "end_line": 393
+        }
+      ],
+      "yOffset": -50
+    },
+    {
+      "id": "mgmt_signature",
+      "lane": "admin_mgmt",
+      "col": 3,
+      "type": "security",
+      "label": "Lãnh đạo duyệt & Ký số",
+      "tag": "Phê duyệt · Ref 07, 19",
+      "sources": [
+        {
+          "path": "utils/pcnRbac.ts",
+          "line": 46,
+          "end_line": 63
+        },
+        {
+          "path": "design.md",
+          "line": 97,
+          "end_line": 97
+        }
+      ],
+      "yOffset": -50
+    },
+    {
+      "id": "ai_ocr_assist",
+      "lane": "platform_data",
+      "col": 2,
+      "type": "messagebus",
+      "label": "03 Trợ lý AI · Kho tệp",
+      "tag": "Menu 03 · Ref 09, 15",
+      "sources": [
+        {
+          "path": "utils/pgdcnNavigation.ts",
+          "line": 16,
+          "end_line": 41
+        },
+        {
+          "path": "design.md",
+          "line": 480,
+          "end_line": 485
+        }
+      ],
+      "yOffset": 50
+    },
+    {
+      "id": "client_receipt",
+      "lane": "client_lab",
+      "col": 3,
+      "type": "external",
+      "label": "Nhận kết quả chính thức",
+      "tag": "Khách hàng",
+      "sources": [
+        {
+          "path": "design.md",
+          "line": 95,
+          "end_line": 95
+        },
+        {
+          "path": "design.md",
+          "line": 376,
+          "end_line": 376
+        }
+      ]
+    },
+    {
+      "id": "pcn_issue_archive",
+      "lane": "pcn_ops",
+      "col": 3,
+      "type": "backend",
+      "label": "Phát hành & Lưu PCN",
+      "tag": "Hậu duyệt PCN · Ref 19",
+      "sources": [
+        {
+          "path": "utils/pcnDossierDocuments.ts",
+          "line": 55,
+          "end_line": 58
+        },
+        {
+          "path": "design.md",
+          "line": 95,
+          "end_line": 95
+        }
+      ]
+    },
+    {
+      "id": "pgd_issue_archive",
+      "lane": "pgd_ops",
+      "col": 3,
+      "type": "backend",
+      "label": "Trả kết quả & Lưu PGD",
+      "tag": "Hậu duyệt PGD · Ref 04",
+      "sources": [
+        {
+          "path": "utils/pgdWorkflow.ts",
+          "line": 67,
+          "end_line": 76
+        },
+        {
+          "path": "design.md",
+          "line": 376,
+          "end_line": 376
+        }
+      ]
+    },
+    {
+      "id": "audit_journal",
+      "lane": "platform_data",
+      "col": 3,
+      "type": "database",
+      "label": "04 · Nhật ký hệ thống",
+      "tag": "Menu 04 · Ref 13",
+      "sources": [
+        {
+          "path": "utils/pgdcnNavigation.ts",
+          "line": 16,
+          "end_line": 41
+        },
+        {
+          "path": "design.md",
+          "line": 480,
+          "end_line": 480
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_client_pcn",
+      "from": "client_intake",
+      "to": "pcn_proposal",
+      "label": "Đề nghị PCN",
+      "role": "main"
+    },
+    {
+      "id": "e_client_pgd",
+      "from": "client_intake",
+      "to": "pgd_request",
+      "label": "Yêu cầu PGD",
+      "role": "branch"
+    },
+    {
+      "id": "e_auth_assign",
+      "from": "rbac_session",
+      "to": "admin_assign",
+      "variant": "security"
+    },
+    {
+      "id": "e_pcn_init",
+      "from": "pcn_proposal",
+      "to": "pcn_dossier",
+      "label": "Tạo hồ sơ",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e_pgd_init",
+      "from": "pgd_request",
+      "to": "pgd_plan",
+      "label": "Lập kế hoạch",
+      "role": "branch",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e_pcn_sampling",
+      "from": "pcn_dossier",
+      "to": "sample_lab_pcn",
+      "label": "Lấy mẫu & mã hóa",
+      "role": "main"
+    },
+    {
+      "id": "e_pgd_sampling",
+      "from": "pgd_plan",
+      "to": "field_sample_pgd",
+      "label": "Hiện trường & niêm phong",
+      "role": "branch"
+    },
+    {
+      "id": "e_pcn_draft",
+      "from": "sample_lab_pcn",
+      "to": "pcn_drafting",
+      "label": "Soạn báo cáo đánh giá",
+      "role": "main"
+    },
+    {
+      "id": "e_pgd_draft",
+      "from": "field_sample_pgd",
+      "to": "pgd_review_kqtn",
+      "label": "Xem xét & dự thảo",
+      "role": "branch"
+    },
+    {
+      "id": "e_lab_handoff_pcn",
+      "from": "sample_lab_pcn",
+      "to": "ext_lab_handoff",
+      "label": "Giao PTN",
+      "variant": "dashed"
+    },
+    {
+      "id": "e_lab_process",
+      "from": "ext_lab_handoff",
+      "to": "ext_lab_result",
+      "label": "Thử nghiệm",
+      "variant": "default"
+    },
+    {
+      "id": "e_lab_result_pcn",
+      "from": "ext_lab_result",
+      "to": "pcn_drafting",
+      "label": "KQTN bổ sung",
+      "variant": "dashed"
+    },
+    {
+      "id": "e_pcn_sign_lead",
+      "from": "pcn_drafting",
+      "to": "mgmt_signature",
+      "label": "Trình ký GCN",
+      "variant": "security"
+    },
+    {
+      "id": "e_pgd_issue",
+      "from": "pgd_review_kqtn",
+      "to": "pgd_issue_archive",
+      "label": "Cấp số chứng thư",
+      "role": "branch",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e_pcn_deliver",
+      "from": "pcn_issue_archive",
+      "to": "client_receipt",
+      "label": "Giao GCN bản gốc",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e_signature_issue",
+      "from": "mgmt_signature",
+      "to": "pcn_issue_archive",
+      "label": "Duyệt xong mới issue",
+      "variant": "emphasis",
+      "role": "main"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "01–05 · Dùng chung",
+      "items": [
+        "Tổng quan · /pgdcn",
+        "Khách hàng · /pgdcn?section=customers",
+        "Trợ lý AI · /pgdcn?section=assistant",
+        "Nhật ký hệ thống · /pgdcn?section=activityLogs",
+        "Soạn thảo văn bản · /pgdcn/drafting"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "06–08 · Chứng nhận PCN",
+      "items": [
+        "Chứng nhận · /pgdcn/pcn?section=proposals",
+        "Sổ dữ liệu PCN · /pgdcn/pcn?section=operations",
+        "Sổ quản lý mẫu PCN · /pgdcn/pcn?section=lab-operations"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "09–11 · Giám định PGD",
+      "items": [
+        "Giám định · /pgdcn/pgd?section=requests",
+        "Sổ dữ liệu PGD · /pgdcn/pgd?section=operations",
+        "Sổ quản lý mẫu PGD · /pgdcn/pgd?section=sample-operations"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "12–13 · Quản trị theo quyền",
+      "items": [
+        "Hồ sơ mẫu · /pgdcn?section=dossier-templates",
+        "Cài đặt hệ thống · /pgdcn?section=system-settings"
+      ]
+    }
+  ]
+}

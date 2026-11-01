@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "3678b27b-0728-4023-961e-381cbcba76b9",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\06-samples-and-lab.candidate.json",
+  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\06-samples-and-lab.html",
+  "specification": {
+    "sha256": "5ed853844c075a0450a8257edc3fc435a4b9e3e3829ee5a507a9324fb9c6eebb",
+    "bytes": 7169
+  },
+  "artifact": {
+    "sha256": "6bd8720ec3838126d43b50ccea4bced1acf4851155269301cf38182db67a1102",
+    "bytes": 843248
+  }
+}

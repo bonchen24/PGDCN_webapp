@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "17 · Sequence API: upload và attach DOCX",
+    "subtitle": "Upload file và attach generated output là hai thao tác khác nhau; version/current pointer được kiểm soát phía server.",
+    "output": "docs/archify/pgdcn-full-system-20261101/17-sequence-document-upload-attach.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    },
+    "column_fit": "spread"
+  },
+  "participants": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "Người xử lý hồ sơ",
+      "sources": [
+        {
+          "path": "components/PcnDraftingWorkspaceView.tsx",
+          "line": 835,
+          "end_line": 856
+        }
+      ]
+    },
+    {
+      "id": "ui",
+      "type": "frontend",
+      "label": "PCN Dossier UI",
+      "sources": [
+        {
+          "path": "components/PcnDraftingWorkspaceView.tsx",
+          "line": 835,
+          "end_line": 856
+        }
+      ]
+    },
+    {
+      "id": "docs-api",
+      "type": "backend",
+      "label": "PCN docs API",
+      "sources": [
+        {
+          "path": "app/api/pcn/dossiers/[dossierId]/documents/route.ts",
+          "line": 131,
+          "end_line": 203
+        },
+        {
+          "path": "app/api/pcn/dossiers/[dossierId]/documents/confirm-generated/route.ts",
+          "line": 1,
+          "end_line": 1
+        }
+      ]
+    },
+    {
+      "id": "draft-api",
+      "type": "backend",
+      "label": "PCN draft generator",
+      "sources": [
+        {
+          "path": "app/api/pcn/drafts/[draftId]/generate/route.ts",
+          "line": 1,
+          "end_line": 1
+        },
+        {
+          "path": "app/api/pcn/dossiers/[dossierId]/documents/confirm-draft-output/route.ts",
+          "line": 1,
+          "end_line": 1
+        }
+      ]
+    },
+    {
+      "id": "storage",
+      "type": "cloud",
+      "label": "Private file storage",
+      "sources": [
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 115,
+          "end_line": 131
+        }
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "PostgreSQL DB",
+      "sources": [
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 5,
+          "end_line": 10
+        },
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 115,
+          "end_line": 131
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "from": "user",
+      "to": "ui",
+      "y": 160,
+      "label": "Choose upload requirement"
+    },
+    {
+      "from": "ui",
+      "to": "docs-api",
+      "y": 205,
+      "label": "Upload file to requirement"
+    },
+    {
+      "from": "docs-api",
+      "to": "storage",
+      "y": 250,
+      "label": "Verify and store private bytes"
+    },
+    {
+      "from": "docs-api",
+      "to": "db",
+      "y": 295,
+      "label": "Append version; update current pointer"
+    },
+    {
+      "from": "db",
+      "to": "ui",
+      "y": 340,
+      "label": "Return version result"
+    },
+    {
+      "from": "user",
+      "to": "draft-api",
+      "y": 400,
+      "label": "Generate DOCX draft"
+    },
+    {
+      "from": "draft-api",
+      "to": "storage",
+      "y": 445,
+      "label": "Store generated output asset"
+    },
+    {
+      "from": "draft-api",
+      "to": "ui",
+      "y": 490,
+      "label": "Return GENERATED output"
+    },
+    {
+      "from": "user",
+      "to": "docs-api",
+      "y": 545,
+      "label": "Confirm selected generated output"
+    },
+    {
+      "from": "docs-api",
+      "to": "db",
+      "y": 590,
+      "label": "Attach confirmed version to dossier",
+      "variant": "security"
+    },
+    {
+      "from": "db",
+      "to": "ui",
+      "y": 635,
+      "label": "Return ATTACHED state"
+    }
+  ]
+}

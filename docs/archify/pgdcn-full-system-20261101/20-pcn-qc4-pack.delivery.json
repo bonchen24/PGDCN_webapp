@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "dc7440c9-2003-4da9-93e3-d81a8b9e02bb",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\20-pcn-qc4-pack.workflow.json",
+  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\20-pcn-qc4-pack.html",
+  "specification": {
+    "sha256": "0ee248f386cd07628f3422f1e9d2eb58fc360882be87b7eedeec366a6153a0a9",
+    "bytes": 6255
+  },
+  "artifact": {
+    "sha256": "48cb41535174cb4224c08a837e6a5d3842822ee76a1f5c593971160a83a5fa93",
+    "bytes": 841389
+  }
+}

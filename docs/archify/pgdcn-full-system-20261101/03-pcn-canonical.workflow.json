@@ -1,0 +1,446 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "SƠ ĐỒ CHI TIẾT LUỒNG HỒ SƠ CHỨNG NHẬN (PCN)",
+    "subtitle": "Meta-workflow: proposal → đúng một dossier/checklist → PUBLISHED workflow + snapshot → node/branch/join riêng từng template → review/ký/phát hành. Live workflow records chưa xác minh.",
+    "output": "docs/archify/pgdcn-full-system-20261101/03-pcn-canonical.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    }
+  },
+  "lanes": [
+    {
+      "id": "requester",
+      "label": "Khách hàng / tiếp nhận"
+    },
+    {
+      "id": "operator",
+      "label": "Chuyên viên PCN"
+    },
+    {
+      "id": "reviewer",
+      "label": "Soát xét kỹ thuật"
+    },
+    {
+      "id": "leadership",
+      "label": "Lãnh đạo / người ký"
+    },
+    {
+      "id": "platform",
+      "label": "API · snapshot · checklist"
+    },
+    {
+      "id": "external_lab",
+      "label": "PTN ngoài"
+    },
+    {
+      "id": "document_control",
+      "label": "Chuyên viên hồ sơ / checklist"
+    }
+  ],
+  "phases": [
+    {
+      "id": "pcn_flow",
+      "label": "Meta-workflow · topology theo snapshot",
+      "fromCol": 0,
+      "toCol": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "pcn_proposal",
+      "lane": "requester",
+      "col": 0,
+      "type": "frontend",
+      "label": "Tạo CertificationProposal",
+      "sublabel": "Proposal · fieldCode/method",
+      "sources": [
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 130,
+          "end_line": 194
+        }
+      ],
+      "tag": "PCN",
+      "width": 173
+    },
+    {
+      "id": "pcn_review",
+      "lane": "operator",
+      "col": 1,
+      "type": "frontend",
+      "label": "Rà soát proposal",
+      "sublabel": "Khách hàng · sản phẩm · scope",
+      "sources": [
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 130,
+          "end_line": 194
+        }
+      ],
+      "tag": "PCN",
+      "width": 168
+    },
+    {
+      "id": "pcn_select",
+      "lane": "platform",
+      "col": 2,
+      "type": "backend",
+      "label": "Tìm workflow PUBLISHED",
+      "sublabel": "Published match · chưa xác minh",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 37,
+          "end_line": 110
+        },
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 129,
+          "end_line": 155
+        }
+      ],
+      "tag": "PCN",
+      "width": 177
+    },
+    {
+      "id": "pcn_dossier",
+      "lane": "operator",
+      "col": 3,
+      "type": "database",
+      "label": "Tạo 1 dossier + checklist",
+      "sublabel": "1 dossier · checklist baseline",
+      "sources": [
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 130,
+          "end_line": 194
+        }
+      ],
+      "tag": "PCN",
+      "width": 173
+    },
+    {
+      "id": "pcn_snapshot",
+      "lane": "platform",
+      "col": 3,
+      "type": "database",
+      "label": "Chụp workflowSnapshot",
+      "sublabel": "Revision · node · transition",
+      "sources": [
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 130,
+          "end_line": 194
+        }
+      ],
+      "tag": "PCN",
+      "width": 165
+    },
+    {
+      "id": "pcn_assign",
+      "lane": "leadership",
+      "col": 4,
+      "type": "frontend",
+      "label": "Phân công / claim",
+      "sublabel": "Assignee · scope PCN",
+      "sources": [
+        {
+          "path": "utils/pcnRbac.ts",
+          "line": 45,
+          "end_line": 85
+        }
+      ],
+      "tag": "PCN",
+      "width": 165
+    },
+    {
+      "id": "pcn_native",
+      "lane": "operator",
+      "col": 4,
+      "type": "frontend",
+      "label": "Chạy native node",
+      "sublabel": "Start · complete · return",
+      "sources": [
+        {
+          "path": "lib/server/workflow-tasks.ts",
+          "line": 32,
+          "end_line": 230
+        }
+      ],
+      "tag": "PCN",
+      "width": 165
+    },
+    {
+      "id": "pcn_join",
+      "lane": "platform",
+      "col": 4,
+      "type": "backend",
+      "label": "Branch / parallel join",
+      "sublabel": "ALL · ANY · QUORUM theo template",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 37,
+          "end_line": 110
+        },
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 129,
+          "end_line": 155
+        }
+      ],
+      "tag": "PCN",
+      "width": 182
+    },
+    {
+      "id": "pcn_documents",
+      "lane": "document_control",
+      "col": 4,
+      "type": "frontend",
+      "label": "Checklist + DOCX / upload",
+      "sublabel": "Internal DOCX · external upload",
+      "sources": [
+        {
+          "path": "utils/pcnDossierDocuments.ts",
+          "line": 24,
+          "end_line": 118
+        },
+        {
+          "path": "app/api/pcn/dossiers/[dossierId]/documents/confirm-generated/route.ts",
+          "line": 1,
+          "end_line": 74
+        },
+        {
+          "path": "app/api/pcn/dossiers/[dossierId]/documents/[requirementId]/waive/route.ts",
+          "line": 1,
+          "end_line": 92
+        }
+      ],
+      "tag": "PCN",
+      "width": 177
+    },
+    {
+      "id": "pcn_lab",
+      "lane": "external_lab",
+      "col": 5,
+      "type": "frontend",
+      "label": "Mẫu / PYC PTN / KQTN",
+      "sublabel": "Chỉ khi scope/method yêu cầu",
+      "sources": [
+        {
+          "path": "utils/pcnDossierDocuments.ts",
+          "line": 24,
+          "end_line": 118
+        }
+      ],
+      "tag": "PCN",
+      "width": 165
+    },
+    {
+      "id": "pcn_technical",
+      "lane": "reviewer",
+      "col": 5,
+      "type": "frontend",
+      "label": "Thẩm tra kỹ thuật",
+      "sublabel": "Reviewer · current versions",
+      "sources": [
+        {
+          "path": "lib/server/workflow-tasks.ts",
+          "line": 32,
+          "end_line": 230
+        }
+      ],
+      "tag": "PCN",
+      "width": 165
+    },
+    {
+      "id": "pcn_approval",
+      "lane": "leadership",
+      "col": 5,
+      "type": "frontend",
+      "label": "Phê duyệt / ký",
+      "sublabel": "Approval chain · signer",
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/approval/[stepId]/route.ts",
+          "line": 80,
+          "end_line": 195
+        },
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/issue/route.ts",
+          "line": 100,
+          "end_line": 168
+        },
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/deliver/route.ts",
+          "line": 70,
+          "end_line": 97
+        }
+      ],
+      "tag": "PCN",
+      "width": 165
+    },
+    {
+      "id": "pcn_release",
+      "lane": "platform",
+      "col": 5,
+      "type": "frontend",
+      "label": "Issue → deliver → archive",
+      "sublabel": "ISSUED · DELIVERED · ARCHIVED",
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/approval/[stepId]/route.ts",
+          "line": 80,
+          "end_line": 195
+        },
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/issue/route.ts",
+          "line": 100,
+          "end_line": 168
+        },
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/deliver/route.ts",
+          "line": 70,
+          "end_line": 97
+        }
+      ],
+      "tag": "PCN",
+      "width": 173
+    }
+  ],
+  "edges": [
+    {
+      "id": "pcn_edge_0",
+      "from": "pcn_proposal",
+      "to": "pcn_review",
+      "label": "Gate hoàn tất",
+      "variant": "default",
+      "role": "main"
+    },
+    {
+      "id": "pcn_edge_1",
+      "from": "pcn_review",
+      "to": "pcn_select",
+      "label": "Gate hoàn tất",
+      "variant": "default",
+      "role": "main"
+    },
+    {
+      "id": "pcn_edge_2",
+      "from": "pcn_select",
+      "to": "pcn_dossier",
+      "label": "Gate hoàn tất",
+      "variant": "default",
+      "role": "main"
+    },
+    {
+      "id": "pcn_edge_3",
+      "from": "pcn_dossier",
+      "to": "pcn_snapshot",
+      "label": "Gate hoàn tất",
+      "variant": "default",
+      "role": "main"
+    },
+    {
+      "id": "pcn_edge_4",
+      "from": "pcn_snapshot",
+      "to": "pcn_assign",
+      "label": "Gate hoàn tất",
+      "variant": "default",
+      "role": "main"
+    },
+    {
+      "id": "pcn_edge_5",
+      "from": "pcn_assign",
+      "to": "pcn_native",
+      "label": "Gate hoàn tất",
+      "variant": "default",
+      "role": "main"
+    },
+    {
+      "id": "pcn_edge_6",
+      "from": "pcn_native",
+      "to": "pcn_join",
+      "label": "Gate hoàn tất",
+      "variant": "default",
+      "role": "main"
+    },
+    {
+      "id": "pcn_edge_7",
+      "from": "pcn_join",
+      "to": "pcn_documents",
+      "label": "Gate hoàn tất",
+      "variant": "default",
+      "role": "main"
+    },
+    {
+      "id": "pcn_edge_8",
+      "from": "pcn_documents",
+      "to": "pcn_lab",
+      "label": "Gate hoàn tất",
+      "variant": "default",
+      "role": "main"
+    },
+    {
+      "id": "pcn_edge_9",
+      "from": "pcn_lab",
+      "to": "pcn_technical",
+      "label": "Gate hoàn tất",
+      "variant": "default",
+      "role": "main"
+    },
+    {
+      "id": "pcn_edge_10",
+      "from": "pcn_technical",
+      "to": "pcn_approval",
+      "label": "Gate hoàn tất",
+      "variant": "default",
+      "role": "main"
+    },
+    {
+      "id": "pcn_edge_11",
+      "from": "pcn_approval",
+      "to": "pcn_release",
+      "label": "Gate hoàn tất",
+      "variant": "default",
+      "role": "main"
+    },
+    {
+      "id": "pcn_sample_branch",
+      "from": "pcn_documents",
+      "to": "pcn_lab",
+      "label": "Khi scope/method yêu cầu PTN",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "pcn_rework",
+      "from": "pcn_technical",
+      "to": "pcn_documents",
+      "label": "Trả bổ sung / rework",
+      "variant": "dashed",
+      "role": "return"
+    }
+  ],
+  "mainPath": [
+    "pcn_proposal",
+    "pcn_review",
+    "pcn_select",
+    "pcn_dossier",
+    "pcn_snapshot",
+    "pcn_assign",
+    "pcn_native",
+    "pcn_join",
+    "pcn_documents",
+    "pcn_lab",
+    "pcn_technical",
+    "pcn_approval",
+    "pcn_release"
+  ]
+}

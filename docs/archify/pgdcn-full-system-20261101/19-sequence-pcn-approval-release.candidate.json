@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "19 · Sequence API: duyệt và cấp phát PCN",
+    "subtitle": "Approval, issue, deliver và archive có endpoint riêng và trạng thái riêng.",
+    "output": "docs/archify/pgdcn-full-system-20261101/19-sequence-pcn-approval-release.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    },
+    "column_fit": "spread"
+  },
+  "participants": [
+    {
+      "id": "approver",
+      "type": "external",
+      "label": "Authorized approver",
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/approval/[stepId]/route.ts",
+          "line": 1,
+          "end_line": 210
+        }
+      ]
+    },
+    {
+      "id": "approval",
+      "type": "backend",
+      "label": "Approval step API",
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/approval/[stepId]/route.ts",
+          "line": 1,
+          "end_line": 210
+        }
+      ]
+    },
+    {
+      "id": "issue",
+      "type": "backend",
+      "label": "Issue API",
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/issue/route.ts",
+          "line": 141,
+          "end_line": 343
+        }
+      ]
+    },
+    {
+      "id": "delivery",
+      "type": "backend",
+      "label": "Delivery API",
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/deliver/route.ts",
+          "line": 21,
+          "end_line": 98
+        }
+      ]
+    },
+    {
+      "id": "archive",
+      "type": "backend",
+      "label": "Archive API",
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/archive/route.ts",
+          "line": 21,
+          "end_line": 98
+        }
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "PCN persisted state",
+      "sources": [
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 5,
+          "end_line": 10
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "from": "approver",
+      "to": "approval",
+      "y": 160,
+      "label": "Submit authorized approval decision",
+      "variant": "security"
+    },
+    {
+      "from": "approval",
+      "to": "db",
+      "y": 205,
+      "label": "Persist step result"
+    },
+    {
+      "from": "db",
+      "to": "approval",
+      "y": 250,
+      "label": "Return approval state"
+    },
+    {
+      "from": "approver",
+      "to": "issue",
+      "y": 305,
+      "label": "Request issue action"
+    },
+    {
+      "from": "issue",
+      "to": "db",
+      "y": 350,
+      "label": "Validate and set ISSUED"
+    },
+    {
+      "from": "approver",
+      "to": "delivery",
+      "y": 405,
+      "label": "Record handover"
+    },
+    {
+      "from": "delivery",
+      "to": "db",
+      "y": 450,
+      "label": "Set DELIVERED"
+    },
+    {
+      "from": "approver",
+      "to": "archive",
+      "y": 505,
+      "label": "Archive dossier"
+    },
+    {
+      "from": "archive",
+      "to": "db",
+      "y": 550,
+      "label": "Set ARCHIVED / retention"
+    }
+  ]
+}

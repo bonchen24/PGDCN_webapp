@@ -1,0 +1,330 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "06 · Mẫu và tích hợp PTN",
+    "subtitle": "PCN có aggregate PYC / DDT / HSNL / ACK / retry. PGD dùng tuyến API riêng; callback source chưa được xác minh.",
+    "output": "docs/archify/pgdcn-full-system-20261101/06-samples-and-lab.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [
+      72,
+      72
+    ],
+    "cols": 3,
+    "cellW": 220,
+    "cellH": 92,
+    "gapX": 56,
+    "gapY": 90
+  },
+  "components": [
+    {
+      "id": "pcn-lots",
+      "type": "backend",
+      "label": "PCN sample lot / item",
+      "sublabel": "Quản lý mẫu và route",
+      "tag": "PCN",
+      "row": 0,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnSampleFlow.ts",
+          "line": 86,
+          "end_line": 142
+        }
+      ]
+    },
+    {
+      "id": "pcn-route",
+      "type": "backend",
+      "label": "Route / sample status",
+      "sublabel": "Theo dõi theo route",
+      "tag": "PCN",
+      "row": 0,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/samples/routes/[routeId]/status/route.ts",
+          "line": 1,
+          "end_line": 1
+        }
+      ]
+    },
+    {
+      "id": "pcn-bundle",
+      "type": "backend",
+      "label": "Aggregate sample PYC",
+      "sublabel": "Gom route con; dispatch riêng",
+      "tag": "PCN",
+      "row": 0,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/sample-request-bundles/route.ts",
+          "line": 1,
+          "end_line": 1
+        }
+      ]
+    },
+    {
+      "id": "pcn-dispatch",
+      "type": "backend",
+      "label": "Dispatch DDT / HSNL",
+      "sublabel": "Per-PTN adapter state",
+      "tag": "PCN",
+      "row": 1,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnLabIntegration.ts",
+          "line": 245,
+          "end_line": 339
+        },
+        {
+          "path": "app/api/pcn/lab-requests/[requestId]/dispatch/route.ts",
+          "line": 1,
+          "end_line": 1
+        }
+      ]
+    },
+    {
+      "id": "pcn-external",
+      "type": "external",
+      "label": "External PTN",
+      "sublabel": "External dependency",
+      "tag": "PCN · outside",
+      "row": 1,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnLabIntegration.ts",
+          "line": 393,
+          "end_line": 461
+        }
+      ]
+    },
+    {
+      "id": "pcn-reconcile",
+      "type": "backend",
+      "label": "ACK / KQTN reconcile",
+      "sublabel": "Per PTN and sample; retry route exists",
+      "tag": "PCN",
+      "row": 1,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/integrations/lab-status-events/route.ts",
+          "line": 1,
+          "end_line": 1
+        },
+        {
+          "path": "app/api/pcn/lab-requests/[requestId]/reconcile/route.ts",
+          "line": 1,
+          "end_line": 1
+        },
+        {
+          "path": "app/api/pcn/sample-request-bundles/[bundleId]/retry/[dispatchId]/route.ts",
+          "line": 1,
+          "end_line": 1
+        }
+      ]
+    },
+    {
+      "id": "pgd-sample",
+      "type": "backend",
+      "label": "PGD field/sample evidence",
+      "sublabel": "Evidence in PGD dossier path",
+      "tag": "PGD",
+      "row": 3,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "components/PgdDossierStepWorkPanel.tsx",
+          "line": 48,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "pgd-lab-request",
+      "type": "backend",
+      "label": "PGD lab request",
+      "sublabel": "Separate endpoint and data route",
+      "tag": "PGD",
+      "row": 3,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-requests/route.ts",
+          "line": 22,
+          "end_line": 95
+        }
+      ]
+    },
+    {
+      "id": "pgd-ptn",
+      "type": "external",
+      "label": "External PTN",
+      "sublabel": "Request origin outside app",
+      "tag": "PGD · outside",
+      "row": 3,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-requests/route.ts",
+          "line": 22,
+          "end_line": 95
+        }
+      ]
+    },
+    {
+      "id": "pgd-result",
+      "type": "backend",
+      "label": "PGD lab result intake",
+      "sublabel": "Result source transport unspecified",
+      "tag": "PGD",
+      "row": 4,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-results/route.ts",
+          "line": 21,
+          "end_line": 86
+        }
+      ]
+    },
+    {
+      "id": "pgd-review",
+      "type": "backend",
+      "label": "Result review record",
+      "sublabel": "Review is separate from receipt",
+      "tag": "PGD",
+      "row": 4,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pgd/lab-result-reviews/route.ts",
+          "line": 18,
+          "end_line": 68
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "pcn-lots-pcn-route",
+      "from": "pcn-lots",
+      "to": "pcn-route",
+      "label": "sample route",
+      "variant": "default"
+    },
+    {
+      "id": "pcn-route-pcn-bundle",
+      "from": "pcn-route",
+      "to": "pcn-bundle",
+      "label": "aggregate",
+      "variant": "default"
+    },
+    {
+      "id": "pcn-bundle-pcn-dispatch",
+      "from": "pcn-bundle",
+      "to": "pcn-dispatch",
+      "label": "dispatch",
+      "variant": "default"
+    },
+    {
+      "id": "pcn-dispatch-pcn-external",
+      "from": "pcn-dispatch",
+      "to": "pcn-external",
+      "label": "external",
+      "variant": "default"
+    },
+    {
+      "id": "pcn-external-pcn-reconcile",
+      "from": "pcn-external",
+      "to": "pcn-reconcile",
+      "label": "ACK / KQTN",
+      "variant": "default"
+    },
+    {
+      "id": "pgd-sample-pgd-lab-request",
+      "from": "pgd-sample",
+      "to": "pgd-lab-request",
+      "label": "handoff",
+      "variant": "default"
+    },
+    {
+      "id": "pgd-lab-request-pgd-ptn",
+      "from": "pgd-lab-request",
+      "to": "pgd-ptn",
+      "label": "request",
+      "variant": "default"
+    },
+    {
+      "id": "pgd-ptn-pgd-result",
+      "from": "pgd-ptn",
+      "to": "pgd-result",
+      "label": "result intake",
+      "variant": "default"
+    },
+    {
+      "id": "pgd-result-pgd-review",
+      "from": "pgd-result",
+      "to": "pgd-review",
+      "label": "review",
+      "variant": "default"
+    }
+  ]
+}

@@ -1,0 +1,337 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "02 · PCN intake, tạo dossier và phân công",
+    "subtitle": "CertificationProposal → dossier + checklist + snapshot → manager assignment hoặc self-claim hợp lệ.",
+    "output": "docs/archify/pgdcn-full-system-20261101/02-pcn-intake-assignment.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    }
+  },
+  "lanes": [
+    {
+      "id": "requester",
+      "label": "Đề nghị PCN",
+      "variant": "normal"
+    },
+    {
+      "id": "system",
+      "label": "Server / transaction",
+      "variant": "normal"
+    },
+    {
+      "id": "manager",
+      "label": "Manager",
+      "variant": "normal"
+    },
+    {
+      "id": "staff",
+      "label": "Staff",
+      "variant": "normal"
+    },
+    {
+      "id": "exception",
+      "label": "Ngoại lệ",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "intake",
+      "label": "Intake",
+      "fromCol": 0,
+      "toCol": 2
+    },
+    {
+      "id": "template",
+      "label": "Template + snapshot",
+      "fromCol": 3,
+      "toCol": 4
+    },
+    {
+      "id": "owner",
+      "label": "Assignment",
+      "fromCol": 5,
+      "toCol": 5
+    }
+  ],
+  "mainPath": [
+    "proposal",
+    "validate",
+    "resolve",
+    "template",
+    "transaction",
+    "owner-gate"
+  ],
+  "nodes": [
+    {
+      "id": "proposal",
+      "lane": "requester",
+      "col": 0,
+      "type": "external",
+      "label": "PCN proposal",
+      "sublabel": "Customer + scope",
+      "sources": [
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 49,
+          "end_line": 63
+        }
+      ],
+      "width": 140,
+      "height": 64
+    },
+    {
+      "id": "validate",
+      "lane": "system",
+      "col": 1,
+      "type": "backend",
+      "label": "Validate",
+      "sublabel": "required fields",
+      "sources": [
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 49,
+          "end_line": 153
+        }
+      ],
+      "width": 140,
+      "height": 64
+    },
+    {
+      "id": "resolve",
+      "lane": "system",
+      "col": 2,
+      "type": "backend",
+      "label": "Resolve context",
+      "sublabel": "customer / field",
+      "sources": [
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 63,
+          "end_line": 153
+        }
+      ],
+      "width": 140,
+      "height": 64
+    },
+    {
+      "id": "template",
+      "lane": "system",
+      "col": 3,
+      "type": "backend",
+      "label": "PUBLISHED template",
+      "sublabel": "version gate",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 45,
+          "end_line": 110
+        }
+      ],
+      "width": 140,
+      "height": 64
+    },
+    {
+      "id": "transaction",
+      "lane": "system",
+      "col": 4,
+      "type": "database",
+      "label": "Atomic create",
+      "sublabel": "dossier + snapshot",
+      "sources": [
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 154,
+          "end_line": 247
+        },
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 141,
+          "end_line": 198
+        }
+      ],
+      "width": 140,
+      "height": 64
+    },
+    {
+      "id": "owner-gate",
+      "lane": "system",
+      "col": 5,
+      "type": "security",
+      "label": "Owner gate",
+      "sublabel": "starts unassigned",
+      "sources": [
+        {
+          "path": "utils/pcnDossierAssignment.ts",
+          "line": 1,
+          "end_line": 120
+        }
+      ],
+      "width": 140,
+      "height": 64
+    },
+    {
+      "id": "manager-assign",
+      "lane": "manager",
+      "col": 5,
+      "type": "security",
+      "label": "Manager assigns",
+      "sublabel": "scope gate",
+      "sources": [
+        {
+          "path": "app/api/pcn/dossiers/[dossierId]/route.ts",
+          "line": 217,
+          "end_line": 310
+        }
+      ],
+      "width": 140,
+      "height": 64
+    },
+    {
+      "id": "self-claim",
+      "lane": "staff",
+      "col": 5,
+      "type": "security",
+      "label": "Staff self-claim",
+      "sublabel": "eligibility gate",
+      "sources": [
+        {
+          "path": "utils/pcnDossierAssignment.ts",
+          "line": 74,
+          "end_line": 95
+        },
+        {
+          "path": "utils/pcnDossierStepAccess.ts",
+          "line": 50,
+          "end_line": 88
+        }
+      ],
+      "width": 140,
+      "height": 64
+    },
+    {
+      "id": "invalid",
+      "lane": "exception",
+      "col": 1,
+      "type": "backend",
+      "label": "Invalid intake",
+      "sublabel": "no commit",
+      "sources": [
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 283,
+          "end_line": 301
+        }
+      ],
+      "width": 140,
+      "height": 64
+    },
+    {
+      "id": "template-error",
+      "lane": "exception",
+      "col": 3,
+      "type": "backend",
+      "label": "Template unavailable",
+      "sublabel": "invalid / unpublished",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 45,
+          "end_line": 110
+        }
+      ],
+      "width": 140,
+      "height": 64
+    },
+    {
+      "id": "assignment-denied",
+      "lane": "exception",
+      "col": 5,
+      "type": "backend",
+      "label": "Denied",
+      "sublabel": "owner / scope",
+      "sources": [
+        {
+          "path": "utils/pcnDossierStepAccess.ts",
+          "line": 50,
+          "end_line": 88
+        }
+      ],
+      "width": 140,
+      "height": 64
+    }
+  ],
+  "edges": [
+    {
+      "from": "proposal",
+      "to": "validate",
+      "label": "submit",
+      "role": "main"
+    },
+    {
+      "from": "validate",
+      "to": "resolve",
+      "label": "valid",
+      "role": "main"
+    },
+    {
+      "from": "resolve",
+      "to": "template",
+      "label": "scope resolved",
+      "role": "main"
+    },
+    {
+      "from": "template",
+      "to": "transaction",
+      "label": "PUBLISHED version",
+      "role": "main"
+    },
+    {
+      "from": "transaction",
+      "to": "owner-gate",
+      "label": "commit",
+      "role": "main"
+    },
+    {
+      "from": "owner-gate",
+      "to": "manager-assign",
+      "label": "manager route",
+      "role": "branch",
+      "variant": "security"
+    },
+    {
+      "from": "owner-gate",
+      "to": "self-claim",
+      "label": "eligible staff",
+      "role": "branch",
+      "variant": "security"
+    },
+    {
+      "from": "validate",
+      "to": "invalid",
+      "label": "invalid",
+      "role": "error",
+      "variant": "dashed"
+    },
+    {
+      "from": "template",
+      "to": "template-error",
+      "label": "not publishable",
+      "role": "error",
+      "variant": "dashed"
+    },
+    {
+      "from": "self-claim",
+      "to": "assignment-denied",
+      "label": "not eligible / scope",
+      "role": "error",
+      "variant": "dashed"
+    }
+  ]
+}

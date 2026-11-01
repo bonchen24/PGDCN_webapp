@@ -1,0 +1,281 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "10 · Kiến trúc hệ thống và API",
+    "subtitle": "Next.js runtime trên Docker nối PostgreSQL và private Supabase Storage qua server boundary; AI/OCR và PTN là external dependencies.",
+    "output": "docs/archify/pgdcn-full-system-20261101/10-system-architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [
+      72,
+      72
+    ],
+    "cols": 3,
+    "cellW": 220,
+    "cellH": 92,
+    "gapX": 56,
+    "gapY": 90
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "Browser / Superneat UI",
+      "sublabel": "App shell + PCN/PGD modules",
+      "row": 0,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "components/PgdcnAppShell.tsx",
+          "line": 412,
+          "end_line": 485
+        }
+      ]
+    },
+    {
+      "id": "next",
+      "type": "backend",
+      "label": "Next.js App Router",
+      "sublabel": "UI, API routes, server validation",
+      "row": 0,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/health/route.ts",
+          "line": 1,
+          "end_line": 1
+        },
+        {
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 49,
+          "end_line": 63
+        }
+      ]
+    },
+    {
+      "id": "domain",
+      "type": "backend",
+      "label": "Domain services / DAL",
+      "sublabel": "PCN / PGD business contracts",
+      "row": 0,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 38,
+          "end_line": 60
+        },
+        {
+          "path": "utils/pgdDomain.ts",
+          "line": 1475,
+          "end_line": 1521
+        }
+      ]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "Self-host PostgreSQL",
+      "sublabel": "app_documents JSONB + file_assets",
+      "row": 1,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 5,
+          "end_line": 10
+        },
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 115,
+          "end_line": 131
+        }
+      ]
+    },
+    {
+      "id": "storage",
+      "type": "cloud",
+      "label": "Private Supabase Storage",
+      "sublabel": "File bytes outside JSON documents",
+      "row": 1,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "sql/pcn-schema.sql",
+          "line": 115,
+          "end_line": 131
+        },
+        {
+          "path": "docker-compose.yml",
+          "line": 7,
+          "end_line": 24
+        }
+      ]
+    },
+    {
+      "id": "ptn",
+      "type": "external",
+      "label": "External PTN systems",
+      "sublabel": "PCN adapter; PGD source transport unspecified",
+      "row": 1,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "utils/pcnLabIntegration.ts",
+          "line": 245,
+          "end_line": 339
+        },
+        {
+          "path": "app/api/pgd/lab-results/route.ts",
+          "line": 21,
+          "end_line": 86
+        }
+      ]
+    },
+    {
+      "id": "ocr",
+      "type": "external",
+      "label": "OCR / Gemini services",
+      "sublabel": "Optional integration and error responses",
+      "row": 3,
+      "col": 0,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "app/api/pcn/ocr/route.ts",
+          "line": 49,
+          "end_line": 125
+        },
+        {
+          "path": "app/api/pgd/ocr/route.ts",
+          "line": 43,
+          "end_line": 114
+        }
+      ]
+    },
+    {
+      "id": "notifications",
+      "type": "backend",
+      "label": "Activity / notifications",
+      "sublabel": "Events and API projection",
+      "row": 3,
+      "col": 1,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "lib/server/notifications.ts",
+          "line": 1,
+          "end_line": 1
+        },
+        {
+          "path": "lib/server/activity-logs.ts",
+          "line": 1,
+          "end_line": 1
+        }
+      ]
+    },
+    {
+      "id": "container",
+      "type": "cloud",
+      "label": "Docker webapp · 2357",
+      "sublabel": "Node 22 image; external Supabase network",
+      "row": 3,
+      "col": 2,
+      "size": [
+        208,
+        88
+      ],
+      "sources": [
+        {
+          "path": "Dockerfile",
+          "line": 1,
+          "end_line": 19
+        },
+        {
+          "path": "docker-compose.yml",
+          "line": 1,
+          "end_line": 31
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "browser-next",
+      "from": "browser",
+      "to": "next",
+      "label": "HTTPS / UI"
+    },
+    {
+      "id": "next-domain",
+      "from": "next",
+      "to": "domain",
+      "label": "route contract"
+    },
+    {
+      "id": "domain-db",
+      "from": "domain",
+      "to": "postgres",
+      "label": "server persistence"
+    },
+    {
+      "id": "db-storage",
+      "from": "postgres",
+      "to": "storage",
+      "label": "private asset pointer"
+    },
+    {
+      "id": "next-notifications",
+      "from": "next",
+      "to": "notifications",
+      "label": "event API",
+      "variant": "dashed"
+    },
+    {
+      "id": "next-container",
+      "from": "next",
+      "to": "container",
+      "label": "runtime",
+      "variant": "dashed"
+    }
+  ]
+}

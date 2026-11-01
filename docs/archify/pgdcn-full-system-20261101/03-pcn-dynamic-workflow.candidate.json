@@ -1,0 +1,505 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "03 · PCN workflow động: graph, guard, rework và phát hành",
+    "subtitle": "Node / edge runtime từ snapshot; có DOCUMENT_TASK, APPROVAL_TASK, DECISION, PARALLEL_SPLIT / JOIN (ALL, ANY, QUORUM), WAIT, RETURNED, STALE; sau END, duyệt / cấp số / giao / lưu trữ là các bước riêng.",
+    "output": "docs/archify/pgdcn-full-system-20261101/03-pcn-dynamic-workflow.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bonchen24/PGDCN_webapp.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+    }
+  },
+  "lanes": [
+    {
+      "id": "runtime",
+      "label": "PCN runtime",
+      "variant": "normal"
+    },
+    {
+      "id": "parallel",
+      "label": "Parallel branches",
+      "variant": "normal"
+    },
+    {
+      "id": "exceptions",
+      "label": "Chờ / trả lại / dừng",
+      "variant": "exception"
+    },
+    {
+      "id": "post",
+      "label": "Phê duyệt và vòng đời chứng thư",
+      "variant": "normal"
+    }
+  ],
+  "phases": [
+    {
+      "id": "snapshot-phase",
+      "label": "Snapshot + projection",
+      "fromCol": 0,
+      "toCol": 2
+    },
+    {
+      "id": "gate-phase",
+      "label": "Guard + execute",
+      "fromCol": 3,
+      "toCol": 4
+    },
+    {
+      "id": "branch-phase",
+      "label": "Decision + outcomes",
+      "fromCol": 5,
+      "toCol": 5
+    }
+  ],
+  "mainPath": [
+    "published",
+    "snapshot",
+    "projection",
+    "guards",
+    "task",
+    "decision"
+  ],
+  "nodes": [
+    {
+      "id": "published",
+      "lane": "runtime",
+      "col": 0,
+      "type": "backend",
+      "label": "PUBLISHED template",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 45,
+          "end_line": 110
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "snapshot",
+      "lane": "runtime",
+      "col": 1,
+      "type": "database",
+      "label": "Workflow snapshot",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 141,
+          "end_line": 198
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "projection",
+      "lane": "runtime",
+      "col": 2,
+      "type": "backend",
+      "label": "Runtime projection",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 38,
+          "end_line": 60
+        },
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 267,
+          "end_line": 325
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "guards",
+      "lane": "runtime",
+      "col": 3,
+      "type": "security",
+      "label": "Node + edge guard",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 92,
+          "end_line": 190
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "task",
+      "lane": "runtime",
+      "col": 4,
+      "type": "backend",
+      "label": "Task node",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 267,
+          "end_line": 325
+        },
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 45,
+          "end_line": 110
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "decision",
+      "lane": "runtime",
+      "col": 5,
+      "type": "backend",
+      "label": "DECISION / branch",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 92,
+          "end_line": 190
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "parallel",
+      "lane": "parallel",
+      "col": 2,
+      "type": "backend",
+      "label": "PARALLEL_SPLIT",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 45,
+          "end_line": 110
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "branch-a",
+      "lane": "parallel",
+      "col": 3,
+      "type": "backend",
+      "label": "Branch A",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 92,
+          "end_line": 190
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "branch-b",
+      "lane": "parallel",
+      "col": 4,
+      "type": "backend",
+      "label": "Branch B",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 92,
+          "end_line": 190
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "join",
+      "lane": "parallel",
+      "col": 5,
+      "type": "backend",
+      "label": "PARALLEL_JOIN",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 92,
+          "end_line": 190
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "wait",
+      "lane": "exceptions",
+      "col": 3,
+      "type": "backend",
+      "label": "WAIT / blocked",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 92,
+          "end_line": 190
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "return",
+      "lane": "exceptions",
+      "col": 4,
+      "type": "backend",
+      "label": "RETURNED",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 334,
+          "end_line": 428
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "stale",
+      "lane": "exceptions",
+      "col": 5,
+      "type": "backend",
+      "label": "Descendants STALE",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 334,
+          "end_line": 428
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "terminal",
+      "lane": "post",
+      "col": 5,
+      "type": "backend",
+      "label": "END",
+      "sources": [
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 45,
+          "end_line": 110
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "approved",
+      "lane": "post",
+      "col": 4,
+      "type": "backend",
+      "label": "Approval complete",
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/approval/[stepId]/route.ts",
+          "line": 1,
+          "end_line": 210
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "issued",
+      "lane": "post",
+      "col": 3,
+      "type": "backend",
+      "label": "ISSUED",
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/issue/route.ts",
+          "line": 141,
+          "end_line": 343
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "delivered",
+      "lane": "post",
+      "col": 2,
+      "type": "backend",
+      "label": "DELIVERED",
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/deliver/route.ts",
+          "line": 21,
+          "end_line": 98
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "archived",
+      "lane": "post",
+      "col": 1,
+      "type": "backend",
+      "label": "ARCHIVED",
+      "sources": [
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/archive/route.ts",
+          "line": 21,
+          "end_line": 98
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "rejected-hold",
+      "lane": "exceptions",
+      "col": 1,
+      "type": "backend",
+      "label": "ON_HOLD / REJECTED",
+      "sources": [
+        {
+          "path": "utils/pcnDossierPipeline.ts",
+          "line": 35,
+          "end_line": 55
+        }
+      ],
+      "width": 120,
+      "height": 64
+    },
+    {
+      "id": "cancelled",
+      "lane": "exceptions",
+      "col": 2,
+      "type": "backend",
+      "label": "CANCELLED",
+      "sources": [
+        {
+          "path": "utils/pcnDossierPipeline.ts",
+          "line": 35,
+          "end_line": 55
+        }
+      ],
+      "width": 120,
+      "height": 64
+    }
+  ],
+  "edges": [
+    {
+      "from": "published",
+      "to": "snapshot",
+      "label": "pin version",
+      "role": "main"
+    },
+    {
+      "from": "snapshot",
+      "to": "projection",
+      "label": "load graph",
+      "role": "main"
+    },
+    {
+      "from": "projection",
+      "to": "guards",
+      "label": "current node",
+      "role": "main"
+    },
+    {
+      "from": "guards",
+      "to": "task",
+      "label": "ready",
+      "role": "main"
+    },
+    {
+      "from": "task",
+      "to": "decision",
+      "label": "save / complete",
+      "role": "main"
+    },
+    {
+      "from": "decision",
+      "to": "parallel",
+      "label": "split branch",
+      "role": "branch"
+    },
+    {
+      "from": "parallel",
+      "to": "branch-a",
+      "label": "fork",
+      "role": "branch"
+    },
+    {
+      "from": "branch-a",
+      "to": "branch-b",
+      "label": "independent",
+      "role": "branch"
+    },
+    {
+      "from": "branch-b",
+      "to": "join",
+      "label": "join policy",
+      "role": "branch"
+    },
+    {
+      "from": "decision",
+      "to": "return",
+      "label": "rework",
+      "role": "return",
+      "variant": "dashed"
+    },
+    {
+      "from": "return",
+      "to": "stale",
+      "label": "invalidate descendants",
+      "role": "async",
+      "variant": "dashed"
+    },
+    {
+      "from": "decision",
+      "to": "terminal",
+      "label": "END",
+      "role": "main"
+    },
+    {
+      "from": "terminal",
+      "to": "approved",
+      "label": "approval gate",
+      "role": "main"
+    },
+    {
+      "from": "approved",
+      "to": "issued",
+      "label": "issue",
+      "role": "main"
+    },
+    {
+      "from": "issued",
+      "to": "delivered",
+      "label": "handover",
+      "role": "main"
+    },
+    {
+      "from": "delivered",
+      "to": "archived",
+      "label": "archive",
+      "role": "main"
+    },
+    {
+      "from": "decision",
+      "to": "cancelled",
+      "label": "cancel",
+      "role": "error",
+      "variant": "dashed"
+    }
+  ]
+}
