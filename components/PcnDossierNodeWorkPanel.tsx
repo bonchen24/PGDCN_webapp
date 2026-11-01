@@ -181,14 +181,15 @@ export function PcnDossierNodeWorkPanel({
     const version = item.currentVersionId && document
       ? document.versions.find((candidate) => candidate.assetId === item.currentVersionId)
       : undefined;
-    const inputId = `pcn-upload-${projection.nodeId}-${item.requirementId}`;
+    const inputId = `pcn-upload-${projection.nodeId}-${item.requirementId}-mobile`;
+    const waiveId = `pcn-waive-${projection.nodeId}-${item.requirementId}-mobile`;
     const reason = waiverReasons[item.requirementId] || '';
     const editable = canEdit && projection.isEditable;
     const draftingHref = editable ? onOpenDrafting?.(item) : undefined;
     const canGenerateAndAttach = Boolean(getPcnNodeDocumentGenerationKind(item.code));
 
     return (
-      <li key={item.requirementId} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm" data-testid={`pcn-node-document-${item.requirementId}`}>
+      <li key={item.requirementId} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm" data-testid={`pcn-node-document-card-${item.requirementId}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-medium text-slate-900">{item.label}</p>
@@ -246,9 +247,9 @@ export function PcnDossierNodeWorkPanel({
 
         {item.actions.includes('WAIVE') && editable && onWaive ? (
           <div className="mt-3 rounded-md bg-amber-50 p-3">
-            <label className="block text-xs font-medium text-amber-900" htmlFor={`pcn-waive-${projection.nodeId}-${item.requirementId}`}>Lý do bỏ qua</label>
+            <label className="block text-xs font-medium text-amber-900" htmlFor={waiveId}>Lý do bỏ qua</label>
             <textarea
-              id={`pcn-waive-${projection.nodeId}-${item.requirementId}`}
+              id={waiveId}
               className="mt-2 min-h-20 w-full rounded-md border border-amber-200 bg-white p-2 text-sm text-slate-900 outline-none focus:border-amber-500"
               value={reason}
               onChange={(event) => setWaiverReasons((current) => ({ ...current, [item.requirementId]: event.target.value }))}
@@ -273,7 +274,8 @@ export function PcnDossierNodeWorkPanel({
     const version = item.currentVersionId && document
       ? document.versions.find((candidate) => candidate.assetId === item.currentVersionId)
       : undefined;
-    const inputId = `pcn-upload-${projection.nodeId}-${item.requirementId}`;
+    const inputId = `pcn-upload-${projection.nodeId}-${item.requirementId}-desktop`;
+    const waiveId = `pcn-waive-${projection.nodeId}-${item.requirementId}-desktop`;
     const reason = waiverReasons[item.requirementId] || '';
     const editable = canEdit && projection.isEditable;
     const draftingHref = editable ? onOpenDrafting?.(item) : undefined;
@@ -311,7 +313,7 @@ export function PcnDossierNodeWorkPanel({
                 {item.actions.includes('CREATE_FROM_FORM') && canGenerateAndAttach && editable && (onGenerateAndAttach || onCreateFromForm) ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-left text-[11px] font-bold text-indigo-700" disabled={busyKey === `generate:${item.requirementId}`} onClick={() => void run(`generate:${item.requirementId}`, async () => { if (onGenerateAndAttach) await onGenerateAndAttach(item.requirementId); else await onCreateFromForm!(item.requirementId); })}>{busyKey === `generate:${item.requirementId}` ? 'Đang tạo và gắn…' : 'Tạo & gắn tài liệu'}</button> : null}
                 {item.actions.includes('REMOVE_CURRENT') && editable ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-rose-200 px-2.5 py-2 text-left text-[11px] font-bold text-rose-700" disabled={busyKey === `remove:${item.requirementId}`} onClick={() => onRemoveCurrent && void run(`remove:${item.requirementId}`, () => onRemoveCurrent(item.requirementId))}>Xóa tài liệu hiện tại</button> : null}
                 {item.actions.includes('CLEAR_WAIVER') && editable && onClearWaiver ? <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-left text-[11px] font-bold text-amber-800" disabled={busyKey === `clear-waiver:${item.requirementId}`} onClick={() => void run(`clear-waiver:${item.requirementId}`, () => onClearWaiver(item.requirementId))}>Bỏ trạng thái bỏ qua</button> : null}
-                {item.actions.includes('WAIVE') && editable && onWaive ? <div className="rounded-md bg-amber-50 p-2"><label className="block text-[11px] font-bold text-amber-900" htmlFor={`pcn-waive-${projection.nodeId}-${item.requirementId}`}>Lý do bỏ qua</label><textarea id={`pcn-waive-${projection.nodeId}-${item.requirementId}`} className="mt-1 min-h-16 w-full rounded-md border border-amber-200 bg-white p-2 text-[11px] text-slate-900 outline-none focus:border-amber-500" value={reason} onChange={(event) => setWaiverReasons((current) => ({ ...current, [item.requirementId]: event.target.value }))} /><button type="button" className="mt-1 mobile-touch-target min-h-11 rounded-md bg-amber-600 px-2.5 py-2 text-[11px] font-bold text-white disabled:opacity-50" disabled={!reason.trim() || busyKey === `waive:${item.requirementId}`} onClick={() => void run(`waive:${item.requirementId}`, () => onWaive(item.requirementId, reason.trim()))}>Bỏ qua mục này</button></div> : null}
+                {item.actions.includes('WAIVE') && editable && onWaive ? <div className="rounded-md bg-amber-50 p-2"><label className="block text-[11px] font-bold text-amber-900" htmlFor={waiveId}>Lý do bỏ qua</label><textarea id={waiveId} className="mt-1 min-h-16 w-full rounded-md border border-amber-200 bg-white p-2 text-[11px] text-slate-900 outline-none focus:border-amber-500" value={reason} onChange={(event) => setWaiverReasons((current) => ({ ...current, [item.requirementId]: event.target.value }))} /><button type="button" className="mt-1 mobile-touch-target min-h-11 rounded-md bg-amber-600 px-2.5 py-2 text-[11px] font-bold text-white disabled:opacity-50" disabled={!reason.trim() || busyKey === `waive:${item.requirementId}`} onClick={() => void run(`waive:${item.requirementId}`, () => onWaive(item.requirementId, reason.trim()))}>Bỏ qua mục này</button></div> : null}
               </div>
             </details> : null}
           </div>
@@ -385,19 +387,24 @@ export function PcnDossierNodeWorkPanel({
             </div>
           </div>
           <div className="mt-3">
-            <PgdcnDossierDocumentActionTable
-              testId="pcn-dossier-document-action-table"
-              rows={orderedDocuments.map((item) => ({
-                id: item.requirementId,
-                step: projection.nodeLabel,
-                title: item.label,
-                required: item.required,
-                status: DOCUMENT_STATUS_LABELS[item.status],
-                statusTone: item.status === 'PRESENT' ? 'success' : item.status === 'WAIVED' ? 'neutral' : 'warning',
-                action: null,
-              }))}
-              renderRow={(row) => renderDocumentRow(orderedDocuments.find((item) => item.requirementId === row.id)!)}
-            />
+            <ul data-testid="pcn-node-documents-mobile" className="space-y-3 md:hidden">
+              {orderedDocuments.map(renderDocument)}
+            </ul>
+            <div data-testid="pcn-node-documents-desktop" className="hidden md:block">
+              <PgdcnDossierDocumentActionTable
+                testId="pcn-dossier-document-action-table"
+                rows={orderedDocuments.map((item) => ({
+                  id: item.requirementId,
+                  step: projection.nodeLabel,
+                  title: item.label,
+                  required: item.required,
+                  status: DOCUMENT_STATUS_LABELS[item.status],
+                  statusTone: item.status === 'PRESENT' ? 'success' : item.status === 'WAIVED' ? 'neutral' : 'warning',
+                  action: null,
+                }))}
+                renderRow={(row) => renderDocumentRow(orderedDocuments.find((item) => item.requirementId === row.id)!)}
+              />
+            </div>
           </div>
         </section>
 

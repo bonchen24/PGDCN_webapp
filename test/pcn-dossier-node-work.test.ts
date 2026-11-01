@@ -166,6 +166,12 @@ test('node work panel reports per-kind progress, required-first rows, and comple
   const rowIds = Array.from(tableBody.matchAll(/data-testid="pcn-node-document-([^"]+)"/g), (match) => match[1]);
   const blockerSummary = markup.match(/<section[^>]*data-testid="pcn-node-completion-blockers"[\s\S]*?<\/section>/)?.[0] || '';
 
+  assert.match(markup, /data-testid="pcn-node-documents-mobile"[^>]*class="[^"]*md:hidden/);
+  assert.match(markup, /data-testid="pcn-node-documents-desktop"[^>]*class="[^"]*hidden\s+md:block/);
+  assert.match(markup, /<ul[^>]*data-testid="pcn-node-documents-mobile"[\s\S]*?data-testid="pcn-node-document-card-req-missing"/);
+  assert.match(markup, /<ul[^>]*data-testid="pcn-node-documents-mobile"[\s\S]*?data-testid="pcn-node-document-card-req-present"/);
+  assert.match(markup, /<ul[^>]*data-testid="pcn-node-documents-mobile"[\s\S]*?data-testid="pcn-node-document-card-req-optional"/);
+
   assert.match(markup, /data-testid="pcn-required-progress"[^>]*>[\s\S]*?1\/2/);
   assert.match(markup, /data-testid="pcn-optional-progress"[^>]*>[\s\S]*?0\/1/);
   assert.deepEqual(rowIds, ['req-missing', 'req-present', 'req-optional']);
@@ -198,4 +204,8 @@ test('node work panel reports per-kind progress, required-first rows, and comple
   assert.match(optionalOnlyMarkup, /Lý do bỏ qua/);
   assert.match(optionalOnlyMarkup, /Bỏ qua mục này/);
   assert.doesNotMatch(optionalOnlyMarkup, /data-testid="pcn-node-completion-blockers"/);
+
+  const renderedIds = Array.from(optionalOnlyMarkup.matchAll(/\bid="([^"]+)"/g), (match) => match[1]);
+  const duplicateIds = renderedIds.filter((id, index) => renderedIds.indexOf(id) !== index);
+  assert.deepEqual(duplicateIds, []);
 });
