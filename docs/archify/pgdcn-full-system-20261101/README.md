@@ -66,3 +66,11 @@ Checklist PCN/PGD trong model dùng trạng thái `MISSING / PRESENT / WAIVED`. 
 - DOCX manifest version 1.3 là manifest biểu mẫu, không phải workflow version.
 - Tài liệu nằm trong `docs/archify/pgdcn-full-system-20261101/` trên branch/worktree riêng `task/c2c/full-system-archify-20261101`. Chỉ thay đổi artifact tài liệu; không sửa runtime, không deploy, không migration hoặc ghi database.
 - AGY headless không khởi tạo được phiên làm việc do môi trường không có credential provider; đã dùng fallback authoring được cho phép trong `AGENTS.md` và chạy các gate Archify cục bộ.
+
+
+## Đối chiếu giao diện hồ sơ sau đợt UI refresh
+
+- Hướng dẫn thao tác PCN/PGD trong handbook và hai bảng tài liệu được đối chiếu với source commit `081f0a48945dce3c6f419804ce4e6b956e50a147`. Trường `revision` của atlas tiếp tục gắn với snapshot sơ đồ gốc `521f8d517560f3767321c19ad492658bb507b4b4`; metadata UI refresh được ghi riêng.
+- PCN giữ rail ngang native và yêu cầu file theo snapshot/template. Với summary không có snapshot, giao diện chỉ nêu tối đa ba tài liệu thiếu của bước đang chọn; “Xem danh sách tài liệu” mở checklist đầy đủ.
+- PGD giữ đủ 12 bước và yêu cầu theo productGroup/profile/template. CTA blocker/chỉ xem/đang tải/lỗi chỉ mở workbench; action trên từng dòng dẫn tới thao tác file hiện có. Mọi thay đổi trạng thái vẫn qua API và server gate.
+- UI refresh không đổi topology nên 36 workflow candidate/HTML và receipts finalize/browser-check hiện có được giữ nguyên. Atlas vẫn có 3 sơ đồ chính, 13 profile cấu hình đã xác minh trong source, 20 sơ đồ tham chiếu và 197 node handbook. ID/version của workflow PUBLISHED trong database vẫn là **NOT_VERIFIED**.

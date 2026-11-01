@@ -1,5 +1,10 @@
 {
   "revision": "521f8d517560f3767321c19ad492658bb507b4b4",
+  "uiRefreshRevision": "081f0a48945dce3c6f419804ce4e6b956e50a147",
+  "uiNotes": {
+    "pcn": "Dossier detail tóm tắt tối đa ba file thiếu tại bước đang chọn; checklist đầy đủ mở bằng Xem danh sách tài liệu. Requirement vẫn từ snapshot/template.",
+    "pgd": "CTA điều hướng khi blocker/read-only/loading/error; action theo từng dòng; requiredness vẫn theo productGroup/profile/template và server gate."
+  },
   "pcn": [
     {
       "mapId": "pcn-qc4-pack",
