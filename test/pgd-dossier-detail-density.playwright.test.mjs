@@ -5,7 +5,7 @@ import test from 'node:test';
 import { chromium } from 'playwright';
 
 const rawBaseUrl = process.env.PGDCN_UX_BASE_URL;
-const artifactRoot = resolve('docs/ux-audit/artifacts/density/next-batch/d09');
+const artifactRoot = resolve(process.env.PGDCN_UX_ARTIFACT_DIR || 'docs/ux-audit/artifacts/density/next-batch/d09');
 
 const ROLES = [
   { id: 'admin', role: 'admin', systemRole: 'admin', pgdRole: 'PGD_LEAD' },
@@ -264,8 +264,8 @@ test('D09 PGD detail leads with the current step and gated next action for all r
   skip: !rawBaseUrl ? 'PGDCN_UX_BASE_URL is unset; test is opt-in' : false,
 }, async () => {
   const base = new URL(rawBaseUrl || 'http://127.0.0.1:2367');
-  const phase = process.env.PGDCN_DENSITY_PHASE;
-  const capturePhase = phase === 'before' || phase === 'after' ? phase : null;
+  const phase = process.env.PGDCN_DENSITY_PHASE === 'before' ? 'before' : 'after';
+  const capturePhase = phase;
   const audit = { apiMutations: [], externalRequests: [], screens: [] };
   const browser = await chromium.launch({ headless: true });
   try {
@@ -320,6 +320,7 @@ test('D09 disclosures keep checklist evidence available and keyboard navigation 
   skip: !rawBaseUrl ? 'PGDCN_UX_BASE_URL is unset; test is opt-in' : false,
 }, async () => {
   const base = new URL(rawBaseUrl || 'http://127.0.0.1:2367');
+  const phase = process.env.PGDCN_DENSITY_PHASE === 'before' ? 'before' : 'after';
   const audit = { apiMutations: [], externalRequests: [] };
   const browser = await chromium.launch({ headless: true });
   const expandedMetrics = [];
@@ -403,7 +404,6 @@ test('D09 disclosures keep checklist evidence available and keyboard navigation 
     }
 
     if (expandedMetrics.length) {
-      const phase = process.env.PGDCN_DENSITY_PHASE;
       const directory = resolve(artifactRoot, phase);
       await mkdir(directory, { recursive: true });
       await writeFile(resolve(directory, 'panels-open-metrics.json'), `${JSON.stringify(expandedMetrics, null, 2)}\n`, 'utf8');
@@ -420,6 +420,7 @@ test('D09 loading and evidence errors keep navigation available while completion
   skip: !rawBaseUrl ? 'PGDCN_UX_BASE_URL is unset; test is opt-in' : false,
 }, async () => {
   const base = new URL(rawBaseUrl || 'http://127.0.0.1:2367');
+  const phase = process.env.PGDCN_DENSITY_PHASE === 'before' ? 'before' : 'after';
   const role = ROLES[0];
   const audit = { apiMutations: [], externalRequests: [] };
   const browser = await chromium.launch({ headless: true });
@@ -432,7 +433,7 @@ test('D09 loading and evidence errors keep navigation available while completion
     assert.equal(await loadingCta.count(), 1, 'The primary action stays visible while evidence is loading');
     assert.equal(await loadingCta.isDisabled(), false, 'Navigation remains available while evidence is loading');
     assert.match(await loadingCta.textContent(), /Mở|Xem/iu);
-    await saveScreenshot(loadingPage, process.env.PGDCN_DENSITY_PHASE, role.id, { width: 390, height: 844 }, 'loading');
+    await saveScreenshot(loadingPage, phase, role.id, { width: 390, height: 844 }, 'loading');
     await loadingStatus.waitFor({ state: 'hidden', timeout: 5000 });
     await loadingPage.close();
 
@@ -445,7 +446,7 @@ test('D09 loading and evidence errors keep navigation available while completion
     assert.equal(await errorCta.isDisabled(), false, 'Navigation remains available while evidence is unavailable');
     assert.match(await errorCta.textContent(), /Mở|Xem/iu);
     assert.equal(await errorPage.getByTestId('pgd-dossier-priority-action').getByRole('button', { name: 'Tải lại tài liệu' }).isVisible(), true);
-    await saveScreenshot(errorPage, process.env.PGDCN_DENSITY_PHASE, role.id, { width: 390, height: 844 }, 'error');
+    await saveScreenshot(errorPage, phase, role.id, { width: 390, height: 844 }, 'error');
     await errorPage.close();
 
     assert.deepEqual(audit.apiMutations, [], `Expected zero API mutations: ${JSON.stringify(audit.apiMutations)}`);

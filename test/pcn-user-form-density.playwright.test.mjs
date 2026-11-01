@@ -83,20 +83,19 @@ async function openUserForm(page, base, audit) {
 async function captureForm(page, form, phase, viewport, audit, pageErrors) {
   const formControls = form.locator('input, select, textarea');
   const surfaceControls = page.getByTestId('pcn-user-management-surface').locator('input, select, textarea');
-  const metrics = await page.evaluate(({ width, height, formElement, surfaceElement }) => {
+  const metrics = await form.evaluate((formElement, { width, height, surfaceSelector }) => {
     const rect = (element) => {
       const box = element.getBoundingClientRect();
       return { top: box.top, bottom: box.bottom, left: box.left, right: box.right, height: box.height };
     };
-    const form = document.querySelector(formElement);
-    const surface = document.querySelector(surfaceElement);
-    const details = Array.from(form?.querySelectorAll('details') || []);
-    const controls = Array.from(form?.querySelectorAll('input, select, textarea') || []);
+    const surface = formElement.closest(surfaceSelector);
+    const details = Array.from(formElement.querySelectorAll('details'));
+    const controls = Array.from(formElement.querySelectorAll('input, select, textarea'));
     const visible = (element) => Boolean(element.getClientRects().length && !element.closest('details:not([open])'));
     return {
       width, height,
-      formTop: rect(form).top,
-      formHeight: rect(form).height,
+      formTop: rect(formElement).top,
+      formHeight: rect(formElement).height,
       formControlCount: controls.length,
       visibleFormControlCount: controls.filter(visible).length,
       surfaceControlCount: surface?.querySelectorAll('input, select, textarea').length ?? 0,
@@ -106,7 +105,7 @@ async function captureForm(page, form, phase, viewport, audit, pageErrors) {
       horizontalOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) > window.innerWidth,
       bodyScrollHeight: document.body.scrollHeight,
     };
-  }, { width: viewport.width, height: viewport.height, formElement: '[data-testid="pcn-user-management-surface"] form', surfaceElement: '[data-testid="pcn-user-management-surface"]' });
+  }, { width: viewport.width, height: viewport.height, surfaceSelector: '[data-testid="pcn-user-management-surface"]' });
   metrics.formControlCount = await formControls.count();
   metrics.surfaceControlCount = await surfaceControls.count();
   metrics.pageErrors = [...pageErrors];

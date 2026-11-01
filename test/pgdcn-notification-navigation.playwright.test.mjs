@@ -130,33 +130,25 @@ test('F1 notification panel regression: closes after sidebar section navigation'
           `Expected destination sidebar item aria-current="page" (${mode}), but received "${sidebarAriaCurrent}"`,
         );
 
-        if (isMobile) {
-          const isMenuTriggerFocused = await menuTrigger.evaluate((el) => el === document.activeElement);
-          const actualFocus = await page.evaluate(() => {
-            const el = document.activeElement;
-            return el
-              ? {
-                  tagName: el.tagName,
-                  ariaLabel: el.getAttribute('aria-label'),
-                  name: el.getAttribute('name'),
-                  id: el.id,
-                  text: el.innerText?.slice(0, 50),
-                }
-              : null;
-          });
-          assert.equal(
-            isMenuTriggerFocused,
-            true,
-            `Mobile focus must return to the "Mở menu phòng" trigger after sidebar navigation. Actual focus: ${JSON.stringify(actualFocus)}`,
-          );
-        } else {
-          const isSidebarFocused = await sidebarItem.evaluate((el) => el === document.activeElement);
-          assert.equal(
-            isSidebarFocused,
-            true,
-            'Selected sidebar item must be the focused element after navigation (desktop)',
-          );
-        }
+        await page.waitForFunction(() => document.activeElement?.id === 'pgdcn-main-content');
+        const isMainFocused = await page.evaluate(() => document.activeElement?.id === 'pgdcn-main-content');
+        const actualFocus = await page.evaluate(() => {
+          const el = document.activeElement;
+          return el
+            ? {
+                tagName: el.tagName,
+                ariaLabel: el.getAttribute('aria-label'),
+                name: el.getAttribute('name'),
+                id: el.id,
+                text: el.innerText?.slice(0, 50),
+              }
+            : null;
+        });
+        assert.equal(
+          isMainFocused,
+          true,
+          `Focus must move to #pgdcn-main-content after sidebar navigation (${mode}). Actual focus: ${JSON.stringify(actualFocus)}`,
+        );
       } finally {
         await page.close();
       }
