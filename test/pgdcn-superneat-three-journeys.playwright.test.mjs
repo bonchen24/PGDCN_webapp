@@ -5,7 +5,7 @@ import test from 'node:test';
 import { chromium } from 'playwright';
 
 const rawBaseUrl = process.env.PGDCN_UX_BASE_URL || 'http://localhost:15357';
-const artifactDirectory = resolve('docs/ux-audit/artifacts/superneat/2026-11-01');
+const artifactDirectory = resolve(process.env.PGDCN_UX_ARTIFACT_DIR || 'docs/ux-audit/artifacts/superneat/2026-11-01');
 
 const VIEWPORTS = [
   { width: 320, height: 568, name: '320' },
@@ -13,6 +13,7 @@ const VIEWPORTS = [
   { width: 390, height: 844, name: '390' },
   { width: 430, height: 932, name: '430' },
   { width: 768, height: 1024, name: '768' },
+  { width: 1024, height: 900, name: '1024' },
   { width: 1280, height: 800, name: '1280' },
   { width: 1440, height: 1000, name: '1440' },
 ];
@@ -50,7 +51,7 @@ const PCN_DOSSIER = {
   proposalId: 'qa-superneat-proposal-1',
   fieldCodes: ['QC4'],
   method: 'METHOD_1',
-  status: 'IN_PROGRESS',
+  status: 'AWAITING_DOCUMENTS',
   ownerUsername: ROLES.admin.username,
   customerSnapshot: {
     name: 'Công ty Cổ phần Cơ khí Chính xác Synthetic QA',
@@ -505,7 +506,84 @@ async function collectViewportMetrics(page, viewport) {
   }, viewport);
 }
 
-test('PGDCN Superneat Three Critical Journeys verification across 7 viewports', {
+test('PCN and PGD quick peek keeps one action and opens the dossier work context across viewports', {
+  timeout: 300000,
+}, async () => {
+  const base = new URL(rawBaseUrl);
+  assert.ok(['127.0.0.1', 'localhost'].includes(base.hostname), `Only loopback origin allowed: ${base.hostname}`);
+
+  const audit = {
+    simulatedWrites: [],
+    createdRequestIds: [],
+    readOnlyAdvisoryCalls: [],
+    externalRequests: [],
+    pageErrors: [],
+    consoleErrors: [],
+  };
+  const results = [];
+  const outDir = resolve(artifactDirectory, 'quick-peek-after');
+  const browser = await chromium.launch({ headless: true });
+
+  try {
+    await mkdir(outDir, { recursive: true });
+    for (const domain of ['PCN', 'PGD']) {
+      for (const vp of VIEWPORTS) {
+        const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+        await installSuperneatInterceptors(page, base.origin, audit);
+
+        const dossierCode = domain === 'PCN' ? PCN_DOSSIER.dossierCode : PGD_REQUEST.requestCode;
+        const queuePath = domain === 'PCN' ? '/pgdcn/pcn?section=operations' : '/pgdcn/pgd?section=operations';
+        await page.goto(new URL(queuePath, base).toString(), { waitUntil: 'domcontentloaded' });
+        await page.locator('#pgdcn-main-content').waitFor({ state: 'visible', timeout: 15000 });
+        const openPeek = page.getByRole('button', { name: `Xem nhanh ${dossierCode}` });
+        await openPeek.waitFor({ state: 'visible', timeout: 15000 });
+        await openPeek.click();
+        const dialog = page.getByRole('dialog', { name: `Xem nhanh ${dossierCode}` });
+        await dialog.waitFor({ state: 'visible', timeout: 5000 });
+
+        assert.ok(await dialog.getByTestId('dossier-peek-blockers').count() <= 1, `${domain} has at most one blocker summary at ${vp.width}px`);
+        const primaryAction = dialog.getByRole('button').last();
+        const actionLabel = (await primaryAction.innerText()).trim();
+        assert.ok(actionLabel.length > 0, `${domain} quick peek exposes a named primary action at ${vp.width}px`);
+        assert.notEqual(actionLabel, 'Mở hồ sơ đầy đủ', `${domain} primary action uses the projected action label at ${vp.width}px`);
+
+        const metrics = await collectViewportMetrics(page, vp);
+        assert.equal(metrics.hasHorizontalOverflow, false, `${domain} quick peek has no page overflow at ${vp.width}px`);
+        assert.equal(metrics.focus?.visible, true, `${domain} quick peek keeps visible focus at ${vp.width}px`);
+        if (await dialog.getByTestId('dossier-peek-blockers').count()) {
+          const geometry = await dialog.evaluate((element) => {
+            const blocker = element.querySelector('[data-testid="dossier-peek-blockers"]');
+            const footer = element.lastElementChild;
+            if (!blocker || !footer) return null;
+            return { blockerBottom: blocker.getBoundingClientRect().bottom, footerTop: footer.getBoundingClientRect().top };
+          });
+        assert.ok(geometry && geometry.blockerBottom <= geometry.footerTop, `${domain} blocker summary is visible above the sticky action at ${vp.width}px`);
+        }
+        results.push({ domain, viewport: `${vp.width}x${vp.height}`, actionLabel, ...metrics });
+        await page.addStyleTag({ content: '.nextjs-portal, nextjs-portal { display: none !important; }' });
+        await page.screenshot({ path: resolve(outDir, `${domain.toLowerCase()}-${vp.name}px.png`), fullPage: false });
+
+        await primaryAction.click();
+        const workContext = domain === 'PCN'
+          ? page.locator('[data-testid="pcn-dossier-focus-shell"]:visible').first()
+          : page.locator('[data-testid="pgd-dossier-step-work-panel"]:visible').first();
+        await workContext.waitFor({ state: 'visible', timeout: 15000 });
+        assert.equal(await page.getByRole('dialog', { name: `Xem nhanh ${dossierCode}` }).count(), 0, `${domain} quick peek closes after opening work context`);
+        await page.close();
+      }
+    }
+
+    assert.deepEqual(audit.simulatedWrites, [], 'Opening a dossier from Quick Peek does not create or mutate data');
+    assert.deepEqual(audit.externalRequests, [], 'Only mocked local fixture requests are allowed');
+    assert.deepEqual(audit.pageErrors, [], `No browser errors: ${JSON.stringify(audit.pageErrors)}`);
+    assert.deepEqual(audit.consoleErrors, [], `No console errors: ${JSON.stringify(audit.consoleErrors)}`);
+    await writeFile(resolve(outDir, 'metrics.json'), `${JSON.stringify({ viewports: results, simulatedWrites: audit.simulatedWrites.length, externalRequests: audit.externalRequests.length }, null, 2)}\n`, 'utf8');
+  } finally {
+    await browser.close();
+  }
+});
+
+test('PGDCN Superneat Three Critical Journeys verification across 8 viewports', {
   timeout: 300000,
 }, async () => {
   const base = new URL(rawBaseUrl);

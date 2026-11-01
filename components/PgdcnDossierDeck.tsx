@@ -863,9 +863,20 @@ export function PgdcnDossierQuickPeek({
 
   if (!item) return null;
 
-  const deadlineDisplay = item.deadlineDisplay || item.targetDate;
   const blockers = item.blockers || [];
   const nextAction = item.nextAction;
+  const missingRequiredCount = typeof item.missingRequiredCount === 'number' && Number.isFinite(item.missingRequiredCount)
+    ? item.missingRequiredCount
+    : null;
+  const hasMissingRequiredDocuments = missingRequiredCount !== null && missingRequiredCount > 0;
+  const isMissingDocumentBlocker = (blocker: DossierBlockerItem) => {
+    const description = `${blocker.title} ${blocker.reason}`;
+    return /(tài liệu|đầu mục|chứng từ)/i.test(description) && /(thiếu|chưa có)/i.test(description);
+  };
+  const visibleBlockers = hasMissingRequiredDocuments
+    ? blockers.filter((blocker) => !isMissingDocumentBlocker(blocker))
+    : blockers;
+  const hasBlockerSummary = hasMissingRequiredDocuments || visibleBlockers.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-stretch lg:justify-end">
@@ -884,7 +895,7 @@ export function PgdcnDossierQuickPeek({
         aria-labelledby="pgdcn-peek-title"
         aria-label={`Xem nhanh ${item.primaryCode}`}
         tabIndex={-1}
-        className="relative z-10 flex w-full flex-col bg-white shadow-2xl h-[85dvh] max-h-[85dvh] rounded-t-2xl border-t border-slate-200 lg:h-full lg:max-h-full lg:w-[400px] lg:rounded-none lg:border-t-0 lg:border-l lg:border-slate-200 focus:outline-none"
+        className="relative z-10 flex w-full flex-col bg-white shadow-2xl h-[90dvh] max-h-[90dvh] rounded-t-2xl border-t border-slate-200 lg:h-full lg:max-h-full lg:w-[400px] lg:rounded-none lg:border-t-0 lg:border-l lg:border-slate-200 focus:outline-none"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 shrink-0">
@@ -908,7 +919,7 @@ export function PgdcnDossierQuickPeek({
         </div>
 
         {/* Scrollable Body: Read-only projection */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+        <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
           {/* Domain / Code / Status */}
           <div className="flex flex-wrap items-center gap-2">
             <PgdcnStatusBadge domain={item.domain} status={item.status} label={item.statusLabel} />
@@ -917,15 +928,15 @@ export function PgdcnDossierQuickPeek({
                 {item.secondaryCode}
               </span>
             )}
-            {item.fieldOrCatalogBadge && (
-              <span className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 uppercase">
+            {item.domain === 'PCN' && item.fieldOrCatalogBadge && (
+              <span title={item.fieldOrCatalogBadge} className="max-w-full truncate rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 uppercase">
                 {item.fieldOrCatalogBadge}
               </span>
             )}
           </div>
 
           {/* Customer / Product */}
-          <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 space-y-2">
+          <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 space-y-1.5">
             <div>
               <span className="block text-[10px] font-semibold text-slate-500 uppercase">Khách hàng</span>
               <p className="font-bold text-slate-900 text-xs mt-0.5">
@@ -944,50 +955,32 @@ export function PgdcnDossierQuickPeek({
           </div>
 
           {/* Workflow & Assignment */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-slate-200 p-2.5">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-slate-200 p-2">
               <span className="block text-[10px] font-semibold text-slate-500 uppercase">Bước hiện tại</span>
               <p className="font-bold text-slate-900 text-xs mt-0.5">
                 {item.currentStepLabel || 'Chưa có dữ liệu'}
               </p>
             </div>
-            <div className="rounded-lg border border-slate-200 p-2.5">
+            <div className="rounded-lg border border-slate-200 p-2">
               <span className="block text-[10px] font-semibold text-slate-500 uppercase">Người phụ trách</span>
               <p className="font-bold text-slate-900 text-xs mt-0.5">
                 {item.ownerName || 'Chưa phân công'}
-              </p>
-            </div>
-            <div className="rounded-lg border border-slate-200 p-2.5">
-              <span className="block text-[10px] font-semibold text-slate-500 uppercase">Hạn hoàn tất</span>
-              <p className="font-bold text-blue-900 text-xs mt-0.5">
-                {deadlineDisplay || 'Chưa có hạn'}
-              </p>
-            </div>
-            <div className="rounded-lg border border-slate-200 p-2.5">
-              <span className="block text-[10px] font-semibold text-slate-500 uppercase">Tài liệu bắt buộc</span>
-              <p className="font-bold text-xs mt-0.5">
-                {typeof item.missingRequiredCount === 'number' && Number.isFinite(item.missingRequiredCount) ? (
-                  item.missingRequiredCount > 0 ? (
-                    <span className="text-amber-700">Thiếu {item.missingRequiredCount} tài liệu</span>
-                  ) : (
-                    <span className="text-emerald-700">Đã đủ tài liệu</span>
-                  )
-                ) : (
-                  <span className="text-slate-500">Chưa kiểm tra</span>
-                )}
               </p>
             </div>
           </div>
 
           {/* Next Action Summary / Reason */}
           {nextAction && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50/80 p-3 space-y-1">
+            <div className="rounded-lg border border-blue-200 bg-blue-50/80 p-2.5 space-y-1">
               <span className="text-[10px] font-black uppercase tracking-wider text-blue-900">
                 Việc cần làm tiếp theo
               </span>
               <h4 className="font-bold text-blue-950 text-xs">{nextAction.title}</h4>
-              <p className="text-[11px] text-blue-800 leading-relaxed">{nextAction.reason}</p>
-              {nextAction.owner && (
+              {nextAction.reason && !hasBlockerSummary && (
+                <p className="text-[11px] text-blue-800 leading-relaxed">{nextAction.reason}</p>
+              )}
+              {nextAction.owner && nextAction.owner !== item.ownerName && (
                 <p className="text-[10px] text-blue-700 font-medium">
                   Phụ trách: {nextAction.owner}
                 </p>
@@ -995,14 +988,17 @@ export function PgdcnDossierQuickPeek({
             </div>
           )}
 
-          {/* Blockers */}
-          {blockers.length > 0 && (
-            <div className="space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-900">
-                Cảnh báo & Điểm nghẽn ({blockers.length})
-              </span>
+          {/* One concise blocker summary; the full dossier owns document-level detail. */}
+          {hasBlockerSummary && (
+            <div data-testid="dossier-peek-blockers" className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-900">Cần xử lý</span>
+              {hasMissingRequiredDocuments && (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900">
+                  Thiếu {missingRequiredCount} tài liệu bắt buộc. Mở hồ sơ để xem danh sách cần bổ sung.
+                </p>
+              )}
               <div className="space-y-1.5">
-                {blockers.map((b) => (
+                {visibleBlockers.map((b) => (
                   <div
                     key={b.id}
                     className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-amber-900"
@@ -1022,12 +1018,16 @@ export function PgdcnDossierQuickPeek({
             type="button"
             onClick={() => {
               onClose();
-              onOpenDossier(item.id);
+              if (nextAction?.onAction) {
+                nextAction.onAction();
+              } else {
+                onOpenDossier(item.id);
+              }
             }}
             className="w-full inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-blue-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 transition-colors cursor-pointer"
           >
             <FolderOpen size={15} />
-            <span>Mở hồ sơ đầy đủ</span>
+            <span>{nextAction?.actionLabel || 'Mở hồ sơ đầy đủ'}</span>
           </button>
         </div>
       </div>
