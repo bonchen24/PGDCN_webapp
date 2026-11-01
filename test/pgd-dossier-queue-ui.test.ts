@@ -14,3 +14,27 @@ test('PGD operations defaults to a work queue and keeps the data register as a s
   assert.match(workspace, /viewMode.*QUEUE.*DATA/);
   assert.match(workspace, /PgdSummaryRegisterView/);
 });
+
+test('PGD dossier card summary renders all canonical operational fields and meets official UI contract', () => {
+  const queue = read('components/PgdDossierQueueView.tsx');
+  const workspace = read('components/PgdWorkspace.tsx');
+
+  // PGD card summary requires: mã PYC, khách hàng, đối tượng, việc hiện tại/tiếp theo, mức hoàn thiện, tài liệu thiếu, chủ hồ sơ, CTA mở
+  assert.match(queue, /PgdDossierSummaryCard/);
+  assert.match(queue, /item\.nextAction/);
+  assert.match(queue, /item\.completeness/);
+  assert.match(queue, /item\.missingRequiredCount/);
+  assert.match(queue, /item\.ownerName/);
+
+  // Canonical full-screen PGD detail exposes header context summary with current step, missing required docs, and owner
+  assert.match(workspace, /data-testid="pgd-dossier-context-summary"/);
+  assert.match(workspace, /Chủ hồ sơ:/);
+});
+
+test('PGD dossier header only summarizes checklist readiness from a loaded current-document projection', () => {
+  const workspace = read('components/PgdWorkspace.tsx');
+
+  assert.match(workspace, /getCurrentPgdDossierDocuments\(dossierDocuments\)/);
+  assert.match(workspace, /dossierRequirements\.length > 0/);
+  assert.match(workspace, /!dossierLoading && !dossierError/);
+});

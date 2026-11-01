@@ -179,6 +179,7 @@ function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail,
           <span className="font-semibold text-blue-900">{item.currentStepLabel || 'Chưa có dữ liệu'}</span>
         </p>
         <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700">
+
           <span className="mr-1 font-semibold text-slate-500">Chủ hồ sơ:</span>
           <span className="font-medium text-slate-800">{item.ownerName || 'Chưa phân công'}</span>
         </p>
@@ -207,17 +208,65 @@ function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail,
             )}
           </div>
         )}
+
       </div>
 
-      <div className="mt-2 flex justify-end">
+      <div data-testid="dossier-progress-zone" className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="flex min-w-32 flex-1 items-center gap-2">
+          <div
+            className="h-1 min-w-8 flex-1 overflow-hidden rounded-full bg-slate-100"
+            role="progressbar"
+            aria-label="Tiến độ hoàn tất hồ sơ"
+            aria-valuenow={Math.min(100, Math.max(0, item.completenessPercent))}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuetext={`${Math.min(100, Math.max(0, item.completenessPercent))}% hoàn tất`}
+          >
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${
+                item.completenessPercent === 100
+                  ? 'bg-emerald-500'
+                  : item.completenessPercent >= 60
+                  ? 'bg-blue-600'
+                  : 'bg-amber-500'
+              }`}
+              style={{ width: `${Math.min(100, Math.max(0, item.completenessPercent))}%` }}
+            />
+          </div>
+          <span className="shrink-0 text-[11px] font-bold text-slate-600" title="Mức độ hoàn tất hồ sơ">
+            {item.completenessLabel || `${item.completenessPercent}%`}
+          </span>
+        </div>
+        {typeof item.missingRequiredCount === 'number' && (
+          <span
+            title={item.missingRequiredCount > 0 ? `${item.missingRequiredCount} tài liệu bắt buộc còn thiếu` : 'Đã đủ tài liệu bắt buộc'}
+            className={`inline-flex max-w-full break-words rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
+              item.missingRequiredCount > 0
+                ? 'border-amber-200 bg-amber-50 text-amber-800'
+                : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+            }`}
+          >
+            {item.missingRequiredCount > 0
+              ? `Thiếu ${item.missingRequiredCount} mục`
+              : 'Đủ tài liệu'}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+        {item.fieldOrCatalogBadge ? (
+          <span className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700">
+            {item.fieldOrCatalogBadge}
+          </span>
+        ) : <span />}
         <button
           type="button"
           onClick={onOpenDetail}
           aria-label={`Mở hồ sơ ${item.primaryCode}`}
-          className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-md bg-blue-700 px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 md:min-h-9 md:py-1.5"
+          className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-md bg-blue-700 px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 md:min-h-9 md:py-1.5 cursor-pointer"
         >
           <FolderOpen size={13} aria-hidden="true" />
-          Mở hồ sơ
+          <span>Mở hồ sơ</span>
           <ArrowRight size={12} aria-hidden="true" />
         </button>
       </div>
@@ -722,7 +771,7 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
                       <td className="px-3 py-3 align-top text-right">
                         <button
                           type="button"
-                          className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center gap-1.5 rounded-md bg-blue-700 px-3 py-2 text-[10px] font-black text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 cursor-pointer"
+                          className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center gap-1.5 rounded-md bg-blue-700 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 cursor-pointer"
                           onClick={() => onOpenDossier(row.requestId)}
                         >
                           <span>Mở hồ sơ</span>

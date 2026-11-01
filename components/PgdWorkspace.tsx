@@ -83,7 +83,7 @@ import {
   validatePgdResultValues,
   type PgdOperationalStationKey,
 } from '../utils/pgdWorkflow';
-import { getPgdDossierRequirements } from '../utils/pgdDossier';
+import { getCurrentPgdDossierDocuments, getPgdDossierRequirements } from '../utils/pgdDossier';
 import type { PgdDocumentTemplateKind } from '../utils/pgdDocumentTemplates';
 import { usePgdStore } from '../store-pgd';
 import PgdLoginScreen from './PgdLoginScreen';
@@ -1323,6 +1323,20 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
     });
   }, [template, reportInputs, certificateConclusion]);
   const reportIssues = useMemo(() => template ? validatePgdResultValues(template, reportValues) : [], [template, reportValues]);
+  const missingRequiredCount = useMemo(() => {
+    if (!dossierLoading && !dossierError && dossierRequirements.length > 0) {
+      const requiredReqs = dossierRequirements.filter((r) => r.required !== false);
+      if (requiredReqs.length === 0) return 0;
+      const currentDocuments = getCurrentPgdDossierDocuments(dossierDocuments);
+      const checklist = request.dossierChecklist || [];
+      const presentCount = requiredReqs.filter((r) =>
+        currentDocuments.some((d) => d.requirementCode === r.code) ||
+        checklist.some((item) => item.requirementCode === r.code && item.status === 'WAIVED' && Boolean(item.waiverReason?.trim()))
+      ).length;
+      return Math.max(0, requiredReqs.length - presentCount);
+    }
+    return null;
+  }, [dossierLoading, dossierError, dossierRequirements, dossierDocuments, request.dossierChecklist]);
   const nextState = request.status === 'REJECTED' || request.status === 'ON_HOLD'
     ? 'CAPABILITY_REVIEW' as const
     : PGD_WORKFLOW_STATES.find((state) => state.order === PGD_WORKFLOW_STATES.find((candidate) => candidate.code === request.status)?.order! + 1)?.code;
@@ -1488,6 +1502,22 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
 <span className="text-[10px] text-slate-400">Cập nhật {formatDate(request.updatedAt)}</span>
 </div>
 <h2 className="mt-1 break-words text-base font-black text-slate-800">{request.productName} · {request.customerSnapshot.name}</h2>
+<div data-testid="pgd-dossier-context-summary" className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-600" aria-label="Tóm tắt ngữ cảnh hồ sơ PGD">
+<span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-800">Bước hiện tại: {currentStepMeta.label} ({currentStepNumber}/12)</span>
+{missingRequiredCount !== null && (
+<span className={`rounded-full border px-2 py-0.5 ${missingRequiredCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+{missingRequiredCount > 0 ? `Còn ${missingRequiredCount} đầu mục bắt buộc` : 'Đủ đầu mục bắt buộc'}
+</span>
+)}
+<span className="max-w-full truncate rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-600">
+Chủ hồ sơ: {getPgdUserDisplayName(request.ownerUsername, pgd.users) || 'Chưa phân công'}
+</span>
+{request.productGroup && (
+<span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-600">
+{request.productGroup}
+</span>
+)}
+</div>
 </div>
 <div data-testid="pgd-dossier-mobile-actions" aria-label="Thao tác hồ sơ PGD" className="flex w-full min-w-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto">{showDossierActions && <button type="button" disabled={!canEditDossier} onClick={() => setEditOpen(true)} title={editDenial || 'Sửa thông tin hồ sơ PGD'} className="mobile-touch-target min-h-11 rounded-lg border border-blue-200 bg-blue-50 px-3 text-[11px] font-black text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">Sửa thông tin hồ sơ</button>}{onOpenContextualAssistant ? <button type="button" onClick={() => onOpenContextualAssistant(request.id)} title="Mở trợ lý theo đúng hồ sơ PGD đang xem" aria-label={'Mở Trợ lý hồ sơ cho ' + request.requestCode} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-[11px] font-black text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Bot size={14} aria-hidden="true" /> Trợ lý hồ sơ</button> : null}<button type="button" onClick={onClose} aria-label="Đóng chi tiết hồ sơ PGD" className="mobile-touch-target inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
 <X size={18} />

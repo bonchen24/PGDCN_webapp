@@ -381,7 +381,7 @@ export function PgdcnDossierCardHeader({
       {/* ================================================================== */}
       <div data-testid="dossier-metadata-zone" className="mt-0 grid min-w-0 grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2 md:col-span-4 md:row-start-2">
         {/* Customer Name */}
-        <p className="min-w-0 break-words text-[10px] leading-4 text-slate-700">
+        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700">
           <span className="mr-1 font-semibold text-slate-500">Khách hàng:</span>
           <span className="font-bold text-slate-900" title={item.customerName || 'Chưa gắn khách hàng'}>
             <HighlightText text={item.customerName || 'Chưa gắn khách hàng'} search={searchQuery} />
@@ -389,21 +389,21 @@ export function PgdcnDossierCardHeader({
         </p>
 
         {/* Product / Object / Subject */}
-        <p className="min-w-0 break-words text-[10px] leading-4 text-slate-700">
+        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700">
           <span className="mr-1 font-semibold text-slate-500">Đối tượng:</span>
           <span className="font-medium text-slate-700" title={item.productName || 'Chưa có đối tượng'}>
             <HighlightText text={item.productName || 'Chưa có đối tượng'} search={searchQuery} />
           </span>
         </p>
 
-        <p className="min-w-0 break-words text-[10px] leading-4 text-slate-700" title={item.currentStepLabel || 'Chưa có dữ liệu'}>
+        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700" title={item.currentStepLabel || 'Chưa có dữ liệu'}>
           <span className="mr-1 font-semibold text-slate-500">Bước nghiệp vụ:</span>
           <span className="font-medium text-slate-700">
             {item.currentStepLabel || 'Chưa có dữ liệu'}
           </span>
         </p>
 
-        <p className="min-w-0 break-words text-[10px] leading-4 text-slate-700" title={item.ownerName || 'Chưa có dữ liệu'}>
+        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700" title={item.ownerName || 'Chưa có dữ liệu'}>
           <span className="mr-1 font-semibold text-slate-500">Người phụ trách:</span>
           <span className="font-medium text-slate-700">{item.ownerName || 'Chưa có dữ liệu'}</span>
         </p>
@@ -413,7 +413,7 @@ export function PgdcnDossierCardHeader({
       {/* ZONE 3: PROGRESS (Thin 1-line progress bar like DDT)               */}
       {/* ================================================================== */}
       <div data-testid="dossier-progress-zone" className="mt-0 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 md:col-span-4 md:row-start-3">
-        <span className="shrink-0 text-[10px] leading-4 text-slate-700">
+        <span className="shrink-0 text-[11px] leading-4 text-slate-700">
           <span className="font-semibold text-slate-500">Hạn:</span>{' '}
           <span className="font-bold text-blue-800" title="Hạn hoàn tất">{deadlineDisplay || 'Chưa có dữ liệu'}</span>
         </span>
@@ -438,12 +438,12 @@ export function PgdcnDossierCardHeader({
               style={{ width: `${Math.min(100, Math.max(0, item.completenessPercent))}%` }}
             />
           </div>
-          <span className="shrink-0 text-[10px] font-bold text-slate-600" title="Mức độ hoàn tất hồ sơ">
+          <span className="shrink-0 text-[11px] font-bold text-slate-600" title="Mức độ hoàn tất hồ sơ">
             {item.completenessLabel || `${item.completenessPercent}%`}
           </span>
         </div>
         {typeof item.missingRequiredCount === 'number' && Number.isFinite(item.missingRequiredCount) && (
-          <span title={item.missingRequiredCount > 0 ? `${item.missingRequiredCount} tài liệu bắt buộc còn thiếu` : 'Đã đủ tài liệu bắt buộc'} className={`inline-flex max-w-full break-words rounded border px-1.5 py-0.5 text-[9px] font-semibold ${
+          <span title={item.missingRequiredCount > 0 ? `${item.missingRequiredCount} tài liệu bắt buộc còn thiếu` : 'Đã đủ tài liệu bắt buộc'} className={`inline-flex max-w-full break-words rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
             item.missingRequiredCount > 0
               ? 'border-amber-200 bg-amber-50 text-amber-800'
               : 'border-emerald-200 bg-emerald-50 text-emerald-800'
