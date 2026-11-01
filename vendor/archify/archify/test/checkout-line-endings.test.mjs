@@ -13,15 +13,21 @@ for (const autocrlf of ['true', 'input', 'false']) {
     const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-checkout-eol-'));
     const source = path.join(fixture, 'source');
     const checkout = path.join(fixture, 'checkout');
+    const emptyGlobalConfig = path.join(fixture, 'empty.gitconfig');
+    const emptyAttributesFile = path.join(fixture, 'empty.attributes');
+    const emptyTemplate = path.join(fixture, 'empty-template');
+    fs.writeFileSync(emptyGlobalConfig, '');
+    fs.writeFileSync(emptyAttributesFile, '');
+    fs.mkdirSync(emptyTemplate);
     // Ignore caller Git configuration, attributes, repository paths, and signing hooks.
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
     Object.assign(env, {
       GIT_CONFIG_NOSYSTEM: '1',
-      GIT_CONFIG_GLOBAL: os.devNull,
+      GIT_CONFIG_GLOBAL: emptyGlobalConfig,
       GIT_ATTR_NOSYSTEM: '1',
     });
     const runGit = (cwd, args) => {
-      const result = spawnSync('git', ['-c', `core.attributesFile=${os.devNull}`, ...args], {
+      const result = spawnSync('git', ['-c', `core.attributesFile=${emptyAttributesFile}`, ...args], {
         cwd, env, timeout: 30_000,
       });
       assert.equal(result.status, 0, `git ${args.join(' ')}: ${result.error || result.stderr}`);
@@ -30,7 +36,7 @@ for (const autocrlf of ['true', 'input', 'false']) {
 
     try {
       fs.mkdirSync(source);
-      runGit(source, ['init', '--quiet', '--template=']);
+      runGit(source, ['init', '--quiet', '--template', emptyTemplate]);
       runGit(source, ['config', 'core.autocrlf', 'false']);
       runGit(source, ['config', 'user.name', 'Archify Test']);
       runGit(source, ['config', 'user.email', 'archify@example.invalid']);
@@ -51,7 +57,7 @@ for (const autocrlf of ['true', 'input', 'false']) {
       }
       runGit(source, ['add', '--all']);
       runGit(source, ['-c', 'commit.gpgSign=false', 'commit', '--quiet', '-m', 'checkout fixture']);
-      runGit(fixture, ['clone', '--quiet', '--no-checkout', '--no-hardlinks', '--template=', source, checkout]);
+      runGit(fixture, ['clone', '--quiet', '--no-checkout', '--no-hardlinks', '--template', emptyTemplate, source, checkout]);
       runGit(checkout, ['config', 'core.autocrlf', autocrlf]);
       runGit(checkout, ['config', 'core.eol', 'crlf']);
       runGit(checkout, ['checkout', '--quiet', '--detach', 'HEAD']);

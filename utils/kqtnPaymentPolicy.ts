@@ -4,7 +4,7 @@
 import type { KQTNRecord, UserAccount } from '../types';
 import { isSystemSettingsManager } from './systemSettingsPolicy';
 
-type UserRoleLike = Pick<UserAccount, 'role' | 'position'> | null | undefined;
+type UserRoleLike = Partial<UserAccount> | null | undefined;
 export type KqtnPaymentState = Pick<KQTNRecord, 'customerPaymentConfirmed' | 'customerPaymentConfirmedAt' | 'customerPaymentConfirmedBy'>;
 
 export const isKqtnPaymentManager = (user: UserRoleLike): boolean =>

@@ -5,10 +5,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import { resolveTVCIAppFile } from './helpers/resolveTVCIAppFile.js';
 
-const tvciOcrSource = fs.readFileSync(new URL('../../TVCI_APP/ocr_service/main.py', import.meta.url), 'utf8');
-const tvciRequirementsSource = fs.readFileSync(new URL('../../TVCI_APP/ocr_service/requirements.txt', import.meta.url), 'utf8');
-const tvciComposeSource = fs.readFileSync(new URL('../../TVCI_APP/docker-compose.yml', import.meta.url), 'utf8');
+const tvciOcrSource = fs.readFileSync(resolveTVCIAppFile(import.meta.url, 'ocr_service', 'main.py'), 'utf8');
+const tvciRequirementsSource = fs.readFileSync(resolveTVCIAppFile(import.meta.url, 'ocr_service', 'requirements.txt'), 'utf8');
+const tvciComposeSource = fs.readFileSync(resolveTVCIAppFile(import.meta.url, 'docker-compose.yml'), 'utf8');
 const ddtComposeSource = fs.readFileSync(new URL('../docker-compose.yml', import.meta.url), 'utf8');
 const ddtEnvExampleSource = fs.readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
 const ddtServerSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
@@ -75,12 +76,14 @@ test('host development can reach shared PaddleOCR through loopback only', () => 
   assert.match(ddtServerSource, /NODE_ENV.*127\.0\.0\.1:8100/);
 });
 
-test('shared PaddleOCR uses the lightweight model pair and disables expensive orientation pipelines', () => {
+test('shared PaddleOCR uses the mobile detector and configured recognizer without expensive orientation pipelines', () => {
   assert.match(tvciOcrSource, /use_doc_orientation_classify=False/);
   assert.match(tvciOcrSource, /use_doc_unwarping=False/);
   assert.match(tvciOcrSource, /use_textline_orientation=False/);
   assert.match(tvciOcrSource, /text_detection_model_name=.*PP-OCRv5_mobile_det/);
-  assert.match(tvciOcrSource, /text_recognition_model_name=.*PP-OCRv5_mobile_rec/);
+  assert.match(tvciOcrSource, /"default":\s*"PP-OCRv5_mobile_rec"/);
+  assert.match(tvciOcrSource, /recognition_model = get_ocr_recognition_model_name\(\)/);
+  assert.match(tvciOcrSource, /text_recognition_model_name=recognition_model/);
 });
 
 test('shared PaddleOCR warms the model and persists downloaded model caches', () => {

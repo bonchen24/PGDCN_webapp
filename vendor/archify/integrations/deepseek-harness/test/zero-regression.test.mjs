@@ -38,11 +38,22 @@ test('Archify core does not import, detect, or branch on DeepSeek Harness', () =
 });
 
 test('full-depth Skills CLI discovery still finds only one skill named archify', () => {
-  const result = spawnSync('npx', ['-y', 'skills', 'add', repoRoot, '--list', '--full-depth'], {
+  const npmCli = process.env.npm_execpath;
+  const npxCli = npmCli
+    ? path.join(path.dirname(npmCli), 'npx-cli.js')
+    : path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npx-cli.js');
+  const useNpxCli = fs.existsSync(npxCli);
+  const result = spawnSync(
+    useNpxCli ? process.execPath : 'npx',
+    [...(useNpxCli ? [npxCli] : []), '-y', 'skills', 'add', repoRoot, '--list', '--full-depth'],
+    {
     cwd: repoRoot,
     encoding: 'utf8',
-  });
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+    },
+  );
+  const detail = result.error?.message || result.stderr || result.stdout
+    || `child exited without output (status=${result.status}, signal=${result.signal})`;
+  assert.equal(result.status, 0, detail);
   const names = [...result.stdout.matchAll(/^\s*[-*]\s+(\S+)/gm)].map((match) => match[1])
     .filter((name) => name === 'archify' || /archify/i.test(name));
   const unique = new Set(

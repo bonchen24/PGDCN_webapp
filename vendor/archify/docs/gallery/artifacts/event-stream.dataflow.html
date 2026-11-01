@@ -4071,6 +4071,18 @@
       cursor: pointer;
       transition: opacity 0.18s ease, filter 0.18s ease;
     }
+    svg [data-node-id][data-node-state="locked"],
+    svg [data-node-id][data-node-state="cancelled"] {
+      cursor: not-allowed;
+      filter: grayscale(1);
+      opacity: 0.38;
+    }
+    svg [data-node-id][data-node-state="locked"]:hover,
+    svg [data-node-id][data-node-state="locked"]:focus-visible,
+    svg [data-node-id][data-node-state="cancelled"]:hover,
+    svg [data-node-id][data-node-state="cancelled"]:focus-visible {
+      filter: grayscale(1);
+    }
     svg [data-edge-from] { transition: opacity 0.18s ease, filter 0.18s ease; }
     svg [data-node-id]:hover,
     svg [data-node-id]:focus-visible {

@@ -5,13 +5,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { canDownloadKqtnPdf, isKqtnPaymentManager, isKqtnPaymentStateChanged } from '../utils/kqtnPaymentPolicy.ts';
 
-test('Admin, office clerk, and room managers can change payment unlock state', () => {
+test('Admin, office clerk, and organizational leaders can change payment unlock state', () => {
   assert.equal(isKqtnPaymentManager({ role: 'admin' }), true);
   assert.equal(isKqtnPaymentManager({ role: 'office_clerk' }), true);
-  assert.equal(isKqtnPaymentManager({ role: 'tester', position: 'Quản lý phòng' }), true);
-  assert.equal(isKqtnPaymentManager({ role: 'viewer', position: 'Trưởng phòng' }), true);
+  assert.equal(isKqtnPaymentManager({ role: 'tester', managementRoleCode: 'DEPARTMENT_HEAD' }), true);
+  assert.equal(isKqtnPaymentManager({ role: 'viewer', managementRoleCode: 'CENTER_DIRECTOR' }), true);
   assert.equal(isKqtnPaymentManager({ role: 'tester' }), false);
   assert.equal(isKqtnPaymentManager({ role: 'viewer' }), false);
+  assert.equal(isKqtnPaymentManager({ role: 'tester', position: 'Quản lý phòng' }), false);
+  assert.equal(isKqtnPaymentManager({ role: 'viewer', position: 'Trưởng phòng' }), false);
   assert.equal(isKqtnPaymentManager(null), false);
 });
 

@@ -5,9 +5,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import { resolveTVCIAppFile } from './helpers/resolveTVCIAppFile.js';
 
 const composePath = new URL('../docker-compose.supabase.yml', import.meta.url);
-const supabaseFullComposePath = new URL('../../TVCI_APP/supabase-docker/docker-compose.full.yml', import.meta.url);
+const supabaseFullComposePath = resolveTVCIAppFile(import.meta.url, 'supabase-docker', 'docker-compose.full.yml');
 
 test('Supabase production Compose uses the existing Supabase network and the separate PCN database', () => {
   assert.equal(fs.existsSync(composePath), true);

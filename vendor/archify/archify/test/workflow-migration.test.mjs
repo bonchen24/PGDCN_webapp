@@ -1,11 +1,12 @@
 import { test } from 'node:test';
+import { requireSymlinkCapability } from './helpers/symlink-capability.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   createHorizontalRankMapper,
   migrateWorkflowDocument,
@@ -454,7 +455,7 @@ test('workflow migration cleanup failure warns without reversing a successful co
   const destination = path.join(tmp, 'cleanup-warning-destination.workflow.json');
   const importModule = path.join(__dirname, 'fixtures', 'fail-migration-cleanup.mjs');
 
-  const result = runMigration(source, destination, { importModule });
+  const result = runMigration(source, destination, { importModule: pathToFileURL(importModule).href });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(JSON.parse(fs.readFileSync(destination, 'utf8')).schema_version, 2);
@@ -581,7 +582,8 @@ test('workflow migration rejects the source path as its destination without chan
   assert.ok(failure.diagnostics[0].supportedFixes.some((fix) => /different.*destination/i.test(fix)));
 });
 
-test('workflow migration reports a cyclic-symlink destination as structured JSON', () => {
+test('workflow migration reports a cyclic-symlink destination as structured JSON', (t) => {
+  if (!requireSymlinkCapability(t, 'file')) return;
   const source = copyFixture('symlink-cycle-source.workflow.json');
   const destination = path.join(tmp, 'migration-cycle-a.workflow.json');
   const otherLink = path.join(tmp, 'migration-cycle-b.workflow.json');

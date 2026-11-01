@@ -94,10 +94,27 @@ test('clean staging preserves index modes and strips repository-only package met
     write(root, 'archify/bin/executable.mjs', '#!/usr/bin/env node\n', 0o755);
     write(root, 'archify/runtime/test/required.dat', 'runtime fixture\n');
     git(root, ['add', 'archify']);
+    git(root, ['update-index', '--chmod=+x', 'archify/bin/executable.mjs']);
 
     stageCleanSkill({ repoRoot: root, destination });
 
-    assert.equal(fs.statSync(path.join(destination, 'bin', 'executable.mjs')).mode & 0o777, 0o755);
+    const stagedExecutable = path.join(destination, 'bin', 'executable.mjs');
+    const indexMode = spawnSync(
+      'git',
+      ['ls-files', '--stage', '--', 'archify/bin/executable.mjs'],
+      { cwd: root, encoding: 'utf8' },
+    ).stdout.split(/\s+/)[0];
+    assert.equal(indexMode, '100755', 'Git index preserves executable mode');
+
+    if (process.platform === 'win32') {
+      assert.equal(
+        fs.statSync(stagedExecutable).mode & 0o777,
+        0o666,
+        'Windows filesystem reports mode 0666 because Windows does not preserve Unix executable bits',
+      );
+    } else {
+      assert.equal(fs.statSync(stagedExecutable).mode & 0o777, 0o755);
+    }
     assert.equal(fs.existsSync(path.join(destination, 'test')), false);
     assert.equal(
       fs.readFileSync(path.join(destination, 'runtime', 'test', 'required.dat'), 'utf8'),

@@ -59,7 +59,7 @@ test('drafting parity sources keep Vietnamese text UTF-8 clean', () => {
 test('direct PCN drafting route opens the drafting workspace without context', () => {
   assert.match(draftingRoute, /initialPcnDraftingOpen=\{true\}/);
   assert.match(appShell, /initialPcnDraftingOpen\?: boolean/);
-  assert.match(appShell, /initialPcnDraftingOpen \|\| initialPcnDraftDossierId \? 'drafting' : 'proposals'/);
+  assert.match(appShell, /initialPcnDraftingOpen \|\| initialPcnDraftDossierId \? 'drafting' : \(initialPcnSection \|\| 'proposals'\)/);
 });
 
 test('direct drafting routes pass the return target into the shared shell', () => {
