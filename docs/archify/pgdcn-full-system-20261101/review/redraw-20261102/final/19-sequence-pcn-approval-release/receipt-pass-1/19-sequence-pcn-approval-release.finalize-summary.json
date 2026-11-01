@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "sequence",
+  "quality": "showcase",
+  "specification": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\19-sequence-pcn-approval-release.candidate.json",
+    "sha256": "44a7b942af505d24c253183415fe0191215e75dbd51b2793fdb7a78cce44d9f0",
+    "bytes": 3894
+  },
+  "artifact": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\19-sequence-pcn-approval-release.html",
+    "sha256": "28b90cd95febead9968d2a0d24a2a607205598f90bbfb3a07f9cadafeeec2d71",
+    "bytes": 824940
+  },
+  "gates": {
+    "validate": "fail",
+    "deliver": "not-run",
+    "check": "not-run",
+    "browser-check": "not-run"
+  },
+  "failedStage": "validate",
+  "diagnostics": [
+    {
+      "code": "composition/label-canvas-containment",
+      "severity": "error",
+      "message": "[composition/label-canvas-containment] showcase sequence label \"Submit authorized approval step (approve or return with reason)\" on messages[0] \"approver\" -> \"approval\" extends past the left edge by 11.1px (label rect [-11, 140, 428, 18]; viewBox 1014x654) — shorten the label, reorder participants, or enlarge meta.viewBox.",
+      "subject": {
+        "diagramType": "sequence",
+        "collection": "messages",
+        "index": 0,
+        "from": "approver",
+        "to": "approval"
+      },
+      "evidence": {
+        "label": "Submit authorized approval step (approve or return with reason)",
+        "labelRect": {
+          "x": -11.099999999999966,
+          "y": 140,
+          "width": 427.79999999999995,
+          "height": 18
+        },
+        "viewBox": [
+          1014,
+          654
+        ],
+        "overflowPx": {
+          "left": 11.1
+        },
+        "tolerancePx": 0.5
+      },
+      "supportedFixes": [
+        "shorten the label, reorder participants, or enlarge meta.viewBox"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\19-sequence-pcn-approval-release\\receipt-pass-1\\19-sequence-pcn-approval-release.finalize.json",
+    "summaryReceipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\19-sequence-pcn-approval-release\\receipt-pass-1\\19-sequence-pcn-approval-release.finalize-summary.json"
+  },
+  "update": {
+    "status": "update_available",
+    "installedVersion": "3.1.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": "https://github.com/tt-a1i/archify/releases/tag/v3.2.0",
+    "severity": "normal",
+    "checkedAt": "2026-11-01T05:42:59.726Z",
+    "source": "cache",
+    "noticeRequired": true,
+    "noticeText": "Archify update: 3.1.0 → 3.2.0. A previous check at 2026-11-01T05:42:59.726Z found a newer release. Release notes: https://github.com/tt-a1i/archify/releases/tag/v3.2.0. The installed Skill has not changed; ask to snooze or ignore this reminder.",
+    "eventKey": "archify@sha256:70e210265c59f24dcbdf2a502ff671104b5454e7ee7d3554aecd86bad32384f5"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 611,
+  "nextAction": {
+    "action": "edit-in-place",
+    "candidate": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\19-sequence-pcn-approval-release.candidate.json",
+    "constraint": "Preserve unaffected semantics and geometry; apply each diagnostic's supportedFixes, or the fix its message names, and do not replace the whole candidate.",
+    "then": "finalize-once"
+  }
+}

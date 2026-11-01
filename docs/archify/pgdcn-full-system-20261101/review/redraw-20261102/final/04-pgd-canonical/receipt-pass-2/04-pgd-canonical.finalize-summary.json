@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "workflow",
+  "quality": "showcase",
+  "specification": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\04-pgd-canonical.workflow.json",
+    "sha256": "21b9c9bf5c3e76af00e4ef9abb9e07a75ee769fcf099b455ed180c210b9e432a",
+    "bytes": 10033
+  },
+  "artifact": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\04-pgd-canonical.html",
+    "sha256": "73edcd350282d3f4951f6c64b012f161bb48b413b9f29aa40ddb9614e780ab22",
+    "bytes": 849458
+  },
+  "gates": {
+    "validate": "fail",
+    "deliver": "not-run",
+    "check": "not-run",
+    "browser-check": "not-run"
+  },
+  "failedStage": "validate",
+  "diagnostics": [
+    {
+      "code": "layout/constraint",
+      "severity": "error",
+      "message": "Phase \"pgd_station_5\" (4..5) overlaps phase \"pgd_station_4\" (3..4) — start at col 5 or later, or end the earlier phase at col 3.",
+      "subject": {
+        "diagramType": "workflow"
+      }
+    },
+    {
+      "code": "composition/proper-crossing",
+      "severity": "error",
+      "message": "[composition/proper-crossing] showcase workflow edges[5] id \"pgd_edge_5\" \"s06\" -> \"s07\" crosses edges[7] id \"pgd_edge_7\" \"s08\" -> \"s09\" at [838, 196] (segments 2 and 1) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+      "subject": {
+        "diagramType": "workflow",
+        "collection": "edges",
+        "index": 5,
+        "id": "pgd_edge_5",
+        "from": "s06",
+        "to": "s07"
+      },
+      "evidence": {
+        "otherRelationship": {
+          "diagramType": "workflow",
+          "collection": "edges",
+          "index": 7,
+          "id": "pgd_edge_7",
+          "from": "s08",
+          "to": "s09"
+        },
+        "point": [
+          838,
+          196
+        ],
+        "segmentIndex": 2,
+        "otherSegmentIndex": 1
+      },
+      "supportedFixes": [
+        "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+      ]
+    },
+    {
+      "code": "composition/ambiguous-corridor",
+      "severity": "error",
+      "message": "[composition/ambiguous-corridor] showcase workflow edges[7] id \"pgd_edge_7\" \"s08\" -> \"s09\" shares a 289.8px corridor with edges[9] id \"pgd_edge_9\" \"s10\" -> \"s11\" at [1100, 196] -> [1389.8, 196] (segments 1 and 3; minimum 8px) — adjust route/via, bias, or channel coordinates so unrelated edges do not visually merge.",
+      "subject": {
+        "diagramType": "workflow",
+        "collection": "edges",
+        "index": 7,
+        "id": "pgd_edge_7",
+        "from": "s08",
+        "to": "s09"
+      },
+      "evidence": {
+        "otherRelationship": {
+          "diagramType": "workflow",
+          "collection": "edges",
+          "index": 9,
+          "id": "pgd_edge_9",
+          "from": "s10",
+          "to": "s11"
+        },
+        "overlapLengthPx": 289.8,
+        "minimumPx": 8,
+        "from": [
+          1100,
+          196
+        ],
+        "to": [
+          1389.8,
+          196
+        ],
+        "segmentIndex": 1,
+        "otherSegmentIndex": 3
+      },
+      "supportedFixes": [
+        "adjust route/via, bias, or channel coordinates so unrelated edges do not visually merge"
+      ]
+    },
+    {
+      "code": "composition/proper-crossing",
+      "severity": "error",
+      "message": "[composition/proper-crossing] showcase workflow edges[7] id \"pgd_edge_7\" \"s08\" -> \"s09\" crosses edges[8] id \"pgd_edge_8\" \"s09\" -> \"s10\" at [906, 196] (segments 1 and 0) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+      "subject": {
+        "diagramType": "workflow",
+        "collection": "edges",
+        "index": 7,
+        "id": "pgd_edge_7",
+        "from": "s08",
+        "to": "s09"
+      },
+      "evidence": {
+        "otherRelationship": {
+          "diagramType": "workflow",
+          "collection": "edges",
+          "index": 8,
+          "id": "pgd_edge_8",
+          "from": "s09",
+          "to": "s10"
+        },
+        "point": [
+          905.9999999999999,
+          196
+        ],
+        "segmentIndex": 1,
+        "otherSegmentIndex": 0
+      },
+      "supportedFixes": [
+        "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+      ]
+    },
+    {
+      "code": "composition/proper-crossing",
+      "severity": "error",
+      "message": "[composition/proper-crossing] showcase workflow edges[7] id \"pgd_edge_7\" \"s08\" -> \"s09\" crosses edges[10] id \"pgd_edge_10\" \"s11\" -> \"s12\" at [1056, 196] (segments 1 and 0) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+      "subject": {
+        "diagramType": "workflow",
+        "collection": "edges",
+        "index": 7,
+        "id": "pgd_edge_7",
+        "from": "s08",
+        "to": "s09"
+      },
+      "evidence": {
+        "otherRelationship": {
+          "diagramType": "workflow",
+          "collection": "edges",
+          "index": 10,
+          "id": "pgd_edge_10",
+          "from": "s11",
+          "to": "s12"
+        },
+        "point": [
+          1056,
+          196
+        ],
+        "segmentIndex": 1,
+        "otherSegmentIndex": 0
+      },
+      "supportedFixes": [
+        "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 5,
+    "shown": 5,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\04-pgd-canonical\\receipt-pass-2\\04-pgd-canonical.finalize.json",
+    "summaryReceipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\04-pgd-canonical\\receipt-pass-2\\04-pgd-canonical.finalize-summary.json"
+  },
+  "update": {
+    "status": "update_available",
+    "installedVersion": "3.1.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": "https://github.com/tt-a1i/archify/releases/tag/v3.2.0",
+    "severity": "normal",
+    "checkedAt": "2026-11-01T05:42:59.726Z",
+    "source": "cache",
+    "noticeRequired": true,
+    "noticeText": "Archify update: 3.1.0 → 3.2.0. A previous check at 2026-11-01T05:42:59.726Z found a newer release. Release notes: https://github.com/tt-a1i/archify/releases/tag/v3.2.0. The installed Skill has not changed; ask to snooze or ignore this reminder.",
+    "eventKey": "archify@sha256:70e210265c59f24dcbdf2a502ff671104b5454e7ee7d3554aecd86bad32384f5"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 787,
+  "nextAction": {
+    "action": "edit-in-place",
+    "candidate": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\04-pgd-canonical.workflow.json",
+    "constraint": "Preserve unaffected semantics and geometry; apply each diagnostic's supportedFixes, or the fix its message names, and do not replace the whole candidate.",
+    "then": "finalize-once"
+  }
+}

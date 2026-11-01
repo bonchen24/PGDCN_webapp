@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\06-samples-and-lab.candidate.json",
+    "sha256": "4788e2c660e674d636d5a3931bdcf6cdebf6d7f35c536c07efd55a541ece296d",
+    "bytes": 17836
+  },
+  "artifact": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\06-samples-and-lab.html",
+    "sha256": "d4984adbabb4696c8ab4518db579a077a45ff57de3cedf58f5f8d7cccba6e388",
+    "bytes": 843526
+  },
+  "gates": {
+    "validate": "fail",
+    "deliver": "not-run",
+    "check": "not-run",
+    "browser-check": "not-run"
+  },
+  "failedStage": "validate",
+  "diagnostics": [
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"ACK/result reconciles to lot + item; official result is PTN data\" needs ~231px at the 6px legible minimum, but component \"pcn-reconcile\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "pcn-reconcile"
+      },
+      "evidence": {
+        "text": "ACK/result reconciles to lot + item; official result is PTN data",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 231,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"pcn-reconcile\" sublabel \"ACK/result reconciles to lot + item; official result is PTN data\" while preserving its meaning",
+        "or widen component \"pcn-reconcile\" so the sublabel keeps at least 231px of text width at the 6px legible minimum"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\06-samples-and-lab\\receipt-pass-2\\06-samples-and-lab.finalize.json",
+    "summaryReceipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\06-samples-and-lab\\receipt-pass-2\\06-samples-and-lab.finalize-summary.json"
+  },
+  "update": {
+    "status": "update_available",
+    "installedVersion": "3.1.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": "https://github.com/tt-a1i/archify/releases/tag/v3.2.0",
+    "severity": "normal",
+    "checkedAt": "2026-11-01T05:42:59.726Z",
+    "source": "cache",
+    "noticeRequired": true,
+    "noticeText": "Archify update: 3.1.0 → 3.2.0. A previous check at 2026-11-01T05:42:59.726Z found a newer release. Release notes: https://github.com/tt-a1i/archify/releases/tag/v3.2.0. The installed Skill has not changed; ask to snooze or ignore this reminder.",
+    "eventKey": "archify@sha256:70e210265c59f24dcbdf2a502ff671104b5454e7ee7d3554aecd86bad32384f5"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 634,
+  "nextAction": {
+    "action": "edit-in-place",
+    "candidate": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\06-samples-and-lab.candidate.json",
+    "constraint": "Preserve unaffected semantics and geometry; apply each diagnostic's supportedFixes, or the fix its message names, and do not replace the whole candidate.",
+    "then": "finalize-once"
+  }
+}

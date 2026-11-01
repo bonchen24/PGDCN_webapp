@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\05-documents-and-templates.candidate.json",
+    "sha256": "8f0a829c00667ca8096fa5fbe842f48f01ed00302cf585169f479abb84b7cdd4",
+    "bytes": 10719
+  },
+  "artifact": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\05-documents-and-templates.html",
+    "sha256": "9f6d0c5c10e4b582cbb2bdbbec471b2f889bbfb46b1f3dd705a67e5348ed0244",
+    "bytes": 845076
+  },
+  "gates": {
+    "validate": "fail",
+    "deliver": "not-run",
+    "check": "not-run",
+    "browser-check": "not-run"
+  },
+  "failedStage": "validate",
+  "diagnostics": [
+    {
+      "code": "schema/maxItems",
+      "severity": "error",
+      "message": "/components/0/sources (id/label: \"requirement\") must NOT have more than 3 items",
+      "subject": {
+        "diagramType": "architecture",
+        "path": "/components/0/sources",
+        "identity": "requirement"
+      },
+      "evidence": {
+        "keyword": "maxItems",
+        "limit": 3
+      },
+      "supportedFixes": [
+        "provide at most 3 item(s)"
+      ]
+    },
+    {
+      "code": "schema/maxItems",
+      "severity": "error",
+      "message": "/components/1/sources (id/label: \"missing\") must NOT have more than 3 items",
+      "subject": {
+        "diagramType": "architecture",
+        "path": "/components/1/sources",
+        "identity": "missing"
+      },
+      "evidence": {
+        "keyword": "maxItems",
+        "limit": 3
+      },
+      "supportedFixes": [
+        "provide at most 3 item(s)"
+      ]
+    },
+    {
+      "code": "schema/maxItems",
+      "severity": "error",
+      "message": "/components/2/sources (id/label: \"present\") must NOT have more than 3 items",
+      "subject": {
+        "diagramType": "architecture",
+        "path": "/components/2/sources",
+        "identity": "present"
+      },
+      "evidence": {
+        "keyword": "maxItems",
+        "limit": 3
+      },
+      "supportedFixes": [
+        "provide at most 3 item(s)"
+      ]
+    },
+    {
+      "code": "schema/maxItems",
+      "severity": "error",
+      "message": "/components/3/sources (id/label: \"versions\") must NOT have more than 3 items",
+      "subject": {
+        "diagramType": "architecture",
+        "path": "/components/3/sources",
+        "identity": "versions"
+      },
+      "evidence": {
+        "keyword": "maxItems",
+        "limit": 3
+      },
+      "supportedFixes": [
+        "provide at most 3 item(s)"
+      ]
+    },
+    {
+      "code": "schema/maxItems",
+      "severity": "error",
+      "message": "/components/4/sources (id/label: \"waived\") must NOT have more than 3 items",
+      "subject": {
+        "diagramType": "architecture",
+        "path": "/components/4/sources",
+        "identity": "waived"
+      },
+      "evidence": {
+        "keyword": "maxItems",
+        "limit": 3
+      },
+      "supportedFixes": [
+        "provide at most 3 item(s)"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 5,
+    "shown": 5,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\05-documents-and-templates\\receipt-pass-1\\05-documents-and-templates.finalize.json",
+    "summaryReceipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\05-documents-and-templates\\receipt-pass-1\\05-documents-and-templates.finalize-summary.json"
+  },
+  "update": {
+    "status": "update_available",
+    "installedVersion": "3.1.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": "https://github.com/tt-a1i/archify/releases/tag/v3.2.0",
+    "severity": "normal",
+    "checkedAt": "2026-11-01T05:42:59.726Z",
+    "source": "cache",
+    "noticeRequired": true,
+    "noticeText": "Archify update: 3.1.0 → 3.2.0. A previous check at 2026-11-01T05:42:59.726Z found a newer release. Release notes: https://github.com/tt-a1i/archify/releases/tag/v3.2.0. The installed Skill has not changed; ask to snooze or ignore this reminder.",
+    "eventKey": "archify@sha256:70e210265c59f24dcbdf2a502ff671104b5454e7ee7d3554aecd86bad32384f5"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 452,
+  "nextAction": {
+    "action": "edit-in-place",
+    "candidate": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\05-documents-and-templates.candidate.json",
+    "constraint": "Preserve unaffected semantics and geometry; apply each diagnostic's supportedFixes, or the fix its message names, and do not replace the whole candidate.",
+    "then": "finalize-once"
+  }
+}

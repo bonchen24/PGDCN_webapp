@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "receiptId": "9392a245-b08b-4f13-baf2-b0ef8bcbb85a",
+  "receiptId": "b6214ae4-78b3-4be7-90f3-16ae1c145dd5",
   "status": "current",
   "command": "deliver",
   "type": "architecture",
-  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.candidate.json",
-  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.html",
+  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.candidate.json",
+  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.html",
   "specification": {
-    "sha256": "217726dd77302fcaa69d41187ed3086f8ee94048bdf0b657c92c7cf6240e09c4",
-    "bytes": 5785
+    "sha256": "40b355629d985aa0209bc463b6db0c9b0eb71ebb2ba6cd28120dd11715b6c9c3",
+    "bytes": 6123
   },
   "artifact": {
-    "sha256": "f3d74088c3c3d325dc738ba965f911053f9c4f98f78add22f622e8dc4e92e50c",
-    "bytes": 834895
+    "sha256": "346f78057adbe3d9588f3d065dc6889a969b06c93e80881e935d8e7839c37fc0",
+    "bytes": 836182
   }
 }

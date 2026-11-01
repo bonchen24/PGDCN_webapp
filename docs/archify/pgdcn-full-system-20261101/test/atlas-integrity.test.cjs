@@ -12,6 +12,24 @@ const matrix = readJson('document-matrix.json');
 const workflowMaps = playbook.maps.filter((map) => map.primary || map.group !== 'technical');
 const system = readJson('00-system-operation.workflow.json');
 const statuses = new Set(['IMPLEMENTED', 'CONFIGURED', 'DESIGN_ONLY', 'EXTERNAL', 'NOT_VERIFIED']);
+const currentFinalizationRoot = path.join(atlasDir, 'review/redraw-20261102/final');
+
+function readCurrentFinalizationReceipts() {
+  const receipts = [];
+  const pending = [currentFinalizationRoot];
+  while (pending.length) {
+    const directory = pending.pop();
+    if (!fs.existsSync(directory)) continue;
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) pending.push(file);
+      else if (entry.isFile() && entry.name.endsWith('.finalize.json')) {
+        receipts.push({ path: file, value: JSON.parse(fs.readFileSync(file, 'utf8')) });
+      }
+    }
+  }
+  return receipts;
+}
 
 test('exactly three first-class maps precede the 13 configured dossier variants', () => {
   assert.deepEqual(playbook.maps.filter((map) => map.primary).map((map) => map.id), [
@@ -135,17 +153,16 @@ test('required file IDs in the handbook are represented by a PCN or PGD file-mat
 });
 
 test('each workflow has a passing Archify receipt for its current specification digest', () => {
+  const receipts = readCurrentFinalizationReceipts();
   for (const map of workflowMaps) {
-    const receiptPath = map.id === 'system-operation'
-      ? path.join(atlasDir, 'review/finalize-system-v2/00-system-operation.finalize.json')
-      : map.primary
-        ? path.join(atlasDir, map.file.replace('.html', '.finalize.json'))
-        : path.join(atlasDir, `review/finalize-final-${map.id}`, `${path.basename(map.file, '.html')}.finalize.json`);
-    const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
     const candidate = fs.readFileSync(path.join(atlasDir, map.candidate));
     const digest = crypto.createHash('sha256').update(candidate).digest('hex');
+    const matching = receipts.filter(({ value }) => value.status === 'pass'
+      && value.specification?.sha256 === digest
+      && path.basename(value.specification.path || '') === map.candidate);
+    assert.ok(matching.length, `${map.id}: no passing redraw receipt for current candidate ${digest}`);
+    const receipt = matching[matching.length - 1].value;
     assert.equal(receipt.status, 'pass', `${map.id}: finalization`);
-    assert.equal(receipt.specification.sha256, digest, `${map.id}: candidate digest`);
     for (const stage of ['validate', 'deliver', 'check', 'browser-check']) {
       assert.equal(receipt.stages[stage].status, 'pass', `${map.id}: ${stage}`);
     }

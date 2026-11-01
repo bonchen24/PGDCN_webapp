@@ -1,0 +1,487 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "workflow",
+  "quality": "showcase",
+  "startedAt": "2026-11-01T22:45:18.415Z",
+  "specification": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\00-system-operation.workflow.json",
+    "sha256": "6368fcae062b520b51e3f809c3baab0992c4630dfebc4668b31746343025e204",
+    "bytes": 17708
+  },
+  "artifact": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\00-system-operation.html",
+    "sha256": "ac751ab0353fd512237e027ac00d6d4eba9a4e0441362bba228ecfd948ae0120",
+    "bytes": 874978
+  },
+  "stages": {
+    "validate": {
+      "status": "fail",
+      "exitCode": 1,
+      "durationMs": null,
+      "command": [
+        "C:\\Program Files\\nodejs\\node.exe",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\.agents\\skills\\archify\\bin\\archify.mjs",
+        "deliver",
+        "workflow",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\00-system-operation.workflow.json",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\00-system-operation.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": false,
+        "command": "deliver",
+        "receiptId": "43d575e9-4617-4c6b-9d72-3db4551671a9",
+        "stage": "render",
+        "type": "workflow",
+        "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\00-system-operation.workflow.json",
+        "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\00-system-operation.html",
+        "error": "Workflow layout validation failed:\n- [composition/proper-crossing] showcase workflow edges[12] id \"overview-lab-result-pgd\" \"ext_lab_result\" -> \"pgd_review_kqtn\" crosses edges[13] id \"overview-pcn-review\" \"pcn_drafting\" -> \"mgmt_signature\" at [924.8, 346] (segments 1 and 0) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.\n- [composition/proper-crossing] showcase workflow edges[13] id \"overview-pcn-review\" \"pcn_drafting\" -> \"mgmt_signature\" crosses edges[14] id \"overview-pgd-review\" \"pgd_review_kqtn\" -> \"mgmt_signature\" at [926.8, 798] (segments 1 and 1) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.\n- [composition/proper-crossing] showcase workflow edges[15] id \"overview-pcn-issue\" \"mgmt_signature\" -> \"pcn_issue_archive\" crosses edges[18] id \"overview-pgd-delivery\" \"pgd_issue_archive\" -> \"client_receipt\" at [1104.8, 622] (segments 1 and 0) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.\n- [composition/proper-crossing] showcase workflow edges[15] id \"overview-pcn-issue\" \"mgmt_signature\" -> \"pcn_issue_archive\" crosses edges[21] id \"overview-pgd-audit\" \"pgd_issue_archive\" -> \"audit_journal\" at [1104.8, 622] (segments 1 and 0) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.\n- [composition/proper-crossing] showcase workflow edges[18] id \"overview-pgd-delivery\" \"pgd_issue_archive\" -> \"client_receipt\" crosses edges[20] id \"overview-pcn-audit\" \"pcn_issue_archive\" -> \"audit_journal\" at [1137.6, 622] (segments 0 and 1) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.\n- [composition/ambiguous-corridor] showcase workflow edges[18] id \"overview-pgd-delivery\" \"pgd_issue_archive\" -> \"client_receipt\" shares a 26.2px corridor with edges[21] id \"overview-pgd-audit\" \"pgd_issue_archive\" -> \"audit_journal\" at [1086.8, 622] -> [1113, 622] (segments 0 and 0; minimum 8px) — adjust route/via, bias, or channel coordinates so unrelated edges do not visually merge.",
+        "diagnostics": [
+          {
+            "code": "composition/proper-crossing",
+            "severity": "error",
+            "message": "[composition/proper-crossing] showcase workflow edges[12] id \"overview-lab-result-pgd\" \"ext_lab_result\" -> \"pgd_review_kqtn\" crosses edges[13] id \"overview-pcn-review\" \"pcn_drafting\" -> \"mgmt_signature\" at [924.8, 346] (segments 1 and 0) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+            "subject": {
+              "diagramType": "workflow",
+              "collection": "edges",
+              "index": 12,
+              "id": "overview-lab-result-pgd",
+              "from": "ext_lab_result",
+              "to": "pgd_review_kqtn"
+            },
+            "evidence": {
+              "otherRelationship": {
+                "diagramType": "workflow",
+                "collection": "edges",
+                "index": 13,
+                "id": "overview-pcn-review",
+                "from": "pcn_drafting",
+                "to": "mgmt_signature"
+              },
+              "point": [
+                924.7999999999998,
+                346
+              ],
+              "segmentIndex": 1,
+              "otherSegmentIndex": 0
+            },
+            "supportedFixes": [
+              "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+            ]
+          },
+          {
+            "code": "composition/proper-crossing",
+            "severity": "error",
+            "message": "[composition/proper-crossing] showcase workflow edges[13] id \"overview-pcn-review\" \"pcn_drafting\" -> \"mgmt_signature\" crosses edges[14] id \"overview-pgd-review\" \"pgd_review_kqtn\" -> \"mgmt_signature\" at [926.8, 798] (segments 1 and 1) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+            "subject": {
+              "diagramType": "workflow",
+              "collection": "edges",
+              "index": 13,
+              "id": "overview-pcn-review",
+              "from": "pcn_drafting",
+              "to": "mgmt_signature"
+            },
+            "evidence": {
+              "otherRelationship": {
+                "diagramType": "workflow",
+                "collection": "edges",
+                "index": 14,
+                "id": "overview-pgd-review",
+                "from": "pgd_review_kqtn",
+                "to": "mgmt_signature"
+              },
+              "point": [
+                926.8000000000001,
+                798
+              ],
+              "segmentIndex": 1,
+              "otherSegmentIndex": 1
+            },
+            "supportedFixes": [
+              "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+            ]
+          },
+          {
+            "code": "composition/proper-crossing",
+            "severity": "error",
+            "message": "[composition/proper-crossing] showcase workflow edges[15] id \"overview-pcn-issue\" \"mgmt_signature\" -> \"pcn_issue_archive\" crosses edges[18] id \"overview-pgd-delivery\" \"pgd_issue_archive\" -> \"client_receipt\" at [1104.8, 622] (segments 1 and 0) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+            "subject": {
+              "diagramType": "workflow",
+              "collection": "edges",
+              "index": 15,
+              "id": "overview-pcn-issue",
+              "from": "mgmt_signature",
+              "to": "pcn_issue_archive"
+            },
+            "evidence": {
+              "otherRelationship": {
+                "diagramType": "workflow",
+                "collection": "edges",
+                "index": 18,
+                "id": "overview-pgd-delivery",
+                "from": "pgd_issue_archive",
+                "to": "client_receipt"
+              },
+              "point": [
+                1104.7999999999995,
+                622
+              ],
+              "segmentIndex": 1,
+              "otherSegmentIndex": 0
+            },
+            "supportedFixes": [
+              "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+            ]
+          },
+          {
+            "code": "composition/proper-crossing",
+            "severity": "error",
+            "message": "[composition/proper-crossing] showcase workflow edges[15] id \"overview-pcn-issue\" \"mgmt_signature\" -> \"pcn_issue_archive\" crosses edges[21] id \"overview-pgd-audit\" \"pgd_issue_archive\" -> \"audit_journal\" at [1104.8, 622] (segments 1 and 0) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+            "subject": {
+              "diagramType": "workflow",
+              "collection": "edges",
+              "index": 15,
+              "id": "overview-pcn-issue",
+              "from": "mgmt_signature",
+              "to": "pcn_issue_archive"
+            },
+            "evidence": {
+              "otherRelationship": {
+                "diagramType": "workflow",
+                "collection": "edges",
+                "index": 21,
+                "id": "overview-pgd-audit",
+                "from": "pgd_issue_archive",
+                "to": "audit_journal"
+              },
+              "point": [
+                1104.7999999999995,
+                621.9999999999998
+              ],
+              "segmentIndex": 1,
+              "otherSegmentIndex": 0
+            },
+            "supportedFixes": [
+              "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+            ]
+          },
+          {
+            "code": "composition/proper-crossing",
+            "severity": "error",
+            "message": "[composition/proper-crossing] showcase workflow edges[18] id \"overview-pgd-delivery\" \"pgd_issue_archive\" -> \"client_receipt\" crosses edges[20] id \"overview-pcn-audit\" \"pcn_issue_archive\" -> \"audit_journal\" at [1137.6, 622] (segments 0 and 1) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+            "subject": {
+              "diagramType": "workflow",
+              "collection": "edges",
+              "index": 18,
+              "id": "overview-pgd-delivery",
+              "from": "pgd_issue_archive",
+              "to": "client_receipt"
+            },
+            "evidence": {
+              "otherRelationship": {
+                "diagramType": "workflow",
+                "collection": "edges",
+                "index": 20,
+                "id": "overview-pcn-audit",
+                "from": "pcn_issue_archive",
+                "to": "audit_journal"
+              },
+              "point": [
+                1137.6,
+                622
+              ],
+              "segmentIndex": 0,
+              "otherSegmentIndex": 1
+            },
+            "supportedFixes": [
+              "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+            ]
+          },
+          {
+            "code": "composition/ambiguous-corridor",
+            "severity": "error",
+            "message": "[composition/ambiguous-corridor] showcase workflow edges[18] id \"overview-pgd-delivery\" \"pgd_issue_archive\" -> \"client_receipt\" shares a 26.2px corridor with edges[21] id \"overview-pgd-audit\" \"pgd_issue_archive\" -> \"audit_journal\" at [1086.8, 622] -> [1113, 622] (segments 0 and 0; minimum 8px) — adjust route/via, bias, or channel coordinates so unrelated edges do not visually merge.",
+            "subject": {
+              "diagramType": "workflow",
+              "collection": "edges",
+              "index": 18,
+              "id": "overview-pgd-delivery",
+              "from": "pgd_issue_archive",
+              "to": "client_receipt"
+            },
+            "evidence": {
+              "otherRelationship": {
+                "diagramType": "workflow",
+                "collection": "edges",
+                "index": 21,
+                "id": "overview-pgd-audit",
+                "from": "pgd_issue_archive",
+                "to": "audit_journal"
+              },
+              "overlapLengthPx": 26.2,
+              "minimumPx": 8,
+              "from": [
+                1086.8,
+                622
+              ],
+              "to": [
+                1113,
+                622
+              ],
+              "segmentIndex": 0,
+              "otherSegmentIndex": 0
+            },
+            "supportedFixes": [
+              "adjust route/via, bias, or channel coordinates so unrelated edges do not visually merge"
+            ]
+          }
+        ],
+        "provenance": "failed",
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      },
+      "execution": "embedded-in-deliver"
+    },
+    "deliver": {
+      "status": "not-run",
+      "execution": "blocked-by-validate"
+    }
+  },
+  "diagnostics": [
+    {
+      "code": "composition/proper-crossing",
+      "severity": "error",
+      "message": "[composition/proper-crossing] showcase workflow edges[12] id \"overview-lab-result-pgd\" \"ext_lab_result\" -> \"pgd_review_kqtn\" crosses edges[13] id \"overview-pcn-review\" \"pcn_drafting\" -> \"mgmt_signature\" at [924.8, 346] (segments 1 and 0) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+      "subject": {
+        "diagramType": "workflow",
+        "collection": "edges",
+        "index": 12,
+        "id": "overview-lab-result-pgd",
+        "from": "ext_lab_result",
+        "to": "pgd_review_kqtn"
+      },
+      "evidence": {
+        "otherRelationship": {
+          "diagramType": "workflow",
+          "collection": "edges",
+          "index": 13,
+          "id": "overview-pcn-review",
+          "from": "pcn_drafting",
+          "to": "mgmt_signature"
+        },
+        "point": [
+          924.7999999999998,
+          346
+        ],
+        "segmentIndex": 1,
+        "otherSegmentIndex": 0
+      },
+      "supportedFixes": [
+        "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+      ]
+    },
+    {
+      "code": "composition/proper-crossing",
+      "severity": "error",
+      "message": "[composition/proper-crossing] showcase workflow edges[13] id \"overview-pcn-review\" \"pcn_drafting\" -> \"mgmt_signature\" crosses edges[14] id \"overview-pgd-review\" \"pgd_review_kqtn\" -> \"mgmt_signature\" at [926.8, 798] (segments 1 and 1) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+      "subject": {
+        "diagramType": "workflow",
+        "collection": "edges",
+        "index": 13,
+        "id": "overview-pcn-review",
+        "from": "pcn_drafting",
+        "to": "mgmt_signature"
+      },
+      "evidence": {
+        "otherRelationship": {
+          "diagramType": "workflow",
+          "collection": "edges",
+          "index": 14,
+          "id": "overview-pgd-review",
+          "from": "pgd_review_kqtn",
+          "to": "mgmt_signature"
+        },
+        "point": [
+          926.8000000000001,
+          798
+        ],
+        "segmentIndex": 1,
+        "otherSegmentIndex": 1
+      },
+      "supportedFixes": [
+        "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+      ]
+    },
+    {
+      "code": "composition/proper-crossing",
+      "severity": "error",
+      "message": "[composition/proper-crossing] showcase workflow edges[15] id \"overview-pcn-issue\" \"mgmt_signature\" -> \"pcn_issue_archive\" crosses edges[18] id \"overview-pgd-delivery\" \"pgd_issue_archive\" -> \"client_receipt\" at [1104.8, 622] (segments 1 and 0) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+      "subject": {
+        "diagramType": "workflow",
+        "collection": "edges",
+        "index": 15,
+        "id": "overview-pcn-issue",
+        "from": "mgmt_signature",
+        "to": "pcn_issue_archive"
+      },
+      "evidence": {
+        "otherRelationship": {
+          "diagramType": "workflow",
+          "collection": "edges",
+          "index": 18,
+          "id": "overview-pgd-delivery",
+          "from": "pgd_issue_archive",
+          "to": "client_receipt"
+        },
+        "point": [
+          1104.7999999999995,
+          622
+        ],
+        "segmentIndex": 1,
+        "otherSegmentIndex": 0
+      },
+      "supportedFixes": [
+        "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+      ]
+    },
+    {
+      "code": "composition/proper-crossing",
+      "severity": "error",
+      "message": "[composition/proper-crossing] showcase workflow edges[15] id \"overview-pcn-issue\" \"mgmt_signature\" -> \"pcn_issue_archive\" crosses edges[21] id \"overview-pgd-audit\" \"pgd_issue_archive\" -> \"audit_journal\" at [1104.8, 622] (segments 1 and 0) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+      "subject": {
+        "diagramType": "workflow",
+        "collection": "edges",
+        "index": 15,
+        "id": "overview-pcn-issue",
+        "from": "mgmt_signature",
+        "to": "pcn_issue_archive"
+      },
+      "evidence": {
+        "otherRelationship": {
+          "diagramType": "workflow",
+          "collection": "edges",
+          "index": 21,
+          "id": "overview-pgd-audit",
+          "from": "pgd_issue_archive",
+          "to": "audit_journal"
+        },
+        "point": [
+          1104.7999999999995,
+          621.9999999999998
+        ],
+        "segmentIndex": 1,
+        "otherSegmentIndex": 0
+      },
+      "supportedFixes": [
+        "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+      ]
+    },
+    {
+      "code": "composition/proper-crossing",
+      "severity": "error",
+      "message": "[composition/proper-crossing] showcase workflow edges[18] id \"overview-pgd-delivery\" \"pgd_issue_archive\" -> \"client_receipt\" crosses edges[20] id \"overview-pcn-audit\" \"pcn_issue_archive\" -> \"audit_journal\" at [1137.6, 622] (segments 0 and 1) — adjust route/via, bias, or channel coordinates so the edges use separate lane corridors.",
+      "subject": {
+        "diagramType": "workflow",
+        "collection": "edges",
+        "index": 18,
+        "id": "overview-pgd-delivery",
+        "from": "pgd_issue_archive",
+        "to": "client_receipt"
+      },
+      "evidence": {
+        "otherRelationship": {
+          "diagramType": "workflow",
+          "collection": "edges",
+          "index": 20,
+          "id": "overview-pcn-audit",
+          "from": "pcn_issue_archive",
+          "to": "audit_journal"
+        },
+        "point": [
+          1137.6,
+          622
+        ],
+        "segmentIndex": 0,
+        "otherSegmentIndex": 1
+      },
+      "supportedFixes": [
+        "adjust route/via, bias, or channel coordinates so the edges use separate lane corridors"
+      ]
+    },
+    {
+      "code": "composition/ambiguous-corridor",
+      "severity": "error",
+      "message": "[composition/ambiguous-corridor] showcase workflow edges[18] id \"overview-pgd-delivery\" \"pgd_issue_archive\" -> \"client_receipt\" shares a 26.2px corridor with edges[21] id \"overview-pgd-audit\" \"pgd_issue_archive\" -> \"audit_journal\" at [1086.8, 622] -> [1113, 622] (segments 0 and 0; minimum 8px) — adjust route/via, bias, or channel coordinates so unrelated edges do not visually merge.",
+      "subject": {
+        "diagramType": "workflow",
+        "collection": "edges",
+        "index": 18,
+        "id": "overview-pgd-delivery",
+        "from": "pgd_issue_archive",
+        "to": "client_receipt"
+      },
+      "evidence": {
+        "otherRelationship": {
+          "diagramType": "workflow",
+          "collection": "edges",
+          "index": 21,
+          "id": "overview-pgd-audit",
+          "from": "pgd_issue_archive",
+          "to": "audit_journal"
+        },
+        "overlapLengthPx": 26.2,
+        "minimumPx": 8,
+        "from": [
+          1086.8,
+          622
+        ],
+        "to": [
+          1113,
+          622
+        ],
+        "segmentIndex": 0,
+        "otherSegmentIndex": 0
+      },
+      "supportedFixes": [
+        "adjust route/via, bias, or channel coordinates so unrelated edges do not visually merge"
+      ]
+    }
+  ],
+  "evidence": {
+    "receipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\00-system-operation\\receipt-repair-3\\00-system-operation.finalize.json",
+    "summaryReceipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\00-system-operation\\receipt-repair-3\\00-system-operation.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "failedStage": "validate",
+  "finishedAt": "2026-11-01T22:45:21.676Z",
+  "durationMs": 3260,
+  "update": {
+    "status": "update_available",
+    "installedVersion": "3.1.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": "https://github.com/tt-a1i/archify/releases/tag/v3.2.0",
+    "severity": "normal",
+    "checkedAt": "2026-11-01T05:42:59.726Z",
+    "source": "cache",
+    "noticeRequired": true,
+    "noticeText": "Archify update: 3.1.0 → 3.2.0. A previous check at 2026-11-01T05:42:59.726Z found a newer release. Release notes: https://github.com/tt-a1i/archify/releases/tag/v3.2.0. The installed Skill has not changed; ask to snooze or ignore this reminder.",
+    "eventKey": "archify@sha256:70e210265c59f24dcbdf2a502ff671104b5454e7ee7d3554aecd86bad32384f5"
+  }
+}

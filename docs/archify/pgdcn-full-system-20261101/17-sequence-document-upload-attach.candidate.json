@@ -3,14 +3,14 @@
   "diagram_type": "sequence",
   "meta": {
     "title": "17 · Sequence API: upload và attach DOCX",
-    "subtitle": "Upload file và attach generated output là hai thao tác khác nhau; version/current pointer được kiểm soát phía server.",
+    "subtitle": "External upload and generated DOCX use separate paths. External bytes attach through the requirement upload route; a generated draft is only attached after the operator confirms it. Current-version/checklist and review gates remain server-side.",
     "output": "docs/archify/pgdcn-full-system-20261101/17-sequence-document-upload-attach.html",
     "quality_profile": "showcase",
     "repository": {
       "url": "https://github.com/bonchen24/PGDCN_webapp.git",
       "provider": "github",
       "link_mode": "web",
-      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+      "revision": "348b855a57595eec2646bb462e5c29571c3be501"
     },
     "column_fit": "spread"
   },
@@ -21,9 +21,14 @@
       "label": "Người xử lý hồ sơ",
       "sources": [
         {
-          "path": "components/PcnDraftingWorkspaceView.tsx",
-          "line": 835,
-          "end_line": 856
+          "path": "components/PcnDossierDetailView.tsx",
+          "line": 236,
+          "end_line": 243
+        },
+        {
+          "path": "components/PcnDossierDetailView.tsx",
+          "line": 872,
+          "end_line": 872
         }
       ]
     },
@@ -33,9 +38,14 @@
       "label": "PCN Dossier UI",
       "sources": [
         {
-          "path": "components/PcnDraftingWorkspaceView.tsx",
-          "line": 835,
-          "end_line": 856
+          "path": "components/PcnDossierDetailView.tsx",
+          "line": 236,
+          "end_line": 243
+        },
+        {
+          "path": "components/PcnDossierFlow.tsx",
+          "line": 150,
+          "end_line": 151
         }
       ]
     },
@@ -47,12 +57,12 @@
         {
           "path": "app/api/pcn/dossiers/[dossierId]/documents/route.ts",
           "line": 131,
-          "end_line": 203
+          "end_line": 180
         },
         {
           "path": "app/api/pcn/dossiers/[dossierId]/documents/confirm-generated/route.ts",
           "line": 1,
-          "end_line": 1
+          "end_line": 74
         }
       ]
     },
@@ -64,12 +74,12 @@
         {
           "path": "app/api/pcn/drafts/[draftId]/generate/route.ts",
           "line": 1,
-          "end_line": 1
+          "end_line": 180
         },
         {
-          "path": "app/api/pcn/dossiers/[dossierId]/documents/confirm-draft-output/route.ts",
+          "path": "utils/pcnDocumentGeneration.ts",
           "line": 1,
-          "end_line": 1
+          "end_line": 120
         }
       ]
     },
@@ -79,9 +89,14 @@
       "label": "Private file storage",
       "sources": [
         {
-          "path": "sql/pcn-schema.sql",
-          "line": 115,
-          "end_line": 131
+          "path": "app/api/pcn/dossiers/[dossierId]/documents/route.ts",
+          "line": 131,
+          "end_line": 180
+        },
+        {
+          "path": "app/api/pcn/drafts/[draftId]/generate/route.ts",
+          "line": 1,
+          "end_line": 180
         }
       ]
     },
@@ -91,14 +106,14 @@
       "label": "PostgreSQL DB",
       "sources": [
         {
-          "path": "sql/pcn-schema.sql",
-          "line": 5,
-          "end_line": 10
+          "path": "app/api/pcn/dossiers/[dossierId]/documents/route.ts",
+          "line": 131,
+          "end_line": 180
         },
         {
-          "path": "sql/pcn-schema.sql",
-          "line": 115,
-          "end_line": 131
+          "path": "app/api/pcn/dossiers/[dossierId]/documents/confirm-generated/route.ts",
+          "line": 1,
+          "end_line": 74
         }
       ]
     }
@@ -108,19 +123,19 @@
       "from": "user",
       "to": "ui",
       "y": 160,
-      "label": "Choose upload requirement"
+      "label": "Choose exact dossier requirement / version"
     },
     {
       "from": "ui",
       "to": "docs-api",
       "y": 205,
-      "label": "Upload file to requirement"
+      "label": "Upload external bytes to that requirement"
     },
     {
       "from": "docs-api",
       "to": "storage",
       "y": 250,
-      "label": "Verify and store private bytes"
+      "label": "Validate and store private bytes"
     },
     {
       "from": "docs-api",
@@ -132,44 +147,44 @@
       "from": "db",
       "to": "ui",
       "y": 340,
-      "label": "Return version result"
+      "label": "Return attached current version"
     },
     {
       "from": "user",
       "to": "draft-api",
       "y": 400,
-      "label": "Generate DOCX draft"
+      "label": "Generate internal DOCX draft"
     },
     {
       "from": "draft-api",
       "to": "storage",
       "y": 445,
-      "label": "Store generated output asset"
+      "label": "Store GENERATED asset only"
     },
     {
       "from": "draft-api",
       "to": "ui",
       "y": 490,
-      "label": "Return GENERATED output"
+      "label": "Return draft; checklist is still incomplete"
     },
     {
       "from": "user",
       "to": "docs-api",
       "y": 545,
-      "label": "Confirm selected generated output"
+      "label": "Operator reviews and confirms selected output"
     },
     {
       "from": "docs-api",
       "to": "db",
       "y": 590,
-      "label": "Attach confirmed version to dossier",
+      "label": "Confirm endpoint attaches version to dossier",
       "variant": "security"
     },
     {
       "from": "db",
       "to": "ui",
       "y": 635,
-      "label": "Return ATTACHED state"
+      "label": "Return ATTACHED state; other review gates remain"
     }
   ]
 }

@@ -10,7 +10,7 @@
       "url": "https://github.com/bonchen24/PGDCN_webapp.git",
       "provider": "github",
       "link_mode": "web",
-      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+      "revision": "348b855a57595eec2646bb462e5c29571c3be501"
     }
   },
   "lanes": [
@@ -282,5 +282,25 @@
     "qc9_docs",
     "qc9_review",
     "qc9_release"
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Blank dossier pack · QC9_BLANK_PACK",
+      "items": [
+        "Cấu hình pack trong code; không phải workflow template.",
+        "Workflow ID/version/PUBLISHED status = NOT_VERIFIED.",
+        "Requirement thực tế lấy từ node trong immutable workflowSnapshot."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Checklist · tạo file",
+      "items": [
+        "Baseline QC9 items: 18; case-trigger và DB override chưa xác minh.",
+        "Internal DOCX phải confirm-to-dossier; external upload phải attach đúng requirement.",
+        "Optional letters chỉ phát sinh theo tình huống; waivers cần route/record hợp lệ."
+      ]
+    }
   ]
 }

@@ -1,0 +1,433 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "startedAt": "2026-11-01T23:05:40.629Z",
+  "specification": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.candidate.json",
+    "sha256": "4b0608595be5627abe96e399321bbd69484153b35e456fe26857c409860bf45f",
+    "bytes": 14411
+  },
+  "artifact": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.html",
+    "sha256": "97d24dbd56f519cc644a60e972fc9d170f96a50ea30e8e9035f216767ad7e549",
+    "bytes": 835103
+  },
+  "stages": {
+    "validate": {
+      "status": "fail",
+      "exitCode": 1,
+      "durationMs": null,
+      "command": [
+        "C:\\Program Files\\nodejs\\node.exe",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\.agents\\skills\\archify\\bin\\archify.mjs",
+        "deliver",
+        "architecture",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.candidate.json",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": false,
+        "command": "deliver",
+        "receiptId": "3b851e3c-a70c-49aa-b658-31befbe4769f",
+        "stage": "render",
+        "type": "architecture",
+        "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.candidate.json",
+        "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.html",
+        "error": "Architecture layout validation failed:\n- Sublabel \"Authenticated server session; browser visibility is not authorization\" needs ~249px at the 6px legible minimum, but component \"login\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Identity plus department/domain scope is resolved for each route\" needs ~231px at the 6px legible minimum, but component \"user\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Menu visibility is navigation only; APIs recheck every mutation\" needs ~227px at the 6px legible minimum, but component \"visible-nav\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Admin/organization leadership/domain manager gates vary by operation\" needs ~245px at the 6px legible minimum, but component \"manager\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Assignment/claim and dossier ownership constrain work-node actions\" needs ~238px at the 6px legible minimum, but component \"staff\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Read-only role may inspect eligible data but cannot mutate\" needs ~209px at the 6px legible minimum, but component \"viewer\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Server route checks identity, domain scope, role, assignment, state and resource\" needs ~288px at the 6px legible minimum, but component \"route\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Workflow access is checked per active node/assignee; UI selection alone does not start work\" needs ~328px at the 6px legible minimum, but component \"owner\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Unauthorized, disabled, wrong owner or locked state returns denial\" needs ~238px at the 6px legible minimum, but component \"denied\" provides 200px — shorten the sublabel or widen size.",
+        "diagnostics": [
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Authenticated server session; browser visibility is not authorization\" needs ~249px at the 6px legible minimum, but component \"login\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "login"
+            },
+            "evidence": {
+              "text": "Authenticated server session; browser visibility is not authorization",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 249,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"login\" sublabel \"Authenticated server session; browser visibility is not authorization\" while preserving its meaning",
+              "or widen component \"login\" so the sublabel keeps at least 249px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Identity plus department/domain scope is resolved for each route\" needs ~231px at the 6px legible minimum, but component \"user\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "user"
+            },
+            "evidence": {
+              "text": "Identity plus department/domain scope is resolved for each route",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 231,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"user\" sublabel \"Identity plus department/domain scope is resolved for each route\" while preserving its meaning",
+              "or widen component \"user\" so the sublabel keeps at least 231px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Menu visibility is navigation only; APIs recheck every mutation\" needs ~227px at the 6px legible minimum, but component \"visible-nav\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "visible-nav"
+            },
+            "evidence": {
+              "text": "Menu visibility is navigation only; APIs recheck every mutation",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 227,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"visible-nav\" sublabel \"Menu visibility is navigation only; APIs recheck every mutation\" while preserving its meaning",
+              "or widen component \"visible-nav\" so the sublabel keeps at least 227px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Admin/organization leadership/domain manager gates vary by operation\" needs ~245px at the 6px legible minimum, but component \"manager\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "manager"
+            },
+            "evidence": {
+              "text": "Admin/organization leadership/domain manager gates vary by operation",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 245,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"manager\" sublabel \"Admin/organization leadership/domain manager gates vary by operation\" while preserving its meaning",
+              "or widen component \"manager\" so the sublabel keeps at least 245px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Assignment/claim and dossier ownership constrain work-node actions\" needs ~238px at the 6px legible minimum, but component \"staff\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "staff"
+            },
+            "evidence": {
+              "text": "Assignment/claim and dossier ownership constrain work-node actions",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 238,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"staff\" sublabel \"Assignment/claim and dossier ownership constrain work-node actions\" while preserving its meaning",
+              "or widen component \"staff\" so the sublabel keeps at least 238px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Read-only role may inspect eligible data but cannot mutate\" needs ~209px at the 6px legible minimum, but component \"viewer\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "viewer"
+            },
+            "evidence": {
+              "text": "Read-only role may inspect eligible data but cannot mutate",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 209,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"viewer\" sublabel \"Read-only role may inspect eligible data but cannot mutate\" while preserving its meaning",
+              "or widen component \"viewer\" so the sublabel keeps at least 209px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Server route checks identity, domain scope, role, assignment, state and resource\" needs ~288px at the 6px legible minimum, but component \"route\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "route"
+            },
+            "evidence": {
+              "text": "Server route checks identity, domain scope, role, assignment, state and resource",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 288,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"route\" sublabel \"Server route checks identity, domain scope, role, assignment, state and resource\" while preserving its meaning",
+              "or widen component \"route\" so the sublabel keeps at least 288px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Workflow access is checked per active node/assignee; UI selection alone does not start work\" needs ~328px at the 6px legible minimum, but component \"owner\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "owner"
+            },
+            "evidence": {
+              "text": "Workflow access is checked per active node/assignee; UI selection alone does not start work",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 328,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"owner\" sublabel \"Workflow access is checked per active node/assignee; UI selection alone does not start work\" while preserving its meaning",
+              "or widen component \"owner\" so the sublabel keeps at least 328px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Unauthorized, disabled, wrong owner or locked state returns denial\" needs ~238px at the 6px legible minimum, but component \"denied\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "denied"
+            },
+            "evidence": {
+              "text": "Unauthorized, disabled, wrong owner or locked state returns denial",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 238,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"denied\" sublabel \"Unauthorized, disabled, wrong owner or locked state returns denial\" while preserving its meaning",
+              "or widen component \"denied\" so the sublabel keeps at least 238px of text width at the 6px legible minimum"
+            ]
+          }
+        ],
+        "provenance": "failed",
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      },
+      "execution": "embedded-in-deliver"
+    },
+    "deliver": {
+      "status": "not-run",
+      "execution": "blocked-by-validate"
+    }
+  },
+  "diagnostics": [
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Authenticated server session; browser visibility is not authorization\" needs ~249px at the 6px legible minimum, but component \"login\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "login"
+      },
+      "evidence": {
+        "text": "Authenticated server session; browser visibility is not authorization",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 249,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"login\" sublabel \"Authenticated server session; browser visibility is not authorization\" while preserving its meaning",
+        "or widen component \"login\" so the sublabel keeps at least 249px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Identity plus department/domain scope is resolved for each route\" needs ~231px at the 6px legible minimum, but component \"user\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "user"
+      },
+      "evidence": {
+        "text": "Identity plus department/domain scope is resolved for each route",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 231,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"user\" sublabel \"Identity plus department/domain scope is resolved for each route\" while preserving its meaning",
+        "or widen component \"user\" so the sublabel keeps at least 231px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Menu visibility is navigation only; APIs recheck every mutation\" needs ~227px at the 6px legible minimum, but component \"visible-nav\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "visible-nav"
+      },
+      "evidence": {
+        "text": "Menu visibility is navigation only; APIs recheck every mutation",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 227,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"visible-nav\" sublabel \"Menu visibility is navigation only; APIs recheck every mutation\" while preserving its meaning",
+        "or widen component \"visible-nav\" so the sublabel keeps at least 227px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Admin/organization leadership/domain manager gates vary by operation\" needs ~245px at the 6px legible minimum, but component \"manager\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "manager"
+      },
+      "evidence": {
+        "text": "Admin/organization leadership/domain manager gates vary by operation",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 245,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"manager\" sublabel \"Admin/organization leadership/domain manager gates vary by operation\" while preserving its meaning",
+        "or widen component \"manager\" so the sublabel keeps at least 245px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Assignment/claim and dossier ownership constrain work-node actions\" needs ~238px at the 6px legible minimum, but component \"staff\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "staff"
+      },
+      "evidence": {
+        "text": "Assignment/claim and dossier ownership constrain work-node actions",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 238,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"staff\" sublabel \"Assignment/claim and dossier ownership constrain work-node actions\" while preserving its meaning",
+        "or widen component \"staff\" so the sublabel keeps at least 238px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Read-only role may inspect eligible data but cannot mutate\" needs ~209px at the 6px legible minimum, but component \"viewer\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "viewer"
+      },
+      "evidence": {
+        "text": "Read-only role may inspect eligible data but cannot mutate",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 209,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"viewer\" sublabel \"Read-only role may inspect eligible data but cannot mutate\" while preserving its meaning",
+        "or widen component \"viewer\" so the sublabel keeps at least 209px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Server route checks identity, domain scope, role, assignment, state and resource\" needs ~288px at the 6px legible minimum, but component \"route\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "route"
+      },
+      "evidence": {
+        "text": "Server route checks identity, domain scope, role, assignment, state and resource",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 288,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"route\" sublabel \"Server route checks identity, domain scope, role, assignment, state and resource\" while preserving its meaning",
+        "or widen component \"route\" so the sublabel keeps at least 288px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Workflow access is checked per active node/assignee; UI selection alone does not start work\" needs ~328px at the 6px legible minimum, but component \"owner\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "owner"
+      },
+      "evidence": {
+        "text": "Workflow access is checked per active node/assignee; UI selection alone does not start work",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 328,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"owner\" sublabel \"Workflow access is checked per active node/assignee; UI selection alone does not start work\" while preserving its meaning",
+        "or widen component \"owner\" so the sublabel keeps at least 328px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Unauthorized, disabled, wrong owner or locked state returns denial\" needs ~238px at the 6px legible minimum, but component \"denied\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "denied"
+      },
+      "evidence": {
+        "text": "Unauthorized, disabled, wrong owner or locked state returns denial",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 238,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"denied\" sublabel \"Unauthorized, disabled, wrong owner or locked state returns denial\" while preserving its meaning",
+        "or widen component \"denied\" so the sublabel keeps at least 238px of text width at the 6px legible minimum"
+      ]
+    }
+  ],
+  "evidence": {
+    "receipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\08-auth-rbac\\receipt-pass-2\\08-auth-rbac.finalize.json",
+    "summaryReceipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\08-auth-rbac\\receipt-pass-2\\08-auth-rbac.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "failedStage": "validate",
+  "finishedAt": "2026-11-01T23:05:41.273Z",
+  "durationMs": 643,
+  "update": {
+    "status": "update_available",
+    "installedVersion": "3.1.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": "https://github.com/tt-a1i/archify/releases/tag/v3.2.0",
+    "severity": "normal",
+    "checkedAt": "2026-11-01T05:42:59.726Z",
+    "source": "cache",
+    "noticeRequired": true,
+    "noticeText": "Archify update: 3.1.0 → 3.2.0. A previous check at 2026-11-01T05:42:59.726Z found a newer release. Release notes: https://github.com/tt-a1i/archify/releases/tag/v3.2.0. The installed Skill has not changed; ask to snooze or ignore this reminder.",
+    "eventKey": "archify@sha256:70e210265c59f24dcbdf2a502ff671104b5454e7ee7d3554aecd86bad32384f5"
+  }
+}

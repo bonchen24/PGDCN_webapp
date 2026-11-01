@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "cdd1c8e0-7772-4878-9b87-3c9f4157dfe0",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\00-system-operation.workflow.json",
+  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\before\\00-system-operation\\00-system-operation.html",
+  "specification": {
+    "sha256": "e8ca55fee7939f683ab5c0c7c76605d12ccb41b55e9f6d3f63b2a5ec89e32b07",
+    "bytes": 15626
+  },
+  "artifact": {
+    "sha256": "d31525aa78cb0520108dd48bff878568074cbf82024557ef5ea3b023e2be0072",
+    "bytes": 874475
+  }
+}

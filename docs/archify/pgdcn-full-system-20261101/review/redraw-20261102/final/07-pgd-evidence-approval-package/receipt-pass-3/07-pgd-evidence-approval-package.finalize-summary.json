@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\07-pgd-evidence-approval-package.candidate.json",
+    "sha256": "15b8288fb9dc7816ee5fb2eb3ee54ae4d64c732025393e87c4b0f32508c8e469",
+    "bytes": 13608
+  },
+  "artifact": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\07-pgd-evidence-approval-package.html",
+    "sha256": "a12389adae0d178b9ffb9ac4970dd28a0c28de25654ff953cd93ee95052ea308",
+    "bytes": 838747
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\07-pgd-evidence-approval-package\\receipt-pass-3\\07-pgd-evidence-approval-package.finalize.json",
+    "summaryReceipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\07-pgd-evidence-approval-package\\receipt-pass-3\\07-pgd-evidence-approval-package.finalize-summary.json",
+    "browserCheckReceipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\07-pgd-evidence-approval-package\\receipt-pass-3\\07-pgd-evidence-approval-package.browser-check.json"
+  },
+  "update": {
+    "status": "update_available",
+    "installedVersion": "3.1.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": "https://github.com/tt-a1i/archify/releases/tag/v3.2.0",
+    "severity": "normal",
+    "checkedAt": "2026-11-01T05:42:59.726Z",
+    "source": "cache",
+    "noticeRequired": true,
+    "noticeText": "Archify update: 3.1.0 → 3.2.0. A previous check at 2026-11-01T05:42:59.726Z found a newer release. Release notes: https://github.com/tt-a1i/archify/releases/tag/v3.2.0. The installed Skill has not changed; ask to snooze or ignore this reminder.",
+    "eventKey": "archify@sha256:70e210265c59f24dcbdf2a502ff671104b5454e7ee7d3554aecd86bad32384f5"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 3067,
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "routesOverSuggestedBends": 4
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [],
+      "detours": [
+        {
+          "relationship": {
+            "id": "checklist-docs",
+            "from": "checklist",
+            "to": "documents",
+            "label": "Resolve applicable requirements; attach current assets",
+            "collectionIndex": 0,
+            "artifactIndex": 1
+          },
+          "bends": 3,
+          "stretch": 1.222
+        },
+        {
+          "relationship": {
+            "id": "step1-step2",
+            "from": "step1",
+            "to": "step2",
+            "label": "TECHNICAL_REVIEW APPROVED",
+            "collectionIndex": 3,
+            "artifactIndex": 4
+          },
+          "bends": 3,
+          "stretch": 1.238
+        },
+        {
+          "relationship": {
+            "id": "step2-signed",
+            "from": "step2",
+            "to": "signed",
+            "label": "Leadership approval signs certificate",
+            "collectionIndex": 4,
+            "artifactIndex": 5
+          },
+          "bends": 3,
+          "stretch": 1.238
+        },
+        {
+          "relationship": {
+            "id": "returned-archived",
+            "from": "returned",
+            "to": "archived",
+            "label": "Separate result-return and archive transitions",
+            "collectionIndex": 6,
+            "artifactIndex": 7
+          },
+          "bends": 3,
+          "stretch": 1.222
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "checklist → documents needs 3 bends: move node checklist or documents so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "step1 → step2 needs 3 bends: move node step1 or step2 so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "step2 → signed needs 3 bends: move node step2 or signed so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "returned → archived needs 3 bends: move node returned or archived so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

@@ -1,0 +1,2146 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "visual-check",
+  "evidenceKind": "automated-browser",
+  "status": "pass",
+  "visualReview": "pending",
+  "provenance": "current",
+  "deliveryReceiptId": "7551fe6f-637d-441d-8e02-ee939e194369",
+  "artifact": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\00-system-operation.html",
+    "sha256": "064cb59534fba8e13497724046f59b167174db6f9afb685711f87e5b614fa31c",
+    "bytes": 880390
+  },
+  "state": {
+    "detail": "read",
+    "motion": "still"
+  },
+  "chrome": {
+    "status": "available",
+    "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+  },
+  "diagnostics": [],
+  "containment": {
+    "status": "pass",
+    "policy": "fit-or-reader-declared-readable-vertical-scroll",
+    "viewports": [
+      {
+        "width": 1440,
+        "height": 900,
+        "theme": "light",
+        "innerWidth": 1440,
+        "innerHeight": 900,
+        "scrollWidth": 1440,
+        "scrollHeight": 1636,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1376,
+        "diagramWidth": 1346,
+        "pageComposition": {
+          "bodyPaddingPx": 12,
+          "headerPx": 99,
+          "diagramChromePx": 78,
+          "svgPx": 1446,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 232,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 232,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 133,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 61
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 54,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light"
+      },
+      {
+        "width": 1600,
+        "height": 1000,
+        "theme": "light",
+        "innerWidth": 1600,
+        "innerHeight": 1000,
+        "scrollWidth": 1600,
+        "scrollHeight": 1874,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1536,
+        "diagramWidth": 1506,
+        "pageComposition": {
+          "bodyPaddingPx": 64,
+          "headerPx": 107,
+          "diagramChromePx": 84,
+          "svgPx": 1618,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 259,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 211,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 259,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 211,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 259,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 211,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 259,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 148,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 68
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 259,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 211,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 5
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 54,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "theme": "light",
+        "innerWidth": 1920,
+        "innerHeight": 1080,
+        "scrollWidth": 1920,
+        "scrollHeight": 2185,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1856,
+        "diagramWidth": 1795.5,
+        "pageComposition": {
+          "bodyPaddingPx": 64,
+          "headerPx": 107,
+          "diagramChromePx": 84,
+          "svgPx": 1929,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 309,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 309,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 177,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 81
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 54,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light"
+      },
+      {
+        "width": 2048,
+        "height": 1320,
+        "theme": "light",
+        "innerWidth": 2048,
+        "innerHeight": 1320,
+        "scrollWidth": 2048,
+        "scrollHeight": 2181,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1920,
+        "diagramWidth": 1795.5,
+        "pageComposition": {
+          "bodyPaddingPx": 64,
+          "headerPx": 94,
+          "diagramChromePx": 94,
+          "svgPx": 1929,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 309,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 309,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 177,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 81
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 44,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light"
+      }
+    ]
+  },
+  "themeStates": {
+    "status": "pass",
+    "viewports": [
+      {
+        "width": 1440,
+        "height": 900,
+        "requestedTheme": "light",
+        "resolvedTheme": "light",
+        "ok": true
+      },
+      {
+        "width": 1600,
+        "height": 1000,
+        "requestedTheme": "light",
+        "resolvedTheme": "light",
+        "ok": true
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "requestedTheme": "light",
+        "resolvedTheme": "light",
+        "ok": true
+      },
+      {
+        "width": 2048,
+        "height": 1320,
+        "requestedTheme": "light",
+        "resolvedTheme": "light",
+        "ok": true
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "requestedTheme": "dark",
+        "resolvedTheme": "dark",
+        "ok": true
+      },
+      {
+        "width": 2048,
+        "height": 1320,
+        "requestedTheme": "dark",
+        "resolvedTheme": "dark",
+        "ok": true
+      }
+    ]
+  },
+  "readability": {
+    "status": "pass",
+    "minimumProjectedNodeTextPx": 6,
+    "viewports": [
+      {
+        "width": 1440,
+        "height": 900,
+        "theme": "light",
+        "innerWidth": 1440,
+        "innerHeight": 900,
+        "scrollWidth": 1440,
+        "scrollHeight": 1636,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1376,
+        "diagramWidth": 1346,
+        "pageComposition": {
+          "bodyPaddingPx": 12,
+          "headerPx": 99,
+          "diagramChromePx": 78,
+          "svgPx": 1446,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 232,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 232,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 133,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 61
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 54,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light"
+      },
+      {
+        "width": 1600,
+        "height": 1000,
+        "theme": "light",
+        "innerWidth": 1600,
+        "innerHeight": 1000,
+        "scrollWidth": 1600,
+        "scrollHeight": 1874,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1536,
+        "diagramWidth": 1506,
+        "pageComposition": {
+          "bodyPaddingPx": 64,
+          "headerPx": 107,
+          "diagramChromePx": 84,
+          "svgPx": 1618,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 259,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 211,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 259,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 211,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 259,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 211,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 259,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 148,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 68
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 259,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 211,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 5
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 54,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "theme": "light",
+        "innerWidth": 1920,
+        "innerHeight": 1080,
+        "scrollWidth": 1920,
+        "scrollHeight": 2185,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1856,
+        "diagramWidth": 1795.5,
+        "pageComposition": {
+          "bodyPaddingPx": 64,
+          "headerPx": 107,
+          "diagramChromePx": 84,
+          "svgPx": 1929,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 309,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 309,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 177,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 81
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 54,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light"
+      },
+      {
+        "width": 2048,
+        "height": 1320,
+        "theme": "light",
+        "innerWidth": 2048,
+        "innerHeight": 1320,
+        "scrollWidth": 2048,
+        "scrollHeight": 2181,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1920,
+        "diagramWidth": 1795.5,
+        "pageComposition": {
+          "bodyPaddingPx": 64,
+          "headerPx": 94,
+          "diagramChromePx": 94,
+          "svgPx": 1929,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 309,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 309,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 177,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 81
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 44,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light"
+      }
+    ]
+  },
+  "viewerChrome": {
+    "status": "pass",
+    "viewports": [
+      {
+        "width": 1440,
+        "height": 900,
+        "theme": "light",
+        "innerWidth": 1440,
+        "innerHeight": 900,
+        "scrollWidth": 1440,
+        "scrollHeight": 1636,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1376,
+        "diagramWidth": 1346,
+        "pageComposition": {
+          "bodyPaddingPx": 12,
+          "headerPx": 99,
+          "diagramChromePx": 78,
+          "svgPx": 1446,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 232,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 232,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 133,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 61
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 54,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light"
+      },
+      {
+        "width": 1600,
+        "height": 1000,
+        "theme": "light",
+        "innerWidth": 1600,
+        "innerHeight": 1000,
+        "scrollWidth": 1600,
+        "scrollHeight": 1874,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1536,
+        "diagramWidth": 1506,
+        "pageComposition": {
+          "bodyPaddingPx": 64,
+          "headerPx": 107,
+          "diagramChromePx": 84,
+          "svgPx": 1618,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 259,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 211,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 259,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 211,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 259,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 211,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 259,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 148,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 68
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 259,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 211,
+            "spaceAboveNodesPx": 43,
+            "spaceBelowNodesPx": 5
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 54,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "theme": "light",
+        "innerWidth": 1920,
+        "innerHeight": 1080,
+        "scrollWidth": 1920,
+        "scrollHeight": 2185,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1856,
+        "diagramWidth": 1795.5,
+        "pageComposition": {
+          "bodyPaddingPx": 64,
+          "headerPx": 107,
+          "diagramChromePx": 84,
+          "svgPx": 1929,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 309,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 309,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 177,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 81
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 54,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light"
+      },
+      {
+        "width": 2048,
+        "height": 1320,
+        "theme": "light",
+        "innerWidth": 2048,
+        "innerHeight": 1320,
+        "scrollWidth": 2048,
+        "scrollHeight": 2181,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1920,
+        "diagramWidth": 1795.5,
+        "pageComposition": {
+          "bodyPaddingPx": 64,
+          "headerPx": 94,
+          "diagramChromePx": 94,
+          "svgPx": 1929,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 309,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 309,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 177,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 81
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 44,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light"
+      }
+    ]
+  },
+  "captures": {
+    "status": "pass",
+    "screenshots": [
+      {
+        "width": 1440,
+        "height": 900,
+        "theme": "light",
+        "innerWidth": 1440,
+        "innerHeight": 900,
+        "scrollWidth": 1440,
+        "scrollHeight": 1636,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1376,
+        "diagramWidth": 1346,
+        "pageComposition": {
+          "bodyPaddingPx": 12,
+          "headerPx": 99,
+          "diagramChromePx": 78,
+          "svgPx": 1446,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 232,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 232,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 133,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 61
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 54,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light",
+        "file": "00-system-operation.visual-check.1440x900.light.png"
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "theme": "dark",
+        "innerWidth": 1440,
+        "innerHeight": 900,
+        "scrollWidth": 1440,
+        "scrollHeight": 1636,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1376,
+        "diagramWidth": 1346,
+        "pageComposition": {
+          "bodyPaddingPx": 12,
+          "headerPx": 99,
+          "diagramChromePx": 78,
+          "svgPx": 1446,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 232,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 232,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 133,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 61
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 232,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 189,
+            "spaceAboveNodesPx": 38,
+            "spaceBelowNodesPx": 4
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 54,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "dark",
+        "file": "00-system-operation.visual-check.1440x900.dark.png"
+      },
+      {
+        "width": 2048,
+        "height": 1320,
+        "theme": "light",
+        "innerWidth": 2048,
+        "innerHeight": 1320,
+        "scrollWidth": 2048,
+        "scrollHeight": 2181,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1920,
+        "diagramWidth": 1795.5,
+        "pageComposition": {
+          "bodyPaddingPx": 64,
+          "headerPx": 94,
+          "diagramChromePx": 94,
+          "svgPx": 1929,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 309,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 309,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 177,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 81
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 44,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "light",
+        "file": "00-system-operation.visual-check.2048x1320.light.png"
+      },
+      {
+        "width": 2048,
+        "height": 1320,
+        "theme": "dark",
+        "innerWidth": 2048,
+        "innerHeight": 1320,
+        "scrollWidth": 2048,
+        "scrollHeight": 2181,
+        "overflowX": false,
+        "overflowY": true,
+        "verticalScrollAccepted": true,
+        "overflowDisposition": "readable-vertical-scroll",
+        "readerLayout": "adaptive",
+        "readerOverflow": "authored",
+        "readerFit": "width-first",
+        "ok": true,
+        "readerWidth": 1920,
+        "diagramWidth": 1795.5,
+        "pageComposition": {
+          "bodyPaddingPx": 64,
+          "headerPx": 94,
+          "diagramChromePx": 94,
+          "svgPx": 1929,
+          "cardsPx": 0,
+          "viewBoxHeight": 1286
+        },
+        "viewBoxWidth": 1197,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 309,
+            "nodeCount": 4,
+            "nodeIds": [
+              "client_intake",
+              "ext_lab_handoff",
+              "ext_lab_result",
+              "client_receipt"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pcn_proposal",
+              "pcn_dossier",
+              "sample_lab_pcn",
+              "pcn_drafting",
+              "pcn_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "pgd_request",
+              "pgd_plan",
+              "field_sample_pgd",
+              "pgd_review_kqtn",
+              "pgd_issue_archive"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 309,
+            "nodeCount": 3,
+            "nodeIds": [
+              "nav_shared",
+              "admin_assign",
+              "mgmt_signature"
+            ],
+            "nodeSpanPx": 177,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 81
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 309,
+            "nodeCount": 5,
+            "nodeIds": [
+              "rbac_session",
+              "db_dossier",
+              "pgd_sample_ledger",
+              "ai_ocr_assist",
+              "audit_journal"
+            ],
+            "nodeSpanPx": 252,
+            "spaceAboveNodesPx": 51,
+            "spaceBelowNodesPx": 6
+          }
+        ],
+        "minimumProjectedNodeTextPx": 8,
+        "minimumProjectedNonEdgeTextPx": 9.7,
+        "minimumProjectedEdgeTextPx": 8,
+        "minimumProjectedNodeText": "Activity / audit records",
+        "minimumProjectedNodeTextDetail": "edge",
+        "minimumProjectedNodeTextOwner": {
+          "kind": "edge",
+          "id": "overview-app-activity",
+          "from": "db_dossier",
+          "to": "audit_journal"
+        },
+        "minimumRequiredNodeTextPx": 6,
+        "readabilityOk": true,
+        "hasLegend": true,
+        "hasNavigationDock": true,
+        "legendDockIntersectionArea": 0,
+        "dockStageIntersectionArea": 0,
+        "dockStageGap": 10,
+        "requiredDockStageGap": 10,
+        "viewerChromeStageOk": true,
+        "viewerChromeReserve": 44,
+        "viewerChromeActive": true,
+        "viewerChromeOk": true,
+        "resolvedTheme": "dark",
+        "file": "00-system-operation.visual-check.2048x1320.dark.png"
+      }
+    ],
+    "contactSheet": "00-system-operation.visual-check.html"
+  },
+  "sidecars": {
+    "directory": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\after\\00-system-operation",
+    "receipt": "00-system-operation.visual-check.json",
+    "contactSheet": "00-system-operation.visual-check.html",
+    "files": [
+      {
+        "sha256": "f148354cc0f4b1e5f79b87bad6ec508031d0af6010306182737b4e9a837de507",
+        "bytes": 2070,
+        "file": "00-system-operation.visual-check.html"
+      },
+      {
+        "sha256": "a63efbc47abcfc5d5fb7fcf821053d82eca93e57e05411a3297cc0e692eda28e",
+        "bytes": 155885,
+        "file": "00-system-operation.visual-check.1440x900.light.png"
+      },
+      {
+        "sha256": "22d4108f12b0f3c5fc6ce2b3f01b0f378bc21e97b0bfd7f791f33eb26d464c1e",
+        "bytes": 178088,
+        "file": "00-system-operation.visual-check.1440x900.dark.png"
+      },
+      {
+        "sha256": "5667e49e683cf1e4161c7fe0877babc71831166b5c147b6d6e4df9882eb807ed",
+        "bytes": 223123,
+        "file": "00-system-operation.visual-check.2048x1320.light.png"
+      },
+      {
+        "sha256": "baa813664966f8132dd4f429756c865dc80b436825664bda15092b8fbec71546",
+        "bytes": 257711,
+        "file": "00-system-operation.visual-check.2048x1320.dark.png"
+      }
+    ]
+  }
+}

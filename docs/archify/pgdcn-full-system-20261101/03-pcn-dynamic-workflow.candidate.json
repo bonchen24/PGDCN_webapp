@@ -2,15 +2,15 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "03 · PCN workflow động: graph, guard, rework và phát hành",
-    "subtitle": "Node / edge runtime từ snapshot; có DOCUMENT_TASK, APPROVAL_TASK, DECISION, PARALLEL_SPLIT / JOIN (ALL, ANY, QUORUM), WAIT, RETURNED, STALE; sau END, duyệt / cấp số / giao / lưu trữ là các bước riêng.",
+    "title": "03 | PCN dynamic workflow: snapshot, branches and returns",
+    "subtitle": "Runtime projects the immutable dossier snapshot into actionable tasks. Conditions gate edges; configured PARALLEL_SPLIT branches converge by ALL / ANY / QUORUM. A reasoned return targets an ancestor, stales descendants and starts a new cycle. END is before the separate issuance lifecycle in map 19. Live PUBLISHED IDs are NOT_VERIFIED.",
     "output": "docs/archify/pgdcn-full-system-20261101/03-pcn-dynamic-workflow.html",
     "quality_profile": "showcase",
     "repository": {
       "url": "https://github.com/bonchen24/PGDCN_webapp.git",
       "provider": "github",
       "link_mode": "web",
-      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+      "revision": "348b855a57595eec2646bb462e5c29571c3be501"
     }
   },
   "lanes": [
@@ -20,18 +20,18 @@
       "variant": "normal"
     },
     {
-      "id": "parallel",
-      "label": "Parallel branches",
+      "id": "guards",
+      "label": "Node / edge guards",
       "variant": "normal"
     },
     {
       "id": "exceptions",
-      "label": "Chờ / trả lại / dừng",
+      "label": "Return / terminal outcomes",
       "variant": "exception"
     },
     {
-      "id": "post",
-      "label": "Phê duyệt và vòng đời chứng thư",
+      "id": "parallel",
+      "label": "Configured parallel work",
       "variant": "normal"
     }
   ],
@@ -40,17 +40,17 @@
       "id": "snapshot-phase",
       "label": "Snapshot + projection",
       "fromCol": 0,
-      "toCol": 2
+      "toCol": 1
     },
     {
-      "id": "gate-phase",
-      "label": "Guard + execute",
-      "fromCol": 3,
+      "id": "action-phase",
+      "label": "Guarded task + decision",
+      "fromCol": 2,
       "toCol": 4
     },
     {
-      "id": "branch-phase",
-      "label": "Decision + outcomes",
+      "id": "outcome-phase",
+      "label": "Join / return / end",
       "fromCol": 5,
       "toCol": 5
     }
@@ -61,7 +61,8 @@
     "projection",
     "guards",
     "task",
-    "decision"
+    "decision",
+    "terminal"
   ],
   "nodes": [
     {
@@ -73,150 +74,227 @@
       "sources": [
         {
           "path": "utils/pcnWorkflowTemplate.ts",
-          "line": 45,
+          "line": 37,
           "end_line": 110
+        },
+        {
+          "path": "utils/pcnWorkflowTemplate.ts",
+          "line": 129,
+          "end_line": 198
         }
       ],
-      "width": 120,
-      "height": 64
+      "width": 140,
+      "sublabel": "Live ID NOT_VERIFIED"
     },
     {
       "id": "snapshot",
       "lane": "runtime",
       "col": 1,
       "type": "database",
-      "label": "Workflow snapshot",
+      "label": "Dossier snapshot",
       "sources": [
         {
-          "path": "utils/pcnWorkflowTemplate.ts",
-          "line": 141,
-          "end_line": 198
+          "path": "app/api/pcn/intake/route.ts",
+          "line": 130,
+          "end_line": 194
+        },
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 160,
+          "end_line": 220
+        },
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 345,
+          "end_line": 380
         }
       ],
-      "width": 120,
-      "height": 64
+      "width": 140,
+      "sublabel": "Pinned graph + rules"
     },
     {
       "id": "projection",
       "lane": "runtime",
       "col": 2,
       "type": "backend",
-      "label": "Runtime projection",
+      "label": "Runtime states",
       "sources": [
         {
           "path": "utils/pcnWorkflowRuntime.ts",
-          "line": 38,
-          "end_line": 60
+          "line": 160,
+          "end_line": 220
         },
         {
           "path": "utils/pcnWorkflowRuntime.ts",
-          "line": 267,
-          "end_line": 325
+          "line": 345,
+          "end_line": 380
+        },
+        {
+          "path": "lib/server/workflow-tasks.ts",
+          "line": 32,
+          "end_line": 230
         }
       ],
-      "width": 120,
-      "height": 64
+      "width": 140,
+      "sublabel": "READY / WAIT / LOCKED"
     },
     {
       "id": "guards",
-      "lane": "runtime",
-      "col": 3,
+      "lane": "guards",
+      "col": 2,
       "type": "security",
-      "label": "Node + edge guard",
+      "label": "API guard",
       "sources": [
         {
           "path": "utils/pcnWorkflowRuntime.ts",
-          "line": 92,
-          "end_line": 190
+          "line": 160,
+          "end_line": 220
+        },
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 345,
+          "end_line": 380
+        },
+        {
+          "path": "lib/server/workflow-tasks.ts",
+          "line": 32,
+          "end_line": 230
         }
       ],
-      "width": 120,
-      "height": 64
+      "width": 140,
+      "sublabel": "Role + owner + files"
     },
     {
       "id": "task",
       "lane": "runtime",
-      "col": 4,
+      "col": 3,
       "type": "backend",
-      "label": "Task node",
+      "label": "DOCUMENT_TASK",
       "sources": [
         {
-          "path": "utils/pcnWorkflowRuntime.ts",
-          "line": 267,
-          "end_line": 325
+          "path": "lib/server/workflow-tasks.ts",
+          "line": 32,
+          "end_line": 230
         },
         {
-          "path": "utils/pcnWorkflowTemplate.ts",
-          "line": 45,
-          "end_line": 110
+          "path": "utils/pcnDossierDocuments.ts",
+          "line": 24,
+          "end_line": 118
+        },
+        {
+          "path": "app/api/pcn/dossiers/[dossierId]/documents/confirm-generated/route.ts",
+          "line": 1,
+          "end_line": 74
         }
       ],
-      "width": 120,
-      "height": 64
+      "width": 140,
+      "sublabel": "or APPROVAL_TASK"
     },
     {
       "id": "decision",
       "lane": "runtime",
-      "col": 5,
+      "col": 4,
       "type": "backend",
-      "label": "DECISION / branch",
+      "label": "DECISION",
       "sources": [
         {
           "path": "utils/pcnWorkflowRuntime.ts",
-          "line": 92,
-          "end_line": 190
+          "line": 160,
+          "end_line": 220
+        },
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 345,
+          "end_line": 380
+        },
+        {
+          "path": "lib/server/workflow-tasks.ts",
+          "line": 32,
+          "end_line": 230
         }
       ],
-      "width": 120,
-      "height": 64
+      "width": 140,
+      "sublabel": "Condition selects edge"
     },
     {
       "id": "parallel",
       "lane": "parallel",
-      "col": 2,
+      "col": 4,
       "type": "backend",
       "label": "PARALLEL_SPLIT",
       "sources": [
         {
-          "path": "utils/pcnWorkflowTemplate.ts",
-          "line": 45,
-          "end_line": 110
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 160,
+          "end_line": 220
+        },
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 345,
+          "end_line": 380
+        },
+        {
+          "path": "lib/server/workflow-tasks.ts",
+          "line": 32,
+          "end_line": 230
         }
       ],
-      "width": 120,
-      "height": 64
+      "width": 140,
+      "sublabel": "Configured only"
     },
     {
       "id": "branch-a",
       "lane": "parallel",
-      "col": 3,
+      "col": 5,
       "type": "backend",
       "label": "Branch A",
       "sources": [
         {
           "path": "utils/pcnWorkflowRuntime.ts",
-          "line": 92,
-          "end_line": 190
+          "line": 160,
+          "end_line": 220
+        },
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 345,
+          "end_line": 380
+        },
+        {
+          "path": "lib/server/workflow-tasks.ts",
+          "line": 32,
+          "end_line": 230
         }
       ],
-      "width": 120,
-      "height": 64
+      "width": 140,
+      "sublabel": "No A/B ordering",
+      "yOffset": -110
     },
     {
       "id": "branch-b",
       "lane": "parallel",
-      "col": 4,
+      "col": 5,
       "type": "backend",
       "label": "Branch B",
       "sources": [
         {
           "path": "utils/pcnWorkflowRuntime.ts",
-          "line": 92,
-          "end_line": 190
+          "line": 160,
+          "end_line": 220
+        },
+        {
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 345,
+          "end_line": 380
+        },
+        {
+          "path": "lib/server/workflow-tasks.ts",
+          "line": 32,
+          "end_line": 230
         }
       ],
-      "width": 120,
-      "height": 64
+      "width": 140,
+      "sublabel": "Independent branch",
+      "yOffset": 110
     },
     {
       "id": "join",
@@ -227,172 +305,75 @@
       "sources": [
         {
           "path": "utils/pcnWorkflowRuntime.ts",
-          "line": 92,
-          "end_line": 190
-        }
-      ],
-      "width": 120,
-      "height": 64
-    },
-    {
-      "id": "wait",
-      "lane": "exceptions",
-      "col": 3,
-      "type": "backend",
-      "label": "WAIT / blocked",
-      "sources": [
+          "line": 160,
+          "end_line": 220
+        },
         {
           "path": "utils/pcnWorkflowRuntime.ts",
-          "line": 92,
-          "end_line": 190
+          "line": 345,
+          "end_line": 380
+        },
+        {
+          "path": "lib/server/workflow-tasks.ts",
+          "line": 32,
+          "end_line": 230
         }
       ],
-      "width": 120,
-      "height": 64
+      "width": 140,
+      "sublabel": "ALL / ANY / QUORUM"
     },
     {
       "id": "return",
       "lane": "exceptions",
-      "col": 4,
+      "col": 5,
       "type": "backend",
       "label": "RETURNED",
       "sources": [
         {
           "path": "utils/pcnWorkflowRuntime.ts",
-          "line": 334,
-          "end_line": 428
-        }
-      ],
-      "width": 120,
-      "height": 64
-    },
-    {
-      "id": "stale",
-      "lane": "exceptions",
-      "col": 5,
-      "type": "backend",
-      "label": "Descendants STALE",
-      "sources": [
+          "line": 160,
+          "end_line": 220
+        },
         {
           "path": "utils/pcnWorkflowRuntime.ts",
-          "line": 334,
-          "end_line": 428
+          "line": 345,
+          "end_line": 380
+        },
+        {
+          "path": "lib/server/workflow-tasks.ts",
+          "line": 32,
+          "end_line": 230
         }
       ],
-      "width": 120,
-      "height": 64
+      "width": 140,
+      "sublabel": "Reason + cycle",
+      "yOffset": 100
     },
     {
       "id": "terminal",
-      "lane": "post",
+      "lane": "runtime",
       "col": 5,
       "type": "backend",
       "label": "END",
       "sources": [
         {
-          "path": "utils/pcnWorkflowTemplate.ts",
-          "line": 45,
-          "end_line": 110
-        }
-      ],
-      "width": 120,
-      "height": 64
-    },
-    {
-      "id": "approved",
-      "lane": "post",
-      "col": 4,
-      "type": "backend",
-      "label": "Approval complete",
-      "sources": [
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 160,
+          "end_line": 220
+        },
         {
-          "path": "app/api/pcn/issuance/[issuanceId]/approval/[stepId]/route.ts",
-          "line": 1,
-          "end_line": 210
-        }
-      ],
-      "width": 120,
-      "height": 64
-    },
-    {
-      "id": "issued",
-      "lane": "post",
-      "col": 3,
-      "type": "backend",
-      "label": "ISSUED",
-      "sources": [
+          "path": "utils/pcnWorkflowRuntime.ts",
+          "line": 345,
+          "end_line": 380
+        },
         {
-          "path": "app/api/pcn/issuance/[issuanceId]/issue/route.ts",
-          "line": 141,
-          "end_line": 343
+          "path": "lib/server/workflow-tasks.ts",
+          "line": 32,
+          "end_line": 230
         }
       ],
-      "width": 120,
-      "height": 64
-    },
-    {
-      "id": "delivered",
-      "lane": "post",
-      "col": 2,
-      "type": "backend",
-      "label": "DELIVERED",
-      "sources": [
-        {
-          "path": "app/api/pcn/issuance/[issuanceId]/deliver/route.ts",
-          "line": 21,
-          "end_line": 98
-        }
-      ],
-      "width": 120,
-      "height": 64
-    },
-    {
-      "id": "archived",
-      "lane": "post",
-      "col": 1,
-      "type": "backend",
-      "label": "ARCHIVED",
-      "sources": [
-        {
-          "path": "app/api/pcn/issuance/[issuanceId]/archive/route.ts",
-          "line": 21,
-          "end_line": 98
-        }
-      ],
-      "width": 120,
-      "height": 64
-    },
-    {
-      "id": "rejected-hold",
-      "lane": "exceptions",
-      "col": 1,
-      "type": "backend",
-      "label": "ON_HOLD / REJECTED",
-      "sources": [
-        {
-          "path": "utils/pcnDossierPipeline.ts",
-          "line": 35,
-          "end_line": 55
-        }
-      ],
-      "width": 120,
-      "height": 64
-    },
-    {
-      "id": "cancelled",
-      "lane": "exceptions",
-      "col": 2,
-      "type": "backend",
-      "label": "CANCELLED",
-      "sources": [
-        {
-          "path": "utils/pcnDossierPipeline.ts",
-          "line": 35,
-          "end_line": 55
-        }
-      ],
-      "width": 120,
-      "height": 64
+      "width": 140,
+      "sublabel": "Before issuance"
     }
   ],
   "edges": [
@@ -411,13 +392,13 @@
     {
       "from": "projection",
       "to": "guards",
-      "label": "current node",
-      "role": "main"
+      "label": "evaluate API gate",
+      "role": "branch"
     },
     {
       "from": "guards",
       "to": "task",
-      "label": "ready",
+      "label": "authorized action",
       "role": "main"
     },
     {
@@ -429,39 +410,45 @@
     {
       "from": "decision",
       "to": "parallel",
-      "label": "split branch",
+      "label": "configured split",
       "role": "branch"
     },
     {
       "from": "parallel",
       "to": "branch-a",
-      "label": "fork",
+      "label": "Branch A",
+      "role": "branch"
+    },
+    {
+      "from": "parallel",
+      "to": "branch-b",
+      "label": "Branch B",
       "role": "branch"
     },
     {
       "from": "branch-a",
-      "to": "branch-b",
-      "label": "independent",
+      "to": "join",
+      "label": "terminal input",
       "role": "branch"
     },
     {
       "from": "branch-b",
       "to": "join",
-      "label": "join policy",
+      "label": "terminal input",
       "role": "branch"
     },
     {
       "from": "decision",
       "to": "return",
-      "label": "rework",
+      "label": "reasoned rework",
       "role": "return",
       "variant": "dashed"
     },
     {
       "from": "return",
-      "to": "stale",
-      "label": "invalidate descendants",
-      "role": "async",
+      "to": "task",
+      "label": "Reopen ancestor; cycle + 1",
+      "role": "return",
       "variant": "dashed"
     },
     {
@@ -469,37 +456,28 @@
       "to": "terminal",
       "label": "END",
       "role": "main"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Execution gate",
+      "items": [
+        "Server API gates role, assignee/owner, state, required files and the selected edge condition; a visible button is not authorization.",
+        "READY / WAITING / LOCKED are computed runtime projections; they are not claimed as one exhaustive persisted status enum.",
+        "A generated DOCX is a draft until reviewed, confirmed by an operator and attached to the matching dossier requirement."
+      ]
     },
     {
-      "from": "terminal",
-      "to": "approved",
-      "label": "approval gate",
-      "role": "main"
-    },
-    {
-      "from": "approved",
-      "to": "issued",
-      "label": "issue",
-      "role": "main"
-    },
-    {
-      "from": "issued",
-      "to": "delivered",
-      "label": "handover",
-      "role": "main"
-    },
-    {
-      "from": "delivered",
-      "to": "archived",
-      "label": "archive",
-      "role": "main"
-    },
-    {
-      "from": "decision",
-      "to": "cancelled",
-      "label": "cancel",
-      "role": "error",
-      "variant": "dashed"
+      "dot": "amber",
+      "title": "Return and termination",
+      "items": [
+        "Return requires a reason and an earlier ancestor target. Descendants become STALE; reactivation increments the cycle.",
+        "PARALLEL_JOIN uses the snapshot rule ALL, ANY or QUORUM; branches have no implicit global ordering.",
+        "This workflow END precedes the separate approval, issue, delivery and archive sequence in map 19.",
+        "Dossier status values ON_HOLD, REJECTED and CANCELLED are separate from workflow node kinds and END; see the canonical PCN map for dossier-level outcomes.",
+        "Approval, issue, delivery and archive are a separate issuance lifecycle documented in map 19."
+      ]
     }
   ]
 }

@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "receiptId": "f02bee7a-127c-4a70-a16f-61d0f2314dca",
+  "receiptId": "b92cb6cd-c4b3-4cd5-8610-39f4701baffe",
   "status": "current",
   "command": "deliver",
   "type": "sequence",
-  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\17-sequence-document-upload-attach.candidate.json",
-  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\17-sequence-document-upload-attach.html",
+  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\17-sequence-document-upload-attach.candidate.json",
+  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\17-sequence-document-upload-attach.html",
   "specification": {
-    "sha256": "6e7cc6bcfd8cfd127c41a3cebe6de8b76f658fa9daf53a66372e6f4e0bb10b48",
-    "bytes": 3932
+    "sha256": "42e0562e16ba35a0f7440886091f8da17f23f9e60fde3a66a1ca28d11204bce9",
+    "bytes": 4622
   },
   "artifact": {
-    "sha256": "10db6d5a162f56b10bcc63851f2c734f91d6e8d5fa193803e7050d40658f7c24",
-    "bytes": 827334
+    "sha256": "fcc7d7c6f2e815a7a9323ea9f84176651d7b9fa58b3d527130ef12528dcd911b",
+    "bytes": 828576
   }
 }

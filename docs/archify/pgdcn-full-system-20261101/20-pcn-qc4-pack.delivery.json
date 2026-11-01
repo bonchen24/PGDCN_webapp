@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "receiptId": "dc7440c9-2003-4da9-93e3-d81a8b9e02bb",
+  "receiptId": "57837c97-e34b-4bf1-a3d0-652246d6e6da",
   "status": "current",
   "command": "deliver",
   "type": "workflow",
-  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\20-pcn-qc4-pack.workflow.json",
-  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\20-pcn-qc4-pack.html",
+  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\20-pcn-qc4-pack.workflow.json",
+  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\20-pcn-qc4-pack.html",
   "specification": {
-    "sha256": "0ee248f386cd07628f3422f1e9d2eb58fc360882be87b7eedeec366a6153a0a9",
-    "bytes": 6255
+    "sha256": "63b7822f0fc116a00cc70358f481d2f1f72a3fd457d2974509678a8eddfc243e",
+    "bytes": 6998
   },
   "artifact": {
-    "sha256": "48cb41535174cb4224c08a837e6a5d3842822ee76a1f5c593971160a83a5fa93",
-    "bytes": 841389
+    "sha256": "317b7b99222798681647c4f44af5a6f0ea15ca5184f8ad7e48487c712281be96",
+    "bytes": 842365
   }
 }

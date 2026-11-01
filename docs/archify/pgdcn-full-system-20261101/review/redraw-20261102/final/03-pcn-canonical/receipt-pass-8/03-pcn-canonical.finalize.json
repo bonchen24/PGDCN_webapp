@@ -1,0 +1,261 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "workflow",
+  "quality": "showcase",
+  "startedAt": "2026-11-01T22:50:39.926Z",
+  "specification": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\03-pcn-canonical.workflow.json",
+    "sha256": "fd46cdc9b2608d8155b675d9f9823632efd6584941ae77e0494773be52553a3b",
+    "bytes": 12457
+  },
+  "artifact": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\03-pcn-canonical.html",
+    "sha256": "a7fb877e4830e79bb724c7e266da7186e82634214de2be77a4e8cceffc668ba9",
+    "bytes": 856907
+  },
+  "stages": {
+    "validate": {
+      "status": "fail",
+      "exitCode": 1,
+      "durationMs": null,
+      "command": [
+        "C:\\Program Files\\nodejs\\node.exe",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\.agents\\skills\\archify\\bin\\archify.mjs",
+        "deliver",
+        "workflow",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\03-pcn-canonical.workflow.json",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\03-pcn-canonical.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": false,
+        "command": "deliver",
+        "receiptId": "71c02d86-4d7c-4d35-8559-497354494e55",
+        "stage": "render",
+        "type": "workflow",
+        "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\03-pcn-canonical.workflow.json",
+        "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\03-pcn-canonical.html",
+        "error": "Workflow edge \"pcn_rework\" cannot satisfy route preset \"return-left\": candidate violates placed edge-label clearance.",
+        "diagnostics": [
+          {
+            "code": "workflow/route-preset-conflict",
+            "severity": "error",
+            "message": "Workflow edge \"pcn_rework\" cannot satisfy route preset \"return-left\": candidate violates placed edge-label clearance.",
+            "subject": {
+              "diagramType": "workflow",
+              "edge": "pcn_rework",
+              "from": "pcn_technical",
+              "to": "pcn_documents",
+              "route": "return-left"
+            },
+            "evidence": {
+              "invariant": "placed edge-label clearance",
+              "conflictType": "route-label",
+              "candidateEdge": {
+                "edge": "pcn_rework",
+                "from": "pcn_technical",
+                "to": "pcn_documents",
+                "path": "/edges/11"
+              },
+              "otherEdge": {
+                "edge": "pcn_edge_4",
+                "from": "pcn_snapshot",
+                "to": "pcn_assign",
+                "path": "/edges/4"
+              },
+              "candidateLabel": {
+                "label": "Return with reason",
+                "rect": {
+                  "x": 827.5,
+                  "y": 352,
+                  "width": 96.39999999999999,
+                  "height": 14
+                }
+              },
+              "otherLabel": {
+                "label": "Assignment / claim",
+                "rect": {
+                  "x": 602.8,
+                  "y": 478,
+                  "width": 96.39999999999999,
+                  "height": 14
+                }
+              },
+              "segment": {
+                "edge": "candidate",
+                "index": 1,
+                "from": [
+                  666.5,
+                  372
+                ],
+                "to": [
+                  666.5,
+                  876
+                ]
+              },
+              "measuredClearancePx": 0,
+              "requiredClearancePx": 4,
+              "attemptedCandidateFamily": "return-left",
+              "points": [
+                [
+                  954.9000000000001,
+                  372
+                ],
+                [
+                  666.5,
+                  372
+                ],
+                [
+                  666.5,
+                  876
+                ],
+                [
+                  694.5,
+                  876
+                ]
+              ],
+              "fromSide": "left",
+              "toSide": "left",
+              "requiredEndpointStubPx": 8,
+              "requiredInteriorSegmentPx": 16,
+              "requiredDirectClearancePx": 28
+            },
+            "supportedFixes": []
+          }
+        ],
+        "provenance": "failed",
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      },
+      "execution": "embedded-in-deliver"
+    },
+    "deliver": {
+      "status": "not-run",
+      "execution": "blocked-by-validate"
+    }
+  },
+  "diagnostics": [
+    {
+      "code": "workflow/route-preset-conflict",
+      "severity": "error",
+      "message": "Workflow edge \"pcn_rework\" cannot satisfy route preset \"return-left\": candidate violates placed edge-label clearance.",
+      "subject": {
+        "diagramType": "workflow",
+        "edge": "pcn_rework",
+        "from": "pcn_technical",
+        "to": "pcn_documents",
+        "route": "return-left"
+      },
+      "evidence": {
+        "invariant": "placed edge-label clearance",
+        "conflictType": "route-label",
+        "candidateEdge": {
+          "edge": "pcn_rework",
+          "from": "pcn_technical",
+          "to": "pcn_documents",
+          "path": "/edges/11"
+        },
+        "otherEdge": {
+          "edge": "pcn_edge_4",
+          "from": "pcn_snapshot",
+          "to": "pcn_assign",
+          "path": "/edges/4"
+        },
+        "candidateLabel": {
+          "label": "Return with reason",
+          "rect": {
+            "x": 827.5,
+            "y": 352,
+            "width": 96.39999999999999,
+            "height": 14
+          }
+        },
+        "otherLabel": {
+          "label": "Assignment / claim",
+          "rect": {
+            "x": 602.8,
+            "y": 478,
+            "width": 96.39999999999999,
+            "height": 14
+          }
+        },
+        "segment": {
+          "edge": "candidate",
+          "index": 1,
+          "from": [
+            666.5,
+            372
+          ],
+          "to": [
+            666.5,
+            876
+          ]
+        },
+        "measuredClearancePx": 0,
+        "requiredClearancePx": 4,
+        "attemptedCandidateFamily": "return-left",
+        "points": [
+          [
+            954.9000000000001,
+            372
+          ],
+          [
+            666.5,
+            372
+          ],
+          [
+            666.5,
+            876
+          ],
+          [
+            694.5,
+            876
+          ]
+        ],
+        "fromSide": "left",
+        "toSide": "left",
+        "requiredEndpointStubPx": 8,
+        "requiredInteriorSegmentPx": 16,
+        "requiredDirectClearancePx": 28
+      },
+      "supportedFixes": []
+    }
+  ],
+  "evidence": {
+    "receipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\03-pcn-canonical\\receipt-pass-8\\03-pcn-canonical.finalize.json",
+    "summaryReceipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\03-pcn-canonical\\receipt-pass-8\\03-pcn-canonical.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "failedStage": "validate",
+  "finishedAt": "2026-11-01T22:50:42.597Z",
+  "durationMs": 2670,
+  "update": {
+    "status": "update_available",
+    "installedVersion": "3.1.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": "https://github.com/tt-a1i/archify/releases/tag/v3.2.0",
+    "severity": "normal",
+    "checkedAt": "2026-11-01T05:42:59.726Z",
+    "source": "cache",
+    "noticeRequired": true,
+    "noticeText": "Archify update: 3.1.0 → 3.2.0. A previous check at 2026-11-01T05:42:59.726Z found a newer release. Release notes: https://github.com/tt-a1i/archify/releases/tag/v3.2.0. The installed Skill has not changed; ask to snooze or ignore this reminder.",
+    "eventKey": "archify@sha256:70e210265c59f24dcbdf2a502ff671104b5454e7ee7d3554aecd86bad32384f5"
+  }
+}

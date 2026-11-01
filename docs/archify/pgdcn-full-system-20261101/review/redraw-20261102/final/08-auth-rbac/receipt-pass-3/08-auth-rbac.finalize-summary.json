@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.candidate.json",
+    "sha256": "724d5bb96c49f320c454397172d92f9d6236b5df7dde0df447392e7b72b71254",
+    "bytes": 14193
+  },
+  "artifact": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.html",
+    "sha256": "97d24dbd56f519cc644a60e972fc9d170f96a50ea30e8e9035f216767ad7e549",
+    "bytes": 835103
+  },
+  "gates": {
+    "validate": "fail",
+    "deliver": "not-run",
+    "check": "not-run",
+    "browser-check": "not-run"
+  },
+  "failedStage": "validate",
+  "diagnostics": [
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Unauthorized, disabled, wrong owner or locked state returns denial\" needs ~238px at the 6px legible minimum, but component \"denied\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "denied"
+      },
+      "evidence": {
+        "text": "Unauthorized, disabled, wrong owner or locked state returns denial",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 238,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"denied\" sublabel \"Unauthorized, disabled, wrong owner or locked state returns denial\" while preserving its meaning",
+        "or widen component \"denied\" so the sublabel keeps at least 238px of text width at the 6px legible minimum"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\08-auth-rbac\\receipt-pass-3\\08-auth-rbac.finalize.json",
+    "summaryReceipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\08-auth-rbac\\receipt-pass-3\\08-auth-rbac.finalize-summary.json"
+  },
+  "update": {
+    "status": "update_available",
+    "installedVersion": "3.1.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": "https://github.com/tt-a1i/archify/releases/tag/v3.2.0",
+    "severity": "normal",
+    "checkedAt": "2026-11-01T05:42:59.726Z",
+    "source": "cache",
+    "noticeRequired": true,
+    "noticeText": "Archify update: 3.1.0 → 3.2.0. A previous check at 2026-11-01T05:42:59.726Z found a newer release. Release notes: https://github.com/tt-a1i/archify/releases/tag/v3.2.0. The installed Skill has not changed; ask to snooze or ignore this reminder.",
+    "eventKey": "archify@sha256:70e210265c59f24dcbdf2a502ff671104b5454e7ee7d3554aecd86bad32384f5"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 627,
+  "nextAction": {
+    "action": "edit-in-place",
+    "candidate": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\08-auth-rbac.candidate.json",
+    "constraint": "Preserve unaffected semantics and geometry; apply each diagnostic's supportedFixes, or the fix its message names, and do not replace the whole candidate.",
+    "then": "finalize-once"
+  }
+}

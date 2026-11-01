@@ -10,25 +10,58 @@
       "url": "https://github.com/bonchen24/PGDCN_webapp.git",
       "provider": "github",
       "link_mode": "web",
-      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+      "revision": "348b855a57595eec2646bb462e5c29571c3be501"
     }
   },
   "lanes": [
     {
       "id": "case_ops",
-      "label": "Chuyên viên · tiếp nhận / hiện trường"
+      "label": "Chuyên viên · tiếp nhận / hiện trường / báo cáo"
     },
     {
       "id": "handoff",
-      "label": "Điều phối · PTN · reviewer · ký"
+      "label": "Điều phối · phân công / giao nhận"
+    },
+    {
+      "id": "external_lab",
+      "label": "PTN ngoài · kết quả"
+    },
+    {
+      "id": "reviewer",
+      "label": "Reviewer kỹ thuật · phê duyệt"
     }
   ],
   "phases": [
     {
-      "id": "pgd_flow",
-      "label": "12 nhiệm vụ · trình tự 01–12",
+      "id": "pgd_station_1",
+      "label": "1 · Tiếp nhận & năng lực",
       "fromCol": 0,
+      "toCol": 0
+    },
+    {
+      "id": "pgd_station_2",
+      "label": "2 · Chuẩn bị & phân công",
+      "fromCol": 1,
+      "toCol": 1
+    },
+    {
+      "id": "pgd_station_3",
+      "label": "3 · Hiện trường & lấy mẫu",
+      "fromCol": 2,
       "toCol": 2
+    },
+    {
+      "id": "pgd_station_4",
+      "label": "4 · PTN & xem xét kết quả",
+      "fromCol": 3,
+      "toCol": 3
+    },
+    {
+      "id": "pgd_station_5",
+      "label": "5 · Báo cáo, phê duyệt & trả kết quả",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "security"
     }
   ],
   "nodes": [
@@ -159,7 +192,7 @@
     },
     {
       "id": "s07",
-      "lane": "case_ops",
+      "lane": "handoff",
       "col": 3,
       "type": "frontend",
       "label": "07 · Giao mẫu / PYC PTN",
@@ -184,7 +217,7 @@
     },
     {
       "id": "s08",
-      "lane": "handoff",
+      "lane": "external_lab",
       "col": 3,
       "type": "frontend",
       "label": "08 · Nhận KQTN",
@@ -199,8 +232,8 @@
     },
     {
       "id": "s09",
-      "lane": "handoff",
-      "col": 4,
+      "lane": "reviewer",
+      "col": 3,
       "type": "frontend",
       "label": "09 · Xem xét KQTN",
       "sources": [
@@ -245,7 +278,7 @@
     {
       "id": "s11",
       "lane": "handoff",
-      "col": 5,
+      "col": 4,
       "type": "frontend",
       "label": "11 · Phê duyệt / ký",
       "sources": [
@@ -288,7 +321,7 @@
       "id": "pgd_edge_0",
       "from": "s01",
       "to": "s02",
-      "label": "Gate bước kế tiếp",
+      "label": "PYC received",
       "variant": "default",
       "role": "main"
     },
@@ -296,7 +329,7 @@
       "id": "pgd_edge_1",
       "from": "s02",
       "to": "s03",
-      "label": "Gate bước kế tiếp",
+      "label": "Scope accepted",
       "variant": "default",
       "role": "main"
     },
@@ -304,7 +337,7 @@
       "id": "pgd_edge_2",
       "from": "s03",
       "to": "s04",
-      "label": "Gate bước kế tiếp",
+      "label": "Assignment approved",
       "variant": "default",
       "role": "main"
     },
@@ -312,7 +345,7 @@
       "id": "pgd_edge_3",
       "from": "s04",
       "to": "s05",
-      "label": "Gate bước kế tiếp",
+      "label": "Plan ready",
       "variant": "default",
       "role": "main"
     },
@@ -320,7 +353,7 @@
       "id": "pgd_edge_4",
       "from": "s05",
       "to": "s06",
-      "label": "Gate bước kế tiếp",
+      "label": "Field evidence",
       "variant": "default",
       "role": "main"
     },
@@ -328,7 +361,7 @@
       "id": "pgd_edge_5",
       "from": "s06",
       "to": "s07",
-      "label": "Gate bước kế tiếp",
+      "label": "Handover when applicable",
       "variant": "default",
       "role": "main"
     },
@@ -336,7 +369,7 @@
       "id": "pgd_edge_6",
       "from": "s07",
       "to": "s08",
-      "label": "Chờ PTN · RESULT_RECEIVED",
+      "label": "Lab result returned",
       "variant": "default",
       "role": "main"
     },
@@ -344,7 +377,7 @@
       "id": "pgd_edge_7",
       "from": "s08",
       "to": "s09",
-      "label": "Gate bước kế tiếp",
+      "label": "Result linked",
       "variant": "default",
       "role": "main"
     },
@@ -352,7 +385,7 @@
       "id": "pgd_edge_8",
       "from": "s09",
       "to": "s10",
-      "label": "Gate bước kế tiếp",
+      "label": "Review complete",
       "variant": "default",
       "role": "main"
     },
@@ -360,7 +393,7 @@
       "id": "pgd_edge_9",
       "from": "s10",
       "to": "s11",
-      "label": "Gate bước kế tiếp",
+      "label": "Report ready",
       "variant": "default",
       "role": "main"
     },
@@ -368,25 +401,9 @@
       "id": "pgd_edge_10",
       "from": "s11",
       "to": "s12",
-      "label": "Gate bước kế tiếp",
+      "label": "Approval / sign",
       "variant": "default",
       "role": "main"
-    },
-    {
-      "id": "pgd_lab_rework",
-      "from": "s09",
-      "to": "s08",
-      "label": "KQTN sai/thiếu: bổ sung",
-      "variant": "dashed",
-      "role": "return"
-    },
-    {
-      "id": "pgd_rework",
-      "from": "s11",
-      "to": "s10",
-      "label": "Trả báo cáo sửa",
-      "variant": "dashed",
-      "role": "return"
     }
   ],
   "mainPath": [
@@ -402,5 +419,27 @@
     "s10",
     "s11",
     "s12"
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Profile trong code catalog",
+      "items": [
+        "GĐ-THEP-TT58 · STEEL_TT58_INSPECTION",
+        "productGroup STEEL_METAL · profile STEEL_TT58",
+        "Method: TT58 · QT-GĐ-02 · QT-GĐ-03 · QT-GĐ-04 · QT-GĐ-06 · …",
+        "Fields: Thép theo TT58; quy tắc lấy mẫu theo lô và nhóm sản phẩm."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Hồ sơ · trạng thái",
+      "items": [
+        "Required baseline: REQUEST_PYC · REQUEST_SUPPORTING · INSPECTION_PLAN · FIELD_INSPECTION_MINUTES · SAMPLE_HANDOVER_LAB",
+        "Optional/conditional: ASSIGNMENT_FORM · COMMERCIAL_CONTRACT · COMMERCIAL_INVOICE · PACKING_LIST · BILL_OF_LADING",
+        "Trigger/N/A không được biểu đạt trong code = NOT_VERIFIED; chỉ chọn áp dụng theo request/profile/source.",
+        "DOCX manifest là catalog biểu mẫu; workflow template ID/version/PUBLISHED = NOT_VERIFIED."
+      ]
+    }
   ]
 }

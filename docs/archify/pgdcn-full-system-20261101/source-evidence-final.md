@@ -1,6 +1,6 @@
 # Source evidence — final delivery layer
 
-Revision: 521f8d517560f3767321c19ad492658bb507b4b4. No authenticated read-only DB connection was available; no private customer/case data or file bytes were read. Live PUBLISHED workflow records remain NOT_VERIFIED.
+Revision: 348b855a57595eec2646bb462e5c29571c3be501. No authenticated read-only DB connection was available; no private customer/case data or file bytes were read. Live PUBLISHED workflow records remain NOT_VERIFIED.
 
 ## Source line ledger
 
@@ -91,8 +91,10 @@ Revision: 521f8d517560f3767321c19ad492658bb507b4b4. No authenticated read-only D
 - All 11 active:true PGD profiles from utils/pgdDomain.ts:234-447 are included. They identify code-catalog profiles/product groups/methods; they are not DB workflow-template records.
 - PGD manifest version 1.3 and PCN manifest statuses describe DOCX assets only, not workflow publication status.
 
-## UI refresh provenance
+## Redraw provenance
 
-- Operational UI guidance reviewed against source commit 081f0a48945dce3c6f419804ce4e6b956e50a147; diagram topology and original Archify receipts remain bound to revision 521f8d517560f3767321c19ad492658bb507b4b4. No candidate maps were changed.
+- The three main workflows, 13 profile workflows and seven selected technical candidates were redrawn or materially revised from source commit 348b855a57595eec2646bb462e5c29571c3be501.
+- Operational UI guidance was checked against source commit 348b855a57595eec2646bb462e5c29571c3be501; the Atlas remains a static knowledge artifact and is not an in-app workflow UI.
 - PCN workspace: components/PcnDossierDetailView.tsx:236-243,872; components/PcnDossierFlow.tsx:150-151.
 - PGD workspace: components/PgdWorkspace.tsx:1159-1167,1352-1367,1542-1548; components/PgdDossierStepWorkPanel.tsx:194-198,277-293.
+- No authenticated read-only DB source was available. Runtime PUBLISHED template IDs/versions/status remain NOT_VERIFIED.

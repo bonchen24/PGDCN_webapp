@@ -1,0 +1,433 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "startedAt": "2026-11-01T23:04:34.685Z",
+  "specification": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\07-pgd-evidence-approval-package.candidate.json",
+    "sha256": "507240afb5b710f5dffba635faf51dcad45e0300d037b1d42b4f256bcc0f36e1",
+    "bytes": 6508
+  },
+  "artifact": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\07-pgd-evidence-approval-package.html",
+    "sha256": "a7e7d9a16d9f773fe91bf333c4808cd4b2cf7367fc7a198081287d176cb91201",
+    "bytes": 836255
+  },
+  "stages": {
+    "validate": {
+      "status": "fail",
+      "exitCode": 1,
+      "durationMs": null,
+      "command": [
+        "C:\\Program Files\\nodejs\\node.exe",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\.agents\\skills\\archify\\bin\\archify.mjs",
+        "deliver",
+        "architecture",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\07-pgd-evidence-approval-package.candidate.json",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\07-pgd-evidence-approval-package.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": false,
+        "command": "deliver",
+        "receiptId": "76679c90-4b96-4980-b378-fe6d359da83e",
+        "stage": "render",
+        "type": "architecture",
+        "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\07-pgd-evidence-approval-package.candidate.json",
+        "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\07-pgd-evidence-approval-package.html",
+        "error": "Architecture layout validation failed:\n- Sublabel \"12-step PGD task rail projects onto five backend stations; requiredness remains profile/case-aware\" needs ~353px at the 6px legible minimum, but component \"checklist\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Current dossier assets are required; package checks completeness and private file bytes\" needs ~314px at the 6px legible minimum, but component \"documents\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Approval snapshots the complete package manifest and SHA-256 hash\" needs ~234px at the 6px legible minimum, but component \"manifest\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"TECHNICAL_REVIEW must be approved before leadership can act\" needs ~213px at the 6px legible minimum, but component \"step1\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"LEADERSHIP_APPROVAL requires prior technical approval, complete package and draft certificate\" needs ~335px at the 6px legible minimum, but component \"step2\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Certificate and request become SIGNED; post-signature evidence is locked\" needs ~260px at the 6px legible minimum, but component \"signed\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Package ZIP/download is archived output, not a customer delivery receipt\" needs ~260px at the 6px legible minimum, but component \"zip\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"PGD request result state after signing; not an approval-return event\" needs ~245px at the 6px legible minimum, but component \"returned\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Archive is a distinct terminal state after package/result return gates\" needs ~252px at the 6px legible minimum, but component \"archived\" provides 200px — shorten the sublabel or widen size.",
+        "diagnostics": [
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"12-step PGD task rail projects onto five backend stations; requiredness remains profile/case-aware\" needs ~353px at the 6px legible minimum, but component \"checklist\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "checklist"
+            },
+            "evidence": {
+              "text": "12-step PGD task rail projects onto five backend stations; requiredness remains profile/case-aware",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 353,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"checklist\" sublabel \"12-step PGD task rail projects onto five backend stations; requiredness remains profile/case-aware\" while preserving its meaning",
+              "or widen component \"checklist\" so the sublabel keeps at least 353px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Current dossier assets are required; package checks completeness and private file bytes\" needs ~314px at the 6px legible minimum, but component \"documents\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "documents"
+            },
+            "evidence": {
+              "text": "Current dossier assets are required; package checks completeness and private file bytes",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 314,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"documents\" sublabel \"Current dossier assets are required; package checks completeness and private file bytes\" while preserving its meaning",
+              "or widen component \"documents\" so the sublabel keeps at least 314px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Approval snapshots the complete package manifest and SHA-256 hash\" needs ~234px at the 6px legible minimum, but component \"manifest\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "manifest"
+            },
+            "evidence": {
+              "text": "Approval snapshots the complete package manifest and SHA-256 hash",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 234,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"manifest\" sublabel \"Approval snapshots the complete package manifest and SHA-256 hash\" while preserving its meaning",
+              "or widen component \"manifest\" so the sublabel keeps at least 234px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"TECHNICAL_REVIEW must be approved before leadership can act\" needs ~213px at the 6px legible minimum, but component \"step1\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "step1"
+            },
+            "evidence": {
+              "text": "TECHNICAL_REVIEW must be approved before leadership can act",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 213,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"step1\" sublabel \"TECHNICAL_REVIEW must be approved before leadership can act\" while preserving its meaning",
+              "or widen component \"step1\" so the sublabel keeps at least 213px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"LEADERSHIP_APPROVAL requires prior technical approval, complete package and draft certificate\" needs ~335px at the 6px legible minimum, but component \"step2\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "step2"
+            },
+            "evidence": {
+              "text": "LEADERSHIP_APPROVAL requires prior technical approval, complete package and draft certificate",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 335,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"step2\" sublabel \"LEADERSHIP_APPROVAL requires prior technical approval, complete package and draft certificate\" while preserving its meaning",
+              "or widen component \"step2\" so the sublabel keeps at least 335px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Certificate and request become SIGNED; post-signature evidence is locked\" needs ~260px at the 6px legible minimum, but component \"signed\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "signed"
+            },
+            "evidence": {
+              "text": "Certificate and request become SIGNED; post-signature evidence is locked",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 260,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"signed\" sublabel \"Certificate and request become SIGNED; post-signature evidence is locked\" while preserving its meaning",
+              "or widen component \"signed\" so the sublabel keeps at least 260px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Package ZIP/download is archived output, not a customer delivery receipt\" needs ~260px at the 6px legible minimum, but component \"zip\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "zip"
+            },
+            "evidence": {
+              "text": "Package ZIP/download is archived output, not a customer delivery receipt",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 260,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"zip\" sublabel \"Package ZIP/download is archived output, not a customer delivery receipt\" while preserving its meaning",
+              "or widen component \"zip\" so the sublabel keeps at least 260px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"PGD request result state after signing; not an approval-return event\" needs ~245px at the 6px legible minimum, but component \"returned\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "returned"
+            },
+            "evidence": {
+              "text": "PGD request result state after signing; not an approval-return event",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 245,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"returned\" sublabel \"PGD request result state after signing; not an approval-return event\" while preserving its meaning",
+              "or widen component \"returned\" so the sublabel keeps at least 245px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Archive is a distinct terminal state after package/result return gates\" needs ~252px at the 6px legible minimum, but component \"archived\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "archived"
+            },
+            "evidence": {
+              "text": "Archive is a distinct terminal state after package/result return gates",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 252,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"archived\" sublabel \"Archive is a distinct terminal state after package/result return gates\" while preserving its meaning",
+              "or widen component \"archived\" so the sublabel keeps at least 252px of text width at the 6px legible minimum"
+            ]
+          }
+        ],
+        "provenance": "failed",
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      },
+      "execution": "embedded-in-deliver"
+    },
+    "deliver": {
+      "status": "not-run",
+      "execution": "blocked-by-validate"
+    }
+  },
+  "diagnostics": [
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"12-step PGD task rail projects onto five backend stations; requiredness remains profile/case-aware\" needs ~353px at the 6px legible minimum, but component \"checklist\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "checklist"
+      },
+      "evidence": {
+        "text": "12-step PGD task rail projects onto five backend stations; requiredness remains profile/case-aware",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 353,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"checklist\" sublabel \"12-step PGD task rail projects onto five backend stations; requiredness remains profile/case-aware\" while preserving its meaning",
+        "or widen component \"checklist\" so the sublabel keeps at least 353px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Current dossier assets are required; package checks completeness and private file bytes\" needs ~314px at the 6px legible minimum, but component \"documents\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "documents"
+      },
+      "evidence": {
+        "text": "Current dossier assets are required; package checks completeness and private file bytes",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 314,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"documents\" sublabel \"Current dossier assets are required; package checks completeness and private file bytes\" while preserving its meaning",
+        "or widen component \"documents\" so the sublabel keeps at least 314px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Approval snapshots the complete package manifest and SHA-256 hash\" needs ~234px at the 6px legible minimum, but component \"manifest\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "manifest"
+      },
+      "evidence": {
+        "text": "Approval snapshots the complete package manifest and SHA-256 hash",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 234,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"manifest\" sublabel \"Approval snapshots the complete package manifest and SHA-256 hash\" while preserving its meaning",
+        "or widen component \"manifest\" so the sublabel keeps at least 234px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"TECHNICAL_REVIEW must be approved before leadership can act\" needs ~213px at the 6px legible minimum, but component \"step1\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "step1"
+      },
+      "evidence": {
+        "text": "TECHNICAL_REVIEW must be approved before leadership can act",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 213,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"step1\" sublabel \"TECHNICAL_REVIEW must be approved before leadership can act\" while preserving its meaning",
+        "or widen component \"step1\" so the sublabel keeps at least 213px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"LEADERSHIP_APPROVAL requires prior technical approval, complete package and draft certificate\" needs ~335px at the 6px legible minimum, but component \"step2\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "step2"
+      },
+      "evidence": {
+        "text": "LEADERSHIP_APPROVAL requires prior technical approval, complete package and draft certificate",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 335,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"step2\" sublabel \"LEADERSHIP_APPROVAL requires prior technical approval, complete package and draft certificate\" while preserving its meaning",
+        "or widen component \"step2\" so the sublabel keeps at least 335px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Certificate and request become SIGNED; post-signature evidence is locked\" needs ~260px at the 6px legible minimum, but component \"signed\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "signed"
+      },
+      "evidence": {
+        "text": "Certificate and request become SIGNED; post-signature evidence is locked",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 260,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"signed\" sublabel \"Certificate and request become SIGNED; post-signature evidence is locked\" while preserving its meaning",
+        "or widen component \"signed\" so the sublabel keeps at least 260px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Package ZIP/download is archived output, not a customer delivery receipt\" needs ~260px at the 6px legible minimum, but component \"zip\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "zip"
+      },
+      "evidence": {
+        "text": "Package ZIP/download is archived output, not a customer delivery receipt",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 260,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"zip\" sublabel \"Package ZIP/download is archived output, not a customer delivery receipt\" while preserving its meaning",
+        "or widen component \"zip\" so the sublabel keeps at least 260px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"PGD request result state after signing; not an approval-return event\" needs ~245px at the 6px legible minimum, but component \"returned\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "returned"
+      },
+      "evidence": {
+        "text": "PGD request result state after signing; not an approval-return event",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 245,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"returned\" sublabel \"PGD request result state after signing; not an approval-return event\" while preserving its meaning",
+        "or widen component \"returned\" so the sublabel keeps at least 245px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Archive is a distinct terminal state after package/result return gates\" needs ~252px at the 6px legible minimum, but component \"archived\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "archived"
+      },
+      "evidence": {
+        "text": "Archive is a distinct terminal state after package/result return gates",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 252,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"archived\" sublabel \"Archive is a distinct terminal state after package/result return gates\" while preserving its meaning",
+        "or widen component \"archived\" so the sublabel keeps at least 252px of text width at the 6px legible minimum"
+      ]
+    }
+  ],
+  "evidence": {
+    "receipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\07-pgd-evidence-approval-package\\receipt-pass-1\\07-pgd-evidence-approval-package.finalize.json",
+    "summaryReceipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\07-pgd-evidence-approval-package\\receipt-pass-1\\07-pgd-evidence-approval-package.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "failedStage": "validate",
+  "finishedAt": "2026-11-01T23:04:35.329Z",
+  "durationMs": 643,
+  "update": {
+    "status": "update_available",
+    "installedVersion": "3.1.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": "https://github.com/tt-a1i/archify/releases/tag/v3.2.0",
+    "severity": "normal",
+    "checkedAt": "2026-11-01T05:42:59.726Z",
+    "source": "cache",
+    "noticeRequired": true,
+    "noticeText": "Archify update: 3.1.0 → 3.2.0. A previous check at 2026-11-01T05:42:59.726Z found a newer release. Release notes: https://github.com/tt-a1i/archify/releases/tag/v3.2.0. The installed Skill has not changed; ask to snooze or ignore this reminder.",
+    "eventKey": "archify@sha256:70e210265c59f24dcbdf2a502ff671104b5454e7ee7d3554aecd86bad32384f5"
+  }
+}

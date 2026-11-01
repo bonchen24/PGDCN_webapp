@@ -2,15 +2,15 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "05 · Checklist, tài liệu và template",
-    "subtitle": "Requirement state khác trạng thái bản DOCX; bản cũ không gắn nhãn SUPERSEDED trong schema evidence.",
+    "title": "05 Ã‚Â· Checklist, tÃƒÂ i liÃ¡Â»â€¡u vÃƒÂ  template",
+    "subtitle": "PCN checklist MISSING / PRESENT / WAIVED is distinct from a generated DOCX draft; confirm + attach are required. External upload is a separate path. PGD checklist exposes MISSING / PRESENT; do not invent GENERATED or CONFIRMED status. DOCX catalogs do not establish a live PUBLISHED workflow.",
     "output": "docs/archify/pgdcn-full-system-20261101/05-documents-and-templates.html",
     "quality_profile": "showcase",
     "repository": {
       "url": "https://github.com/bonchen24/PGDCN_webapp.git",
       "provider": "github",
       "link_mode": "web",
-      "revision": "521f8d517560f3767321c19ad492658bb507b4b4"
+      "revision": "348b855a57595eec2646bb462e5c29571c3be501"
     }
   },
   "layout": {
@@ -30,7 +30,7 @@
       "id": "requirement",
       "type": "backend",
       "label": "Requirement manifest",
-      "sublabel": "Bắt buộc / điều kiện / trường dữ liệu",
+      "sublabel": "Checklist item; case may vary",
       "tag": "PCN + PGD",
       "row": 0,
       "col": 0,
@@ -41,21 +41,26 @@
       "sources": [
         {
           "path": "utils/pcnDossierDocuments.ts",
-          "line": 1,
-          "end_line": 80
+          "line": 24,
+          "end_line": 118
         },
         {
-          "path": "utils/pgdWorkflow.ts",
+          "path": "utils/pgdDossier.ts",
+          "line": 171,
+          "end_line": 263
+        },
+        {
+          "path": "app/api/pgd/requests/[requestId]/dossier-documents/route.ts",
           "line": 148,
-          "end_line": 199
+          "end_line": 214
         }
       ]
     },
     {
       "id": "missing",
       "type": "backend",
-      "label": "MISSING / thiếu",
-      "sublabel": "Điều kiện chưa đạt",
+      "label": "MISSING / thiÃ¡ÂºÂ¿u",
+      "sublabel": "Required file absent",
       "tag": "PCN",
       "row": 0,
       "col": 1,
@@ -65,17 +70,27 @@
       ],
       "sources": [
         {
-          "path": "utils/pcnDossierInspection.ts",
-          "line": 107,
-          "end_line": 115
+          "path": "utils/pcnDossierDocuments.ts",
+          "line": 24,
+          "end_line": 118
+        },
+        {
+          "path": "utils/pgdDossier.ts",
+          "line": 171,
+          "end_line": 263
+        },
+        {
+          "path": "app/api/pgd/requests/[requestId]/dossier-documents/route.ts",
+          "line": 148,
+          "end_line": 214
         }
       ]
     },
     {
       "id": "present",
       "type": "backend",
-      "label": "PRESENT / đã có",
-      "sublabel": "Upload tạo version + current pointer",
+      "label": "PRESENT / Ã„â€˜ÃƒÂ£ cÃƒÂ³",
+      "sublabel": "Current file linked",
       "tag": "PCN",
       "row": 0,
       "col": 2,
@@ -85,9 +100,19 @@
       ],
       "sources": [
         {
-          "path": "app/api/pcn/dossiers/[dossierId]/documents/route.ts",
-          "line": 131,
-          "end_line": 180
+          "path": "utils/pcnDossierDocuments.ts",
+          "line": 24,
+          "end_line": 118
+        },
+        {
+          "path": "utils/pgdDossier.ts",
+          "line": 171,
+          "end_line": 263
+        },
+        {
+          "path": "app/api/pgd/requests/[requestId]/dossier-documents/route.ts",
+          "line": 148,
+          "end_line": 214
         }
       ]
     },
@@ -95,7 +120,7 @@
       "id": "versions",
       "type": "backend",
       "label": "Version history",
-      "sublabel": "Bản hiện hành được trỏ riêng",
+      "sublabel": "New version; server owns pointer",
       "tag": "PCN + PGD",
       "row": 1,
       "col": 2,
@@ -105,9 +130,14 @@
       ],
       "sources": [
         {
-          "path": "app/api/pcn/dossiers/[dossierId]/documents/route.ts",
-          "line": 131,
-          "end_line": 180
+          "path": "utils/pcnDossierDocuments.ts",
+          "line": 24,
+          "end_line": 118
+        },
+        {
+          "path": "utils/pgdDossier.ts",
+          "line": 171,
+          "end_line": 263
         },
         {
           "path": "app/api/pgd/requests/[requestId]/dossier-documents/route.ts",
@@ -120,7 +150,7 @@
       "id": "waived",
       "type": "backend",
       "label": "WAIVED",
-      "sublabel": "Quyết định có lý do; không xóa requirement",
+      "sublabel": "PCN reason required; PGD NOT_VERIFIED",
       "tag": "PCN",
       "row": 1,
       "col": 1,
@@ -130,9 +160,19 @@
       ],
       "sources": [
         {
+          "path": "app/api/pcn/dossiers/[dossierId]/documents/confirm-generated/route.ts",
+          "line": 1,
+          "end_line": 74
+        },
+        {
           "path": "app/api/pcn/dossiers/[dossierId]/documents/[requirementId]/waive/route.ts",
-          "line": 89,
-          "end_line": 120
+          "line": 1,
+          "end_line": 92
+        },
+        {
+          "path": "utils/pgdDossier.ts",
+          "line": 171,
+          "end_line": 263
         }
       ]
     },
@@ -140,7 +180,7 @@
       "id": "review-gate",
       "type": "backend",
       "label": "Review / package gate",
-      "sublabel": "Readiness của dossier, không phải file status",
+      "sublabel": "Review ≠ package completeness",
       "tag": "Evidence gate",
       "row": 1,
       "col": 0,
@@ -150,14 +190,14 @@
       ],
       "sources": [
         {
-          "path": "components/PcnApprovalModal.tsx",
-          "line": 17,
-          "end_line": 82
-        },
-        {
           "path": "app/api/pgd/approvals/route.ts",
           "line": 69,
           "end_line": 87
+        },
+        {
+          "path": "app/api/pcn/issuance/[issuanceId]/approval/[stepId]/route.ts",
+          "line": 80,
+          "end_line": 195
         }
       ]
     },
@@ -165,7 +205,7 @@
       "id": "generated",
       "type": "backend",
       "label": "Generated output",
-      "sublabel": "Draft → GENERATED",
+      "sublabel": "Generated DOCX is draft",
       "tag": "DOCX",
       "row": 3,
       "col": 0,
@@ -177,7 +217,7 @@
         {
           "path": "app/api/pcn/drafts/[draftId]/generate/route.ts",
           "line": 1,
-          "end_line": 1
+          "end_line": 180
         },
         {
           "path": "components/PcnDraftingWorkspaceView.tsx",
@@ -190,7 +230,7 @@
       "id": "confirmed",
       "type": "backend",
       "label": "CONFIRMED",
-      "sublabel": "User confirms selected output",
+      "sublabel": "Operator confirms after review",
       "tag": "DOCX",
       "row": 3,
       "col": 1,
@@ -202,7 +242,7 @@
         {
           "path": "app/api/pcn/dossiers/[dossierId]/documents/confirm-generated/route.ts",
           "line": 1,
-          "end_line": 1
+          "end_line": 74
         }
       ]
     },
@@ -210,7 +250,7 @@
       "id": "attached",
       "type": "backend",
       "label": "ATTACHED to dossier",
-      "sublabel": "Attach operation is separate from draft generation",
+      "sublabel": "Confirmed version linked",
       "tag": "DOCX",
       "row": 3,
       "col": 2,
@@ -220,9 +260,9 @@
       ],
       "sources": [
         {
-          "path": "app/api/pcn/dossiers/[dossierId]/documents/confirm-draft-output/route.ts",
+          "path": "app/api/pcn/dossiers/[dossierId]/documents/confirm-generated/route.ts",
           "line": 1,
-          "end_line": 1
+          "end_line": 74
         }
       ]
     },
@@ -230,7 +270,7 @@
       "id": "workflow-template",
       "type": "backend",
       "label": "PCN workflow templates",
-      "sublabel": "Published graph snapshot; not DOCX catalog",
+      "sublabel": "Live PCN ID NOT_VERIFIED",
       "tag": "Workflow config",
       "row": 5,
       "col": 0,
@@ -241,12 +281,12 @@
       "sources": [
         {
           "path": "utils/pcnWorkflowTemplate.ts",
-          "line": 45,
+          "line": 37,
           "end_line": 110
         },
         {
           "path": "utils/pcnWorkflowTemplate.ts",
-          "line": 141,
+          "line": 129,
           "end_line": 198
         }
       ]
@@ -255,7 +295,7 @@
       "id": "pgd-template",
       "type": "backend",
       "label": "PGD DOCX templates",
-      "sublabel": "Catalog + source file routes",
+      "sublabel": "PGD DOCX catalog",
       "tag": "DOCX catalog",
       "row": 5,
       "col": 1,
@@ -265,14 +305,14 @@
       ],
       "sources": [
         {
-          "path": "app/api/pgd/document-templates/route.ts",
+          "path": "templates/pgd/manifest.json",
           "line": 1,
-          "end_line": 1
+          "end_line": 80
         },
         {
-          "path": "app/api/pgd/document-templates/[templateId]/source/route.ts",
-          "line": 1,
-          "end_line": 1
+          "path": "utils/pgdDossier.ts",
+          "line": 226,
+          "end_line": 248
         }
       ]
     },
@@ -280,7 +320,7 @@
       "id": "pcn-template",
       "type": "backend",
       "label": "PCN official templates",
-      "sublabel": "File review and annotation endpoints",
+      "sublabel": "PCN DOCX templates",
       "tag": "DOCX catalog",
       "row": 5,
       "col": 2,
@@ -290,14 +330,14 @@
       ],
       "sources": [
         {
-          "path": "app/api/pcn/templates/[templateId]/review/route.ts",
+          "path": "templates/pcn/manifest.json",
           "line": 1,
-          "end_line": 1
+          "end_line": 25
         },
         {
-          "path": "app/api/pcn/templates/[templateId]/annotate/route.ts",
+          "path": "utils/pcnDossierTemplateCatalog.ts",
           "line": 1,
-          "end_line": 1
+          "end_line": 180
         }
       ]
     },
@@ -305,7 +345,7 @@
       "id": "pgd-workflow-template",
       "type": "backend",
       "label": "PGD workflow templates",
-      "sublabel": "Revision / publish / retire graph config",
+      "sublabel": "Live publish state NOT_VERIFIED",
       "tag": "Workflow config",
       "row": 6,
       "col": 0,
@@ -317,17 +357,12 @@
         {
           "path": "app/api/pgd/workflow-templates/[templateId]/revisions/route.ts",
           "line": 1,
-          "end_line": 1
+          "end_line": 99
         },
         {
           "path": "app/api/pgd/workflow-templates/[templateId]/publish/route.ts",
           "line": 1,
-          "end_line": 1
-        },
-        {
-          "path": "app/api/pgd/workflow-templates/[templateId]/retire/route.ts",
-          "line": 1,
-          "end_line": 1
+          "end_line": 91
         }
       ]
     }
@@ -337,37 +372,37 @@
       "id": "requirement-missing",
       "from": "requirement",
       "to": "missing",
-      "label": "unmet"
+      "label": "Not satisfied Ã¢â€ â€™ MISSING"
     },
     {
       "id": "missing-present",
       "from": "missing",
       "to": "present",
-      "label": "upload"
+      "label": "Upload external file and attach exact requirement"
     },
     {
       "id": "present-versions",
       "from": "present",
       "to": "versions",
-      "label": "append version"
+      "label": "Append current version; supersede older PCN version"
     },
     {
       "id": "missing-waived",
       "from": "missing",
       "to": "waived",
-      "label": "reasoned waiver"
+      "label": "Authorized, reasoned PCN waiver"
     },
     {
       "id": "generated-confirmed",
       "from": "generated",
       "to": "confirmed",
-      "label": "confirm"
+      "label": "Review and confirm generated DOCX"
     },
     {
       "id": "confirmed-attached",
       "from": "confirmed",
       "to": "attached",
-      "label": "attach"
+      "label": "Confirm endpoint attaches version to dossier"
     }
   ]
 }

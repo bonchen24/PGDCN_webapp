@@ -1,0 +1,521 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "startedAt": "2026-11-01T23:04:33.835Z",
+  "specification": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\06-samples-and-lab.candidate.json",
+    "sha256": "4b3da201d267bf7d6d832093a74f35f4c6981457925f1e13f728bd8a7f8680ae",
+    "bytes": 8557
+  },
+  "artifact": {
+    "path": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\06-samples-and-lab.html",
+    "sha256": "d4984adbabb4696c8ab4518db579a077a45ff57de3cedf58f5f8d7cccba6e388",
+    "bytes": 843526
+  },
+  "stages": {
+    "validate": {
+      "status": "fail",
+      "exitCode": 1,
+      "durationMs": null,
+      "command": [
+        "C:\\Program Files\\nodejs\\node.exe",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\.agents\\skills\\archify\\bin\\archify.mjs",
+        "deliver",
+        "architecture",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\06-samples-and-lab.candidate.json",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\06-samples-and-lab.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": false,
+        "command": "deliver",
+        "receiptId": "ce5429d1-924d-4660-9b52-eb0f6dae7bf0",
+        "stage": "render",
+        "type": "architecture",
+        "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\06-samples-and-lab.candidate.json",
+        "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\06-samples-and-lab.html",
+        "error": "Architecture layout validation failed:\n- Sublabel \"Lot contains sample items; execution mode is per item: quantity 1 sequential, quantity >1 parallel\" needs ~353px at the 6px legible minimum, but component \"pcn-lots\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Route is scoped to sampleItemIds; no global sequential lock across the lot\" needs ~267px at the 6px legible minimum, but component \"pcn-route\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"One lab request / PYC per lot; route assignments remain per item\" needs ~231px at the 6px legible minimum, but component \"pcn-bundle\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"DDT / HSNL adapter dispatch; retries attach to a dispatch, not a new global route\" needs ~292px at the 6px legible minimum, but component \"pcn-dispatch\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"External PTN boundary; receipt events depend on adapter/channel\" needs ~227px at the 6px legible minimum, but component \"pcn-external\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"Reconcile ACK / returned result to lot, route and item; official result is returned PTN data\" needs ~332px at the 6px legible minimum, but component \"pcn-reconcile\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"PGD field sample evidence is separate from PCN lot/item route model\" needs ~242px at the 6px legible minimum, but component \"pgd-sample\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"PGD lab request links to one inspection request and sample evidence\" needs ~242px at the 6px legible minimum, but component \"pgd-lab-request\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"External PTN supplies result; transport/callback is not assumed\" needs ~227px at the 6px legible minimum, but component \"pgd-ptn\" provides 200px — shorten the sublabel or widen size.\n- Sublabel \"API requires matching requestId + labRequestId; status becomes RESULT_RECEIVED\" needs ~281px at the 6px legible minimum, but component \"pgd-result\" provides 200px — shorten the sublabel or widen size.\n- Label \"Assigned item routes grouped into one PYC per lot\" has only 68px between \"pcn-route\" and \"pcn-bundle\"; it needs at least 262px to stay beside its route — increase that clear gap or place the connected nodes on another readable row, preserving the label.",
+        "diagnostics": [
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Lot contains sample items; execution mode is per item: quantity 1 sequential, quantity >1 parallel\" needs ~353px at the 6px legible minimum, but component \"pcn-lots\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "pcn-lots"
+            },
+            "evidence": {
+              "text": "Lot contains sample items; execution mode is per item: quantity 1 sequential, quantity >1 parallel",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 353,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"pcn-lots\" sublabel \"Lot contains sample items; execution mode is per item: quantity 1 sequential, quantity >1 parallel\" while preserving its meaning",
+              "or widen component \"pcn-lots\" so the sublabel keeps at least 353px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Route is scoped to sampleItemIds; no global sequential lock across the lot\" needs ~267px at the 6px legible minimum, but component \"pcn-route\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "pcn-route"
+            },
+            "evidence": {
+              "text": "Route is scoped to sampleItemIds; no global sequential lock across the lot",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 267,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"pcn-route\" sublabel \"Route is scoped to sampleItemIds; no global sequential lock across the lot\" while preserving its meaning",
+              "or widen component \"pcn-route\" so the sublabel keeps at least 267px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"One lab request / PYC per lot; route assignments remain per item\" needs ~231px at the 6px legible minimum, but component \"pcn-bundle\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "pcn-bundle"
+            },
+            "evidence": {
+              "text": "One lab request / PYC per lot; route assignments remain per item",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 231,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"pcn-bundle\" sublabel \"One lab request / PYC per lot; route assignments remain per item\" while preserving its meaning",
+              "or widen component \"pcn-bundle\" so the sublabel keeps at least 231px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"DDT / HSNL adapter dispatch; retries attach to a dispatch, not a new global route\" needs ~292px at the 6px legible minimum, but component \"pcn-dispatch\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "pcn-dispatch"
+            },
+            "evidence": {
+              "text": "DDT / HSNL adapter dispatch; retries attach to a dispatch, not a new global route",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 292,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"pcn-dispatch\" sublabel \"DDT / HSNL adapter dispatch; retries attach to a dispatch, not a new global route\" while preserving its meaning",
+              "or widen component \"pcn-dispatch\" so the sublabel keeps at least 292px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"External PTN boundary; receipt events depend on adapter/channel\" needs ~227px at the 6px legible minimum, but component \"pcn-external\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "pcn-external"
+            },
+            "evidence": {
+              "text": "External PTN boundary; receipt events depend on adapter/channel",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 227,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"pcn-external\" sublabel \"External PTN boundary; receipt events depend on adapter/channel\" while preserving its meaning",
+              "or widen component \"pcn-external\" so the sublabel keeps at least 227px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"Reconcile ACK / returned result to lot, route and item; official result is returned PTN data\" needs ~332px at the 6px legible minimum, but component \"pcn-reconcile\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "pcn-reconcile"
+            },
+            "evidence": {
+              "text": "Reconcile ACK / returned result to lot, route and item; official result is returned PTN data",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 332,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"pcn-reconcile\" sublabel \"Reconcile ACK / returned result to lot, route and item; official result is returned PTN data\" while preserving its meaning",
+              "or widen component \"pcn-reconcile\" so the sublabel keeps at least 332px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"PGD field sample evidence is separate from PCN lot/item route model\" needs ~242px at the 6px legible minimum, but component \"pgd-sample\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "pgd-sample"
+            },
+            "evidence": {
+              "text": "PGD field sample evidence is separate from PCN lot/item route model",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 242,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"pgd-sample\" sublabel \"PGD field sample evidence is separate from PCN lot/item route model\" while preserving its meaning",
+              "or widen component \"pgd-sample\" so the sublabel keeps at least 242px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"PGD lab request links to one inspection request and sample evidence\" needs ~242px at the 6px legible minimum, but component \"pgd-lab-request\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "pgd-lab-request"
+            },
+            "evidence": {
+              "text": "PGD lab request links to one inspection request and sample evidence",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 242,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"pgd-lab-request\" sublabel \"PGD lab request links to one inspection request and sample evidence\" while preserving its meaning",
+              "or widen component \"pgd-lab-request\" so the sublabel keeps at least 242px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"External PTN supplies result; transport/callback is not assumed\" needs ~227px at the 6px legible minimum, but component \"pgd-ptn\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "pgd-ptn"
+            },
+            "evidence": {
+              "text": "External PTN supplies result; transport/callback is not assumed",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 227,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"pgd-ptn\" sublabel \"External PTN supplies result; transport/callback is not assumed\" while preserving its meaning",
+              "or widen component \"pgd-ptn\" so the sublabel keeps at least 227px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "architecture/component-sublabel-overflow",
+            "severity": "error",
+            "message": "Sublabel \"API requires matching requestId + labRequestId; status becomes RESULT_RECEIVED\" needs ~281px at the 6px legible minimum, but component \"pgd-result\" provides 200px — shorten the sublabel or widen size.",
+            "subject": {
+              "diagramType": "architecture",
+              "nodeId": "pgd-result"
+            },
+            "evidence": {
+              "text": "API requires matching requestId + labRequestId; status becomes RESULT_RECEIVED",
+              "minimumFontPx": 6,
+              "requiredWidthPx": 281,
+              "availableWidthPx": 200
+            },
+            "supportedFixes": [
+              "shorten component \"pgd-result\" sublabel \"API requires matching requestId + labRequestId; status becomes RESULT_RECEIVED\" while preserving its meaning",
+              "or widen component \"pgd-result\" so the sublabel keeps at least 281px of text width at the 6px legible minimum"
+            ]
+          },
+          {
+            "code": "composition/label-gap",
+            "severity": "error",
+            "message": "Label \"Assigned item routes grouped into one PYC per lot\" has only 68px between \"pcn-route\" and \"pcn-bundle\"; it needs at least 262px to stay beside its route — increase that clear gap or place the connected nodes on another readable row, preserving the label.",
+            "subject": {
+              "diagramType": "architecture",
+              "collection": "connections",
+              "id": "pcn-route-pcn-bundle",
+              "from": "pcn-route",
+              "to": "pcn-bundle"
+            },
+            "evidence": {
+              "clearGapPx": 68,
+              "minimumGapPx": 262,
+              "labelWidthPx": 245.2,
+              "obstacles": [
+                "pcn-route",
+                "pcn-bundle"
+              ]
+            },
+            "supportedFixes": [
+              "increase the clear gap between the connected nodes to at least 262px",
+              "reposition the connected nodes together while preserving the full relationship label"
+            ]
+          }
+        ],
+        "provenance": "failed",
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      },
+      "execution": "embedded-in-deliver"
+    },
+    "deliver": {
+      "status": "not-run",
+      "execution": "blocked-by-validate"
+    }
+  },
+  "diagnostics": [
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Lot contains sample items; execution mode is per item: quantity 1 sequential, quantity >1 parallel\" needs ~353px at the 6px legible minimum, but component \"pcn-lots\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "pcn-lots"
+      },
+      "evidence": {
+        "text": "Lot contains sample items; execution mode is per item: quantity 1 sequential, quantity >1 parallel",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 353,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"pcn-lots\" sublabel \"Lot contains sample items; execution mode is per item: quantity 1 sequential, quantity >1 parallel\" while preserving its meaning",
+        "or widen component \"pcn-lots\" so the sublabel keeps at least 353px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Route is scoped to sampleItemIds; no global sequential lock across the lot\" needs ~267px at the 6px legible minimum, but component \"pcn-route\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "pcn-route"
+      },
+      "evidence": {
+        "text": "Route is scoped to sampleItemIds; no global sequential lock across the lot",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 267,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"pcn-route\" sublabel \"Route is scoped to sampleItemIds; no global sequential lock across the lot\" while preserving its meaning",
+        "or widen component \"pcn-route\" so the sublabel keeps at least 267px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"One lab request / PYC per lot; route assignments remain per item\" needs ~231px at the 6px legible minimum, but component \"pcn-bundle\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "pcn-bundle"
+      },
+      "evidence": {
+        "text": "One lab request / PYC per lot; route assignments remain per item",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 231,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"pcn-bundle\" sublabel \"One lab request / PYC per lot; route assignments remain per item\" while preserving its meaning",
+        "or widen component \"pcn-bundle\" so the sublabel keeps at least 231px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"DDT / HSNL adapter dispatch; retries attach to a dispatch, not a new global route\" needs ~292px at the 6px legible minimum, but component \"pcn-dispatch\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "pcn-dispatch"
+      },
+      "evidence": {
+        "text": "DDT / HSNL adapter dispatch; retries attach to a dispatch, not a new global route",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 292,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"pcn-dispatch\" sublabel \"DDT / HSNL adapter dispatch; retries attach to a dispatch, not a new global route\" while preserving its meaning",
+        "or widen component \"pcn-dispatch\" so the sublabel keeps at least 292px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"External PTN boundary; receipt events depend on adapter/channel\" needs ~227px at the 6px legible minimum, but component \"pcn-external\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "pcn-external"
+      },
+      "evidence": {
+        "text": "External PTN boundary; receipt events depend on adapter/channel",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 227,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"pcn-external\" sublabel \"External PTN boundary; receipt events depend on adapter/channel\" while preserving its meaning",
+        "or widen component \"pcn-external\" so the sublabel keeps at least 227px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"Reconcile ACK / returned result to lot, route and item; official result is returned PTN data\" needs ~332px at the 6px legible minimum, but component \"pcn-reconcile\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "pcn-reconcile"
+      },
+      "evidence": {
+        "text": "Reconcile ACK / returned result to lot, route and item; official result is returned PTN data",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 332,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"pcn-reconcile\" sublabel \"Reconcile ACK / returned result to lot, route and item; official result is returned PTN data\" while preserving its meaning",
+        "or widen component \"pcn-reconcile\" so the sublabel keeps at least 332px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"PGD field sample evidence is separate from PCN lot/item route model\" needs ~242px at the 6px legible minimum, but component \"pgd-sample\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "pgd-sample"
+      },
+      "evidence": {
+        "text": "PGD field sample evidence is separate from PCN lot/item route model",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 242,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"pgd-sample\" sublabel \"PGD field sample evidence is separate from PCN lot/item route model\" while preserving its meaning",
+        "or widen component \"pgd-sample\" so the sublabel keeps at least 242px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"PGD lab request links to one inspection request and sample evidence\" needs ~242px at the 6px legible minimum, but component \"pgd-lab-request\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "pgd-lab-request"
+      },
+      "evidence": {
+        "text": "PGD lab request links to one inspection request and sample evidence",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 242,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"pgd-lab-request\" sublabel \"PGD lab request links to one inspection request and sample evidence\" while preserving its meaning",
+        "or widen component \"pgd-lab-request\" so the sublabel keeps at least 242px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"External PTN supplies result; transport/callback is not assumed\" needs ~227px at the 6px legible minimum, but component \"pgd-ptn\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "pgd-ptn"
+      },
+      "evidence": {
+        "text": "External PTN supplies result; transport/callback is not assumed",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 227,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"pgd-ptn\" sublabel \"External PTN supplies result; transport/callback is not assumed\" while preserving its meaning",
+        "or widen component \"pgd-ptn\" so the sublabel keeps at least 227px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "architecture/component-sublabel-overflow",
+      "severity": "error",
+      "message": "Sublabel \"API requires matching requestId + labRequestId; status becomes RESULT_RECEIVED\" needs ~281px at the 6px legible minimum, but component \"pgd-result\" provides 200px — shorten the sublabel or widen size.",
+      "subject": {
+        "diagramType": "architecture",
+        "nodeId": "pgd-result"
+      },
+      "evidence": {
+        "text": "API requires matching requestId + labRequestId; status becomes RESULT_RECEIVED",
+        "minimumFontPx": 6,
+        "requiredWidthPx": 281,
+        "availableWidthPx": 200
+      },
+      "supportedFixes": [
+        "shorten component \"pgd-result\" sublabel \"API requires matching requestId + labRequestId; status becomes RESULT_RECEIVED\" while preserving its meaning",
+        "or widen component \"pgd-result\" so the sublabel keeps at least 281px of text width at the 6px legible minimum"
+      ]
+    },
+    {
+      "code": "composition/label-gap",
+      "severity": "error",
+      "message": "Label \"Assigned item routes grouped into one PYC per lot\" has only 68px between \"pcn-route\" and \"pcn-bundle\"; it needs at least 262px to stay beside its route — increase that clear gap or place the connected nodes on another readable row, preserving the label.",
+      "subject": {
+        "diagramType": "architecture",
+        "collection": "connections",
+        "id": "pcn-route-pcn-bundle",
+        "from": "pcn-route",
+        "to": "pcn-bundle"
+      },
+      "evidence": {
+        "clearGapPx": 68,
+        "minimumGapPx": 262,
+        "labelWidthPx": 245.2,
+        "obstacles": [
+          "pcn-route",
+          "pcn-bundle"
+        ]
+      },
+      "supportedFixes": [
+        "increase the clear gap between the connected nodes to at least 262px",
+        "reposition the connected nodes together while preserving the full relationship label"
+      ]
+    }
+  ],
+  "evidence": {
+    "receipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\06-samples-and-lab\\receipt-pass-1\\06-samples-and-lab.finalize.json",
+    "summaryReceipt": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\review\\redraw-20261102\\final\\06-samples-and-lab\\receipt-pass-1\\06-samples-and-lab.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "failedStage": "validate",
+  "finishedAt": "2026-11-01T23:04:34.481Z",
+  "durationMs": 645,
+  "update": {
+    "status": "update_available",
+    "installedVersion": "3.1.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": "https://github.com/tt-a1i/archify/releases/tag/v3.2.0",
+    "severity": "normal",
+    "checkedAt": "2026-11-01T05:42:59.726Z",
+    "source": "cache",
+    "noticeRequired": true,
+    "noticeText": "Archify update: 3.1.0 → 3.2.0. A previous check at 2026-11-01T05:42:59.726Z found a newer release. Release notes: https://github.com/tt-a1i/archify/releases/tag/v3.2.0. The installed Skill has not changed; ask to snooze or ignore this reminder.",
+    "eventKey": "archify@sha256:70e210265c59f24dcbdf2a502ff671104b5454e7ee7d3554aecd86bad32384f5"
+  }
+}

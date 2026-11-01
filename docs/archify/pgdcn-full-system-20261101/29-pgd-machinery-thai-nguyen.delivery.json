@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "receiptId": "47efebfa-1b9a-48a5-b232-dc22abf98e3a",
+  "receiptId": "1e05f8ed-36d7-448a-a024-b97b8e9b732a",
   "status": "current",
   "command": "deliver",
   "type": "workflow",
-  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\29-pgd-machinery-thai-nguyen.workflow.json",
-  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-full-system-archify-20261101\\docs\\archify\\pgdcn-full-system-20261101\\29-pgd-machinery-thai-nguyen.html",
+  "input": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\29-pgd-machinery-thai-nguyen.workflow.json",
+  "output": "E:\\CODING\\PGDCN_webapp\\.worktrees\\task-c2c-archify-atlas-redraw-20261102\\docs\\archify\\pgdcn-full-system-20261101\\29-pgd-machinery-thai-nguyen.html",
   "specification": {
-    "sha256": "1ad603b3014ea2deb15d589b4fe52f71f3e72e2fd7fcf91c6d9ec61769ff79a5",
-    "bytes": 8848
+    "sha256": "4430aa25b28feff3189f1189135aa2c6dcf98306a9803b3efe88f461672128b1",
+    "bytes": 10188
   },
   "artifact": {
-    "sha256": "d3d9b5ab4214124c33a4bbb61f1f9786e9d22bb85ca852d08238cb2113475918",
-    "bytes": 849339
+    "sha256": "222a89f2c653eb32fc3641b1de34ad9d0cb3ef8f4d4bba9467c46e4d276df605",
+    "bytes": 851388
   }
 }
