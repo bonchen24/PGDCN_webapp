@@ -191,13 +191,13 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
     const action = dossierStatusUnknown ? (
       <span className="text-xs font-semibold text-slate-500">{dossierLoadPending ? 'Đang tải trạng thái' : 'Chưa thể xác định'}</span>
     ) : document?.fileAssetId ? (
-      <a href={getPgdDossierDocumentDownloadUrl(document.id)} target="_blank" rel="noreferrer" download={document.fileName} title="Xem tài liệu" aria-label="Xem tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Eye size={14} aria-hidden="true" /></a>
+      <a href={getPgdDossierDocumentDownloadUrl(document.id)} target="_blank" rel="noreferrer" download={document.fileName} title="Mở tài liệu" aria-label="Mở tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-2 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Eye size={14} aria-hidden="true" /><span className="text-[11px] font-bold">Mở tài liệu</span></a>
     ) : !document && !isWaived && !canMutate ? (
       <span className="text-xs font-semibold text-slate-500">Nhờ người có quyền bổ sung</span>
     ) : !document && !isWaived && draftingHref && requirement?.code === item.code ? (
-      <a href={draftingHref} title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a>
+      <a href={draftingHref} title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-2 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /><span className="text-[11px] font-bold">Soạn thảo</span></a>
     ) : !document && !isWaived && onOpenChecklist ? (
-      <button type="button" onClick={() => { setSelectedSupplementRequirementCode(item.code); onOpenChecklist?.(item.code); }} title="Bổ sung tệp" aria-label="Bổ sung tệp" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Upload size={14} aria-hidden="true" /></button>
+      <button type="button" onClick={() => { setSelectedSupplementRequirementCode(item.code); onOpenChecklist?.(item.code); }} title="Bổ sung tệp" aria-label="Bổ sung tệp" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2 text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Upload size={14} aria-hidden="true" /><span className="text-[11px] font-bold">Bổ sung</span></button>
     ) : <span className="text-xs font-semibold text-slate-500">{document ? 'Đã ghi nhận' : isWaived ? 'Đã bỏ qua' : 'Chưa có'}</span>;
     const trimmedDesc = item.description?.trim().toLowerCase() || '';
     const requirementTypeLabel = item.required
@@ -288,7 +288,7 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
         {completionUnavailable && continuationReason
           ? <div id={continuationReasonId} tabIndex={-1} aria-label="Lý do chưa thể tiếp tục" className="min-w-0 break-words rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs leading-5 text-amber-950">
               <p><strong>Chưa thể tiếp tục:</strong> {continuationReason}</p>
-              <a href={`#${continuationReasonId}`} className="mobile-touch-target mt-1 inline-flex min-h-11 items-center font-bold text-amber-900 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2">Xem lý do chưa thể tiếp tục</a>
+              <a href="#pgd-dossier-document-action-table" className="mobile-touch-target mt-1 inline-flex min-h-11 items-center font-bold text-amber-900 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2">Xem danh sách tài liệu</a>
             </div>
           : <p className="min-w-0 break-words text-xs leading-5 text-slate-700">Bước có thể tiếp tục bằng thao tác: <strong>{completeLabel || nextAction.label}</strong>.</p>}
       </section>
@@ -313,9 +313,8 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
         <div className="border-t border-slate-200 p-3">{renderStep()}</div>
       </details>
 
-      <footer className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-        <p className="text-xs leading-5 text-slate-600">{completionUnavailable ? 'Xem lý do và hướng xử lý ở trên trước khi tiếp tục.' : 'Chỉ hoàn tất khi các điều kiện của việc và dữ liệu bắt buộc đã đủ.'}</p>
-        <button type="button" onClick={onCompleteCurrent} disabled={completionUnavailable} aria-busy={completionPending ? 'true' : undefined} aria-describedby={completionUnavailable ? continuationReasonId : undefined} className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{completionPending ? 'Đang xử lý...' : completeLabel || (selectedStepId === 'intake' ? 'Bắt đầu xử lý' : 'Hoàn tất việc')}</button>
+      <footer className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+        <p className="text-xs leading-5 text-slate-600">{completionUnavailable ? 'Bước chưa thể hoàn tất. Dùng mục cần làm ở đầu hồ sơ để xem hướng xử lý.' : 'Điều kiện đã đủ. Dùng hành động chính ở đầu hồ sơ để hoàn tất bước này.'}</p>
       </footer>
     </section>
   );

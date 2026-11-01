@@ -63,10 +63,11 @@ test('dossier detail exposes the graphic workflow and controlled reviewer/deadli
   assert.match(source, /Lý do ngoại lệ/);
   assert.match(source, /window\.prompt/);
   assert.match(source, /missingRequiredByStage/);
-  assert.match(source, /Tài liệu bắt buộc còn thiếu/);
   assert.match(source, /onOpenStation|onSelectNode/);
   assert.match(source, /getPcnDossierStationTab/);
-  assert.match(source, /Tài liệu còn thiếu/);
+  assert.match(source, /data-testid="pcn-current-step-missing-summary"/);
+  assert.match(source, /stationMissing\.slice\(0, 3\)/);
+  assert.match(source, /remainingStationMissing/);
   assert.match(source, /buildPcnDossierStationChecklist/);
   assert.match(source, /stationChecklist/);
   assert.match(source, /Tài liệu tại bước/);

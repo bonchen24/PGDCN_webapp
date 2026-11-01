@@ -45,7 +45,8 @@ test('read-only users see the selected step, missing requirement, and a permissi
   assert.match(markup, /nhờ người có quyền PGD bổ sung tài liệu/);
   assert.match(markup, /Còn thiếu 1 tài liệu bắt buộc/);
   assert.ok(markup.includes(requiredIntakeRequirement.title));
-  assert.match(markup, /<button(?=[^>]*disabled="")(?=[^>]*aria-describedby="pgd-step-continuation-reasons-intake")/);
-  assert.match(markup, /aria-describedby="pgd-step-continuation-reasons-intake"/);
+  assert.match(markup, /Dùng mục cần làm ở đầu hồ sơ để xem hướng xử lý/);
+  assert.match(markup, /Xem danh sách tài liệu/);
+  assert.doesNotMatch(markup, /<button(?=[^>]*disabled="")(?=[^>]*aria-describedby="pgd-step-continuation-reasons-intake")/, 'the work panel does not duplicate the dossier priority completion action');
   assert.match(markup, /id="pgd-step-continuation-reasons-intake"/);
 });

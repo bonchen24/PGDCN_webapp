@@ -15,8 +15,12 @@ const ROLES = [
 
 const VIEWPORTS = [
   { width: 320, height: 800 },
+  { width: 375, height: 812 },
   { width: 390, height: 844 },
   { width: 430, height: 932 },
+  { width: 768, height: 1024 },
+  { width: 1024, height: 900 },
+  { width: 1280, height: 900 },
   { width: 1440, height: 1000 },
 ];
 
@@ -215,6 +219,10 @@ async function collectDetailMetrics(page, role, viewport, pageErrors) {
     const doc = document.documentElement;
     const body = document.body;
     const title = priority?.querySelector('h2');
+    const priorityGate = detail?.querySelector('[data-testid="pgd-dossier-priority-gate"]') || null;
+    const globalEvidence = detail?.querySelector('[data-testid="pgd-dossier-global-evidence-disclosure"]') || null;
+    const missingResultRow = Array.from(detail?.querySelectorAll('[data-testid="pgd-dossier-document-action-table"] tbody tr') || []).find((row) => /Kết quả PTN/iu.test(row.textContent || '')) || null;
+    const missingResultAction = missingResultRow?.querySelector('a, button, [role="button"]') || null;
     return {
       role: roleId,
       width: screen.width,
@@ -225,6 +233,12 @@ async function collectDetailMetrics(page, role, viewport, pageErrors) {
       primaryCtaVisible: visible(priorityCta),
       primaryCtaBounds: rect(priorityCta),
       primaryCtaDisabled: priorityCta ? priorityCta.hasAttribute('disabled') : null,
+      primaryCtaText: priorityCta?.textContent?.trim() || null,
+      priorityGateText: priorityGate?.textContent?.trim() || null,
+      priorityCtaHasOneReadableBlocker: Boolean(priorityGate?.textContent?.trim()) && !/SAMPLE_HANDOVER|LAB_REQUEST|,/u.test(priorityGate?.textContent || ''),
+      globalEvidenceCollapsed: Boolean(globalEvidence && !globalEvidence.hasAttribute('open')),
+      missingResultActionText: missingResultAction?.textContent?.trim() || '',
+      missingResultActionAccessibleName: missingResultAction?.getAttribute('aria-label') || missingResultAction?.getAttribute('title') || '',
       stepDetailsOpen: stepDetails?.hasAttribute('open') ?? null,
       stepDetailsHeight: rect(stepDetails)?.height ?? null,
       stepPanelVisible: visible(stepPanel),
@@ -260,6 +274,8 @@ test('D09 PGD detail leads with the current step and gated next action for all r
       const pageErrors = [];
       page.on('pageerror', (error) => pageErrors.push(error.message));
       await openD09Detail(page, base, role, audit);
+      await page.getByTestId('pgd-dossier-priority-gate').waitFor({ state: 'visible', timeout: 5000 });
+      if (role.id === 'admin') await page.getByRole('button', { name: 'Bổ sung tệp' }).first().waitFor({ state: 'visible', timeout: 5000 });
 
       for (const viewport of VIEWPORTS) {
         await page.setViewportSize(viewport);
@@ -288,9 +304,13 @@ test('D09 PGD detail leads with the current step and gated next action for all r
     assert.deepEqual(audit.externalRequests, [], `Expected zero external requests: ${JSON.stringify(audit.externalRequests)}`);
     assert.ok(audit.screens.every((item) => item.pageErrors.length === 0), `Expected no page errors: ${JSON.stringify(audit.screens)}`);
     assert.ok(audit.screens.every((item) => !item.documentOverflow), `Expected no document horizontal overflow: ${JSON.stringify(audit.screens)}`);
+    assert.ok(audit.screens.every((item) => item.globalEvidenceCollapsed), `Secondary whole-dossier evidence must be collapsed outside the selected step workbench: ${JSON.stringify(audit.screens)}`);
+    assert.ok(audit.screens.every((item) => item.primaryCtaDisabled === false && /Mở|Xem|Bổ sung/iu.test(item.primaryCtaText || '')), `A blocked step must lead to one usable remediation/navigation action: ${JSON.stringify(audit.screens)}`);
+    assert.ok(audit.screens.every((item) => item.priorityCtaHasOneReadableBlocker), `The priority message must explain one blocker in user-facing language: ${JSON.stringify(audit.screens)}`);
+    assert.ok(audit.screens.filter((item) => item.role === 'admin').every((item) => item.missingResultActionText && /Bổ sung|Tải|Mở|Tạo/iu.test(item.missingResultActionText)), `A missing result row needs one visible, named primary action: ${JSON.stringify(audit.screens)}`);
     assert.ok(audit.screens.every((item) => item.priorityVisible && item.primaryCtaVisible), `Expected current step and primary action to be visible for every role and viewport: ${JSON.stringify(audit.screens)}`);
     assert.ok(audit.screens.filter((item) => item.width <= 430).every((item) => item.priorityBounds.top < 360 && item.primaryCtaBounds.height >= 44), `Expected the current step and a 44px primary action near the top on mobile: ${JSON.stringify(audit.screens)}`);
-    assert.ok(audit.screens.filter((item) => item.role === 'viewer').every((item) => item.primaryCtaDisabled), `Expected Viewer to retain a visible but disabled primary action: ${JSON.stringify(audit.screens)}`);
+    assert.ok(audit.screens.filter((item) => item.role === 'viewer').every((item) => /Xem|Mở/iu.test(item.primaryCtaText || '')), `Read-only users must receive a navigation action instead of a disabled mutation: ${JSON.stringify(audit.screens)}`);
   } finally {
     await browser.close();
   }
@@ -315,7 +335,10 @@ test('D09 disclosures keep checklist evidence available and keyboard navigation 
       await priority.waitFor({ state: 'visible', timeout: 5000 });
       const priorityCta = page.getByTestId('pgd-dossier-priority-cta');
       assert.equal(await priorityCta.isVisible(), true, `${role.id}: the primary action stays visible`);
-      if (role.id === 'viewer') assert.equal(await priorityCta.isDisabled(), true, 'viewer: the primary action stays read-only');
+      if (role.id === 'viewer') {
+        assert.equal(await priorityCta.isDisabled(), false, 'viewer: navigation to the current step remains available');
+        assert.match(await priorityCta.textContent(), /Xem bước hiện tại/iu, 'viewer: the CTA is navigation rather than a mutation');
+      }
       const priorityGuidance = page.locator('#pgd-dossier-priority-guidance');
       if (role.id === 'viewer') {
         await priorityGuidance.getByText(/Chỉ xem hồ sơ/).waitFor({ state: 'visible' });
@@ -393,7 +416,7 @@ test('D09 disclosures keep checklist evidence available and keyboard navigation 
   }
 });
 
-test('D09 loading and evidence errors remain visible while the next action stays gated', {
+test('D09 loading and evidence errors keep navigation available while completion mutations stay gated', {
   skip: !rawBaseUrl ? 'PGDCN_UX_BASE_URL is unset; test is opt-in' : false,
 }, async () => {
   const base = new URL(rawBaseUrl || 'http://127.0.0.1:2367');
@@ -407,7 +430,8 @@ test('D09 loading and evidence errors remain visible while the next action stays
     await loadingStatus.waitFor({ state: 'visible', timeout: 5000 });
     const loadingCta = loadingPage.getByTestId('pgd-dossier-priority-cta');
     assert.equal(await loadingCta.count(), 1, 'The primary action stays visible while evidence is loading');
-    assert.equal(await loadingCta.isDisabled(), true);
+    assert.equal(await loadingCta.isDisabled(), false, 'Navigation remains available while evidence is loading');
+    assert.match(await loadingCta.textContent(), /Mở|Xem/iu);
     await saveScreenshot(loadingPage, process.env.PGDCN_DENSITY_PHASE, role.id, { width: 390, height: 844 }, 'loading');
     await loadingStatus.waitFor({ state: 'hidden', timeout: 5000 });
     await loadingPage.close();
@@ -418,7 +442,8 @@ test('D09 loading and evidence errors remain visible while the next action stays
     await loadError.waitFor({ state: 'visible', timeout: 5000 });
     const errorCta = errorPage.getByTestId('pgd-dossier-priority-cta');
     assert.equal(await errorCta.count(), 1, 'The primary action stays visible while evidence is unavailable');
-    assert.equal(await errorCta.isDisabled(), true);
+    assert.equal(await errorCta.isDisabled(), false, 'Navigation remains available while evidence is unavailable');
+    assert.match(await errorCta.textContent(), /Mở|Xem/iu);
     assert.equal(await errorPage.getByTestId('pgd-dossier-priority-action').getByRole('button', { name: 'Tải lại tài liệu' }).isVisible(), true);
     await saveScreenshot(errorPage, process.env.PGDCN_DENSITY_PHASE, role.id, { width: 390, height: 844 }, 'error');
     await errorPage.close();

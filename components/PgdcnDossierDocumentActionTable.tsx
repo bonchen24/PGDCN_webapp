@@ -30,7 +30,7 @@ const STATUS_TONE_CLASS: Record<NonNullable<PgdcnDossierDocumentActionRow['statu
 
 export default function PgdcnDossierDocumentActionTable({ rows, testId, emptyLabel = 'Chưa có tài liệu cần xử lý ở bước này.', renderRow }: Props) {
   return (
-    <div className="min-w-0 rounded-lg border border-slate-200 bg-white" data-testid={testId}>
+    <div id={testId} className="min-w-0 rounded-lg border border-slate-200 bg-white" data-testid={testId}>
       {rows.length > 0 ? (
         <>
           {renderRow ? (

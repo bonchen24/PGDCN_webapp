@@ -14,7 +14,7 @@ test('document action columns use compact icon controls with accessible names', 
   assert.match(pcnDocumentPanel, /aria-label="Soạn thảo tài liệu"/);
   assert.match(pcnDocumentPanel, /aria-label="Tải tài liệu"/);
   assert.match(pcnDocumentPanel, /aria-label="Thao tác khác"/);
-  assert.match(pgdDocumentPanel, /aria-label="Xem tài liệu"/);
+  assert.match(pgdDocumentPanel, /aria-label="Mở tài liệu"/);
   assert.match(pgdDocumentPanel, /aria-label="Soạn thảo tài liệu"/);
   assert.match(pgdDocumentPanel, /aria-label="Bổ sung tệp"/);
 });

@@ -11,9 +11,9 @@ const workspace = fs.readFileSync(new URL('../components/PgdWorkspace.tsx', impo
 const legacySidebar = fs.readFileSync(new URL('../components/PgdSidebar.tsx', import.meta.url), 'utf8');
 
 test('PGD groups intake inside the dossier register and labels the drafting workspace clearly', () => {
-  assert.match(sidebar, /\{ section: 'requests', label: 'Hồ sơ PYC'/);
-  assert.doesNotMatch(sidebar.slice(sidebar.indexOf('const PGD_ITEMS'), sidebar.indexOf('const isTargetActive')), /section: 'intake'/);
-  assert.match(sidebar, /\{ section: 'templates', label: 'Soạn thảo tài liệu'/);
+  assert.match(sidebar, /renderDomainButton\('Giám định', ClipboardCheck, \{ domain: 'PGD', section: 'requests' \}/);
+  assert.doesNotMatch(sidebar.slice(sidebar.indexOf('id="pgdcn-pgd-navigation"')), /section: 'intake'/);
+  assert.match(sidebar, /renderSharedButton\('Soạn thảo văn bản', FileEdit, \{ domain: 'department', section: 'document-drafting' \}/);
   assert.match(legacySidebar, /requests: 'Hồ sơ PYC'/);
   assert.match(legacySidebar, /templates: 'Soạn thảo tài liệu'/);
   assert.doesNotMatch(legacySidebar, /const mainSections[^\n]*'intake'/);
@@ -47,7 +47,7 @@ test('PGD drafting keeps DOCX mapping read-only in the local settings flow', () 
   assert.match(generation, /placeholder/);
   assert.doesNotMatch(modal, /PgdCellManager/);
   assert.doesNotMatch(modal, /Lưu cấu hình cell/);
-  assert.match(modal, /Nguồn mapping/);
+  assert.match(modal, /Nguồn đối chiếu/);
   assert.match(tableEditor, /tableColumns/);
   assert.match(tableEditor, /Thêm dòng/);
 });

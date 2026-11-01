@@ -74,10 +74,12 @@ test('wide work tables scroll locally and the PGD edit dialog keeps its footer o
 
 test('visible PGD work controls use readable labels and 44px mobile targets', () => {
   assert.ok(/dossier-action-compact inline-flex min-h-11 min-w-11/.test(pgdStepWork), 'document row icon actions meet the mobile target size');
-  assert.ok(/dossier-action-compact inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-3 text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'document drafting action meets touch and type size');
+  assert.ok(/aria-label="Soạn thảo tài liệu"[^>]*className="[^"]*mobile-touch-target[^"]*min-h-11[^"]*"[^>]*><FileText[^>]*aria-hidden="true" \/><span className="text-\[11px\] font-bold">Soạn thảo<\/span>/.test(pgdStepWork), 'document drafting action has a visible label and touch target');
+  assert.ok(/aria-label="Bổ sung tệp"[^>]*className="[^"]*mobile-touch-target[^"]*min-h-11[^"]*"[^>]*><Upload[^>]*aria-hidden="true" \/><span className="text-\[11px\] font-bold">Bổ sung<\/span>/.test(pgdStepWork), 'document supplement action has a visible label and touch target');
   assert.ok(/mobile-touch-target min-h-11 rounded-lg bg-rose-600 px-3 text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'exception confirmation meets touch and type size');
   assert.ok(/id="pgd-exception-reason"[\s\S]{0,300}?className="mobile-touch-target mt-1 min-h-11[^\"]*text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'exception reason field meets touch and type size');
-  assert.ok(/className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'complete-step action meets touch and type size');
+  assert.ok(/data-testid="pgd-dossier-priority-cta"[\s\S]{0,500}mobile-touch-target inline-flex min-h-11/.test(pgdWorkspace), 'single completion/navigation action stays in the priority area');
+  assert.doesNotMatch(pgdStepWork, /<button[^>]*onClick=\{onCompleteCurrent\}[^>]*>[^<]*(?:Bắt đầu xử lý|Hoàn tất việc)/, 'the selected-step panel does not render a duplicate completion mutation');
 
   assert.ok(/openCreateRequest\} className="mobile-touch-target inline-flex min-h-11[^\"]*text-\[11px\]/.test(pgdWorkspace), 'request creation action meets touch and type size');
   assert.ok(/className=\{`mobile-touch-target min-h-11 flex items-center gap-1 px-2.5 py-1 text-xs/.test(pgdWorkspace), 'register card/table toggles meet the mobile target size');

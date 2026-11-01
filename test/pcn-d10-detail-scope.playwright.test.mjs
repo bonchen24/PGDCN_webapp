@@ -9,8 +9,12 @@ const artifactRoot = resolve('docs/ux-audit/artifacts/density/next-batch/d10');
 const PHASE = process.env.PGDCN_DENSITY_PHASE === 'before' ? 'before' : 'after';
 const VIEWPORTS = [
   { width: 320, height: 800 },
+  { width: 375, height: 812 },
   { width: 390, height: 844 },
   { width: 430, height: 932 },
+  { width: 768, height: 1024 },
+  { width: 1024, height: 900 },
+  { width: 1280, height: 900 },
   { width: 1440, height: 1000 },
 ];
 const ROLES = [
@@ -158,8 +162,10 @@ async function captureScenario(browser, base, role, viewport, scenario, audit) {
       globalChecklistRequiredTotal: globalMatch ? Number(globalMatch[2]) : null,
       currentStepRequiredPresent: stationMatch ? Number(stationMatch[1]) : null,
       currentStepRequiredTotal: stationMatch ? Number(stationMatch[2]) : null,
+      currentStepMissingSummary: step?.querySelector('[data-testid="pcn-current-step-missing-summary"]')?.textContent?.trim() || null,
       headerBounds: box(document.querySelector('[data-testid="pcn-dossier-mobile-header"]')),
       checklistBounds: box(visual),
+      legacyProcessMapVisible: Boolean(document.querySelector('[data-testid="pcn-legacy-process-map"]')?.getClientRects().length),
       bodyOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) > window.innerWidth,
       scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
     };
@@ -211,6 +217,7 @@ test('D10 PCN detail distinguishes global missing documents from the current-ste
     assert.deepEqual(audit.externalRequests, [], `Synthetic QA must not call external services: ${JSON.stringify(audit.externalRequests)}`);
     assert.ok(audit.screens.every((screen) => screen.pageErrors.length === 0), `No browser runtime errors expected: ${JSON.stringify(audit.screens)}`);
     assert.ok(audit.screens.every((screen) => !screen.bodyOverflow), `No body overflow expected: ${JSON.stringify(audit.screens)}`);
+    assert.ok(audit.screens.every((screen) => !screen.legacyProcessMapVisible), `Workflow-first detail must not stack the legacy process map under the native step rail: ${JSON.stringify(audit.screens)}`);
 
     const missing = audit.screens.filter((screen) => screen.scenario === 'missing');
     const onePresent = audit.screens.filter((screen) => screen.scenario === 'one-present');
@@ -223,6 +230,8 @@ test('D10 PCN detail distinguishes global missing documents from the current-ste
       assert.equal(screen.currentStepRequiredTotal, 5, `Current-step required total for ${screen.role}/${screen.width}`);
       assert.equal(screen.headerGlobalMissingCount, null, `The documents tab must not repeat the global count in its header for ${screen.role}/${screen.width}`);
       assert.equal(screen.headerRetainsMissingBadge, true, `The qualitative missing-document badge remains for ${screen.role}/${screen.width}`);
+      assert.ok(screen.currentStepMissingSummary && screen.currentStepMissingSummary.length < 320 && /Xem danh sách tài liệu/iu.test(screen.currentStepMissingSummary), `The current-step summary stays compact and links to the full checklist for ${screen.role}/${screen.width}`);
+      assert.doesNotMatch(screen.currentStepMissingSummary, /Tài liệu bắt buộc còn thiếu:/iu, `The current-step summary does not repeat every workflow stage for ${screen.role}/${screen.width}`);
     }
     for (const screen of onePresent) {
       assert.equal(screen.globalChecklistMissingCount, 13, `Global missing count for ${screen.role} with one document`);

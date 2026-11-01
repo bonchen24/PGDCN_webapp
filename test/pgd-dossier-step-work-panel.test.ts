@@ -206,7 +206,8 @@ test('document actions respect read-only access while preserving available evide
     }
 
     const present = render(canMutate, 'present');
-    assert.match(present.draftRow, /aria-label="Xem tài liệu"/);
+    assert.match(present.draftRow, /aria-label="Mở tài liệu"/);
+    assert.match(present.draftRow, /<span[^>]*>Mở tài liệu<\/span>/);
     assert.match(present.draftRow, /download="intake\.pdf"/);
     if (canMutate) assert.match(present.uploadRow, /aria-label="Bổ sung tệp"/);
     else assert.match(present.uploadRow, /Nhờ người có quyền bổ sung/);
@@ -257,8 +258,9 @@ test('an in-progress dossier update is distinct from a step without an available
   }));
 
   assert.match(processingMarkup, /Việc bạn cần làm: Đang xử lý thay đổi hồ sơ/);
-  assert.match(processingMarkup, /aria-busy="true"[^>]*>Đang xử lý/);
   assert.match(processingMarkup, /Đang xử lý thay đổi hồ sơ; vui lòng chờ hoàn tất/);
+  assert.match(processingMarkup, /Dùng mục cần làm ở đầu hồ sơ/);
+  assert.doesNotMatch(processingMarkup, /aria-busy="true"|<button[^>]*>(?:Đang xử lý|Hoàn tất việc)/);
   assert.match(unavailableMarkup, /không có thao tác chuyển tiếp trong trạng thái hiện tại/);
   assert.doesNotMatch(unavailableMarkup, /aria-busy="true"|Đang xử lý thay đổi hồ sơ/);
 });
@@ -314,11 +316,13 @@ test('dossier load state keeps step summary and completion action factual', () =
 
   assert.match(loadingMarkup, /Đang tải trạng thái chứng từ/);
   assert.match(loadingMarkup, /Việc bạn cần làm: Đang tải trạng thái chứng từ/);
-  assert.match(loadingMarkup, /<button(?=[^>]*disabled="")[^>]*>Hoàn tất việc<\/button>/);
+  assert.match(loadingMarkup, /Dùng mục cần làm ở đầu hồ sơ/);
+  assert.doesNotMatch(loadingMarkup, /<button[^>]*>(?:Đang xử lý|Hoàn tất việc)/);
   assert.doesNotMatch(loadingMarkup, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc/);
   assert.match(errorMarkup, /Không thể xác định trạng thái chứng từ/);
   assert.match(errorMarkup, /Việc bạn cần làm: Không thể xác định việc cần làm/);
-  assert.match(errorMarkup, /<button(?=[^>]*disabled="")[^>]*>Hoàn tất việc<\/button>/);
+  assert.match(errorMarkup, /Dùng mục cần làm ở đầu hồ sơ/);
+  assert.doesNotMatch(errorMarkup, /<button[^>]*>(?:Đang xử lý|Hoàn tất việc)/);
   assert.doesNotMatch(errorMarkup, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc/);
   assert.match(loadedEmptyMarkup, /0 đã có · 0 được miễn · 2 còn thiếu/);
   assert.match(loadedEmptyMarkup, /Còn thiếu 2 tài liệu bắt buộc ở bước này/);
