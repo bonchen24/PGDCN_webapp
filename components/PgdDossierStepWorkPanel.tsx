@@ -199,11 +199,18 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
     ) : !document && !isWaived && onOpenChecklist ? (
       <button type="button" onClick={() => { setSelectedSupplementRequirementCode(item.code); onOpenChecklist?.(item.code); }} title="Bổ sung tệp" aria-label="Bổ sung tệp" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Upload size={14} aria-hidden="true" /></button>
     ) : <span className="text-xs font-semibold text-slate-500">{document ? 'Đã ghi nhận' : isWaived ? 'Đã bỏ qua' : 'Chưa có'}</span>;
+    const trimmedDesc = item.description?.trim().toLowerCase() || '';
+    const requirementTypeLabel = item.required
+      ? 'Bắt buộc'
+      : (trimmedDesc.startsWith('chỉ áp dụng khi') || trimmedDesc.startsWith('bổ sung khi'))
+        ? 'Có điều kiện'
+        : 'Bổ sung';
     return {
       id: item.code,
       step: meta.title,
       title: item.title,
       required: item.required,
+      requirementTypeLabel,
       status,
       statusTone: dossierStatusUnknown ? 'neutral' as const : document ? 'success' as const : isWaived ? 'neutral' as const : 'warning' as const,
       detail: dossierStatusUnknown ? 'Chưa xác định trạng thái tài liệu.' : document ? `${document.fileName} · v${document.version}` : item.description,

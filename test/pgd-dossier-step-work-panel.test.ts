@@ -325,3 +325,53 @@ test('dossier load state keeps step summary and completion action factual', () =
   assert.match(loadedCompleteMarkup, /2 đã có · 0 được miễn · 0 còn thiếu/);
   assert.match(loadedCompleteMarkup, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc ở bước này/);
 });
+
+test('labels conditional and supplemental optional requirements distinctly in table', () => {
+  const allRequirements = getPgdDossierRequirements('OTHER');
+  const requiredItem = allRequirements.find((item) => item.code === 'REQUEST_PYC')!;
+  const conditionalContract = allRequirements.find((item) => item.code === 'COMMERCIAL_CONTRACT')!;
+  const conditionalInvoice = allRequirements.find((item) => item.code === 'COMMERCIAL_INVOICE')!;
+  const supplementalAssignment = allRequirements.find((item) => item.code === 'ASSIGNMENT_FORM')!;
+
+  assert.equal(requiredItem.required, true);
+  assert.equal(conditionalContract.required, false);
+  assert.equal(conditionalInvoice.required, false);
+  assert.equal(supplementalAssignment.required, false);
+
+  const request = {
+    id: 'pgd-labels-test',
+    domain: PGD_DOMAIN,
+    requestCode: 'PYC-LABELS-TEST',
+    productGroup: 'OTHER',
+    customerName: 'Khách hàng thử nghiệm',
+    customerSnapshot: { name: 'Khách hàng thử nghiệm', address: '' },
+    productName: 'Sản phẩm thử nghiệm',
+    standards: [],
+    status: 'DRAFT',
+    dossierChecklist: [],
+  } as unknown as PgdInspectionRequest;
+
+  const testRequirements = [requiredItem, conditionalContract, conditionalInvoice, supplementalAssignment];
+
+  const markup = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
+    request,
+    currentUser: { username: 'reviewer' } as PcnUserAccount,
+    selectedStepId: 'intake',
+    dossierRequirements: testRequirements,
+    dossierDocuments: [],
+    samples: [],
+    canMutate: true,
+  }));
+
+  const tableBody = markup.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/)?.[1] || '';
+  const rows = Array.from(tableBody.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g), (match) => match[1]);
+
+  assert.match(rows.find((r) => r.includes(requiredItem.title)) || '', /Bắt buộc/);
+  assert.match(rows.find((r) => r.includes(conditionalContract.title)) || '', /Có điều kiện/);
+  assert.match(rows.find((r) => r.includes(conditionalInvoice.title)) || '', /Có điều kiện/);
+  assert.match(rows.find((r) => r.includes(supplementalAssignment.title)) || '', /Bổ sung/);
+
+  assert.match(tableBody, new RegExp(conditionalContract.description!));
+  assert.match(tableBody, new RegExp(conditionalInvoice.description!));
+  assert.match(tableBody, new RegExp(supplementalAssignment.description!));
+});
