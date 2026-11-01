@@ -554,7 +554,7 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
                     <td className="px-3 py-3 align-top text-right">
                       <button
                         type="button"
-                        className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center gap-1.5 rounded-md bg-blue-700 px-3 py-2 text-[10px] font-black text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 cursor-pointer"
+                        className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center gap-1.5 rounded-md bg-emerald-700 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 cursor-pointer"
                         onClick={() => onOpenDossier(row.dossierId)}
                       >
                         <span>Mở hồ sơ</span>

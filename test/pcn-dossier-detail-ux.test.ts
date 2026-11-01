@@ -27,3 +27,11 @@ test('detail primary work region uses action-first language', () => {
   assert.match(detailSource, /Xem thêm hành động/);
   assert.match(detailSource, /data-testid="pcn-dossier-secondary-actions"/);
 });
+
+test('PCN current-step action and section label meet the compact readable typography floor', () => {
+  const currentStepSummary = workflowSource.match(/<section data-testid="pcn-current-step-summary"[\s\S]*?<\/section>/)?.[0] || '';
+
+  assert.ok(currentStepSummary, 'the current-step summary remains present');
+  assert.match(currentStepSummary, /text-\[11px\][^>]*>Bước cần xử lý/);
+  assert.match(currentStepSummary, /mobile-touch-target min-h-11[^\"]*text-\[11px\][^>]*>Mở bước này/);
+});

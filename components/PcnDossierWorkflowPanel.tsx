@@ -127,14 +127,14 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
     <div className="min-w-0 min-h-0 space-y-4" data-testid="pcn-dossier-workflow-first">
       <section data-testid="pcn-current-step-summary" className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Bước cần xử lý</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">Bước cần xử lý</p>
           <h2 className="mt-1 truncate text-base font-black text-slate-950">{currentNode?.label || 'Chưa xác định bước hiện tại'}</h2>
           <p className="mt-1 max-w-3xl text-xs text-emerald-950/75"><span className="font-black">Việc cần làm:</span> {currentAction}</p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-1.5 text-[10px] font-black">
           <span className="rounded-full border border-emerald-200 bg-white px-2 py-1 text-emerald-700">{currentStatusLabel}</span>
           <span className={`rounded-full border px-2 py-1 ${currentMissingCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-white text-emerald-700'}`}>{currentMissingCount > 0 ? `Còn ${currentMissingCount} mục bắt buộc` : 'Đủ tài liệu bắt buộc'}</span>
-          {currentNode && currentNode.id !== selectedNodeId ? <button type="button" onClick={() => selectNode(currentNode.id)} className="mobile-touch-target min-h-11 rounded-md bg-emerald-700 px-3 py-2 text-[10px] font-black text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">Mở bước này</button> : <span className="rounded-full border border-emerald-200 bg-white px-2 py-1 text-emerald-700">Đang mở</span>}
+          {currentNode && currentNode.id !== selectedNodeId ? <button type="button" onClick={() => selectNode(currentNode.id)} className="mobile-touch-target min-h-11 rounded-md bg-emerald-700 px-3 py-2 text-[11px] font-black text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">Mở bước này</button> : <span className="rounded-full border border-emerald-200 bg-white px-2 py-1 text-emerald-700">Đang mở</span>}
         </div>
       </section>
 
