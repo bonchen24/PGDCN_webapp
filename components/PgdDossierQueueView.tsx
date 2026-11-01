@@ -179,34 +179,18 @@ function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail,
           <span className="font-semibold text-blue-900">{item.currentStepLabel || 'Chưa có dữ liệu'}</span>
         </p>
         <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700">
-
+          <span className="mr-1 font-semibold text-slate-500">Việc tiếp theo:</span>
+          <span className="font-medium text-slate-800">{item.nextAction?.actionLabel || item.nextAction?.title || 'Chờ xử lý tiếp'}</span>
+        </p>
+        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700 sm:col-span-2">
           <span className="mr-1 font-semibold text-slate-500">Chủ hồ sơ:</span>
           <span className="font-medium text-slate-800">{item.ownerName || 'Chưa phân công'}</span>
         </p>
-        <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700 sm:col-span-2">
-          <span className="mr-1 font-semibold text-slate-500">Tiếp theo:</span>
-          <span className="font-semibold text-slate-900">{item.nextAction?.actionLabel || item.nextAction?.title || 'Chờ xử lý tiếp'}</span>
-        </p>
-        {(typeof item.missingRequiredCount === 'number' || Boolean(schedule)) && (
-          <div className="flex min-w-0 flex-wrap items-center gap-2 pt-0.5 sm:col-span-2">
-            {typeof item.missingRequiredCount === 'number' && (
-              <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                item.missingRequiredCount > 0
-                  ? 'border border-amber-200 bg-amber-50 text-amber-800'
-                  : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
-              }`}>
-                {item.missingRequiredCount > 0
-                  ? `Còn thiếu ${item.missingRequiredCount} đầu mục`
-                  : 'Đủ đầu mục bắt buộc'}
-              </span>
-            )}
-            {scheduleLabel && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-slate-600">
-                <span className="font-semibold text-slate-500">Hạn/Lịch:</span>
-                <span className="font-bold text-blue-800">{scheduleLabel}</span>
-              </span>
-            )}
-          </div>
+        {scheduleLabel && (
+          <p className="min-w-0 break-words text-[11px] leading-4 text-slate-700 sm:col-span-2">
+            <span className="mr-1 font-semibold text-slate-500">Hạn/Lịch:</span>
+            <span className="font-bold text-blue-800">{scheduleLabel}</span>
+          </p>
         )}
 
       </div>

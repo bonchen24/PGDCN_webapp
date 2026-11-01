@@ -134,8 +134,7 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-1.5 text-[10px] font-black">
           <span className="rounded-full border border-emerald-200 bg-white px-2 py-1 text-emerald-700">{currentStatusLabel}</span>
-
-          <span className={`rounded-full border px-2 py-1 ${currentMissingCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-white text-emerald-700'}`}>{currentMissingCount > 0 ? `Tại bước này: còn ${currentMissingCount} mục bắt buộc` : 'Đủ tài liệu bắt buộc tại bước này'}</span>
+          <span className={`rounded-full border px-2 py-1 ${currentMissingCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-white text-emerald-700'}`}>{currentMissingCount > 0 ? `Còn ${currentMissingCount} mục bắt buộc` : 'Đủ tài liệu bắt buộc'}</span>
           {currentNode && currentNode.id !== selectedNodeId ? <button type="button" onClick={() => selectNode(currentNode.id)} className="mobile-touch-target min-h-11 rounded-md bg-emerald-700 px-3 py-2 text-[11px] font-black text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">Mở bước này</button> : <span className="rounded-full border border-emerald-200 bg-white px-2 py-1 text-emerald-700">Đang mở</span>}
 
         </div>
