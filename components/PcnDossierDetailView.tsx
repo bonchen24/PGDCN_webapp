@@ -27,7 +27,6 @@ import { PcnDocumentOutputModal } from './PcnDocumentOutputModal';
 import { PcnProposalDetailModal } from './PcnProposalDetailModal';
 import { PcnSampleHandoverModal } from './PcnSampleHandoverModal';
 import { PCN_OPERATIONAL_FORM_LABELS, PcnOperationalFormModal, type PcnOperationalFormValue } from './PcnOperationalFormModal';
-import { PcnWorkflowMap } from './PcnWorkflowMap';
 import { PcnDossierWorkflowPanel } from './PcnDossierWorkflowPanel';
 import { PgdcnWorkflowRail } from './PgdcnUiPrimitives';
 import { PgdcnDateInput } from './PgdcnDateInput';
@@ -269,19 +268,26 @@ function DossierStationChecklist({ stationChecklist, users }: { stationChecklist
   </details>;
 }
 
-function DossierWorkflowSummary({ projection, selectedNodeKey, completeness, ownerLabel, exceptionReason, onSelectNode, onOpenExceptionReason, onOpenStep, onOpenChecklist, onOpenGeneration, onOpenApprovalModule, onOpenProposal, onCompleteStep, completionDisabled, completionTitle, canEdit, users, showLegacyGraphic = true }: { projection: PcnDossierWorkflowMapProjection; selectedNodeKey: PcnPipelineStationKey; completeness: ReturnType<typeof buildPcnDossierCompleteness>; ownerLabel: string; exceptionReason?: string; onSelectNode: (key: PcnPipelineStationKey) => void; onOpenExceptionReason: () => void; onOpenStep: () => void; onOpenChecklist: () => void; onOpenGeneration: () => void; onOpenApprovalModule: () => void; onOpenProposal?: () => void; onCompleteStep: () => void; completionDisabled?: boolean; completionTitle?: string; canEdit: boolean; users: PcnUserAccount[]; showLegacyGraphic?: boolean }) {
+function DossierWorkflowSummary({ projection, selectedNodeKey, completeness, ownerLabel, exceptionReason, onSelectNode, onOpenExceptionReason, onOpenStep, onOpenChecklist, onOpenGeneration, onOpenApprovalModule, onOpenProposal, onCompleteStep, completionDisabled, completionTitle, canEdit, users }: { projection: PcnDossierWorkflowMapProjection; selectedNodeKey: PcnPipelineStationKey; completeness: ReturnType<typeof buildPcnDossierCompleteness>; ownerLabel: string; exceptionReason?: string; onSelectNode: (key: PcnPipelineStationKey) => void; onOpenExceptionReason: () => void; onOpenStep: () => void; onOpenChecklist: () => void; onOpenGeneration: () => void; onOpenApprovalModule: () => void; onOpenProposal?: () => void; onCompleteStep: () => void; completionDisabled?: boolean; completionTitle?: string; canEdit: boolean; users: PcnUserAccount[] }) {
   const currentNode = projection.nodes.find((node) => node.key === selectedNodeKey) || projection.currentNode;
-  const workflowSteps = projection.nodes.map((node) => ({
-    id: node.key,
-    label: node.title,
-    state: (node.state === 'COMPLETED' ? 'complete' : node.state === 'CURRENT' ? 'current' : node.state === 'EXCEPTION' ? 'blocked' : 'upcoming') as 'complete' | 'current' | 'upcoming' | 'blocked',
-  }));
+  const workflowSteps = projection.nodes.map((node) => {
+    const isNodeCurrent = node.key === selectedNodeKey;
+    const checklistBadge = isNodeCurrent && completeness?.stationChecklist?.total
+      ? `${completeness.stationChecklist.present}/${completeness.stationChecklist.total} việc`
+      : undefined;
+    return {
+      id: node.key,
+      label: node.title,
+      state: (node.state === 'COMPLETED' ? 'complete' : node.state === 'CURRENT' ? 'current' : node.state === 'EXCEPTION' ? 'blocked' : 'upcoming') as 'complete' | 'current' | 'upcoming' | 'blocked',
+      badge: checklistBadge,
+      onClick: () => onSelectNode(node.key),
+    };
+  });
   const completedSteps = workflowSteps.filter((step) => step.state === 'complete').length;
   return <section className="min-w-0 space-y-3" data-testid="pcn-legacy-workflow-shell" aria-label="Tiến trình hồ sơ PCN">
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[11px] font-black uppercase tracking-[0.12em] text-emerald-600">PCN · Tiến trình hồ sơ</p><h2 className="mt-1 text-base font-black text-slate-950">Xử lý từng việc theo đúng thứ tự</h2></div><p className="text-sm text-slate-600" aria-live="polite">{completedSteps}/{workflowSteps.length} việc đã xong · {currentNode.title}</p></div>
     <div className="h-1.5 overflow-hidden rounded-full bg-slate-200" aria-hidden="true"><div className="h-full rounded-full bg-emerald-600 transition-[width] duration-200" style={{ width: `${workflowSteps.length ? Math.round((completedSteps / workflowSteps.length) * 100) : 0}%` }} /></div>
-    <PgdcnWorkflowRail steps={workflowSteps} />
-    {showLegacyGraphic && <section className="rounded-xl border border-slate-200 bg-slate-50" data-testid="pcn-legacy-process-map" aria-labelledby="pcn-legacy-process-map-title"><div className="flex min-h-11 items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5"><h3 id="pcn-legacy-process-map-title" className="text-xs font-black text-slate-900">Các bước hồ sơ PCN</h3><span className="text-[11px] font-normal text-slate-500">Chọn bước để xem việc cần làm</span></div><div className="p-2.5 md:p-3"><PcnWorkflowMap projection={projection} mode="dossier" selectedNodeKey={selectedNodeKey} onSelectNode={onSelectNode} className="border-0 bg-transparent p-0 shadow-none" /></div></section>}
+    <PgdcnWorkflowRail steps={workflowSteps} onSelectStep={onSelectNode} />
     <DossierWorkflowSummaryOverview station={currentNode} completeness={completeness} ownerLabel={ownerLabel} exceptionReason={exceptionReason} canEdit={canEdit} onOpenExceptionReason={onOpenExceptionReason} onOpenStep={onOpenStep} onOpenChecklist={onOpenChecklist} onOpenGeneration={onOpenGeneration} onOpenApprovalModule={onOpenApprovalModule} onOpenProposal={onOpenProposal} onCompleteStep={onCompleteStep} completionDisabled={completionDisabled} completionTitle={completionTitle} />
     <DossierStationChecklist stationChecklist={completeness.stationChecklist} users={users} />
   </section>;
@@ -428,6 +434,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
   const [targetDate, setTargetDate] = useState(dossier.targetDate?.slice(0, 10) || '');
   const [evaluationAt, setEvaluationAt] = useState(dossier.evaluationAt?.slice(0, 10) || '');
   const [effectiveAt, setEffectiveAt] = useState(dossier.effectiveAt?.slice(0, 10) || '');
+  const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<'main' | 'auxiliary'>('main');
   const dossierRequests = labRequests.filter((request) => request.dossierId === dossier.id);
   const dossierResults = results.filter((result) => result.dossierId === dossier.id);
   const dossierApprovalSteps = approvalSteps.filter((step) => step.dossierId === dossier.id).sort((left, right) => left.sequence - right.sequence);
@@ -865,9 +872,199 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
 <X size={18} />
 </button>
 </div>
-</header>{!workflowFirst && <DossierRegionSelector activeTab={activeTab} missingRequiredCount={missingRequiredCount} onChange={setActiveTab} />}{!workflowFirst && <DossierPackageSummary summary={packageSummary} />}<section aria-label="Nội dung hồ sơ PCN" className="mobile-scroll-y h-0 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pcn-dossier-focus-scroll p-3 md:p-4">{dossier.workflowSnapshot ? <PcnDossierWorkflowPanel dossier={dossier} requirements={requirements} documents={dossierDocumentsForCompleteness} documentWaivers={dossier.documentWaivers} results={dossierResults} approvalSteps={dossierApprovalSteps} sampleLots={sampleLots} sampleRoutes={sampleRoutes} labRequests={dossierRequests} issuancePackages={issuancePackages} workflowTasks={workflowTasks} users={users} currentUser={currentUser} canEdit={canEditWorkflowPanel} initialNodeId={initialNodeId} onStartTask={onStartWorkflowTask} onCompleteTask={onCompleteWorkflowTask} onReturnTask={onReturnWorkflowTask} onOpenDocuments={() => setActiveTab('documents')} onUploadDocument={(requirementId, file) => { const requirement = requirements.find((item) => item.id === requirementId); if (requirement) return uploadRequirement(requirement, file); return Promise.resolve(); }} onCreateFromForm={openNodeForm} onOpenDrafting={(item, nodeId) => buildPcnNodeDraftingRoute({ dossierId: dossier.id, requirementId: item.requirementId, requirementCode: item.code, nodeId, returnTo: buildPcnDossierReturnRoute(dossier.id, { tab: 'documents', nodeId }) })} onRemoveCurrent={onRemoveCurrentDocument} onWaiveDocument={waiveDocumentFromNode} onClearDocumentWaiver={clearDocumentWaiverFromNode} onOpenBusiness={openWorkflowBusiness} /> : <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
-<DossierWorkflowSummary projection={dossierWorkflowProjection} selectedNodeKey={selectedWorkflowNodeKey} completeness={completeness} ownerLabel={ownerLabel} exceptionReason={exceptionReasonLabel} onSelectNode={selectWorkflowNode} onOpenExceptionReason={() => void editExceptionReason()} onOpenStep={openSelectedWorkflowStep} onOpenChecklist={() => setActiveTab('documents')} onOpenGeneration={openGenerationRegion} onOpenApprovalModule={() => setActiveTab('issuance')} onCompleteStep={() => void completeCurrentStep()} completionDisabled={!canEditDossierSteps || (!completionTarget && dossier.status !== 'TECHNICAL_REVIEW')} completionTitle={currentStepAccess.reason || (nextStatusDenials.get(completionTarget || '') || undefined)} canEdit={canEditDossierSteps} users={users} />
-</div>}{!workflowFirst && tabContent}{auxiliaryModals}</section>{!workflowFirst && <footer className="mobile-safe-bottom flex shrink-0 flex-col items-stretch justify-between gap-2 border-t border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:px-4">
+</header>{!workflowFirst && <DossierRegionSelector activeTab={activeTab} missingRequiredCount={missingRequiredCount} onChange={setActiveTab} />}<section aria-label="Nội dung hồ sơ PCN" className="mobile-scroll-y h-0 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pcn-dossier-focus-scroll p-3 md:p-4">
+  {/* Mobile Workspace Mode Switcher */}
+  <div className="flex lg:hidden items-center gap-1.5 mb-3 p-1 rounded-lg bg-slate-100 border border-slate-200">
+    <button
+      type="button"
+      onClick={() => setMobileWorkspaceTab('main')}
+      className={`flex-1 py-1.5 px-3 rounded-md text-xs font-black transition ${
+        mobileWorkspaceTab === 'main' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+      }`}
+    >
+      Công việc & Checklist (Chính 65%)
+    </button>
+    <button
+      type="button"
+      onClick={() => setMobileWorkspaceTab('auxiliary')}
+      className={`flex-1 py-1.5 px-3 rounded-md text-xs font-black transition ${
+        mobileWorkspaceTab === 'auxiliary' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+      }`}
+    >
+      Xem trước & Trợ lý (Phụ 35%)
+    </button>
+  </div>
+
+  <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] xl:grid-cols-[68%_32%] gap-4">
+    {/* Left Column (65-70%): Form inputs, step action panel (PcnDossierNodeWorkPanel), and document checklist table */}
+    <div className={`min-w-0 flex flex-col gap-3 ${mobileWorkspaceTab === 'auxiliary' ? 'hidden lg:flex' : 'flex'}`}>
+      {dossier.workflowSnapshot ? <PcnDossierWorkflowPanel
+          dossier={dossier}
+          requirements={requirements}
+          documents={dossierDocumentsForCompleteness}
+          documentWaivers={dossier.documentWaivers}
+          results={dossierResults}
+          approvalSteps={dossierApprovalSteps}
+          sampleLots={sampleLots}
+          sampleRoutes={sampleRoutes}
+          labRequests={dossierRequests}
+          issuancePackages={issuancePackages}
+          workflowTasks={workflowTasks}
+          users={users}
+          currentUser={currentUser}
+          canEdit={canEditWorkflowPanel}
+          initialNodeId={initialNodeId}
+          onStartTask={onStartWorkflowTask}
+          onCompleteTask={onCompleteWorkflowTask}
+          onReturnTask={onReturnWorkflowTask}
+          onOpenDocuments={() => setActiveTab('documents')}
+          onUploadDocument={(requirementId, file) => {
+            const requirement = requirements.find((item) => item.id === requirementId);
+            if (requirement) return uploadRequirement(requirement, file);
+            return Promise.resolve();
+          }}
+          onCreateFromForm={openNodeForm}
+          onOpenDrafting={(item, nodeId) =>
+            buildPcnNodeDraftingRoute({
+              dossierId: dossier.id,
+              requirementId: item.requirementId,
+              requirementCode: item.code,
+              nodeId,
+              returnTo: buildPcnDossierReturnRoute(dossier.id, { tab: 'documents', nodeId }),
+            })
+          }
+          onRemoveCurrent={onRemoveCurrentDocument}
+          onWaiveDocument={waiveDocumentFromNode}
+          onClearDocumentWaiver={clearDocumentWaiverFromNode}
+          onOpenBusiness={openWorkflowBusiness}
+        /> : (
+        <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
+          <DossierWorkflowSummary
+            projection={dossierWorkflowProjection}
+            selectedNodeKey={selectedWorkflowNodeKey}
+            completeness={completeness}
+            ownerLabel={ownerLabel}
+            exceptionReason={exceptionReasonLabel}
+            onSelectNode={selectWorkflowNode}
+            onOpenExceptionReason={() => void editExceptionReason()}
+            onOpenStep={openSelectedWorkflowStep}
+            onOpenChecklist={() => setActiveTab('documents')}
+            onOpenGeneration={openGenerationRegion}
+            onOpenApprovalModule={() => setActiveTab('issuance')}
+            onCompleteStep={() => void completeCurrentStep()}
+            completionDisabled={!canEditDossierSteps || (!completionTarget && dossier.status !== 'TECHNICAL_REVIEW')}
+            completionTitle={currentStepAccess.reason || nextStatusDenials.get(completionTarget || '') || undefined}
+            canEdit={canEditDossierSteps}
+            users={users}
+          />
+        </div>
+      )}
+
+      {/* Document checklist and tab content */}
+      <div className="mt-2 border-t border-slate-200 pt-3">
+        {!workflowFirst && tabContent}
+      </div>
+    </div>
+
+    {/* Right Column (30-35%): Document live preview, standards/legal guidelines, AI Assistant panel, activity history */}
+    <div className={`min-w-0 flex flex-col gap-3 border-l-0 lg:border-l lg:border-slate-200 lg:pl-4 ${mobileWorkspaceTab === 'main' ? 'hidden lg:flex' : 'flex'}`}>
+      {/* 1. Live preview & Package Summary */}
+      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <h3 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+            <Eye size={14} className="text-emerald-600" /> Xem trước & Hồ sơ
+          </h3>
+          <span className="text-[11px] font-bold text-slate-500">{packageSummary.totalAssetCount} tệp đính kèm</span>
+        </div>
+        <div className="mt-2">
+          <DossierPackageSummary summary={packageSummary} />
+          {dossierDocumentsForCompleteness.length > 0 && (
+            <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-col gap-1.5">
+              {dossierDocumentsForCompleteness.slice(0, 3).map((doc) => {
+                const latestVersion = doc.versions?.[doc.versions.length - 1];
+                if (!latestVersion) return null;
+                return (
+                  <a
+                    key={doc.id}
+                    href={getPcnFileUrl(latestVersion.assetId)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-200 rounded-md px-2.5 py-1.5 hover:bg-emerald-100 truncate max-w-full"
+                  >
+                    <FileText size={12} className="shrink-0" />
+                    <span className="truncate">{latestVersion.fileName || doc.title || 'Xem tệp đính kèm'}</span>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 2. Standards & Legal Guidelines */}
+      <section className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 shadow-xs">
+        <h3 className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+          <FileText size={14} className="text-emerald-700" /> Căn cứ pháp lý & Quy chuẩn
+        </h3>
+        <p className="mt-1 text-[11px] text-emerald-900 leading-relaxed">
+          Lĩnh vực: <b className="font-mono">{dossier.fieldCodes?.join(', ') || 'QC4, QC9'}</b> · Phương thức: <b>{dossier.method || 'PT5'}</b>.
+        </p>
+        <div className="mt-2 text-[11px] text-emerald-800 space-y-1">
+          <p>• QCVN 04:2009/BKHCN & QCVN 09:2012/BKHCN</p>
+          <p>• TCVN ISO/IEC 17065:2013 - Đánh giá sự phù hợp</p>
+          <p>• Yêu cầu kiểm tra hiện trường, niêm phong mẫu và đối chiếu KQTN hợp lệ.</p>
+        </div>
+      </section>
+
+      {/* 3. AI Assistant Panel */}
+      <section className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3 shadow-xs">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+            <Bot size={14} className="text-indigo-600" /> Trợ lý AI TVCI
+          </h3>
+          <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">OCR & Soát xét</span>
+        </div>
+        <p className="mt-1.5 text-[11px] text-indigo-900 leading-relaxed">
+          {missingRequiredCount > 0
+            ? `Cảnh báo: Còn ${missingRequiredCount} tài liệu bắt buộc cần bổ sung trước khi hoàn tất bước.`
+            : 'Hồ sơ đã đầy đủ chứng từ đầu vào của bước. Sẵn sàng cho soát xét kỹ thuật.'}
+        </p>
+        {onOpenContextualAssistant && (
+          <button
+            type="button"
+            onClick={() => onOpenContextualAssistant(dossier.id)}
+            className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-black text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          >
+            <Bot size={12} /> Mở Trợ lý soát xét hồ sơ
+          </button>
+        )}
+      </section>
+
+      {/* 4. Activity History & Audit */}
+      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+        <h3 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+          <PackageCheck size={14} className="text-slate-600" /> Lịch sử hoạt động
+        </h3>
+        <div className="mt-2 space-y-1.5 max-h-56 overflow-y-auto">
+          {activityLogs
+            .filter((log) => !log.entityId || log.entityId === dossier.id || log.entityId === dossier.proposalId)
+            .slice(0, 6)
+            .map((log) => (
+              <div key={log.id} className="text-[11px] border-b border-slate-100 pb-1.5 last:border-0">
+                <span className="font-bold text-slate-700">{activityActionLabels[log.action] || log.action}</span>
+                <span className="text-slate-400 ml-1">· {formatDate(log.createdAt)}</span>
+                <p className="text-slate-500 truncate">{log.summary || log.actorUsername}</p>
+              </div>
+            ))}
+          {activityLogs.length === 0 && (
+            <p className="text-[11px] text-slate-400 italic">Chưa có nhật ký hoạt động gần đây.</p>
+          )}
+        </div>
+      </section>
+    </div>
+  </div>
+  {auxiliaryModals}
+</section>{!workflowFirst && <footer className="mobile-safe-bottom flex shrink-0 flex-col items-stretch justify-between gap-2 border-t border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:px-4">
 <span className="text-[11px] text-slate-600">Trạng thái tiếp theo</span>
 <div className="flex w-full min-w-0 flex-wrap justify-start gap-1.5 sm:w-auto sm:justify-end">{nextStatuses.length === 0 && !requiresIssuanceLifecycleAction && <span className="text-[11px] font-bold text-slate-500">Đã ở trạng thái cuối</span>}{nextStatuses.map((status) => <button key={status} disabled={isUpdating || Boolean(nextStatusDenials.get(status))} title={nextStatusDenials.get(status) || undefined} onClick={() => void changeStatus(status)} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">{getPcnDossierStatusLabel(status)}{nextStatusDenials.get(status) ? ' · Chưa đủ hồ sơ' : ''}</button>)}{requiresIssuanceLifecycleAction && <button type="button" onClick={() => setActiveTab('issuance')} className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[11px] font-black text-indigo-700 hover:bg-indigo-100">
 <PackageCheck size={12} /> Mở vùng phát hành để {issuanceLifecycleActionLabel}</button>}</div>

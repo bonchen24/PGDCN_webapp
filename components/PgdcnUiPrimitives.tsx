@@ -65,8 +65,71 @@ export function PgdcnStatusBadge({ label, tone, domain, status, compact = false,
   const sizeClass = compact ? 'inline-flex min-h-5 px-1.5 py-0.5 text-[9px]' : 'inline-flex min-h-6 px-2 py-1 text-[10px]';
   return <span data-status-tone={resolvedTone} title={presentation?.description} className={sizeClass + ' items-center gap-1 rounded-full border font-black ' + statusToneClass[resolvedTone] + ' ' + className}><Icon size={compact ? 11 : 12} aria-hidden="true" /><span>{resolvedLabel}</span></span>;
 }
-export function PgdcnWorkflowRail({ steps }: { steps: readonly { id: string; label: string; state: 'complete' | 'current' | 'upcoming' | 'blocked' }[] }) {
-  return <div className="mobile-scroll-x min-w-0 overflow-x-auto pb-1" role="list" aria-label="Các bước hồ sơ"><div className="flex min-w-max items-start gap-1">{steps.map((step, index) => <div key={step.id} role="listitem" aria-current={step.state === 'current' ? 'step' : undefined} className={`mobile-touch-target flex min-w-[9rem] items-center gap-2 rounded-lg border px-2.5 py-2 text-left shadow-sm ${step.state === 'current' ? 'border-indigo-300 bg-indigo-50 text-indigo-900' : step.state === 'complete' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : step.state === 'blocked' ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-slate-200 bg-white text-slate-500'}`}><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[9px] font-black ring-1 ring-current/20">{index + 1}</span><span className="min-w-0 truncate text-[11px] font-black">{step.label}</span></div>)}</div></div>;
+export interface PgdcnWorkflowStepItem {
+  id: string;
+  label: string;
+  state: 'complete' | 'current' | 'upcoming' | 'blocked';
+  badge?: string;
+  checklistCount?: { completed: number; total: number };
+  onClick?: () => void;
+}
+
+export function PgdcnWorkflowRail({ steps, className = '', onSelectStep }: { steps: readonly { id: string; label: string; state: 'complete' | 'current' | 'upcoming' | 'blocked'; badge?: string; checklistCount?: { completed: number; total: number }; onClick?: () => void }[]; className?: string; onSelectStep?: (id: string) => void }) {
+  return (
+    <div className={`mobile-scroll-x min-w-0 overflow-x-auto scroll-smooth touch-pan-x pb-1 ${className}`} role="list" aria-label="Các bước hồ sơ">
+      <div className="flex min-w-max items-center gap-1.5">
+        {steps.map((step, index) => {
+          const isCurrent = step.state === 'current';
+          const isComplete = step.state === 'complete';
+          const isBlocked = step.state === 'blocked';
+          const badgeText = step.badge || (step.checklistCount ? `${step.checklistCount.completed}/${step.checklistCount.total} việc` : undefined);
+          const handleClick = step.onClick || (onSelectStep ? () => onSelectStep(step.id) : undefined);
+
+          return (
+            <div
+              key={step.id}
+              role="listitem"
+              aria-current={step.state === 'current' ? 'step' : undefined}
+              onClick={handleClick}
+              className={`mobile-touch-target flex min-w-[9.5rem] sm:min-w-[10.5rem] items-center gap-2 rounded-lg border px-2.5 py-2 text-left shadow-xs transition ${handleClick ? 'cursor-pointer' : ''} ${
+                isCurrent
+                  ? 'border-indigo-400 bg-indigo-50/90 text-indigo-950 font-black shadow-md ring-2 ring-indigo-500 ring-offset-1'
+                  : isComplete
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : isBlocked
+                  ? 'border-rose-200 bg-rose-50 text-rose-800'
+                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+              }`}
+            >
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-black ${
+                  isCurrent
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : isComplete
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-white text-slate-600 ring-1 ring-current/20'
+                }`}
+              >
+                {index + 1}
+              </span>
+              <span className={`min-w-0 truncate text-[11px] ${isCurrent ? 'font-black text-indigo-950' : 'font-bold'}`}>
+                {step.label}
+              </span>
+              {badgeText && (
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                  isCurrent
+                    ? 'bg-indigo-100 text-indigo-900 ring-1 ring-indigo-300'
+                    : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {badgeText.startsWith('(') ? badgeText : `(${badgeText})`}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export function PgdcnStatePanel({ tone, title, description, action }: { tone: 'loading' | 'empty' | 'error' | 'success'; title: string; description: string; action?: ReactNode }) {

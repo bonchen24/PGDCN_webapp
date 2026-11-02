@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, RefreshCw, User } from 'lucide-react';
+import { ChevronRight, Home, Menu, RefreshCw, Search, User } from 'lucide-react';
+import PgdcnQuickViewDrawer, { type QuickViewDossierItem } from './PgdcnQuickViewDrawer';
 import { Toaster } from 'sonner';
 import { toast } from 'sonner';
 
@@ -78,6 +79,7 @@ const getActiveContextLabel = (target: PgdcnNavigationTarget): string => {
     if (target.section === 'activityLogs') return 'Nhật ký hoạt động';
     if (target.section === 'dossier-templates') return 'Hồ sơ mẫu';
     if (target.section === 'document-drafting') return 'Hỗ trợ soạn thảo';
+    if (target.section === 'rbac') return 'Phân quyền RBAC';
     return 'Cài đặt hệ thống';
   }
   if (target.domain === 'PCN') {
@@ -130,6 +132,25 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
   const [commandOpen, setCommandOpen] = useState(false);
   const [recentRecords, setRecentRecords] = useState<PgdcnRecentRecord[]>([]);
   const [focusedPgdRequestId, setFocusedPgdRequestId] = useState<string | undefined>(initialPgdRequestId);
+  const [quickViewDrawer, setQuickViewDrawer] = useState<{
+    open: boolean;
+    domain?: 'PCN' | 'PGD';
+    dossierCode?: string;
+    item?: QuickViewDossierItem | null;
+  }>({ open: false });
+
+  const openQuickView = useCallback((params: { domain: 'PCN' | 'PGD'; dossierCode?: string; item?: QuickViewDossierItem }) => {
+    setQuickViewDrawer({
+      open: true,
+      domain: params.domain,
+      dossierCode: params.dossierCode,
+      item: params.item || null,
+    });
+  }, []);
+
+  const closeQuickView = useCallback(() => {
+    setQuickViewDrawer((prev) => ({ ...prev, open: false }));
+  }, []);
 
   useEffect(() => {
     setNotificationOpen(false);
@@ -255,8 +276,8 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
   };
 
   const navigate = (target: PgdcnNavigationTarget) => {
-    setNotificationOpen(false);
     setFocusedPgdRequestId(undefined);
+    setNotificationOpen(false);
     setAssistantContext(undefined);
     setActiveTarget(target);
     setMobileOpen(false);
@@ -398,13 +419,100 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
     setActiveTarget(getSharedTargetForPgdSection(section) || { domain: 'PGD', section });
   };
 
+  const handleQuickViewOpenFullDetail = useCallback((domain: 'PCN' | 'PGD', idOrCode: string) => {
+    closeQuickView();
+    if (domain === 'PCN') {
+      const dossier = pcn.dossiers.find((d) => d.id === idOrCode || d.dossierCode === idOrCode);
+      openPcnDossier(dossier?.id || idOrCode);
+    } else {
+      const req = pgd.requests.find((r) => r.id === idOrCode || r.requestCode === idOrCode);
+      openPgdRequest(req?.id || idOrCode);
+    }
+  }, [closeQuickView, openPcnDossier, openPgdRequest, pcn.dossiers, pgd.requests]);
+
+  useEffect(() => {
+    const handleQuickViewEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ domain: 'PCN' | 'PGD'; dossierCode?: string; item?: QuickViewDossierItem }>;
+      if (customEvent.detail) {
+        openQuickView(customEvent.detail);
+      }
+    };
+    window.addEventListener('pgdcn:quickview', handleQuickViewEvent);
+    return () => window.removeEventListener('pgdcn:quickview', handleQuickViewEvent);
+  }, [openQuickView]);
+
+  const breadcrumbCrumbs = useMemo(() => {
+    const crumbs: Array<{ label: string; target?: PgdcnNavigationTarget }> = [];
+    if (activeTarget.domain === 'department') {
+      if (activeTarget.section === 'department-dashboard') {
+        crumbs.push({ label: 'Tổng quan' });
+      } else if (activeTarget.section === 'my-work') {
+        crumbs.push({ label: 'Việc của tôi' });
+      } else if (activeTarget.section === 'customers') {
+        crumbs.push({ label: 'Khách hàng' });
+      } else if (activeTarget.section === 'assistant') {
+        crumbs.push({ label: 'Trợ lý AI' });
+      } else if (activeTarget.section === 'document-drafting') {
+        crumbs.push({ label: 'Tài liệu' });
+        crumbs.push({ label: 'Soạn thảo văn bản' });
+      } else if (activeTarget.section === 'dossier-templates') {
+        crumbs.push({ label: 'Tài liệu' });
+        crumbs.push({ label: 'Hồ sơ mẫu' });
+      } else if (activeTarget.section === 'system-settings') {
+        crumbs.push({ label: 'Quản trị' });
+        crumbs.push({ label: 'Cài đặt hệ thống' });
+      } else if (activeTarget.section === 'rbac') {
+        crumbs.push({ label: 'Quản trị' });
+        crumbs.push({ label: 'Phân quyền RBAC' });
+      } else if (activeTarget.section === 'activityLogs') {
+        crumbs.push({ label: 'Quản trị' });
+        crumbs.push({ label: 'Nhật ký hoạt động' });
+      }
+    } else if (activeTarget.domain === 'PCN') {
+      crumbs.push({ label: 'Nghiệp vụ PCN', target: { domain: 'PCN', section: 'proposals' } });
+      if (activeTarget.section === 'proposals') {
+        if (initialPcnDossierId) {
+          crumbs.push({ label: 'Hồ sơ', target: { domain: 'PCN', section: 'proposals' } });
+          const code = pcn.dossiers.find((d) => d.id === initialPcnDossierId)?.dossierCode || initialPcnDossierId;
+          crumbs.push({ label: code });
+        } else {
+          crumbs.push({ label: 'Hồ sơ đề nghị' });
+        }
+      } else if (activeTarget.section === 'operations') {
+        crumbs.push({ label: 'Sổ tổng hợp' });
+      } else if (activeTarget.section === 'lab-operations') {
+        crumbs.push({ label: 'Sổ quản lý mẫu' });
+      } else if (activeTarget.section === 'drafting') {
+        crumbs.push({ label: 'Soạn thảo tài liệu' });
+      }
+    } else if (activeTarget.domain === 'PGD') {
+      crumbs.push({ label: 'Nghiệp vụ PGD', target: { domain: 'PGD', section: 'requests' } });
+      if (activeTarget.section === 'requests') {
+        if (focusedPgdRequestId) {
+          crumbs.push({ label: 'Hồ sơ PYC', target: { domain: 'PGD', section: 'requests' } });
+          const code = pgd.requests.find((r) => r.id === focusedPgdRequestId)?.requestCode || focusedPgdRequestId;
+          crumbs.push({ label: code });
+        } else {
+          crumbs.push({ label: 'Hồ sơ PYC' });
+        }
+      } else if (activeTarget.section === 'operations') {
+        crumbs.push({ label: 'Sổ tổng hợp' });
+      } else if (activeTarget.section === 'sample-operations') {
+        crumbs.push({ label: 'Sổ quản lý mẫu' });
+      } else if (activeTarget.section === 'templates') {
+        crumbs.push({ label: 'Soạn thảo biểu mẫu' });
+      }
+    }
+    return crumbs;
+  }, [activeTarget, initialPcnDossierId, focusedPgdRequestId, pcn.dossiers, pgd.requests]);
+
   const content = activeTarget.domain === 'department' && (activeTarget.section === 'department-dashboard' || activeTarget.section === 'my-work') ? (
     <PgdcnDashboardView scopes={scopes} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pcnWorkflowTasks={pcn.workflowTasks} pgdRequests={pgd.requests} pgdAssignments={pgd.assignments} pcnEvidenceActions={pcnEvidenceActions} currentUser={currentUser} notifications={notifications} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} onOpenNotifications={handleOpenNotifications} onSelectNotification={handleDashboardNotificationSelect} recentRecords={recentRecords} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'customers' ? (
     <PgdcnCustomersView scopes={scopes} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'dossier-templates' ? (
     <PgdcnDossierTemplateManagementView currentUser={currentUser} pcnTemplates={pcn.workflowTemplates} pcnRequirements={pcn.documentRequirements} pgdTemplates={pgd.workflowTemplates} pgdRequirements={PGD_TEMPLATE_REQUIREMENTS} onCreatePcnWorkflowTemplate={pcn.createWorkflowTemplate} onUpdatePcnWorkflowTemplate={pcn.updateWorkflowTemplate} onCreatePcnWorkflowRevision={pcn.createWorkflowRevision} onPublishPcnWorkflowTemplate={pcn.publishWorkflowTemplate} onRetirePcnWorkflowTemplate={pcn.retireWorkflowTemplate} onCreatePgdWorkflowTemplate={pgd.createWorkflowTemplate} onUpdatePgdWorkflowTemplate={pgd.updateWorkflowTemplate} onCreatePgdWorkflowRevision={pgd.createWorkflowRevision} onPublishPgdWorkflowTemplate={pgd.publishWorkflowTemplate} onRetirePgdWorkflowTemplate={pgd.retireWorkflowTemplate} />
-  ) : activeTarget.domain === 'department' && activeTarget.section === 'system-settings' ? (
+  ) : activeTarget.domain === 'department' && (activeTarget.section === 'system-settings' || activeTarget.section === 'rbac') ? (
     <PgdcnSystemSettingsView currentUser={currentUser} users={systemUsers} roles={pcn.departmentRoles} fields={pcn.fields} onCreate={pcn.addPcnUser} onUpdate={pcn.updatePcnUser} onDelete={pcn.deletePcnUser} onResetPassword={pcn.resetPcnUserPassword} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'activityLogs' ? (
     <ActivityLogView currentUser={currentUser} systemUsers={systemUsers} />
@@ -472,11 +580,55 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
               {getActiveContextLabel(activeTarget)}
             </div>
             <div className="hidden truncate text-[11px] font-medium text-slate-500 lg:block">
-              Hệ thống điều hành & Mở hồ sơ kiểm định - chứng nhận chuyên ngành
+              {/* Hierarchical Breadcrumb */}
+              <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500">
+                <button
+                  type="button"
+                  onClick={() => navigate({ domain: 'department', section: 'department-dashboard' })}
+                  className="hover:text-blue-700 transition-colors font-medium flex items-center gap-1 text-slate-500 hover:underline cursor-pointer"
+                >
+                  <Home size={11} className="text-slate-400" />
+                  <span>Trang chủ</span>
+                </button>
+                {breadcrumbCrumbs.map((crumb, idx) => (
+                  <span key={idx} className="flex items-center gap-1.5">
+                    <ChevronRight size={10} className="text-slate-300 shrink-0" aria-hidden="true" />
+                    {crumb.target ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(crumb.target!)}
+                        className="hover:text-blue-700 transition-colors font-medium text-slate-500 hover:underline cursor-pointer"
+                      >
+                        {crumb.label}
+                      </button>
+                    ) : (
+                      <span
+                        className={idx === breadcrumbCrumbs.length - 1 ? 'font-bold text-slate-800' : 'font-medium text-slate-500'}
+                        aria-current={idx === breadcrumbCrumbs.length - 1 ? 'page' : undefined}
+                      >
+                        {crumb.label}
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </nav>
             </div>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCommandOpen(true)}
+            aria-label="Tìm kiếm nhanh hồ sơ, khách hàng (Ctrl+K)"
+            title="Tìm kiếm nhanh (Ctrl+K)"
+            className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-slate-200 bg-slate-50/90 px-2.5 py-1 text-xs text-slate-500 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer shadow-3xs"
+          >
+            <Search size={13} className="text-slate-400 shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline text-[11px] font-medium text-slate-500">Tìm kiếm...</span>
+            <kbd className="hidden md:inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.2 text-[10px] font-mono text-slate-400">
+              ⌘K
+            </kbd>
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -536,6 +688,14 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
       </main>
     </div>
 <PgdcnCommandPalette open={commandOpen} scopes={scopes} records={commandRecords} onClose={() => setCommandOpen(false)} onNavigate={navigate} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} />
+    <PgdcnQuickViewDrawer
+      open={quickViewDrawer.open}
+      domain={quickViewDrawer.domain}
+      dossierCode={quickViewDrawer.dossierCode}
+      item={quickViewDrawer.item}
+      onClose={closeQuickView}
+      onOpenFullDetail={handleQuickViewOpenFullDetail}
+    />
     <span className="sr-only" aria-live="polite" aria-atomic="true">{getActiveContextLabel(activeTarget)}</span>
     <nav className="sr-only" aria-label="Điều hướng PGDCN">{activeTarget.domain}</nav>
     {personalSettingsOpen && <PcnPersonalSettingsPanel currentUser={currentUser} onClose={() => setPersonalSettingsOpen(false)} />}

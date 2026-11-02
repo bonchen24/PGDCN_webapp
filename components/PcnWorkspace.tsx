@@ -27,8 +27,11 @@ import {
   ShieldCheck,
   UserRound,
   X,
+  Eye,
+  ArrowRight,
 } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
+import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
 
 import PcnLoginScreen from './PcnLoginScreen';
 import PcnCustomersManagementView from './PcnCustomersManagementView';
@@ -286,17 +289,195 @@ function EmptyState({ title, description, action, onAction }: { title: string; d
   return <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/70 p-7 text-center"><div className="mx-auto mb-2 w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400"><FolderOpen size={16} /></div><p className="text-xs font-black text-slate-600">{title}</p><p className="text-[10px] text-slate-400 mt-1">{description}</p>{action && onAction && <button onClick={onAction} className="mt-3 inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-[10px] font-bold text-white"><Plus size={12} /> {action}</button>}</div>;
 }
 
-function ProposalRegisterRow({ proposal, dossier, canEdit, onOpenDossier, onEdit }: { proposal: CertificationProposal; dossier: CertificationDossier; canEdit: boolean; onOpenDossier: () => void; onEdit?: () => void }) {
+function ProposalRegisterRow({
+  proposal,
+  dossier,
+  canEdit,
+  documentRequirements = [],
+  dossierDocuments = [],
+  onOpenDossier,
+  onEdit,
+}: {
+  proposal: CertificationProposal;
+  dossier: CertificationDossier;
+  canEdit: boolean;
+  documentRequirements?: PcnDocumentRequirement[];
+  dossierDocuments?: PcnDossierDocument[];
+  onOpenDossier: () => void;
+  onEdit?: () => void;
+}) {
   const proposalEditingAllowed = Boolean(onEdit && ['INTAKE_REVIEW', 'AWAITING_DOCUMENTS'].includes(dossier.status));
+  const contactParts = [
+    proposal.customerSnapshot.contactPerson,
+    proposal.customerSnapshot.phone || proposal.customerSnapshot.taxId ? `SĐT: ${proposal.customerSnapshot.phone || proposal.customerSnapshot.taxId}` : undefined,
+  ].filter(Boolean).join(' • ') || proposal.productName || 'Chưa có thông tin liên hệ';
+
+  const isQc4 = proposal.fieldCodes.some((code) => code.includes('QC4') || code.includes('04'));
+  const isQc9 = proposal.fieldCodes.some((code) => code.includes('QC9') || code.includes('09'));
+
+  const docsForDossier = dossierDocuments.filter((doc) => doc.dossierId === dossier.id);
+  const reqCount = documentRequirements.length > 0 ? documentRequirements.length : 5;
+  const completedDocs = docsForDossier.filter((doc) => doc.status === 'PRESENT').length;
+  const progressPercent = Math.min(100, Math.round((completedDocs / reqCount) * 100));
+
+  const isOverdue = Boolean(dossier.targetDate && !['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(dossier.status) && new Date(dossier.targetDate) < new Date());
+  const dueLabel = dossier.targetDate ? formatDateDdMmYyyy(dossier.targetDate) : undefined;
+
+  const nextStepMap: Record<string, string> = {
+    DRAFT: 'Bổ sung hồ sơ',
+    INTAKE_REVIEW: 'Phân công chuyên viên',
+    AWAITING_DOCUMENTS: 'Thu thập tài liệu bắt buộc',
+    ASSIGNED: 'Lập kế hoạch đánh giá',
+    PLAN_PENDING_APPROVAL: 'Phê duyệt kế hoạch',
+    FIELD_EVALUATION: 'Đánh giá hiện trường & lấy mẫu',
+    AWAITING_SAMPLING: 'Gửi mẫu đến PTN',
+    SENT_TO_LAB: 'Chờ kết quả thử nghiệm',
+    AWAITING_RESULTS: 'Soát xét kỹ thuật KQTN',
+    TECHNICAL_REVIEW: 'Trình lãnh đạo phê duyệt',
+    WAITING_APPROVAL: 'Ký & phát hành chứng chỉ',
+    APPROVED: 'Bàn giao cho khách hàng',
+    ISSUED: 'Lưu trữ hồ sơ',
+    CORRECTIVE_ACTION: 'Xác nhận khắc phục',
+  };
+  const nextStepPreview = nextStepMap[dossier.status] || 'Tiếp tục xử lý';
+
+  const handleQuickView = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('pgdcn:quickview', {
+        detail: {
+          domain: 'PCN',
+          dossierCode: dossier.dossierCode,
+          item: {
+            dossierCode: dossier.dossierCode,
+            domain: 'PCN',
+            customerName: proposal.customerSnapshot.name,
+            productName: proposal.productName,
+            status: dossier.status,
+            statusLabel: statusLabels[dossier.status],
+            currentStage: statusLabels[dossier.status],
+            nextStep: nextStepPreview,
+            targetDate: dossier.targetDate,
+            assigneeName: dossier.ownerUsername,
+          },
+        },
+      }));
+    }
+  };
+
   return (
-    <tr className="align-top transition-colors hover:bg-indigo-50/40">
-      <th scope="row" className="sticky left-0 z-[1] bg-white px-3 py-3 text-left font-normal"><span className="font-mono text-xs font-black uppercase tracking-wide text-slate-900">{proposal.proposalCode}</span><button type="button" onClick={onOpenDossier} aria-label={`Mở chi tiết hồ sơ ${dossier.dossierCode}`} className="mt-1 block font-mono text-[10px] font-black text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">{dossier.dossierCode}</button></th>
-      <td className="px-3 py-3"><span className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-black ${statusClasses[dossier.status]}`}>{statusLabels[dossier.status]}</span></td>
-      <td className="max-w-[220px] px-3 py-3 text-sm font-bold text-slate-800"><span className="line-clamp-2" title={proposal.customerSnapshot.name}>{proposal.customerSnapshot.name || 'Chưa gắn khách hàng'}</span></td>
-      <td className="max-w-[220px] px-3 py-3"><p className="truncate text-sm font-bold text-slate-800" title={proposal.productName}>{proposal.productName || 'Chưa có sản phẩm'}</p><p className="mt-1 truncate text-xs text-slate-500" title={[proposal.model, proposal.brand].filter(Boolean).join(' / ')}>{[proposal.model, proposal.brand].filter(Boolean).join(' / ') || 'Chưa có kiểu loại / nhãn hiệu'}</p></td>
-      <td className="px-3 py-3"><div className="flex max-w-[170px] flex-wrap gap-1">{proposal.fieldCodes.length > 0 ? proposal.fieldCodes.map((code) => <span key={code} className="rounded border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700">{code}</span>) : <span className="text-[9px] font-bold text-amber-700">Chưa xác định</span>}</div></td>
-      <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-600">{formatDateDdMmYyyy(proposal.receivedAt) || 'Chưa cập nhật'}</td>
-      <td className="px-3 py-3 text-right"><div className="flex min-w-[180px] justify-end gap-1.5"><button type="button" onClick={onOpenDossier} className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-[10px] font-black text-white hover:bg-indigo-500"><FolderOpen size={12} aria-hidden="true" /> Mở hồ sơ chuẩn</button>{canEdit && proposalEditingAllowed && <button type="button" onClick={onEdit} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:border-emerald-300 hover:text-emerald-700">Sửa Đề nghị</button>}</div></td>
+    <tr className="align-top transition-colors hover:bg-slate-50 border-b border-slate-100">
+      {/* 1. Mã hồ sơ */}
+      <th scope="row" className="sticky left-0 z-[1] bg-white px-3 py-2.5 text-left font-normal border-b border-slate-100">
+        <button
+          type="button"
+          onClick={onOpenDossier}
+          aria-label={`Mở chi tiết hồ sơ ${dossier.dossierCode}`}
+          className="font-mono text-xs font-black text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+        >
+          {dossier.dossierCode}
+        </button>
+        <span className="mt-0.5 block font-mono text-[10px] text-slate-500">
+          ĐN: {proposal.proposalCode}
+        </span>
+      </th>
+
+      {/* 2. Khách hàng */}
+      <td className="max-w-[220px] px-3 py-2.5">
+        <p className="truncate text-xs font-bold text-slate-900" title={proposal.customerSnapshot.name}>
+          {proposal.customerSnapshot.name || 'Chưa gắn khách hàng'}
+        </p>
+        <p className="mt-0.5 truncate text-[10px] text-slate-500" title={contactParts}>
+          {contactParts}
+        </p>
+      </td>
+
+      {/* 3. Loại hồ sơ */}
+      <td className="px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-1">
+          {isQc4 && <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-black text-emerald-800">QC4</span>}
+          {isQc9 && <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-black text-blue-800">QC9</span>}
+          {!isQc4 && !isQc9 && (
+            proposal.fieldCodes.length > 0 ? (
+              proposal.fieldCodes.map((code) => (
+                <span key={code} className="rounded border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700">{code}</span>
+              ))
+            ) : (
+              <span className="text-[9px] font-bold text-slate-400">QC</span>
+            )
+          )}
+        </div>
+        <p className="mt-0.5 text-[10px] text-slate-500">
+          {proposal.productName ? `${proposal.productName}` : 'Phương thức 5'}
+        </p>
+      </td>
+
+      {/* 4. Giai đoạn */}
+      <td className="px-3 py-2.5">
+        <p className="text-xs font-bold text-slate-800">{statusLabels[dossier.status] || dossier.status}</p>
+        <p className="mt-0.5 text-[10px] text-slate-400">→ Tiếp: {nextStepPreview}</p>
+      </td>
+
+      {/* 5. Tiến độ */}
+      <td className="px-3 py-2.5 min-w-[100px]">
+        <div className="flex items-center gap-1.5">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${progressPercent}%` }} />
+          </div>
+          <span className="text-[10px] font-black text-slate-700">{progressPercent}%</span>
+        </div>
+        <p className="mt-0.5 text-[10px] text-slate-400">{completedDocs}/{reqCount} tài liệu</p>
+      </td>
+
+      {/* 6. Phụ trách */}
+      <td className="px-3 py-2.5">
+        <p className="text-xs font-semibold text-slate-800">{dossier.ownerUsername || 'Chưa phân công'}</p>
+        <p className="mt-0.5 text-[10px] text-slate-400">{dossier.ownerUsername ? 'Chủ hồ sơ' : 'Chờ chỉ định'}</p>
+      </td>
+
+      {/* 7. Trạng thái */}
+      <td className="px-3 py-2.5">
+        <PgdcnStatusBadge domain="PCN" status={dossier.status} label={statusLabels[dossier.status]} />
+        <p className={`mt-0.5 text-[10px] ${isOverdue ? 'font-bold text-rose-600' : 'text-slate-400'}`}>
+          {isOverdue ? `Quá hạn · ${dueLabel || ''}` : dueLabel ? `Hạn: ${dueLabel}` : 'Chưa đặt hạn'}
+        </p>
+      </td>
+
+      {/* 8. Thao tác */}
+      <td className="px-3 py-2.5 text-right">
+        <div className="flex items-center justify-end gap-1.5">
+          <button
+            type="button"
+            onClick={handleQuickView}
+            aria-label={`Xem nhanh ${dossier.dossierCode}`}
+            title="Xem nhanh trong ngăn kéo"
+            className="mobile-touch-target inline-flex min-h-8 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 cursor-pointer"
+          >
+            <Eye size={12} aria-hidden="true" />
+            <span className="sr-only sm:not-sr-only text-[11px]">Xem</span>
+          </button>
+          <button
+            type="button"
+            onClick={onOpenDossier}
+            aria-label={`Mở hồ sơ chuẩn ${dossier.dossierCode}`}
+            title="Mở hồ sơ chuẩn"
+            className="mobile-touch-target inline-flex min-h-8 items-center gap-1 rounded-md bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 text-xs font-bold text-white shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+          >
+            <FolderOpen size={12} aria-hidden="true" />
+            <span>Xử lý · Mở hồ sơ chuẩn</span>
+          </button>
+          {canEdit && proposalEditingAllowed && (
+            <button
+              type="button"
+              onClick={onEdit}
+              title="Sửa Đề nghị"
+              aria-label={`Sửa Đề nghị ${proposal.proposalCode}`}
+              className="mobile-touch-target min-h-8 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:text-emerald-700 cursor-pointer"
+            >
+              Sửa Đề nghị
+            </button>
+          )}
+        </div>
+      </td>
     </tr>
   );
 }
@@ -360,7 +541,8 @@ function ProposalView({
   onUpdateProposal: (proposalId: string, updates: PcnProposalUpdateInput) => Promise<void>;
   onOpenDossier: (dossier: CertificationDossier) => void;
 }) {
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('table');
+  const [pillFilter, setPillFilter] = useState<'ALL' | 'ACTION_NEEDED' | 'IN_PROGRESS' | 'AWAITING_APPROVAL' | 'OVERDUE' | 'QC4' | 'QC9'>('ALL');
   const [sortBy, setSortBy] = useState<'NEWEST' | 'LOT_DESC' | 'CODE_DESC'>('NEWEST');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [openForm, setOpenForm] = useState(false);
@@ -574,11 +756,29 @@ function ProposalView({
   const dossierByProposalId = useMemo(() => new Map(dossiers.map((dossier) => [dossier.proposalId, dossier])), [dossiers]);
   const visibleProposals = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
+    const now = new Date();
     const filtered = proposals.filter((proposal) => {
       const dossier = dossierByProposalId.get(proposal.id);
       if (initialDossierId && dossier?.id !== initialDossierId) return false;
       if (statusFilter && dossier?.status !== statusFilter) return false;
       if (fieldFilter && !proposal.fieldCodes.includes(fieldFilter)) return false;
+
+      // Pill filter tabs
+      if (pillFilter === 'ACTION_NEEDED') {
+        if (!dossier || !['INTAKE_REVIEW', 'AWAITING_DOCUMENTS', 'DOCUMENTS_SUBMITTED'].includes(dossier.status)) return false;
+      } else if (pillFilter === 'IN_PROGRESS') {
+        if (!dossier || ['INTAKE_REVIEW', 'AWAITING_DOCUMENTS', 'DOCUMENTS_SUBMITTED', 'PENDING_APPROVAL', 'LEAD_REVIEW', 'APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(dossier.status)) return false;
+      } else if (pillFilter === 'AWAITING_APPROVAL') {
+        if (!dossier || !['PENDING_APPROVAL', 'LEAD_REVIEW'].includes(dossier.status)) return false;
+      } else if (pillFilter === 'OVERDUE') {
+        if (!dossier || !dossier.targetDate || ['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(dossier.status)) return false;
+        if (new Date(dossier.targetDate) >= now) return false;
+      } else if (pillFilter === 'QC4') {
+        if (!proposal.fieldCodes.some((code) => code.includes('QC4') || code.includes('04'))) return false;
+      } else if (pillFilter === 'QC9') {
+        if (!proposal.fieldCodes.some((code) => code.includes('QC9') || code.includes('09'))) return false;
+      }
+
       if (!normalizedQuery) return true;
       const haystack = [
         proposal.proposalCode,
@@ -602,7 +802,7 @@ function ProposalView({
       }
       return new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime();
     });
-  }, [dossierByProposalId, fieldFilter, initialDossierId, proposals, query, statusFilter, sortBy, sampleLots]);
+  }, [dossierByProposalId, fieldFilter, initialDossierId, pillFilter, proposals, query, statusFilter, sortBy, sampleLots]);
 
   // Quick filter counts
   const chipCounts = useMemo(() => {
@@ -611,16 +811,18 @@ function ProposalView({
     let qc9 = 0;
     let intake = 0;
     let inProgress = 0;
+    let awaitingApproval = 0;
     let overdue = 0;
     let completed = 0;
     const now = new Date();
 
     for (const p of proposals) {
-      if (p.fieldCodes.includes('QC4' as any)) qc4++;
-      if (p.fieldCodes.includes('QC9' as any)) qc9++;
+      if (p.fieldCodes.some((code) => code.includes('QC4') || code.includes('04'))) qc4++;
+      if (p.fieldCodes.some((code) => code.includes('QC9') || code.includes('09'))) qc9++;
       const d = dossierByProposalId.get(p.id);
       if (d) {
-        if (d.status === 'INTAKE_REVIEW' || d.status === 'AWAITING_DOCUMENTS') intake++;
+        if (['INTAKE_REVIEW', 'AWAITING_DOCUMENTS', 'DOCUMENTS_SUBMITTED'].includes(d.status)) intake++;
+        else if (['PENDING_APPROVAL', 'LEAD_REVIEW'].includes(d.status)) awaitingApproval++;
         else if (['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(d.status)) completed++;
         else inProgress++;
 
@@ -630,7 +832,7 @@ function ProposalView({
         }
       }
     }
-    return { total, qc4, qc9, intake, inProgress, overdue, completed };
+    return { total, qc4, qc9, intake, inProgress, awaitingApproval, overdue, completed };
   }, [proposals, dossierByProposalId]);
 
   return (
@@ -703,19 +905,19 @@ function ProposalView({
         </div>
 
         {/* Filter Pills - Single row */}
-        <div className="pgdcn-toolbar-pills flex items-center gap-1.5 shrink-0">
+        <div className="pgdcn-toolbar-pills flex items-center gap-1.5 shrink-0 overflow-x-auto">
           <button
             type="button"
-            onClick={() => { setStatusFilter(''); setFieldFilter(''); }}
+            onClick={() => { setPillFilter('ALL'); setStatusFilter(''); setFieldFilter(''); }}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
-              statusFilter === '' && fieldFilter === ''
+              pillFilter === 'ALL' && statusFilter === '' && fieldFilter === ''
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
             }`}
           >
-            Tổng PYC
+            Tất cả
             <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
-              statusFilter === '' && fieldFilter === '' ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700'
+              pillFilter === 'ALL' && statusFilter === '' && fieldFilter === '' ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700'
             }`}>
               {chipCounts.total}
             </span>
@@ -723,16 +925,16 @@ function ProposalView({
 
           <button
             type="button"
-            onClick={() => { setStatusFilter(statusFilter === 'INTAKE_REVIEW' ? '' : 'INTAKE_REVIEW'); }}
+            onClick={() => { setPillFilter(pillFilter === 'ACTION_NEEDED' ? 'ALL' : 'ACTION_NEEDED'); setStatusFilter(''); setFieldFilter(''); }}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
-              statusFilter === 'INTAKE_REVIEW'
+              pillFilter === 'ACTION_NEEDED'
                 ? 'bg-amber-600 text-white shadow-xs'
                 : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
             }`}
           >
-            Chờ xử lý
+            Cần xử lý
             <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
-              statusFilter === 'INTAKE_REVIEW' ? 'bg-amber-700 text-amber-100' : 'bg-slate-100 text-slate-700'
+              pillFilter === 'ACTION_NEEDED' ? 'bg-amber-700 text-amber-100' : 'bg-slate-100 text-slate-700'
             }`}>
               {chipCounts.intake}
             </span>
@@ -740,27 +942,44 @@ function ProposalView({
 
           <button
             type="button"
-            onClick={() => { setStatusFilter(statusFilter === 'SENT_TO_LAB' ? '' : 'SENT_TO_LAB'); }}
+            onClick={() => { setPillFilter(pillFilter === 'IN_PROGRESS' ? 'ALL' : 'IN_PROGRESS'); setStatusFilter(''); setFieldFilter(''); }}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
-              statusFilter === 'SENT_TO_LAB'
+              pillFilter === 'IN_PROGRESS'
                 ? 'bg-sky-600 text-white shadow-xs'
                 : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
             }`}
           >
-            Đang thử nghiệm
+            Đang xử lý
             <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
-              statusFilter === 'SENT_TO_LAB' ? 'bg-sky-700 text-sky-100' : 'bg-slate-100 text-slate-700'
+              pillFilter === 'IN_PROGRESS' ? 'bg-sky-700 text-sky-100' : 'bg-slate-100 text-slate-700'
             }`}>
               {chipCounts.inProgress}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setPillFilter(pillFilter === 'AWAITING_APPROVAL' ? 'ALL' : 'AWAITING_APPROVAL'); setStatusFilter(''); setFieldFilter(''); }}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              pillFilter === 'AWAITING_APPROVAL'
+                ? 'bg-purple-600 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            Chờ phê duyệt
+            <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
+              pillFilter === 'AWAITING_APPROVAL' ? 'bg-purple-700 text-purple-100' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {chipCounts.awaitingApproval}
             </span>
           </button>
 
           {chipCounts.overdue > 0 && (
             <button
               type="button"
-              onClick={() => { setStatusFilter(statusFilter === 'AWAITING_RESULTS' ? '' : 'AWAITING_RESULTS'); }}
+              onClick={() => { setPillFilter(pillFilter === 'OVERDUE' ? 'ALL' : 'OVERDUE'); setStatusFilter(''); setFieldFilter(''); }}
               className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
-                statusFilter === 'AWAITING_RESULTS'
+                pillFilter === 'OVERDUE'
                   ? 'bg-rose-600 text-white shadow-xs'
                   : 'bg-white border border-rose-200 text-rose-700 hover:border-rose-300'
               }`}
@@ -774,16 +993,16 @@ function ProposalView({
 
           <button
             type="button"
-            onClick={() => { setFieldFilter(fieldFilter === 'QC4' ? '' : 'QC4'); }}
+            onClick={() => { setPillFilter(pillFilter === 'QC4' ? 'ALL' : 'QC4'); setStatusFilter(''); setFieldFilter(''); }}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
-              fieldFilter === 'QC4'
+              pillFilter === 'QC4'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
             }`}
           >
             QC4
             <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
-              fieldFilter === 'QC4' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-100 text-slate-700'
+              pillFilter === 'QC4' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-100 text-slate-700'
             }`}>
               {chipCounts.qc4}
             </span>
@@ -791,16 +1010,16 @@ function ProposalView({
 
           <button
             type="button"
-            onClick={() => { setFieldFilter(fieldFilter === 'QC9' ? '' : 'QC9'); }}
+            onClick={() => { setPillFilter(pillFilter === 'QC9' ? 'ALL' : 'QC9'); setStatusFilter(''); setFieldFilter(''); }}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 ${
-              fieldFilter === 'QC9'
+              pillFilter === 'QC9'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
             }`}
           >
             QC9
             <span className={`rounded px-1.5 py-0.2 text-[10px] font-black ${
-              fieldFilter === 'QC9' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-100 text-slate-700'
+              pillFilter === 'QC9' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-100 text-slate-700'
             }`}>
               {chipCounts.qc9}
             </span>
@@ -1011,14 +1230,38 @@ function ProposalView({
             <caption className="sr-only">Danh sách Đề nghị PCN và hồ sơ liên kết</caption>
             <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-wide text-slate-500">
               <tr>
-                <th scope="col" className="sticky left-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-3">Mã Đề nghị</th>
-                <th scope="col" className="border-b border-slate-200 px-3 py-3">Mã hồ sơ</th>
-                <th scope="col" className="border-b border-slate-200 px-3 py-3">Trạng thái</th>
-                <th scope="col" className="border-b border-slate-200 px-3 py-3">Khách hàng</th>
-                <th scope="col" className="border-b border-slate-200 px-3 py-3">Sản phẩm / kiểu loại</th>
-                <th scope="col" className="border-b border-slate-200 px-3 py-3">Lĩnh vực</th>
-                <th scope="col" className="border-b border-slate-200 px-3 py-3">Tiếp nhận</th>
-                <th scope="col" className="border-b border-slate-200 px-3 py-3 text-right">Thao tác</th>
+                <th scope="col" className="sticky left-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <span className="block font-black text-slate-700">Mã hồ sơ</span>
+                  <span className="block text-[9px] font-semibold text-slate-400 normal-case">Mã Đề nghị</span>
+                </th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-2.5">
+                  <span className="block font-black text-slate-700">Khách hàng</span>
+                  <span className="block text-[9px] font-semibold text-slate-400 normal-case">Liên hệ / MST</span>
+                </th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-2.5">
+                  <span className="block font-black text-slate-700">Loại hồ sơ</span>
+                  <span className="block text-[9px] font-semibold text-slate-400 normal-case">Lĩnh vực / QC</span>
+                </th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-2.5">
+                  <span className="block font-black text-slate-700">Giai đoạn</span>
+                  <span className="block text-[9px] font-semibold text-slate-400 normal-case">Bước tiếp theo</span>
+                </th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-2.5">
+                  <span className="block font-black text-slate-700">Tiến độ</span>
+                  <span className="block text-[9px] font-semibold text-slate-400 normal-case">Tài liệu</span>
+                </th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-2.5">
+                  <span className="block font-black text-slate-700">Phụ trách</span>
+                  <span className="block text-[9px] font-semibold text-slate-400 normal-case">Chủ hồ sơ</span>
+                </th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-2.5">
+                  <span className="block font-black text-slate-700">Trạng thái</span>
+                  <span className="block text-[9px] font-semibold text-slate-400 normal-case">Hạn SLA</span>
+                </th>
+                <th scope="col" className="border-b border-slate-200 px-3 py-2.5 text-right">
+                  <span className="block font-black text-slate-700">Thao tác</span>
+                  <span className="block text-[9px] font-semibold text-slate-400 normal-case">Xử lý / Xem</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1030,6 +1273,8 @@ function ProposalView({
                     proposal={proposal}
                     dossier={dossier}
                     canEdit={canEdit}
+                    documentRequirements={documentRequirements}
+                    dossierDocuments={dossierDocuments}
                     onOpenDossier={() => onOpenDossier(dossier)}
                     onEdit={() => openEdit(proposal)}
                   />

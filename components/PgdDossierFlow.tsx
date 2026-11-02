@@ -254,7 +254,7 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
         <div className="h-full rounded-full bg-blue-600 transition-[width] duration-200" style={{ width: `${Math.round((resolvedSteps / PGD_DOSSIER_FLOW_STEPS.length) * 100)}%` }} />
       </div>
 
-      <div ref={scrollContainerRef} className="mobile-scroll-x min-w-0 overflow-x-auto pb-1" data-testid="pgd-dossier-flow-scroll">
+      <div ref={scrollContainerRef} className="mobile-scroll-x min-w-0 overflow-x-auto scroll-smooth touch-pan-x pb-1" data-testid="pgd-dossier-flow-scroll">
         <div className="flex min-w-max items-stretch gap-2" role="tablist" aria-label="Các việc xử lý hồ sơ PGD">
           {PGD_DOSSIER_FLOW_STEPS.map((step, index) => {
             const stepStatus = currentStatusForStep(index + 1, status, evidence);
@@ -283,17 +283,37 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
                   title={disabled ? `${step.label} · Chưa đến bước` : step.description}
                   onClick={() => onSelectStep(step.id)}
                   onKeyDown={(event) => handleKeyDown(event, index)}
-                  className={`mobile-touch-target group flex min-h-[106px] w-[218px] flex-col justify-between rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-100/80 text-slate-400 opacity-70' : selected ? 'border-blue-500 bg-white shadow-sm ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30'}`}
+                  className={`mobile-touch-target group flex min-w-[10.5rem] sm:min-w-[12rem] items-center gap-2 rounded-lg border px-2.5 py-2 text-left shadow-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+                    disabled
+                      ? 'cursor-not-allowed border-slate-200 bg-slate-100/80 text-slate-400 opacity-70'
+                      : selected
+                      ? 'border-blue-500 bg-blue-50/90 text-blue-950 font-black shadow-md ring-2 ring-blue-500 ring-offset-1'
+                      : stepStatus === 'COMPLETED'
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30 text-slate-700'
+                  }`}
                 >
-                  <span className="flex items-start justify-between gap-2">
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm font-bold ${typeMeta.className}`}>{index + 1}</span>
-                    <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-bold tracking-wide ${typeMeta.className}`}><TypeIcon size={13} aria-hidden="true" />{typeMeta.label}</span>
+                  <span
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-black ${
+                      selected
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : stepStatus === 'COMPLETED'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-white text-slate-700 ring-1 ring-current/20'
+                    }`}
+                  >
+                    {index + 1}
                   </span>
-                  <span className="mt-2 line-clamp-2 text-sm font-semibold text-slate-900">{step.label}</span>
-                  <span className="mt-2 flex items-center justify-between gap-2 text-xs">
-                    <span className="truncate text-slate-500">{stepProgress(step, evidence, status)}</span>
-                    <span id={`pgd-step-status-${step.id}`} className={`inline-flex shrink-0 items-center gap-1 font-medium ${statusMeta.className}`}><StatusIcon size={14} aria-hidden="true" />{displayedStatusLabel}</span>
-                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`truncate text-[11px] ${selected ? 'font-black text-blue-950' : 'font-bold text-slate-900'}`}>{step.label}</span>
+                      <span className={`inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold ${typeMeta.className}`}><TypeIcon size={10} aria-hidden="true" />{typeMeta.label}</span>
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between gap-1 text-[10px]">
+                      <span className="truncate text-slate-500">{stepProgress(step, evidence, status)}</span>
+                      <span id={`pgd-step-status-${step.id}`} className={`inline-flex shrink-0 items-center gap-0.5 font-medium ${statusMeta.className}`}><StatusIcon size={11} aria-hidden="true" />{displayedStatusLabel}</span>
+                    </div>
+                  </div>
                 </button>
                 {index < PGD_DOSSIER_FLOW_STEPS.length - 1 ? <ChevronRight className="shrink-0 text-slate-300" size={18} aria-hidden="true" /> : null}
               </div>

@@ -6,6 +6,7 @@ import {
   Award,
   Bot,
   Building2,
+  CheckSquare,
   ChevronRight,
   ClipboardCheck,
   ClipboardList,
@@ -15,6 +16,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  ShieldCheck,
   User,
   X,
 } from 'lucide-react';
@@ -26,7 +28,7 @@ import type { PcnSection } from '../utils/pcnNavigation';
 import { canViewSystemSettings } from '../utils/systemSettingsPolicy';
 import { isPcnSystemManager } from '../utils/pcnRbac';
 
-export type PgdcnSharedSection = 'department-dashboard' | 'my-work' | 'customers' | 'assistant' | 'activityLogs' | 'system-settings' | 'dossier-templates' | 'document-drafting';
+export type PgdcnSharedSection = 'department-dashboard' | 'my-work' | 'customers' | 'assistant' | 'activityLogs' | 'system-settings' | 'rbac' | 'dossier-templates' | 'document-drafting';
 export type PgdcnDomain = 'department' | 'PCN' | 'PGD';
 export type PgdcnNavigationTarget =
   | { domain: 'department'; section: PgdcnSharedSection }
@@ -183,54 +185,68 @@ export default function PgdcnSidebar({
       </div>
 
       <nav className="mobile-scroll-y min-h-0 flex-1 space-y-1.5 overflow-y-auto px-2 py-2" aria-label="Điều hướng PGDCN">
-        <section className="space-y-0.5" aria-label="Dùng chung">
-          {expanded && <p className="mb-1 px-2 text-[11px] font-semibold text-slate-400">Dùng chung</p>}
+        {/* Nhóm 1: Công việc */}
+        <section className="space-y-0.5" aria-label="Công việc">
+          {expanded && <p className="mb-1 px-2 text-[11px] font-semibold text-slate-400">Công việc</p>}
           {renderSharedButton('Tổng quan', LayoutDashboard, { domain: 'department', section: 'department-dashboard' })}
+          {renderSharedButton('Việc của tôi', CheckSquare, { domain: 'department', section: 'my-work' })}
           {renderSharedButton('Khách hàng', Building2, { domain: 'department', section: 'customers' })}
           {renderSharedButton('Trợ lý AI', Bot, { domain: 'department', section: 'assistant' })}
-          {renderSharedButton('Nhật ký hệ thống', Activity, { domain: 'department', section: 'activityLogs' })}
-          {renderSharedButton('Soạn thảo văn bản', FileEdit, { domain: 'department', section: 'document-drafting' })}
         </section>
 
-        {hasPcn && (
-          <section className="space-y-0.5" aria-label="Chứng nhận PCN">
-            {expanded && (
-              <button type="button" onClick={() => setPcnOpen((open) => !open)} aria-expanded={pcnOpen} aria-controls="pgdcn-pcn-navigation" title="Chứng nhận PCN" className={`mobile-touch-target flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 lg:min-h-9 ${activeTarget.domain === 'PCN' ? 'text-emerald-200' : 'text-slate-400 hover:bg-slate-800/70 hover:text-slate-100'}`}>
-                <span className="min-w-0 flex-1 whitespace-normal break-words leading-4">Chứng nhận · PCN</span>
-                <ChevronRight aria-hidden="true" size={14} className={`shrink-0 transition-transform motion-reduce:transition-none ${pcnOpen ? 'rotate-90' : ''}`} />
-              </button>
+        {/* Nhóm 2: Nghiệp vụ */}
+        {(hasPcn || hasPgd) && (
+          <div className="space-y-1" aria-label="Nghiệp vụ">
+            {expanded && <p className="mb-1 px-2 pt-1 text-[11px] font-semibold text-slate-400">Nghiệp vụ</p>}
+
+            {hasPcn && (
+              <section className="space-y-0.5" aria-label="Chứng nhận PCN">
+                {expanded && (
+                  <button type="button" onClick={() => setPcnOpen((open) => !open)} aria-expanded={pcnOpen} aria-controls="pgdcn-pcn-navigation" title="Chứng nhận PCN" className={`mobile-touch-target flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 lg:min-h-9 ${activeTarget.domain === 'PCN' ? 'text-emerald-200' : 'text-slate-400 hover:bg-slate-800/70 hover:text-slate-100'}`}>
+                    <span className="min-w-0 flex-1 whitespace-normal break-words leading-4">Chứng nhận · PCN</span>
+                    <ChevronRight aria-hidden="true" size={14} className={`shrink-0 transition-transform motion-reduce:transition-none ${pcnOpen ? 'rotate-90' : ''}`} />
+                  </button>
+                )}
+                <div id="pgdcn-pcn-navigation" hidden={expanded && !pcnOpen} className={expanded ? 'ml-2 space-y-0.5 border-l border-slate-800 pl-2' : 'space-y-0.5'}>
+                  {renderDomainButton('Chứng nhận', Award, { domain: 'PCN', section: 'proposals' }, 'pcn')}
+                  {renderDomainButton(hasBothScopes ? 'Sổ dữ liệu PCN' : 'Sổ dữ liệu', ClipboardList, { domain: 'PCN', section: 'operations' }, 'pcn')}
+                  {renderDomainButton(hasBothScopes ? 'Sổ quản lý mẫu PCN' : 'Sổ quản lý mẫu', FlaskConical, { domain: 'PCN', section: 'lab-operations' }, 'pcn')}
+                </div>
+              </section>
             )}
-            <div id="pgdcn-pcn-navigation" hidden={expanded && !pcnOpen} className={expanded ? 'ml-2 space-y-0.5 border-l border-slate-800 pl-2' : 'space-y-0.5'}>
-              {renderDomainButton('Chứng nhận', Award, { domain: 'PCN', section: 'proposals' }, 'pcn')}
-              {renderDomainButton(hasBothScopes ? 'Sổ dữ liệu PCN' : 'Sổ dữ liệu', ClipboardList, { domain: 'PCN', section: 'operations' }, 'pcn')}
-              {renderDomainButton(hasBothScopes ? 'Sổ quản lý mẫu PCN' : 'Sổ quản lý mẫu', FlaskConical, { domain: 'PCN', section: 'lab-operations' }, 'pcn')}
-            </div>
-          </section>
+
+            {hasPgd && (
+              <section className="space-y-0.5" aria-label="Giám định PGD">
+                {expanded && (
+                  <button type="button" onClick={() => setPgdOpen((open) => !open)} aria-expanded={pgdOpen} aria-controls="pgdcn-pgd-navigation" title="Giám định PGD" className={`mobile-touch-target flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 lg:min-h-9 ${activeTarget.domain === 'PGD' ? 'text-blue-200' : 'text-slate-400 hover:bg-slate-800/70 hover:text-slate-100'}`}>
+                    <span className="min-w-0 flex-1 whitespace-normal break-words leading-4">Giám định · PGD</span>
+                    <ChevronRight aria-hidden="true" size={14} className={`shrink-0 transition-transform motion-reduce:transition-none ${pgdOpen ? 'rotate-90' : ''}`} />
+                  </button>
+                )}
+                <div id="pgdcn-pgd-navigation" hidden={expanded && !pgdOpen} className={expanded ? 'ml-2 space-y-0.5 border-l border-slate-800 pl-2' : 'space-y-0.5'}>
+                  {renderDomainButton('Giám định', ClipboardCheck, { domain: 'PGD', section: 'requests' }, 'pgd')}
+                  {renderDomainButton(hasBothScopes ? 'Sổ dữ liệu PGD' : 'Sổ dữ liệu', ClipboardCheck, { domain: 'PGD', section: 'operations' }, 'pgd')}
+                  {renderDomainButton(hasBothScopes ? 'Sổ quản lý mẫu PGD' : 'Sổ quản lý mẫu', FlaskConical, { domain: 'PGD', section: 'sample-operations' }, 'pgd')}
+                </div>
+              </section>
+            )}
+          </div>
         )}
 
-        {hasPgd && (
-          <section className="space-y-0.5" aria-label="Giám định PGD">
-            {expanded && (
-              <button type="button" onClick={() => setPgdOpen((open) => !open)} aria-expanded={pgdOpen} aria-controls="pgdcn-pgd-navigation" title="Giám định PGD" className={`mobile-touch-target flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 lg:min-h-9 ${activeTarget.domain === 'PGD' ? 'text-blue-200' : 'text-slate-400 hover:bg-slate-800/70 hover:text-slate-100'}`}>
-                <span className="min-w-0 flex-1 whitespace-normal break-words leading-4">Giám định · PGD</span>
-                <ChevronRight aria-hidden="true" size={14} className={`shrink-0 transition-transform motion-reduce:transition-none ${pgdOpen ? 'rotate-90' : ''}`} />
-              </button>
-            )}
-            <div id="pgdcn-pgd-navigation" hidden={expanded && !pgdOpen} className={expanded ? 'ml-2 space-y-0.5 border-l border-slate-800 pl-2' : 'space-y-0.5'}>
-              {renderDomainButton('Giám định', ClipboardCheck, { domain: 'PGD', section: 'requests' }, 'pgd')}
-              {renderDomainButton(hasBothScopes ? 'Sổ dữ liệu PGD' : 'Sổ dữ liệu', ClipboardCheck, { domain: 'PGD', section: 'operations' }, 'pgd')}
-              {renderDomainButton(hasBothScopes ? 'Sổ quản lý mẫu PGD' : 'Sổ quản lý mẫu', FlaskConical, { domain: 'PGD', section: 'sample-operations' }, 'pgd')}
-            </div>
-          </section>
-        )}
+        {/* Nhóm 3: Tài liệu */}
+        <section className="space-y-0.5" aria-label="Tài liệu">
+          {expanded && <p className="mb-1 px-2 pt-1 text-[11px] font-semibold text-slate-400">Tài liệu</p>}
+          {renderSharedButton('Soạn thảo văn bản', FileEdit, { domain: 'department', section: 'document-drafting' })}
+          {canManageDossierTemplates && renderSharedButton('Hồ sơ mẫu', GitBranch, { domain: 'department', section: 'dossier-templates' })}
+        </section>
 
-        {(canManageDossierTemplates || canManageSettings) && (
-          <section className="space-y-0.5" aria-label="Quản trị">
-            {expanded && <p className="mb-1 px-2 pt-1 text-[11px] font-semibold text-slate-400">Quản trị</p>}
-            {canManageDossierTemplates && renderSharedButton('Hồ sơ mẫu', GitBranch, { domain: 'department', section: 'dossier-templates' })}
-            {canManageSettings && renderSharedButton('Cài đặt hệ thống', Settings, { domain: 'department', section: 'system-settings' })}
-          </section>
-        )}
+        {/* Nhóm 4: Quản trị */}
+        <section className="space-y-0.5" aria-label="Quản trị">
+          {expanded && <p className="mb-1 px-2 pt-1 text-[11px] font-semibold text-slate-400">Quản trị</p>}
+          {canManageSettings && renderSharedButton('Cài đặt hệ thống', Settings, { domain: 'department', section: 'system-settings' })}
+          {canManageSettings && renderSharedButton('Phân quyền RBAC', ShieldCheck, { domain: 'department', section: 'rbac' })}
+          {renderSharedButton('Nhật ký hệ thống', Activity, { domain: 'department', section: 'activityLogs' })}
+        </section>
       </nav>
 
       <div className="shrink-0 space-y-1.5 border-t border-slate-800 bg-slate-950/95 p-2.5">
