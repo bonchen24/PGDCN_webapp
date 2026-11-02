@@ -21,8 +21,8 @@ import { stablePcnMutationId } from '@/lib/server/pcn-signer-delegations';
 import { formatPcnIntakeValidationIssues, validatePcnProposalIntake } from '@/utils/pcnIntakePolicy';
 import { formatPcnDossierCode, formatPcnProposalCode, getPcnVietnamDateKey } from '@/utils/pcnIdentifier';
 import { selectPcnPublishedWorkflowTemplate, snapshotPcnWorkflowTemplate } from '@/utils/pcnWorkflowTemplate';
-import { buildPcnDossierChecklist, getPcnDocumentRequirements } from '@/utils/pcnDossierDocuments';
-import { buildPcnWorkflowTaskSeed } from '@/utils/pcnWorkflowRuntime';
+import { buildPcnDossierChecklist, getPcnDocumentRequirements, isPcnDossierDocumentCurrentAndConfirmed } from '@/utils/pcnDossierDocuments';
+import { buildPcnWorkflowTaskSeed, getPcnWorkflowResultOutcome } from '@/utils/pcnWorkflowRuntime';
 import { getPcnDossierOperatorDenial, getPcnOwnerAssignmentAuthorityDenial, getPcnDossierAssignmentDenial } from '@/utils/pcnDossierAssignment';
 import { getPcnDossierDateDenial } from '@/utils/pcnDossierDate';
 import { getPcnOperationalFormKind, normalizePcnOperationalFormsPatch } from '@/utils/pcnOperationalForms';
@@ -123,8 +123,8 @@ export async function assertPcnTechnicalReviewSubmissionReady(client: any, dossi
      WHERE collection_name = 'returnedResults' AND data->>'dossierId' = $1`,
     [dossier.id],
   );
-  const hasConfirmedReturnedScan = returnedResultResult.rows.some((row: any) => {
-    const result = mapDocumentRow(row) as ReturnedTestResult;
+  const returnedResults = returnedResultResult.rows.map((row: any) => mapDocumentRow(row) as ReturnedTestResult);
+  const hasConfirmedReturnedScan = returnedResults.some((result) => {
     return Boolean(result.fileAssetId && result.outcome !== 'PENDING' && result.isOfficial !== false);
   });
   const resolvedRequirementIds = hasConfirmedReturnedScan
@@ -138,6 +138,7 @@ export async function assertPcnTechnicalReviewSubmissionReady(client: any, dossi
     requirements: configuredRequirements.length > 0 ? configuredRequirements : undefined,
     documents: documentResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierDocument),
     documentWaivers: dossier.documentWaivers,
+    resultOutcome: getPcnWorkflowResultOutcome(returnedResults),
     resolvedRequirementIds,
   });
   if (stageGateDenial) throw Object.assign(new Error(stageGateDenial), { statusCode: 409 });
@@ -146,7 +147,7 @@ export async function assertPcnTechnicalReviewSubmissionReady(client: any, dossi
   const currentDocuments = documentResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierDocument);
   const missingDraft = finalRequirements.find((requirement) => {
     const document = currentDocuments.find((item) => item.requirementId === requirement.id);
-    return !(document?.status === 'PRESENT' && document.currentVersionId && document.versions.some((version) => version.assetId === document.currentVersionId));
+    return !isPcnDossierDocumentCurrentAndConfirmed(document);
   });
   if (missingDraft) throw Object.assign(new Error(`Phải có bản dự thảo ${missingDraft.code === 'CERTIFICATE' ? 'GCN' : 'QĐ'} trước khi trình bước 5.`), { statusCode: 409 });
 }

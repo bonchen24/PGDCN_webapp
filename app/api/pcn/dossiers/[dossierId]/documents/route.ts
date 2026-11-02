@@ -102,6 +102,7 @@ export async function POST(
       const requirementDefinition = requirement.rows[0]
         ? mapDocumentRow(requirement.rows[0]) as PcnDocumentRequirement
         : getPcnDossierRequirementsWithCustom(dossier).find((item) => item.id === requirementId);
+      const isCustomRequirement = Boolean(dossier.workflowSnapshot?.requirementDefinitions?.some((item) => item.domain === 'PCN' && item.id === requirementId));
       const requirementData: Partial<PcnDocumentRequirement> = requirementDefinition || {};
       const requirementFieldCode = String(requirementData.fieldCode || '').trim().toUpperCase();
       if ((!requirement.rows.length && !dossier.workflowSnapshot?.requirementDefinitions?.some((item) => item.id === requirementId)) || requirementData.active === false || !requirementFieldCode || !dossierFieldCodes.includes(requirementFieldCode)) {
@@ -175,6 +176,7 @@ export async function POST(
           currentVersionId: assetId,
           versions: [...previousVersions, version],
           status: 'PRESENT',
+          ...(isCustomRequirement ? { lifecycleStatus: 'UPLOADED' as const } : {}),
           createdAt: previous.createdAt || now,
           updatedAt: now,
         };

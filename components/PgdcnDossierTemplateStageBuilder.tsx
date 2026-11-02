@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { DEFAULT_DOSSIER_TEMPLATE_STAGES, type DossierTemplateEditorModel, validateDossierTemplateRequirementDefinition } from '../utils/pgdcnDossierTemplate.ts';
+import { DEFAULT_DOSSIER_TEMPLATE_STAGES, setDossierTemplateStageRequirement, type DossierTemplateEditorModel, validateDossierTemplateRequirementDefinition } from '../utils/pgdcnDossierTemplate.ts';
 import type { DossierTemplateRequirementDefinition, DossierTemplateRequirementLevel, DossierTemplateRequirementSource } from '../types.ts';
 import type { DossierTemplateRequirementOption } from './PgdcnDossierTemplateInspector.tsx';
 
@@ -50,28 +50,22 @@ export default function PgdcnDossierTemplateStageBuilder(props: PgdcnDossierTemp
   const nodesFor = (stageId: string) => props.model.nodes.filter((node) => node.stageId === stageId);
   const requirementIdsFor = (stageId: string) => Array.from(new Set([
     ...(stages.find((stage) => stage.id === stageId)?.requirementIds || []),
-    ...nodesFor(stageId).flatMap((node) => node.requirementRefs),
   ]));
   const change = (next: DossierTemplateEditorModel) => props.onChange(next);
 
   const setRequirement = (stageId: string, requirementId: string, checked: boolean) => {
-    const requirementIds = new Set(requirementIdsFor(stageId));
-    if (checked) requirementIds.add(requirementId);
-    else requirementIds.delete(requirementId);
-    const nextStages = stages.map((stage) => stage.id === stageId ? { ...stage, requirementIds: [...requirementIds] } : stage);
-    const nextNodes = checked ? props.model.nodes : props.model.nodes.map((node) => node.stageId === stageId
-      ? { ...node, requirementRefs: node.requirementRefs.filter((id) => id !== requirementId) }
-      : node);
+    const nextModel = setDossierTemplateStageRequirement(props.model, stageId, requirementId, checked);
+    const nextNodes = props.model.nodes;
     const option = props.requirements.find((item) => item.id === requirementId);
     const existingDefinitions = props.model.requirementDefinitions || [];
-    const referencedElsewhere = nextStages.some((stage) => (stage.requirementIds || []).includes(requirementId))
+    const referencedElsewhere = nextModel.stages?.some((stage) => (stage.requirementIds || []).includes(requirementId))
       || nextNodes.some((node) => node.requirementRefs.includes(requirementId));
     const nextDefinitions = checked && option?.definition && !existingDefinitions.some((item) => item.id === requirementId)
       ? [...existingDefinitions, option.definition]
       : checked || referencedElsewhere
         ? existingDefinitions
         : existingDefinitions.filter((item) => item.id !== requirementId);
-    change({ ...props.model, stages: nextStages, nodes: nextNodes, requirementDefinitions: nextDefinitions });
+    change({ ...nextModel, nodes: nextNodes, requirementDefinitions: nextDefinitions });
   };
 
   const addRequirement = (stageId: string) => {
