@@ -18,13 +18,16 @@ import type { PcnWorkflowNodeDefinition } from '../types.ts';
 export type PcnDossierNodeWorkStatus =
   | 'PRESENT'
   | 'MISSING'
+  | 'UPLOADED'
+  | 'GENERATED'
+  | 'CONFIRMED'
   | 'WAIVED'
   | 'IN_PROGRESS'
   | 'COMPLETED'
   | 'ATTENTION'
   | 'NOT_APPLICABLE';
 
-export type PcnDossierNodeDocumentAction = 'VIEW' | 'REPLACE' | 'REMOVE_CURRENT' | 'UPLOAD' | 'CREATE_FROM_FORM' | 'WAIVE' | 'CLEAR_WAIVER';
+export type PcnDossierNodeDocumentAction = 'VIEW' | 'REPLACE' | 'REMOVE_CURRENT' | 'UPLOAD' | 'CREATE_FROM_FORM' | 'CONFIRM' | 'WAIVE' | 'CLEAR_WAIVER';
 
 /** Generated forms with a deterministic checklist counterpart for node work. */
 const NODE_FORM_KIND_BY_REQUIREMENT_CODE: Readonly<Partial<Record<string, PcnGeneratedDocumentKind>>> = {
@@ -86,7 +89,7 @@ export interface PcnDossierNodeDocumentItem {
   code: string;
   label: string;
   required: boolean;
-  status: Extract<PcnDossierNodeWorkStatus, 'PRESENT' | 'MISSING' | 'WAIVED'>;
+  status: Extract<PcnDossierNodeWorkStatus, 'PRESENT' | 'MISSING' | 'UPLOADED' | 'GENERATED' | 'CONFIRMED' | 'WAIVED'>;
   currentVersionId?: string;
   actions: PcnDossierNodeDocumentAction[];
   waiverReason?: string;
@@ -112,7 +115,7 @@ export interface PcnDossierNodeWorkProjectionInput {
   node: Pick<PcnWorkflowNodeDefinition, 'id' | 'label' | 'requirementIds'> & { actionKey?: string; status?: PcnWorkflowRuntimeNode['status']; cycleNo?: number; blockedReason?: PcnWorkflowRuntimeNode['blockedReason'] };
   runtimeNode?: PcnWorkflowRuntimeNode;
   requirements: readonly PcnDocumentRequirement[];
-  documents?: readonly Pick<PcnDossierDocument, 'requirementId' | 'status' | 'currentVersionId'>[];
+  documents?: readonly Pick<PcnDossierDocument, 'requirementId' | 'status' | 'lifecycleStatus' | 'currentVersionId'>[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver | undefined>;
   businessFacts?: readonly PcnDossierNodeBusinessFact[];
 }
@@ -180,7 +183,7 @@ export function buildPcnDossierNodeBusinessFacts(input: PcnDossierNodeBusinessFa
 
 function documentItem(
   requirement: PcnDocumentRequirement,
-  document: Pick<PcnDossierDocument, 'requirementId' | 'status' | 'currentVersionId'> | undefined,
+  document: Pick<PcnDossierDocument, 'requirementId' | 'status' | 'lifecycleStatus' | 'currentVersionId'> | undefined,
   waiver: PcnDossierDocumentWaiver | undefined,
 ): PcnDossierNodeDocumentItem {
   if (document?.status === 'PRESENT') {
@@ -190,9 +193,9 @@ function documentItem(
       code: requirement.code,
       label: requirement.name,
       required: requirement.required,
-      status: 'PRESENT',
+      status: document.lifecycleStatus || 'PRESENT',
       ...(document.currentVersionId ? { currentVersionId: document.currentVersionId } : {}),
-      actions: ['VIEW', 'REPLACE', 'REMOVE_CURRENT'],
+      actions: ['VIEW', ...(document.lifecycleStatus === 'UPLOADED' || document.lifecycleStatus === 'GENERATED' ? ['CONFIRM' as const] : []), 'REPLACE', 'REMOVE_CURRENT'],
     };
   }
   if (waiver?.reason?.trim()) {
@@ -232,8 +235,10 @@ export function buildPcnDossierNodeWorkProjection(input: PcnDossierNodeWorkProje
     .filter((requirement): requirement is PcnDocumentRequirement => Boolean(requirement))
     .map((requirement) => documentItem(requirement, documentByRequirementId.get(requirement.id), waivers[requirement.id]));
   const businessFacts = [...(input.businessFacts || [])];
-  const unresolvedRequiredCount = documents.filter((item) => item.required && item.status === 'MISSING').length;
+  const unresolvedRequiredCount = documents.filter((item) => item.required && !['PRESENT', 'CONFIRMED', 'WAIVED'].includes(item.status)).length;
   const suggestions = [
+    ...documents.filter((item) => item.required && item.status === 'UPLOADED').map((item) => `Xác nhận tệp ${item.label}`),
+    ...documents.filter((item) => item.required && item.status === 'GENERATED').map((item) => `Rà soát và xác nhận bản sinh ${item.label}`),
     ...documents.filter((item) => item.required && item.status === 'MISSING').map((item) => `Bổ sung ${item.label}`),
     ...businessFacts
       .filter((item) => item.status !== 'COMPLETED' && item.status !== 'NOT_APPLICABLE')

@@ -26,7 +26,7 @@ export interface PcnWorkflowConditionContext {
 
 export interface PcnWorkflowConditionContextInput {
   workflow: PcnWorkflowSnapshot;
-  documents: readonly Pick<PcnDossierDocument, 'requirementId' | 'status'>[];
+  documents: readonly Pick<PcnDossierDocument, 'requirementId' | 'status' | 'lifecycleStatus'>[];
   requiredRequirementIds?: readonly string[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver | undefined>;
   results?: readonly Pick<ReturnedTestResult, 'id' | 'dossierId' | 'labRequestId' | 'round' | 'outcome' | 'receivedAt' | 'updatedAt' | 'createdAt'>[];
@@ -81,6 +81,15 @@ function recordTimestamp(record: { receivedAt?: string; updatedAt?: string; crea
   return String(record.receivedAt || record.updatedAt || record.createdAt || '');
 }
 
+export function getPcnWorkflowResultOutcome(
+  results: readonly Pick<ReturnedTestResult, 'id' | 'outcome' | 'receivedAt' | 'updatedAt' | 'createdAt'>[],
+): string | undefined {
+  const latestResult = [...results]
+    .sort((left, right) => recordTimestamp(right).localeCompare(recordTimestamp(left)) || String(right.id).localeCompare(String(left.id)))
+    .at(0);
+  return latestResult?.outcome;
+}
+
 function isTerminal(status: PcnDossierWorkflowTask['status'] | undefined): boolean {
   return status === 'COMPLETED' || status === 'SKIPPED';
 }
@@ -115,18 +124,18 @@ function getOutgoing(workflow: PcnWorkflowSnapshot, nodeId: string) {
 
 function requirementIsResolved(
   requirementId: string,
-  documents: readonly Pick<PcnDossierDocument, 'requirementId' | 'status'>[],
+  documents: readonly Pick<PcnDossierDocument, 'requirementId' | 'status' | 'lifecycleStatus'>[],
   waivers: Record<string, PcnDossierDocumentWaiver | undefined>,
 ): boolean {
   const document = documents.find((item) => item.requirementId === requirementId);
-  if (document?.status === 'PRESENT') return true;
+  if (document?.status === 'PRESENT' && (document.lifecycleStatus === undefined || document.lifecycleStatus === 'CONFIRMED')) return true;
   const waiver = waivers[requirementId];
   return Boolean(waiver?.reason?.trim());
 }
 
 function nodeDocumentsResolved(
   node: PcnWorkflowNodeDefinition,
-  documents: readonly Pick<PcnDossierDocument, 'requirementId' | 'status'>[],
+  documents: readonly Pick<PcnDossierDocument, 'requirementId' | 'status' | 'lifecycleStatus'>[],
   waivers: Record<string, PcnDossierDocumentWaiver | undefined>,
   requiredRequirementIds?: ReadonlySet<string>,
 ): boolean {
@@ -142,11 +151,11 @@ export function buildPcnWorkflowConditionContext(input: PcnWorkflowConditionCont
     .flatMap((node) => node.requirementIds.filter((requirementId) => !requiredRequirementIds || requiredRequirementIds.has(requirementId))));
   const waivers = input.documentWaivers || {};
   const results = input.results || [];
-  const latestResult = [...results].sort((left, right) => recordTimestamp(right).localeCompare(recordTimestamp(left)) || String(right.id).localeCompare(String(left.id))).at(0);
+  const resultOutcome = getPcnWorkflowResultOutcome(results);
   return {
     requiredDocumentsComplete: [...requirementIds].every((requirementId) => requirementIsResolved(requirementId, input.documents, waivers)),
     anyResultReturned: results.length > 0,
-    ...(latestResult?.outcome ? { resultOutcome: latestResult.outcome } : {}),
+    ...(resultOutcome ? { resultOutcome } : {}),
     approvalReturned: Boolean(input.approvalSteps?.some((step) => step.status === 'RETURNED')),
     ...(input.fieldCodes?.length ? { fieldCodes: input.fieldCodes.map((code) => String(code).trim().toUpperCase()).filter(Boolean) } : {}),
     ...(input.method ? { method: String(input.method).trim().toUpperCase() } : {}),
@@ -261,7 +270,7 @@ export function getPcnWorkflowFocusNode(
 export function projectPcnWorkflowRuntime(input: {
   workflow: PcnWorkflowSnapshot;
   tasks: readonly PcnDossierWorkflowTask[];
-  documents: readonly Pick<PcnDossierDocument, 'requirementId' | 'status'>[];
+  documents: readonly Pick<PcnDossierDocument, 'requirementId' | 'status' | 'lifecycleStatus'>[];
   requiredRequirementIds?: readonly string[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver | undefined>;
   conditionContext?: PcnWorkflowConditionContext;

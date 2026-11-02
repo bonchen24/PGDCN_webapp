@@ -15,6 +15,7 @@ const pgdRetire = source('../app/api/pgd/workflow-templates/[templateId]/retire/
 const pcnRevisions = source('../app/api/pcn/workflow-templates/[templateId]/revisions/route.ts');
 const pgdRevisions = source('../app/api/pgd/workflow-templates/[templateId]/revisions/route.ts');
 const pgdBootstrap = source('../app/api/pgd/bootstrap/route.ts');
+const managementView = source('../components/PgdcnDossierTemplateManagementView.tsx');
 
 test('workflow template lists isolate personal drafts by creator and show only published common templates', () => {
   for (const listRoute of [pcnList, pgdList]) {
@@ -39,10 +40,13 @@ test('template creation derives COMMON or PERSONAL scope from server authorizati
 
 test('only managers or the owner can update personal drafts and updates keep them draft', () => {
   for (const updateRoute of [pcnUpdate, pgdUpdate]) {
-    assert.match(updateRoute, /existing\.scope !== 'PERSONAL' \|\| existing\.createdBy !== actor\.username/);
+    assert.match(updateRoute, /existing\.scope === 'PERSONAL' && existing\.createdBy !== actor\.username/);
+    assert.match(updateRoute, /!manager && existing\.scope !== 'PERSONAL'/);
     assert.match(updateRoute, /next\.status = 'DRAFT'/);
     assert.match(updateRoute, /allowIncompleteDraft: true/);
   }
+  assert.match(managementView, /activeCanManage && sourceTemplate\?\.scope !== 'PERSONAL'/);
+  assert.match(managementView, /template\.scope === 'PERSONAL' && template\.createdBy !== props\.currentUser\.username/);
 });
 
 test('personal proposals cannot be published, retired or revised directly', () => {

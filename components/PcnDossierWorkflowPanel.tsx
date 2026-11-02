@@ -34,6 +34,7 @@ export interface PcnDossierWorkflowPanelProps {
   onCreateFromForm?: (requirementId: string) => void;
   onOpenDrafting?: (item: PcnDossierNodeDocumentItem, nodeId: string) => string | undefined;
   onGenerateAndAttach?: (nodeId: string, requirementId: string) => Promise<void>;
+  onConfirmDocument?: (requirementId: string) => Promise<void>;
   onRemoveCurrent?: (requirementId: string) => Promise<void>;
   onWaiveDocument?: (requirementId: string, reason: string) => Promise<void>;
   onClearDocumentWaiver?: (requirementId: string) => Promise<void>;
@@ -52,7 +53,7 @@ const CURRENT_NODE_STATUS_LABELS: Record<PcnWorkflowRuntimeNode['status'], strin
   CANCELLED: 'Đã hủy',
 };
 
-export function PcnDossierWorkflowPanel({ dossier, requirements, documents, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], workflowTasks, users: _users = [], currentUser, canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onCreateFromForm, onOpenDrafting, onGenerateAndAttach, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, initialNodeId }: PcnDossierWorkflowPanelProps) {
+export function PcnDossierWorkflowPanel({ dossier, requirements, documents, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], workflowTasks, users: _users = [], currentUser, canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onCreateFromForm, onOpenDrafting, onGenerateAndAttach, onConfirmDocument, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, initialNodeId }: PcnDossierWorkflowPanelProps) {
   const workflow = useMemo(() => getPcnWorkflowForDossier(dossier), [dossier]);
   const dossierTasks = useMemo(() => workflowTasks.filter((task) => task.dossierId === dossier.id), [dossier.id, workflowTasks]);
   const requiredRequirementIds = useMemo(() => {
@@ -155,6 +156,7 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
           onCreateFromForm={onCreateFromForm}
           onOpenDrafting={onOpenDrafting ? (item) => onOpenDrafting(item, selectedProjection.nodeId) : undefined}
           onGenerateAndAttach={(requirementId) => generateAndAttach(selectedProjection.nodeId, requirementId)}
+          onConfirmDocument={onConfirmDocument || ((requirementId) => usePcnStore.getState().confirmDossierDocument(dossier.id, requirementId))}
           onRemoveCurrent={onRemoveCurrent || ((requirementId) => usePcnStore.getState().removeCurrentDossierDocument(dossier.id, requirementId))}
           onWaive={onWaiveDocument}
           onClearWaiver={onClearDocumentWaiver}

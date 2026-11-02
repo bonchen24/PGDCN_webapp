@@ -125,7 +125,7 @@ export default function PgdcnDossierTemplateManagementView(props: PgdcnDossierTe
   const activeCanManage = domain === 'PCN' ? canManagePcn : canManagePgdDomain;
   const activeCanPropose = domain === 'PCN' ? canProposePcn(props.currentUser) : canProposePgd(props.currentUser);
   const canSaveEditor = activeCanPropose && (editorMode === 'new'
-    || activeCanManage
+    || (activeCanManage && sourceTemplate?.scope !== 'PERSONAL')
     || (editorMode === 'draft' && sourceTemplate?.scope === 'PERSONAL' && sourceTemplate.createdBy === props.currentUser.username && sourceTemplate.status === 'DRAFT'));
 
   const pcnOptions: DossierTemplateRequirementOption[] = useMemo(() => {
@@ -174,7 +174,8 @@ export default function PgdcnDossierTemplateManagementView(props: PgdcnDossierTe
     const model = isPcn ? toPcnDossierTemplateEditorModel(template as PcnWorkflowTemplate, props.pcnRequirements) : toPgdDossierTemplateEditorModel(template as PgdWorkflowTemplate, props.pgdRequirements);
     setEditorModel(model);
     setSourceTemplate(clone(template));
-    setEditorMode(template.status === 'DRAFT' ? 'draft' : template.status === 'PUBLISHED' ? 'revision' : 'view');
+    const personalProposalOwnedBySomeoneElse = template.scope === 'PERSONAL' && template.createdBy !== props.currentUser.username;
+    setEditorMode(personalProposalOwnedBySomeoneElse ? 'view' : template.status === 'DRAFT' ? 'draft' : template.status === 'PUBLISHED' ? 'revision' : 'view');
     setSaveError('');
     setEditorDirty(false);
   };

@@ -10,6 +10,7 @@ import {
   fromPcnDossierTemplateEditorModel,
   fromPgdDossierTemplateEditorModel,
   moveDossierTemplateEditorNode,
+  setDossierTemplateStageRequirement,
   toPcnDossierTemplateEditorModel,
   toPgdDossierTemplateEditorModel,
   validateDossierTemplateEditorModel,
@@ -188,4 +189,21 @@ test('PGD stage grouping preserves explicit stages and keeps unmapped legacy nod
   assert.deepEqual(model.nodes.map((node) => node.stageId), ['intake-documents', 'issuance-archive']);
   assert.deepEqual(saved.nodes.map((node) => node.id), ['legacy-work', 'legacy-end']);
   assert.deepEqual(saved.transitions, legacyTemplate.transitions);
+});
+
+test('removing a document from a stage grouping preserves execution refs and survives editor round-trip', () => {
+  const model = toPcnDossierTemplateEditorModel(pcnTemplate);
+  const originalTransitions = structuredClone(model.transitions);
+  const stageId = model.nodes.find((node) => node.requirementRefs.includes('QC4-PROPOSAL'))!.stageId!;
+
+  const regrouped = setDossierTemplateStageRequirement(model, stageId, 'QC4-PROPOSAL', false);
+  assert.deepEqual(regrouped.stages?.find((stage) => stage.id === stageId)?.requirementIds, []);
+  assert.deepEqual(regrouped.nodes.find((node) => node.id === 'start')?.requirementRefs, ['QC4-PROPOSAL']);
+  assert.deepEqual(regrouped.transitions, originalTransitions);
+
+  const saved = fromPcnDossierTemplateEditorModel(regrouped, pcnTemplate);
+  const reopened = toPcnDossierTemplateEditorModel(saved);
+  assert.deepEqual(reopened.stages?.find((stage) => stage.id === stageId)?.requirementIds, []);
+  assert.deepEqual(reopened.nodes.find((node) => node.id === 'start')?.requirementRefs, ['QC4-PROPOSAL']);
+  assert.deepEqual(reopened.transitions, originalTransitions);
 });

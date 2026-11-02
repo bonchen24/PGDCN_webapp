@@ -10,6 +10,7 @@ import type {
   PcnDocumentRequirement,
 } from '../types.ts';
 import { getPcnDossierRequirementsWithCustom } from './pcnDossierDocuments.ts';
+import { isPcnDossierDocumentCurrentAndConfirmed } from './pcnDossierDocuments.ts';
 import {
   PCN_WORKFLOW_STAGES,
   getPcnWorkflowStage,
@@ -20,8 +21,7 @@ import { getPcnDossierReopenStatus } from './pcnDossierStepAccess.ts';
 import { isPcnDocumentWaiverValid } from './pcnDocumentWaivers.ts';
 
 function hasCurrentDocument(document: PcnDossierDocument | undefined): boolean {
-  if (!document || document.status !== 'PRESENT' || !document.currentVersionId) return false;
-  return document.versions.some((version) => version.assetId === document.currentVersionId);
+  return isPcnDossierDocumentCurrentAndConfirmed(document);
 }
 
 function requirementBelongsToStage(requirement: PcnDocumentRequirement, stage: PcnWorkflowStage): boolean {
@@ -84,6 +84,7 @@ export function buildPcnDossierStageGate(input: {
   requirements?: PcnDocumentRequirement[];
   documents?: PcnDossierDocument[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver>;
+  resultOutcome?: string;
   /** Resolution supplied by a dedicated boundary, e.g. a confirmed PTN scan in ReturnedTestResult. */
   resolvedRequirementIds?: string[];
 }): PcnDossierStageGate {
@@ -100,7 +101,7 @@ export function buildPcnDossierStageGate(input: {
     };
   }
 
-  const requirements = getPcnDossierRequirementsWithCustom(input.dossier, input.requirements)
+  const requirements = getPcnDossierRequirementsWithCustom(input.dossier, input.requirements, { resultOutcome: input.resultOutcome })
     .filter((requirement) => requirementBelongsToStage(requirement, stage));
   const documentsByRequirement = new Map(
     (input.documents || [])
@@ -139,6 +140,7 @@ export function getPcnDossierStageGateDenial(input: {
   requirements?: PcnDocumentRequirement[];
   documents?: PcnDossierDocument[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver>;
+  resultOutcome?: string;
   /** Resolution supplied by a dedicated boundary, e.g. a confirmed PTN scan in ReturnedTestResult. */
   resolvedRequirementIds?: string[];
 }): string | null {

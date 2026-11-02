@@ -195,13 +195,37 @@ function stagesForTemplate(
   const stages = clone(configuredStages?.length ? [...configuredStages] : [...DEFAULT_DOSSIER_TEMPLATE_STAGES]);
   const requirementIds = new Map(stages.map((stage) => [stage.id, new Set(stage.requirementIds || [])]));
   for (const node of nodes) {
-    const stageId = stages.some((stage) => stage.id === node.stageId) ? node.stageId! : stages[0]?.id;
+    const hasKnownStage = stages.some((stage) => stage.id === node.stageId);
+    const stageId = hasKnownStage ? node.stageId! : stages[0]?.id;
     if (!stageId) continue;
+    const configuredStage = configuredStages?.find((stage) => stage.id === stageId);
+    if (hasKnownStage && Array.isArray(configuredStage?.requirementIds)) continue;
     const current = requirementIds.get(stageId) || new Set<string>();
     node.requirementRefs.forEach((id) => current.add(id));
     requirementIds.set(stageId, current);
   }
   return stages.map((stage) => ({ ...stage, requirementIds: [...(requirementIds.get(stage.id) || [])] }));
+}
+
+export function setDossierTemplateStageRequirement(
+  model: DossierTemplateEditorModel,
+  stageId: string,
+  requirementId: string,
+  included: boolean,
+): DossierTemplateEditorModel {
+  const stages = model.stages?.length
+    ? model.stages
+    : DEFAULT_DOSSIER_TEMPLATE_STAGES.map((stage) => ({ ...stage, requirementIds: [] }));
+  return {
+    ...model,
+    stages: stages.map((stage) => {
+      if (stage.id !== stageId) return stage;
+      const requirementIds = new Set(stage.requirementIds || []);
+      if (included) requirementIds.add(requirementId);
+      else requirementIds.delete(requirementId);
+      return { ...stage, requirementIds: [...requirementIds] };
+    }),
+  };
 }
 
 function editorNode(input: PcnWorkflowNodeDefinition | PgdWorkflowNodeDefinition, refs: string[]): DossierTemplateEditorNode {

@@ -11,6 +11,7 @@ import type {
   CertificationDossier,
 } from '../types.ts';
 import { PCN_CERTIFICATION_FIELD_CODES } from './pcnWorkflow.ts';
+import { evaluatePcnWorkflowCondition, type PcnWorkflowConditionContext } from './pcnWorkflowRuntime.ts';
 
 const INTAKE = ['INTAKE'] as const;
 const LAB = ['LAB_ROUTING'] as const;
@@ -151,6 +152,7 @@ export function getPcnDocumentRequirements(
 export function getPcnDossierRequirementsWithCustom(
   dossier: Pick<CertificationDossier, 'fieldCodes' | 'workflowSnapshot'>,
   requirements: PcnDocumentRequirement[] = DEFAULT_PCN_DOCUMENT_REQUIREMENTS,
+  conditionContext: Pick<PcnWorkflowConditionContext, 'resultOutcome'> = {},
 ): PcnDocumentRequirement[] {
   const fieldCode = dossier.fieldCodes[0];
   if (!fieldCode) return getPcnDocumentRequirements(dossier.fieldCodes, requirements);
@@ -176,7 +178,8 @@ export function getPcnDossierRequirementsWithCustom(
         ...(definition.description ? { description: definition.description } : {}),
         stages: mapped.stages,
         stationKeys: mapped.stationKeys,
-        required: definition.level === 'REQUIRED',
+        required: definition.level === 'REQUIRED'
+          || (definition.level === 'CONDITIONAL' && Boolean(definition.condition) && evaluatePcnWorkflowCondition(definition.condition, conditionContext)),
         active: true,
         sortOrder: 10000 + index,
         requirementLevel: definition.level,
@@ -186,11 +189,29 @@ export function getPcnDossierRequirementsWithCustom(
         multiplicity: definition.multiplicity,
       };
     });
-  return [...getPcnDocumentRequirements(dossier.fieldCodes, requirements), ...custom];
+  const customIds = new Set(custom.map((item) => item.id));
+  const standard = getPcnDocumentRequirements(dossier.fieldCodes, requirements).filter((item) => !customIds.has(item.id));
+  return [...standard, ...custom];
 }
 
 export function buildPcnDossierDocumentId(dossierId: string, requirementId: string): string {
   return `dossier-document-${dossierId}-${requirementId}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+/** Legacy PRESENT records remain accepted; custom files require an explicit confirmation. */
+export function isPcnDossierDocumentLifecycleAccepted(
+  document?: Pick<PcnDossierDocument, 'status' | 'lifecycleStatus'>,
+): boolean {
+  return document?.status === 'PRESENT'
+    && (document.lifecycleStatus === undefined || document.lifecycleStatus === 'CONFIRMED');
+}
+
+export function isPcnDossierDocumentCurrentAndConfirmed(
+  document?: Pick<PcnDossierDocument, 'status' | 'lifecycleStatus' | 'currentVersionId' | 'versions'>,
+): boolean {
+  return isPcnDossierDocumentLifecycleAccepted(document)
+    && Boolean(document?.currentVersionId)
+    && Boolean(document?.versions.some((version) => version.assetId === document.currentVersionId));
 }
 
 /** Only generated forms with an unambiguous checklist counterpart may be confirmed. */

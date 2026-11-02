@@ -53,7 +53,8 @@ export async function PUT(
         throw Object.assign(new Error('Không tìm thấy template workflow.'), { statusCode: 404 });
       }
       const existing = mapDocumentRow(existingResult.rows[0]) as PcnWorkflowTemplate;
-      if (!manager && (existing.scope !== 'PERSONAL' || existing.createdBy !== actor.username)) {
+      if ((existing.scope === 'PERSONAL' && existing.createdBy !== actor.username)
+        || (!manager && existing.scope !== 'PERSONAL')) {
         throw Object.assign(new Error('Chỉ người tạo mới được sửa đề xuất riêng của mình.'), { statusCode: 403 });
       }
       if (existing.status !== 'DRAFT') {

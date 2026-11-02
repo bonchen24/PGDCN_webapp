@@ -856,6 +856,8 @@ export interface PcnDossierDocumentVersion {
   note?: string;
 }
 
+export type PcnDossierDocumentLifecycleStatus = 'UPLOADED' | 'GENERATED' | 'CONFIRMED';
+
 export interface PcnDossierDocument {
   id: string;
   dossierId: string;
@@ -864,6 +866,8 @@ export interface PcnDossierDocument {
   currentVersionId?: string;
   versions: PcnDossierDocumentVersion[];
   status: 'MISSING' | 'PRESENT';
+  /** Custom-template lifecycle; absent on legacy checklist records. */
+  lifecycleStatus?: PcnDossierDocumentLifecycleStatus;
   createdAt?: string;
   updatedAt?: string;
 }
