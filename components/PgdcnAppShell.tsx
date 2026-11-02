@@ -263,6 +263,93 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
     return records.sort((left, right) => (recentRank.get(left.domain + '-' + left.id) ?? 999) - (recentRank.get(right.domain + '-' + right.id) ?? 999)).slice(0, 80);
   }, [pgd.requests, pcn.dossiers, recentRecords, scopes.join('|')]);
 
+  const handleQuickViewOpenFullDetail = useCallback((domain: 'PCN' | 'PGD', idOrCode: string) => {
+    closeQuickView();
+    if (domain === 'PCN') {
+      const dossier = pcn.dossiers.find((d) => d.id === idOrCode || d.dossierCode === idOrCode);
+      const targetId = dossier?.id || idOrCode; if (targetId) { setNotificationOpen(false); setAssistantContext(undefined); setFocusedPgdRequestId(undefined); setMobileOpen(false); router.push("/pgdcn/pcn/dossiers/" + encodeURIComponent(targetId)); }
+    } else {
+      const req = pgd.requests.find((r) => r.id === idOrCode || r.requestCode === idOrCode);
+      const targetId = req?.id || idOrCode; if (targetId) { setNotificationOpen(false); setAssistantContext(undefined); setActiveTarget({ domain: "PGD", section: "requests" }); setMobileOpen(false); router.push("/pgdcn/pgd/dossiers/" + encodeURIComponent(targetId)); }
+    }
+  }, [closeQuickView, pcn.dossiers, pgd.requests, router]);
+
+  useEffect(() => {
+    const handleQuickViewEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ domain: 'PCN' | 'PGD'; dossierCode?: string; item?: QuickViewDossierItem }>;
+      if (customEvent.detail) {
+        openQuickView(customEvent.detail);
+      }
+    };
+    window.addEventListener('pgdcn:quickview', handleQuickViewEvent);
+    return () => window.removeEventListener('pgdcn:quickview', handleQuickViewEvent);
+  }, [openQuickView]);
+
+  const breadcrumbCrumbs = useMemo(() => {
+    const crumbs: Array<{ label: string; target?: PgdcnNavigationTarget }> = [];
+    if (activeTarget.domain === 'department') {
+      if (activeTarget.section === 'department-dashboard') {
+        crumbs.push({ label: 'Tổng quan' });
+      } else if (activeTarget.section === 'my-work') {
+        crumbs.push({ label: 'Việc của tôi' });
+      } else if (activeTarget.section === 'customers') {
+        crumbs.push({ label: 'Khách hàng' });
+      } else if (activeTarget.section === 'assistant') {
+        crumbs.push({ label: 'Trợ lý AI' });
+      } else if (activeTarget.section === 'document-drafting') {
+        crumbs.push({ label: 'Tài liệu' });
+        crumbs.push({ label: 'Soạn thảo văn bản' });
+      } else if (activeTarget.section === 'dossier-templates') {
+        crumbs.push({ label: 'Tài liệu' });
+        crumbs.push({ label: 'Hồ sơ mẫu' });
+      } else if (activeTarget.section === 'system-settings') {
+        crumbs.push({ label: 'Quản trị' });
+        crumbs.push({ label: 'Cài đặt hệ thống' });
+      } else if (activeTarget.section === 'rbac') {
+        crumbs.push({ label: 'Quản trị' });
+        crumbs.push({ label: 'Phân quyền RBAC' });
+      } else if (activeTarget.section === 'activityLogs') {
+        crumbs.push({ label: 'Quản trị' });
+        crumbs.push({ label: 'Nhật ký hoạt động' });
+      }
+    } else if (activeTarget.domain === 'PCN') {
+      crumbs.push({ label: 'Nghiệp vụ PCN', target: { domain: 'PCN', section: 'proposals' } });
+      if (activeTarget.section === 'proposals') {
+        if (initialPcnDossierId) {
+          crumbs.push({ label: 'Hồ sơ', target: { domain: 'PCN', section: 'proposals' } });
+          const code = pcn.dossiers.find((d) => d.id === initialPcnDossierId)?.dossierCode || initialPcnDossierId;
+          crumbs.push({ label: code });
+        } else {
+          crumbs.push({ label: 'Hồ sơ đề nghị' });
+        }
+      } else if (activeTarget.section === 'operations') {
+        crumbs.push({ label: 'Sổ tổng hợp' });
+      } else if (activeTarget.section === 'lab-operations') {
+        crumbs.push({ label: 'Sổ quản lý mẫu' });
+      } else if (activeTarget.section === 'drafting') {
+        crumbs.push({ label: 'Soạn thảo tài liệu' });
+      }
+    } else if (activeTarget.domain === 'PGD') {
+      crumbs.push({ label: 'Nghiệp vụ PGD', target: { domain: 'PGD', section: 'requests' } });
+      if (activeTarget.section === 'requests') {
+        if (focusedPgdRequestId) {
+          crumbs.push({ label: 'Hồ sơ PYC', target: { domain: 'PGD', section: 'requests' } });
+          const code = pgd.requests.find((r) => r.id === focusedPgdRequestId)?.requestCode || focusedPgdRequestId;
+          crumbs.push({ label: code });
+        } else {
+          crumbs.push({ label: 'Hồ sơ PYC' });
+        }
+      } else if (activeTarget.section === 'operations') {
+        crumbs.push({ label: 'Sổ tổng hợp' });
+      } else if (activeTarget.section === 'sample-operations') {
+        crumbs.push({ label: 'Sổ quản lý mẫu' });
+      } else if (activeTarget.section === 'templates') {
+        crumbs.push({ label: 'Soạn thảo biểu mẫu' });
+      }
+    }
+    return crumbs;
+  }, [activeTarget, initialPcnDossierId, focusedPgdRequestId, pcn.dossiers, pgd.requests]);
+
   if (!sessionChecked) return <div className="flex min-h-[100dvh] items-center justify-center bg-slate-50 text-xs font-bold text-slate-700">Đang xác thực phiên PGDCN...</div>;
   if (!currentUser) return <PcnLoginScreen />;
 
@@ -418,93 +505,6 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
     setFocusedPgdRequestId(undefined);
     setActiveTarget(getSharedTargetForPgdSection(section) || { domain: 'PGD', section });
   };
-
-  const handleQuickViewOpenFullDetail = useCallback((domain: 'PCN' | 'PGD', idOrCode: string) => {
-    closeQuickView();
-    if (domain === 'PCN') {
-      const dossier = pcn.dossiers.find((d) => d.id === idOrCode || d.dossierCode === idOrCode);
-      openPcnDossier(dossier?.id || idOrCode);
-    } else {
-      const req = pgd.requests.find((r) => r.id === idOrCode || r.requestCode === idOrCode);
-      openPgdRequest(req?.id || idOrCode);
-    }
-  }, [closeQuickView, openPcnDossier, openPgdRequest, pcn.dossiers, pgd.requests]);
-
-  useEffect(() => {
-    const handleQuickViewEvent = (event: Event) => {
-      const customEvent = event as CustomEvent<{ domain: 'PCN' | 'PGD'; dossierCode?: string; item?: QuickViewDossierItem }>;
-      if (customEvent.detail) {
-        openQuickView(customEvent.detail);
-      }
-    };
-    window.addEventListener('pgdcn:quickview', handleQuickViewEvent);
-    return () => window.removeEventListener('pgdcn:quickview', handleQuickViewEvent);
-  }, [openQuickView]);
-
-  const breadcrumbCrumbs = useMemo(() => {
-    const crumbs: Array<{ label: string; target?: PgdcnNavigationTarget }> = [];
-    if (activeTarget.domain === 'department') {
-      if (activeTarget.section === 'department-dashboard') {
-        crumbs.push({ label: 'Tổng quan' });
-      } else if (activeTarget.section === 'my-work') {
-        crumbs.push({ label: 'Việc của tôi' });
-      } else if (activeTarget.section === 'customers') {
-        crumbs.push({ label: 'Khách hàng' });
-      } else if (activeTarget.section === 'assistant') {
-        crumbs.push({ label: 'Trợ lý AI' });
-      } else if (activeTarget.section === 'document-drafting') {
-        crumbs.push({ label: 'Tài liệu' });
-        crumbs.push({ label: 'Soạn thảo văn bản' });
-      } else if (activeTarget.section === 'dossier-templates') {
-        crumbs.push({ label: 'Tài liệu' });
-        crumbs.push({ label: 'Hồ sơ mẫu' });
-      } else if (activeTarget.section === 'system-settings') {
-        crumbs.push({ label: 'Quản trị' });
-        crumbs.push({ label: 'Cài đặt hệ thống' });
-      } else if (activeTarget.section === 'rbac') {
-        crumbs.push({ label: 'Quản trị' });
-        crumbs.push({ label: 'Phân quyền RBAC' });
-      } else if (activeTarget.section === 'activityLogs') {
-        crumbs.push({ label: 'Quản trị' });
-        crumbs.push({ label: 'Nhật ký hoạt động' });
-      }
-    } else if (activeTarget.domain === 'PCN') {
-      crumbs.push({ label: 'Nghiệp vụ PCN', target: { domain: 'PCN', section: 'proposals' } });
-      if (activeTarget.section === 'proposals') {
-        if (initialPcnDossierId) {
-          crumbs.push({ label: 'Hồ sơ', target: { domain: 'PCN', section: 'proposals' } });
-          const code = pcn.dossiers.find((d) => d.id === initialPcnDossierId)?.dossierCode || initialPcnDossierId;
-          crumbs.push({ label: code });
-        } else {
-          crumbs.push({ label: 'Hồ sơ đề nghị' });
-        }
-      } else if (activeTarget.section === 'operations') {
-        crumbs.push({ label: 'Sổ tổng hợp' });
-      } else if (activeTarget.section === 'lab-operations') {
-        crumbs.push({ label: 'Sổ quản lý mẫu' });
-      } else if (activeTarget.section === 'drafting') {
-        crumbs.push({ label: 'Soạn thảo tài liệu' });
-      }
-    } else if (activeTarget.domain === 'PGD') {
-      crumbs.push({ label: 'Nghiệp vụ PGD', target: { domain: 'PGD', section: 'requests' } });
-      if (activeTarget.section === 'requests') {
-        if (focusedPgdRequestId) {
-          crumbs.push({ label: 'Hồ sơ PYC', target: { domain: 'PGD', section: 'requests' } });
-          const code = pgd.requests.find((r) => r.id === focusedPgdRequestId)?.requestCode || focusedPgdRequestId;
-          crumbs.push({ label: code });
-        } else {
-          crumbs.push({ label: 'Hồ sơ PYC' });
-        }
-      } else if (activeTarget.section === 'operations') {
-        crumbs.push({ label: 'Sổ tổng hợp' });
-      } else if (activeTarget.section === 'sample-operations') {
-        crumbs.push({ label: 'Sổ quản lý mẫu' });
-      } else if (activeTarget.section === 'templates') {
-        crumbs.push({ label: 'Soạn thảo biểu mẫu' });
-      }
-    }
-    return crumbs;
-  }, [activeTarget, initialPcnDossierId, focusedPgdRequestId, pcn.dossiers, pgd.requests]);
 
   const content = activeTarget.domain === 'department' && (activeTarget.section === 'department-dashboard' || activeTarget.section === 'my-work') ? (
     <PgdcnDashboardView scopes={scopes} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pcnWorkflowTasks={pcn.workflowTasks} pgdRequests={pgd.requests} pgdAssignments={pgd.assignments} pcnEvidenceActions={pcnEvidenceActions} currentUser={currentUser} notifications={notifications} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} onOpenNotifications={handleOpenNotifications} onSelectNotification={handleDashboardNotificationSelect} recentRecords={recentRecords} />
