@@ -209,3 +209,88 @@ test('node work panel reports per-kind progress, required-first rows, and comple
   const duplicateIds = renderedIds.filter((id, index) => renderedIds.indexOf(id) !== index);
   assert.deepEqual(duplicateIds, []);
 });
+
+
+test('PCN node projection identifies pending confirmation outputs while keeping workflow gates closed', () => {
+  const planReq = requirement('req-plan', 'EVALUATION_PLAN', true);
+  const pendingDraft = {
+    id: 'pcn-draft-plan-1',
+    title: 'Kế hoạch đánh giá chứng nhận',
+    formKind: 'EVALUATION_PLAN' as const,
+    templateId: 'tpl-eval-plan',
+    sourceDossierId: 'dossier-1',
+    fieldCodes: [],
+    values: {},
+    status: 'GENERATED' as const,
+    outputs: [
+      {
+        id: 'out-1',
+        format: 'DOCX' as const,
+        fileAssetId: 'asset-plan-docx',
+        fileName: 'dossier-1_EVALUATION_PLAN.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        byteSize: 2048,
+        sha256: 'c'.repeat(64),
+        generatedAt: '2026-11-02T08:00:00.000Z',
+      },
+    ],
+    createdByUsername: 'staff',
+    updatedByUsername: 'staff',
+    createdAt: '2026-11-02T08:00:00.000Z',
+    updatedAt: '2026-11-02T08:05:00.000Z',
+  };
+
+  const projection = buildPcnDossierNodeWorkProjection({
+    node: node({ requirementIds: ['req-plan'] }),
+    runtimeNode: runtimeNode({ requirementIds: ['req-plan'] }),
+    requirements: [planReq],
+    documents: [], // Not attached to dossier yet!
+    draftWorkspaces: [
+      pendingDraft as any,
+      {
+        ...(pendingDraft as any),
+        id: 'pcn-draft-plan-archived',
+        status: 'ARCHIVED',
+        updatedAt: '2026-11-02T08:30:00.000Z',
+      },
+    ],
+    businessFacts: [businessFact()],
+  });
+
+  const planItem = projection.documents.find((item) => item.requirementId === 'req-plan');
+  assert.ok(planItem);
+  assert.equal(planItem.pendingDraftId, 'pcn-draft-plan-1');
+  assert.equal(planItem.status, 'MISSING'); // Must remain MISSING
+  assert.equal(projection.unresolvedRequiredCount, 1); // Gate stays closed
+  assert.equal(projection.canContinue, false); // Cannot advance workflow
+
+  // Render UI check
+  let requestedDraftItem: any = null;
+  const markup = renderToStaticMarkup(createElement(PcnDossierNodeWorkPanel, {
+    projection,
+    taskId: 'task-plan',
+    canEdit: true,
+    onOpenDrafting: (item) => {
+      requestedDraftItem = item;
+      return `/pgdcn/pcn/drafting?dossierId=dossier-1&draftId=${item.pendingDraftId}&node=sampling`;
+    },
+  }));
+
+  assert.match(markup, /Chờ xác nhận/);
+  assert.match(markup, /aria-label="Mở lại bản nháp đang chờ xác nhận"/);
+  assert.match(markup, /href="\/pgdcn\/pcn\/drafting\?dossierId=dossier-1&amp;draftId=pcn-draft-plan-1&amp;node=sampling"/);
+  assert.ok(requestedDraftItem);
+  assert.equal(requestedDraftItem.pendingDraftId, 'pcn-draft-plan-1');
+
+  // Read-only user check
+  const readOnlyMarkup = renderToStaticMarkup(createElement(PcnDossierNodeWorkPanel, {
+    projection,
+    taskId: 'task-plan',
+    canEdit: false,
+    onOpenDrafting: () => '/pgdcn/pcn/drafting',
+  }));
+
+  assert.match(readOnlyMarkup, /Chờ xác nhận/);
+  // Read-only user should not have editing link
+  assert.doesNotMatch(readOnlyMarkup, /href="\/pgdcn\/pcn\/drafting/);
+});

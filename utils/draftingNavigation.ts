@@ -87,12 +87,14 @@ export function buildPcnDraftingRoute(input: {
   requirementId?: string;
   nodeId?: string;
   kind?: string;
+  draftId?: string;
   returnTo?: string;
 }): string {
   const query = new URLSearchParams({ dossierId: input.dossierId });
   if (input.requirementId) query.set('requirementId', input.requirementId);
   if (input.nodeId) query.set('node', input.nodeId);
   if (input.kind) query.set('kind', input.kind);
+  if (input.draftId) query.set('draftId', input.draftId);
   const returnTo = sanitizeInternalReturnTo(input.returnTo);
   if (returnTo) query.set('returnTo', returnTo);
   return `/pgdcn/pcn/drafting?${query.toString()}`;
@@ -103,6 +105,7 @@ export function buildPcnNodeDraftingRoute(input: {
   requirementId: string;
   requirementCode: string;
   nodeId?: string;
+  draftId?: string;
   returnTo?: string;
 }): string | undefined {
   const kind = getPcnNodeDraftFormKind(input.requirementCode);

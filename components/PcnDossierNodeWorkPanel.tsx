@@ -193,7 +193,7 @@ export function PcnDossierNodeWorkPanel({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-medium text-slate-900">{item.label}</p>
-            <p className="mt-1 text-xs text-slate-500">{item.required ? 'Bắt buộc' : 'Tùy chọn'} · {DOCUMENT_STATUS_LABELS[item.status]}</p>
+            <p className="mt-1 text-xs text-slate-500">{item.required ? 'Bắt buộc' : 'Tùy chọn'} · {item.pendingDraftId ? 'Chờ xác nhận' : DOCUMENT_STATUS_LABELS[item.status]}</p>
             {item.status === 'WAIVED' && item.waiverReason ? <p className="mt-2 text-xs text-amber-700">Lý do: {item.waiverReason}</p> : null}
             {projection.requiresReworkOnMutation ? <p className="mt-2 text-xs text-violet-700">Cập nhật mục này sẽ tạo vòng xử lý lại và đánh dấu các bước sau cần rà soát.</p> : null}
           </div>
@@ -226,8 +226,8 @@ export function PcnDossierNodeWorkPanel({
             </label>
           ) : null}
           {item.actions.includes('CREATE_FROM_FORM') && draftingHref ? (
-            <a href={draftingHref} title="Tạo DOCX từ biểu mẫu" aria-label="Soạn thảo tài liệu, tạo DOCX từ biểu mẫu" className="mobile-touch-target inline-flex min-h-11 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
-              Soạn thảo tài liệu
+            <a href={draftingHref} title={item.pendingDraftId ? 'Mở lại bản nháp đang chờ xác nhận' : 'Tạo DOCX từ biểu mẫu'} aria-label={item.pendingDraftId ? 'Mở lại bản nháp đang chờ xác nhận' : 'Soạn thảo tài liệu, tạo DOCX từ biểu mẫu'} className="mobile-touch-target inline-flex min-h-11 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+              {item.pendingDraftId ? 'Mở bản nháp đang chờ' : 'Soạn thảo tài liệu'}
             </a>
           ) : null}
           {item.actions.includes('CREATE_FROM_FORM') && canGenerateAndAttach && editable && (onGenerateAndAttach || onCreateFromForm) ? (
@@ -280,6 +280,7 @@ export function PcnDossierNodeWorkPanel({
     const editable = canEdit && projection.isEditable;
     const draftingHref = editable ? onOpenDrafting?.(item) : undefined;
     const canGenerateAndAttach = Boolean(getPcnNodeDocumentGenerationKind(item.code));
+    const statusLabel = item.pendingDraftId ? 'Chờ xác nhận' : DOCUMENT_STATUS_LABELS[item.status];
     const statusClass = item.status === 'PRESENT'
       ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
       : item.status === 'WAIVED'
@@ -299,11 +300,11 @@ export function PcnDossierNodeWorkPanel({
           {item.status === 'WAIVED' && item.waiverReason ? <p className="mt-1 text-[11px] font-normal text-amber-700">Lý do bỏ qua: {item.waiverReason}</p> : null}
           {projection.requiresReworkOnMutation ? <p className="mt-1 text-[11px] font-normal text-violet-700">Cập nhật mục này sẽ yêu cầu rà soát lại các bước sau.</p> : null}
         </th>
-        <td className="border-b border-slate-100 px-3 py-2.5"><span className={`inline-flex min-h-7 items-center rounded-full border px-2 py-1 text-[9px] font-black ${statusClass}`}>{DOCUMENT_STATUS_LABELS[item.status]}</span></td>
+        <td className="border-b border-slate-100 px-3 py-2.5"><span className={`inline-flex min-h-7 items-center rounded-full border px-2 py-1 text-[9px] font-black ${statusClass}`}>{statusLabel}</span></td>
         <td className="border-b border-slate-100 px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-1">
             {item.status === 'PRESENT' && version && item.actions.includes('VIEW') ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Xem tài liệu" aria-label="Xem tài liệu"><Eye size={14} aria-hidden="true" /></a> : null}
-            {item.status !== 'PRESENT' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a> : null}
+            {item.status !== 'PRESENT' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} title={item.pendingDraftId ? "Mở lại bản nháp đang chờ xác nhận" : "Soạn thảo tài liệu"} aria-label={item.pendingDraftId ? "Mở lại bản nháp đang chờ xác nhận" : "Soạn thảo tài liệu"} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /></a> : null}
             {item.status !== 'PRESENT' && item.actions.includes('UPLOAD') && editable ? <label className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100" title="Bổ sung tệp" aria-label="Tải tài liệu"><Upload size={14} aria-hidden="true" /><input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
             {item.status === 'PRESENT' && version ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Mở tệp" aria-label="Mở tệp"><FileText size={14} aria-hidden="true" /></a> : null}
             {(item.actions.includes('REPLACE') || item.actions.includes('REMOVE_CURRENT') || item.actions.includes('CREATE_FROM_FORM') || item.actions.includes('CLEAR_WAIVER') || item.actions.includes('WAIVE')) ? <details className="relative">
@@ -398,7 +399,7 @@ export function PcnDossierNodeWorkPanel({
                   step: projection.nodeLabel,
                   title: item.label,
                   required: item.required,
-                  status: DOCUMENT_STATUS_LABELS[item.status],
+                  status: item.pendingDraftId ? 'Chờ xác nhận' : DOCUMENT_STATUS_LABELS[item.status],
                   statusTone: item.status === 'PRESENT' ? 'success' : item.status === 'WAIVED' ? 'neutral' : 'warning',
                   action: null,
                 }))}

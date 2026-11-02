@@ -11,9 +11,11 @@ import type {
   ReturnedTestResult,
   PcnGeneratedDocumentKind,
   PcnDraftFormKind,
+  PcnDraftWorkspace,
 } from '../types.ts';
 import type { PcnWorkflowRuntimeNode } from './pcnWorkflowRuntime.ts';
 import type { PcnWorkflowNodeDefinition } from '../types.ts';
+import { getPcnDraftFormRequirementCode } from './pcnDossierDocuments.ts';
 
 export type PcnDossierNodeWorkStatus =
   | 'PRESENT'
@@ -90,6 +92,7 @@ export interface PcnDossierNodeDocumentItem {
   currentVersionId?: string;
   actions: PcnDossierNodeDocumentAction[];
   waiverReason?: string;
+  pendingDraftId?: string;
 }
 
 export interface PcnDossierNodeWorkProjection {
@@ -115,6 +118,7 @@ export interface PcnDossierNodeWorkProjectionInput {
   documents?: readonly Pick<PcnDossierDocument, 'requirementId' | 'status' | 'currentVersionId'>[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver | undefined>;
   businessFacts?: readonly PcnDossierNodeBusinessFact[];
+  draftWorkspaces?: readonly PcnDraftWorkspace[];
 }
 
 const ACTIVE_STATUSES = new Set<PcnWorkflowRuntimeNode['status']>(['READY', 'IN_PROGRESS', 'WAITING', 'RETURNED']);
@@ -182,6 +186,7 @@ function documentItem(
   requirement: PcnDocumentRequirement,
   document: Pick<PcnDossierDocument, 'requirementId' | 'status' | 'currentVersionId'> | undefined,
   waiver: PcnDossierDocumentWaiver | undefined,
+  pendingDraftId?: string,
 ): PcnDossierNodeDocumentItem {
   if (document?.status === 'PRESENT') {
     return {
@@ -216,6 +221,7 @@ function documentItem(
     label: requirement.name,
     required: requirement.required,
     status: 'MISSING',
+    ...(pendingDraftId ? { pendingDraftId } : {}),
     actions: ['UPLOAD', ...(generationKind || draftFormKind ? ['CREATE_FROM_FORM' as const] : []), 'WAIVE'],
   };
 }
@@ -227,10 +233,25 @@ export function buildPcnDossierNodeWorkProjection(input: PcnDossierNodeWorkProje
   const requirementById = new Map(input.requirements.filter((requirement) => requirement.active !== false).map((requirement) => [requirement.id, requirement]));
   const documentByRequirementId = new Map((input.documents || []).map((document) => [document.requirementId, document]));
   const waivers = input.documentWaivers || {};
+  const pendingDraftByReqCode = new Map<string, PcnDraftWorkspace>();
+  for (const draft of input.draftWorkspaces || []) {
+    if (draft.status !== 'GENERATED' || !draft.outputs || draft.outputs.length === 0) continue;
+    const reqCode = getPcnDraftFormRequirementCode(draft.formKind);
+    if (!reqCode) continue;
+    const existing = pendingDraftByReqCode.get(reqCode);
+    if (!existing || (draft.updatedAt || draft.createdAt || '').localeCompare(existing.updatedAt || existing.createdAt || '') > 0) {
+      pendingDraftByReqCode.set(reqCode, draft);
+    }
+  }
   const documents = input.node.requirementIds
     .map((requirementId) => requirementById.get(requirementId))
     .filter((requirement): requirement is PcnDocumentRequirement => Boolean(requirement))
-    .map((requirement) => documentItem(requirement, documentByRequirementId.get(requirement.id), waivers[requirement.id]));
+    .map((requirement) => {
+      const doc = documentByRequirementId.get(requirement.id);
+      const isPresent = doc?.status === 'PRESENT';
+      const pendingDraft = !isPresent ? pendingDraftByReqCode.get(requirement.code) : undefined;
+      return documentItem(requirement, doc, waivers[requirement.id], pendingDraft?.id);
+    });
   const businessFacts = [...(input.businessFacts || [])];
   const unresolvedRequiredCount = documents.filter((item) => item.required && item.status === 'MISSING').length;
   const suggestions = [

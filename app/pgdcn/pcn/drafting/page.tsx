@@ -27,6 +27,7 @@ type PcnDraftingPageParams = {
     requirementId?: string | string[];
     node?: string | string[];
     kind?: string | string[];
+    draftId?: string | string[];
     returnTo?: string | string[];
   };
 };
@@ -42,6 +43,7 @@ export default async function PcnDraftingPage(props: {
     initialPcnDraftRequirementId={scalar(searchParams?.requirementId)}
     initialPcnDraftNodeId={scalar(searchParams?.node)}
     initialPcnDraftKind={getDraftKind(searchParams?.kind)}
+    initialPcnDraftId={scalar(searchParams?.draftId)}
     initialPcnDraftReturnTo={scalar(searchParams?.returnTo)}
   />;
 }

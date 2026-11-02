@@ -8,16 +8,16 @@ function read(relativePath: string): string {
   return fs.readFileSync(new URL(`../${relativePath}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 }
 
-test('navigation includes shared drafting entry Hỗ trợ soạn thảo văn bản', () => {
+test('navigation includes the shared Tài liệu & Biểu mẫu entry', () => {
   const visible = getPgdcnVisibleNavigation(['PCN', 'PGD']);
   const draftingItem = visible.find((item) => item.id === 'document-drafting');
   assert.ok(draftingItem, 'document-drafting must be present in shared navigation');
-  assert.equal(draftingItem.label, 'Soạn thảo văn bản');
+  assert.equal(draftingItem.label, 'Tài liệu & Biểu mẫu');
   assert.equal(draftingItem.kind, 'shared');
 
   const sidebar = read('components/PgdcnSidebar.tsx');
   assert.match(sidebar, /section:\s*'document-drafting'/);
-  assert.match(sidebar, /Soạn thảo văn bản/);
+  assert.match(sidebar, /Tài liệu & Biểu mẫu/);
 });
 
 test('shared drafting route page forwards domain, tabs and context to PgdcnAppShell', () => {
@@ -95,8 +95,9 @@ test('client wrappers pgdApi and pcnDraftApi support opt-in mineOnly querying', 
   assert.match(pgdApi, /params\.set\('mineOnly', 'true'\)/);
 
   const pcnDraftApi = read('utils/pcnDraftApi.ts');
-  assert.match(pcnDraftApi, /fetchPcnDraftWorkspaces\(options\?: \{ mineOnly\?: boolean \}\)/);
-  assert.match(pcnDraftApi, /options\?\.mineOnly \? '\?mineOnly=true' : ''/);
+  assert.match(pcnDraftApi, /fetchPcnDraftWorkspaces\(options\?: \{ mineOnly\?: boolean; sourceDossierId\?: string \}\)/);
+  assert.match(pcnDraftApi, /if \(options\?\.mineOnly\) query\.set\('mineOnly', 'true'\)/);
+  assert.match(pcnDraftApi, /if \(options\?\.sourceDossierId\) query\.set\('sourceDossierId', options\.sourceDossierId\)/);
 });
 
 test('unified drafting preserves mounted state of both editors without ternary unmounting', () => {

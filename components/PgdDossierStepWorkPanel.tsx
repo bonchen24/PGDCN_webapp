@@ -4,9 +4,10 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Eye, FileText, Upload } from 'lucide-react';
 
 import type { PcnUserAccount } from '../types';
-import type { PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
+import type { PgdGeneratedDocument, PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
 import type { PgdDossierDocument, PgdDossierRequirement } from '../utils/pgdDossier';
 import { getCurrentPgdDossierDocuments, getPgdDossierRequirementForTemplate } from '../utils/pgdDossier';
+import { getPgdDocumentRequirementCode } from '../utils/pgdDrafting';
 import { getPgdDossierDocumentDownloadUrl } from '../utils/pgdApi';
 import { getPgdcnNextAction } from '../utils/pgdcnDashboard';
 import type { PgdDocumentTemplateKind } from '../utils/pgdDocumentTemplates';
@@ -30,6 +31,7 @@ type Props = {
   selectedStepId: PgdDossierFlowStepId;
   dossierRequirements: PgdDossierRequirement[];
   dossierDocuments: PgdDossierDocument[];
+  generatedDocuments?: readonly PgdGeneratedDocument[];
   dossierLoadStatus?: 'loading' | 'error' | 'loaded';
   samples: PgdSample[];
   canMutate: boolean;
@@ -114,12 +116,32 @@ function ExistingStationPanel({ request, currentUser, canMutate }: Pick<Props, '
   return <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600"><div className="font-black text-slate-800">Việc này dùng cùng dữ liệu nghiệp vụ PGD</div><p className="mt-1">Các biểu mẫu liên quan được gom theo ngữ cảnh để bạn xử lý mà không rời hồ sơ. Quyền chỉnh sửa vẫn do quy trình và RBAC hiện tại quyết định.</p><div className="mt-2 grid gap-2 sm:grid-cols-3"><span><b className="block text-[9px] text-slate-400">Mã PYC</b><strong className="font-mono text-blue-700">{request.requestCode}</strong></span><span><b className="block text-[9px] text-slate-400">Hàng hóa</b><strong className="text-slate-700">{request.productName}</strong></span><span><b className="block text-[9px] text-slate-400">Người thao tác</b><strong className="font-mono text-slate-700">{currentUser.username}</strong></span></div><span className="sr-only">{canMutate ? 'Có quyền thao tác khi bước mở.' : 'Chỉ xem theo quyền hiện tại.'}</span></div>;
 }
 
-export default function PgdDossierStepWorkPanel({ request, currentUser, selectedStepId, dossierRequirements, dossierDocuments, dossierLoadStatus = 'loaded', samples, canMutate, onCompleteCurrent, completeDisabled = false, isProcessing = false, completeLabel, onOpenChecklist, initialRequirementCode, onOpenFullDossier, onOpenDrafting, onRequestException, exceptionBusy = false }: Props) {
+export default function PgdDossierStepWorkPanel({ request, currentUser, selectedStepId, dossierRequirements, dossierDocuments, generatedDocuments = [], dossierLoadStatus = 'loaded', samples, canMutate, onCompleteCurrent, completeDisabled = false, isProcessing = false, completeLabel, onOpenChecklist, initialRequirementCode, onOpenFullDossier, onOpenDrafting, onRequestException, exceptionBusy = false }: Props) {
   const meta = STEP_META[selectedStepId];
   const stationProps: PgdStationPanelProps = { request, currentUser, editable: canMutate };
   const templateKind = STEP_DRAFTING[selectedStepId];
   const requirement = templateKind ? getPgdDossierRequirementForTemplate(templateKind, request.productGroup) : undefined;
   const currentDocumentsByCode = useMemo(() => new Map(getCurrentPgdDossierDocuments(dossierDocuments).map((document) => [document.requirementCode, document])), [dossierDocuments]);
+  const attachedOriginDocumentIds = useMemo(() => new Set(
+    dossierDocuments
+      .map((doc) => doc.originDocumentId)
+      .filter((id): id is string => Boolean(id))
+  ), [dossierDocuments]);
+  const pendingGeneratedDocumentByCode = useMemo(() => {
+    const map = new Map<string, PgdGeneratedDocument>();
+    if (!generatedDocuments || generatedDocuments.length === 0) return map;
+    const filtered = generatedDocuments.filter((doc) => (
+      doc.requestId === request.id && !attachedOriginDocumentIds.has(doc.id)
+    ));
+    const sorted = [...filtered].sort((left, right) => right.generatedAt.localeCompare(left.generatedAt));
+    for (const doc of sorted) {
+      const code = getPgdDocumentRequirementCode(doc, request.productGroup);
+      if (code && !map.has(code)) {
+        map.set(code, doc);
+      }
+    }
+    return map;
+  }, [generatedDocuments, request.id, request.productGroup, attachedOriginDocumentIds]);
   const waivedRequirementCodes = useMemo(() => new Set((request.dossierChecklist || [])
     .filter((item) => item.status === 'WAIVED' && Boolean(item.waiverReason?.trim()))
     .map((item) => item.requirementCode)), [request.dossierChecklist]);
@@ -187,11 +209,22 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
   const documentActionRows = stepRequirements.map((item) => {
     const document = currentDocumentsByCode.get(item.code);
     const isWaived = waivedRequirementCodes.has(item.code);
-    const status = dossierLoadPending ? 'Đang xác định' : dossierLoadFailed ? 'Không xác định' : document ? 'Đã có' : isWaived ? 'Đã bỏ qua' : 'Chưa có';
+    const pendingDoc = pendingGeneratedDocumentByCode.get(item.code);
+    const hasPending = !document && !isWaived && Boolean(pendingDoc);
+    const status = dossierLoadPending ? 'Đang xác định' : dossierLoadFailed ? 'Không xác định' : document ? 'Đã có' : isWaived ? 'Đã bỏ qua' : hasPending ? 'Chờ xác nhận' : 'Chưa có';
+    const pendingDraftingHref = canMutate && pendingDoc && onOpenDrafting
+      ? onOpenDrafting({ templateKind: pendingDoc.kind as PgdDocumentTemplateKind, requirementCode: item.code })
+      : undefined;
     const action = dossierStatusUnknown ? (
       <span className="text-xs font-semibold text-slate-500">{dossierLoadPending ? 'Đang tải trạng thái' : 'Chưa thể xác định'}</span>
     ) : document?.fileAssetId ? (
       <a href={getPgdDossierDocumentDownloadUrl(document.id)} target="_blank" rel="noreferrer" download={document.fileName} title="Mở tài liệu" aria-label="Mở tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-2 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Eye size={14} aria-hidden="true" /><span className="text-[11px] font-bold">Mở tài liệu</span></a>
+    ) : hasPending ? (
+      canMutate && pendingDraftingHref ? (
+        <a href={pendingDraftingHref} title="Mở output đã sinh để soát xét và xác nhận gắn" aria-label="Mở output đã sinh để soát xét và xác nhận gắn" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-2 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><FileText size={14} aria-hidden="true" /><span className="text-[11px] font-bold">Mở output chờ xác nhận</span></a>
+      ) : (
+        <span className="text-xs font-semibold text-slate-500">Chờ người có quyền xác nhận</span>
+      )
     ) : !document && !isWaived && !canMutate ? (
       <span className="text-xs font-semibold text-slate-500">Nhờ người có quyền bổ sung</span>
     ) : !document && !isWaived && draftingHref && requirement?.code === item.code ? (
@@ -213,7 +246,7 @@ export default function PgdDossierStepWorkPanel({ request, currentUser, selected
       requirementTypeLabel,
       status,
       statusTone: dossierStatusUnknown ? 'neutral' as const : document ? 'success' as const : isWaived ? 'neutral' as const : 'warning' as const,
-      detail: dossierStatusUnknown ? 'Chưa xác định trạng thái tài liệu.' : document ? `${document.fileName} · v${document.version}` : item.description,
+      detail: dossierStatusUnknown ? 'Chưa xác định trạng thái tài liệu.' : document ? `${document.fileName} · v${document.version}` : hasPending && pendingDoc ? `${pendingDoc.fileName} · Chờ xác nhận gắn` : item.description,
       action,
     };
   });

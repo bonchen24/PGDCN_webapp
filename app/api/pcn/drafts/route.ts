@@ -25,12 +25,19 @@ export async function GET(req: NextRequest) {
   const sessionError = requirePcnSession(req);
   if (sessionError) return sessionError;
 
+  const url = new URL(req.url);
+  const sourceDossierId = url.searchParams.get('sourceDossierId')?.trim();
+
   try {
-    const result = await pool.query(
-      `SELECT document_id, data FROM app_documents
-       WHERE collection_name = 'pcnDraftWorkspaces'
-       ORDER BY updated_at DESC, document_id ASC`,
-    );
+    let query = `SELECT document_id, data FROM app_documents
+       WHERE collection_name = 'pcnDraftWorkspaces'`;
+    const params: any[] = [];
+    if (sourceDossierId) {
+      params.push(sourceDossierId);
+      query += ` AND data->>'sourceDossierId' = $${params.length}`;
+    }
+    query += ` ORDER BY updated_at DESC, document_id ASC`;
+    const result = await pool.query(query, params);
     return jsonOk({ items: result.rows.map(mapDocumentRow) });
   } catch (error: any) {
     console.error('PCN drafting read error:', error);

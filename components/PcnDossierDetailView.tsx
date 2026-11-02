@@ -4,9 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { ArrowRight, Bot, CheckCircle2, Download, Eye, FileText, PackageCheck, Pencil, Trash2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 
-import type { ActivityLog, CertificationDossier, CertificationProposal, IssuancePackage, OutboundLabRequest, PcnApprovalStep, PcnCertificationField, PcnCertificationMethod, PcnDocumentRequirement, PcnDossierAttachment, PcnDossierDocument, PcnDossierStatus, PcnDossierWorkflowTask, PcnGeneratedDocument, PcnGeneratedDocumentFormat, PcnGeneratedDocumentKind, PcnOfficialGeneratedDocument, PcnOperationalFormKind, PcnSampleHandoverDetails, PcnSampleItem, PcnSampleLot, PcnSampleRoute, PcnTemplateDefinition, PcnUserAccount, ReturnedTestResult, UserAccount } from '../types';
+import type { ActivityLog, CertificationDossier, CertificationProposal, IssuancePackage, OutboundLabRequest, PcnApprovalStep, PcnCertificationField, PcnCertificationMethod, PcnDocumentRequirement, PcnDossierAttachment, PcnDossierDocument, PcnDossierStatus, PcnDossierWorkflowTask, PcnDraftWorkspace, PcnGeneratedDocument, PcnGeneratedDocumentFormat, PcnGeneratedDocumentKind, PcnOfficialGeneratedDocument, PcnOperationalFormKind, PcnSampleHandoverDetails, PcnSampleItem, PcnSampleLot, PcnSampleRoute, PcnTemplateDefinition, PcnUserAccount, ReturnedTestResult, UserAccount } from '../types';
 import { activityActionLabels, activityEntityLabels } from '../utils/activityLog';
 import { getPcnFileUrl } from '../utils/pcnFileApi';
+import { fetchPcnDraftWorkspaces } from '../utils/pcnDraftApi';
 import { getPcnDossierCustomerSnapshot } from '../utils/pcnDossierPolicy';
 import { buildPcnDossierCompleteness, buildPcnDossierStationChecklist, getPcnDossierStationScore, getPcnPipelineStation, getPcnPipelineStationByKey, type PcnPipelineStationKey } from '../utils/pcnDossierPipeline';
 import { getPcnDossierStationGenerationKind, getPcnDossierStationTab, type PcnDossierDetailTab } from '../utils/pcnDossierNavigation';
@@ -435,6 +436,20 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
   const [targetDate, setTargetDate] = useState(dossier.targetDate?.slice(0, 10) || '');
   const [evaluationAt, setEvaluationAt] = useState(dossier.evaluationAt?.slice(0, 10) || '');
   const [effectiveAt, setEffectiveAt] = useState(dossier.effectiveAt?.slice(0, 10) || '');
+  const [draftWorkspaces, setDraftWorkspaces] = useState<PcnDraftWorkspace[]>([]);
+  useEffect(() => {
+    let active = true;
+    fetchPcnDraftWorkspaces({ sourceDossierId: dossier.id })
+      .then((items) => {
+        if (active) setDraftWorkspaces(items);
+      })
+      .catch((error) => {
+        console.error('Failed to fetch PCN draft workspaces for dossier:', error);
+      });
+    return () => {
+      active = false;
+    };
+  }, [dossier.id]);
   const dossierRequests = labRequests.filter((request) => request.dossierId === dossier.id);
   const dossierResults = results.filter((result) => result.dossierId === dossier.id);
   const dossierApprovalSteps = approvalSteps.filter((step) => step.dossierId === dossier.id).sort((left, right) => left.sequence - right.sequence);
@@ -851,7 +866,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
     {documentOutput && <PcnDocumentOutputModal dossier={dossier} proposalUpdatedAt={proposal?.updatedAt} templates={templates} documentRequirements={requirements} generatedDocuments={generatedDocuments} sampleLots={sampleLots} sampleRoutes={sampleRoutes} labRequests={labRequests} users={users} kind={documentOutput.kind} sampleRouteId={documentOutput.sampleRouteId} labRequestId={documentOutput.labRequestId} canGenerate={canEditDossierSteps} onPreflight={onPreflight} onGenerate={onGenerateDocuments} onConfirmGenerated={confirmGeneratedDocument} onClose={() => setDocumentOutput(null)} />}
   </>;
   const dossierWorkTab = <div className="space-y-3">
-    {dossier.workflowSnapshot ? <PcnDossierWorkflowPanel dossier={dossier} requirements={requirements} documents={dossierDocumentsForCompleteness} documentWaivers={dossier.documentWaivers} results={dossierResults} approvalSteps={dossierApprovalSteps} sampleLots={sampleLots} sampleRoutes={sampleRoutes} labRequests={dossierRequests} issuancePackages={issuancePackages} workflowTasks={workflowTasks} users={users} currentUser={currentUser} canEdit={canEditWorkflowPanel} initialNodeId={initialNodeId} onStartTask={onStartWorkflowTask} onCompleteTask={onCompleteWorkflowTask} onReturnTask={onReturnWorkflowTask} onOpenDocuments={() => setActiveTab('documents')} onUploadDocument={(requirementId, file) => { const requirement = requirements.find((item) => item.id === requirementId); if (requirement) return uploadRequirement(requirement, file); return Promise.resolve(); }} onCreateFromForm={openNodeForm} onOpenDrafting={(item, nodeId) => buildPcnNodeDraftingRoute({ dossierId: dossier.id, requirementId: item.requirementId, requirementCode: item.code, nodeId, returnTo: buildPcnDossierReturnRoute(dossier.id, { tab: 'documents', nodeId }) })} onRemoveCurrent={onRemoveCurrentDocument} onWaiveDocument={waiveDocumentFromNode} onClearDocumentWaiver={clearDocumentWaiverFromNode} onOpenBusiness={openWorkflowBusiness} /> : <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
+    {dossier.workflowSnapshot ? <PcnDossierWorkflowPanel dossier={dossier} requirements={requirements} documents={dossierDocumentsForCompleteness} documentWaivers={dossier.documentWaivers} results={dossierResults} approvalSteps={dossierApprovalSteps} sampleLots={sampleLots} sampleRoutes={sampleRoutes} labRequests={dossierRequests} issuancePackages={issuancePackages} draftWorkspaces={draftWorkspaces} workflowTasks={workflowTasks} users={users} currentUser={currentUser} canEdit={canEditWorkflowPanel} initialNodeId={initialNodeId} onStartTask={onStartWorkflowTask} onCompleteTask={onCompleteWorkflowTask} onReturnTask={onReturnWorkflowTask} onOpenDocuments={() => setActiveTab('documents')} onUploadDocument={(requirementId, file) => { const requirement = requirements.find((item) => item.id === requirementId); if (requirement) return uploadRequirement(requirement, file); return Promise.resolve(); }} onCreateFromForm={openNodeForm} onOpenDrafting={(item, nodeId) => buildPcnNodeDraftingRoute({ dossierId: dossier.id, requirementId: item.requirementId, requirementCode: item.code, nodeId, draftId: item.pendingDraftId, returnTo: buildPcnDossierReturnRoute(dossier.id, { tab: 'documents', nodeId }) })} onRemoveCurrent={onRemoveCurrentDocument} onWaiveDocument={waiveDocumentFromNode} onClearDocumentWaiver={clearDocumentWaiverFromNode} onOpenBusiness={openWorkflowBusiness} /> : <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
 <DossierWorkflowSummary projection={dossierWorkflowProjection} selectedNodeKey={selectedWorkflowNodeKey} completeness={completeness} ownerLabel={ownerLabel} exceptionReason={exceptionReasonLabel} onSelectNode={selectWorkflowNode} onOpenExceptionReason={() => void editExceptionReason()} onOpenStep={openSelectedWorkflowStep} onOpenChecklist={() => setActiveTab('documents')} onOpenGeneration={openGenerationRegion} onOpenApprovalModule={() => setActiveTab('issuance')} onCompleteStep={() => void completeCurrentStep()} completionDisabled={!canEditDossierSteps || (!completionTarget && dossier.status !== 'TECHNICAL_REVIEW')} completionTitle={currentStepAccess.reason || (nextStatusDenials.get(completionTarget || '') || undefined)} canEdit={canEditDossierSteps} users={users} />
 </div>}
     <details open={workAreaOpen} onToggle={(event) => setWorkAreaOpen(event.currentTarget.open)} className="rounded-xl border border-slate-200 bg-white"><summary className="min-h-11 cursor-pointer px-3 py-3 text-sm font-semibold text-slate-700">Nghiệp vụ và dữ liệu liên quan</summary><div className="space-y-3 border-t border-slate-100 p-3"><DossierRegionSelector activeTab={activeTab} missingRequiredCount={missingRequiredCount} onChange={setActiveTab} />{activeTab === 'lab' ? labTab : activeTab === 'results' ? resultsTab : activeTab === 'issuance' ? issuanceTab : dossierBusinessWorkspace}</div></details>

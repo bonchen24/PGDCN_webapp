@@ -58,6 +58,7 @@ type PgdcnAppShellProps = {
   initialPcnDraftRequirementId?: string;
   initialPcnDraftNodeId?: string;
   initialPcnDraftKind?: import('../types').PcnDraftFormKind;
+  initialPcnDraftId?: string;
   initialPcnDraftReturnTo?: string;
   initialPgdDraftingOpen?: boolean;
   initialPgdRequestId?: string;
@@ -84,7 +85,7 @@ const getSharedTargetForPgdSection = (section: PgdSection): PgdcnNavigationTarge
   return undefined;
 };
 
-export default function PgdcnAppShell({ initialDomain = 'department', initialDepartmentSection, initialPcnSection, initialDraftingDomain, initialDraftingTab, initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPcnDraftRequirementId, initialPcnDraftNodeId, initialPcnDraftKind, initialPcnDraftReturnTo, initialPgdDraftingOpen, initialPgdRequestId, initialPgdRequestStep, initialPgdDraftRequestId, initialPgdDraftRequirementCode, initialPgdDraftTemplateKind, initialPgdDraftReturnTo, initialPgdSection }: PgdcnAppShellProps) {
+export default function PgdcnAppShell({ initialDomain = 'department', initialDepartmentSection, initialPcnSection, initialDraftingDomain, initialDraftingTab, initialPcnDossierId, initialPcnDossierTab, initialPcnDossierNodeId, initialPcnDraftingOpen, initialPcnDraftDossierId, initialPcnDraftRequirementId, initialPcnDraftNodeId, initialPcnDraftKind, initialPcnDraftId, initialPcnDraftReturnTo, initialPgdDraftingOpen, initialPgdRequestId, initialPgdRequestStep, initialPgdDraftRequestId, initialPgdDraftRequirementCode, initialPgdDraftTemplateKind, initialPgdDraftReturnTo, initialPgdSection }: PgdcnAppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const currentUser = usePcnSessionStore((state) => state.currentUser);
@@ -518,7 +519,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
       initialPgdReturnTo={initialPgdDraftReturnTo}
     />
   ) : activeTarget.domain === 'PCN' ? (
-    <PcnWorkspace embedded initialSection={activeTarget.section as PcnSection} initialDossierId={initialPcnDossierId} initialDossierTab={initialPcnDossierTab} initialDossierNodeId={initialPcnDossierNodeId} initialDraftDossierId={initialPcnDraftDossierId} initialDraftRequirementId={initialPcnDraftRequirementId} initialDraftNodeId={initialPcnDraftNodeId} initialDraftKind={initialPcnDraftKind} initialDraftReturnTo={initialPcnDraftReturnTo} standaloneDossier={Boolean(initialPcnDossierId)} onActiveSectionChange={openPcnSection} onOpenContextualAssistant={openPcnContextualAssistant} />
+    <PcnWorkspace embedded initialSection={activeTarget.section as PcnSection} initialDossierId={initialPcnDossierId} initialDossierTab={initialPcnDossierTab} initialDossierNodeId={initialPcnDossierNodeId} initialDraftDossierId={initialPcnDraftDossierId} initialDraftRequirementId={initialPcnDraftRequirementId} initialDraftNodeId={initialPcnDraftNodeId} initialDraftKind={initialPcnDraftKind} initialDraftId={initialPcnDraftId} initialDraftReturnTo={initialPcnDraftReturnTo} standaloneDossier={Boolean(initialPcnDossierId)} onActiveSectionChange={openPcnSection} onOpenContextualAssistant={openPcnContextualAssistant} />
   ) : (
     <PgdWorkspace embedded initialSection={activeTarget.section as PgdSection} initialRequestId={focusedPgdRequestId} initialRequestStep={initialPgdRequestStep} initialDraftingOpen={Boolean(initialPgdDraftingOpen)} initialDraftRequestId={initialPgdDraftRequestId} initialDraftRequirementCode={initialPgdDraftRequirementCode} initialDraftTemplateKind={initialPgdDraftTemplateKind} initialDraftReturnTo={initialPgdDraftReturnTo} onRequestClose={() => { setFocusedPgdRequestId(undefined); if (initialPgdRequestId) router.replace('/pgdcn/pgd'); }} onActiveSectionChange={openPgdSection} onOpenContextualAssistant={openPgdContextualAssistant} />
   );

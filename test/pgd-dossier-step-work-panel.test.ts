@@ -379,3 +379,120 @@ test('labels conditional and supplemental optional requirements distinctly in ta
   assert.match(tableBody, new RegExp(conditionalInvoice.description!));
   assert.match(tableBody, new RegExp(supplementalAssignment.description!));
 });
+
+
+test('renders pending confirmation status and contextual link when matching generated document is awaiting confirmation', () => {
+  const allRequiredRequirements = getPgdDossierRequirements('OTHER').filter((item) => item.required);
+  const intakeRequirement = allRequiredRequirements.find((item) => item.code === 'REQUEST_PYC')!;
+  assert.ok(intakeRequirement);
+
+  const request = {
+    id: 'pgd-pending-doc-test',
+    domain: PGD_DOMAIN,
+    requestCode: 'PYC-PENDING-001',
+    productGroup: 'OTHER',
+    customerName: 'Khách hàng thử nghiệm',
+    customerSnapshot: { name: 'Khách hàng thử nghiệm', address: '' },
+    productName: 'Sản phẩm thử nghiệm',
+    standards: [],
+    status: 'DRAFT',
+    dossierChecklist: [],
+  } as unknown as PgdInspectionRequest;
+
+  const generatedDoc = {
+    id: 'gen-doc-1',
+    domain: PGD_DOMAIN,
+    requestId: request.id,
+    requestCode: request.requestCode,
+    kind: 'INTAKE_REQUEST',
+    templateId: 'tpl-intake',
+    templateCode: 'INTAKE-01',
+    templateVersion: '1.0',
+    fileName: 'PYC-PENDING-001_INTAKE_REQUEST.docx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    byteSize: 1024,
+    sha256: 'a'.repeat(64),
+    status: 'DRAFT' as const,
+    generatedByUsername: 'officer',
+    generatedAt: '2026-11-02T08:00:00.000Z',
+    sourceCollection: 'pgdRequests' as const,
+    sourceDocumentId: request.id,
+    cellValues: {},
+    contextHash: 'hash-1',
+    format: 'DOCX' as const,
+    templateSnapshot: {} as any,
+  };
+
+  // Case 1: canMutate = true, generated doc exists but not attached
+  const markupMutable = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
+    request,
+    currentUser: { username: 'officer' } as PcnUserAccount,
+    selectedStepId: 'intake',
+    dossierRequirements: [intakeRequirement],
+    dossierDocuments: [],
+    generatedDocuments: [generatedDoc as any],
+    samples: [],
+    canMutate: true,
+    onOpenDrafting: ({ templateKind, requirementCode }) =>
+      `/pgdcn/pgd/drafting?requestId=${request.id}&templateKind=${templateKind}&requirementCode=${requirementCode}`,
+  }));
+
+  // Status must be 'Chờ xác nhận'
+  assert.match(markupMutable, /Chờ xác nhận/);
+  // Unresolved / missing required count still counts it as missing (does not open gate prematurely)
+  assert.match(markupMutable, /1 còn thiếu/);
+  // Contextual action link to open drafting for confirmation
+  assert.match(markupMutable, new RegExp(`/pgdcn/pgd/drafting\\?requestId=${request.id}&amp;templateKind=INTAKE_REQUEST&amp;requirementCode=REQUEST_PYC`));
+  assert.match(markupMutable, /Mở output chờ xác nhận/);
+  assert.doesNotMatch(markupMutable, />Xác nhận &amp; gắn</);
+
+  // Case 2: canMutate = false (read-only role), maintains permission boundary
+  const markupReadOnly = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
+    request,
+    currentUser: { username: 'viewer' } as PcnUserAccount,
+    selectedStepId: 'intake',
+    dossierRequirements: [intakeRequirement],
+    dossierDocuments: [],
+    generatedDocuments: [generatedDoc as any],
+    samples: [],
+    canMutate: false,
+  }));
+
+  assert.match(markupReadOnly, /Chờ xác nhận/);
+  assert.match(markupReadOnly, /1 còn thiếu/);
+  // Should NOT render drafting action link for viewer
+  assert.doesNotMatch(markupReadOnly, new RegExp(`/pgdcn/pgd/drafting`));
+
+  // Case 3: generated doc has already been attached to dossier -> shows 'Đã có', NOT 'Chờ xác nhận'
+  const attachedDossierDoc: PgdDossierDocument = {
+    id: 'dossier-doc-1',
+    domain: PGD_DOMAIN,
+    requestId: request.id,
+    requirementCode: intakeRequirement.code,
+    title: intakeRequirement.title,
+    fileName: generatedDoc.fileName,
+    sourceCollection: PGD_COLLECTIONS.dossierDocuments,
+    sourceDocumentId: 'dossier-doc-1',
+    version: 1,
+    checksum: 'b'.repeat(64),
+    uploadedByUsername: 'officer',
+    uploadedAt: '2026-11-02T08:10:00.000Z',
+    originCollection: PGD_COLLECTIONS.documents,
+    originDocumentId: generatedDoc.id,
+  };
+
+  const markupAttached = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
+    request,
+    currentUser: { username: 'officer' } as PcnUserAccount,
+    selectedStepId: 'intake',
+    dossierRequirements: [intakeRequirement],
+    dossierDocuments: [attachedDossierDoc],
+    generatedDocuments: [generatedDoc as any],
+    samples: [],
+    canMutate: true,
+  }));
+
+  assert.match(markupAttached, /Đã có/);
+  assert.doesNotMatch(markupAttached, /Chờ xác nhận/);
+  assert.match(markupAttached, /0 còn thiếu/);
+});

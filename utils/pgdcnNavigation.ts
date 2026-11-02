@@ -18,7 +18,7 @@ export const SHARED_NAVIGATION_ITEMS: readonly PgdcnNavigationItem[] = [
   { id: 'customers', label: 'Khách hàng', kind: 'shared', domain: 'department', section: 'customers' },
   { id: 'assistant', label: 'Trợ lý AI', kind: 'shared', domain: 'department', section: 'assistant' },
   { id: 'activityLogs', label: 'Nhật ký hệ thống', kind: 'shared', domain: 'department', section: 'activityLogs' },
-  { id: 'document-drafting', label: 'Soạn thảo văn bản', kind: 'shared', domain: 'department', section: 'document-drafting' },
+  { id: 'document-drafting', label: 'Tài liệu & Biểu mẫu', kind: 'shared', domain: 'department', section: 'document-drafting' },
 ];
 
 export const PCN_NAVIGATION_ITEMS: readonly PgdcnNavigationItem[] = [
@@ -99,7 +99,7 @@ export function getActiveContextLabel(target: { domain: string; section?: string
     if (target.section === 'activityLogs') return 'Nhật ký hệ thống';
     if (target.section === 'dossier-library') return 'Hồ sơ';
     if (target.section === 'dossier-templates') return 'Hồ sơ mẫu';
-    if (target.section === 'document-drafting') return 'Soạn thảo văn bản';
+    if (target.section === 'document-drafting') return 'Tài liệu & Biểu mẫu';
     if (target.section === 'system-settings') return 'Cài đặt hệ thống';
     return 'Tổng quan';
   }
