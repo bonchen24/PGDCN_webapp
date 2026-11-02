@@ -26,6 +26,7 @@
     "reconcile:pcn-legacy": "node ./scripts/run-pcn-tsx.cjs scripts/reconcilePcnLegacyCollections.ts",
     "migrate:pcn-identifiers": "node ./scripts/run-pcn-tsx.cjs scripts/migratePcnIdentifiers.ts",
     "reconcile:pcn-orphan-results": "node ./scripts/run-pcn-tsx.cjs scripts/reconcilePcnOrphanResults.ts",
+    "backup:daily": "node ./scripts/run-pcn-tsx.cjs scripts/run-pcn-daily-backup.ts",
     "migrate:storage": "tsx scripts/migrateKqtnImagesToSupabaseStorage.ts"
   },
   "dependencies": {

@@ -235,7 +235,7 @@ async function createPostgresDump(filePath: string): Promise<void> {
   ]);
 }
 
-export async function createBackup(label: 'manual'): Promise<BackupInfo> {
+export async function createBackup(label: 'manual' | 'auto' = 'manual'): Promise<BackupInfo> {
   ensureBackupDir();
   const filename = `${backupPrefix}_${label}_${timestampSlug(new Date())}.zip`;
   const archivePath = path.join(BACKUP_DIR, filename);
