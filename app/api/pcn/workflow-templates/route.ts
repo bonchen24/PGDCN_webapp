@@ -6,6 +6,7 @@ import { getDocumentPayload, mapDocumentRow } from '@/lib/server/collections';
 import {
   assertPcnWorkflowRequirementReferences,
   buildPcnWorkflowTemplateRecord,
+  canProposePcnWorkflow,
   isPcnWorkflowManager,
   isSafePcnSampleKey,
   writePcnWorkflowActivity,
@@ -22,11 +23,21 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await pool.query(
-      `SELECT document_id, data FROM app_documents
-       WHERE collection_name = 'pcnWorkflowTemplates'
-       ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`,
-    );
+    const manager = isPcnWorkflowManager(actor);
+    const canPropose = canProposePcnWorkflow(actor);
+    const canViewPcn = (actor.departmentScopes || []).includes('PCN');
+    if (!manager && !canViewPcn) return jsonForbidden('Tài khoản chưa được cấp phạm vi PCN để xem bộ hồ sơ mẫu.');
+    const result = await pool.query(manager
+      ? `SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnWorkflowTemplates' ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`
+      : canPropose
+        ? `SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnWorkflowTemplates'
+          AND ((COALESCE(data->>'scope', 'COMMON') = 'COMMON' AND data->>'status' = 'PUBLISHED')
+            OR (data->>'scope' = 'PERSONAL' AND data->>'status' = 'DRAFT' AND data->>'createdBy' = $1))
+          ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`
+        : `SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnWorkflowTemplates'
+          AND COALESCE(data->>'scope', 'COMMON') = 'COMMON' AND data->>'status' = 'PUBLISHED'
+          ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`,
+      !manager && canPropose ? [actor.username] : []);
     return jsonOk({ items: result.rows.map(mapDocumentRow) });
   } catch (error: any) {
     return jsonServerError(error?.message || String(error));
@@ -38,9 +49,8 @@ export async function POST(req: NextRequest) {
   if (!actor) {
     return jsonUnauthorized('Phiên PCN không hợp lệ hoặc đã hết hạn.');
   }
-  if (!isPcnWorkflowManager(actor)) {
-    return jsonForbidden('Chỉ Admin hoặc Quản lý PCN được thay đổi bộ hồ sơ mẫu.');
-  }
+  const manager = isPcnWorkflowManager(actor);
+  if (!manager && !canProposePcnWorkflow(actor)) return jsonForbidden('Tài khoản chưa được cấp quyền PCN để gửi đề xuất mẫu.');
 
   let body: any;
   try {
@@ -51,11 +61,12 @@ export async function POST(req: NextRequest) {
 
   const now = new Date().toISOString();
   const template = buildPcnWorkflowTemplateRecord(body?.template, actor, now);
+  template.scope = manager ? 'COMMON' : 'PERSONAL';
   if (!isSafePcnSampleKey(template.id) || !template.code || !template.name || template.status !== 'DRAFT') {
     return jsonError('Template workflow mới phải có id, mã, tên và bắt đầu ở trạng thái DRAFT.', 400);
   }
 
-  const validation = validatePcnWorkflowTemplate(template);
+  const validation = validatePcnWorkflowTemplate(template, { allowIncompleteDraft: true });
   if (!validation.valid) {
     return jsonError(validation.errors.join(' '), 400, { issues: validation.errors });
   }

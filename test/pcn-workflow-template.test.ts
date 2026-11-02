@@ -86,6 +86,11 @@ test('selects the most specific published template deterministically', () => {
   assert.equal(selectPcnPublishedWorkflowTemplate([specific], dossier({ fieldCodes: ['QC9'] })), undefined);
 });
 
+test('does not select a published personal proposal for a new dossier', () => {
+  const personalProposal = baseTemplate({ id: 'personal', scope: 'PERSONAL' });
+  assert.equal(selectPcnPublishedWorkflowTemplate([personalProposal], dossier()), undefined);
+});
+
 test('snapshots a published template without sharing mutable topology', () => {
   const template = baseTemplate();
   const captured = snapshotPcnWorkflowTemplate(template, { capturedAt: '2026-09-06T01:00:00.000Z', capturedBy: 'manager' });

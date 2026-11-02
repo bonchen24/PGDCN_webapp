@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import PgdcnDossierTemplateEditor from '../components/PgdcnDossierTemplateEditor.tsx';
+import { toPcnDossierTemplateEditorModel } from '../utils/pgdcnDossierTemplate.ts';
+import type { PcnWorkflowTemplate } from '../types.ts';
 
 const editor = readFileSync(new URL('../components/PgdcnDossierTemplateEditor.tsx', import.meta.url), 'utf8');
 const canvas = readFileSync(new URL('../components/PgdcnDossierTemplateCanvas.tsx', import.meta.url), 'utf8');
 const inspector = readFileSync(new URL('../components/PgdcnDossierTemplateInspector.tsx', import.meta.url), 'utf8');
+const stageBuilder = readFileSync(new URL('../components/PgdcnDossierTemplateStageBuilder.tsx', import.meta.url), 'utf8');
 
 test('visual editor exposes palette, lane/column canvas and draft actions', () => {
   assert.match(editor, /data-testid="pgdcn-dossier-template-editor"/);
@@ -20,6 +26,46 @@ test('visual editor exposes palette, lane/column canvas and draft actions', () =
   assert.match(canvas, /useDroppable/);
   assert.match(canvas, /lane/);
   assert.match(canvas, /column/);
+});
+
+test('document-stage builder is the default view and keeps the graph behind Advanced', () => {
+  const template: PcnWorkflowTemplate = {
+    id: 'stage-view-template',
+    code: 'PCN-STAGE-VIEW',
+    name: 'Mẫu kiểm tra nhóm giai đoạn',
+    appliesTo: { fieldCodes: ['QC4'] },
+    version: 1,
+    status: 'DRAFT',
+    nodes: [
+      { id: 'start', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận', requirementIds: [], active: true, sortOrder: 10 },
+      { id: 'end', kind: 'END', label: 'Lưu trữ', requirementIds: [], active: true, sortOrder: 20 },
+    ],
+    transitions: [{ id: 'start-end', fromNodeId: 'start', toNodeId: 'end', condition: 'ALWAYS' }],
+    createdAt: '2026-09-06T00:00:00.000Z',
+    createdBy: 'admin',
+    updatedAt: '2026-09-06T00:00:00.000Z',
+    updatedBy: 'admin',
+  };
+  const markup = renderToStaticMarkup(createElement(PgdcnDossierTemplateEditor, {
+    model: toPcnDossierTemplateEditorModel(template),
+    requirements: [],
+    onChange: () => undefined,
+    onSaveDraft: async () => undefined,
+    canMutate: true,
+  }));
+
+  assert.match(markup, /data-testid="pgdcn-dossier-template-stage-builder"/);
+  assert.match(markup, /Tiếp nhận yêu cầu &amp; tài liệu khách hàng/);
+  assert.match(markup, /Hành động khắc phục/);
+  assert.match(markup, /Phát hành, bàn giao &amp; lưu trữ/);
+  assert.match(markup, /Mở nâng cao/);
+  assert.match(markup, /Tạo yêu cầu mới/);
+  assert.doesNotMatch(markup, /data-testid="pgdcn-dossier-template-canvas"/);
+  assert.match(stageBuilder, /renameRequirement/);
+  assert.match(stageBuilder, /moveRequirement/);
+  assert.match(stageBuilder, /aria-label=\{`Chuyển .* lên`\}/);
+  assert.match(stageBuilder, /aria-label=\{`Chuyển .* xuống`\}/);
+  assert.match(stageBuilder, /Gỡ yêu cầu/);
 });
 
 test('inspector provides searchable checklist references and visual node actions', () => {

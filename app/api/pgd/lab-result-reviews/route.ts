@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server';
 import { withPgTransaction } from '@/lib/server/db';
 import { getPgdSessionUser, requirePgdCollectionMutation } from '@/lib/server/pgd';
+import { getDocumentPayload } from '@/lib/server/collections';
 import { jsonBadRequest, jsonConflict, jsonForbidden, jsonNotFound, jsonOk } from '@/lib/server/response';
-import { PGD_COLLECTIONS } from '@/utils/pgdDomain';
+import { PGD_COLLECTIONS, PgdInspectionRequest } from '@/utils/pgdDomain';
+import { applyPgdDossierConditionalRequirements } from '@/utils/pgdDossier';
 import {
   PgdLabResultReview,
   createPgdLabResultReview,
@@ -44,9 +46,16 @@ export async function POST(req: NextRequest) {
         ...(input.retestRequired === true ? { retestRequestedAt: now, retestRequestedByUsername: actor.username } : {}),
       } as PgdLabResultReview, now);
       await persistPgdArtifact(client, PGD_COLLECTIONS.labResultReviews, next);
+      const dossierChecklist = applyPgdDossierConditionalRequirements(request.dossierChecklist, next, now);
+      const nextRequest: PgdInspectionRequest = {
+        ...request,
+        labResultReviewId: next.id,
+        dossierChecklist,
+        updatedAt: now,
+      };
       await client.query(
-        `UPDATE app_documents SET data = data || jsonb_build_object('labResultReviewId', $2::text), updated_at = CURRENT_TIMESTAMP WHERE collection_name = $1 AND document_id = $3`,
-        [PGD_COLLECTIONS.requests, next.id, request.id],
+        `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP WHERE collection_name = $1 AND document_id = $3`,
+        [PGD_COLLECTIONS.requests, JSON.stringify(getDocumentPayload(nextRequest)), request.id],
       );
       await writePgdActivity(client, actor, {
         action: 'UPDATED',
@@ -56,10 +65,10 @@ export async function POST(req: NextRequest) {
         summary: `Đánh giá kết quả thử nghiệm PGD cho ${request.requestCode}`,
         idSuffix: `lab-review-${request.id}`,
       });
-      return next;
+      return { review: next, request: nextRequest };
     });
 
-    return jsonOk({ review });
+    return jsonOk(review);
   } catch (error: any) {
     const status = Number(error?.statusCode) || 400;
     if (status === 404) return jsonNotFound(error.message);

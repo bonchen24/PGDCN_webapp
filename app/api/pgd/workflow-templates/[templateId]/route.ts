@@ -7,6 +7,7 @@ import {
   PGD_COLLECTIONS,
   assertPgdWorkflowRequirementReferences,
   buildPgdWorkflowTemplateRecord,
+  canProposePgdWorkflow,
   isPgdWorkflowManager,
   isSafePcnSampleKey,
   writePgdActivity,
@@ -24,9 +25,8 @@ export async function PUT(
   if (!actor) {
     return jsonUnauthorized('Phiên PGD không hợp lệ hoặc đã hết hạn.');
   }
-  if (!isPgdWorkflowManager(actor)) {
-    return jsonForbidden('Chỉ Admin hoặc Quản lý PGD được thay đổi bộ hồ sơ mẫu.');
-  }
+  const manager = isPgdWorkflowManager(actor);
+  if (!manager && !canProposePgdWorkflow(actor)) return jsonForbidden('Tài khoản chưa được cấp quyền PGD để gửi đề xuất mẫu.');
 
   const resolvedParams = await Promise.resolve(context.params);
   const templateId = String(resolvedParams.templateId || '').trim();
@@ -54,6 +54,9 @@ export async function PUT(
         throw Object.assign(new Error('Không tìm thấy template workflow PGD.'), { statusCode: 404 });
       }
       const existing = mapDocumentRow(existingResult.rows[0]) as PgdWorkflowTemplate;
+      if (!manager && (existing.scope !== 'PERSONAL' || existing.createdBy !== actor.username)) {
+        throw Object.assign(new Error('Chỉ người tạo mới được sửa đề xuất riêng của mình.'), { statusCode: 403 });
+      }
       if (existing.status !== 'DRAFT') {
         throw Object.assign(
           new Error('Template PUBLISHED/RETIRED bất biến; hãy tạo revision mới.'),
@@ -72,7 +75,7 @@ export async function PUT(
       next.version = existing.version;
       next.status = 'DRAFT';
 
-      const validation = validatePgdWorkflowTemplate(next);
+      const validation = validatePgdWorkflowTemplate(next, { allowIncompleteDraft: true });
       if (!validation.valid) {
         throw Object.assign(new Error(validation.errors.join(' ')), { statusCode: 400 });
       }

@@ -45,6 +45,7 @@ export async function POST(
         throw Object.assign(new Error('Không tìm thấy template workflow.'), { statusCode: 404 });
       }
       const existing = mapDocumentRow(existingResult.rows[0]) as PcnWorkflowTemplate;
+      if (existing.scope === 'PERSONAL') throw Object.assign(new Error('Đề xuất cá nhân cần được nhân bản thành mẫu dùng chung trước khi công bố.'), { statusCode: 409 });
       if (existing.status === 'PUBLISHED') {
         throw Object.assign(
           new Error('Template PUBLISHED bất biến; hãy tạo revision mới.'),

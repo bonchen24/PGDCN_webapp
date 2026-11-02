@@ -15,7 +15,7 @@ import type {
 } from '../types.ts';
 import { getPcnDossierAssignmentDenial, type PcnDossierAssignmentInput } from './pcnDossierAssignment.ts';
 import { reviewPcnCodes, type PcnCodeReview } from './pcnCodePolicy.ts';
-import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, getPcnDocumentRequirements } from './pcnDossierDocuments.ts';
+import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, getPcnDocumentRequirements, getPcnDossierRequirementsWithCustom } from './pcnDossierDocuments.ts';
 import { getPcnWorkflowStageByKey } from './pcnWorkflowStages.ts';
 import { isPcnDocumentWaiverValid } from './pcnDocumentWaivers.ts';
 
@@ -345,7 +345,7 @@ export function buildPcnDossierCompleteness(input: {
   documents?: PcnDossierDocument[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver>;
 }): PcnDossierCompleteness {
-  const requirements = getPcnDocumentRequirements(input.dossier.fieldCodes, input.requirements);
+  const requirements = getPcnDossierRequirementsWithCustom(input.dossier, input.requirements);
   const documentWaivers = input.documentWaivers || input.dossier.documentWaivers;
   const required = requirements.filter((item) => item.required);
   const documentByRequirement = new Map((input.documents || []).filter((item) => item.dossierId === input.dossier.id).map((item) => [item.requirementId, item]));

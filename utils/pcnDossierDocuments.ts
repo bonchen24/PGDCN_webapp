@@ -8,6 +8,7 @@ import type {
   PcnGeneratedDocumentKind,
   PcnDraftFormKind,
   PcnHistoricalFileKind,
+  CertificationDossier,
 } from '../types.ts';
 import { PCN_CERTIFICATION_FIELD_CODES } from './pcnWorkflow.ts';
 
@@ -145,6 +146,47 @@ export function getPcnDocumentRequirements(
   return requirements
     .filter((item) => item.active && selected.has(item.fieldCode.toUpperCase()))
     .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id));
+}
+
+export function getPcnDossierRequirementsWithCustom(
+  dossier: Pick<CertificationDossier, 'fieldCodes' | 'workflowSnapshot'>,
+  requirements: PcnDocumentRequirement[] = DEFAULT_PCN_DOCUMENT_REQUIREMENTS,
+): PcnDocumentRequirement[] {
+  const fieldCode = dossier.fieldCodes[0];
+  if (!fieldCode) return getPcnDocumentRequirements(dossier.fieldCodes, requirements);
+  const custom = (dossier.workflowSnapshot?.requirementDefinitions || [])
+    .filter((definition) => definition.domain === 'PCN')
+    .map((definition, index): PcnDocumentRequirement => {
+      const stageId = dossier.workflowSnapshot?.stages?.find((stage) => stage.requirementIds?.includes(definition.id))?.id;
+      const stageMap: Record<string, { stages: PcnDocumentRequirement['stages']; stationKeys: PcnDocumentRequirement['stationKeys'] }> = {
+        'intake-documents': { stages: ['INTAKE'], stationKeys: ['INTAKE', 'DOCUMENTS'] },
+        'scope-assignment': { stages: ['INTAKE'], stationKeys: ['ASSIGNMENT', 'EVALUATION'] },
+        'onsite-assessment': { stages: ['INTAKE'], stationKeys: ['EVALUATION'] },
+        'testing-evidence': { stages: ['LAB_ROUTING', 'TECHNICAL_REVIEW'], stationKeys: ['SAMPLING_LAB', 'RESULTS'] },
+        'corrective-action': { stages: ['TECHNICAL_REVIEW'], stationKeys: ['CORRECTION'] },
+        'review-approval': { stages: ['TECHNICAL_REVIEW', 'ISSUANCE'], stationKeys: ['TECHNICAL_REVIEW', 'APPROVAL'] },
+        'issuance-archive': { stages: ['ISSUANCE', 'DELIVERY', 'ARCHIVE'], stationKeys: ['ISSUANCE', 'DELIVERY_ARCHIVE'] },
+      };
+      const mapped = stageMap[stageId || 'intake-documents'] || stageMap['intake-documents'];
+      return {
+        id: definition.id,
+        fieldCode,
+        code: definition.code,
+        name: definition.name,
+        ...(definition.description ? { description: definition.description } : {}),
+        stages: mapped.stages,
+        stationKeys: mapped.stationKeys,
+        required: definition.level === 'REQUIRED',
+        active: true,
+        sortOrder: 10000 + index,
+        requirementLevel: definition.level,
+        requirementSource: definition.source,
+        ...(definition.condition ? { condition: definition.condition } : {}),
+        ownerRole: definition.ownerRole,
+        multiplicity: definition.multiplicity,
+      };
+    });
+  return [...getPcnDocumentRequirements(dossier.fieldCodes, requirements), ...custom];
 }
 
 export function buildPcnDossierDocumentId(dossierId: string, requirementId: string): string {

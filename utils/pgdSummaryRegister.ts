@@ -94,7 +94,7 @@ export function buildPgdSummaryRegisterRows(input: PgdSummaryRegisterInput): Sum
       const labSampleCount = samples.filter((sample) => sample.disposition === 'LAB').length;
       const retainedSampleCount = samples.filter((sample) => sample.disposition === 'RETAINED').length;
       const requiredChecklist = checklist.filter((item) => item.required);
-      const satisfiedRequiredDocumentCount = requiredChecklist.filter((item) => item.status === 'PRESENT' || item.status === 'WAIVED').length;
+      const satisfiedRequiredDocumentCount = requiredChecklist.filter((item) => item.status === 'PRESENT' || item.status === 'CONFIRMED' || item.status === 'WAIVED').length;
       const missingRequiredCount = Math.max(0, requiredChecklist.length - satisfiedRequiredDocumentCount);
       const firstSample = earliestByTimestamp(samples, (sample) => sample.sampledAt);
       const lastSample = latestByTimestamp(samples, (sample) => sample.sampledAt);

@@ -27,3 +27,31 @@ test('PGD dossier operations expose owner, generated-document attachment, and pa
   assert.match(server, /ROW_NUMBER\(\) OVER/);
   assert.match(server, /resolvePgdTemplateSourcePath/);
 });
+
+test('custom PGD checklist confirmation verifies the current file provenance before satisfying the gate', () => {
+  const api = read('utils/pgdApi.ts');
+  const store = read('store-pgd.ts');
+  const confirmRoute = read('app/api/pgd/requests/[requestId]/dossier-documents/confirm/route.ts');
+  assert.match(api, /confirmPgdDossierDocument/);
+  assert.match(store, /confirmDossierDocument/);
+  assert.match(confirmRoute, /requirePgdCollectionMutation/);
+  assert.match(confirmRoute, /assertPgdRequestStationMutationAllowed/);
+  assert.match(confirmRoute, /requirement\.customDefinition/);
+  assert.match(confirmRoute, /ORDER BY COALESCE\(\(data->>'version'\)::int, 0\) DESC/);
+  assert.match(confirmRoute, /source_collection/);
+  assert.match(confirmRoute, /source_document_id/);
+  assert.match(confirmRoute, /source_json_path/);
+  assert.match(confirmRoute, /sha256/);
+  assert.match(confirmRoute, /'CONFIRMED'/);
+});
+
+test('final PGD lab review persists conditional checklist applicability in the request snapshot', () => {
+  const reviewRoute = read('app/api/pgd/lab-result-reviews/route.ts');
+  const api = read('utils/pgdApi.ts');
+  const store = read('store-pgd.ts');
+  assert.match(reviewRoute, /applyPgdDossierConditionalRequirements/);
+  assert.match(reviewRoute, /dossierChecklist/);
+  assert.match(reviewRoute, /getDocumentPayload\(nextRequest\)/);
+  assert.match(api, /request: payload\.request as PgdInspectionRequest/);
+  assert.match(store, /if \(result\.request\) mergeRequest/);
+});

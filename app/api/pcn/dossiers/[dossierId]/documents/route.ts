@@ -14,6 +14,7 @@ import {
 import {
   buildPcnDossierDocumentId,
   buildPcnUploadedDossierAttachment,
+  getPcnDossierRequirementsWithCustom,
 } from '@/utils/pcnDossierDocuments';
 import { isPcnDossierPostApprovalLocked } from '@/utils/pcnDossierStepAccess';
 import { canProcessPcnDossierRequirement, getPcnRequirementReopenStatus, getPcnRequirementWorkflowStageIndex } from '@/utils/pcnDossierStageGate';
@@ -98,10 +99,12 @@ export async function POST(
          LIMIT 1`,
         [requirementId],
       );
-      const requirementDefinition = requirement.rows[0] ? mapDocumentRow(requirement.rows[0]) as PcnDocumentRequirement : undefined;
+      const requirementDefinition = requirement.rows[0]
+        ? mapDocumentRow(requirement.rows[0]) as PcnDocumentRequirement
+        : getPcnDossierRequirementsWithCustom(dossier).find((item) => item.id === requirementId);
       const requirementData: Partial<PcnDocumentRequirement> = requirementDefinition || {};
       const requirementFieldCode = String(requirementData.fieldCode || '').trim().toUpperCase();
-      if (requirement.rows.length === 0 || requirementData.active === false || !requirementFieldCode || !dossierFieldCodes.includes(requirementFieldCode)) {
+      if ((!requirement.rows.length && !dossier.workflowSnapshot?.requirementDefinitions?.some((item) => item.id === requirementId)) || requirementData.active === false || !requirementFieldCode || !dossierFieldCodes.includes(requirementFieldCode)) {
         throw new Error('Loại tài liệu không thuộc Lĩnh vực của hồ sơ PCN.');
       }
       if (!canProcessPcnDossierRequirement(dossier, requirementDefinition!)) {

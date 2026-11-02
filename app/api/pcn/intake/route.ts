@@ -7,7 +7,7 @@ import { buildActivityLog, validateActivityLogPayload } from '@/lib/server/activ
 import { formatPcnIntakeValidationIssues, validatePcnProposalIntake } from '@/utils/pcnIntakePolicy';
 import { formatPcnDossierCode, formatPcnProposalCode, getPcnVietnamDateKey } from '@/utils/pcnIdentifier';
 import { selectPcnPublishedWorkflowTemplate, snapshotPcnWorkflowTemplate } from '@/utils/pcnWorkflowTemplate';
-import { buildPcnDossierChecklist } from '@/utils/pcnDossierDocuments';
+import { buildPcnDossierChecklist, getPcnDossierRequirementsWithCustom } from '@/utils/pcnDossierDocuments';
 import { buildPcnWorkflowTaskSeed } from '@/utils/pcnWorkflowRuntime';
 import {
   PcnDocumentRequirement,
@@ -226,7 +226,8 @@ export async function POST(req: NextRequest) {
       const requirements = requirementResult.rows.map(
         (row: any) => mapDocumentRow(row) as PcnDocumentRequirement
       );
-      const dossierDocuments = buildPcnDossierChecklist(dossierId, storedDossier.fieldCodes, requirements, now);
+      const dossierRequirements = getPcnDossierRequirementsWithCustom(storedDossier, requirements);
+      const dossierDocuments = buildPcnDossierChecklist(dossierId, storedDossier.fieldCodes, dossierRequirements, now);
       for (const document of dossierDocuments) {
         await client.query(
           `INSERT INTO app_documents (collection_name, document_id, data, updated_at)

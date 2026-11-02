@@ -20,6 +20,7 @@ import {
   validatePgdIntakeSampleDrafts,
 } from '@/utils/pgdDomain';
 import { buildPgdDossierChecklist } from '@/utils/pgdDossier';
+import { selectPgdPublishedWorkflowTemplate, snapshotPgdWorkflowTemplate, type PgdWorkflowTemplate } from '@/utils/pgdWorkflowTemplate';
 import { writePgdActivity } from '@/lib/server/pgd-operations';
 import { buildPgdNotificationDraft } from '@/utils/pgdcnNotification';
 
@@ -84,6 +85,18 @@ export async function POST(req: NextRequest) {
         catalog,
       );
 
+      const workflowTemplateResult = await client.query(
+        `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd' AND data->>'status' = 'PUBLISHED'`,
+        [PGD_COLLECTIONS.workflowTemplates],
+      );
+      const workflowTemplate = selectPgdPublishedWorkflowTemplate(
+        workflowTemplateResult.rows.map((row: any) => mapDocumentRow(row) as PgdWorkflowTemplate),
+        { productGroup: createdRequest.productGroup, methodCode: String(createdRequest.assessmentMethod || createdRequest.method || '').trim().toUpperCase() || undefined },
+      );
+      const workflowSnapshot = workflowTemplate
+        ? snapshotPgdWorkflowTemplate(workflowTemplate, { capturedAt: now, capturedBy: actor.username })
+        : undefined;
+
       const samples = sampleDrafts.map((draft) =>
         createPgdSampleFromIntakeDraft(createdRequest.id, draft, actor.username, now),
       );
@@ -91,7 +104,9 @@ export async function POST(req: NextRequest) {
       const request = {
         ...createdRequest,
         sampleIds: samples.map((sample) => sample.id),
-        dossierChecklist: buildPgdDossierChecklist(createdRequest.productGroup, now),
+        ...(workflowTemplate ? { workflowTemplateId: workflowTemplate.id, workflowTemplateVersion: workflowTemplate.version } : {}),
+        ...(workflowSnapshot ? { workflowSnapshot } : {}),
+        dossierChecklist: buildPgdDossierChecklist(createdRequest.productGroup, now, workflowSnapshot?.requirementDefinitions || []),
       };
 
       const duplicateCode = await client.query(

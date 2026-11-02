@@ -122,7 +122,7 @@ export function buildPgdDossierPackageManifest(input: {
     group: clean(item.group),
     title: clean(item.title),
     required: item.required === true,
-    status: ['MISSING', 'PRESENT', 'WAIVED'].includes(String(item.status)) ? item.status : 'MISSING',
+    status: ['MISSING', 'UPLOADED', 'GENERATED', 'CONFIRMED', 'PRESENT', 'WAIVED'].includes(String(item.status)) ? item.status : 'MISSING',
     ...(clean(item.currentDocumentId) ? { currentDocumentId: clean(item.currentDocumentId) } : {}),
     ...(Number.isInteger(item.currentDocumentVersion) && Number(item.currentDocumentVersion) > 0 ? { currentDocumentVersion: Number(item.currentDocumentVersion) } : {}),
     ...(clean(item.waiverReason) ? { waiverReason: clean(item.waiverReason) } : {}),
@@ -130,7 +130,7 @@ export function buildPgdDossierPackageManifest(input: {
     ...(clean(item.waivedAt) ? { waivedAt: clean(item.waivedAt) } : {}),
   }));
   const missingRequirementCodes = checklist
-    .filter((item) => item.required && item.status !== 'PRESENT' && item.status !== 'WAIVED')
+    .filter((item) => item.required && !['PRESENT', 'CONFIRMED', 'WAIVED'].includes(item.status))
     .map((item) => item.requirementCode);
 
   return {

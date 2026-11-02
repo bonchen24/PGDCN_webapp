@@ -17,7 +17,7 @@ import { usePgdStore } from '../store-pgd';
 import PcnCatalogCombobox, { type PcnCatalogOption } from './PcnCatalogCombobox';
 import PgdDocumentGenerationPanel, { PGD_DOCUMENT_KIND_LABELS } from './PgdDocumentGenerationPanel';
 import { DraftingContextStatusBar, DraftingHeader, DraftingOutputReviewShell, DraftingReadinessPanel, DraftingWorkflowOrientation, type DraftingReadinessIssue, type DraftingState } from './PgdcnDraftingPrimitives';
-import { getCurrentPgdDossierDocuments, getPgdDossierRequirementForTemplate, getPgdDossierRequirementStationKey, getPgdDossierRequirements } from '../utils/pgdDossier';
+import { getCurrentPgdDossierDocuments, getPgdDossierRequirementForTemplate, getPgdDossierRequirementStationKey, getPgdDossierRequirementsWithCustom } from '../utils/pgdDossier';
 
 export type PgdDraftSession = PgdDraftWorkspace;
 
@@ -53,16 +53,21 @@ function requestSummary(request: PgdInspectionRequest): string {
   return [request.customerSnapshot.name, request.productName, request.lotCode].filter(Boolean).join(' · ');
 }
 
-function checklistStatusLabel(status: 'MISSING' | 'PRESENT' | 'WAIVED'): string {
-  return status === 'PRESENT' ? 'Đã xác nhận' : status === 'WAIVED' ? 'Đã miễn' : 'Cần hoàn thiện';
+function checklistStatusLabel(status: 'MISSING' | 'UPLOADED' | 'GENERATED' | 'CONFIRMED' | 'PRESENT' | 'WAIVED'): string {
+  return status === 'PRESENT' || status === 'CONFIRMED' ? 'Đã xác nhận'
+    : status === 'UPLOADED' ? 'Chờ xác nhận'
+      : status === 'GENERATED' ? 'Đã sinh · chờ xác nhận'
+        : status === 'WAIVED' ? 'Đã miễn' : 'Cần hoàn thiện';
 }
 
-function checklistStatusClass(status: 'MISSING' | 'PRESENT' | 'WAIVED'): string {
-  return status === 'PRESENT'
+function checklistStatusClass(status: 'MISSING' | 'UPLOADED' | 'GENERATED' | 'CONFIRMED' | 'PRESENT' | 'WAIVED'): string {
+  return status === 'PRESENT' || status === 'CONFIRMED'
     ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
     : status === 'WAIVED'
       ? 'border-amber-200 bg-amber-50 text-amber-800'
-      : 'border-rose-200 bg-rose-50 text-rose-700';
+      : status === 'UPLOADED' || status === 'GENERATED'
+        ? 'border-sky-200 bg-sky-50 text-sky-700'
+        : 'border-rose-200 bg-rose-50 text-rose-700';
 }
 
 function documentKindLabel(kind: string): string {
@@ -153,7 +158,7 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
   })), [requests]);
   const request = requests.find((item) => item.id === requestId);
   const availableTemplates = useMemo(() => catalogTemplates.filter((template) => template.productGroups.includes(request?.productGroup || 'OTHER')), [catalogTemplates, request?.productGroup]);
-  const requirements = useMemo(() => request ? getPgdDossierRequirements(request.productGroup) : [], [request?.productGroup]);
+  const requirements = useMemo(() => request ? getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || []) : [], [request]);
   const currentDossierDocuments = useMemo(() => getCurrentPgdDossierDocuments(dossierDocuments.filter((document) => document.requestId === request?.id)), [dossierDocuments, request?.id]);
   const checklistByCode = useMemo(() => new Map((request?.dossierChecklist || []).map((item) => [item.requirementCode, item])), [request?.dossierChecklist]);
   const templateOptions = useMemo(() => {
@@ -191,7 +196,7 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
     (message) => typeof window !== 'undefined' && window.confirm(message),
   );
   const selectedDocuments = useMemo(() => request && activeRequirementCode
-    ? getPgdDocumentsForRequirement({ documents, requestId: request.id, requirementCode: activeRequirementCode, productGroup: request.productGroup })
+    ? getPgdDocumentsForRequirement({ documents, requestId: request.id, requirementCode: activeRequirementCode, productGroup: request.productGroup, customDefinitions: request.workflowSnapshot?.requirementDefinitions || [] })
     : [], [activeRequirementCode, documents, request]);
   const attachedDocumentIds = useMemo(() => new Set(currentDossierDocuments.map((document) => document.originDocumentId).filter(Boolean)), [currentDossierDocuments]);
   const hasReviewOutput = selectedDocuments.length > 0;
@@ -433,7 +438,10 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
     handleDraftDirtyChange(false);
     setDraftPanelRevision((revision) => revision + 1);
     setSelectedRequirementCode(requirementCode);
-    const matchingTemplate = availableTemplates.find((template) => getPgdDossierRequirementForTemplate(template.kind, request.productGroup)?.code === requirementCode);
+    const selectedRequirement = requirements.find((item) => item.code === requirementCode);
+    const matchingTemplate = availableTemplates.find((template) => selectedRequirement?.customDefinition?.linkedDocxTemplateId
+      ? template.id === selectedRequirement.customDefinition.linkedDocxTemplateId
+      : getPgdDossierRequirementForTemplate(template.kind, request.productGroup)?.code === requirementCode);
     setTemplateId(matchingTemplate?.id || '');
     setDraftId(undefined);
     setDraftTitle('');
@@ -442,7 +450,7 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
 
   const attachGenerated = async (document: PgdGeneratedDocument) => {
     if (!request) return;
-    const documentRequirementCode = getPgdDocumentRequirementCode(document, request.productGroup);
+    const documentRequirementCode = getPgdDocumentRequirementCode(document, request.productGroup, request.workflowSnapshot?.requirementDefinitions || []);
     if (!documentRequirementCode) throw new Error('Tài liệu này chưa có ánh xạ vào checklist PGD.');
     if (document.requestId !== request.id) throw new Error('Tài liệu không thuộc hồ sơ PGD đang mở; không thể gắn.');
     if (!activeRequirementCode || documentRequirementCode !== activeRequirementCode) throw new Error(`Tài liệu thuộc mục ${documentRequirementCode}, không khớp mục hồ sơ đang mở ${activeRequirementCode || 'chưa xác định'}; không thể gắn.`);
@@ -525,10 +533,15 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
         <section data-testid="pgd-drafting-checklist" className="border-t border-slate-100 pt-3" aria-label="Danh mục tài liệu PGD"><div className="flex items-start justify-between gap-2"><div><h3 className="text-[12px] font-black text-slate-800">Danh mục tài liệu trong hồ sơ</h3><p className="mt-0.5 text-[11px] leading-4 text-slate-500">Chọn một tài liệu để mở đúng biểu mẫu và mục hồ sơ.</p></div></div>{!request ? <p className="mt-2 rounded-lg border border-dashed border-slate-200 px-2.5 py-3 text-[11px] leading-4 text-slate-400">Chọn PYC/hồ sơ nguồn để nạp danh mục tài liệu.</p> : <div className="mt-2 space-y-1.5">{requirements.map((requirement) => {
           const currentDocument = currentDossierDocuments.find((document) => document.requirementCode === requirement.code);
           const checklistItem = checklistByCode.get(requirement.code);
-          const status = currentDocument ? 'PRESENT' : checklistItem?.status === 'WAIVED' ? 'WAIVED' : 'MISSING';
+          const status = checklistItem?.status === 'WAIVED'
+            ? 'WAIVED'
+            : requirement.customDefinition
+              ? currentDocument && ['PRESENT', 'UPLOADED', 'GENERATED', 'CONFIRMED'].includes(checklistItem?.status || '') ? checklistItem!.status : 'MISSING'
+              : currentDocument ? 'PRESENT' : 'MISSING';
+          const isRequired = checklistItem?.required ?? requirement.required;
           const matchingTemplate = availableTemplates.find((template) => getPgdDossierRequirementForTemplate(template.kind, request.productGroup)?.code === requirement.code);
           const selected = activeRequirementCode === requirement.code;
-          return <div key={requirement.code} className={`rounded-lg border p-2 ${selected ? 'border-blue-300 bg-blue-50/60' : 'border-slate-100 bg-slate-50/60'}`}><button type="button" onClick={() => selectRequirement(requirement.code)} disabled={contextLocked} className={`mobile-touch-target flex min-h-10 w-full items-start gap-2 text-left ${contextLocked ? 'cursor-not-allowed opacity-80' : ''}`} aria-current={selected ? 'step' : undefined}><span className={`mt-0.5 inline-flex shrink-0 rounded-md border px-1.5 py-1 text-[11px] font-black ${checklistStatusClass(status)}`}>{checklistStatusLabel(status)}</span><span className="min-w-0 flex-1"><span className="block break-words text-[12px] font-black text-slate-700">{requirement.title}{requirement.required && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span></span></button><details className="mt-0.5 text-[11px] text-slate-500"><summary className="cursor-pointer text-[11px] font-bold text-slate-400">Thông tin kỹ thuật</summary><span className="font-mono">{requirement.code} · {getPgdDossierRequirementStationKey(requirement.code)}</span></details><div className="mt-1 flex flex-wrap items-center justify-between gap-1.5 pl-0.5 text-[11px]"><span className="text-slate-500">{matchingTemplate ? 'Soạn tài liệu' : 'Bổ sung tệp'}</span>{currentDocument?.fileAssetId && <a href={getPgdDossierDocumentDownloadUrl(currentDocument.id)} target="_blank" rel="noreferrer" download={currentDocument.fileName} className="font-black text-blue-700 underline">Xem tài liệu</a>}<span className={`font-bold ${status === 'PRESENT' ? 'text-emerald-700' : 'text-amber-700'}`}>{status === 'PRESENT' ? 'Xem tài liệu' : matchingTemplate ? 'Soạn tài liệu' : 'Bổ sung tệp'}</span></div></div>;
+          return <div key={requirement.code} className={`rounded-lg border p-2 ${selected ? 'border-blue-300 bg-blue-50/60' : 'border-slate-100 bg-slate-50/60'}`}><button type="button" onClick={() => selectRequirement(requirement.code)} disabled={contextLocked} className={`mobile-touch-target flex min-h-10 w-full items-start gap-2 text-left ${contextLocked ? 'cursor-not-allowed opacity-80' : ''}`} aria-current={selected ? 'step' : undefined}><span className={`mt-0.5 inline-flex shrink-0 rounded-md border px-1.5 py-1 text-[11px] font-black ${checklistStatusClass(status)}`}>{checklistStatusLabel(status)}</span><span className="min-w-0 flex-1"><span className="block break-words text-[12px] font-black text-slate-700">{requirement.title}{isRequired && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span></span></button><details className="mt-0.5 text-[11px] text-slate-500"><summary className="cursor-pointer text-[11px] font-bold text-slate-400">Thông tin kỹ thuật</summary><span className="font-mono">{requirement.customDefinition?.code || requirement.code} · {getPgdDossierRequirementStationKey(requirement.code, requirement.customDefinition?.businessModuleKey)}</span></details><div className="mt-1 flex flex-wrap items-center justify-between gap-1.5 pl-0.5 text-[11px]"><span className="text-slate-500">{matchingTemplate ? 'Soạn tài liệu' : 'Bổ sung tệp'}</span>{currentDocument?.fileAssetId && <a href={getPgdDossierDocumentDownloadUrl(currentDocument.id)} target="_blank" rel="noreferrer" download={currentDocument.fileName} className="font-black text-blue-700 underline">Xem tài liệu</a>}<span className={`font-bold ${status === 'PRESENT' || status === 'CONFIRMED' ? 'text-emerald-700' : 'text-amber-700'}`}>{status === 'PRESENT' || status === 'CONFIRMED' ? 'Xem tài liệu' : matchingTemplate ? 'Soạn tài liệu' : 'Bổ sung tệp'}</span></div></div>;
         })}</div>}{checklistError && <p role="alert" className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-bold text-amber-800">{checklistError}</p>}</section>
         {contextLocked && <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 px-2.5 py-2 text-[11px] leading-4 text-emerald-900"><p className="flex items-center gap-1 font-bold"><LockKeyhole size={13} aria-hidden="true" /> Hồ sơ và mục tài liệu được giữ theo đường dẫn đã mở.</p>{canMutate && <button type="button" onClick={() => setContextUnlocked(true)} title="Cho phép chọn hồ sơ hoặc tài liệu khác trong phiên này" className="mt-1 inline-flex min-h-9 items-center gap-1 font-black text-emerald-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"><UnlockKeyhole size={12} aria-hidden="true" /> Cho phép đổi bối cảnh</button>}</div>}
       </aside>

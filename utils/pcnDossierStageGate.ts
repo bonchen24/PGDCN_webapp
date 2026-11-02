@@ -9,7 +9,7 @@ import type {
   PcnDossierStatus,
   PcnDocumentRequirement,
 } from '../types.ts';
-import { getPcnDocumentRequirements } from './pcnDossierDocuments.ts';
+import { getPcnDossierRequirementsWithCustom } from './pcnDossierDocuments.ts';
 import {
   PCN_WORKFLOW_STAGES,
   getPcnWorkflowStage,
@@ -100,7 +100,7 @@ export function buildPcnDossierStageGate(input: {
     };
   }
 
-  const requirements = getPcnDocumentRequirements(input.dossier.fieldCodes, input.requirements)
+  const requirements = getPcnDossierRequirementsWithCustom(input.dossier, input.requirements)
     .filter((requirement) => requirementBelongsToStage(requirement, stage));
   const documentsByRequirement = new Map(
     (input.documents || [])

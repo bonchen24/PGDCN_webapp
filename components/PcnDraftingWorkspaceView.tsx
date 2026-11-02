@@ -7,7 +7,7 @@ import type { CertificationDossier, CertificationProposal, OutboundLabRequest, P
 import { getPcnFileUrl } from '../utils/pcnFileApi';
 import { confirmPcnDraftOutput, fetchPcnDraftWorkspaces, generatePcnDraftWorkspace, savePcnDraftWorkspace } from '../utils/pcnDraftApi';
 import { buildPcnDraftSourceValues, getPcnDraftFieldDefinitions, getPcnDraftFieldSection, hasPcnDeepContext, validatePcnDraftAction } from '../utils/pcnDrafting';
-import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, getPcnDocumentRequirements, getPcnDraftFormRequirementCode } from '../utils/pcnDossierDocuments';
+import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, getPcnDossierRequirementsWithCustom, getPcnDraftFormRequirementCode } from '../utils/pcnDossierDocuments';
 import { buildPcnDossierInspection } from '../utils/pcnDossierInspection';
 import { getPcnDossierStatusLabel } from '../utils/pcnWorkflow';
 import { getPcnOperationalTemplates, type PcnOperationalTemplateDefinition } from '../utils/pcnOperationalTemplateCatalog';
@@ -212,7 +212,7 @@ export default function PcnDraftingWorkspaceView({ proposals, dossiers, template
     }
     return { dossier: undefined, proposal: undefined };
   }, [dossiers, proposals, sourceKey]);
-  const dossierRequirements = useMemo(() => source.dossier ? getPcnDocumentRequirements(source.dossier.fieldCodes, documentRequirements) : [], [documentRequirements, source.dossier]);
+  const dossierRequirements = useMemo(() => source.dossier ? getPcnDossierRequirementsWithCustom(source.dossier, documentRequirements) : [], [documentRequirements, source.dossier]);
   const dossierInspection = useMemo(() => source.dossier ? buildPcnDossierInspection({ dossierId: source.dossier.id, fieldCodes: source.dossier.fieldCodes, requirements: dossierRequirements, documents: dossierDocuments, documentWaivers: source.dossier.documentWaivers, compact: true }) : undefined, [dossierDocuments, dossierRequirements, source.dossier]);
   const fieldDefinitions = useMemo(() => getPcnDraftFieldDefinitions(kind), [kind]);
   const relatedSource = useMemo(() => ({ sampleLots, sampleRoutes, labRequests, returnedResults }), [labRequests, returnedResults, sampleLots, sampleRoutes]);
@@ -357,7 +357,7 @@ export default function PcnDraftingWorkspaceView({ proposals, dossiers, template
 
   useEffect(() => {
     const initialDossier = initialDossierId ? dossiers.find((dossier) => dossier.id === initialDossierId) : undefined;
-    const initialRequirements = initialDossier ? getPcnDocumentRequirements(initialDossier.fieldCodes, documentRequirements) : [];
+    const initialRequirements = initialDossier ? getPcnDossierRequirementsWithCustom(initialDossier, documentRequirements) : [];
     const requirementFromProps = initialRequirementId ? initialRequirements.find((requirement) => requirement.id === initialRequirementId) : undefined;
     const kindFromRequirement = requirementFromProps ? resolvePcnDraftFormKindForRequirementCode(requirementFromProps.code, initialKind) : undefined;
     const nextKind = initialRequirementId ? kindFromRequirement : (initialKind || kindFromRequirement);

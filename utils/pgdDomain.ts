@@ -1,5 +1,6 @@
 import type { CustomerRef, OrganizationManagementRoleCode, ProfessionalRoleCode } from '../types.ts';
 import type { PgdDocumentTemplateSnapshot } from './pgdDocumentTemplates.ts';
+import type { PgdWorkflowSnapshot } from './pgdWorkflowTemplate.ts';
 import { isOrganizationLeader } from './pcnRbac.ts';
 
 export const PGD_DOMAIN = 'pgd' as const;
@@ -687,7 +688,7 @@ export interface PgdDraftWorkspace {
   updatedByUsername?: string;
 }
 
-export type PgdDossierChecklistStatus = 'MISSING' | 'PRESENT' | 'WAIVED';
+export type PgdDossierChecklistStatus = 'MISSING' | 'UPLOADED' | 'GENERATED' | 'CONFIRMED' | 'PRESENT' | 'WAIVED';
 
 export interface PgdDossierChecklistItem {
   domain: typeof PGD_DOMAIN;
@@ -696,6 +697,11 @@ export interface PgdDossierChecklistItem {
   title: string;
   required: boolean;
   status: PgdDossierChecklistStatus;
+  requirementLevel?: 'REQUIRED' | 'OPTIONAL' | 'CONDITIONAL';
+  requirementSource?: 'UPLOAD_EXTERNAL' | 'DRAFT_FROM_DOCX_TEMPLATE' | 'BUSINESS_MODULE_LINK';
+  condition?: 'RESULT_FAILED' | 'RESULT_PASSED';
+  ownerRole?: string;
+  multiplicity?: 'SINGLE' | 'MULTIPLE';
   currentDocumentId?: string;
   currentDocumentVersion?: number;
   waiverReason?: string;
@@ -746,6 +752,9 @@ export interface PgdInspectionRequestInput {
   ownerUsername?: string;
   ownerAssignedAt?: string;
   dossierChecklist?: PgdDossierChecklistItem[];
+  workflowTemplateId?: string;
+  workflowTemplateVersion?: number;
+  workflowSnapshot?: PgdWorkflowSnapshot;
   status?: PgdInspectionStatus;
 }
 
