@@ -1522,7 +1522,7 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
 </div>
 <h2 className="mt-1 break-words text-base font-black text-slate-800">{request.productName} · {request.customerSnapshot.name}</h2>
 <div data-testid="pgd-dossier-context-summary" className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-600" aria-label="Tóm tắt ngữ cảnh hồ sơ PGD">
-<span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-800">Bước hiện tại: {currentStepMeta.label} ({currentStepNumber}/12)</span>
+<span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-800">Giai đoạn hiện tại: {currentStepMeta.label} ({currentStepNumber}/7)</span>
 {missingRequiredCount !== null && (
 <span className={`rounded-full border px-2 py-0.5 ${missingRequiredCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
 {missingRequiredCount > 0 ? `Còn ${missingRequiredCount} đầu mục bắt buộc` : 'Đủ đầu mục bắt buộc'}
@@ -1546,7 +1546,7 @@ Chủ hồ sơ: {getPgdUserDisplayName(request.ownerUsername, pgd.users) || 'Ch�
     <div data-testid="pgd-dossier-scroll-area" className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 pb-5 md:p-5">
       <section data-testid="pgd-dossier-priority-action" aria-label="Bước hiện tại và hành động tiếp theo" className="mb-3 flex min-w-0 flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50/70 p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between md:p-4">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">Bước hiện tại · {currentStepNumber}/12</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">Giai đoạn hiện tại · {currentStepNumber}/7</p>
           <h2 className="mt-1 break-words text-base font-black text-slate-950">{currentStepMeta.label}</h2>
           <div id="pgd-dossier-priority-guidance" className="mt-1 space-y-1 text-xs leading-5 text-slate-700">
             {dossierLoading && <p role="status">Đang tải trạng thái chứng từ hồ sơ…</p>}
