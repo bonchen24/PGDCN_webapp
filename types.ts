@@ -843,6 +843,8 @@ export interface PcnDocumentRequirement {
   condition?: DossierTemplateRequirementCondition;
   ownerRole?: string;
   multiplicity?: DossierTemplateRequirementMultiplicity;
+  workflowStageId?: string;
+  workflowStageLabel?: string;
 }
 
 export interface PcnDossierDocumentVersion {

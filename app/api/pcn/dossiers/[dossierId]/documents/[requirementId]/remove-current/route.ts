@@ -96,7 +96,7 @@ export async function POST(
         actorUsername: actor.username,
         actorName: actor.name || 'Người dùng PCN',
         actorRole: actor.systemRole || actor.role,
-        summary: `Gỡ phiên tài liệu hiện tại ${requirement.name}; giữ nguyên lịch sử phiên`,
+        summary: `Gỡ phiên tài liệu hiện tại ${requirement.name}; giữ nguyên lịch sử phiên${requirement.workflowStageLabel ? ` · giai đoạn ${requirement.workflowStageLabel}` : ''}`,
         source: 'UI',
         groupId: dossierId,
         changes: diffActivityFields(document, nextDocument, ['currentVersionId', 'status', 'updatedAt'])

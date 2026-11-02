@@ -281,7 +281,7 @@ export async function POST(
             ? `Tải phiên tài liệu ${fileName.slice(0, 120)} và mở lại node ${workflowRework.reopenedNodeId} theo vòng xử lý mới`
           : hasVersion
             ? `Bổ sung provenance cho phiên tài liệu ${fileName.slice(0, 120)} trong hồ sơ`
-            : `Tải phiên tài liệu ${fileName.slice(0, 120)} vào hồ sơ`,
+            : `Tải phiên tài liệu ${fileName.slice(0, 120)} vào hồ sơ${requirementDefinition.workflowStageLabel ? ` · giai đoạn ${requirementDefinition.workflowStageLabel}` : ''}`,
         source: 'UI',
         groupId: dossier.id,
         changes: diffActivityFields(dossier, nextDossier, ['updatedAt']),

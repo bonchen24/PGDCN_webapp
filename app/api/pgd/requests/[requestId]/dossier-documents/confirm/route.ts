@@ -7,7 +7,7 @@ import { assertPgdRequestEvidenceMutationAllowed, assertPgdRequestStationMutatio
 import { PGD_COLLECTIONS, PgdInspectionRequest } from '@/utils/pgdDomain';
 import {
   getPgdDossierRequirementsWithCustom,
-  getPgdDossierRequirementStationKey,
+  getPgdDossierRequirementStationKeyForSnapshot,
   markPgdDossierChecklistPresent,
   PgdDossierDocument,
 } from '@/utils/pgdDossier';
@@ -37,11 +37,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
       assertPgdRequestEvidenceMutationAllowed(request);
 
-      const requirement = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [])
+      const requirement = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || [])
         .find((item) => item.code === requirementCode);
       if (!requirement) throw Object.assign(new Error('Mục checklist không thuộc snapshot của hồ sơ PGD.'), { statusCode: 400 });
       if (!requirement.customDefinition) throw Object.assign(new Error('Chỉ mục tài liệu tự định nghĩa cần xác nhận riêng.'), { statusCode: 400 });
-      assertPgdRequestStationMutationAllowed(request, getPgdDossierRequirementStationKey(requirement.code, requirement.customDefinition.businessModuleKey));
+      assertPgdRequestStationMutationAllowed(request, getPgdDossierRequirementStationKeyForSnapshot(requirement.code, requirement.customDefinition.businessModuleKey, request.workflowSnapshot?.stages));
 
       const currentResult = await client.query(
         `SELECT document_id, data FROM app_documents
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         entityId: request.id,
         entityLabel: request.requestCode,
         requestCode: request.requestCode,
-        summary: `Xác nhận tệp hiện hành cho mục checklist ${requirementCode} của ${request.requestCode}`,
+        summary: [`Xác nhận tệp hiện hành cho mục checklist ${requirementCode} của ${request.requestCode}`, requirement.stageLabel ? `Giai đoạn: ${requirement.stageLabel}` : ''].filter(Boolean).join(' · '),
         idSuffix: `confirm-dossier-document-${current.id}`,
       });
       return { request: nextRequest, dossierDocument: current };

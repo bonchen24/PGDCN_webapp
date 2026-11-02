@@ -702,6 +702,8 @@ export interface PgdDossierChecklistItem {
   condition?: 'RESULT_FAILED' | 'RESULT_PASSED';
   ownerRole?: string;
   multiplicity?: 'SINGLE' | 'MULTIPLE';
+  stageId?: string;
+  stageLabel?: string;
   currentDocumentId?: string;
   currentDocumentVersion?: number;
   waiverReason?: string;

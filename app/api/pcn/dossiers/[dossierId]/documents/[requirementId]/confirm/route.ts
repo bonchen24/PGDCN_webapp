@@ -101,7 +101,7 @@ export async function POST(
         actorUsername: actor.username,
         actorName: actor.name || 'Người dùng PCN',
         actorRole: actor.systemRole || actor.role,
-        summary: `Xác nhận tệp hiện hành cho ${requirement.name}.`,
+        summary: `Xác nhận tệp hiện hành cho ${requirement.name}.${requirement.workflowStageLabel ? ` Giai đoạn: ${requirement.workflowStageLabel}.` : ''}`,
         source: 'USER_REVIEW',
         groupId: document.currentVersionId,
         changes: diffActivityFields(document, nextDocument, ['lifecycleStatus', 'updatedAt']),

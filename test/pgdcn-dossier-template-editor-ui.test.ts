@@ -63,9 +63,64 @@ test('document-stage builder is the default view and keeps the graph behind Adva
   assert.doesNotMatch(markup, /data-testid="pgdcn-dossier-template-canvas"/);
   assert.match(stageBuilder, /renameRequirement/);
   assert.match(stageBuilder, /moveRequirement/);
+  assert.match(stageBuilder, /editingRequirementId/);
+  assert.match(stageBuilder, /updateRequirementDefinition/);
+  assert.match(stageBuilder, /setRequirementDraft\(createRequirementDraft\(props\.model\.domain\)\)/);
+  assert.match(stageBuilder, /Mô tả<textarea/);
   assert.match(stageBuilder, /aria-label=\{`Chuyển .* lên`\}/);
   assert.match(stageBuilder, /aria-label=\{`Chuyển .* xuống`\}/);
   assert.match(stageBuilder, /Gỡ yêu cầu/);
+  assert.doesNotMatch(stageBuilder, /option value="MULTIPLE"/);
+  assert.match(stageBuilder, /chỉ PGD/i);
+  assert.match(stageBuilder, /Đổi sang một tệp hiện hành/);
+  assert.match(stageBuilder, /PCN chưa hỗ trợ sinh từ DOCX liên kết/);
+});
+
+test('legacy PCN custom settings remain visible and offer a migration path in an editable revision', () => {
+  const requirement = {
+    domain: 'PCN' as const,
+    id: 'pcn-custom-legacy-options',
+    code: 'LEGACY_OPTIONS',
+    name: 'Yêu cầu cũ',
+    level: 'REQUIRED' as const,
+    source: 'DRAFT_FROM_DOCX_TEMPLATE' as const,
+    linkedDocxTemplateId: 'old-docx-template',
+    ownerRole: 'CERTIFICATION_EXPERT' as const,
+    multiplicity: 'MULTIPLE' as const,
+  };
+  const template: PcnWorkflowTemplate = {
+    id: 'legacy-template',
+    code: 'PCN-LEGACY',
+    name: 'Mẫu cũ',
+    appliesTo: { fieldCodes: ['QC4'] },
+    version: 1,
+    status: 'DRAFT',
+    stages: [{ id: 'intake-documents', label: 'Tiếp nhận', sortOrder: 10, requirementIds: [requirement.id] }],
+    requirementDefinitions: [requirement],
+    nodes: [
+      { id: 'intake', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận', requirementIds: [requirement.id], active: true, sortOrder: 10, stageId: 'intake-documents' },
+      { id: 'end', kind: 'END', label: 'Kết thúc', requirementIds: [], active: true, sortOrder: 20, stageId: 'issuance-archive' },
+    ],
+    transitions: [{ id: 'intake-end', fromNodeId: 'intake', toNodeId: 'end', condition: 'ALWAYS' }],
+    createdAt: '2026-11-02T00:00:00.000Z',
+    createdBy: 'admin',
+    updatedAt: '2026-11-02T00:00:00.000Z',
+    updatedBy: 'admin',
+  };
+  const markup = renderToStaticMarkup(createElement(PgdcnDossierTemplateEditor, {
+    model: toPcnDossierTemplateEditorModel(template),
+    requirements: [],
+    docxTemplates: [{ id: 'old-docx-template', label: 'Mẫu cũ' }],
+    onChange: () => undefined,
+    onSaveDraft: async () => undefined,
+    canMutate: true,
+  }));
+
+  assert.match(markup, /Cấu hình cũ: runtime chỉ giữ một tệp hiện hành/);
+  assert.match(markup, /PCN chưa hỗ trợ sinh từ DOCX liên kết/);
+  assert.match(markup, /Đổi sang một tệp hiện hành/);
+  assert.match(markup, /Đổi sang tải tệp bên ngoài/);
+  assert.doesNotMatch(markup, /option value="MULTIPLE"/);
 });
 
 test('inspector provides searchable checklist references and visual node actions', () => {

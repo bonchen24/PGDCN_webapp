@@ -8,10 +8,14 @@ import type {
   PcnDossierWorkflowTask,
   PcnUserAccount,
   PcnWorkflowSnapshot,
+  DossierTemplateRequirementDefinition,
+  PcnWorkflowTemplate,
   ReturnedTestResult,
 } from '../types.ts';
 import { executePcnWorkflowTaskMutation } from '../lib/server/workflow-tasks.ts';
 import { pool } from '../utils/db.ts';
+import { getPcnDossierRequirementsWithCustom } from '../utils/pcnDossierDocuments.ts';
+import { snapshotPcnWorkflowTemplate } from '../utils/pcnWorkflowTemplate.ts';
 
 const actor = { username: 'worker', role: 'staff', systemRole: 'staff' } as PcnUserAccount;
 
@@ -233,4 +237,50 @@ test('server task gates honor custom snapshot levels for required and optional d
     receivedAt: '2026-10-10T00:00:00.000Z',
   };
   await assertStatusCode(runMutation({ workflow: conditionalWorkflow, results: [failedResult] }, 'complete'), 409);
+});
+
+test('stage-only PCN requirement reaches the server gate through the immutable dossier snapshot', async () => {
+  const definition: DossierTemplateRequirementDefinition = {
+    domain: 'PCN',
+    id: 'pcn-custom-stage-gate',
+    code: 'STAGE_GATE_PROOF',
+    name: 'Bằng chứng theo giai đoạn',
+    level: 'REQUIRED',
+    source: 'UPLOAD_EXTERNAL',
+    ownerRole: 'CERTIFICATION_EXPERT',
+    multiplicity: 'SINGLE',
+  };
+  const template: PcnWorkflowTemplate = {
+    id: 'pcn-stage-gate-v1',
+    code: 'PCN-STAGE-GATE',
+    name: 'Kiểm tra stage-only gate',
+    appliesTo: { fieldCodes: ['QC4'], methods: ['METHOD_1'] },
+    version: 1,
+    status: 'PUBLISHED',
+    stages: [{ id: 'intake-documents', label: 'Tiếp nhận hồ sơ', sortOrder: 10, requirementIds: [definition.id] }],
+    requirementDefinitions: [definition],
+    nodes: [
+      { id: 'work', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận', requirementIds: [], active: true, sortOrder: 1, stageId: 'intake-documents' },
+      { id: 'next', kind: 'END', label: 'Kết thúc', requirementIds: [], active: true, sortOrder: 2, stageId: 'issuance-archive' },
+    ],
+    transitions: [{ id: 'work-next', fromNodeId: 'work', toNodeId: 'next', condition: 'ALWAYS' }],
+    createdAt: '2026-10-10T00:00:00.000Z',
+    createdBy: 'admin',
+    updatedAt: '2026-10-10T00:00:00.000Z',
+    updatedBy: 'admin',
+  };
+  const snapshot = snapshotPcnWorkflowTemplate(template, { capturedAt: '2026-10-10T01:00:00.000Z', capturedBy: 'admin' });
+  assert.deepEqual(snapshot.nodes[0].requirementIds, [definition.id]);
+  const dossierSnapshot = { fieldCodes: ['QC4'], workflowSnapshot: snapshot };
+  const runtimeRequirement = getPcnDossierRequirementsWithCustom(dossierSnapshot).find((item) => item.id === definition.id)!;
+  await assertStatusCode(runMutation({ workflow: snapshot, requirements: [runtimeRequirement] }, 'complete'), 409);
+
+  const confirmed = {
+    ...document(definition.id, 'PRESENT'),
+    currentVersionId: 'stage-gate-asset',
+    lifecycleStatus: 'CONFIRMED' as const,
+    versions: [{ assetId: 'stage-gate-asset', fileName: 'proof.pdf', byteSize: 10, sha256: 'c'.repeat(64), uploadedAt: '2026-10-10T00:00:00.000Z' }],
+  };
+  const completed = await runMutation({ workflow: snapshot, requirements: [runtimeRequirement], documents: [confirmed] }, 'complete');
+  assert.equal(completed.result.task.status, 'COMPLETED');
 });

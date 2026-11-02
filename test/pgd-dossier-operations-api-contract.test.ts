@@ -43,6 +43,21 @@ test('custom PGD checklist confirmation verifies the current file provenance bef
   assert.match(confirmRoute, /source_json_path/);
   assert.match(confirmRoute, /sha256/);
   assert.match(confirmRoute, /'CONFIRMED'/);
+  assert.match(confirmRoute, /requirement\.stageLabel/);
+});
+
+test('custom PGD upload and generated attachment preserve stage context in the audit log', () => {
+  const uploadRoute = read('app/api/pgd/requests/[requestId]/dossier-documents/route.ts');
+  const attachRoute = read('app/api/pgd/requests/[requestId]/dossier-documents/attach-generated/route.ts');
+  const confirmRoute = read('app/api/pgd/requests/[requestId]/dossier-documents/confirm/route.ts');
+  for (const route of [uploadRoute, attachRoute, confirmRoute]) {
+    assert.match(route, /workflowSnapshot\?\.stages/);
+    assert.match(route, /getPgdDossierRequirementStationKeyForSnapshot/);
+  }
+  for (const route of [uploadRoute, attachRoute]) {
+    assert.match(route, /requirement\.stageLabel/);
+    assert.match(route, /writePgdActivity/);
+  }
 });
 
 test('final PGD lab review persists conditional checklist applicability in the request snapshot', () => {

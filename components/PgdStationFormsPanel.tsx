@@ -109,7 +109,7 @@ function canManagePgd(user: PcnUserAccount): boolean {
 
 function useDossierEvidence(request: PgdInspectionRequest) {
   const pgd = usePgdStore();
-  const requirements = useMemo(() => getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || []), [request]);
+  const requirements = useMemo(() => getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || []), [request]);
   const documents = pgd.dossierDocuments.filter((item) => item.requestId === request.id);
   useEffect(() => { void pgd.fetchDossierDocuments(request.id).catch(() => undefined); }, [pgd.fetchDossierDocuments, request.id]);
   return { pgd, requirements, documents };

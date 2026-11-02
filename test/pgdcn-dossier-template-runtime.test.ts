@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { DossierTemplateRequirementDefinition } from '../types.ts';
-import { applyPgdDossierConditionalRequirements, buildPgdDossierChecklist, getPgdDossierRequirementStationKey, markPgdDossierChecklistPresent, reconcilePgdDossierChecklist } from '../utils/pgdDossier.ts';
+import { applyPgdDossierConditionalRequirements, buildPgdDossierChecklist, getPgdDossierRequirementStationKey, getPgdDossierRequirementStationKeyForSnapshot, markPgdDossierChecklistPresent, reconcilePgdDossierChecklist } from '../utils/pgdDossier.ts';
 import { buildPgdDossierPackageManifest } from '../utils/pgdDossierPackage.ts';
-import { filterPgdWorkflowTemplatesByScope, selectPgdPublishedWorkflowTemplate, snapshotPgdWorkflowTemplate, type PgdWorkflowTemplate } from '../utils/pgdWorkflowTemplate.ts';
+import { filterPgdWorkflowTemplatesByScope, selectPgdPublishedWorkflowTemplate, snapshotPgdWorkflowTemplate, validatePgdWorkflowTemplate, type PgdWorkflowTemplate } from '../utils/pgdWorkflowTemplate.ts';
 
 const requiredDefinition: DossierTemplateRequirementDefinition = {
   domain: 'PGD',
@@ -14,7 +14,7 @@ const requiredDefinition: DossierTemplateRequirementDefinition = {
   level: 'REQUIRED',
   source: 'UPLOAD_EXTERNAL',
   ownerRole: 'PGD_FIELD_INSPECTOR',
-  multiplicity: 'MULTIPLE',
+  multiplicity: 'SINGLE',
 };
 
 const conditionalDefinition: DossierTemplateRequirementDefinition = {
@@ -55,6 +55,51 @@ test('PGD template selection respects product group and method and snapshots cus
   assert.deepEqual(snapshot.stages, template.stages);
   assert.deepEqual(snapshot.requirementDefinitions, template.requirementDefinitions);
   assert.deepEqual(snapshot.nodes.map((node) => node.id), ['start', 'end']);
+  snapshot.stages[0].label = 'Đã sửa trong snapshot';
+  assert.equal(template.stages[0].label, 'Đánh giá tại chỗ');
+});
+
+test('PGD stage references cannot publish unresolved or cross-domain custom requirements', () => {
+  const missingCustom = {
+    ...template,
+    stages: [{ id: 'onsite-assessment', label: 'Tại chỗ', sortOrder: 30, requirementIds: ['pgd-custom-missing'] }],
+  };
+  const crossDomain = {
+    ...template,
+    stages: [{ id: 'onsite-assessment', label: 'Tại chỗ', sortOrder: 30, requirementIds: ['pcn-custom-stage-01'] }],
+  };
+
+  assert.equal(validatePgdWorkflowTemplate(missingCustom).valid, false);
+  assert.equal(selectPgdPublishedWorkflowTemplate([missingCustom], { productGroup: 'OTHER', methodCode: 'METHOD_7' }), undefined);
+  assert.throws(() => snapshotPgdWorkflowTemplate(missingCustom, { capturedAt: '2026-11-02T00:00:00.000Z', capturedBy: 'operator' }), /custom|tồn tại|định nghĩa/i);
+  assert.equal(validatePgdWorkflowTemplate(crossDomain).valid, false);
+});
+
+test('stage-only PGD requirements map to the existing operational station for upload and confirmation', () => {
+  const stages = [{ id: 'onsite-assessment', requirementIds: [requiredDefinition.id] }];
+  assert.equal(getPgdDossierRequirementStationKeyForSnapshot(requiredDefinition.id, undefined, stages), 'FIELD_SAMPLING');
+  assert.equal(getPgdDossierRequirementStationKeyForSnapshot(requiredDefinition.id, undefined, [{ id: 'testing-evidence', requirementIds: [requiredDefinition.id] }]), 'LAB_RESULTS');
+  assert.equal(getPgdDossierRequirementStationKeyForSnapshot(requiredDefinition.id, undefined, [{ id: 'scope-assignment', requirementIds: [requiredDefinition.id] }]), 'INTAKE_CAPABILITY');
+  assert.equal(getPgdDossierRequirementStationKeyForSnapshot(requiredDefinition.id, 'FIELD_INSPECTION', [{ id: 'issuance-archive', requirementIds: [requiredDefinition.id] }]), 'FIELD_SAMPLING');
+  assert.equal(getPgdDossierRequirementStationKeyForSnapshot('FIELD_INSPECTION_MINUTES', undefined, stages), getPgdDossierRequirementStationKey('FIELD_INSPECTION_MINUTES'));
+});
+
+test('published legacy MULTIPLE templates remain selectable but dossier runtime projects one current attachment', () => {
+  const legacy = {
+    ...template,
+    requirementDefinitions: [{ ...requiredDefinition, multiplicity: 'MULTIPLE' as const }, conditionalDefinition],
+  };
+  assert.equal(validatePgdWorkflowTemplate(legacy).valid, false);
+  assert.equal(selectPgdPublishedWorkflowTemplate([legacy], { productGroup: 'OTHER', methodCode: 'METHOD_7' })?.id, legacy.id);
+  const snapshot = snapshotPgdWorkflowTemplate(legacy, { capturedAt: '2026-11-02T00:00:00.000Z', capturedBy: 'operator' });
+  assert.equal(snapshot.requirementDefinitions?.[0].multiplicity, 'MULTIPLE');
+  const checklist = buildPgdDossierChecklist('OTHER', '2026-11-02T00:00:00.000Z', snapshot.requirementDefinitions, snapshot.stages);
+  const projected = checklist.find((item) => item.requirementCode === requiredDefinition.id)!;
+  assert.equal(projected.multiplicity, 'SINGLE');
+  assert.equal(projected.stageLabel, 'Đánh giá tại chỗ');
+  const manifest = buildPgdDossierPackageManifest({ dossierCode: 'PGD-LEGACY', pointers: [], checklist });
+  assert.equal(manifest.checklist.find((item) => item.requirementCode === requiredDefinition.id)?.stageId, 'onsite-assessment');
+  assert.equal(manifest.checklist.find((item) => item.requirementCode === requiredDefinition.id)?.stageLabel, 'Đánh giá tại chỗ');
 });
 
 test('does not select a published personal proposal for a new PGD request', () => {
@@ -87,12 +132,14 @@ test('PGD bootstrap scope filter limits proposals to their creator and retains s
 });
 
 test('custom PGD checklist entries start missing and preserve condition policy without blocking by default', () => {
-  const checklist = buildPgdDossierChecklist('OTHER', '2026-11-02T00:00:00.000Z', [requiredDefinition, conditionalDefinition]);
+  const checklist = buildPgdDossierChecklist('OTHER', '2026-11-02T00:00:00.000Z', [requiredDefinition, conditionalDefinition], template.stages);
   const required = checklist.find((item) => item.requirementCode === requiredDefinition.id)!;
   const conditional = checklist.find((item) => item.requirementCode === conditionalDefinition.id)!;
   assert.equal(required.status, 'MISSING');
   assert.equal(required.required, true);
-  assert.equal(required.multiplicity, 'MULTIPLE');
+  assert.equal(required.multiplicity, 'SINGLE');
+  assert.equal(required.stageId, 'onsite-assessment');
+  assert.equal(required.stageLabel, 'Đánh giá tại chỗ');
   assert.equal(conditional.status, 'MISSING');
   assert.equal(conditional.required, false);
   assert.equal(conditional.requirementLevel, 'CONDITIONAL');

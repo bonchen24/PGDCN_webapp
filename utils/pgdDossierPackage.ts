@@ -40,7 +40,7 @@ export interface PgdDossierPackageManifestEntry {
 }
 
 export type PgdDossierPackageChecklistEntry = Pick<PgdDossierChecklistItem,
-  'requirementCode' | 'group' | 'title' | 'required' | 'status' | 'currentDocumentId' | 'currentDocumentVersion' | 'waiverReason' | 'waivedByUsername' | 'waivedAt'>;
+  'requirementCode' | 'group' | 'title' | 'required' | 'status' | 'currentDocumentId' | 'currentDocumentVersion' | 'waiverReason' | 'waivedByUsername' | 'waivedAt' | 'stageId' | 'stageLabel'>;
 
 export interface PgdDossierPackageManifest {
   format: 'PGD_DOSSIER_PACKAGE_V1';
@@ -122,6 +122,8 @@ export function buildPgdDossierPackageManifest(input: {
     group: clean(item.group),
     title: clean(item.title),
     required: item.required === true,
+    ...(clean(item.stageId) ? { stageId: clean(item.stageId) } : {}),
+    ...(clean(item.stageLabel) ? { stageLabel: clean(item.stageLabel) } : {}),
     status: ['MISSING', 'UPLOADED', 'GENERATED', 'CONFIRMED', 'PRESENT', 'WAIVED'].includes(String(item.status)) ? item.status : 'MISSING',
     ...(clean(item.currentDocumentId) ? { currentDocumentId: clean(item.currentDocumentId) } : {}),
     ...(Number.isInteger(item.currentDocumentVersion) && Number(item.currentDocumentVersion) > 0 ? { currentDocumentVersion: Number(item.currentDocumentVersion) } : {}),

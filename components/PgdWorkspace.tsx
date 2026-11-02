@@ -1639,7 +1639,7 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
 
   const queueRows = useMemo<PgdDossierQueueRow[]>(() => visibleRequests.map((request) => {
     const checklist = request.dossierChecklist || [];
-    const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || []).filter((requirement) => {
+    const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || []).filter((requirement) => {
       const item = checklist.find((candidate) => candidate.requirementCode === requirement.code);
       return item?.required ?? requirement.required;
     });

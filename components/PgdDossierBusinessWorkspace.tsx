@@ -42,7 +42,7 @@ function buildPgdEvidenceGroups(requirements: PgdDossierRequirement[], checklist
       title: requirement.title,
       state,
       stateTone,
-      meta: required ? 'Bắt buộc' : requirement.requirementLevel === 'CONDITIONAL' ? 'Có điều kiện' : 'Không bắt buộc',
+      meta: [required ? 'Bắt buộc' : requirement.requirementLevel === 'CONDITIONAL' ? 'Có điều kiện' : 'Không bắt buộc', requirement.stageLabel ? `Giai đoạn: ${requirement.stageLabel}` : ''].filter(Boolean).join(' · '),
       detail: document ? [document.fileName, document.documentNumber ? 'Số ' + document.documentNumber : '', document.documentDate ? 'Ngày ' + document.documentDate : ''].filter(Boolean).join(' · ') : requirement.description || 'Chưa có tài liệu hiện hành.',
     });
     groups.set(requirement.group, group);
@@ -59,7 +59,7 @@ export type PgdDossierBusinessWorkspaceProps = {
 
 export function PgdDossierBusinessWorkspace({ request, onOpenCurrentWork, onOpenDrafting }: PgdDossierBusinessWorkspaceProps) {
   const pgd = usePgdStore();
-  const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || []);
+  const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || []);
   const dossierDocuments = getCurrentPgdDossierDocuments(pgd.dossierDocuments.filter((document) => document.requestId === request.id));
   const samples = pgd.samples.filter((sample) => sample.requestId === request.id);
   const labRequests = pgd.labRequests.filter((labRequest) => labRequest.requestId === request.id);

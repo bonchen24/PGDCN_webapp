@@ -12,6 +12,10 @@ test('dossier detail exposes a compact context summary before secondary content'
   assert.match(detailSource, /missingRequiredCount > 0/);
 });
 
+test('dossier checklist displays the template stage for custom requirements', () => {
+  assert.match(detailSource, /workflowStageLabel \? ` · Nhóm mẫu:/);
+});
+
 test('workflow-first detail keeps the current work ahead of the collapsed step flow', () => {
   assert.match(workflowSource, /data-testid="pcn-current-step-summary"/);
   assert.match(workflowSource, /Bước cần xử lý/);

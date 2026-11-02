@@ -55,6 +55,17 @@ export interface ResolvedPgdDraftingContext {
   activeRequirementCode?: string;
 }
 
+export function getPgdDocumentTemplateForRequirement(
+  requirement: PgdDossierRequirement | undefined,
+  templates: readonly PgdDocumentTemplate[],
+  productGroup: PgdInspectionRequest['productGroup'],
+): PgdDocumentTemplate | undefined {
+  if (!requirement) return undefined;
+  return templates.find((template) => requirement.customDefinition?.linkedDocxTemplateId
+    ? template.id === requirement.customDefinition.linkedDocxTemplateId
+    : getPgdDossierRequirementForTemplate(template.kind, productGroup)?.code === requirement.code);
+}
+
 export function resolvePgdDraftingContext(input: {
   request?: Pick<PgdInspectionRequest, 'productGroup'>;
   requirements: readonly PgdDossierRequirement[];
@@ -72,11 +83,7 @@ export function resolvePgdDraftingContext(input: {
   const activeRequirement = input.requirements.find((item) => item.code === input.selectedRequirementCode)
     || (input.activeDraft?.requirementCode ? input.requirements.find((item) => item.code === input.activeDraft?.requirementCode) : undefined)
     || initialRequirement;
-  const requirementTemplate = activeRequirement
-    ? input.templates.find((template) => activeRequirement.customDefinition?.linkedDocxTemplateId
-      ? template.id === activeRequirement.customDefinition.linkedDocxTemplateId
-      : getPgdDossierRequirementForTemplate(template.kind, productGroup)?.code === activeRequirement.code)
-    : undefined;
+  const requirementTemplate = getPgdDocumentTemplateForRequirement(activeRequirement, input.templates, productGroup);
   const deepTemplate = input.initialTemplateKind
     ? input.templates.find((template) => template.kind === input.initialTemplateKind)
     : undefined;

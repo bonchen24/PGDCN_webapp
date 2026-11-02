@@ -109,7 +109,7 @@ export async function POST(
         actorUsername: actor.username,
         actorName: actor.name || 'Người dùng PCN',
         actorRole: actor.systemRole || actor.role,
-        summary: `Đánh dấu bỏ qua tài liệu ${requirement.name} và ghi lý do`,
+        summary: `Đánh dấu bỏ qua tài liệu ${requirement.name} và ghi lý do${requirement.workflowStageLabel ? ` · giai đoạn ${requirement.workflowStageLabel}` : ''}`,
         source: 'UI',
         groupId: dossierId,
         changes: diffActivityFields(dossier, nextDossier, ['documentWaivers', 'updatedAt']),

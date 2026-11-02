@@ -9,7 +9,7 @@ import { PGD_COLLECTIONS, PgdInspectionRequest } from '@/utils/pgdDomain';
 import {
   buildPgdDossierDocument,
   getPgdDossierRequirementsWithCustom,
-  getPgdDossierRequirementStationKey,
+  getPgdDossierRequirementStationKeyForSnapshot,
   markPgdDossierChecklistPresent,
   PgdDossierDocument,
 } from '@/utils/pgdDossier';
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ requ
     );
     return jsonOk({
       dossierDocuments: documentResult.rows.map((row: any) => mapDocumentRow(row)) as PgdDossierDocument[],
-      requirements: getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || []),
+      requirements: getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || []),
     });
   } catch (error: any) {
     return jsonServerError(error?.message || String(error));
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
       assertPgdRequestEvidenceMutationAllowed(request);
 
-      const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || []);
+      const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || []);
       const requirement = requirements.find((item) => item.code === requirementCode);
       if (!requirement) {
         throw Object.assign(new Error('Mã yêu cầu checklist PGD không thuộc nhóm sản phẩm của hồ sơ.'), { statusCode: 400 });
@@ -133,7 +133,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       const effectiveRequired = request.dossierChecklist?.find((item) => item.requirementCode === requirementCode)?.required ?? requirement.required;
       const requirementAccess = getPgdOperationalStepAccess({
         status: request.status,
-        targetStationKey: getPgdDossierRequirementStationKey(requirement.code, requirement.customDefinition?.businessModuleKey),
+        targetStationKey: getPgdDossierRequirementStationKeyForSnapshot(requirement.code, requirement.customDefinition?.businessModuleKey, request.workflowSnapshot?.stages),
       });
       if (!requirementAccess.editable) {
         throw Object.assign(new Error(requirementAccess.reason || 'Checklist PGD đang bị khóa theo trạm hồ sơ.'), { statusCode: 409 });
@@ -264,7 +264,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         entityId: request.id,
         entityLabel: request.requestCode,
         requestCode: request.requestCode,
-        summary: `Tải lên chứng từ ${fileName} cho mục ${requirement.title} của ${request.requestCode}`,
+        summary: [`Tải lên chứng từ ${fileName} cho mục ${requirement.title} của ${request.requestCode}`, requirement.stageLabel ? `Giai đoạn: ${requirement.stageLabel}` : ''].filter(Boolean).join(' · '),
         idSuffix: `dossier-doc-${next.id}`,
       });
 

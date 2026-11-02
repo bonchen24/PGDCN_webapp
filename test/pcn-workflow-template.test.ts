@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import type { CertificationDossier, PcnWorkflowTemplate } from '../types.ts';
+import type { CertificationDossier, DossierTemplateRequirementDefinition, PcnWorkflowTemplate } from '../types.ts';
+import { getPcnDossierRequirementsWithCustom } from '../utils/pcnDossierDocuments.ts';
 import {
   PCN_WORKFLOW_CONDITIONS,
   getPcnWorkflowForDossier,
@@ -99,6 +100,109 @@ test('snapshots a published template without sharing mutable topology', () => {
   assert.notEqual(captured.nodes, template.nodes);
   captured.nodes[0].label = 'Đã thay đổi trong hồ sơ';
   assert.equal(template.nodes[0].label, 'Tiếp nhận');
+});
+
+test('binds a stage-only PCN requirement to an existing matching work node in the dossier snapshot', () => {
+  const requirement: DossierTemplateRequirementDefinition = {
+    domain: 'PCN',
+    id: 'pcn-custom-stage-01',
+    code: 'STAGE_ONLY',
+    name: 'Tài liệu chỉ gán ở giai đoạn',
+    level: 'REQUIRED',
+    source: 'UPLOAD_EXTERNAL',
+    ownerRole: 'CERTIFICATION_EXPERT',
+    multiplicity: 'SINGLE',
+  };
+  const template = baseTemplate({
+    stages: [{ id: 'intake-documents', label: 'Tiếp nhận', sortOrder: 10, requirementIds: [requirement.id] }],
+    requirementDefinitions: [requirement],
+    nodes: [
+      { id: 'intake', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận', requirementIds: ['req-intake'], actionKey: 'INTAKE', active: true, sortOrder: 1, stageId: 'intake-documents' },
+      { id: 'end', kind: 'END', label: 'Hoàn tất', requirementIds: [], active: true, sortOrder: 2, stageId: 'issuance-archive' },
+    ],
+  });
+
+  const captured = snapshotPcnWorkflowTemplate(template, { capturedAt: '2026-09-06T01:00:00.000Z', capturedBy: 'manager' });
+
+  assert.deepEqual(captured.nodes.map(({ id, requirementIds }) => [id, requirementIds]), [
+    ['intake', ['req-intake', requirement.id]],
+    ['end', []],
+  ]);
+  assert.deepEqual(captured.nodes.map((node) => node.id), template.nodes.map((node) => node.id));
+  assert.deepEqual(captured.transitions, template.transitions);
+  assert.deepEqual(template.nodes[0].requirementIds, ['req-intake']);
+  const runtimeRequirements = getPcnDossierRequirementsWithCustom(dossier({ workflowSnapshot: captured }));
+  const runtimeRequirement = runtimeRequirements.find((item) => item.id === requirement.id);
+  assert.equal(runtimeRequirement?.required, true);
+  assert.equal(runtimeRequirement?.multiplicity, 'SINGLE');
+  assert.equal(runtimeRequirement?.workflowStageId, 'intake-documents');
+  assert.equal(runtimeRequirement?.workflowStageLabel, 'Tiếp nhận');
+});
+
+test('published legacy PCN MULTIPLE metadata remains snapshot-compatible but projects one current attachment', () => {
+  const requirement: DossierTemplateRequirementDefinition = {
+    domain: 'PCN',
+    id: 'pcn-custom-legacy-multi',
+    code: 'LEGACY_MULTI',
+    name: 'Yêu cầu cũ nhiều tệp',
+    level: 'REQUIRED',
+    source: 'UPLOAD_EXTERNAL',
+    ownerRole: 'CERTIFICATION_EXPERT',
+    multiplicity: 'MULTIPLE',
+  };
+  const legacy = baseTemplate({
+    requirementDefinitions: [requirement],
+    stages: [{ id: 'intake-documents', label: 'Tiếp nhận', sortOrder: 10, requirementIds: [requirement.id] }],
+    nodes: [
+      { id: 'intake', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận', requirementIds: [], actionKey: 'INTAKE', active: true, sortOrder: 1, stageId: 'intake-documents' },
+      { id: 'end', kind: 'END', label: 'Hoàn tất', requirementIds: [], active: true, sortOrder: 2, stageId: 'issuance-archive' },
+    ],
+  });
+  assert.equal(validatePcnWorkflowTemplate(legacy).valid, false);
+  assert.equal(selectPcnPublishedWorkflowTemplate([legacy], dossier())?.id, legacy.id);
+  const snapshot = snapshotPcnWorkflowTemplate(legacy, { capturedAt: '2026-11-02T00:00:00.000Z', capturedBy: 'manager' });
+  assert.equal(snapshot.requirementDefinitions?.[0].multiplicity, 'MULTIPLE');
+  assert.deepEqual(snapshot.nodes[0].requirementIds, [requirement.id]);
+  const runtime = getPcnDossierRequirementsWithCustom(dossier({ workflowSnapshot: snapshot }));
+  assert.equal(runtime.find((item) => item.id === requirement.id)?.multiplicity, 'SINGLE');
+});
+
+test('rejects stage-only requirements without a matching active work node and unresolved custom references', () => {
+  const requirement: DossierTemplateRequirementDefinition = {
+    domain: 'PCN',
+    id: 'pcn-custom-stage-02',
+    code: 'STAGE_ONLY',
+    name: 'Tài liệu chỉ gán ở giai đoạn',
+    level: 'REQUIRED',
+    source: 'UPLOAD_EXTERNAL',
+    ownerRole: 'CERTIFICATION_EXPERT',
+    multiplicity: 'SINGLE',
+  };
+  const unbindable = baseTemplate({
+    stages: [{ id: 'onsite-assessment', label: 'Hiện trường', sortOrder: 30, requirementIds: [requirement.id] }],
+    requirementDefinitions: [requirement],
+  });
+
+  const validation = validatePcnWorkflowTemplate(unbindable);
+  assert.equal(validation.valid, false);
+  assert.match(validation.errors.join(' '), /giai đoạn|stage|node/i);
+  assert.throws(() => snapshotPcnWorkflowTemplate(unbindable, { capturedAt: '2026-09-06T01:00:00.000Z', capturedBy: 'manager' }), /giai đoạn|stage|node/i);
+
+  const unresolved = baseTemplate({
+    stages: [{ id: 'intake-documents', label: 'Tiếp nhận', sortOrder: 10, requirementIds: ['pcn-custom-missing'] }],
+    nodes: baseTemplate().nodes.map((node) => ({ ...node, stageId: node.id === 'intake' ? 'intake-documents' : 'issuance-archive' })),
+  });
+  assert.equal(validatePcnWorkflowTemplate(unresolved).valid, false);
+  assert.match(validatePcnWorkflowTemplate(unresolved).errors.join(' '), /custom|tồn tại|định nghĩa/i);
+});
+
+test('rejects PGD custom requirement IDs assigned to PCN stages', () => {
+  const invalid = baseTemplate({
+    stages: [{ id: 'intake-documents', label: 'Tiếp nhận', sortOrder: 10, requirementIds: ['pgd-custom-stage-01'] }],
+    nodes: baseTemplate().nodes.map((node) => ({ ...node, stageId: node.id === 'intake' ? 'intake-documents' : 'issuance-archive' })),
+  });
+  assert.equal(validatePcnWorkflowTemplate(invalid).valid, false);
+  assert.match(validatePcnWorkflowTemplate(invalid).errors.join(' '), /domain|PGD|PCN/i);
 });
 
 test('uses the dossier snapshot before a newer template revision and adapts legacy dossiers', () => {

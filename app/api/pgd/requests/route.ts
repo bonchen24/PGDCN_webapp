@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
         sampleIds: samples.map((sample) => sample.id),
         ...(workflowTemplate ? { workflowTemplateId: workflowTemplate.id, workflowTemplateVersion: workflowTemplate.version } : {}),
         ...(workflowSnapshot ? { workflowSnapshot } : {}),
-        dossierChecklist: buildPgdDossierChecklist(createdRequest.productGroup, now, workflowSnapshot?.requirementDefinitions || []),
+        dossierChecklist: buildPgdDossierChecklist(createdRequest.productGroup, now, workflowSnapshot?.requirementDefinitions || [], workflowSnapshot?.stages || []),
       };
 
       const duplicateCode = await client.query(

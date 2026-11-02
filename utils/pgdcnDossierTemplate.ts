@@ -109,9 +109,15 @@ export interface DossierTemplateRequirementValidationResult {
   errors: string[];
 }
 
+export interface DossierTemplateRequirementValidationOptions {
+  allowLegacyMultiple?: boolean;
+  allowLegacyPcnDocx?: boolean;
+}
+
 export function validateDossierTemplateRequirementDefinition(
   value: DossierTemplateRequirementDefinition,
   expectedDomain: DossierTemplateDomain,
+  options: DossierTemplateRequirementValidationOptions = {},
 ): DossierTemplateRequirementValidationResult {
   const requirement = value as Partial<DossierTemplateRequirementDefinition> | null | undefined;
   const errors: string[] = [];
@@ -131,7 +137,11 @@ export function validateDossierTemplateRequirementDefinition(
   if (clean(requirement?.description).length > 1000) errors.push('Mô tả requirement custom không được vượt quá 1000 ký tự.');
   if (!['REQUIRED', 'OPTIONAL', 'CONDITIONAL'].includes(clean(requirement?.level))) errors.push('Mức requirement không hợp lệ.');
   if (!['UPLOAD_EXTERNAL', 'DRAFT_FROM_DOCX_TEMPLATE', 'BUSINESS_MODULE_LINK'].includes(source)) errors.push('Nguồn requirement không thuộc allowlist.');
-  if (!['SINGLE', 'MULTIPLE'].includes(clean(requirement?.multiplicity))) errors.push('Số lượng file của requirement không hợp lệ.');
+  if (clean(requirement?.multiplicity) === 'MULTIPLE') {
+    if (!options.allowLegacyMultiple) errors.push('Hiện chỉ hỗ trợ một tệp hiện hành cho mỗi requirement; hãy chọn SINGLE.');
+  } else if (clean(requirement?.multiplicity) !== 'SINGLE') {
+    errors.push('Số lượng file của requirement không hợp lệ.');
+  }
   if (!CUSTOM_REQUIREMENT_ROLES[expectedDomain].has(clean(requirement?.ownerRole))) errors.push('Vai trò phụ trách requirement không thuộc allowlist của domain.');
 
   if (requirement?.level === 'CONDITIONAL') {
@@ -141,6 +151,7 @@ export function validateDossierTemplateRequirementDefinition(
   }
 
   if (source === 'DRAFT_FROM_DOCX_TEMPLATE') {
+    if (expectedDomain === 'PCN' && !options.allowLegacyPcnDocx) errors.push('PCN chưa hỗ trợ sinh từ DOCX liên kết; hãy đổi sang tải tệp bên ngoài.');
     if (!/^[a-zA-Z0-9._-]{1,160}$/.test(linkedDocxTemplateId)) errors.push('Requirement tạo từ DOCX phải liên kết một template DOCX hợp lệ.');
     if (businessModuleKey) errors.push('Requirement DOCX không được đồng thời liên kết module nghiệp vụ.');
   } else if (linkedDocxTemplateId) {
@@ -159,6 +170,7 @@ export function validateDossierTemplateRequirementDefinition(
 export function validateDossierTemplateRequirementDefinitions(
   definitions: readonly DossierTemplateRequirementDefinition[] | undefined,
   expectedDomain: DossierTemplateDomain,
+  options: DossierTemplateRequirementValidationOptions = {},
 ): DossierTemplateRequirementValidationResult {
   const errors: string[] = [];
   if (definitions === undefined) return { valid: true, errors };
@@ -166,7 +178,7 @@ export function validateDossierTemplateRequirementDefinitions(
   const ids = new Set<string>();
   const codes = new Set<string>();
   for (const definition of definitions) {
-    errors.push(...validateDossierTemplateRequirementDefinition(definition, expectedDomain).errors);
+    errors.push(...validateDossierTemplateRequirementDefinition(definition, expectedDomain, options).errors);
     const id = String(definition?.id || '').trim();
     const code = String(definition?.code || '').trim().toUpperCase();
     if (id && ids.has(id)) errors.push(`Requirement custom ${id} bị trùng id.`);

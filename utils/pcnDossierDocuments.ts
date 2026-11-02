@@ -159,7 +159,8 @@ export function getPcnDossierRequirementsWithCustom(
   const custom = (dossier.workflowSnapshot?.requirementDefinitions || [])
     .filter((definition) => definition.domain === 'PCN')
     .map((definition, index): PcnDocumentRequirement => {
-      const stageId = dossier.workflowSnapshot?.stages?.find((stage) => stage.requirementIds?.includes(definition.id))?.id;
+      const workflowStage = dossier.workflowSnapshot?.stages?.find((stage) => stage.requirementIds?.includes(definition.id));
+      const stageId = workflowStage?.id;
       const stageMap: Record<string, { stages: PcnDocumentRequirement['stages']; stationKeys: PcnDocumentRequirement['stationKeys'] }> = {
         'intake-documents': { stages: ['INTAKE'], stationKeys: ['INTAKE', 'DOCUMENTS'] },
         'scope-assignment': { stages: ['INTAKE'], stationKeys: ['ASSIGNMENT', 'EVALUATION'] },
@@ -183,10 +184,11 @@ export function getPcnDossierRequirementsWithCustom(
         active: true,
         sortOrder: 10000 + index,
         requirementLevel: definition.level,
-        requirementSource: definition.source,
+        requirementSource: definition.source === 'DRAFT_FROM_DOCX_TEMPLATE' ? 'UPLOAD_EXTERNAL' : definition.source,
         ...(definition.condition ? { condition: definition.condition } : {}),
         ownerRole: definition.ownerRole,
-        multiplicity: definition.multiplicity,
+        multiplicity: 'SINGLE',
+        ...(workflowStage ? { workflowStageId: workflowStage.id, workflowStageLabel: workflowStage.label } : {}),
       };
     });
   const customIds = new Set(custom.map((item) => item.id));

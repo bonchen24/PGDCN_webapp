@@ -13,11 +13,40 @@ const validRequirement: DossierTemplateRequirementDefinition = {
   source: 'UPLOAD_EXTERNAL',
   condition: 'RESULT_FAILED',
   ownerRole: 'CERTIFICATION_EXPERT',
-  multiplicity: 'MULTIPLE',
+  multiplicity: 'SINGLE',
 };
 
 test('custom requirement definitions accept the supported source and policy fields', () => {
   assert.deepEqual(validateDossierTemplateRequirementDefinition(validRequirement, 'PCN'), { valid: true, errors: [] });
+});
+
+test('custom requirements cannot advertise multiple files while runtime keeps one current attachment', () => {
+  const pcn = validateDossierTemplateRequirementDefinition({ ...validRequirement, multiplicity: 'MULTIPLE' }, 'PCN');
+  const pgd = validateDossierTemplateRequirementDefinition({
+    ...validRequirement,
+    domain: 'PGD',
+    id: 'pgd-custom-multi-01',
+    ownerRole: 'PGD_FIELD_INSPECTOR',
+    multiplicity: 'MULTIPLE',
+  }, 'PGD');
+
+  assert.equal(pcn.valid, false);
+  assert.equal(pgd.valid, false);
+  assert.ok(pcn.errors.some((error) => /một tệp hiện hành|MULTIPLE|chưa hỗ trợ/i.test(error)));
+  assert.ok(pgd.errors.some((error) => /một tệp hiện hành|MULTIPLE|chưa hỗ trợ/i.test(error)));
+});
+
+test('DOCX-linked draft source is available for PGD only', () => {
+  const linkedDocx = {
+    ...validRequirement,
+    source: 'DRAFT_FROM_DOCX_TEMPLATE' as const,
+    linkedDocxTemplateId: 'approved-template-1',
+  };
+
+  assert.equal(validateDossierTemplateRequirementDefinition({ ...linkedDocx, domain: 'PGD', id: 'pgd-custom-docx-01', ownerRole: 'PGD_FIELD_INSPECTOR' }, 'PGD').valid, true);
+  const pcn = validateDossierTemplateRequirementDefinition(linkedDocx, 'PCN');
+  assert.equal(pcn.valid, false);
+  assert.ok(pcn.errors.some((error) => /PCN.*DOCX|DOCX.*PCN/i.test(error)));
 });
 
 test('custom requirements reject an unsafe domain, source, role, or conditional key', () => {
