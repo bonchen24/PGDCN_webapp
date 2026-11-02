@@ -20,9 +20,9 @@ import {
   validatePgdIntakeSampleDrafts,
 } from '@/utils/pgdDomain';
 import { buildPgdDossierChecklist } from '@/utils/pgdDossier';
+import { selectPgdPublishedWorkflowTemplate, snapshotPgdWorkflowTemplate, type PgdWorkflowTemplate } from '@/utils/pgdWorkflowTemplate';
 import { writePgdActivity } from '@/lib/server/pgd-operations';
 import { buildPgdNotificationDraft } from '@/utils/pgdcnNotification';
-import { selectPgdPublishedWorkflowTemplate, snapshotPgdWorkflowTemplate, type PgdWorkflowTemplate } from '@/utils/pgdWorkflowTemplate';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
       const workflowTemplates = workflowTemplateResult.rows.map((row: any) => mapDocumentRow(row) as PgdWorkflowTemplate);
       const workflowTemplate = selectPgdPublishedWorkflowTemplate(workflowTemplates, {
         productGroup: createdRequest.productGroup,
-        method: createdRequest.method,
+        methodCode: String(createdRequest.assessmentMethod || createdRequest.method || '').trim().toUpperCase() || undefined,
       });
       if (!workflowTemplate) {
         throw Object.assign(new Error('Chưa có bộ hồ sơ mẫu PGD đã phát hành phù hợp với nhóm sản phẩm và phương pháp.'), { statusCode: 409 });
@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
         dossierChecklist: buildPgdDossierChecklist(createdRequest.productGroup, now, {
           method: createdRequest.method,
           requirementPolicies: workflowSnapshot.requirementPolicies,
+          customDefinitions: workflowSnapshot.requirementDefinitions,
         }),
       };
 

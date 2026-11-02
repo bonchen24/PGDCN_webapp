@@ -1,4 +1,5 @@
 import type {
+  CertificationDossier,
   PcnDossierAttachment,
   PcnCertificationFieldCode,
   PcnDocumentRequirement,
@@ -149,6 +150,47 @@ export function getPcnDocumentRequirements(
     .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id));
 }
 
+export function getPcnDossierRequirementsWithCustom(
+  dossier: Pick<CertificationDossier, 'fieldCodes' | 'workflowSnapshot'>,
+  requirements: PcnDocumentRequirement[] = DEFAULT_PCN_DOCUMENT_REQUIREMENTS,
+): PcnDocumentRequirement[] {
+  const fieldCode = dossier.fieldCodes[0];
+  if (!fieldCode) return getPcnDocumentRequirements(dossier.fieldCodes, requirements);
+  const custom = (dossier.workflowSnapshot?.requirementDefinitions || [])
+    .filter((definition) => definition.domain === 'PCN')
+    .map((definition, index): PcnDocumentRequirement => {
+      const stageId = dossier.workflowSnapshot?.stages?.find((stage) => stage.requirementIds?.includes(definition.id))?.id;
+      const stageMap: Record<string, { stages: PcnDocumentRequirement['stages']; stationKeys: PcnDocumentRequirement['stationKeys'] }> = {
+        'intake-documents': { stages: ['INTAKE'], stationKeys: ['INTAKE', 'DOCUMENTS'] },
+        'scope-assignment': { stages: ['INTAKE'], stationKeys: ['ASSIGNMENT', 'EVALUATION'] },
+        'onsite-assessment': { stages: ['INTAKE'], stationKeys: ['EVALUATION'] },
+        'testing-evidence': { stages: ['LAB_ROUTING', 'TECHNICAL_REVIEW'], stationKeys: ['SAMPLING_LAB', 'RESULTS'] },
+        'corrective-action': { stages: ['TECHNICAL_REVIEW'], stationKeys: ['CORRECTION'] },
+        'review-approval': { stages: ['TECHNICAL_REVIEW', 'ISSUANCE'], stationKeys: ['TECHNICAL_REVIEW', 'APPROVAL'] },
+        'issuance-archive': { stages: ['ISSUANCE', 'DELIVERY', 'ARCHIVE'], stationKeys: ['ISSUANCE', 'DELIVERY_ARCHIVE'] },
+      };
+      const mapped = stageMap[stageId || 'intake-documents'] || stageMap['intake-documents'];
+      return {
+        id: definition.id,
+        fieldCode,
+        code: definition.code,
+        name: definition.name,
+        ...(definition.description ? { description: definition.description } : {}),
+        stages: mapped.stages,
+        stationKeys: mapped.stationKeys,
+        required: definition.level === 'REQUIRED',
+        active: true,
+        sortOrder: 10000 + index,
+        requirementLevel: definition.level,
+        requirementSource: definition.source,
+        ...(definition.condition ? { condition: definition.condition } : {}),
+        ownerRole: definition.ownerRole,
+        multiplicity: definition.multiplicity,
+      };
+    });
+  return [...getPcnDocumentRequirements(dossier.fieldCodes, requirements), ...custom];
+}
+
 export function buildPcnDossierDocumentId(dossierId: string, requirementId: string): string {
   return `dossier-document-${dossierId}-${requirementId}`.replace(/[^a-zA-Z0-9._-]/g, '_');
 }
@@ -217,9 +259,13 @@ export function buildPcnDossierChecklist(
   fieldCodes: PcnCertificationFieldCode[],
   requirements: PcnDocumentRequirement[] = DEFAULT_PCN_DOCUMENT_REQUIREMENTS,
   now = new Date().toISOString(),
-  options: { requirementPolicies?: Record<string, PgdcnDossierRequirementPolicy> } = {},
+  options: {
+    requirementPolicies?: Record<string, PgdcnDossierRequirementPolicy>;
+    workflowSnapshot?: CertificationDossier['workflowSnapshot'];
+  } = {},
 ): PcnDossierDocument[] {
-  return getPcnDocumentRequirements(fieldCodes, requirements).map((item) => {
+  const requirementsWithCustom = getPcnDossierRequirementsWithCustom({ fieldCodes, workflowSnapshot: options.workflowSnapshot }, requirements);
+  return requirementsWithCustom.map((item) => {
     const policy = options.requirementPolicies?.[item.id];
     const projection = policy
       ? projectDossierRequirementPolicy(policy, { domain: 'PCN', fieldCodes })

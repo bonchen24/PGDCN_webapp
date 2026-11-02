@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useMemo, useState } from 'react';
-import type { PgdcnDossierRequirementCondition, PgdcnDossierRequirementPolicy } from '../types.ts';
+import type { DossierTemplateRequirementDefinition, PgdcnDossierRequirementCondition, PgdcnDossierRequirementPolicy } from '../types.ts';
 import type { DossierTemplateDomain, DossierTemplateEditorNode, DossierTemplateEditorTransition } from '../utils/pgdcnDossierTemplate.ts';
 import { PGD_REQUIREMENT_METHOD_CODES } from '../utils/pgdcnDossierRequirementPolicy.ts';
 
@@ -75,6 +75,7 @@ export interface DossierTemplateRequirementOption {
   description?: string;
   group?: string;
   required: boolean;
+  definition?: DossierTemplateRequirementDefinition;
 }
 
 export interface PgdcnDossierTemplateInspectorProps {

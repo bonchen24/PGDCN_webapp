@@ -7,7 +7,7 @@ import { buildActivityLog, validateActivityLogPayload } from '@/lib/server/activ
 import { formatPcnIntakeValidationIssues, validatePcnProposalIntake } from '@/utils/pcnIntakePolicy';
 import { formatPcnDossierCode, formatPcnProposalCode, getPcnVietnamDateKey } from '@/utils/pcnIdentifier';
 import { selectPcnPublishedWorkflowTemplate, snapshotPcnWorkflowTemplate } from '@/utils/pcnWorkflowTemplate';
-import { buildPcnDossierChecklist } from '@/utils/pcnDossierDocuments';
+import { buildPcnDossierChecklist, getPcnDossierRequirementsWithCustom } from '@/utils/pcnDossierDocuments';
 import { buildPcnWorkflowTaskSeed } from '@/utils/pcnWorkflowRuntime';
 import {
   PcnDocumentRequirement,
@@ -228,6 +228,7 @@ export async function POST(req: NextRequest) {
       );
       const dossierDocuments = buildPcnDossierChecklist(dossierId, storedDossier.fieldCodes, requirements, now, {
         requirementPolicies: workflowSnapshot.requirementPolicies,
+        workflowSnapshot,
       });
       for (const document of dossierDocuments) {
         await client.query(

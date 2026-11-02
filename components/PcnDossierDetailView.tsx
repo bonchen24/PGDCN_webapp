@@ -14,7 +14,7 @@ import { getPcnDossierStationGenerationKind, getPcnDossierStationTab, type PcnDo
 import { buildPcnNodeDraftingRoute } from '../utils/draftingNavigation';
 import { buildPcnDossierInspection } from '../utils/pcnDossierInspection';
 import { buildPcnDossierPackageSummary, type PcnDossierPackageSummary } from '../utils/pcnDossierPackage';
-import { getPcnDocumentRequirements } from '../utils/pcnDossierDocuments';
+import { getPcnDossierRequirementsWithCustom } from '../utils/pcnDossierDocuments';
 import { getPcnActorDisplayName, getPcnUserDisplayName, PCN_NEUTRAL_USER_LABEL } from '../utils/pcnUserIdentity';
 import { getPcnAssignableDossierUsers, getPcnOwnerAssignmentAuthorityDenial } from '../utils/pcnDossierAssignment';
 import { getPcnDossierExceptionReasonDenial, getPcnDossierManualNextStatuses, getPcnDossierStatusLabel } from '../utils/pcnWorkflow';
@@ -454,7 +454,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
   const dossierResults = results.filter((result) => result.dossierId === dossier.id);
   const dossierApprovalSteps = approvalSteps.filter((step) => step.dossierId === dossier.id).sort((left, right) => left.sequence - right.sequence);
   const issuance = issuancePackages.find((item) => item.dossierId === dossier.id);
-  const requirements = documentRequirements.length ? getPcnDocumentRequirements(dossier.fieldCodes, documentRequirements) : [];
+  const requirements = getPcnDossierRequirementsWithCustom(dossier, documentRequirements);
   const documentsByRequirement = new Map(dossierDocuments.filter((item) => item.dossierId === dossier.id).map((item) => [item.requirementId, item]));
   const dossierDocumentsForCompleteness = dossierDocuments.filter((item) => item.dossierId === dossier.id);
   const baseCompleteness = buildPcnDossierCompleteness({ dossier, proposal, requirements, documents: dossierDocumentsForCompleteness });

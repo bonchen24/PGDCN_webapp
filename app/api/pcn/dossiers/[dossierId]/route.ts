@@ -40,7 +40,7 @@ import { getPcnOperationalFormKind, normalizePcnOperationalFormsPatch } from '@/
 import { mergePcnDocumentWaivers, normalizePcnDocumentWaiverPatch } from '@/utils/pcnDocumentWaivers';
 import { isPcnDossierPostApprovalLocked } from '@/utils/pcnDossierStepAccess';
 import { canProcessPcnOperationalForm } from '@/utils/pcnWorkflowStages';
-import { getPcnDocumentRequirements } from '@/utils/pcnDossierDocuments';
+import { getPcnDossierRequirementsWithCustom } from '@/utils/pcnDossierDocuments';
 import {
   getPcnDossierExceptionReasonDenial,
   getPcnDossierMethodChangeDenial,
@@ -333,10 +333,10 @@ export async function POST(
         const configuredRequirements = requirementResult.rows.map(
           (row: any) => mapDocumentRow(row) as PcnDocumentRequirement
         );
-        workflowRequirements = configuredRequirements.length > 0 ? configuredRequirements : undefined;
+        workflowRequirements = getPcnDossierRequirementsWithCustom(dossier, configuredRequirements);
         if (hasDocumentWaiverUpdate) {
           const knownRequirementIds = new Set(
-            getPcnDocumentRequirements(dossier.fieldCodes, workflowRequirements).map((r) => r.id)
+            getPcnDossierRequirementsWithCustom(dossier, configuredRequirements).map((r) => r.id)
           );
           const unknownRequirementId = Object.keys(updates.documentWaivers || {}).find(
             (requirementId) => !knownRequirementIds.has(requirementId)

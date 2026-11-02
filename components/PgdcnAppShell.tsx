@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -448,8 +448,10 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
       currentUser={currentUser}
       pcnTemplates={pcn.workflowTemplates}
       pcnRequirements={pcn.documentRequirements}
+      pcnDocxTemplates={pcn.templates}
       pgdTemplates={pgd.workflowTemplates}
       pgdRequirements={PGD_TEMPLATE_REQUIREMENTS}
+      pgdDocxTemplates={pgd.documentTemplates}
       onCreatePcnWorkflowTemplate={pcn.createWorkflowTemplate}
       onUpdatePcnWorkflowTemplate={pcn.updateWorkflowTemplate}
       onCreatePcnWorkflowRevision={pcn.createWorkflowRevision}
