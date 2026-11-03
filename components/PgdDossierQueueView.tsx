@@ -258,20 +258,10 @@ function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail,
 
 export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQueueViewProps) {
   const [query, setQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('table');
   const [activeChip, setActiveChip] = useState<PgdFilterChipId>('ALL');
   const [productFiltersOpen, setProductFiltersOpen] = useState(false);
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
   const unassignedCount = rows.filter((r) => !r.ownerUsername && !r.ownerDisplayName).length;
-
-  const toggleCard = (id: string) => {
-    setExpandedCardIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
 
   const searchFilteredRows = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('vi-VN');
@@ -559,44 +549,6 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600">PGD · Hàng đợi công việc</p>
           <h2 className="mt-0.5 text-sm md:text-base font-black text-slate-950">Mở đúng hồ sơ, xử lý đúng việc</h2>
         </div>
-
-        {/* View switcher (DDT pattern) */}
-        <div
-          role="group"
-          aria-label="Chọn chế độ hiển thị hàng đợi hồ sơ PGD"
-          className="inline-flex shrink-0 items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-2xs"
-        >
-          <button
-            type="button"
-            onClick={() => setViewMode('card')}
-            aria-label="Dạng thẻ"
-            aria-pressed={viewMode === 'card'}
-            className={`mobile-touch-target inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-md px-2.5 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
-              viewMode === 'card'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-            title="Xem dạng thẻ chuẩn DDT"
-          >
-            <LayoutGrid size={13} aria-hidden="true" />
-            <span className="whitespace-nowrap">Dạng thẻ</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('table')}
-            aria-label="Dạng bảng"
-            aria-pressed={viewMode === 'table'}
-            className={`mobile-touch-target inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-md px-2.5 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
-              viewMode === 'table'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-            title="Xem bảng truyền thống"
-          >
-            <List size={13} aria-hidden="true" />
-            <span className="whitespace-nowrap">Dạng bảng</span>
-          </button>
-        </div>
       </div>
 
       {/* Keep search and core status filters close to the first card on mobile. */}
@@ -666,32 +618,15 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
         </div>
       </div>
 
-      {/* Grid: Desktop 2 Columns, Mobile 1 Column */}
+      {/* Bảng hồ sơ PGD */}
       {filteredRows.length > 0 ? (
-        viewMode === 'card' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {itemModels.map((item) => {
-              return (
-                <PgdDossierSummaryCard
-                  key={item.id}
-                  item={item}
-                  isExpanded={expandedCardIds.has(item.id)}
-                  onToggleExpand={() => toggleCard(item.id)}
-                  onOpenDetail={() => onOpenDossier(item.id)}
-                  searchQuery={query}
-                />
-              );
-            })}
-          </div>
-        ) : (
-          /* Table View (Compact 2-Tier 8-Column Table) */
-          <div
-            data-testid="pgd-dossier-table-scroll"
-            role="region"
-            aria-label="Bảng hồ sơ PGD, cuộn ngang để xem các cột khác"
-            tabIndex={0}
-            className="mobile-scroll-x min-w-0 max-w-full overflow-x-auto overscroll-x-contain touch-pan-x rounded-xl border border-slate-200 bg-white shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-          >
+        <div
+          data-testid="pgd-dossier-table-scroll"
+          role="region"
+          aria-label="Bảng hồ sơ PGD, cuộn ngang để xem các cột khác"
+          tabIndex={0}
+          className="mobile-scroll-x min-w-0 max-w-full overflow-x-auto overscroll-x-contain touch-pan-x rounded-xl border border-slate-200 bg-white shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        >
             <p className="border-b border-slate-100 px-3 py-2 text-[11px] text-slate-600 sm:hidden">Vuốt ngang để xem đầy đủ bảng hồ sơ PGD.</p>
             <table aria-label="Bảng hàng đợi hồ sơ PGD" className="w-full min-w-0 border-collapse text-left text-xs">
               <caption className="sr-only">Danh sách hồ sơ PGD đang cần xử lý</caption>
@@ -823,7 +758,6 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
               </tbody>
             </table>
           </div>
-        )
       ) : (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <Layers size={28} className="mx-auto text-slate-300" />

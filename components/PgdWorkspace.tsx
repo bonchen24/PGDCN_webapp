@@ -930,19 +930,12 @@ function PgdRegisterTable({
   users,
   catalog,
   onOpen,
-  viewMode: controlledViewMode,
-  onViewModeChange,
 }: {
   requests: PgdInspectionRequest[];
   users: PcnUserAccount[];
   catalog: PgdCatalogItem[];
   onOpen: (id: string) => void;
-  viewMode?: 'card' | 'table';
-  onViewModeChange?: (mode: 'card' | 'table') => void;
 }) {
-  const [internalViewMode, setInternalViewMode] = useState<'card' | 'table'>('table');
-  const viewMode = controlledViewMode ?? internalViewMode;
-  const setViewMode = onViewModeChange ?? setInternalViewMode;
 
   const handleQuickView = (request: PgdInspectionRequest) => {
     if (typeof window !== 'undefined') {
@@ -973,43 +966,11 @@ function PgdRegisterTable({
       <div className="sr-only">
         <h2>Sổ đăng ký PGD</h2>
         <p className="mt-0.5 text-[11px] text-slate-400">Danh sách hồ sơ phát sinh trong ứng dụng; mở dòng để lập biên bản và đóng gói.</p>
-        <button
-          type="button"
-          onClick={() => setViewMode('card')}
-          className={`mobile-touch-target min-h-11 flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
-            viewMode === 'card'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-          title="Xem dạng thẻ chuẩn DdT"
-        >
-          <LayoutGrid size={13} />
-          <span>Dạng thẻ</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode('table')}
-          className={`mobile-touch-target min-h-11 flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
-            viewMode === 'table'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-          title="Xem bảng truyền thống"
-        >
-          <List size={13} />
-          <span>Dạng bảng</span>
-        </button>
       </div>
 
       {requests.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center text-xs font-semibold text-slate-500 mt-3">
           Không có hồ sơ phù hợp.
-        </div>
-      ) : viewMode === 'card' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3">
-          {requests.map((request) => (
-            <RequestCard key={request.id} request={request} users={users} onOpen={() => onOpen(request.id)} />
-          ))}
         </div>
       ) : (
         <div className="mobile-scroll-x mt-3 overflow-x-auto rounded-xl border border-slate-100">
@@ -1718,7 +1679,6 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
   const [intakeSaving, setIntakeSaving] = useState(false);
   const [docxSettingsOpen, setDocxSettingsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'QUEUE' | 'DATA'>('QUEUE');
-  const [registerViewMode, setRegisterViewMode] = useState<'card' | 'table'>('table');
   const [registerPillFilter, setRegisterPillFilter] = useState<'ALL' | 'ACTION_NEEDED' | 'IN_PROGRESS' | 'AWAITING_APPROVAL' | 'OVERDUE' | 'STEEL' | 'MACHINE' | 'COAL'>('ALL');
   const [selectedRequestId, setSelectedRequestId] = useState<string>();
   const [draftingRequestId, setDraftingRequestId] = useState<string>();
@@ -1911,39 +1871,9 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-black text-slate-900">Quản lý Giám định (PYC)</h1>
-          <p className="mt-0.5 text-xs text-slate-500">Phòng Giám định - Chứng nhận và Phát triển thị trường · Giao diện hồ sơ dạng thẻ chuẩn TVCI Lab</p>
+          <p className="mt-0.5 text-xs text-slate-500">Phòng Giám định - Chứng nhận và Phát triển thị trường · Danh sách hồ sơ chuẩn dạng bảng TVCI Lab</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* View switcher */}
-          <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-3xs">
-            <button
-              type="button"
-              onClick={() => setRegisterViewMode('card')}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
-                registerViewMode === 'card'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Xem dạng thẻ chuẩn TVCI Lab"
-            >
-              <LayoutGrid size={13} />
-              <span className="hidden sm:inline">Dạng thẻ</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setRegisterViewMode('table')}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
-                registerViewMode === 'table'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Xem bảng truyền thống"
-            >
-              <List size={13} />
-              <span className="hidden sm:inline">Dạng bảng</span>
-            </button>
-          </div>
-
           {canMutate && (
             <button
               type="button"
@@ -2216,7 +2146,7 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
         </div>
       </div>
 
-      <PgdRegisterTable requests={sectionRequests} users={pgd.users} catalog={pgd.catalog} onOpen={openRequest} viewMode={registerViewMode} onViewModeChange={setRegisterViewMode} />
+      <PgdRegisterTable requests={sectionRequests} users={pgd.users} catalog={pgd.catalog} onOpen={openRequest} />
     </div>
   );
 

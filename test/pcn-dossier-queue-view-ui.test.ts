@@ -46,38 +46,7 @@ test('PCN queue filters and empty results expose accessible, mobile-ready contro
   assert.ok(/role="region"\s+aria-label="Bảng hồ sơ PCN[^"]*"\s+tabIndex=\{0\}/.test(source), 'the scroll region can receive keyboard focus');
 });
 
-test('PCN queue view switch shows concise mobile labels and preserves desktop and accessibility labels', () => {
-  const markup = renderToStaticMarkup(React.createElement(PcnDossierQueueView, {
-    rows: [],
-    onOpenDossier: () => {},
-  }));
-  const $ = cheerio.load(markup);
-  const switcher = $('[role="group"][aria-label="Chế độ hiển thị hồ sơ"]');
-  const cardButton = switcher.find('button[aria-label="Xem dạng thẻ"]');
-  const tableButton = switcher.find('button[aria-label="Xem dạng bảng"]');
-  const findLabel = (selector: string, label: string) =>
-    switcher.find(selector).find('span').filter((_, span) => $(span).text().trim() === label);
-
-  assert.equal(cardButton.attr('aria-pressed'), 'true', 'card remains the default view');
-  assert.equal(tableButton.attr('aria-pressed'), 'false');
-
-  const cardMobileLabel = findLabel('button[aria-label="Xem dạng thẻ"]', 'Thẻ');
-  const tableMobileLabel = findLabel('button[aria-label="Xem dạng bảng"]', 'Bảng');
-  assert.equal(cardMobileLabel.length, 1, 'the card toggle has a concise mobile label');
-  assert.equal(tableMobileLabel.length, 1, 'the table toggle has a concise mobile label');
-  assert.ok((cardMobileLabel.attr('class') || '').includes('sm:hidden'));
-  assert.ok((tableMobileLabel.attr('class') || '').includes('sm:hidden'));
-
-  const cardDesktopLabel = findLabel('button[aria-label="Xem dạng thẻ"]', 'Dạng thẻ');
-  const tableDesktopLabel = findLabel('button[aria-label="Xem dạng bảng"]', 'Dạng bảng');
-  assert.equal(cardDesktopLabel.length, 1, 'the full card label remains available on desktop');
-  assert.equal(tableDesktopLabel.length, 1, 'the full table label remains available on desktop');
-  assert.ok((cardDesktopLabel.attr('class') || '').includes('hidden sm:inline'));
-  assert.ok((tableDesktopLabel.attr('class') || '').includes('hidden sm:inline'));
-  assert.ok(switcher.parent().hasClass('flex-wrap'), 'the header can wrap the switcher below the title');
-});
-
-test('PCN card presents sample quantity once instead of repeating the Zone 4 sample badge', () => {
+test('PCN queue view enforces table-only display and table data contains sample info', () => {
   const row = {
     dossierId: 'pcn-compact-1',
     dossierCode: 'HS-PCN-COMPACT-001',
@@ -110,9 +79,11 @@ test('PCN card presents sample quantity once instead of repeating the Zone 4 sam
     onOpenDossier: () => {},
   }));
   const $ = cheerio.load(markup);
-  const card = $('[data-testid="pgdcn-dossier-card"]');
-  const sampleCountMentions = card.text().match(/(?:Mẫu\s+3|3\s+mẫu)/gi) || [];
+  const switcher = $('[role="group"][aria-label="Chế độ hiển thị hồ sơ"]');
+  assert.equal(switcher.length, 0, 'card switcher is removed in table-only design');
 
-  assert.equal(sampleCountMentions.length, 1, 'the sample quantity appears once in the collapsed PCN card');
-  assert.match(card.text(), /Mẫu 3/);
+  const tableScroll = $('[data-testid="pcn-dossier-table-scroll"]');
+  assert.equal(tableScroll.length, 1, 'table view is always rendered');
+  assert.match(tableScroll.text(), /HS-PCN-COMPACT-001/);
+  assert.match(tableScroll.text(), /Thiết bị đo công suất/);
 });

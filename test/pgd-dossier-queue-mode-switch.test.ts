@@ -5,33 +5,14 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import PgdDossierQueueView from '../components/PgdDossierQueueView';
 
-test('PGD queue mode switch stays labeled, accessible, touch-sized, and unclipped', () => {
+test('PGD queue enforces table presentation, touch-sized, unclipped and responsive', () => {
   const html = renderToStaticMarkup(
     createElement(PgdDossierQueueView, { rows: [], onOpenDossier: () => {} }),
   );
-  const group = html.match(
-    /<div\b(?=[^>]*role="group")(?=[^>]*aria-label="Chọn chế độ hiển thị hàng đợi hồ sơ PGD")[^>]*>[\s\S]*?<\/div>/,
-  );
-
-  assert.ok(group, 'mode switch has a Vietnamese accessible group label');
-
-  for (const { label, pressed } of [
-    { label: 'Dạng thẻ', pressed: 'true' },
-    { label: 'Dạng bảng', pressed: 'false' },
-  ]) {
-    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const button = group[0].match(
-      new RegExp(`<button\\b(?=[^>]*aria-label="${escapedLabel}")(?=[^>]*aria-pressed="${pressed}")([^>]*)>([\\s\\S]*?)<\\/button>`),
-    );
-
-    assert.ok(button, `${label} button exposes its name and pressed state`);
-    const markup = `${button[1]}${button[2]}`;
-    assert.match(markup, new RegExp(`<span[^>]*>${escapedLabel}<\\/span>`), `${label} remains visible`);
-    assert.match(markup, /min-h-11/);
-    assert.match(markup, /min-w-11/);
-    assert.match(markup, /focus-visible:ring-2/);
-    assert.doesNotMatch(markup, /hidden\s+sm:inline/);
-  }
+  
+  // Card mode switch is removed per Superneat 100% table standard
+  assert.doesNotMatch(html, /aria-label="Chọn chế độ hiển thị hàng đợi hồ sơ PGD"/, 'mode switcher removed in favor of table-only');
+  assert.doesNotMatch(html, /Dạng thẻ/, 'card mode button removed');
 
   const toolbar = html.match(/<div class="pgd-queue-toolbar([^"]*)">/);
   const filters = html.match(/<div class="pgd-queue-filter-pills([^"]*)">/);

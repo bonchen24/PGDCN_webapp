@@ -52,7 +52,6 @@ import PcnDraftingWorkspaceView from './PcnDraftingWorkspaceView';
 import { ActivityLogView } from './ActivityLogView';
 import { PcnUserKpiTable } from './PcnUserKpiTable';
 import PcnSidebar, { PCN_SECTION_ICONS } from './PcnSidebar';
-import PcnDossierGroupCard from './PcnDossierGroupCard';
 import { usePcnStore } from '../store-pcn';
 import { usePcnSessionStore } from '../utils/pcnSessionState';
 import { clearPcnSession, getPcnSession } from '../utils/pcnAuthApi';
@@ -541,7 +540,6 @@ function ProposalView({
   onUpdateProposal: (proposalId: string, updates: PcnProposalUpdateInput) => Promise<void>;
   onOpenDossier: (dossier: CertificationDossier) => void;
 }) {
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('table');
   const [pillFilter, setPillFilter] = useState<'ALL' | 'ACTION_NEEDED' | 'IN_PROGRESS' | 'AWAITING_APPROVAL' | 'OVERDUE' | 'QC4' | 'QC9'>('ALL');
   const [sortBy, setSortBy] = useState<'NEWEST' | 'LOT_DESC' | 'CODE_DESC'>('NEWEST');
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -841,39 +839,9 @@ function ProposalView({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-black text-slate-900">Quản lý Đề nghị</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Phòng Giám định - Chứng nhận và Phát triển thị trường · Giao diện hồ sơ dạng thẻ chuẩn TVCI Lab</p>
+          <p className="text-xs text-slate-500 mt-0.5">Phòng Giám định - Chứng nhận và Phát triển thị trường · Danh sách hồ sơ chuẩn dạng bảng TVCI Lab</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* View switcher */}
-          <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-3xs">
-            <button
-              type="button"
-              onClick={() => setViewMode('card')}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
-                viewMode === 'card'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Xem dạng thẻ chuẩn TVCI Lab"
-            >
-              <LayoutGrid size={13} />
-              <span className="hidden sm:inline">Dạng thẻ</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
-                viewMode === 'table'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Xem bảng truyền thống"
-            >
-              <List size={13} />
-              <span className="hidden sm:inline">Dạng bảng</span>
-            </button>
-          </div>
-
           {!openForm && canEdit && (
             <button
               onClick={openProposalForm}
@@ -1198,32 +1166,6 @@ function ProposalView({
         <EmptyState title="Chưa có Đề nghị" description="Tiếp nhận Đề nghị từ khách hàng để tạo bộ hồ sơ chứng nhận." action={canEdit ? 'Tạo Đề nghị' : undefined} onAction={canEdit ? openProposalForm : undefined} />
       ) : visibleProposals.length === 0 ? (
         <EmptyState title="Không tìm thấy Đề nghị" description="Thử đổi từ khóa hoặc bộ lọc trạng thái/Lĩnh vực." />
-      ) : viewMode === 'card' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          {visibleProposals.map((proposal) => {
-            const dossier = dossiers.find((item) => item.id === proposal.dossierId || item.proposalId === proposal.id);
-            return dossier ? (
-              <PcnDossierGroupCard
-                key={proposal.id}
-                proposal={proposal}
-                dossier={dossier}
-                documentRequirements={documentRequirements}
-                dossierDocuments={dossierDocuments}
-                dataLoaded={dataLoaded}
-                sampleLots={sampleLots}
-                sampleItems={sampleItems}
-                sampleRoutes={sampleRoutes}
-                canEdit={canEdit}
-                onOpenDossier={() => onOpenDossier(dossier)}
-                onEdit={() => openEdit(proposal)}
-              />
-            ) : (
-              <div key={proposal.id} className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-800">
-                Đề nghị <b>{proposal.proposalCode}</b> chưa có bộ hồ sơ liên kết.
-              </div>
-            );
-          })}
-        </div>
       ) : (
         <div className="mobile-scroll-x min-w-0 overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table aria-label="Danh sách Đề nghị PCN" className="w-full min-w-[980px] border-collapse text-left text-[10px]">

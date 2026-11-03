@@ -154,6 +154,27 @@ Mỗi node là một **vùng thao tác và cổng bắt buộc**: người đư�
   - Cột phụ (35%): Trợ lý AI TVCI, căn cứ quy chuẩn kỹ thuật (QC20), nhật ký hồ sơ và bằng chứng hiện trường.
   - Mobile: Rail cuộn ngang cảm ứng mượt mà (`mobile-scroll-x`), tab chuyển đổi linh hoạt giữa Công việc (65%) và Hồ sơ/Trợ lý (35%).
 
+#### 0A.2.4. Chuẩn hóa 7 giai đoạn cho PCN & Loại bỏ hoàn toàn giao diện Thẻ (100% Data Table)
+
+- **Chuẩn hóa 7 giai đoạn thống nhất cho PCN**:
+  Đồng bộ mô hình quy trình chứng nhận PCN về 7 giai đoạn chính tương đương PGD, loại bỏ hoàn toàn thanh tiến trình 15 node cồng kềnh trên rail chính:
+  | STT | Mã giai đoạn | Tên giai đoạn chính PCN | Danh mục node/công việc con tương ứng | Loại |
+  | :--- | :--- | :--- | :--- | :--- |
+  | **01** | `intake` | **Tiếp nhận hồ sơ** | Đề nghị chứng nhận (`proposal`), Hồ sơ thương mại/hợp đồng (`commercial`) | `FILE` |
+  | **02** | `review-assignment` | **Xem xét & Phân công** | Phân công chuyên gia chứng nhận (`assignment`) | `APPROVAL` |
+  | **03** | `plan` | **Lập kế hoạch** | Kế hoạch đánh giá chứng nhận sản phẩm (`evaluation-plan`) | `FILE` |
+  | **04** | `execution` | **Thực hiện đánh giá & lấy mẫu** | Kiểm tra hiện trường (`field-inspection`), Lập PYC PTN (`pyc`), Mã hóa mẫu (`sample-coding`), Giao nhận mẫu (`sample-handover`), Trả mẫu (`sample-return`) | `ACTION` |
+  | **05** | `results-evaluation` | **Xử lý & Đánh giá kết quả** | Tiếp nhận KQTN (`receive-test-result`), Hoàn thiện kết quả đánh giá (`complete-result`) | `APPROVAL` |
+  | **06** | `reporting-approval` | **Báo cáo & Phê duyệt** | Dự thảo Giấy chứng nhận (`certificate`), Dự thảo Quyết định (`decision`), Phê duyệt lãnh đạo (`approval`) | `APPROVAL` |
+  | **07** | `issuance-archive` | **Phát hành & Lưu trữ** | Bàn giao khách hàng (`deliver`), Đóng lưu trữ hồ sơ (`archive`) | `END` |
+- **Cơ chế hiển thị 2 cấp (Two-tier Flow Navigation)**:
+  - Cấp 1 (Main Rail): Thanh 7 tab (`01 → 07`) hiển thị tiến độ vĩ mô của bộ hồ sơ ("Đang ở giai đoạn X/7 · Y/7 giai đoạn đã xong").
+  - Cấp 2 (Stage Sub-tasks Bar): Khi chọn một giai đoạn, hiển thị danh mục các công việc con (`nodes`) của giai đoạn đó. Người dùng click chọn công việc để mở panel thao tác chuyên biệt (`PcnDossierNodeWorkPanel`).
+  - Dữ liệu snapshot, requirement, document và transition của 15 node runtime được bảo toàn 100%, không bị xáo trộn hoặc làm mất tính tương thích.
+- **Loại bỏ 100% giao diện dạng Thẻ (Card Grid)**:
+  - Toàn bộ các bề mặt quản lý hồ sơ gồm Sổ đăng ký Đề nghị PCN (`PcnWorkspace`), Hàng đợi PCN (`PcnDossierQueueView`), Sổ đăng ký PYC PGD (`PgdWorkspace`), Hàng đợi PGD (`PgdDossierQueueView`) đã loại bỏ triệt để chế độ xem Card grid và các nút toggle `Dạng thẻ / Dạng bảng`.
+  - Cố định hiển thị bằng Data Table chuẩn Superneat: sticky cột mã hồ sơ, thanh trạng thái trực quan, tiến độ hoàn thiện phần trăm, hạn xử lý, phân công và cụm thao tác nhanh; trang bị `mobile-scroll-x` chống tràn màn hình.
+
 Sau khi được Lãnh đạo duyệt, hồ sơ phải đi tuần tự qua `APPROVED` → `ISSUED` → `DELIVERED` → `ARCHIVED`. Thao tác giao khách hàng phải lưu thời điểm, người/đơn vị nhận và ghi chú giao nhận; chỉ hồ sơ đã giao mới được chuyển vào kho lưu trữ. Các chuyển tiếp tạo bộ trình duyệt (`TECHNICAL_REVIEW → WAITING_APPROVAL`), quyết định phê duyệt (`WAITING_APPROVAL → APPROVED` hoặc trả về kỹ thuật), cấp số (`APPROVED → ISSUED`), giao (`ISSUED → DELIVERED`) và lưu trữ (`DELIVERED → ARCHIVED`) phải đi qua boundary chuyên biệt của bộ phát hành để cập nhật đồng thời `IssuancePackage`, hồ sơ, bước liên quan và audit; mutation metadata chung của `CertificationDossier` phải từ chối các chuyển tiếp này. Không xóa hoặc ghi đè metadata phát hành khi lưu trữ.
 
 Các trạng thái chính của hồ sơ là `DRAFT`, `INTAKE_REVIEW`, `AWAITING_DOCUMENTS`, `ASSIGNED`, `PLAN_PENDING_APPROVAL`, `FIELD_EVALUATION`, `AWAITING_SAMPLING`, `SENT_TO_LAB`, `AWAITING_RESULTS`, `CORRECTIVE_ACTION`, `TECHNICAL_REVIEW`, `WAITING_APPROVAL`, `APPROVED`, `ISSUED`, `DELIVERED`, `ARCHIVED`, `REJECTED`, `CANCELLED`, `ON_HOLD`. Lịch sử vòng thử lại và kết quả lần 1 không bị xóa khi kết quả lần 2 trở thành kết quả chính thức theo policy của nhánh.
