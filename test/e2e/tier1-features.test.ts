@@ -499,8 +499,8 @@ describe('Tier 1: Feature Coverage & Contract Verification (F01 - F15)', () => {
     });
 
     it('F13-4: Elimination of legacy server fallback files and obsolete route handlers', () => {
-      const originalRequest = read('.agents/teamwork/ORIGINAL_REQUEST.md');
-      assert.match(originalRequest, /Toàn bộ mã nguồn UI legacy bị loại bỏ/);
+      const project = read('PROJECT.md');
+      assert.match(project, /Loại bỏ toàn bộ mã nguồn UI legacy|Clean Cutover/);
     });
 
     it('F13-5: Clean dependency tree: zero broken legacy imports in active components', () => {
