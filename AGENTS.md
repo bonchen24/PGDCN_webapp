@@ -53,10 +53,36 @@
 
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
+## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+
+## 6. QUY ĐỊNH GỌI AGY CLI TỪ CODEX (HEADLESS EXECUTION)
+- Khi Codex đóng vai trò điều phối (coordinator) gọi gy (Antigravity CLI):
+  1. **Cho phép sử dụng cờ --dangerously-skip-permissions**: Môi trường daemon/headless PTY không có TTY tương tác để duyệt lệnh, cờ này được phép sử dụng để công cụ file/command của AGY hoạt động bình thường.
+  2. **Fallback tự động**: Nếu lệnh gy thất bại, timeout, hoặc gặp lỗi môi trường, Codex được phép fallback tự sinh mã theo spec thay vì dừng lại ở trạng thái BLOCKER.
+
+
+## MULTI-AGENT GIT WORKFLOW & AUTOMATIC COMMIT
+1. **Hai Luồng Độc Lập**:
+   - **Antigravity Desktop**: Nhận task trực tiếp từ người dùng, tự phân tích, code, test và commit độc lập, không phụ thuộc C2C.
+   - **Codex–AGY**: ChatGPT chuẩn bị Task Context Package, Codex orchestrate, AGY CLI execute, Codex review/test.
+2. **Tự Động Hóa Theo Khẩu Lệnh Người Dùng (Zero Manual Command)**:
+   - Khi người dùng bảo: 'commit', 'lưu lại', 'lưu commit', 'tiếp tục', 'làm đi':
+     - Agent tự động kiểm tra diff, lọc file an toàn (không stage file nhạy cảm, secrets, hoặc file của task khác), chạy test và commit chuẩn (feat, fix, refactor).
+     - Tuyệt đối không yêu cầu người dùng gõ lệnh thủ công.
+3. **Quy Ước Nhánh & Worktree**:
+   - Nhánh Antigravity: task/antigravity/<task-id>
+   - Nhánh Codex–AGY: task/c2c/<task-id>
+   - Nhánh chính: main
+   - Khi chạy đồng thời, bắt buộc dùng Git Worktree tại .worktrees/<sanitized-branch-name>.
+   - Cấm xóa worktree khi còn uncommitted changes.
+4. **An Toàn Database & Production**:
+   - Cấm migration đồng thời lên database production.
+   - Không dùng prisma db push trên production.
+   - Quét phát hiện destructive SQL (DROP TABLE, DROP COLUMN) trước khi tích hợp.
