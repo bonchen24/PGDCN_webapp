@@ -32,7 +32,7 @@ test('dossier detail wires workflow tasks and keeps the legacy graphic as fallba
   assert.match(source, /onStartWorkflowTask/);
   assert.match(source, /onReturnWorkflowTask/);
   assert.match(source, /workflowSnapshot/);
-  assert.match(source, /PcnWorkflowMap/);
+  assert.doesNotMatch(source, /PcnWorkflowMap/);
 });
 
 test('dossier detail passes record context, task callbacks, and the native document opener', () => {

@@ -49,7 +49,7 @@ test('PCN store persists dossier status changes without replacing the dossier re
 
 test('dossier detail exposes the graphic workflow and controlled reviewer/deadline controls', () => {
   const source = fs.readFileSync(detailPath, 'utf8');
-  assert.match(source, /PcnWorkflowMap/);
+  assert.doesNotMatch(source, /PcnWorkflowMap/);
   assert.match(source, /buildPcnDossierWorkflowMap/);
   assert.match(source, /Bước hiện tại/);
   assert.match(source, /onSelectNode/);

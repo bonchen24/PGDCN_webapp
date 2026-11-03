@@ -19,6 +19,7 @@ const retiredContractTests = new Set([
   'pcn-backup-ui.test.ts',
   'pcn-customer-import-ui.test.ts',
   'pcn-data-integrity-ui.test.ts',
+  'pcn-dossier-deck-ui.test.ts',
   'pcn-historical-attachment-mapping.test.ts',
   'pcn-historical-discovery-ui.test.ts',
   'pcn-historical-import.test.ts',

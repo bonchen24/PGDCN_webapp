@@ -256,7 +256,7 @@ test('workflow cards expose the existing self-claim action for unassigned dossie
 test('dashboard keeps workflow navigation inside the dossier detail', () => {
   assert.doesNotMatch(pipelineBoard, /PcnWorkflowMap/);
   assert.doesNotMatch(pipelineBoard, /selectedNodeKey/);
-  assert.match(dossierDetail, /PcnWorkflowMap/);
+  assert.doesNotMatch(dossierDetail, /PcnWorkflowMap/);
   assert.match(dossierDetail, /buildPcnDossierWorkflowMap/);
   assert.doesNotMatch(pipelineBoard, /getPcnPipelineStationCatalog/);
   assert.doesNotMatch(pipelineBoard, /StationColumn/);
@@ -303,7 +303,7 @@ test('workflow node actions open the matching dossier work area', () => {
   assert.equal(getPcnDossierStationTab('APPROVAL'), 'issuance');
   assert.equal(getPcnDossierStationTab('EXCEPTIONS'), 'documents');
   assert.match(pipelineBoard, /getPcnDossierStationTab/);
-  assert.match(dossierDetail, /PcnWorkflowMap/);
+  assert.doesNotMatch(dossierDetail, /PcnWorkflowMap/);
   assert.match(dossierDetail, /initialTab/);
   assert.match(dossierDetail, /getPcnDossierStationTab/);
   assert.match(workspace, /selectedDossierTab/);

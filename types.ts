@@ -818,6 +818,10 @@ export interface PcnDossierDocument {
   id: string;
   dossierId: string;
   requirementId: string;
+  /** Per-dossier additions carry their label/stage without modifying the shared requirement catalog. */
+  title?: string;
+  stage?: PcnDocumentRequirementStage;
+  addedByUsername?: string;
   fieldCode: PcnCertificationFieldCode;
   currentVersionId?: string;
   versions: PcnDossierDocumentVersion[];

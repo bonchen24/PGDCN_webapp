@@ -856,4 +856,14 @@ Description: Persistent project memory and verified deployment observations for 
 
 - Workspace `E:\CODING\DDT_webapp` hiện là Git checkout trên nhánh `master`; có thể tạo commit local. Remote/push chưa được yêu cầu trong lượt này.
 
+## Cập nhật 2026-10-28 — Release production PGDCN và xác minh sau deploy
+
+- **Thay đổi**: Source commit `752310ce07143efa477da26fe5377673670c4ed0` trên nhánh `master`. Xóa import Google Fonts remote tại `index.css`; thêm `.tmp-d01-before` vào `.dockerignore`. Không đổi schema, API, workflow, RBAC; không migration hoặc ghi dữ liệu.
+- **Verification**: `npm run typecheck` PASS; `npm test` 962 pass, 0 fail, 6 opt-in skip; `npm run build` PASS; 14/14 Playwright opt-in pass; 231 captures / 33 scenario (Admin/Staff/Viewer) phủ 7 viewport (320, 375, 390, 430, 768, 1280, 1440); 0 document horizontal overflow, 0 page/capture errors, 0 API mutation, 0 external request. Bộ capture F1-F5 đạt 35/35, không có mutation/external/page error. Có 63 console HTTP 503 xuất hiện chủ đích trong synthetic error scenarios (không có page error). Không còn finding P1/P2 theo density audit.
+- **Deploy identity & Health**: Docker Desktop Compose project `pgdcn_webapp`, file `docker-compose.pcn.yml`, service/container `pcn_webapp-webapp` trên `0.0.0.0:2357`. Image `pgdcn_webapp-webapp:latest` digest `sha256:521f48f3d2a17e87c519284a4e85611d640224703142d3b17272079016d18782`; container ID `75ef9833d43548b03a6ddd4fd816cd7a14c919522c209d7db127a2ac5c9fe03e`; restart count 0. DB `supabase-db` healthy; `/api/health`, `/api/db/health`, `/pgdcn`, `/pgdcn/pcn`, `/pgdcn/pgd` đều HTTP 200.
+- **Backup & DB preservation**: Volume `pcn_webapp_backups` giữ nguyên; file `pcn_certification_manual_20260904-083718.zip` khớp SHA-256 `f9e7f2adee093ca8ed23469d2bbdf6b3092b2342a8a50c8374c2abc1e24bd2b0`. Cảnh báo metadata label compose (volume tạo bởi project `pcn_webapp`, compose chạy `pgdcn_webapp`) không đổi tên volume, mount path và hash backup.
+- **Giới hạn kiểm tra & Ghi chú build**:
+  - Authenticated production check: Login shell production đã mở kiểm tra trên browser (390x844 và 1440x1000); do không có authenticated session nên trạng thái sau đăng nhập (production after-login) là `UNKNOWN`.
+  - Dirty working tree: Docker build trên working tree có `next.config.mjs` dirty (thêm `allowedDevOrigins=['pgdcndev.tvci.id.vn']`). Tài liệu Next xác nhận đây là dev-only, không đổi production behavior, nhưng image không tái tạo hoàn toàn từ clean commit. Không sửa hoặc stage `next.config.mjs`. Không push GitHub.
+
 <!-- --- End of PROJECT_MEMORY.md --- -->

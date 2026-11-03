@@ -18,6 +18,11 @@ const nextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ['@resvg/resvg-js'],
   outputFileTracingRoot: __dirname,
+  allowedDevOrigins: ['pgdcndev.tvci.id.vn'],
+  webpack: (config) => {
+    config.output.hashFunction = 'xxhash64';
+    return config;
+  },
 };
 
 export default nextConfig;
