@@ -31,6 +31,15 @@ const LANES = [
 
 const COLUMNS = [1, 2, 3, 4, 5, 6];
 
+const COLUMN_HEADERS: Record<number, { title: string; subtitle: string }> = {
+  1: { title: 'Cột 1', subtitle: 'Tiếp nhận' },
+  2: { title: 'Cột 2', subtitle: 'Chuẩn bị' },
+  3: { title: 'Cột 3', subtitle: 'Hiện trường' },
+  4: { title: 'Cột 4', subtitle: 'PTN & Thử nghiệm' },
+  5: { title: 'Cột 5', subtitle: 'Phê duyệt' },
+  6: { title: 'Cột 6', subtitle: 'Lưu trữ' },
+};
+
 const MOVE_DIRECTIONS = [
   { direction: 'left', symbol: '←', label: 'sang trái' },
   { direction: 'right', symbol: '→', label: 'sang phải' },
@@ -176,7 +185,12 @@ export default function PgdcnDossierTemplateCanvas(props: PgdcnDossierTemplateCa
       <section data-testid="pgdcn-dossier-template-canvas" className="mobile-scroll-x min-w-0 max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white p-3">
         <div className="min-w-[960px] grid grid-cols-[148px_repeat(6,minmax(150px,1fr))] gap-2">
           <div className="rounded-lg bg-slate-100 p-3 text-xs font-semibold text-slate-500">Lưu trình</div>
-          {COLUMNS.map((column) => <div key={column} className="rounded-lg bg-slate-100 p-3 text-center text-xs font-semibold text-slate-500">Cột {column}</div>)}
+          {COLUMNS.map((column) => (
+            <div key={column} className="rounded-lg bg-slate-100 p-2.5 text-center text-xs font-semibold text-slate-600">
+              <div>Cột {column}</div>
+              <div className="mt-0.5 text-[10px] font-normal text-slate-400">{COLUMN_HEADERS[column]?.subtitle}</div>
+            </div>
+          ))}
           {LANES.map((lane) => (
             <div key={lane.id} className="contents">
               <div className="flex min-h-[180px] items-start rounded-xl bg-slate-50 p-3 text-xs font-semibold text-slate-600">{lane.label}</div>

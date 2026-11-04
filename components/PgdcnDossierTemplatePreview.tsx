@@ -23,6 +23,45 @@ const LANES = [
 
 const COLUMNS = [1, 2, 3, 4, 5, 6];
 
+const COLUMN_HEADERS: Record<number, { title: string; subtitle: string }> = {
+  1: { title: 'Cột 1', subtitle: 'Tiếp nhận hồ sơ' },
+  2: { title: 'Cột 2', subtitle: 'Xem xét & Chuẩn bị' },
+  3: { title: 'Cột 3', subtitle: 'Hiện trường & Mẫu' },
+  4: { title: 'Cột 4', subtitle: 'PTN & Thử nghiệm' },
+  5: { title: 'Cột 5', subtitle: 'Rà soát & Phê duyệt' },
+  6: { title: 'Cột 6', subtitle: 'Phát hành & Lưu trữ' },
+};
+
+const ACTION_KEY_LABELS: Record<string, string> = {
+  INTAKE: 'Tiếp nhận hồ sơ',
+  DOCUMENTS: 'Bổ sung hồ sơ',
+  ASSIGNMENT: 'Phân công chuyên gia',
+  PLAN: 'Lập kế hoạch',
+  EVALUATION: 'Kế hoạch & Đánh giá',
+  FIELD: 'Giám định hiện trường',
+  SAMPLING_LAB: 'Lập PYC & Lấy mẫu',
+  SAMPLE_CODING: 'Mã hóa mẫu',
+  SAMPLE_HANDOVER: 'Giao nhận mẫu',
+  SAMPLE_RETURN: 'Bàn giao trả mẫu',
+  LAB_SUBCONTRACTOR: 'Giao mẫu & nhận KQTN',
+  TEST_REPORT: 'Tiếp nhận KQTN',
+  TECHNICAL_REVIEW: 'Hoàn thiện kết quả',
+  RESULT_ISSUANCE: 'Rà soát & lập báo cáo',
+  APPROVAL: 'Phê duyệt',
+  DELIVERY: 'Bàn giao khách hàng',
+  ARCHIVE: 'Đóng & lưu trữ',
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  LEADERSHIP: 'Lãnh đạo phòng',
+  CERTIFICATION_EXPERT: 'Chuyên gia chứng nhận',
+  TECHNICAL_REVIEWER: 'Người soát xét kỹ thuật',
+  SAMPLE_COORDINATOR: 'Điều phối / tiếp nhận mẫu',
+  DOCUMENT_CLERK: 'Văn thư hồ sơ',
+  MANAGER: 'Quản lý',
+  SPECIALIST: 'Chuyên viên',
+};
+
 const KIND_LABELS: Record<DossierTemplateEditorNode['kind'], string> = {
   DOCUMENT_TASK: 'Tài liệu / nghiệp vụ',
   APPROVAL_TASK: 'Phê duyệt',
@@ -250,9 +289,12 @@ export default function PgdcnDossierTemplatePreview(props: PgdcnDossierTemplateP
               {COLUMNS.map((column) => (
                 <div
                   key={column}
-                  className="rounded-lg bg-slate-200/80 p-3 text-center text-xs font-bold text-slate-600"
+                  className="rounded-lg bg-slate-200/80 p-2.5 text-center text-xs font-bold text-slate-700"
                 >
-                  Cột {column}
+                  <div>Cột {column}</div>
+                  <div className="mt-0.5 text-[10px] font-semibold text-slate-500">
+                    {COLUMN_HEADERS[column]?.subtitle}
+                  </div>
                 </div>
               ))}
 
@@ -328,17 +370,27 @@ export default function PgdcnDossierTemplatePreview(props: PgdcnDossierTemplateP
                                   {node.actionKey && (
                                     <div>
                                       <span className="text-slate-400">Thao tác: </span>
-                                      <span className="font-mono font-medium text-slate-700">
-                                        {node.actionKey}
+                                      <span className="font-medium text-slate-700">
+                                        {ACTION_KEY_LABELS[node.actionKey] || node.actionKey}
                                       </span>
+                                      {ACTION_KEY_LABELS[node.actionKey] && (
+                                        <span className="ml-1 font-mono text-[10px] text-slate-400">
+                                          ({node.actionKey})
+                                        </span>
+                                      )}
                                     </div>
                                   )}
                                   {node.assigneeRole && (
                                     <div>
                                       <span className="text-slate-400">Vai trò: </span>
                                       <span className="font-medium text-slate-700">
-                                        {node.assigneeRole}
+                                        {ROLE_LABELS[node.assigneeRole] || node.assigneeRole}
                                       </span>
+                                      {ROLE_LABELS[node.assigneeRole] && (
+                                        <span className="ml-1 text-[10px] text-slate-400">
+                                          ({node.assigneeRole})
+                                        </span>
+                                      )}
                                     </div>
                                   )}
                                   {node.slaDays !== undefined && (
