@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   LayoutDashboard,
   Award,
@@ -34,10 +34,13 @@ interface AppSidebarProps {
   currentUser: PcnUserAccount;
 }
 
+type NavTone = 'pcn' | 'pgd' | 'shared';
+
 interface NavItem {
   title: string;
   href: string;
   icon: React.ElementType;
+  tone?: NavTone;
   badge?: string | number;
   badgeColor?: string;
   exact?: boolean;
@@ -46,13 +49,15 @@ interface NavItem {
 interface NavGroup {
   groupTitle: string;
   visible: boolean;
+  tone?: NavTone;
   items: NavItem[];
   collapsible?: boolean;
   defaultOpen?: boolean;
 }
 
-export function AppSidebar({ currentUser }: AppSidebarProps) {
+function AppSidebarInner({ currentUser }: AppSidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { collapsed, mobileOpen, toggleCollapse, closeMobile } = useSidebar();
   const clearCurrentUser = usePcnSessionStore((state) => state.clearCurrentUser);
@@ -64,8 +69,10 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
   const hasPcn = scopes.length === 0 || scopes.includes('PCN') || currentUser.systemRole === 'admin';
   const hasPgd = scopes.length === 0 || scopes.includes('PGD') || currentUser.systemRole === 'admin';
 
-  const canManageTemplates = scopes.some((scope) => scope === 'PCN' || scope === 'PGD')
-    && (isPcnSystemManager(currentUser) || ['PGD_ADMIN', 'PGD_MANAGER'].includes(String(currentUser.pgdRole || '').toUpperCase()));
+  const canManageTemplates =
+    scopes.some((scope) => scope === 'PCN' || scope === 'PGD') &&
+    (isPcnSystemManager(currentUser) ||
+      ['PGD_ADMIN', 'PGD_MANAGER'].includes(String(currentUser.pgdRole || '').toUpperCase()));
 
   const canManageSettings = canViewSystemSettings(currentUser);
 
@@ -77,7 +84,7 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
     );
   }, [currentUser]);
 
-  // Keep accordion open when navigating to respective domain
+  // Sync accordion expansion when pathname changes
   useEffect(() => {
     if (pathname.startsWith('/pcn')) setPcnOpen(true);
     if (pathname.startsWith('/pgd')) setPgdOpen(true);
@@ -87,11 +94,13 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
     {
       groupTitle: 'Tổng quan',
       visible: true,
+      tone: 'shared',
       items: [
         {
           title: 'Bàn làm việc',
           href: '/',
           icon: LayoutDashboard,
+          tone: 'shared',
           exact: true,
         },
       ],
@@ -99,6 +108,7 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
     {
       groupTitle: 'Chứng nhận · PCN',
       visible: hasPcn,
+      tone: 'pcn',
       collapsible: true,
       defaultOpen: pcnOpen,
       items: [
@@ -106,23 +116,27 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
           title: 'Hàng đợi hồ sơ PCN',
           href: '/pcn',
           icon: Award,
+          tone: 'pcn',
           exact: true,
         },
         {
           title: 'Sổ tổng hợp PCN',
           href: '/pcn?tab=operations',
           icon: ClipboardList,
+          tone: 'pcn',
         },
         {
           title: 'Sổ quản lý mẫu PCN',
           href: '/pcn?tab=samples',
           icon: FlaskConical,
+          tone: 'pcn',
         },
       ],
     },
     {
       groupTitle: 'Giám định · PGD',
       visible: hasPgd,
+      tone: 'pgd',
       collapsible: true,
       defaultOpen: pgdOpen,
       items: [
@@ -130,55 +144,65 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
           title: 'Hàng đợi PYC Giám định',
           href: '/pgd',
           icon: ClipboardCheck,
+          tone: 'pgd',
           exact: true,
         },
         {
           title: 'Sổ tổng hợp PGD',
           href: '/pgd?tab=operations',
           icon: Layers,
+          tone: 'pgd',
         },
         {
           title: 'Sổ quản lý mẫu PGD',
           href: '/pgd?tab=samples',
           icon: FlaskConical,
+          tone: 'pgd',
         },
       ],
     },
     {
       groupTitle: 'Bộ mẫu & Quy trình',
       visible: canManageTemplates,
+      tone: 'shared',
       items: [
         {
           title: 'Hồ sơ mẫu & Quy trình',
           href: '/templates',
           icon: GitBranch,
+          tone: 'shared',
         },
       ],
     },
     {
       groupTitle: 'Soạn thảo văn bản',
       visible: true,
+      tone: 'shared',
       items: [
         {
           title: 'Studio soạn thảo DOCX',
           href: '/drafting',
           icon: FileEdit,
+          tone: 'shared',
         },
       ],
     },
     {
       groupTitle: 'Quản trị hệ thống',
       visible: true,
+      tone: 'shared',
       items: [
         {
           title: 'Danh bạ khách hàng',
           href: '/customers',
           icon: Building2,
+          tone: 'shared',
         },
         {
           title: 'Nhật ký hoạt động',
           href: '/activity-logs',
           icon: Activity,
+          tone: 'shared',
         },
         ...(canManageSettings
           ? [
@@ -186,6 +210,7 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
                 title: 'Cài đặt & RBAC',
                 href: '/settings',
                 icon: Settings,
+                tone: 'shared' as NavTone,
               },
             ]
           : []),
@@ -201,34 +226,107 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
     router.replace('/login');
   };
 
+  /**
+   * Deterministic active detection supporting query params (tab=...)
+   */
   const isItemActive = (href: string, exact = false) => {
+    const [baseUrl, query] = href.split('?');
+    const targetParams = new URLSearchParams(query || '');
+    const targetTab = targetParams.get('tab');
+
+    if (baseUrl === '/pcn' || baseUrl === '/pgd') {
+      const isBaseMatch = pathname === baseUrl || pathname.startsWith(`${baseUrl}/`);
+      if (!isBaseMatch) return false;
+
+      const currentTab = searchParams?.get('tab') || null;
+      if (targetTab) {
+        return currentTab === targetTab;
+      }
+      return !currentTab || currentTab === 'queue';
+    }
+
     if (exact) return pathname === href;
-    const [baseUrl] = href.split('?');
     return pathname.startsWith(baseUrl) && (baseUrl !== '/' || pathname === '/');
   };
 
+  /**
+   * Visual style mapping adhering to ui-ux-pro-max standard
+   */
+  const getItemStyles = (active: boolean, tone: NavTone = 'shared') => {
+    if (!active) {
+      return {
+        container: 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 font-medium',
+        icon: 'text-slate-400 group-hover:text-slate-200',
+        indicator: '',
+      };
+    }
+
+    if (tone === 'pcn') {
+      return {
+        container: 'bg-emerald-500/15 text-emerald-300 font-semibold ring-1 ring-emerald-500/30 shadow-xs',
+        icon: 'text-emerald-400',
+        indicator: 'before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-emerald-400',
+      };
+    }
+
+    if (tone === 'pgd') {
+      return {
+        container: 'bg-blue-500/15 text-blue-300 font-semibold ring-1 ring-blue-500/30 shadow-xs',
+        icon: 'text-blue-400',
+        indicator: 'before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-blue-400',
+      };
+    }
+
+    // Shared default
+    return {
+      container: 'bg-slate-800/90 text-white font-semibold ring-1 ring-slate-700/80 shadow-xs',
+      icon: 'text-emerald-400',
+      indicator: 'before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-emerald-400',
+    };
+  };
+
   const sidebarContent = (
-    <div className="flex h-full flex-col bg-slate-900 text-slate-200">
+    <div className="flex h-full flex-col bg-slate-900 text-slate-200 select-none">
       {/* Brand Header */}
-      <div className={`flex h-13 shrink-0 items-center border-b border-slate-800 px-3 ${collapsed ? 'justify-center' : 'justify-between'}`}>
-        <Link href="/" className="flex items-center gap-2.5 overflow-hidden">
-          <img
-            src="/icons/iemm-logo-192.png"
-            alt="TVCI Logo"
-            className="h-7 w-7 shrink-0 rounded-lg bg-white object-contain p-0.5 shadow-sm"
-          />
+      <div
+        className={`flex h-14 shrink-0 items-center border-b border-slate-800/80 px-3 ${
+          collapsed ? 'justify-center' : 'justify-between'
+        }`}
+      >
+        <Link
+          href="/"
+          className={`flex items-center gap-2.5 overflow-hidden group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1`}
+          title="Về trang chủ PGDCN"
+        >
+          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white p-0.5 shadow-sm ring-1 ring-slate-700/60 group-hover:scale-105 transition-transform duration-200">
+            <img
+              src="/icons/iemm-logo-192.png"
+              alt="TVCI Logo"
+              className="h-full w-full object-contain"
+            />
+          </div>
           {!collapsed && (
-            <div className="flex flex-col">
-              <span className="text-xs font-black tracking-wider text-white uppercase">PGDCN • TVCI</span>
-              <span className="text-[10px] font-medium text-slate-400">Giám định & Chứng nhận</span>
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] font-black tracking-wider text-white uppercase truncate">
+                  PGDCN • TVCI
+                </span>
+                <span className="inline-flex items-center rounded px-1 py-0.2 text-[9px] font-bold bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30">
+                  v2
+                </span>
+              </div>
+              <span className="text-[10px] font-medium text-slate-400 truncate">
+                Giám định & Chứng nhận
+              </span>
             </div>
           )}
         </Link>
+
         {mobileOpen && (
           <button
             type="button"
             onClick={closeMobile}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white lg:hidden cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white lg:hidden cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             aria-label="Đóng thanh điều hướng"
           >
             <X size={16} />
@@ -237,7 +335,7 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
       </div>
 
       {/* Navigation Group List */}
-      <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3" aria-label="Điều hướng chính">
+      <nav className="flex-1 space-y-3 overflow-y-auto px-2 py-3 scrollbar-thin scrollbar-thumb-slate-800" aria-label="Điều hướng chính">
         {navGroups
           .filter((group) => group.visible)
           .map((group, groupIdx) => {
@@ -247,26 +345,33 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
             const setIsOpen = isPcnGroup ? setPcnOpen : isPgdGroup ? setPgdOpen : undefined;
 
             return (
-              <div key={groupIdx} className="space-y-1">
+              <div key={groupIdx} className={`${groupIdx > 0 ? 'pt-2 border-t border-slate-800/40' : ''}`}>
                 {!collapsed && (
-                  <div className="flex items-center justify-between px-2 py-1">
-                    <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                      {group.groupTitle}
-                    </span>
-                    {group.collapsible && setIsOpen && (
-                      <button
-                        type="button"
-                        onClick={() => setIsOpen(!isOpen)}
-                        className="text-slate-400 hover:text-slate-200 cursor-pointer"
-                        aria-label={`Mở rộng ${group.groupTitle}`}
-                      >
-                        <ChevronDown
-                          size={12}
-                          className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                        />
-                      </button>
-                    )}
-                  </div>
+                  group.collapsible && setIsOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(!isOpen)}
+                      aria-expanded={isOpen}
+                      className="group/btn flex w-full items-center justify-between px-2.5 py-1.5 mb-0.5 rounded-md text-left transition-colors hover:bg-slate-800/60 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                      aria-label={`Mở rộng hoặc thu gọn ${group.groupTitle}`}
+                    >
+                      <span className="text-[10px] font-bold tracking-wider text-slate-400 group-hover/btn:text-slate-200 uppercase transition-colors">
+                        {group.groupTitle}
+                      </span>
+                      <ChevronDown
+                        size={13}
+                        className={`text-slate-400 group-hover/btn:text-slate-200 transition-transform duration-200 ${
+                          isOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                  ) : (
+                    <div className="flex items-center justify-between px-2.5 py-1 mb-0.5">
+                      <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                        {group.groupTitle}
+                      </span>
+                    </div>
+                  )
                 )}
 
                 {/* Items */}
@@ -275,38 +380,51 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
                     {group.items.map((item, itemIdx) => {
                       const active = isItemActive(item.href, item.exact);
                       const Icon = item.icon;
+                      const styles = getItemStyles(active, item.tone || group.tone);
 
                       return (
-                        <Link
-                          key={itemIdx}
-                          href={item.href}
-                          onClick={() => {
-                            if (mobileOpen) closeMobile();
-                          }}
-                          title={collapsed ? item.title : undefined}
-                          className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors ${
-                            active
-                              ? 'bg-emerald-600 text-white font-semibold shadow-xs'
-                              : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                          } ${collapsed ? 'justify-center px-0' : ''}`}
-                        >
-                          <Icon
-                            size={16}
-                            className={`shrink-0 ${active ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}
-                          />
-                          {!collapsed && (
-                            <span className="truncate text-[11px] leading-tight">{item.title}</span>
+                        <div key={itemIdx} className="relative group">
+                          <Link
+                            href={item.href}
+                            onClick={() => {
+                              if (mobileOpen) closeMobile();
+                            }}
+                            aria-current={active ? 'page' : undefined}
+                            className={`relative flex items-center rounded-lg text-xs transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${
+                              styles.container
+                            } ${styles.indicator} ${
+                              collapsed
+                                ? 'h-9 w-9 mx-auto justify-center p-0'
+                                : 'gap-2.5 px-2.5 py-2'
+                            }`}
+                          >
+                            <Icon
+                              size={16}
+                              className={`shrink-0 transition-colors ${styles.icon}`}
+                            />
+                            {!collapsed && (
+                              <span className="truncate text-[11px] leading-tight">
+                                {item.title}
+                              </span>
+                            )}
+                            {!collapsed && item.badge && (
+                              <span
+                                className={`ml-auto rounded-full px-1.5 py-0.2 text-[9px] font-bold text-white ${
+                                  item.badgeColor || 'bg-slate-700'
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
+                          </Link>
+
+                          {/* Floating Tooltip in Collapsed Mode */}
+                          {collapsed && (
+                            <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden whitespace-nowrap rounded-md border border-slate-700/80 bg-slate-950 px-2.5 py-1 text-[11px] font-medium text-slate-100 shadow-xl z-50 group-hover:block transition-opacity">
+                              {item.title}
+                            </div>
                           )}
-                          {!collapsed && item.badge && (
-                            <span
-                              className={`ml-auto rounded-full px-1.5 py-0.2 text-[9px] font-bold text-white ${
-                                item.badgeColor || 'bg-slate-700'
-                              }`}
-                            >
-                              {item.badge}
-                            </span>
-                          )}
-                        </Link>
+                        </div>
                       );
                     })}
                   </div>
@@ -317,22 +435,31 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
       </nav>
 
       {/* Footer Profile & Collapse Toggle */}
-      <div className="shrink-0 border-t border-slate-800 bg-slate-950/80 p-2">
+      <div className="shrink-0 border-t border-slate-800/80 bg-slate-950/70 p-2 backdrop-blur-xs">
         <div className={`flex items-center gap-2 p-1 ${collapsed ? 'justify-center' : ''}`}>
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-400 uppercase ring-1 ring-emerald-500/40">
-            {currentUser.name ? currentUser.name.trim().split(/\s+/).pop()?.slice(0, 2).toUpperCase() : 'US'}
+          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-xs font-bold text-emerald-400 uppercase ring-1 ring-emerald-500/30">
+            {currentUser.name
+              ? currentUser.name.trim().split(/\s+/).pop()?.slice(0, 2).toUpperCase()
+              : 'US'}
+            <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-slate-900" />
           </div>
+
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-bold text-slate-100">{currentUser.name || currentUser.username}</p>
-              <p className="truncate text-[10px] text-slate-400">{managementRoleName}</p>
+              <p className="truncate text-xs font-bold text-slate-100">
+                {currentUser.name || currentUser.username}
+              </p>
+              <p className="truncate text-[10px] text-slate-400 font-medium">
+                {managementRoleName}
+              </p>
             </div>
           )}
+
           {!collapsed && (
             <button
               type="button"
               onClick={handleLogout}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-800 hover:text-rose-400 transition-colors cursor-pointer"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-rose-500/10 hover:text-rose-400 transition-colors cursor-pointer"
               title="Đăng xuất"
               aria-label="Đăng xuất"
             >
@@ -346,10 +473,10 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
           <button
             type="button"
             onClick={toggleCollapse}
-            className="flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-[10px] font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors cursor-pointer"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-semibold text-slate-400 hover:bg-slate-800/80 hover:text-slate-200 transition-colors cursor-pointer"
             title={collapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
           >
-            {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
             {!collapsed && <span>Thu gọn thanh bên</span>}
           </button>
         </div>
@@ -381,12 +508,24 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
       <aside
         id="desktop-sidebar"
         aria-label="Thanh điều hướng chính"
-        className={`hidden shrink-0 border-r border-slate-800 transition-[width] duration-200 ease-out lg:block ${
+        className={`hidden shrink-0 border-r border-slate-800/80 transition-[width] duration-200 ease-out lg:block ${
           collapsed ? 'w-16' : 'w-64'
         }`}
       >
         {sidebarContent}
       </aside>
     </>
+  );
+}
+
+export function AppSidebar(props: AppSidebarProps) {
+  return (
+    <Suspense
+      fallback={
+        <aside className="hidden lg:block w-64 shrink-0 bg-slate-900 border-r border-slate-800" />
+      }
+    >
+      <AppSidebarInner {...props} />
+    </Suspense>
   );
 }
