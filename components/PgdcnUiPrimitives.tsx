@@ -60,7 +60,7 @@ export function PgdcnPageHeader({ eyebrow, title, description, actions }: { eyeb
           isPcn
             ? 'border-emerald-200/90 bg-emerald-50 text-emerald-800'
             : isPgd
-            ? 'border-indigo-200/90 bg-indigo-50 text-indigo-800'
+            ? 'border-blue-200/90 bg-blue-50 text-blue-700'
             : 'border-slate-200 bg-slate-100 text-slate-700'
         }`}>
           {eyebrow || 'PGDCN'}

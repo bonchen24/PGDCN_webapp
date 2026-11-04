@@ -1,10 +1,13 @@
 'use client';
 
 import {
+  Activity,
   AlertTriangle,
   CheckCircle2,
+  Clock,
   ArrowRight,
   ClipboardList,
+  FileText,
   FileWarning,
   Search,
   UserRound,
@@ -26,7 +29,7 @@ import {
 import { useMemo, useState, useEffect, type MouseEvent } from 'react';
 import { toast } from 'sonner';
 
-import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
+import { PgdcnPageHeader, PgdcnStatusBadge } from './PgdcnUiPrimitives';
 import { usePcnSessionStore } from '../utils/pcnSessionState';
 import { usePgdStore } from '../store-pgd';
 import { getPgdDossierPackageUrl } from '../utils/pgdApi';
@@ -257,6 +260,44 @@ function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail,
         </div>
       )}
     </article>
+  );
+}
+
+function QueueMetric({
+  label,
+  value,
+  tone = 'text-slate-800',
+  icon: Icon = FileText,
+  bgTone = 'bg-slate-100 text-slate-600',
+  active = false,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  tone?: string;
+  icon?: LucideIcon;
+  bgTone?: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-3.5 rounded-xl border bg-white p-3.5 text-left shadow-2xs transition hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer ${
+        active ? 'border-blue-500 ring-2 ring-blue-100 bg-blue-50/20' : 'border-slate-200'
+      }`}
+    >
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${bgTone}`}>
+        <Icon size={18} />
+      </div>
+      <div className="min-w-0">
+        <div className={`text-xl font-black leading-tight ${tone}`}>{value}</div>
+        <div className="truncate text-[10px] font-black uppercase tracking-wider text-slate-400 mt-0.5" title={label}>
+          {label}
+        </div>
+      </div>
+    </button>
   );
 }
 
@@ -594,19 +635,65 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
   };
 
   return (
-    <section className="min-w-0 space-y-3 p-3 md:p-4" aria-label="Hàng đợi hồ sơ PGD">
-      {/* Header: 1-line compact with brand color badge */}
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2.5">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-blue-700">
-            PGD · Hàng đợi công việc
-          </span>
-          <h2 className="text-sm md:text-base font-black text-slate-900">Mở đúng hồ sơ, xử lý đúng việc</h2>
-        </div>
+    <section className="min-w-0 space-y-4 p-3 md:p-5" aria-label="Hàng đợi hồ sơ PGD">
+      {/* Header: Synchronized with PgdcnPageHeader */}
+      <PgdcnPageHeader
+        eyebrow="PGD · Hàng đợi công việc"
+        title="Mở đúng hồ sơ, xử lý đúng việc"
+        description="Mở đúng hồ sơ, xử lý đúng việc theo tiến độ và luồng trạng thái."
+      />
+
+      {/* Metric Cards - 5 synchronized KPI cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+        <QueueMetric
+          label="Tổng hồ sơ"
+          value={rows.length}
+          icon={FileText}
+          tone="text-indigo-900"
+          bgTone="bg-indigo-50 text-indigo-700 border border-indigo-100"
+          active={activeChip === 'ALL'}
+          onClick={() => setActiveChip('ALL')}
+        />
+        <QueueMetric
+          label="Cần xử lý"
+          value={chipCounts['ACTION_NEEDED'] ?? 0}
+          icon={Clock}
+          tone="text-blue-700"
+          bgTone="bg-blue-50 text-blue-600 border border-blue-100"
+          active={activeChip === 'ACTION_NEEDED'}
+          onClick={() => setActiveChip('ACTION_NEEDED')}
+        />
+        <QueueMetric
+          label="Tiếp nhận"
+          value={chipCounts['INTAKE'] ?? 0}
+          icon={Package}
+          tone="text-amber-700"
+          bgTone="bg-amber-50 text-amber-600 border border-amber-100"
+          active={activeChip === 'INTAKE'}
+          onClick={() => setActiveChip('INTAKE')}
+        />
+        <QueueMetric
+          label="Đang xử lý"
+          value={chipCounts['IN_PROGRESS'] ?? 0}
+          icon={Activity}
+          tone="text-sky-700"
+          bgTone="bg-sky-50 text-sky-600 border border-sky-100"
+          active={activeChip === 'IN_PROGRESS'}
+          onClick={() => setActiveChip('IN_PROGRESS')}
+        />
+        <QueueMetric
+          label="Thiếu hồ sơ"
+          value={chipCounts['MISSING_DOCS'] ?? 0}
+          icon={AlertTriangle}
+          tone="text-rose-700"
+          bgTone="bg-rose-50 text-rose-600 border border-rose-100"
+          active={activeChip === 'MISSING_DOCS'}
+          onClick={() => setActiveChip('MISSING_DOCS')}
+        />
       </div>
 
       {/* Keep search and core status filters close to the first card on mobile. */}
-      <div className="pgd-queue-toolbar flex min-w-0 max-w-full flex-col gap-1 py-0 md:gap-2 md:py-1">
+      <div className="pgd-queue-toolbar flex min-w-0 max-w-full flex-col gap-2.5 rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs">
         {/* Search Input */}
         <div className="flex min-w-0 items-center gap-2">
           <div className="pgdcn-toolbar-search relative min-w-0 max-w-sm flex-1">
@@ -618,14 +705,14 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Tìm mã PYC, khách hàng, đối tượng, phân loại, kết quả..."
-              className="mobile-touch-target min-h-11 w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs font-bold shadow-2xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="mobile-touch-target h-9 min-h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 py-1.5 pl-9 pr-3 text-base md:text-[11px] font-bold shadow-2xs transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
             />
           </div>
           {hasActiveSearchOrFilter ? (
             <button
               type="button"
               onClick={() => { setQuery(''); setActiveChip('ALL'); }}
-              className="mobile-touch-target min-h-11 shrink-0 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-bold text-slate-600 hover:border-blue-300 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="mobile-touch-target h-9 min-h-9 shrink-0 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-bold text-slate-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               Đặt lại bộ lọc
             </button>
@@ -633,40 +720,44 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
         </div>
 
         {/* Secondary product filters collapse on mobile; the core status filters remain in a single scroll row. */}
-        <div className="pgd-queue-filter-pills flex min-w-0 max-w-full flex-col gap-2 md:flex-row md:items-end md:gap-4">
-          <div className="min-w-0 md:flex-1">
-            <p id="pgd-queue-product-filter-label" className="sr-only md:not-sr-only md:mb-1 md:text-[9px] md:font-black md:uppercase md:tracking-wide md:text-slate-500">Nhóm sản phẩm PGD</p>
-            <button
-              type="button"
-              aria-label={`Bộ lọc sản phẩm, ${activeProductFilterCount} bộ lọc đang áp dụng`}
-              aria-expanded={productFiltersOpen}
-              aria-controls="pgd-queue-product-filters"
-              onClick={() => setProductFiltersOpen((open) => !open)}
-              className="mobile-touch-target flex min-h-11 w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-bold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:hidden"
-            >
-              <span className="inline-flex items-center gap-2">
-                <SlidersHorizontal size={14} aria-hidden="true" />
-                <span>Bộ lọc sản phẩm</span>
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span aria-hidden="true" className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-black text-blue-700">{activeProductFilterCount}</span>
-                <span className="sr-only">{activeProductFilterCount} bộ lọc đang áp dụng</span>
-                <ChevronDown aria-hidden="true" size={14} className={`transition-transform ${productFiltersOpen ? 'rotate-180' : ''}`} />
-              </span>
-            </button>
-            <div
-              id="pgd-queue-product-filters"
-              className={`${productFiltersOpen ? 'block' : 'hidden'} mt-1 md:mt-0 md:block`}
-            >
-              <div role="group" aria-labelledby="pgd-queue-product-filter-label" className="flex max-w-full flex-wrap items-center gap-1">
-                {productGroupChips.map(renderFilterChip)}
+        <div className="pgd-queue-filter-pills flex min-w-0 max-w-full flex-col gap-2 pt-1 border-t border-slate-100">
+          <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-4">
+            <div className="min-w-0 md:flex-shrink-0">
+              <p id="pgd-queue-product-filter-label" className="sr-only md:not-sr-only md:mb-1 md:text-[10px] md:font-black md:uppercase md:tracking-wider md:text-slate-400">Nhóm sản phẩm PGD</p>
+              <button
+                type="button"
+                aria-label={`Bộ lọc sản phẩm, ${activeProductFilterCount} bộ lọc đang áp dụng`}
+                aria-expanded={productFiltersOpen}
+                aria-controls="pgd-queue-product-filters"
+                onClick={() => setProductFiltersOpen((open) => !open)}
+                className="mobile-touch-target flex min-h-11 w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-bold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:hidden"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <SlidersHorizontal size={14} aria-hidden="true" />
+                  <span>Bộ lọc sản phẩm</span>
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span aria-hidden="true" className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-black text-blue-700">{activeProductFilterCount}</span>
+                  <span className="sr-only">{activeProductFilterCount} bộ lọc đang áp dụng</span>
+                  <ChevronDown aria-hidden="true" size={14} className={`transition-transform ${productFiltersOpen ? 'rotate-180' : ''}`} />
+                </span>
+              </button>
+              <div
+                id="pgd-queue-product-filters"
+                className={`${productFiltersOpen ? 'block' : 'hidden'} mt-1 md:mt-0 md:block`}
+              >
+                <div role="group" aria-labelledby="pgd-queue-product-filter-label" className="flex max-w-full flex-wrap items-center gap-1">
+                  {productGroupChips.map(renderFilterChip)}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="min-w-0 md:flex-[1.5]">
-            <p id="pgd-queue-state-filter-label" className="sr-only md:not-sr-only md:mb-1 md:text-[9px] md:font-black md:uppercase md:tracking-wide md:text-slate-500">Trạng thái / tiến độ hồ sơ</p>
-            <div role="group" aria-labelledby="pgd-queue-state-filter-label" className="mobile-scroll-x flex max-w-full flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain md:flex-wrap md:overflow-visible md:pb-0">
-              {dossierStateChips.map(renderFilterChip)}
+
+            <div className="hidden h-6 w-px bg-slate-200 md:block self-center" aria-hidden="true" />
+
+            <div className="min-w-0 flex-1">
+              <p id="pgd-queue-state-filter-label" className="sr-only md:not-sr-only md:mb-1 md:text-[10px] md:font-black md:uppercase md:tracking-wider md:text-slate-400">Trạng thái / tiến độ hồ sơ</p>
+              <div role="group" aria-labelledby="pgd-queue-state-filter-label" className="mobile-scroll-x flex max-w-full flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain md:flex-wrap md:overflow-visible md:pb-0">
+                {dossierStateChips.map(renderFilterChip)}
             </div>
           </div>
         </div>
