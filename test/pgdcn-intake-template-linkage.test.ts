@@ -20,6 +20,12 @@ test('PCN and PGD intake revalidate the selected published template and snapshot
   includes(pgd, 'snapshotPgdWorkflowTemplate');
 });
 
+test('PCN intake allows mutation when the authorization guard returns no error', () => {
+  const pcn = read('app/api/pcn/intake/route.ts');
+  assert.match(pcn, /const mutationError = requirePcnMutation\(actor\);\s*if \(mutationError\) return mutationError;/);
+  assert.doesNotMatch(pcn, /if\s*\(!requirePcnMutation\(actor\)\)/);
+});
+
 test('later attachment is restricted to pending intakes and stores an immutable snapshot', () => {
   const pcn = read('app/api/pcn/dossiers/[dossierId]/workflow-template/route.ts');
   const pgd = read('app/api/pgd/requests/[requestId]/workflow-template/route.ts');

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { withPgTransaction } from '@/lib/server/db';
 import { getPcnSessionUser, requirePcnMutation } from '@/lib/server/auth';
-import { jsonCreated, jsonError, jsonForbidden, jsonOk, jsonUnauthorized } from '@/lib/server/response';
+import { jsonCreated, jsonError, jsonOk, jsonUnauthorized } from '@/lib/server/response';
 import { getDocumentPayload, mapDocumentRow } from '@/lib/server/collections';
 import { buildActivityLog, validateActivityLogPayload } from '@/lib/server/activity-logs';
 import { formatPcnIntakeValidationIssues, validatePcnProposalIntake } from '@/utils/pcnIntakePolicy';
@@ -24,9 +24,8 @@ export async function POST(req: NextRequest) {
   if (!actor) {
     return jsonUnauthorized('Phiên PCN không hợp lệ hoặc đã hết hạn.');
   }
-  if (!requirePcnMutation(actor)) {
-    return jsonForbidden('Bạn không có quyền thực hiện thao tác trong PCN.');
-  }
+  const mutationError = requirePcnMutation(actor);
+  if (mutationError) return mutationError;
 
   let body: any;
   try {
