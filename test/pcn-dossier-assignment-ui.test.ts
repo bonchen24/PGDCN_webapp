@@ -12,6 +12,9 @@ test('assignment control exposes manager assignment and staff self-claim states'
   assert.match(source, /Nhận hồ sơ/);
   assert.match(source, /getPcnAssignableDossierUsers/);
   assert.match(source, /isPcnSystemManager/);
+  assert.match(source, /DossierOwnerAssignmentPicker/);
+  assert.match(source, /canAssign=\{canManageAssignment\}/);
+  assert.doesNotMatch(source, /<PcnCatalogCombobox/);
 });
 
 test('pipeline card wires the shared assignment control and manager assignment callback', () => {

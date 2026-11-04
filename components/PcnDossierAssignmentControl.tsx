@@ -10,7 +10,7 @@ import {
 } from '../utils/pcnDossierAssignment';
 import { isPcnSystemManager } from '../utils/pcnRbac';
 import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
-import PcnCatalogCombobox, { type PcnCatalogOption } from './PcnCatalogCombobox';
+import DossierOwnerAssignmentPicker from './DossierOwnerAssignmentPicker';
 
 export type PcnDossierAssignmentControlProps = {
   dossier: Pick<CertificationDossier, 'id' | 'dossierCode' | 'fieldCodes' | 'ownerUsername'>;
@@ -22,15 +22,6 @@ export type PcnDossierAssignmentControlProps = {
   disabled?: boolean;
   compact?: boolean;
 };
-
-function assignmentOption(user: PcnUserAccount, users: PcnUserAccount[]): PcnCatalogOption {
-  return {
-    value: user.username,
-    label: getPcnUserDisplayName(user.username, users),
-    searchText: [user.username, user.name, user.position, user.departmentRoleCode, user.systemRole].filter(Boolean).join(' '),
-    description: [user.position, user.username].filter(Boolean).join(' · '),
-  };
-}
 
 export function PcnDossierAssignmentControl({
   dossier,
@@ -46,16 +37,10 @@ export function PcnDossierAssignmentControl({
   const ownerUsername = String(dossier.ownerUsername || '').trim();
   const canManageAssignment = isPcnSystemManager(currentUser) && Boolean(onAssign);
   const assignableUsers = getPcnAssignableDossierUsers(dossier.fieldCodes, users);
-  const assignmentOptions = assignableUsers.map((user) => assignmentOption(user, users));
-  const unmatchedOwnerOption: PcnCatalogOption | undefined = ownerUsername && !assignmentOptions.some((option) => option.value === ownerUsername)
-    ? {
-      value: ownerUsername,
-      label: `${getPcnUserDisplayName(ownerUsername, users)} (cần rà soát)`,
-      searchText: ownerUsername,
-      description: ownerUsername,
-      disabled: true,
-    }
-    : undefined;
+  const assignmentOptions = assignableUsers.map((user) => ({
+    username: user.username,
+    displayName: getPcnUserDisplayName(user.username, users),
+  }));
 
   const resolvedClaimDenial = claimDenial ?? (!currentUser
     ? 'Chưa xác định người dùng hiện tại.'
@@ -75,13 +60,25 @@ export function PcnDossierAssignmentControl({
     }));
 
   const saveAssignment = async (nextUsername: string) => {
-    if (!onAssign || saving || disabled) return;
-    setSaving(true);
-    try {
-      await onAssign(nextUsername);
-    } finally {
-      setSaving(false);
+    if (!onAssign || !currentUser || !canManageAssignment || saving || disabled) {
+      throw new Error('Bạn không thể phân công hồ sơ lúc này.');
     }
+    const denial = getPcnOwnerAssignmentAuthorityDenial({
+      currentUsername: ownerUsername,
+      nextUsername,
+      actorUsername: currentUser.username,
+      actorSystemRole: currentUser.systemRole || currentUser.role,
+      actorManagementRoleCode: currentUser.managementRoleCode,
+      actorDepartmentRoleCode: currentUser.departmentRoleCode,
+    }) || getPcnDossierAssignmentDenial({
+      assignmentLabel: 'Người thực hiện',
+      currentUsername: ownerUsername,
+      nextUsername,
+      dossierFieldCodes: dossier.fieldCodes,
+      users,
+    });
+    if (denial) throw new Error(denial);
+    await onAssign(nextUsername);
   };
 
   const claim = async () => {
@@ -97,15 +94,14 @@ export function PcnDossierAssignmentControl({
   if (canManageAssignment) {
     return (
       <div data-testid="pcn-dossier-assignment-control" className={compact ? 'min-w-0 flex-1' : 'mt-3'}>
-        <PcnCatalogCombobox
-          id={`pcn-dossier-owner-${dossier.id}`}
-          label="Người thực hiện hồ sơ"
-          value={ownerUsername}
-          onChange={(value) => { void saveAssignment(value).catch(() => undefined); }}
+        <DossierOwnerAssignmentPicker
+          ownerUsername={ownerUsername}
+          ownerDisplayName={getPcnUserDisplayName(ownerUsername, users)}
+          canAssign={canManageAssignment}
+          compact={compact}
+          onAssign={saveAssignment}
           options={assignmentOptions}
-          unmatchedOption={unmatchedOwnerOption}
           disabled={disabled || saving}
-
         />
         <p className="mt-1 text-[9px] text-emerald-700">Quản trị viên/Quản lý chọn nhân viên đang hoạt động trong phòng và đúng phạm vi lĩnh vực.</p>
       </div>
