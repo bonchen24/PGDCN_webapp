@@ -18,7 +18,6 @@ import {
   PcnDossierDocument,
   PcnUserAccount,
   IssuancePackage,
-  ReturnedTestResult,
 } from '@/types';
 import type { PcnDossierUpdateInput } from '@/utils/pcnDossierApi';
 import {
@@ -41,8 +40,7 @@ import { getPcnOperationalFormKind, normalizePcnOperationalFormsPatch } from '@/
 import { mergePcnDocumentWaivers, normalizePcnDocumentWaiverPatch } from '@/utils/pcnDocumentWaivers';
 import { isPcnDossierPostApprovalLocked } from '@/utils/pcnDossierStepAccess';
 import { canProcessPcnOperationalForm } from '@/utils/pcnWorkflowStages';
-import { getPcnDossierRequirementsWithCustom } from '@/utils/pcnDossierDocuments';
-import { getPcnWorkflowResultOutcome } from '@/utils/pcnWorkflowRuntime';
+import { getPcnDocumentRequirements } from '@/utils/pcnDossierDocuments';
 import {
   getPcnDossierExceptionReasonDenial,
   getPcnDossierMethodChangeDenial,
@@ -326,7 +324,6 @@ export async function POST(
       let nextDocumentWaivers = dossier.documentWaivers || {};
       let workflowRequirements: PcnDocumentRequirement[] | undefined;
       let workflowDocuments: PcnDossierDocument[] = [];
-      let workflowResultOutcome: string | undefined;
 
       if (updates.status || hasDocumentWaiverUpdate) {
         const requirementResult = await client.query(
@@ -336,25 +333,10 @@ export async function POST(
         const configuredRequirements = requirementResult.rows.map(
           (row: any) => mapDocumentRow(row) as PcnDocumentRequirement
         );
-        if (updates.status) {
-          const returnedResultResult = await client.query(
-            `SELECT document_id, data FROM app_documents
-             WHERE collection_name = 'returnedResults' AND data->>'dossierId' = $1`,
-            [dossierId]
-          );
-          const returnedResults = returnedResultResult.rows.map(
-            (row: any) => mapDocumentRow(row) as ReturnedTestResult
-          );
-          workflowResultOutcome = getPcnWorkflowResultOutcome(returnedResults);
-        }
-        workflowRequirements = getPcnDossierRequirementsWithCustom(dossier, configuredRequirements, {
-          resultOutcome: workflowResultOutcome,
-        });
+        workflowRequirements = configuredRequirements.length > 0 ? configuredRequirements : undefined;
         if (hasDocumentWaiverUpdate) {
           const knownRequirementIds = new Set(
-            getPcnDossierRequirementsWithCustom(dossier, configuredRequirements, {
-              resultOutcome: workflowResultOutcome,
-            }).map((r) => r.id)
+            getPcnDocumentRequirements(dossier.fieldCodes, workflowRequirements).map((r) => r.id)
           );
           const unknownRequirementId = Object.keys(updates.documentWaivers || {}).find(
             (requirementId) => !knownRequirementIds.has(requirementId)
@@ -399,7 +381,6 @@ export async function POST(
           requirements: workflowRequirements,
           documents: workflowDocuments,
           documentWaivers: nextDocumentWaivers,
-          resultOutcome: workflowResultOutcome,
         });
         if (stageGateDenial) throw Object.assign(new Error(stageGateDenial), { statusCode: 409 });
       }

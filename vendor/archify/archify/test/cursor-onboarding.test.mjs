@@ -43,12 +43,7 @@ test('the zero-dependency archive works from the canonical Cursor-visible agent 
   const agentSkills = path.join(tmp, '.agents', 'skills');
   try {
     fs.mkdirSync(agentSkills, { recursive: true });
-    if (process.platform === 'win32') {
-      // Windows ships tar.exe with ZIP support; unzip is not part of a default install.
-      execFileSync('tar.exe', ['-xf', path.join(repoRoot, 'archify.zip'), '-C', agentSkills]);
-    } else {
-      execFileSync('unzip', ['-q', path.join(repoRoot, 'archify.zip'), '-d', agentSkills]);
-    }
+    execFileSync('unzip', ['-q', path.join(repoRoot, 'archify.zip'), '-d', agentSkills]);
     const installed = path.join(agentSkills, 'archify');
     const cli = path.join(installed, 'bin', 'archify.mjs');
     const doctor = execFileSync(process.execPath, [cli, 'doctor'], { encoding: 'utf8' });

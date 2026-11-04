@@ -1,7 +1,4 @@
 import type { PgdProductGroup } from './pgdDomain.ts';
-import type { DossierTemplateRequirementDefinition, DossierTemplateStageDefinition, PgdcnDossierRequirementPolicy } from '../types.ts';
-import { validateDossierRequirementPolicy } from './pgdcnDossierRequirementPolicy.ts';
-import { validateDossierTemplateRequirementDefinitions } from './pgdcnDossierTemplate.ts';
 
 export type PgdWorkflowTemplateStatus = 'DRAFT' | 'PUBLISHED' | 'RETIRED';
 export type PgdWorkflowNodeKind = 'DOCUMENT_TASK' | 'APPROVAL_TASK' | 'DECISION' | 'PARALLEL_SPLIT' | 'PARALLEL_JOIN' | 'END';
@@ -42,8 +39,6 @@ export interface PgdWorkflowNodeDefinition {
   sortOrder: number;
   laneId?: string;
   column?: number;
-  /** Optional document-builder grouping; workflow transitions remain authoritative. */
-  stageId?: string;
 }
 
 export interface PgdWorkflowTransitionDefinition {
@@ -64,13 +59,8 @@ export interface PgdWorkflowTemplate {
   name: string;
   description?: string;
   appliesTo: PgdWorkflowTemplateAppliesTo;
-  /** Requirement policy is versioned with this dossier template, not with the DOCX library. */
-  requirementPolicies?: Record<string, PgdcnDossierRequirementPolicy>;
   version: number;
   status: PgdWorkflowTemplateStatus;
-  scope?: 'COMMON' | 'PERSONAL';
-  stages?: DossierTemplateStageDefinition[];
-  requirementDefinitions?: DossierTemplateRequirementDefinition[];
   nodes: PgdWorkflowNodeDefinition[];
   transitions: PgdWorkflowTransitionDefinition[];
   createdAt: string;
@@ -79,42 +69,6 @@ export interface PgdWorkflowTemplate {
   publishedBy?: string;
   updatedAt: string;
   updatedBy: string;
-}
-
-export interface PgdWorkflowTemplateScopeAccess {
-  username: string;
-  canManage: boolean;
-  canPropose: boolean;
-}
-
-export function filterPgdWorkflowTemplatesByScope(
-  templates: readonly PgdWorkflowTemplate[],
-  access: PgdWorkflowTemplateScopeAccess,
-): PgdWorkflowTemplate[] {
-  return templates.filter((template) => {
-    if (template.domain !== 'pgd') return false;
-    if (access.canManage) return true;
-    if (template.scope === 'PERSONAL') {
-      return access.canPropose
-        && template.status === 'DRAFT'
-        && template.createdBy === access.username;
-    }
-    return (template.scope === undefined || template.scope === 'COMMON')
-      && template.status === 'PUBLISHED';
-  });
-}
-
-export interface PgdWorkflowSnapshot {
-  templateId: string;
-  templateCode: string;
-  templateVersion: number;
-  stages?: DossierTemplateStageDefinition[];
-  requirementDefinitions?: DossierTemplateRequirementDefinition[];
-  requirementPolicies?: Record<string, PgdcnDossierRequirementPolicy>;
-  nodes: PgdWorkflowNodeDefinition[];
-  transitions: PgdWorkflowTransitionDefinition[];
-  capturedAt: string;
-  capturedBy: string;
 }
 
 const ALLOWED_CONDITIONS = new Set<PgdWorkflowCondition>([
@@ -151,7 +105,7 @@ function unique(values: readonly string[]): boolean {
   return clean.length === values.length && new Set(clean).size === clean.length;
 }
 
-export function validatePgdWorkflowTemplate(template: PgdWorkflowTemplate, options: { allowIncompleteDraft?: boolean } = {}): PgdWorkflowValidationResult {
+export function validatePgdWorkflowTemplate(template: PgdWorkflowTemplate): PgdWorkflowValidationResult {
   const errors: string[] = [];
   if (template?.domain !== 'pgd') errors.push('Template PGD phải có domain pgd.');
   if (!normalized(template?.id)) errors.push('Template PGD phải có id.');
@@ -162,23 +116,9 @@ export function validatePgdWorkflowTemplate(template: PgdWorkflowTemplate, optio
   if (!Array.isArray(template?.appliesTo?.productGroups)) errors.push('Template PGD phải có productGroups.');
   if (!Array.isArray(template?.nodes) || template.nodes.length === 0) errors.push('Template PGD phải có ít nhất một node.');
   if (!Array.isArray(template?.transitions)) errors.push('Template PGD phải có danh sách transition.');
-  const requirementValidation = validateDossierTemplateRequirementDefinitions(template?.requirementDefinitions, 'PGD');
-  errors.push(...requirementValidation.errors);
-  if (template?.stages !== undefined) {
-    if (!Array.isArray(template.stages) || template.stages.some((stage) => !normalized(stage.id) || !normalized(stage.label) || !Number.isInteger(stage.sortOrder) || stage.sortOrder < 0)) errors.push('Danh sách giai đoạn PGD không hợp lệ.');
-    else if (new Set(template.stages.map((stage) => stage.id)).size !== template.stages.length) errors.push('Mã giai đoạn PGD không được trùng.');
-  }
 
   const nodes = Array.isArray(template?.nodes) ? template.nodes : [];
   const transitions = Array.isArray(template?.transitions) ? template.transitions : [];
-  const requirementRefs = new Set(nodes.flatMap((node) => Array.isArray(node.requirementCodes) ? node.requirementCodes : []));
-  for (const [requirementCode, policy] of Object.entries(template?.requirementPolicies || {})) {
-    const isCustom = requirementCode.startsWith('pgd-custom-')
-      && (template.requirementDefinitions || []).some((definition) => definition.id === requirementCode);
-    if (!PGD_REQUIREMENT_CODE.test(requirementCode) && !isCustom) errors.push(`Yêu cầu PGD ${requirementCode} không có mã hợp lệ.`);
-    if (!requirementRefs.has(requirementCode)) errors.push(`Cấu hình yêu cầu ${requirementCode} chưa được gắn vào bước nào.`);
-    for (const error of validateDossierRequirementPolicy(policy, 'PGD')) errors.push(`Yêu cầu ${requirementCode}: ${error}`);
-  }
   const nodeIds = new Set<string>();
   for (const node of nodes) {
     const id = normalized(node.id);
@@ -189,9 +129,7 @@ export function validatePgdWorkflowTemplate(template: PgdWorkflowTemplate, optio
     if (!ALLOWED_KINDS.has(node.kind)) errors.push(`Node PGD ${id || '(không tên)'} có kind không hợp lệ.`);
     if (!Array.isArray(node.requirementCodes) || !unique(node.requirementCodes)) errors.push(`Node PGD ${id || '(không tên)'} có requirementCodes trùng hoặc không hợp lệ.`);
     for (const code of node.requirementCodes || []) {
-      const isCustomReference = String(code).startsWith('pgd-custom-');
-      const existsCustom = (template.requirementDefinitions || []).some((definition) => definition.id === code);
-      if (String(code).startsWith('pcn-custom-') || (isCustomReference && !existsCustom) || (!isCustomReference && !PGD_REQUIREMENT_CODE.test(normalized(code)))) errors.push(`Node PGD ${id || '(không tên)'} có mã tài liệu không hợp lệ hoặc sai domain.`);
+      if (!PGD_REQUIREMENT_CODE.test(normalized(code))) errors.push(`Node PGD ${id || '(không tên)'} có mã tài liệu không hợp lệ.`);
     }
     if (!Number.isInteger(node.sortOrder) || node.sortOrder < 0) errors.push(`Node PGD ${id || '(không tên)'} có sortOrder không hợp lệ.`);
     if (node.column !== undefined && (!Number.isInteger(node.column) || node.column < 1)) errors.push(`Node PGD ${id || '(không tên)'} có cột không hợp lệ.`);
@@ -230,51 +168,11 @@ export function validatePgdWorkflowTemplate(template: PgdWorkflowTemplate, optio
     incoming.set(normalized(transition.toNodeId), (incoming.get(normalized(transition.toNodeId)) || 0) + 1);
     outgoing.set(normalized(transition.fromNodeId), (outgoing.get(normalized(transition.fromNodeId)) || 0) + 1);
   }
-  if (!options.allowIncompleteDraft) {
-    if (activeNodes.length > 0 && !activeNodes.some((node) => !incoming.has(normalized(node.id)))) errors.push('Template PGD phải có node bắt đầu.');
-    if (activeNodes.length > 0 && !activeNodes.some((node) => node.kind === 'END')) errors.push('Template PGD phải có ít nhất một node END.');
-    for (const node of activeNodes) {
-      if (node.kind === 'PARALLEL_SPLIT' && (outgoing.get(normalized(node.id)) || 0) < 2) errors.push(`Node split PGD ${node.id} phải có ít nhất hai nhánh.`);
-      if (node.kind === 'PARALLEL_JOIN' && (incoming.get(normalized(node.id)) || 0) < 2) errors.push(`Node join PGD ${node.id} phải nhận ít nhất hai nhánh.`);
-    }
+  if (activeNodes.length > 0 && !activeNodes.some((node) => !incoming.has(normalized(node.id)))) errors.push('Template PGD phải có node bắt đầu.');
+  if (activeNodes.length > 0 && !activeNodes.some((node) => node.kind === 'END')) errors.push('Template PGD phải có ít nhất một node END.');
+  for (const node of activeNodes) {
+    if (node.kind === 'PARALLEL_SPLIT' && (outgoing.get(normalized(node.id)) || 0) < 2) errors.push(`Node split PGD ${node.id} phải có ít nhất hai nhánh.`);
+    if (node.kind === 'PARALLEL_JOIN' && (incoming.get(normalized(node.id)) || 0) < 2) errors.push(`Node join PGD ${node.id} phải nhận ít nhất hai nhánh.`);
   }
   return { valid: errors.length === 0, errors };
-}
-
-export function selectPgdPublishedWorkflowTemplate(
-  templates: readonly PgdWorkflowTemplate[],
-  dossier: { productGroup: PgdProductGroup; methodCode?: string; method?: string },
-): PgdWorkflowTemplate | undefined {
-  const methodCode = String(dossier.methodCode || dossier.method || '').trim().toUpperCase();
-  return templates
-    .filter((template) => template.domain === 'pgd' && template.status === 'PUBLISHED' && template.scope !== 'PERSONAL')
-    .filter((template) => template.appliesTo.productGroups.length === 0 || template.appliesTo.productGroups.includes(dossier.productGroup))
-    .filter((template) => !template.appliesTo.methodCodes?.length || Boolean(methodCode && template.appliesTo.methodCodes.includes(methodCode)))
-    .filter((template) => validatePgdWorkflowTemplate(template).valid)
-    .sort((left, right) => (right.appliesTo.methodCodes?.length || 0) - (left.appliesTo.methodCodes?.length || 0)
-      || (right.appliesTo.productGroups.length > 0 ? 1 : 0) - (left.appliesTo.productGroups.length > 0 ? 1 : 0)
-      || right.version - left.version
-      || String(right.updatedAt || '').localeCompare(String(left.updatedAt || ''))
-      || left.id.localeCompare(right.id))[0];
-}
-
-export function snapshotPgdWorkflowTemplate(
-  template: PgdWorkflowTemplate,
-  metadata: { capturedAt: string; capturedBy: string },
-): PgdWorkflowSnapshot {
-  if (template.domain !== 'pgd' || template.status !== 'PUBLISHED' || template.scope === 'PERSONAL') throw new Error('Chỉ template PGD PUBLISHED dùng chung mới được snapshot vào hồ sơ.');
-  const validation = validatePgdWorkflowTemplate(template);
-  if (!validation.valid) throw new Error(`Template PGD không hợp lệ: ${validation.errors.join(' ')}`);
-  return JSON.parse(JSON.stringify({
-    templateId: template.id,
-    templateCode: template.code,
-    templateVersion: template.version,
-    ...(template.stages ? { stages: template.stages } : {}),
-    ...(template.requirementDefinitions ? { requirementDefinitions: template.requirementDefinitions } : {}),
-    nodes: template.nodes,
-    transitions: template.transitions,
-    ...(template.requirementPolicies ? { requirementPolicies: template.requirementPolicies } : {}),
-    capturedAt: metadata.capturedAt,
-    capturedBy: metadata.capturedBy,
-  })) as PgdWorkflowSnapshot;
 }

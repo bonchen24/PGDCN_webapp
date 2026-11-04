@@ -200,11 +200,10 @@ test('historical source discovery scans one bounded group level and preserves ne
   }
 });
 
-test('historical source discovery remains an internal utility outside product runtime', () => {
-  assert.equal(packageJson.scripts?.['discover:pcn-history'], undefined);
+test('historical source discovery CLI is explicit, read-only, and not a Desktop watcher', () => {
+  assert.match(packageJson.scripts?.['discover:pcn-history'] || '', /discoverPcnHistoricalFolders/);
   assert.match(scriptSource, /--source=/);
   assert.match(scriptSource, /readdirSync|readDir/);
   assert.match(scriptSource, /DRY-RUN|read-only|read only/i);
   assert.doesNotMatch(scriptSource, /writeFile|uploadObject|INSERT INTO|watch\(|watchFile\(|chokidar/);
-  assert.doesNotMatch(packageJson.scripts?.['dev'] || '', /discoverPcnHistoricalFolders/);
 });

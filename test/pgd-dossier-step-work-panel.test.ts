@@ -206,8 +206,7 @@ test('document actions respect read-only access while preserving available evide
     }
 
     const present = render(canMutate, 'present');
-    assert.match(present.draftRow, /aria-label="Mở tài liệu"/);
-    assert.match(present.draftRow, /<span[^>]*>Mở tài liệu<\/span>/);
+    assert.match(present.draftRow, /aria-label="Xem tài liệu"/);
     assert.match(present.draftRow, /download="intake\.pdf"/);
     if (canMutate) assert.match(present.uploadRow, /aria-label="Bổ sung tệp"/);
     else assert.match(present.uploadRow, /Nhờ người có quyền bổ sung/);
@@ -258,9 +257,8 @@ test('an in-progress dossier update is distinct from a step without an available
   }));
 
   assert.match(processingMarkup, /Việc bạn cần làm: Đang xử lý thay đổi hồ sơ/);
+  assert.match(processingMarkup, /aria-busy="true"[^>]*>Đang xử lý/);
   assert.match(processingMarkup, /Đang xử lý thay đổi hồ sơ; vui lòng chờ hoàn tất/);
-  assert.match(processingMarkup, /Dùng mục cần làm ở đầu hồ sơ/);
-  assert.doesNotMatch(processingMarkup, /aria-busy="true"|<button[^>]*>(?:Đang xử lý|Hoàn tất việc)/);
   assert.match(unavailableMarkup, /không có thao tác chuyển tiếp trong trạng thái hiện tại/);
   assert.doesNotMatch(unavailableMarkup, /aria-busy="true"|Đang xử lý thay đổi hồ sơ/);
 });
@@ -316,183 +314,14 @@ test('dossier load state keeps step summary and completion action factual', () =
 
   assert.match(loadingMarkup, /Đang tải trạng thái chứng từ/);
   assert.match(loadingMarkup, /Việc bạn cần làm: Đang tải trạng thái chứng từ/);
-  assert.match(loadingMarkup, /Dùng mục cần làm ở đầu hồ sơ/);
-  assert.doesNotMatch(loadingMarkup, /<button[^>]*>(?:Đang xử lý|Hoàn tất việc)/);
+  assert.match(loadingMarkup, /<button(?=[^>]*disabled="")[^>]*>Hoàn tất việc<\/button>/);
   assert.doesNotMatch(loadingMarkup, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc/);
   assert.match(errorMarkup, /Không thể xác định trạng thái chứng từ/);
   assert.match(errorMarkup, /Việc bạn cần làm: Không thể xác định việc cần làm/);
-  assert.match(errorMarkup, /Dùng mục cần làm ở đầu hồ sơ/);
-  assert.doesNotMatch(errorMarkup, /<button[^>]*>(?:Đang xử lý|Hoàn tất việc)/);
+  assert.match(errorMarkup, /<button(?=[^>]*disabled="")[^>]*>Hoàn tất việc<\/button>/);
   assert.doesNotMatch(errorMarkup, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc/);
   assert.match(loadedEmptyMarkup, /0 đã có · 0 được miễn · 2 còn thiếu/);
   assert.match(loadedEmptyMarkup, /Còn thiếu 2 tài liệu bắt buộc ở bước này/);
   assert.match(loadedCompleteMarkup, /2 đã có · 0 được miễn · 0 còn thiếu/);
   assert.match(loadedCompleteMarkup, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc ở bước này/);
-});
-
-test('labels conditional and supplemental optional requirements distinctly in table', () => {
-  const allRequirements = getPgdDossierRequirements('OTHER');
-  const requiredItem = allRequirements.find((item) => item.code === 'REQUEST_PYC')!;
-  const conditionalContract = allRequirements.find((item) => item.code === 'COMMERCIAL_CONTRACT')!;
-  const conditionalInvoice = allRequirements.find((item) => item.code === 'COMMERCIAL_INVOICE')!;
-  const supplementalAssignment = allRequirements.find((item) => item.code === 'ASSIGNMENT_FORM')!;
-
-  assert.equal(requiredItem.required, true);
-  assert.equal(conditionalContract.required, false);
-  assert.equal(conditionalInvoice.required, false);
-  assert.equal(supplementalAssignment.required, false);
-
-  const request = {
-    id: 'pgd-labels-test',
-    domain: PGD_DOMAIN,
-    requestCode: 'PYC-LABELS-TEST',
-    productGroup: 'OTHER',
-    customerName: 'Khách hàng thử nghiệm',
-    customerSnapshot: { name: 'Khách hàng thử nghiệm', address: '' },
-    productName: 'Sản phẩm thử nghiệm',
-    standards: [],
-    status: 'DRAFT',
-    dossierChecklist: [],
-  } as unknown as PgdInspectionRequest;
-
-  const testRequirements = [requiredItem, conditionalContract, conditionalInvoice, supplementalAssignment];
-
-  const markup = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
-    request,
-    currentUser: { username: 'reviewer' } as PcnUserAccount,
-    selectedStepId: 'intake',
-    dossierRequirements: testRequirements,
-    dossierDocuments: [],
-    samples: [],
-    canMutate: true,
-  }));
-
-  const tableBody = markup.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/)?.[1] || '';
-  const rows = Array.from(tableBody.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g), (match) => match[1]);
-
-  assert.match(rows.find((r) => r.includes(requiredItem.title)) || '', /Bắt buộc/);
-  assert.match(rows.find((r) => r.includes(conditionalContract.title)) || '', /Có điều kiện/);
-  assert.match(rows.find((r) => r.includes(conditionalInvoice.title)) || '', /Có điều kiện/);
-  assert.match(rows.find((r) => r.includes(supplementalAssignment.title)) || '', /Bổ sung/);
-
-  assert.match(tableBody, new RegExp(conditionalContract.description!));
-  assert.match(tableBody, new RegExp(conditionalInvoice.description!));
-  assert.match(tableBody, new RegExp(supplementalAssignment.description!));
-});
-
-
-test('renders pending confirmation status and contextual link when matching generated document is awaiting confirmation', () => {
-  const allRequiredRequirements = getPgdDossierRequirements('OTHER').filter((item) => item.required);
-  const intakeRequirement = allRequiredRequirements.find((item) => item.code === 'REQUEST_PYC')!;
-  assert.ok(intakeRequirement);
-
-  const request = {
-    id: 'pgd-pending-doc-test',
-    domain: PGD_DOMAIN,
-    requestCode: 'PYC-PENDING-001',
-    productGroup: 'OTHER',
-    customerName: 'Khách hàng thử nghiệm',
-    customerSnapshot: { name: 'Khách hàng thử nghiệm', address: '' },
-    productName: 'Sản phẩm thử nghiệm',
-    standards: [],
-    status: 'DRAFT',
-    dossierChecklist: [],
-  } as unknown as PgdInspectionRequest;
-
-  const generatedDoc = {
-    id: 'gen-doc-1',
-    domain: PGD_DOMAIN,
-    requestId: request.id,
-    requestCode: request.requestCode,
-    kind: 'INTAKE_REQUEST',
-    templateId: 'tpl-intake',
-    templateCode: 'INTAKE-01',
-    templateVersion: '1.0',
-    fileName: 'PYC-PENDING-001_INTAKE_REQUEST.docx',
-    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    byteSize: 1024,
-    sha256: 'a'.repeat(64),
-    status: 'DRAFT' as const,
-    generatedByUsername: 'officer',
-    generatedAt: '2026-11-02T08:00:00.000Z',
-    sourceCollection: 'pgdRequests' as const,
-    sourceDocumentId: request.id,
-    cellValues: {},
-    contextHash: 'hash-1',
-    format: 'DOCX' as const,
-    templateSnapshot: {} as any,
-  };
-
-  // Case 1: canMutate = true, generated doc exists but not attached
-  const markupMutable = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
-    request,
-    currentUser: { username: 'officer' } as PcnUserAccount,
-    selectedStepId: 'intake',
-    dossierRequirements: [intakeRequirement],
-    dossierDocuments: [],
-    generatedDocuments: [generatedDoc as any],
-    samples: [],
-    canMutate: true,
-    onOpenDrafting: ({ templateKind, requirementCode }) =>
-      `/pgdcn/pgd/drafting?requestId=${request.id}&templateKind=${templateKind}&requirementCode=${requirementCode}`,
-  }));
-
-  // Status must be 'Chờ xác nhận'
-  assert.match(markupMutable, /Chờ xác nhận/);
-  // Unresolved / missing required count still counts it as missing (does not open gate prematurely)
-  assert.match(markupMutable, /1 còn thiếu/);
-  // Contextual action link to open drafting for confirmation
-  assert.match(markupMutable, new RegExp(`/pgdcn/pgd/drafting\\?requestId=${request.id}&amp;templateKind=INTAKE_REQUEST&amp;requirementCode=REQUEST_PYC`));
-  assert.match(markupMutable, /Mở output chờ xác nhận/);
-  assert.doesNotMatch(markupMutable, />Xác nhận &amp; gắn</);
-
-  // Case 2: canMutate = false (read-only role), maintains permission boundary
-  const markupReadOnly = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
-    request,
-    currentUser: { username: 'viewer' } as PcnUserAccount,
-    selectedStepId: 'intake',
-    dossierRequirements: [intakeRequirement],
-    dossierDocuments: [],
-    generatedDocuments: [generatedDoc as any],
-    samples: [],
-    canMutate: false,
-  }));
-
-  assert.match(markupReadOnly, /Chờ xác nhận/);
-  assert.match(markupReadOnly, /1 còn thiếu/);
-  // Should NOT render drafting action link for viewer
-  assert.doesNotMatch(markupReadOnly, new RegExp(`/pgdcn/pgd/drafting`));
-
-  // Case 3: generated doc has already been attached to dossier -> shows 'Đã có', NOT 'Chờ xác nhận'
-  const attachedDossierDoc: PgdDossierDocument = {
-    id: 'dossier-doc-1',
-    domain: PGD_DOMAIN,
-    requestId: request.id,
-    requirementCode: intakeRequirement.code,
-    title: intakeRequirement.title,
-    fileName: generatedDoc.fileName,
-    sourceCollection: PGD_COLLECTIONS.dossierDocuments,
-    sourceDocumentId: 'dossier-doc-1',
-    version: 1,
-    checksum: 'b'.repeat(64),
-    uploadedByUsername: 'officer',
-    uploadedAt: '2026-11-02T08:10:00.000Z',
-    originCollection: PGD_COLLECTIONS.documents,
-    originDocumentId: generatedDoc.id,
-  };
-
-  const markupAttached = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
-    request,
-    currentUser: { username: 'officer' } as PcnUserAccount,
-    selectedStepId: 'intake',
-    dossierRequirements: [intakeRequirement],
-    dossierDocuments: [attachedDossierDoc],
-    generatedDocuments: [generatedDoc as any],
-    samples: [],
-    canMutate: true,
-  }));
-
-  assert.match(markupAttached, /Đã có/);
-  assert.doesNotMatch(markupAttached, /Chờ xác nhận/);
-  assert.match(markupAttached, /0 còn thiếu/);
 });

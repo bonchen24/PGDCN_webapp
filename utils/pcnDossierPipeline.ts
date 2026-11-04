@@ -15,7 +15,7 @@ import type {
 } from '../types.ts';
 import { getPcnDossierAssignmentDenial, type PcnDossierAssignmentInput } from './pcnDossierAssignment.ts';
 import { reviewPcnCodes, type PcnCodeReview } from './pcnCodePolicy.ts';
-import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, getPcnDocumentRequirements, getPcnDossierRequirementsWithCustom, isPcnDossierDocumentCurrentAndConfirmed } from './pcnDossierDocuments.ts';
+import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, getPcnDocumentRequirements } from './pcnDossierDocuments.ts';
 import { getPcnWorkflowStageByKey } from './pcnWorkflowStages.ts';
 import { isPcnDocumentWaiverValid } from './pcnDocumentWaivers.ts';
 
@@ -178,12 +178,13 @@ const CORE_FIELDS: Array<{ key: string; label: string }> = [
 ];
 
 function hasCurrentDocument(document: PcnDossierDocument | undefined): boolean {
-  return isPcnDossierDocumentCurrentAndConfirmed(document);
+  if (!document || document.status !== 'PRESENT' || !document.currentVersionId) return false;
+  return document.versions.some((version) => version.assetId === document.currentVersionId);
 }
 
 export interface PcnDossierStationChecklistItem {
   requirement: PcnDocumentRequirement;
-  status: 'PRESENT' | 'MISSING' | 'UPLOADED' | 'GENERATED' | 'CONFIRMED' | 'WAIVED';
+  status: 'PRESENT' | 'MISSING' | 'WAIVED';
   versionCount: number;
   currentVersion?: PcnDossierDocumentVersion;
   waiver?: PcnDossierDocumentWaiver;
@@ -270,7 +271,7 @@ export function buildPcnDossierStationChecklist(input: {
       ? document.versions.find((version) => version.assetId === document.currentVersionId)
       : undefined;
     const waiver = input.documentWaivers?.[requirement.id];
-    const status: PcnDossierStationChecklistItem['status'] = currentVersion ? document?.lifecycleStatus || 'PRESENT' : isPcnDocumentWaiverValid(waiver) ? 'WAIVED' : 'MISSING';
+    const status = currentVersion ? 'PRESENT' as const : isPcnDocumentWaiverValid(waiver) ? 'WAIVED' as const : 'MISSING' as const;
     return {
       requirement,
       status,
@@ -280,20 +281,20 @@ export function buildPcnDossierStationChecklist(input: {
     };
   });
   const requiredItems = items.filter((item) => item.requirement.required);
-  const present = items.filter((item) => item.status === 'PRESENT' || item.status === 'CONFIRMED').length;
-  const requiredPresent = requiredItems.filter((item) => item.status === 'PRESENT' || item.status === 'CONFIRMED').length;
-  const requiredResolved = requiredItems.filter((item) => ['PRESENT', 'CONFIRMED', 'WAIVED'].includes(item.status)).length;
+  const present = items.filter((item) => item.status === 'PRESENT').length;
+  const requiredPresent = requiredItems.filter((item) => item.status === 'PRESENT').length;
+  const requiredResolved = requiredItems.filter((item) => item.status !== 'MISSING').length;
 
   return {
     station,
     items,
     present,
     total: items.length,
-    missing: items.filter((item) => !['PRESENT', 'CONFIRMED', 'WAIVED'].includes(item.status)).length,
+    missing: items.filter((item) => item.status === 'MISSING').length,
     requiredPresent,
     requiredResolved,
     requiredTotal: requiredItems.length,
-    requiredMissing: requiredItems.filter((item) => !['PRESENT', 'CONFIRMED', 'WAIVED'].includes(item.status)).length,
+    requiredMissing: requiredItems.filter((item) => item.status === 'MISSING').length,
   };
 }
 
@@ -344,7 +345,7 @@ export function buildPcnDossierCompleteness(input: {
   documents?: PcnDossierDocument[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver>;
 }): PcnDossierCompleteness {
-  const requirements = getPcnDossierRequirementsWithCustom(input.dossier, input.requirements);
+  const requirements = getPcnDocumentRequirements(input.dossier.fieldCodes, input.requirements);
   const documentWaivers = input.documentWaivers || input.dossier.documentWaivers;
   const required = requirements.filter((item) => item.required);
   const documentByRequirement = new Map((input.documents || []).filter((item) => item.dossierId === input.dossier.id).map((item) => [item.requirementId, item]));

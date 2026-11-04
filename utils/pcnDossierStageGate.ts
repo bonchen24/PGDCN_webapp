@@ -9,8 +9,7 @@ import type {
   PcnDossierStatus,
   PcnDocumentRequirement,
 } from '../types.ts';
-import { getPcnDossierRequirementsWithCustom } from './pcnDossierDocuments.ts';
-import { isPcnDossierDocumentCurrentAndConfirmed } from './pcnDossierDocuments.ts';
+import { getPcnDocumentRequirements } from './pcnDossierDocuments.ts';
 import {
   PCN_WORKFLOW_STAGES,
   getPcnWorkflowStage,
@@ -21,7 +20,8 @@ import { getPcnDossierReopenStatus } from './pcnDossierStepAccess.ts';
 import { isPcnDocumentWaiverValid } from './pcnDocumentWaivers.ts';
 
 function hasCurrentDocument(document: PcnDossierDocument | undefined): boolean {
-  return isPcnDossierDocumentCurrentAndConfirmed(document);
+  if (!document || document.status !== 'PRESENT' || !document.currentVersionId) return false;
+  return document.versions.some((version) => version.assetId === document.currentVersionId);
 }
 
 function requirementBelongsToStage(requirement: PcnDocumentRequirement, stage: PcnWorkflowStage): boolean {
@@ -84,7 +84,6 @@ export function buildPcnDossierStageGate(input: {
   requirements?: PcnDocumentRequirement[];
   documents?: PcnDossierDocument[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver>;
-  resultOutcome?: string;
   /** Resolution supplied by a dedicated boundary, e.g. a confirmed PTN scan in ReturnedTestResult. */
   resolvedRequirementIds?: string[];
 }): PcnDossierStageGate {
@@ -101,7 +100,7 @@ export function buildPcnDossierStageGate(input: {
     };
   }
 
-  const requirements = getPcnDossierRequirementsWithCustom(input.dossier, input.requirements, { resultOutcome: input.resultOutcome })
+  const requirements = getPcnDocumentRequirements(input.dossier.fieldCodes, input.requirements)
     .filter((requirement) => requirementBelongsToStage(requirement, stage));
   const documentsByRequirement = new Map(
     (input.documents || [])
@@ -140,7 +139,6 @@ export function getPcnDossierStageGateDenial(input: {
   requirements?: PcnDocumentRequirement[];
   documents?: PcnDossierDocument[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver>;
-  resultOutcome?: string;
   /** Resolution supplied by a dedicated boundary, e.g. a confirmed PTN scan in ReturnedTestResult. */
   resolvedRequirementIds?: string[];
 }): string | null {

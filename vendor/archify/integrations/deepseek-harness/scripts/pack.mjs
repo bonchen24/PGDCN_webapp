@@ -31,17 +31,8 @@ function excludeFromCleanSkill(relative) {
 }
 
 function releaseSnapshot(destination) {
-  const topLevel = spawnCliSync('git', ['rev-parse', '--show-toplevel'], {
+  const archive = spawnCliSync('git', ['archive', '--format=tar', DSH_RELEASE_REF], {
     cwd: repoRoot,
-    encoding: 'utf8',
-  });
-  if (topLevel.status !== 0) {
-    throw new Error(`unable to resolve git top-level directory: ${topLevel.stderr || topLevel.error?.message}`);
-  }
-  const root = topLevel.stdout.trim();
-
-  const archive = spawnCliSync('git', ['-c', 'core.autocrlf=false', 'archive', '--format=tar', DSH_RELEASE_REF], {
-    cwd: root,
     encoding: null,
     maxBuffer: 128 * 1024 * 1024,
   });

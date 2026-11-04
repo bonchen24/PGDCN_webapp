@@ -141,7 +141,7 @@ test('F3 PGD queue code remains readable at narrow mobile widths without overflo
 
       await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
       await page.getByRole('button', { name: 'Mở menu phòng' }).click();
-      await page.getByRole('button', { name: 'Sổ dữ liệu PGD', exact: true }).click();
+      await page.getByRole('button', { name: 'Sổ dữ liệu', exact: true }).click();
 
       const card = page.locator('[data-testid="pgdcn-dossier-card"]')
         .filter({ hasText: 'PGD-DEMO-001' })
@@ -308,7 +308,7 @@ async function openPgdQueue(page, width, baseOrigin, observations, role) {
   if (width < 1024) {
     await page.getByRole('button', { name: 'Mở menu phòng' }).click();
   }
-  await page.getByRole('button', { name: 'Sổ dữ liệu PGD', exact: true }).click();
+  await page.getByRole('button', { name: 'Sổ dữ liệu', exact: true }).click();
   await page.getByRole('region', { name: 'Hàng đợi hồ sơ PGD' }).waitFor({ state: 'visible' });
 }
 

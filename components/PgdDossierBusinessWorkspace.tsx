@@ -2,14 +2,13 @@
 
 import React from 'react';
 import type { PcnUserAccount } from '../types';
-import { getCurrentPgdDossierDocuments, getPgdDossierRequirementForTemplate, getPgdDossierRequirementsWithCustom, type PgdDossierDocument, type PgdDossierRequirement } from '../utils/pgdDossier';
+import { getPgdDossierRequirementForTemplate, getPgdDossierRequirements, type PgdDossierDocument } from '../utils/pgdDossier';
 import type { PgdInspectionRequest } from '../utils/pgdDomain';
 import { normalizePgdFieldSession } from '../utils/pgdWorkflow';
 import { buildPgdBusinessBlockers, buildPgdBusinessTimeline, buildPgdSampleEvidence, resolvePgdEvidenceNextAction } from '../utils/pgdBusinessWorkspace';
 import type { PgdDocumentTemplateKind } from '../utils/pgdDocumentTemplates';
 import { usePgdStore } from '../store-pgd';
 import PgdcnDossierBusinessWorkspace, { type DossierBlocker, type DossierEvidenceGroup, type DossierSuggestedAction } from './PgdcnDossierBusinessWorkspace';
-import { formatDateTimeDdMmYyyy } from '../utils/formatter';
 
 const PGD_EVIDENCE_GROUP_LABELS: Record<string, string> = {
   REQUEST: 'PYC · tiếp nhận',
@@ -21,21 +20,15 @@ const PGD_EVIDENCE_GROUP_LABELS: Record<string, string> = {
   ARCHIVE: 'Lưu trữ',
 };
 
-function buildPgdEvidenceGroups(requirements: PgdDossierRequirement[], checklist: Array<{ requirementCode: string; status: string; required?: boolean; waiverReason?: string }>, documents: Array<{ requirementCode: string; fileName: string; documentNumber?: string; documentDate?: string }>, onOpenCurrentWork: () => void): DossierEvidenceGroup[] {
+function buildPgdEvidenceGroups(requirements: Array<{ code: string; group: string; title: string; required: boolean; description?: string }>, checklist: Array<{ requirementCode: string; status: string }>, documents: Array<{ requirementCode: string; fileName: string; documentNumber?: string; documentDate?: string }>, onOpenCurrentWork: () => void): DossierEvidenceGroup[] {
   const groups = new Map<string, DossierEvidenceGroup>();
   for (const requirement of requirements) {
     const checklistItem = checklist.find((item) => item.requirementCode === requirement.code);
     const document = documents.find((item) => item.requirementCode === requirement.code);
-    const required = checklistItem?.required ?? requirement.required;
-    const present = requirement.customDefinition
-      ? checklistItem?.status === 'PRESENT' || checklistItem?.status === 'CONFIRMED'
-      : checklistItem
-        ? checklistItem.status === 'PRESENT' || checklistItem.status === 'CONFIRMED'
-        : Boolean(document);
-    const waived = checklistItem?.status === 'WAIVED' && Boolean(checklistItem.waiverReason?.trim());
-    const pending = checklistItem?.status === 'UPLOADED' || checklistItem?.status === 'GENERATED';
-    const state = waived ? 'Được miễn' : present ? 'Có bản đã xác nhận' : pending ? checklistItem?.status === 'GENERATED' ? 'Đã sinh · chờ xác nhận' : 'Chờ xác nhận' : required ? 'Thiếu bắt buộc' : requirement.requirementLevel === 'CONDITIONAL' ? 'Điều kiện chưa áp dụng' : 'Chưa có';
-    const stateTone = waived || present ? 'success' as const : pending ? 'warning' as const : required ? 'danger' as const : 'neutral' as const;
+    const present = Boolean(document) || checklistItem?.status === 'PRESENT';
+    const waived = checklistItem?.status === 'WAIVED';
+    const state = waived ? 'Được miễn' : present ? 'Có bản hiện hành' : requirement.required ? 'Thiếu bắt buộc' : 'Chưa có';
+    const stateTone = waived || present ? 'success' as const : requirement.required ? 'danger' as const : 'neutral' as const;
     const group = groups.get(requirement.group) || { id: requirement.group.toLowerCase(), title: PGD_EVIDENCE_GROUP_LABELS[requirement.group] || requirement.group, actionLabel: 'Mở việc hiện tại', onAction: onOpenCurrentWork, rows: [] };
     group.rows.push({
       id: requirement.code,
@@ -43,7 +36,7 @@ function buildPgdEvidenceGroups(requirements: PgdDossierRequirement[], checklist
       title: requirement.title,
       state,
       stateTone,
-      meta: required ? 'Bắt buộc' : requirement.requirementLevel === 'CONDITIONAL' ? 'Có điều kiện' : 'Không bắt buộc',
+      meta: requirement.required ? 'Bắt buộc' : 'Không bắt buộc',
       detail: document ? [document.fileName, document.documentNumber ? 'Số ' + document.documentNumber : '', document.documentDate ? 'Ngày ' + document.documentDate : ''].filter(Boolean).join(' · ') : requirement.description || 'Chưa có tài liệu hiện hành.',
     });
     groups.set(requirement.group, group);
@@ -55,15 +48,13 @@ export type PgdDossierBusinessWorkspaceProps = {
   request: PgdInspectionRequest;
   currentUser?: PcnUserAccount;
   onOpenCurrentWork: () => void;
-  onOpenDocuments?: () => void;
-  showTimeline?: boolean;
   onOpenDrafting?: (input: { templateKind: PgdDocumentTemplateKind; requirementCode: string }) => string | undefined;
 };
 
-export function PgdDossierBusinessWorkspace({ request, onOpenCurrentWork, onOpenDocuments = onOpenCurrentWork, onOpenDrafting, showTimeline = true }: PgdDossierBusinessWorkspaceProps) {
+export function PgdDossierBusinessWorkspace({ request, onOpenCurrentWork, onOpenDrafting }: PgdDossierBusinessWorkspaceProps) {
   const pgd = usePgdStore();
-  const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || []);
-  const dossierDocuments = getCurrentPgdDossierDocuments(pgd.dossierDocuments.filter((document) => document.requestId === request.id));
+  const requirements = getPgdDossierRequirements(request.productGroup);
+  const dossierDocuments = pgd.dossierDocuments.filter((document) => document.requestId === request.id);
   const samples = pgd.samples.filter((sample) => sample.requestId === request.id);
   const labRequests = pgd.labRequests.filter((labRequest) => labRequest.requestId === request.id);
   const labResults = pgd.labResults.filter((labResult) => labResult.requestId === request.id);
@@ -74,14 +65,8 @@ export function PgdDossierBusinessWorkspace({ request, onOpenCurrentWork, onOpen
   const certificate = pgd.certificates.find((item) => item.requestId === request.id);
   const labResultReview = pgd.labResultReviews.find((item) => item.requestId === request.id);
   const checklist = request.dossierChecklist || [];
-  const presentRequirementCodes = new Set(checklist.filter((item) => item.status === 'PRESENT' || item.status === 'CONFIRMED' || (item.status === 'WAIVED' && Boolean(item.waiverReason?.trim()))).map((item) => item.requirementCode));
-  for (const document of dossierDocuments) {
-    if (!requirements.find((requirement) => requirement.code === document.requirementCode)?.customDefinition) presentRequirementCodes.add(document.requirementCode);
-  }
-  const missingRequired = requirements.filter((requirement) => {
-    const checklistItem = checklist.find((item) => item.requirementCode === requirement.code);
-    return (checklistItem?.required ?? requirement.required) && !presentRequirementCodes.has(requirement.code);
-  });
+  const presentRequirementCodes = new Set([...checklist.filter((item) => item.status === 'PRESENT' || item.status === 'WAIVED').map((item) => item.requirementCode), ...dossierDocuments.map((document) => document.requirementCode)]);
+  const missingRequired = requirements.filter((requirement) => requirement.required && !presentRequirementCodes.has(requirement.code));
   const sampleEvidence = buildPgdSampleEvidence({ request, inspectionPlans: pgd.inspectionPlans, fieldInspections, samples, labRequests, labResults });
   const businessFacts = { request, inspectionPlans: pgd.inspectionPlans, assignments: pgd.assignments, fieldInspections, caseEvents: pgd.caseEvents, fieldActivityLogs: pgd.fieldActivityLogs, samples, labRequests, labResults, labResultReview, report, certificate, approvals: pgd.approvals, missingRequiredCount: missingRequired.length };
   const evidenceBlockers = buildPgdBusinessBlockers(businessFacts);
@@ -135,16 +120,16 @@ export function PgdDossierBusinessWorkspace({ request, onOpenCurrentWork, onOpen
     description="PYC, phân công, nhiều phiên hiện trường, mẫu, PTN, KQTN, báo cáo và chứng thư được nhìn như một bộ hồ sơ điện tử có sự kiện."
     nextAction={{ title: evidenceNextAction.label, reason: evidenceNextAction.reason, owner, missing: evidenceNextAction.source === 'EVIDENCE' ? evidenceNextAction.reason : 'Chưa ghi nhận thiếu hụt cứng', actionLabel: 'Mở việc cần làm', onAction: onOpenCurrentWork }}
     metrics={[
-      { id: 'pgd-documents', label: 'Tài liệu bắt buộc', value: requirements.filter((requirement) => { const checklistItem = checklist.find((item) => item.requirementCode === requirement.code); return checklistItem?.required ?? requirement.required; }).length - missingRequired.length + '/' + requirements.filter((requirement) => { const checklistItem = checklist.find((item) => item.requirementCode === requirement.code); return checklistItem?.required ?? requirement.required; }).length, tone: missingRequired.length > 0 ? 'warning' : 'success' },
+      { id: 'pgd-documents', label: 'Tài liệu bắt buộc', value: presentRequirementCodes.size + '/' + requirements.filter((item) => item.required).length, tone: missingRequired.length > 0 ? 'warning' : 'success' },
       { id: 'pgd-sessions', label: 'Phiên hiện trường', value: fieldInspections.length, tone: fieldInspections.some((item) => item.status === 'COMPLETED' || item.completed) ? 'success' : fieldInspections.length > 0 ? 'warning' : 'neutral' },
       { id: 'pgd-samples', label: 'Mẫu', value: samples.length, tone: samples.length > 0 ? 'info' : 'neutral' },
       { id: 'pgd-lab-results', label: 'KQTN', value: labResults.length, tone: labResults.length > 0 ? 'success' : 'neutral' },
     ]}
     blockers={blockers}
     suggestedActions={contextualActions}
-    evidenceTracker={{ title: 'Evidence Tracker · bộ chứng từ hiện hành', groups: buildPgdEvidenceGroups(requirements, checklist, dossierDocuments, onOpenDocuments), emptyText: 'Chưa có danh mục chứng từ trong hồ sơ PGD.' }}
+    evidenceTracker={{ title: 'Evidence Tracker · bộ chứng từ hiện hành', groups: buildPgdEvidenceGroups(requirements, checklist, dossierDocuments, onOpenCurrentWork), emptyText: 'Chưa có danh mục chứng từ trong hồ sơ PGD.' }}
     groups={[
-      { id: 'pgd-request', title: '1. PYC / khách hàng', description: 'Mã PYC, khách hàng, hàng hóa, lô, phạm vi và chứng từ thương mại đầu vào.', status: request.customerSnapshot?.name && request.productName ? 'DONE' : 'BLOCKED', statusLabel: request.customerSnapshot?.name && request.productName ? 'Đã nhận diện' : 'Thiếu đầu vào', countLabel: request.requestCode, meta: request.customerSnapshot?.name, actionLabel: 'Mở việc hiện tại', onAction: onOpenCurrentWork },
+      { id: 'pgd-request', title: '1. PYC / khách hàng', description: 'Mã PYC, khách hàng, hàng hóa, lô, phạm vi và chứng từ thương mại đầu vào.', status: request.customerSnapshot.name && request.productName ? 'DONE' : 'BLOCKED', statusLabel: request.customerSnapshot.name && request.productName ? 'Đã nhận diện' : 'Thiếu đầu vào', countLabel: request.requestCode, meta: request.customerSnapshot.name, actionLabel: 'Mở việc hiện tại', onAction: onOpenCurrentWork },
       { id: 'pgd-assignment', title: '2. Phân công & năng lực', description: 'KTV, trưởng đoàn, người soát xét và phương thức giám định gắn với PYC.', status: assignment?.status === 'APPROVED' ? 'DONE' : assignment ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: assignment?.status === 'APPROVED' ? 'Đã duyệt' : assignment ? 'Đang xử lý' : 'Chưa có', countLabel: assignment ? assignment.inspectorUsernames.length + ' KTV' : 'Chưa phân công', meta: assignment?.technicalReviewerUsername || 'Chưa có người soát xét', actionLabel: 'Mở việc hiện tại', onAction: onOpenCurrentWork },
       { id: 'pgd-field', title: '3. Phiên hiện trường', description: 'Ngày/địa điểm, người thực hiện, quan sát, đo đạc, điểm không phù hợp, mẫu và biên bản.', status: fieldInspections.some((item) => item.status === 'COMPLETED' || item.completed) ? 'DONE' : fieldInspections.length ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: fieldInspections.some((item) => item.status === 'COMPLETED' || item.completed) ? 'Đã có phiên hoàn tất' : fieldInspections.length ? 'Đang ghi nhận' : 'Chưa có phiên', countLabel: fieldInspections.length ? fieldInspections.length + ' phiên' : 'Chưa có phiên', meta: fieldInspection?.location || request.inspectionLocation || 'Chưa xác định', actionLabel: 'Mở việc hiện tại', onAction: onOpenCurrentWork },
       { id: 'pgd-sampling', title: '4. Mẫu & bàn giao PTN', description: 'Mã mẫu, số lượng, niêm phong, mẫu lưu, bàn giao và liên kết yêu cầu PTN.', status: samples.length > 0 && labRequests.length > 0 ? 'DONE' : samples.length > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', statusLabel: labRequests.length > 0 ? 'Đã lập PYC PTN' : samples.length > 0 ? 'Đã có mẫu' : 'Chưa có mẫu', countLabel: samples.length + ' mẫu · ' + labRequests.length + ' PYC', meta: samples.filter((sample) => sample.handedOverAt).length + ' mẫu đã bàn giao', actionLabel: 'Mở việc hiện tại', onAction: onOpenCurrentWork },
@@ -180,40 +165,7 @@ export function PgdDossierBusinessWorkspace({ request, onOpenCurrentWork, onOpen
         onView: onOpenCurrentWork,
         onEdit: onOpenCurrentWork,
       };
-    })}    timeline={showTimeline ? { title: 'Event Timeline / Work Log · toàn bộ hồ sơ', items: timelineItems, emptyText: 'Chưa có sự kiện nghiệp vụ nào được ghi nhận.' } : undefined}
+    })}    timeline={{ title: 'Event Timeline / Work Log · toàn bộ hồ sơ', items: timelineItems, emptyText: 'Chưa có sự kiện nghiệp vụ nào được ghi nhận.' }}
   />;
-}
-
-export function PgdDossierInformation({ request }: { request: PgdInspectionRequest }) {
-  const fields = [
-    ['Mã PYC', request.requestCode], ['Khách hàng', request.customerSnapshot.name],
-    ['Mã số thuế', request.customerSnapshot.taxId], ['Địa chỉ khách hàng', request.customerSnapshot.address],
-    ['Sản phẩm', request.productName], ['Lô hàng', request.lotCode],
-    ['Số lượng', `${request.quantity} ${request.unit || ''}`], ['Phạm vi giám định', request.inspectionScope],
-    ['Địa điểm giám định', request.inspectionLocation], ['Phương pháp', request.method],
-    ['Tiêu chuẩn áp dụng', request.standards.join(' · ')], ['Ghi chú', request.note],
-  ];
-  return <section aria-label="Thông tin hồ sơ PGD" className="rounded-xl border border-slate-200 bg-white p-3 md:p-4">
-    <h3 className="text-sm font-bold text-slate-800">Thông tin hồ sơ giám định</h3>
-    <dl className="mt-3 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">{fields.map(([label, value]) => <div key={label} className="min-w-0 rounded-lg bg-slate-50 p-3"><dt className="text-xs font-medium text-slate-500">{label}</dt><dd className="mt-1 break-words text-sm text-slate-800 [overflow-wrap:anywhere]">{value || 'Chưa cập nhật'}</dd></div>)}</dl>
-  </section>;
-}
-
-export function PgdDossierHistory({ request }: { request: PgdInspectionRequest }) {
-  const pgd = usePgdStore();
-  const items = buildPgdBusinessTimeline({ request, caseEvents: pgd.caseEvents, fieldActivityLogs: pgd.fieldActivityLogs,
-    fieldInspections: pgd.fieldInspections, samples: pgd.samples, labRequests: pgd.labRequests, labResults: pgd.labResults,
-    approvals: pgd.approvals, labResultReview: pgd.labResultReviews.find((item) => item.requestId === request.id),
-    report: pgd.reports.find((item) => item.requestId === request.id), certificate: pgd.certificates.find((item) => item.requestId === request.id),
-  });
-  return <section aria-label="Lịch sử hồ sơ PGD" className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 md:p-4">
-    <h3 className="text-sm font-bold text-slate-800">Lịch sử xử lý · {items.length} hoạt động</h3>
-    {items.length === 0 ? <p className="mt-3 text-sm text-slate-500">Chưa có sự kiện nghiệp vụ nào được ghi nhận.</p> : <ol className="mt-3 space-y-3">{items.map((item) => <li key={item.id} className="min-w-0 rounded-lg border border-slate-200 p-3">
-      <p className="break-words text-sm font-semibold text-slate-800 [overflow-wrap:anywhere]">{item.title}</p>
-      <div className="mt-1 flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500"><time dateTime={item.occurredAt}>{formatDateTimeDdMmYyyy(item.occurredAt) || 'Chưa có thời gian'}</time><span className="break-words [overflow-wrap:anywhere]">Người thực hiện: {pgd.users.find((user) => user.username === item.actor)?.name || item.actor || 'Chưa ghi nhận'}</span></div>
-      {item.location && <p className="mt-1 break-words text-xs text-slate-600 [overflow-wrap:anywhere]">{item.location}</p>}
-      {item.detail && <p className="mt-1 break-words text-sm text-slate-600 [overflow-wrap:anywhere]">{item.detail}</p>}
-    </li>)}</ol>}
-  </section>;
 }
 export default PgdDossierBusinessWorkspace;

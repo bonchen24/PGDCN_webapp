@@ -69,9 +69,7 @@ test('PGD supplement action preselects the exact missing document', () => {
   assert.match(stepPanel, /initialRequirementCode/);
   assert.match(evidencePanel, /initialRequirementCode/);
   assert.match(stepPanel, /selectedSupplementRequirementCode/);
-  assert.match(stepPanel, /setSelectedSupplementRequirementCode\(item\.code\)/);
-  assert.match(stepPanel, /onOpenChecklist\?\.\(item\.code\)/);
-  assert.match(workspace, /onOpenChecklist=\{\(\) => \{\s*setSelectedStepId\('intake'\);\s*setStepWorkOpen\(true\);\s*\}\}/);
+  assert.match(workspace, /onOpenChecklist=\{\(\) => setSelectedStepId\('intake'\)\}/);
 });
 
 test('PGD drafting action keeps dossier context in same-tab navigation', () => {

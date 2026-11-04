@@ -159,7 +159,7 @@ test('historical reconcile is idempotent across runs with different timestamps',
 });
 
 test('historical attachment reconcile CLI is PCN-only, dry-run first, and updates metadata only', () => {
-  assert.equal(packageJson.scripts?.['reconcile:pcn-history-attachments'], undefined);
+  assert.match(packageJson.scripts?.['reconcile:pcn-history-attachments'] || '', /reconcilePcnHistoricalAttachments/);
   assert.match(reconcileScript, /APP_PROFILE.*pcn/);
   assert.match(reconcileScript, /--dry-run/);
   assert.match(reconcileScript, /--apply/);
@@ -170,13 +170,10 @@ test('historical attachment reconcile CLI is PCN-only, dry-run first, and update
   assert.doesNotMatch(reconcileScript, /storage\.(upload|delete)|uploadObject|deleteObject/);
 });
 
-test('historical attachment mapping stays outside PCN runtime UI and API routes', () => {
-  assert.doesNotMatch(detailSource, /mappingStatus|mappingReason|onMapHistoricalAttachment/);
-  assert.doesNotMatch(serverSource, /historical-attachment-mapping/);
-  assert.equal(
-    fs.existsSync(new URL('../app/api/pcn/historical-attachment-mapping/route.ts', import.meta.url)),
-    false,
-  );
+test('dossier attachment UI exposes mapping state and reason beside the read-only source path', () => {
+  assert.match(detailSource, /mappingStatus/);
+  assert.match(detailSource, /mappingReason/);
+  assert.match(detailSource, /Chưa nối checklist/);
 });
 
 test('historical import dry-run reports mapping counts for operator review', () => {
@@ -210,12 +207,23 @@ test('manual mapping marks an attachment without changing its immutable file met
   assert.equal(result.sourceRelativePath, input.sourceRelativePath);
 });
 
-test('manual attachment mapping helper is not exposed as a product store action', () => {
-  assert.doesNotMatch(storeSource, /mapHistoricalAttachment/);
-  assert.doesNotMatch(detailSource, /onMapHistoricalAttachment/);
+test('manual attachment mapping has a PCN endpoint, audit source, and no file byte mutation path', () => {
+  const mappingRoute = serverSource.slice(serverSource.indexOf("app.post('/api/pcn/historical-attachment-mapping'"), serverSource.indexOf("app.post('/api/pcn/documents/generate'"));
+  assert.match(mappingRoute, /app\.post\('\/api\/pcn\/historical-attachment-mapping'/);
+  assert.match(serverSource, /attachmentId/);
+  assert.match(serverSource, /requirementId/);
+  assert.match(mappingRoute, /source: 'USER_REVIEW'/);
+  assert.match(mappingRoute, /certificationDossiers/);
+  assert.match(mappingRoute, /source_json_path/);
+  assert.match(mappingRoute, /attachments\.\$\{attachment\.kind\}/);
+  assert.match(mappingRoute, /updatedAt/);
+  assert.doesNotMatch(mappingRoute, /file_assets\s+SET|uploadObject|deleteObject/);
 });
 
-test('historical mapping API helper is not wired into the PCN store or dossier UI', () => {
-  assert.doesNotMatch(storeSource, /pcnHistoricalAttachmentMappingApi|mapPcnHistoricalAttachment/);
-  assert.doesNotMatch(detailSource, /pcnHistoricalAttachmentMappingApi|mapPcnHistoricalAttachment/);
+test('manual mapping API and PCN store expose an atomic attachment action', () => {
+  assert.match(mappingApiSource, /\/api\/pcn\/historical-attachment-mapping/);
+  assert.match(mappingApiSource, /credentials: 'same-origin'/);
+  assert.match(storeSource, /mapHistoricalAttachment/);
+  assert.match(detailSource, /onMapHistoricalAttachment/);
+  assert.match(detailSource, /Nối/);
 });

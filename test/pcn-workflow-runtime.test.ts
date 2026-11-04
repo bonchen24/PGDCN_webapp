@@ -161,28 +161,6 @@ test('blocks a document task until its current document or valid waiver exists',
   assert.equal(waived.byNodeId['doc-a'].blockedReason, undefined);
 });
 
-test('custom PCN documents do not resolve a task until the current upload or generated file is confirmed', () => {
-  const tasks = [task('start', 'COMPLETED'), task('split', 'COMPLETED'), task('doc-a', 'READY'), task('doc-b', 'LOCKED'), task('join', 'LOCKED'), task('decision', 'LOCKED'), task('end', 'LOCKED')];
-  const pending = (lifecycleStatus: 'UPLOADED' | 'GENERATED') => projectPcnWorkflowRuntime({
-    workflow: snap(),
-    tasks,
-    documents: [{ requirementId: 'req-a', status: 'PRESENT', lifecycleStatus }],
-    documentWaivers: {},
-  });
-
-  assert.equal(pending('UPLOADED').byNodeId['doc-a'].blockedReason, 'MISSING_DOCUMENT');
-  assert.equal(pending('GENERATED').byNodeId['doc-a'].blockedReason, 'MISSING_DOCUMENT');
-  const confirmed = projectPcnWorkflowRuntime({
-    workflow: snap(),
-    tasks,
-    documents: [{ requirementId: 'req-a', status: 'PRESENT', lifecycleStatus: 'CONFIRMED' }],
-    documentWaivers: {},
-  });
-  assert.equal(confirmed.byNodeId['doc-a'].blockedReason, undefined);
-  const legacy = projectPcnWorkflowRuntime({ workflow: snap(), tasks, documents: [{ requirementId: 'req-a', status: 'PRESENT' }], documentWaivers: {} });
-  assert.equal(legacy.byNodeId['doc-a'].blockedReason, undefined);
-});
-
 test('runtime gates required node documents while ignoring optional ones when required IDs are known', () => {
   const tasks = [task('start', 'COMPLETED'), task('split', 'COMPLETED'), task('doc-a', 'READY'), task('doc-b', 'READY'), task('join', 'LOCKED'), task('decision', 'LOCKED'), task('end', 'LOCKED')];
   const documents = [

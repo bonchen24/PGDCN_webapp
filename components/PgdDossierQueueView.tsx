@@ -24,13 +24,11 @@ import {
 } from 'lucide-react';
 import { useMemo, useState, useEffect, type MouseEvent } from 'react';
 import { toast } from 'sonner';
-import { formatDateTimeDdMmYyyy } from '../utils/formatter';
 
 import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
 import {
   PgdcnDossierCardExpanded,
   PgdcnDossierQuickActions,
-  PgdcnDossierQuickPeek,
   HighlightText,
   type PgdcnDossierItemModel,
   type DossierComponentStage,
@@ -55,8 +53,6 @@ export interface PgdDossierQueueRow {
   ownerDisplayName?: string;
   productGroup: string;
   catalogLabel: string;
-  inspectionScheduledAt?: string;
-  dueDate?: string;
 }
 
 export interface PgdDossierQueueViewProps {
@@ -115,14 +111,11 @@ interface PgdDossierSummaryCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onOpenDetail: () => void;
-  onOpenPeek?: () => void;
   searchQuery: string;
 }
 
 // PGD uses a focused summary here instead of the shared PgdcnDossierCard; PCN keeps its existing shared card.
-function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail, onOpenPeek, searchQuery }: PgdDossierSummaryCardProps) {
-  const schedule = item.deadlineDisplay || item.targetDate;
-  const scheduleLabel = schedule ? formatDateTimeDdMmYyyy(schedule) || 'Chưa xác định' : '';
+function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail, searchQuery }: PgdDossierSummaryCardProps) {
   const handleCardClick = (event: MouseEvent<HTMLElement>) => {
     const target = event.target as HTMLElement;
     if (target.closest('button, a, input, select, textarea, [data-no-card-expand]')) return;
@@ -160,8 +153,6 @@ function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail,
           actions={[]}
           isExpanded={isExpanded}
           onToggleExpand={() => onToggleExpand()}
-          onOpenPeek={onOpenPeek}
-          peekLabel={`Xem nhanh ${item.primaryCode}`}
           onCopyCode={handleCopyCode}
         />
       </div>
@@ -270,7 +261,6 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
   const [activeChip, setActiveChip] = useState<PgdFilterChipId>('ALL');
   const [productFiltersOpen, setProductFiltersOpen] = useState(false);
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
-  const [peekItem, setPeekItem] = useState<PgdcnDossierItemModel | null>(null);
   const unassignedCount = rows.filter((r) => !r.ownerUsername && !r.ownerDisplayName).length;
 
   const searchFilteredRows = useMemo(() => {
@@ -462,8 +452,6 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
         fieldOrCatalogBadge: row.catalogLabel,
         sampleCountLabel: row.productGroup || 'Hồ sơ GĐ',
         ownerName: row.ownerDisplayName || row.ownerUsername,
-        targetDate: row.dueDate || row.inspectionScheduledAt,
-        deadlineDisplay: row.dueDate || row.inspectionScheduledAt,
         currentStepNumber: row.currentStepNumber,
         currentStepLabel: row.currentStepLabel,
         completenessPercent: score,
@@ -791,11 +779,6 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
           )}
         </div>
       )}
-      <PgdcnDossierQuickPeek
-        item={peekItem}
-        onClose={() => setPeekItem(null)}
-        onOpenDossier={onOpenDossier}
-      />
     </section>
   );
 }

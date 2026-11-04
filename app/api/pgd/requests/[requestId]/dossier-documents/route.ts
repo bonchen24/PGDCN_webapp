@@ -8,7 +8,7 @@ import { getPgdStorageBucket, getPgdStorageClient, isPgdStorageConfigured } from
 import { PGD_COLLECTIONS, PgdInspectionRequest } from '@/utils/pgdDomain';
 import {
   buildPgdDossierDocument,
-  getPgdDossierRequirementsWithCustom,
+  getPgdDossierRequirements,
   getPgdDossierRequirementStationKey,
   markPgdDossierChecklistPresent,
   PgdDossierDocument,
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ requ
     );
     return jsonOk({
       dossierDocuments: documentResult.rows.map((row: any) => mapDocumentRow(row)) as PgdDossierDocument[],
-      requirements: getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || []),
+      requirements: getPgdDossierRequirements(request.productGroup),
     });
   } catch (error: any) {
     return jsonServerError(error?.message || String(error));
@@ -125,15 +125,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
       assertPgdRequestEvidenceMutationAllowed(request);
 
-      const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || []);
+      const requirements = getPgdDossierRequirements(request.productGroup);
       const requirement = requirements.find((item) => item.code === requirementCode);
       if (!requirement) {
         throw Object.assign(new Error('Mã yêu cầu checklist PGD không thuộc nhóm sản phẩm của hồ sơ.'), { statusCode: 400 });
       }
-      const effectiveRequired = request.dossierChecklist?.find((item) => item.requirementCode === requirementCode)?.required ?? requirement.required;
       const requirementAccess = getPgdOperationalStepAccess({
         status: request.status,
-        targetStationKey: getPgdDossierRequirementStationKey(requirement.code, requirement.customDefinition?.businessModuleKey),
+        targetStationKey: getPgdDossierRequirementStationKey(requirement.code),
       });
       if (!requirementAccess.editable) {
         throw Object.assign(new Error(requirementAccess.reason || 'Checklist PGD đang bị khóa theo trạm hồ sơ.'), { statusCode: 409 });
@@ -205,10 +204,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         fileAssetId = assetId;
       }
 
-      if (requirement.customDefinition && effectiveRequired && !fileAssetId) {
-        throw Object.assign(new Error('Yêu cầu custom bắt buộc phải có tệp private hợp lệ trước khi xác nhận.'), { statusCode: 400 });
-      }
-
       const next = buildPgdDossierDocument(
         {
           id: documentId,
@@ -244,7 +239,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
           version: next.version,
         },
         now,
-        requirement.customDefinition ? 'UPLOADED' : 'PRESENT',
       );
 
       const nextRequest: PgdInspectionRequest = {
@@ -268,10 +262,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         idSuffix: `dossier-doc-${next.id}`,
       });
 
-      return { dossierDocument: next, request: nextRequest };
+      return next;
     });
 
-    return jsonCreated(persisted);
+    return jsonCreated({ dossierDocument: persisted });
   } catch (error: any) {
     if (uploadedBucketName && uploadedObjectPath) {
       await getPgdStorageClient().deleteObject({ bucketName: uploadedBucketName, objectPath: uploadedObjectPath }).catch(() => undefined);

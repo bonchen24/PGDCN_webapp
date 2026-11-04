@@ -105,9 +105,7 @@ import PgdSummaryRegisterView from './PgdSummaryRegisterView';
 import PgdDossierQueueView, { type PgdDossierQueueRow } from './PgdDossierQueueView';
 import PgdSampleOperationsView from './PgdSampleOperationsView';
 import { PgdcnPageHeader, PgdcnStatePanel, PgdcnStatusBadge } from './PgdcnUiPrimitives';
-import PgdDossierBusinessWorkspace, { PgdDossierInformation, PgdDossierHistory } from './PgdDossierBusinessWorkspace';
-import PgdcnDossierWorkspace from './PgdcnDossierWorkspace';
-import type { DossierWorkspaceTab } from '../utils/pgdcnDossierWorkspace';
+import PgdDossierBusinessWorkspace from './PgdDossierBusinessWorkspace';
 import { PgdcnDateInput, PgdcnDateTimeInput } from './PgdcnDateInput';
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, parseDdMmYyyy, parseDdMmYyyyTime } from '../utils/formatter';
 import { runPgdOcr } from '../utils/pgdOcrApi';
@@ -1159,27 +1157,6 @@ export function reconcilePgdDossierStepSelection({
   return candidateStepIndex >= 0 && candidateStepIndex < currentStepNumber ? candidateStepId : currentStepId;
 }
 
-const PGD_GATE_EVIDENCE_LABELS: Record<string, string> = {
-  ASSIGNMENT_APPROVED: 'phê duyệt phân công giám định',
-  FIELD_INSPECTION: 'hoàn tất biên bản kiểm tra hiện trường',
-  SAMPLE_HANDOVER: 'ghi nhận bàn giao mẫu cho PTN',
-  LAB_REQUEST: 'lập yêu cầu thử nghiệm gửi PTN',
-  LAB_RESULT: 'tiếp nhận kết quả thử nghiệm của PTN',
-  REPORT_READY: 'hoàn thiện báo cáo giám định',
-  CERTIFICATE_DRAFT: 'lập dự thảo chứng thư',
-  CERTIFICATE_SIGNED: 'ký chứng thư',
-};
-
-function getPgdGateUserMessage(denial: string | null): string | null {
-  if (!denial) return null;
-  const match = denial.match(/^Chưa hoàn tất trạm (.+?):\s*([^.]*)\.$/u);
-  if (!match) return denial;
-  const firstEvidenceCode = match[2].split(',')[0].trim().split(':')[0];
-  const evidenceLabel = PGD_GATE_EVIDENCE_LABELS[firstEvidenceCode];
-  if (!evidenceLabel) return 'Điều kiện nghiệp vụ hiện tại chưa hoàn tất. Mở bước hiện tại để xem việc cần làm.';
-  return `Chưa hoàn tất trạm ${match[1]}. Việc cần làm trước: ${evidenceLabel}.`;
-}
-
 function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpenContextualAssistant, initialStepId, standalone = false }: { request: import('../utils/pgdDomain').PgdInspectionRequest; currentUser: PcnUserAccount; onClose: () => void; onOpenDrafting?: (request: import('../utils/pgdDomain').PgdInspectionRequest, input: { templateKind: PgdDocumentTemplateKind; requirementCode: string }, stepId?: PgdDossierFlowStepId) => string | undefined; onOpenContextualAssistant?: (requestId: string) => void; initialStepId?: PgdDossierFlowStepId; standalone?: boolean }) {
   const pgd = usePgdStore();
   const [dossierRequirements, setDossierRequirements] = useState<import('../utils/pgdDossier').PgdDossierRequirement[]>([]);
@@ -1373,25 +1350,15 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
       ? () => approve()
       : nextState ? () => advance() : undefined
     : undefined;
-  const nextDenialMessage = getPgdGateUserMessage(nextDenial);
+  const primaryActionDisabled = dossierLoading || Boolean(dossierError) || !canMutate || !selectedStepIsCurrent || busy || Boolean(nextDenial) || !completeCurrentStep;
 
   const openCurrentStepWork = () => {
-    setWorkspaceTab('work');
     setSelectedStepId(currentStepId);
     setMobileSection('work');
     window.setTimeout(() => {
       document.getElementById('pgd-dossier-current-work')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 0);
   };
-
-  const priorityCtaNeedsNavigation = dossierLoading || Boolean(dossierError) || !canMutate || !selectedStepIsCurrent || busy || Boolean(nextDenial) || !completeCurrentStep;
-  const priorityCtaLabel = !canMutate
-    ? 'Xem bước hiện tại'
-    : nextDenial
-      ? 'Mở mục cần bổ sung'
-      : dossierLoading || dossierError || !selectedStepIsCurrent || busy
-        ? 'Mở bước hiện tại'
-        : primaryActionLabel || 'Hoàn tất việc';
 
   const run = async (action: () => Promise<void>, success: string) => {
     setBusy(true);
@@ -1547,12 +1514,12 @@ Chủ hồ sơ: {getPgdUserDisplayName(request.ownerUsername, pgd.users) || 'Ch�
             {dossierError && <div role="alert" className="flex flex-wrap items-center gap-2 text-amber-900"><span>{dossierError}</span><button type="button" disabled={dossierLoading} aria-busy={dossierLoading} onClick={() => void loadDossierDocuments()} className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-500 bg-white px-3 text-xs font-black text-amber-900 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-70"><RefreshCw size={14} className={dossierLoading ? 'animate-spin' : ''} aria-hidden="true" />{dossierLoading ? 'Đang tải lại tài liệu…' : 'Tải lại tài liệu'}</button></div>}
             {!dossierLoading && !dossierError && !canMutate && <p>Chỉ xem hồ sơ; hãy nhờ người có quyền PGD thực hiện thao tác tiếp theo.</p>}
             {!dossierLoading && !dossierError && !selectedStepIsCurrent && <p>Đang xem lại bước trước; hãy chọn bước hiện tại để tiếp tục.</p>}
-            {!dossierLoading && !dossierError && nextDenialMessage && <p role="alert" data-testid="pgd-dossier-priority-gate">{nextDenialMessage}</p>}
+            {!dossierLoading && !dossierError && nextDenial && <p role="alert" data-testid="pgd-dossier-priority-gate">{nextDenial}</p>}
             {!dossierLoading && !dossierError && !nextDenial && <p>{nextState ? `Có thể chuyển sang: ${getPgdStatusLabel(nextState)}.` : 'Hồ sơ đã ở cuối quy trình.'}</p>}
             {busy && <p>Đang xử lý thay đổi hồ sơ; vui lòng chờ hoàn tất.</p>}
           </div>
         </div>
-        {nextState ? <button data-testid="pgd-dossier-priority-cta" type="button" onClick={() => priorityCtaNeedsNavigation ? openCurrentStepWork() : completeCurrentStep?.()} aria-busy={busy && !priorityCtaNeedsNavigation ? 'true' : undefined} aria-describedby="pgd-dossier-priority-guidance" className="mobile-touch-target inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-xs font-black text-white shadow-sm hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:w-auto">{priorityCtaNeedsNavigation ? priorityCtaLabel : busy ? 'Đang xử lý…' : priorityCtaLabel}</button> : <p className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-800">Hồ sơ đã ở cuối quy trình.</p>}
+        {completeCurrentStep ? <button data-testid="pgd-dossier-priority-cta" type="button" onClick={completeCurrentStep} disabled={primaryActionDisabled} aria-busy={busy ? 'true' : undefined} aria-describedby="pgd-dossier-priority-guidance" className="mobile-touch-target inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-xs font-black text-white shadow-sm hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">{busy ? 'Đang xử lý…' : primaryActionLabel || 'Hoàn tất việc'}</button> : <p className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-800">Hồ sơ đã ở cuối quy trình.</p>}
       </section>
 
       {/* Horizontal Workflow Rail - Unhidden, compact top placement matching PCN */}
@@ -1777,16 +1744,9 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
   }, [pgd.requests, query]);
 
   const queueRows = useMemo<PgdDossierQueueRow[]>(() => visibleRequests.map((request) => {
+    const requirements = getPgdDossierRequirements(request.productGroup).filter((requirement) => requirement.required);
     const checklist = request.dossierChecklist || [];
-    const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || []).filter((requirement) => {
-      const item = checklist.find((candidate) => candidate.requirementCode === requirement.code);
-      return item?.required ?? requirement.required;
-    });
-    const requiredDocumentPresent = requirements.filter((requirement) => {
-      const item = checklist.find((candidate) => candidate.requirementCode === requirement.code);
-      if (item) return item.status === 'PRESENT' || item.status === 'CONFIRMED' || (item.status === 'WAIVED' && Boolean(item.waiverReason?.trim()));
-      return pgd.dossierDocuments.some((document) => document.requestId === request.id && document.requirementCode === requirement.code);
-    }).length;
+    const requiredDocumentPresent = requirements.filter((requirement) => checklist.some((item) => item.requirementCode === requirement.code && (item.status === 'PRESENT' || item.status === 'WAIVED'))).length;
     const currentStepId = getPgdDossierFlowStepIdForStatus(request.status);
     const currentStep = PGD_DOSSIER_FLOW_STEPS.find((step) => step.id === currentStepId) || PGD_DOSSIER_FLOW_STEPS[0];
     return {
@@ -1801,15 +1761,12 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
       requiredDocumentPresent,
       requiredDocumentTotal: requirements.length,
       missingRequiredCount: Math.max(0, requirements.length - requiredDocumentPresent),
-      nextActionLabel: getPgdcnNextAction('PGD', request.status, { missingRequiredCount: Math.max(0, requirements.length - requiredDocumentPresent) }).label,
-      inspectionScheduledAt: request.inspectionScheduledAt,
-      dueDate: request.inspectionScheduledAt,
       ownerUsername: request.ownerUsername,
       ownerDisplayName: getPgdUserDisplayName(request.ownerUsername, pgd.users),
       productGroup: PGD_PRODUCT_GROUP_LABELS[request.productGroup],
       catalogLabel: getPgdCatalogItemLabel(request.catalogItemId, pgd.catalog),
     };
-  }), [pgd.catalog, pgd.dossierDocuments, pgd.users, visibleRequests]);
+  }), [pgd.catalog, pgd.users, visibleRequests]);
 
   const pgdCounts = useMemo(() => {
     const total = pgd.requests.length;

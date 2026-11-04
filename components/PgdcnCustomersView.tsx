@@ -208,116 +208,45 @@ export function PgdCustomerSearchProjection({ customers }: { customers: Customer
             </button>
           </div>
         ) : (
-          <>
-            {/* Desktop Twenty-like compact grid (>= 768px) */}
-            <div className="overflow-x-auto">
-              <table className="hidden md:table w-full border-collapse text-left text-[11px]">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 font-black uppercase tracking-wider text-slate-500">
-                    <th className="w-32 p-3 pl-4">Mã KH</th>
-                    <th className="w-64 p-3">Tên doanh nghiệp</th>
-                    <th className="w-64 p-3">Địa chỉ &amp; MST</th>
-                    <th className="p-3 pr-4">Thông tin liên hệ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredCustomers.map((customer) => {
-                    const hasCode = hasPcnCustomerCode(customer);
-                    const hasContact = hasPcnCustomerContact(customer);
-                    return (
-                      <tr key={customerKey(customer)} className="transition-colors hover:bg-slate-50/60">
-                        <td className="p-3 pl-4">
-                          {hasCode ? (
-                            <span className="rounded-md border border-blue-100 bg-blue-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-blue-700">
-                              {customer.customerCode?.trim()}
-                            </span>
-                          ) : (
-                            <span
-                              role="status"
-                              className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800"
-                            >
-                              <AlertCircle size={11} className="shrink-0 text-amber-600" aria-hidden="true" />
-                              Chưa có mã
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <div className="font-bold text-slate-800 break-words">{customer.name || 'Chưa có tên khách hàng'}</div>
-                        </td>
-                        <td className="p-3 space-y-0.5">
-                          <div className="text-slate-600 break-words">{customer.address || 'Chưa có địa chỉ'}</div>
-                          {customer.taxId && (
-                            <div className="font-mono text-slate-500">MST: {customer.taxId}</div>
-                          )}
-                        </td>
-                        <td className="p-3 pr-4 space-y-0.5">
-                          {customer.contactPerson?.trim() && (
-                            <div className="text-slate-700"><span className="text-slate-400 font-semibold">LH:</span> {customer.contactPerson.trim()}</div>
-                          )}
-                          {customer.phone?.trim() && (
-                            <div className="font-mono text-slate-600"><span className="text-slate-400 font-sans font-semibold">SĐT:</span> {customer.phone.trim()}</div>
-                          )}
-                          {customer.email?.trim() && (
-                            <div className="text-slate-600 [overflow-wrap:anywhere]"><span className="text-slate-400 font-semibold">Email:</span> {customer.email.trim()}</div>
-                          )}
-                          {!hasContact && (
-                            <span
-                              role="status"
-                              className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800"
-                            >
-                              <AlertCircle size={11} className="shrink-0 text-amber-600" aria-hidden="true" />
-                              Chưa có liên hệ
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+          <div className="grid min-w-0 gap-2 p-3 md:grid-cols-2 xl:grid-cols-3">
+            {filteredCustomers.map((customer) => {
+              const hasCode = hasPcnCustomerCode(customer);
+              const hasContact = hasPcnCustomerContact(customer);
 
-            {/* Mobile Card List View (< 768px) */}
-            <div className="md:hidden divide-y divide-slate-100 p-2 space-y-2">
-              {filteredCustomers.map((customer) => {
-                const hasCode = hasPcnCustomerCode(customer);
-                const hasContact = hasPcnCustomerContact(customer);
-
-                return (
-                  <article key={customerKey(customer)} className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
-                    <h2 className="break-words text-sm font-black text-slate-800">{customer.name || 'Chưa có tên khách hàng'}</h2>
-                    <p className="mt-1 break-words text-xs text-slate-600">{customer.address || 'Chưa có địa chỉ'}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs leading-5 text-slate-600">
-                      {hasCode ? (
-                        <span className="font-mono font-bold text-slate-700">{customer.customerCode?.trim()}</span>
-                      ) : (
-                        <span
-                          role="status"
-                          className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-800"
-                        >
-                          <AlertCircle size={12} className="shrink-0 text-amber-600" aria-hidden="true" />
-                          Chưa có mã
-                        </span>
-                      )}
-                      {customer.taxId && <span>MST {customer.taxId}</span>}
-                      {customer.contactPerson?.trim() && <span>Người liên hệ: {customer.contactPerson.trim()}</span>}
-                      {customer.phone?.trim() && <span>{customer.phone.trim()}</span>}
-                      {customer.email?.trim() && <span className="[overflow-wrap:anywhere]">{customer.email.trim()}</span>}
-                      {!hasContact && (
-                        <span
-                          role="status"
-                          className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-800"
-                        >
-                          <AlertCircle size={12} className="shrink-0 text-amber-600" aria-hidden="true" />
-                          Chưa có liên hệ
-                        </span>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </>
+              return (
+                <article key={customerKey(customer)} className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+                  <h2 className="break-words text-sm font-black text-slate-800">{customer.name || 'Chưa có tên khách hàng'}</h2>
+                  <p className="mt-1 break-words text-xs text-slate-600">{customer.address || 'Chưa có địa chỉ'}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs leading-5 text-slate-600">
+                    {hasCode ? (
+                      <span className="font-mono font-bold text-slate-700">{customer.customerCode?.trim()}</span>
+                    ) : (
+                      <span
+                        role="status"
+                        className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-800"
+                      >
+                        <AlertCircle size={12} className="shrink-0 text-amber-600" aria-hidden="true" />
+                        Chưa có mã
+                      </span>
+                    )}
+                    {customer.taxId && <span>MST {customer.taxId}</span>}
+                    {customer.contactPerson?.trim() && <span>Người liên hệ: {customer.contactPerson.trim()}</span>}
+                    {customer.phone?.trim() && <span>{customer.phone.trim()}</span>}
+                    {customer.email?.trim() && <span className="[overflow-wrap:anywhere]">{customer.email.trim()}</span>}
+                    {!hasContact && (
+                      <span
+                        role="status"
+                        className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-800"
+                      >
+                        <AlertCircle size={12} className="shrink-0 text-amber-600" aria-hidden="true" />
+                        Chưa có liên hệ
+                      </span>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         )}
       </div>
     </section>

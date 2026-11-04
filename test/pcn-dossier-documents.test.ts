@@ -10,16 +10,13 @@ import {
   buildPcnDossierDocumentId,
   getPcnGeneratedDocumentRequirementCode,
   getPcnDocumentRequirements,
-  getPcnDossierRequirementsWithCustom,
   mergePcnDossierChecklist,
 } from '../utils/pcnDossierDocuments.ts';
-import { confirmPcnDossierDocument, confirmPcnGeneratedDocumentIntoChecklist, generateAndAttachPcnDossierNodeDocument, removeCurrentPcnDossierDocument, uploadPcnDossierDocument, waivePcnDossierDocument } from '../utils/pcnDossierDocumentApi.ts';
-import type { CertificationDossier, PcnGeneratedDocument } from '../types.ts';
+import { confirmPcnGeneratedDocumentIntoChecklist, generateAndAttachPcnDossierNodeDocument, removeCurrentPcnDossierDocument, uploadPcnDossierDocument, waivePcnDossierDocument } from '../utils/pcnDossierDocumentApi.ts';
+import type { PcnGeneratedDocument } from '../types.ts';
 
 const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const documentApiSource = fs.readFileSync(new URL('../utils/pcnDossierDocumentApi.ts', import.meta.url), 'utf8');
-const dossierStoreSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
-const customConfirmRouteSource = fs.readFileSync(new URL('../app/api/pcn/dossiers/[dossierId]/documents/[requirementId]/confirm/route.ts', import.meta.url), 'utf8');
 
 test('PCN document baseline contains only QC4 and QC9 field checklists', () => {
   const qc4 = getPcnDocumentRequirements(['QC4']);
@@ -112,64 +109,6 @@ test('dossier upload client sends the same checklist id that the server verifies
     assert.equal(form.get('sourceCollection'), 'dossierDocuments');
     assert.equal(form.get('sourceDocumentId'), expectedDocumentId);
     assert.equal(form.get('sourceJsonPath'), requirement.id);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
-
-test('custom PCN upload resolves its definition from the dossier snapshot and waits for confirmation', () => {
-  assert.match(dossierStoreSource, /getPcnDossierRequirementsWithCustom\(dossier, get\(\)\.documentRequirements,[\s\S]*?\.find/);
-  assert.match(documentApiSource, /\/documents\/\$\{encodeURIComponent\(input\.requirementId\)\}\/confirm/);
-  assert.match(customConfirmRouteSource, /requirementDefinitions\?\.find\(\(item\) => item\.domain === 'PCN'/);
-  assert.match(customConfirmRouteSource, /source_collection !== 'dossierDocuments'/);
-  assert.match(customConfirmRouteSource, /source_json_path !== requirementId/);
-  assert.match(customConfirmRouteSource, /lifecycleStatus: 'CONFIRMED'/);
-});
-
-test('conditional custom PCN requirements activate only for their allowlisted result and stay unique in projected catalogs', () => {
-  const dossier = {
-    fieldCodes: ['QC4'],
-    workflowSnapshot: {
-      templateCode: 'CUSTOM-CONDITIONAL',
-      templateVersion: 1,
-      nodes: [],
-      transitions: [],
-      capturedAt: '2026-10-10T00:00:00.000Z',
-      capturedBy: 'admin',
-      requirementDefinitions: [{
-        domain: 'PCN' as const,
-        id: 'pcn-custom-condition',
-        code: 'CUSTOM_CONDITION',
-        name: 'Bằng chứng khi không đạt',
-        level: 'CONDITIONAL' as const,
-        source: 'UPLOAD_EXTERNAL' as const,
-        condition: 'RESULT_FAILED' as const,
-        ownerRole: 'CUSTOMER' as const,
-        multiplicity: 'SINGLE' as const,
-      }],
-    },
-  } as CertificationDossier;
-  const inactive = getPcnDossierRequirementsWithCustom(dossier);
-  const active = getPcnDossierRequirementsWithCustom(dossier, DEFAULT_PCN_DOCUMENT_REQUIREMENTS, { resultOutcome: 'FAIL' });
-  const reprojected = getPcnDossierRequirementsWithCustom(dossier, active, { resultOutcome: 'FAIL' });
-
-  assert.equal(inactive.find((item) => item.id === 'pcn-custom-condition')?.required, false);
-  assert.equal(active.find((item) => item.id === 'pcn-custom-condition')?.required, true);
-  assert.equal(reprojected.filter((item) => item.id === 'pcn-custom-condition').length, 1);
-});
-
-test('custom dossier document confirmation calls the authorized server boundary', async () => {
-  const originalFetch = globalThis.fetch;
-  const calls: Array<{ url: unknown; init?: RequestInit }> = [];
-  globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-    calls.push({ url: input, init });
-    return new Response(JSON.stringify({ document: { id: 'doc-1', lifecycleStatus: 'CONFIRMED' } }), { status: 201, headers: { 'content-type': 'application/json' } });
-  }) as typeof fetch;
-  try {
-    const result = await confirmPcnDossierDocument({ dossierId: 'dossier-1', requirementId: 'custom-1' });
-    assert.equal(String(calls[0].url), '/api/pcn/dossiers/dossier-1/documents/custom-1/confirm');
-    assert.equal(calls[0].init?.method, 'POST');
-    assert.equal(result.document?.lifecycleStatus, 'CONFIRMED');
   } finally {
     globalThis.fetch = originalFetch;
   }

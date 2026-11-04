@@ -111,22 +111,3 @@ test('successful attach exposes the dossier return action without advancing work
 });
 
 // --- End of drafting-navigation-task4.test.ts ---
-
-
-test('PCN drafting routes preserve draftId when reopening saved draft', () => {
-  const draftingRoute = buildPcnDraftingRoute({
-    dossierId: 'dossier-1',
-    requirementId: 'req-1',
-    nodeId: 'evaluation',
-    kind: 'EVALUATION_REPORT',
-    draftId: 'draft-saved-001',
-    returnTo: buildPcnDossierReturnRoute('dossier-1', { tab: 'documents', nodeId: 'evaluation' }),
-  });
-  const url1 = new URL(draftingRoute, 'https://pgdcn.local');
-  assert.equal(url1.searchParams.get('dossierId'), 'dossier-1');
-  assert.equal(url1.searchParams.get('requirementId'), 'req-1');
-  assert.equal(url1.searchParams.get('node'), 'evaluation');
-  assert.equal(url1.searchParams.get('kind'), 'EVALUATION_REPORT');
-  assert.equal(url1.searchParams.get('draftId'), 'draft-saved-001');
-  assert.equal(url1.searchParams.get('returnTo'), '/pgdcn/pcn/dossiers/dossier-1?tab=documents&node=evaluation');
-});

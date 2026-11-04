@@ -21,44 +21,6 @@ function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 }
 
-function resolveBash() {
-  if (process.env.ARCHIFY_BASH) return process.env.ARCHIFY_BASH;
-  if (process.platform !== 'win32') return 'bash';
-
-  const candidates = [];
-  try {
-    const gitOut = execFileSync('where.exe', ['git.exe'], { encoding: 'utf8' });
-    for (const gitPath of gitOut.split(/\r?\n/).map(p => p.trim()).filter(Boolean)) {
-      const gitDir = path.dirname(gitPath);
-      candidates.push(
-        path.join(gitDir, 'bash.exe'),
-        path.join(gitDir, '..', 'bin', 'bash.exe'),
-        path.join(gitDir, '..', 'usr', 'bin', 'bash.exe')
-      );
-    }
-  } catch {}
-
-  try {
-    const execPath = execFileSync('git', ['--exec-path'], { encoding: 'utf8' }).trim();
-    if (execPath) {
-      candidates.push(
-        path.join(execPath, 'bash.exe'),
-        path.join(execPath, '..', 'bash.exe'),
-        path.join(execPath, '..', '..', 'bash.exe'),
-        path.join(execPath, '..', '..', 'bin', 'bash.exe'),
-        path.join(execPath, '..', '..', 'usr', 'bin', 'bash.exe'),
-        path.join(execPath, '..', '..', '..', 'bin', 'bash.exe'),
-        path.join(execPath, '..', '..', '..', 'usr', 'bin', 'bash.exe')
-      );
-    }
-  } catch {}
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
-  }
-  return 'bash';
-}
-
 function writeStarHistoryCharts(cwd, version) {
   const assets = path.join(cwd, 'assets');
   fs.mkdirSync(assets, { recursive: true });
@@ -321,12 +283,10 @@ test('Star History publishing advances the data branch without a force push', ()
     git(firstCheckout, 'remote', 'add', 'origin', remote);
     git(firstCheckout, 'push', '-u', 'origin', 'main');
 
-    const bash = resolveBash();
-
     const firstTemp = path.join(fixture, 'run-1');
     fs.mkdirSync(firstTemp);
     writeStarHistoryCharts(firstCheckout, 'v1');
-    execFileSync(bash, [publisher, 'star-history'], {
+    execFileSync('bash', [publisher, 'star-history'], {
       cwd: firstCheckout,
       env: { ...process.env, RUNNER_TEMP: firstTemp },
     });
@@ -336,7 +296,7 @@ test('Star History publishing advances the data branch without a force push', ()
     const secondTemp = path.join(fixture, 'run-2');
     fs.mkdirSync(secondTemp);
     writeStarHistoryCharts(secondCheckout, 'v2');
-    execFileSync(bash, [publisher, 'star-history'], {
+    execFileSync('bash', [publisher, 'star-history'], {
       cwd: secondCheckout,
       env: { ...process.env, RUNNER_TEMP: secondTemp },
     });

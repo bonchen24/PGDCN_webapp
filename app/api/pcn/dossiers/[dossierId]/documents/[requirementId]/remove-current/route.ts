@@ -71,7 +71,7 @@ export async function POST(
       const document = mapDocumentRow(documentResult.rows[0]) as PcnDossierDocument;
 
       const now = new Date().toISOString();
-      const nextDocument: PcnDossierDocument = { ...document, currentVersionId: undefined, status: 'MISSING', lifecycleStatus: undefined, updatedAt: now };
+      const nextDocument: PcnDossierDocument = { ...document, currentVersionId: undefined, status: 'MISSING', updatedAt: now };
       await client.query(
         `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
          WHERE collection_name = 'dossierDocuments' AND document_id = $1`,

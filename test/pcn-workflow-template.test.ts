@@ -86,23 +86,11 @@ test('selects the most specific published template deterministically', () => {
   assert.equal(selectPcnPublishedWorkflowTemplate([specific], dossier({ fieldCodes: ['QC9'] })), undefined);
 });
 
-test('does not select a published personal proposal for a new dossier', () => {
-  const personalProposal = baseTemplate({ id: 'personal', scope: 'PERSONAL' });
-  assert.equal(selectPcnPublishedWorkflowTemplate([personalProposal], dossier()), undefined);
-});
-
 test('snapshots a published template without sharing mutable topology', () => {
-  const template = baseTemplate({
-    nodes: [
-      { id: 'intake', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận', requirementIds: ['QC4-COMMERCIAL'], actionKey: 'INTAKE', active: true, sortOrder: 1 },
-      { id: 'end', kind: 'END', label: 'Hoàn tất', requirementIds: [], active: true, sortOrder: 2 },
-    ],
-    requirementPolicies: { 'QC4-COMMERCIAL': { defaultClass: 'DEFAULT_OPTIONAL', sourceMode: 'UPLOAD', cardinality: { min: 1, max: 2 } } },
-  });
+  const template = baseTemplate();
   const captured = snapshotPcnWorkflowTemplate(template, { capturedAt: '2026-09-06T01:00:00.000Z', capturedBy: 'manager' });
   assert.equal(captured.templateVersion, template.version);
   assert.equal(captured.templateCode, template.code);
-  assert.deepEqual(captured.requirementPolicies, template.requirementPolicies);
   assert.notEqual(captured.nodes, template.nodes);
   captured.nodes[0].label = 'Đã thay đổi trong hồ sơ';
   assert.equal(template.nodes[0].label, 'Tiếp nhận');

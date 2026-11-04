@@ -35,7 +35,6 @@ test('PGD dossier detail uses a flat native rail with seven standardized stages'
 
 test('PGD native step panel keeps the existing work actions behind each stage', () => {
   const panel = read('components/PgdDossierStepWorkPanel.tsx');
-  const workspace = read('components/PgdWorkspace.tsx');
   for (const marker of [
     'PgdCaseEvidencePanel',
     'PgdDossierOperationsPanel',
@@ -49,9 +48,6 @@ test('PGD native step panel keeps the existing work actions behind each stage', 
     'Xem danh sách tài liệu',
     'Mở hồ sơ đầy đủ',
   ]) assert.match(panel, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.match(workspace, /data-testid="pgd-dossier-priority-cta"/);
-  assert.match(workspace, /Mở mục cần bổ sung|Xem bước hiện tại/);
-  assert.doesNotMatch(panel, /<button[^>]*onClick=\{onCompleteCurrent\}/, 'completion is owned by the single dossier priority action');
   assert.match(panel, /role="tabpanel"/);
 });
 

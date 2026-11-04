@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
-import React, { createElement } from 'react';
+import React from 'react';
 import * as cheerio from 'cheerio';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { PgdcnDossierDeck, PgdcnDossierQuickPeek, type PgdcnDossierItemModel } from '../components/PgdcnDossierDeck';
+import { PgdcnDossierDeck, type PgdcnDossierItemModel } from '../components/PgdcnDossierDeck';
 import PcnDossierGroupCard, {
   buildPcnDossierRequiredDocumentSummary,
   buildPcnSampleProgress,
@@ -351,46 +351,6 @@ test('expanded card drawer projects Next Action, Blockers, and Component Breakdo
   }
 });
 
-test('quick peek states a blocker once and uses the existing next-action callback and label', () => {
-  const item = {
-    id: 'peek-pcn-1',
-    domain: 'PCN',
-    primaryCode: 'PCN-QA-001',
-    status: 'AWAITING_DOCUMENTS',
-    statusLabel: 'Chờ bổ sung hồ sơ',
-    customerName: 'Khách hàng thử nghiệm',
-    productName: 'Sản phẩm thử nghiệm',
-    currentStepTitle: 'Bổ sung hồ sơ',
-    ownerName: 'synthetic_staff',
-    deadlineDisplay: 'Chưa có hạn',
-    missingRequiredCount: 14,
-    nextAction: {
-      title: 'Mở để xử lý ngoại lệ',
-      reason: 'Còn 14 tài liệu bắt buộc cần bổ sung.',
-      owner: 'synthetic_staff',
-      actionLabel: 'Mở để xử lý ngoại lệ',
-      onAction: () => {},
-    },
-    blockers: [{
-      id: 'pcn-missing-peek-1',
-      title: 'Thiếu tài liệu bắt buộc',
-      reason: 'Còn thiếu 14 mục tài liệu theo quy định.',
-      severity: 'HARD',
-    }],
-  } as unknown as PgdcnDossierItemModel;
-
-  const markup = renderToStaticMarkup(createElement(PgdcnDossierQuickPeek, {
-    item,
-    onClose: () => {},
-    onOpenDossier: () => {},
-  }));
-
-  assert.equal((markup.match(/14 (?:tài liệu|mục tài liệu|đầu mục)/g) || []).length, 1, 'the same missing-document count should appear once');
-  assert.match(markup, /Mở để xử lý ngoại lệ/, 'the primary action should carry the projected action label');
-  assert.doesNotMatch(markup, /Chưa có hạn/, 'an absent deadline should not occupy quick-peek space');
-  assert.doesNotMatch(markup, /Cảnh báo &amp; Điểm nghẽn/, 'quick peek should not add a second blocker panel');
-});
-
 test('quick actions isolate clicks with stopPropagation and enforce RBAC/disabled states', () => {
   const deckSource = read('../components/PgdcnDossierDeck.tsx');
 
@@ -427,7 +387,7 @@ test('shared dossier quick actions maintain persistent >=44px touch targets and 
   const actionClasses = [...quickActions.matchAll(/className=\{`([^`]*inline-flex[^`]*)`|className="([^"]*inline-flex[^"]*)"/g)]
     .map((match) => match[1] || match[2]);
 
-  assert.equal(actionClasses.length, 5, 'dynamic, peek, copy, open, and expand actions should share one control contract');
+  assert.equal(actionClasses.length, 4, 'dynamic, copy, open, and expand actions should share one control contract');
   for (const className of actionClasses) {
     assert.match(className, /min-h-11 min-w-11/, 'all control variants retain >=44px control sizing');
     assert.doesNotMatch(className, /md:min-h-0|md:min-w-0|md:h-|md:w-/, 'no desktop breakpoint shrinks control sizing below 44px');

@@ -6,7 +6,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import { requireSymlinkCapability } from './helpers/symlink-capability.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
@@ -1037,7 +1036,6 @@ test('a committed cache FIFO is ignored without blocking the update check', (t) 
 });
 
 test('a committed cache state symlink is ignored without following its target', (t) => {
-  if (!requireSymlinkCapability(t, 'file')) return;
   const testFixture = fixture();
   t.after(() => fs.rmSync(testFixture.root, { recursive: true, force: true }));
   const cacheStatePath = statePath(testFixture);
@@ -1965,26 +1963,17 @@ test('an empty precheck snapshot cannot start a second concurrent network reques
     markFetchStarted();
     return new Promise((resolve) => { releaseFetch = resolve; });
   };
-  const checkOptions = options(testFixture, fetchImpl, { timeoutMs: 1_000 });
 
-  const delayedPrecheck = checkForUpdate(checkOptions);
+  const delayedPrecheck = checkForUpdate(options(testFixture, fetchImpl));
   await pause.reached;
-  const claimedCheck = checkForUpdate(checkOptions);
+  const claimedCheck = checkForUpdate(options(testFixture, fetchImpl));
   await fetchStarted;
   pause.release();
   assert.deepEqual(await delayedPrecheck, { status: 'silent', reason: 'check-in-progress' });
   assert.equal(requests, 1);
 
   releaseFetch(response(remoteRelease()));
-  const claimedResult = await claimedCheck;
-  const committed = fs.existsSync(statePath(testFixture))
-    ? JSON.parse(fs.readFileSync(statePath(testFixture), 'utf8'))
-    : null;
-  assert.equal(
-    claimedResult.status,
-    'update_available',
-    JSON.stringify({ claimedResult, requests, committedCandidate: committed?.candidate ?? null }),
-  );
+  assert.equal((await claimedCheck).status, 'update_available');
   pause.restore();
   assert.equal(requests, 1);
 });
@@ -2597,8 +2586,7 @@ test('a stale corrupt operation is fenced without exposing a failure', async (t)
   assert.equal(fs.existsSync(operationPath(testFixture, 'fenced', 1n)), true);
 });
 
-test('malformed active-claim shapes recover after the hard lease', async (t) => {
-  if (!requireSymlinkCapability(t, 'file')) return;
+test('malformed active-claim shapes recover after the hard lease', async () => {
   for (const shape of ['file', 'symlink', 'owner-directory']) {
     const testFixture = fixture();
     try {
@@ -2776,7 +2764,6 @@ test('corrupt claim retirement preserves distinct 64-bit inode identities', asyn
 });
 
 test('a forged retirement symlink cannot move an active claim outside its cache partition', async (t) => {
-  if (!requireSymlinkCapability(t, 'file')) return;
   const testFixture = fixture();
   t.after(() => fs.rmSync(testFixture.root, { recursive: true, force: true }));
   let requests = 0;

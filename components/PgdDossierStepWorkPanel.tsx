@@ -4,10 +4,9 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { CheckCircle2, ChevronRight, Eye, FileText, Upload } from 'lucide-react';
 
 import type { PcnUserAccount } from '../types';
-import type { PgdGeneratedDocument, PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
+import type { PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
 import type { PgdDossierDocument, PgdDossierRequirement } from '../utils/pgdDossier';
 import { getCurrentPgdDossierDocuments, getPgdDossierRequirementForTemplate } from '../utils/pgdDossier';
-import { getPgdDocumentRequirementCode } from '../utils/pgdDrafting';
 import { getPgdDossierDocumentDownloadUrl } from '../utils/pgdApi';
 import { getPgdcnNextAction } from '../utils/pgdcnDashboard';
 import type { PgdDocumentTemplateKind } from '../utils/pgdDocumentTemplates';
@@ -32,7 +31,6 @@ type Props = {
   selectedStepId: PgdDossierFlowStepId;
   dossierRequirements: PgdDossierRequirement[];
   dossierDocuments: PgdDossierDocument[];
-  generatedDocuments?: readonly PgdGeneratedDocument[];
   dossierLoadStatus?: 'loading' | 'error' | 'loaded';
   samples: PgdSample[];
   canMutate: boolean;
@@ -250,12 +248,7 @@ export default function PgdDossierStepWorkPanel({
   const documentActionRows = stepRequirements.map((item) => {
     const document = currentDocumentsByCode.get(item.code);
     const isWaived = waivedRequirementCodes.has(item.code);
-    const pendingDoc = pendingGeneratedDocumentByCode.get(item.code);
-    const hasPending = !document && !isWaived && Boolean(pendingDoc);
-    const status = dossierLoadPending ? 'Đang xác định' : dossierLoadFailed ? 'Không xác định' : document ? 'Đã có' : isWaived ? 'Đã bỏ qua' : hasPending ? 'Chờ xác nhận' : 'Chưa có';
-    const pendingDraftingHref = canMutate && pendingDoc && onOpenDrafting
-      ? onOpenDrafting({ templateKind: pendingDoc.kind as PgdDocumentTemplateKind, requirementCode: item.code })
-      : undefined;
+    const status = dossierLoadPending ? 'Đang xác định' : dossierLoadFailed ? 'Không xác định' : document ? 'Đã có' : isWaived ? 'Đã bỏ qua' : 'Chưa có';
     const action = dossierStatusUnknown ? (
       <span className="text-xs font-semibold text-slate-500">{dossierLoadPending ? 'Đang tải trạng thái' : 'Chưa thể xác định'}</span>
     ) : document?.fileAssetId ? (
@@ -303,7 +296,6 @@ export default function PgdDossierStepWorkPanel({
       step: meta.title,
       title: item.title,
       required: item.required,
-      requirementTypeLabel,
       status,
       statusTone: dossierStatusUnknown ? ('neutral' as const) : document ? ('success' as const) : isWaived ? ('neutral' as const) : ('warning' as const),
       detail: dossierStatusUnknown ? 'Chưa xác định trạng thái tài liệu.' : document ? `${document.fileName} · v${document.version}` : item.description,

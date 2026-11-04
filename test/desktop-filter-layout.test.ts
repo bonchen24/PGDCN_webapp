@@ -35,7 +35,7 @@ test('sidebar navigation closes an open dossier before changing workspace', () =
   const shell = read('components/PgdcnAppShell.tsx');
   const pcnWorkspace = read('components/PcnWorkspace.tsx');
   const pgdWorkspace = read('components/PgdWorkspace.tsx');
-  assert.match(shell, /const navigate = \(target: PgdcnNavigationTarget\) => \{\s*setNotificationOpen\(false\);\s*setFocusedPgdRequestId\(undefined\);[\s\S]*setActiveTarget\(target\);/);
+  assert.match(shell, /const navigate = \(target: PgdcnNavigationTarget\) => \{\s*setFocusedPgdRequestId\(undefined\);/);
   assert.match(pcnWorkspace, /const openSection = \(section: PcnSection, entityKey\?: string\) => \{[^}]*setSelectedDossierId\(undefined\)/);
   assert.match(pgdWorkspace, /const openSection = \(section: PgdEntrySection, preserveRequest = false\) => \{[^}]*if \(!preserveRequest\) \{\s*setSelectedRequestId\(undefined\)/);
 });

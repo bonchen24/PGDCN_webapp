@@ -44,7 +44,6 @@ import { transitionPcnLabRequest } from '@/utils/pcnLabRouting';
 import { isPcnDossierPostApprovalLocked } from '@/utils/pcnDossierStepAccess';
 import { isPcnDossierTransitionAllowed } from '@/utils/pcnWorkflow';
 import { getPcnDossierStageGateDenial } from '@/utils/pcnDossierStageGate';
-import { getPcnWorkflowResultOutcome } from '@/utils/pcnWorkflowRuntime';
 
 export const dynamic = 'force-dynamic';
 
@@ -413,7 +412,6 @@ export async function POST(req: NextRequest) {
           requirements: configuredRequirements.length > 0 ? configuredRequirements : undefined,
           documents: documentResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierDocument),
           documentWaivers: dossier.documentWaivers,
-          resultOutcome: getPcnWorkflowResultOutcome(nextResults),
         });
         if (stageGateDenial) throw Object.assign(new Error(stageGateDenial), { statusCode: 409 });
       }

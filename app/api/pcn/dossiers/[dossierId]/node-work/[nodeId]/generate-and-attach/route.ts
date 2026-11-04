@@ -333,7 +333,6 @@ export async function POST(
           },
         ],
         status: 'PRESENT',
-        ...(dossier.workflowSnapshot?.requirementDefinitions?.some((item) => item.domain === 'PCN' && item.id === requirement.id) ? { lifecycleStatus: 'GENERATED' as const } : {}),
         createdAt: previous.createdAt || now,
         updatedAt: now,
       };

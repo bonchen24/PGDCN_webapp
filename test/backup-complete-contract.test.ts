@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 import { buildStorageBackupManifest } from '../utils/backupManager';
 
-const panel = fs.readFileSync(new URL('../components/BackupRestoreAdminPanel.tsx', import.meta.url), 'utf8');
+const reminder = fs.readFileSync(new URL('../components/AdminBackupReminder.tsx', import.meta.url), 'utf8');
 const manager = fs.readFileSync(new URL('../utils/backupManager.ts', import.meta.url), 'utf8');
 
 test('maps every file asset to a stable archive entry', () => {
@@ -32,9 +32,9 @@ test('maps every file asset to a stable archive entry', () => {
   );
 });
 
-test('Admin backup panel uses the complete server backup action', () => {
-  assert.match(panel, /triggerServerBackup/);
-  assert.match(panel, /Tạo bản sao lưu ngay/);
+test('Admin reminder uses the complete server backup action', () => {
+  assert.match(reminder, /triggerServerBackup/);
+  assert.match(reminder, /Sao lưu đầy đủ/);
 });
 
 test('server backup archives file metadata and objects', () => {

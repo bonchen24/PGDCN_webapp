@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { CertificationDossier, IssuancePackage, OutboundLabRequest, PcnApprovalStep, PcnDossierDocument, PcnDossierDocumentWaiver, PcnDossierWorkflowTask, PcnDocumentRequirement, PcnDraftWorkspace, PcnSampleLot, PcnSampleRoute, PcnUserAccount, ReturnedTestResult } from '../types';
+import type { CertificationDossier, IssuancePackage, OutboundLabRequest, PcnApprovalStep, PcnDossierDocument, PcnDossierDocumentWaiver, PcnDossierWorkflowTask, PcnDocumentRequirement, PcnSampleLot, PcnSampleRoute, PcnUserAccount, ReturnedTestResult } from '../types';
 import { usePcnStore } from '../store-pcn';
 import { buildPcnDossierNodeBusinessFacts, buildPcnDossierNodeWorkProjection, type PcnDossierNodeBusinessFact, type PcnDossierNodeDocumentItem, type PcnDossierNodeWorkProjection } from '../utils/pcnDossierNodeWork';
 import { buildPcnWorkflowConditionContext, projectPcnWorkflowRuntime, type PcnWorkflowRuntimeNode } from '../utils/pcnWorkflowRuntime';
@@ -21,7 +21,6 @@ export interface PcnDossierWorkflowPanelProps {
   sampleRoutes?: PcnSampleRoute[];
   labRequests?: OutboundLabRequest[];
   issuancePackages?: IssuancePackage[];
-  draftWorkspaces?: PcnDraftWorkspace[];
   initialNodeId?: string;
   workflowTasks: PcnDossierWorkflowTask[];
   users?: PcnUserAccount[];
@@ -35,7 +34,6 @@ export interface PcnDossierWorkflowPanelProps {
   onCreateFromForm?: (requirementId: string) => void;
   onOpenDrafting?: (item: PcnDossierNodeDocumentItem, nodeId: string) => string | undefined;
   onGenerateAndAttach?: (nodeId: string, requirementId: string) => Promise<void>;
-  onConfirmDocument?: (requirementId: string) => Promise<void>;
   onRemoveCurrent?: (requirementId: string) => Promise<void>;
   onWaiveDocument?: (requirementId: string, reason: string) => Promise<void>;
   onClearDocumentWaiver?: (requirementId: string) => Promise<void>;
@@ -54,7 +52,7 @@ const CURRENT_NODE_STATUS_LABELS: Record<PcnWorkflowRuntimeNode['status'], strin
   CANCELLED: 'Đã hủy',
 };
 
-export function PcnDossierWorkflowPanel({ dossier, requirements, documents, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], draftWorkspaces = [], workflowTasks, users: _users = [], currentUser, canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onCreateFromForm, onOpenDrafting, onGenerateAndAttach, onConfirmDocument, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, initialNodeId }: PcnDossierWorkflowPanelProps) {
+export function PcnDossierWorkflowPanel({ dossier, requirements, documents, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], workflowTasks, users: _users = [], currentUser, canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onCreateFromForm, onOpenDrafting, onGenerateAndAttach, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, initialNodeId }: PcnDossierWorkflowPanelProps) {
   const workflow = useMemo(() => getPcnWorkflowForDossier(dossier), [dossier]);
   const dossierTasks = useMemo(() => workflowTasks.filter((task) => task.dossierId === dossier.id), [dossier.id, workflowTasks]);
   const requiredRequirementIds = useMemo(() => {
@@ -73,7 +71,6 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
     requirements,
     documents,
     documentWaivers,
-    draftWorkspaces,
     businessFacts: buildPcnDossierNodeBusinessFacts({
       actionKey: node.actionKey,
       dossierId: dossier.id,
@@ -86,7 +83,7 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
       approvalSteps,
       issuancePackages,
     }),
-  })])) as Record<string, PcnDossierNodeWorkProjection | undefined>, [approvalSteps, dossier.id, dossier.ownerUsername, dossier.status, documentWaivers, documents, draftWorkspaces, issuancePackages, labRequests, requirements, results, runtime.nodes, sampleLots, sampleRoutes]);
+  })])) as Record<string, PcnDossierNodeWorkProjection | undefined>, [approvalSteps, dossier.id, dossier.ownerUsername, dossier.status, documentWaivers, documents, issuancePackages, labRequests, requirements, results, runtime.nodes, sampleLots, sampleRoutes]);
 
   useEffect(() => {
     const requested = initialNodeId ? runtime.byNodeId[initialNodeId] : undefined;
@@ -134,7 +131,6 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
 
   return (
     <div className="min-w-0 min-h-0 space-y-4" data-testid="pcn-dossier-workflow-first">
-      {/* 1. Hành động kế tiếp */}
       <section data-testid="pcn-current-step-summary" className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">Bước cần xử lý</p>
@@ -148,16 +144,6 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
         </div>
       </section>
 
-      {/* 2. Workflow rail ngang tự nhiên */}
-      <section data-testid="pcn-workflow-map" className="rounded-xl border border-slate-200 bg-slate-50 p-3" aria-labelledby="pcn-workflow-map-title">
-        <div className="mb-2 flex min-h-11 items-center justify-between gap-3 border-b border-slate-200 pb-2">
-          <h2 id="pcn-workflow-map-title" className="text-xs font-black text-slate-900">Tiến trình hồ sơ PCN</h2>
-          <span className="shrink-0 text-[10px] font-bold text-slate-500">{completedNodeCount}/{runtime.nodes.length} bước đã xong</span>
-        </div>
-        <PcnDossierFlow nodes={runtime.nodes} projections={projections} selectedNodeId={selectedNodeId} onSelectNode={selectNode} />
-      </section>
-
-      {/* 3. Nội dung node đang chọn / checklist */}
       {selectedProjection?.isSelectable ? (
         <PcnDossierNodeWorkPanel
           panelId={`pcn-node-panel-${selectedProjection.nodeId}`}
@@ -175,7 +161,6 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
           onCreateFromForm={onCreateFromForm}
           onOpenDrafting={onOpenDrafting ? (item) => onOpenDrafting(item, selectedProjection.nodeId) : undefined}
           onGenerateAndAttach={(requirementId) => generateAndAttach(selectedProjection.nodeId, requirementId)}
-          onConfirmDocument={onConfirmDocument || ((requirementId) => usePcnStore.getState().confirmDossierDocument(dossier.id, requirementId))}
           onRemoveCurrent={onRemoveCurrent || ((requirementId) => usePcnStore.getState().removeCurrentDossierDocument(dossier.id, requirementId))}
           onWaive={onWaiveDocument}
           onClearWaiver={onClearDocumentWaiver}

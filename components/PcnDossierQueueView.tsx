@@ -302,11 +302,6 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
           </button>
         </div>
       )}
-      <PgdcnDossierQuickPeek
-        item={peekItem}
-        onClose={() => setPeekItem(null)}
-        onOpenDossier={onOpenDossier}
-      />
     </section>
   );
 }

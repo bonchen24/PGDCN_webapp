@@ -125,13 +125,6 @@
 }
 
 @layer components {
-  .pgdcn-semantic-surface {
-    background-color: var(--pcn-surface);
-    border-color: var(--pcn-border);
-    border-radius: var(--pcn-radius-lg);
-    box-shadow: var(--pcn-shadow);
-  }
-
   section[role="dialog"] > header > div:first-child > span[aria-hidden="true"] > span.text-sm.font-black {
     display: block;
     width: 1rem;

@@ -7,12 +7,9 @@ async function parse(response: Response): Promise<any> {
   return payload;
 }
 
-export async function fetchPcnDraftWorkspaces(options?: { mineOnly?: boolean; sourceDossierId?: string }): Promise<PcnDraftWorkspace[]> {
-  const query = new URLSearchParams();
-  if (options?.mineOnly) query.set('mineOnly', 'true');
-  if (options?.sourceDossierId) query.set('sourceDossierId', options.sourceDossierId);
-  const qs = query.toString() ? `?${query.toString()}` : '';
-  const response = await fetch(`/api/pcn/drafts${qs}`, { credentials: 'same-origin' });
+export async function fetchPcnDraftWorkspaces(options?: { mineOnly?: boolean }): Promise<PcnDraftWorkspace[]> {
+  const query = options?.mineOnly ? '?mineOnly=true' : '';
+  const response = await fetch(`/api/pcn/drafts${query}`, { credentials: 'same-origin' });
   return (await parse(response)).items || [];
 }
 

@@ -8,7 +8,6 @@ import type {
   PcnDossierWorkflowTask,
   PcnUserAccount,
   PcnWorkflowSnapshot,
-  ReturnedTestResult,
 } from '../types.ts';
 import { executePcnWorkflowTaskMutation } from '../lib/server/workflow-tasks.ts';
 import { pool } from '../utils/db.ts';
@@ -49,7 +48,6 @@ interface MutationFixture {
   tasks?: PcnDossierWorkflowTask[];
   documents?: PcnDossierDocument[];
   requirements?: PcnDocumentRequirement[];
-  results?: ReturnedTestResult[];
   documentWaivers?: CertificationDossier['documentWaivers'];
   ownerUsername?: string;
 }
@@ -80,7 +78,6 @@ async function runMutation(
     if (collection === 'pcnDossierWorkflowTasks') return tasks.map((item) => ({ document_id: item.id, data: item }));
     if (collection === 'dossierDocuments') return (fixture.documents || []).map((item) => ({ document_id: item.id, data: item }));
     if (collection === 'pcnDocumentRequirements') return (fixture.requirements || []).map((item) => ({ document_id: item.id, data: item }));
-    if (collection === 'returnedResults') return (fixture.results || []).map((item) => ({ document_id: item.id, data: item }));
     return [];
   };
   const originalDescriptor = Object.getOwnPropertyDescriptor(pool, 'connect');
@@ -174,63 +171,4 @@ test('server workflow gates ignore only defined optional requirements and fail c
   }, 'complete'), 409);
 
   await assertStatusCode(runMutation({ ownerUsername: 'other-user', requirements, documents }, 'complete'), 403);
-});
-
-test('server task completion requires custom current files to be operator-confirmed', async () => {
-  const requirements = [requirement('required-a', true), requirement('optional-a', false)];
-  const uploaded = { ...document('required-a', 'PRESENT'), lifecycleStatus: 'UPLOADED' as const, currentVersionId: 'asset-a', versions: [{ assetId: 'asset-a', fileName: 'evidence.pdf', byteSize: 10, sha256: 'a'.repeat(64), uploadedAt: '2026-10-10T00:00:00.000Z' }] };
-  const optionalMissing = document('optional-a', 'MISSING');
-  await assertStatusCode(runMutation({ requirements, documents: [uploaded, optionalMissing] }, 'complete'), 409);
-
-  const confirmed = { ...uploaded, lifecycleStatus: 'CONFIRMED' as const };
-  const completed = await runMutation({ requirements, documents: [confirmed, optionalMissing] }, 'complete');
-  assert.equal(completed.result.task.status, 'COMPLETED');
-});
-
-test('server task gates honor custom snapshot levels for required and optional documents', async () => {
-  const definition = {
-    domain: 'PCN' as const,
-    id: 'pcn-custom-proof',
-    code: 'CUSTOM_PROOF',
-    name: 'Bằng chứng bổ sung',
-    level: 'REQUIRED' as const,
-    source: 'UPLOAD_EXTERNAL' as const,
-    ownerRole: 'CUSTOMER' as const,
-    multiplicity: 'SINGLE' as const,
-  };
-  const workflow: PcnWorkflowSnapshot = {
-    ...makeWorkflow([definition.id]),
-    requirementDefinitions: [definition],
-  };
-  const uploaded = {
-    ...document(definition.id, 'PRESENT'),
-    lifecycleStatus: 'UPLOADED' as const,
-    currentVersionId: 'custom-asset',
-    versions: [{ assetId: 'custom-asset', fileName: 'proof.pdf', byteSize: 10, sha256: 'b'.repeat(64), uploadedAt: '2026-10-10T00:00:00.000Z' }],
-  };
-  await assertStatusCode(runMutation({ workflow, documents: [uploaded] }, 'complete'), 409);
-
-  const confirmed = { ...uploaded, lifecycleStatus: 'CONFIRMED' as const };
-  const requiredCompleted = await runMutation({ workflow, documents: [confirmed] }, 'complete');
-  assert.equal(requiredCompleted.result.task.status, 'COMPLETED');
-
-  const optionalWorkflow: PcnWorkflowSnapshot = {
-    ...makeWorkflow(['pcn-custom-optional']),
-    requirementDefinitions: [{ ...definition, id: 'pcn-custom-optional', level: 'OPTIONAL' }],
-  };
-  const optionalCompleted = await runMutation({ workflow: optionalWorkflow }, 'complete');
-  assert.equal(optionalCompleted.result.task.status, 'COMPLETED');
-
-  const conditionalWorkflow: PcnWorkflowSnapshot = {
-    ...makeWorkflow(['pcn-custom-conditional']),
-    requirementDefinitions: [{ ...definition, id: 'pcn-custom-conditional', level: 'CONDITIONAL', condition: 'RESULT_FAILED' }],
-  };
-  const inapplicableConditionalCompleted = await runMutation({ workflow: conditionalWorkflow }, 'complete');
-  assert.equal(inapplicableConditionalCompleted.result.task.status, 'COMPLETED');
-
-  const failedResult: ReturnedTestResult = {
-    id: 'result-failed', dossierId: 'dossier-1', labRequestId: 'pyc-1', round: 1, outcome: 'FAIL',
-    receivedAt: '2026-10-10T00:00:00.000Z',
-  };
-  await assertStatusCode(runMutation({ workflow: conditionalWorkflow, results: [failedResult] }, 'complete'), 409);
 });

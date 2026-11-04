@@ -5,7 +5,7 @@ import test from 'node:test';
 import { chromium } from 'playwright';
 
 const rawBaseUrl = process.env.PGDCN_UX_BASE_URL;
-const artifactRootBase = resolve('docs/ux-audit/artifacts/superneat/2026-11-01');
+const artifactRootBase = resolve('docs/ux-audit/artifacts/density/coverage-2026-10-28');
 const artifactSet = String(process.env.PGDCN_COVERAGE_ARTIFACT_SET || '').trim();
 assert.ok(!artifactSet || /^[a-z0-9-]+$/iu.test(artifactSet), `Invalid artifact set name: ${artifactSet}`);
 const artifactRoot = resolve(artifactRootBase, artifactSet);
@@ -38,10 +38,6 @@ const ROLES = {
   viewer: {
     id: 'viewer', username: 'synthetic_density_viewer', name: 'Synthetic Viewer', role: 'viewer', systemRole: 'viewer',
     departmentRoleCode: 'GD', fieldCodes: ['QC4'], active: true, departmentScopes: ['PCN'], pgdRole: 'PGD_VIEWER',
-  },
-  manager: {
-    id: 'manager', username: 'synthetic_density_manager', name: 'Synthetic PGD Manager', role: 'staff', systemRole: 'staff',
-    departmentRoleCode: 'GD', fieldCodes: ['QC4'], active: true, departmentScopes: ['PGD'], pgdRole: 'PGD_MANAGER',
   },
 };
 
@@ -554,17 +550,12 @@ function scenarios() {
   const pcnSampleRoutes = pcnSamples.map((lot) => lot.route);
   const pcnSampleLots = pcnSamples.map(({ item, route, ...lot }) => lot);
   const base = [
-    { id: 'dashboard-dual-scope', role: ROLES.admin, path: '/pgdcn' },
-    { id: 'pcn-proposals', role: ROLES.staff, path: '/pgdcn/pcn', menu: 'Chứng nhận', pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL] },
-    { id: 'activity-admin-empty', role: ROLES.admin, path: '/pgdcn', menu: 'Nhật ký hệ thống' },
-    { id: 'system-settings-admin', role: ROLES.admin, path: '/pgdcn', menu: 'Cài đặt hệ thống' },
-    { id: 'dossier-templates-manager', role: ROLES.manager, path: '/pgdcn', menu: 'Hồ sơ mẫu', pgdBootstrap: EMPTY_PGD_BOOTSTRAP },
     { id: 'staff-pcn-register', role: ROLES.staff, path: '/pgdcn/pcn?section=operations', menu: 'Sổ dữ liệu PCN', pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL], fixtureMarkers: [PCN_DOSSIER.dossierCode] },
     { id: 'staff-pcn-samples', role: ROLES.staff, path: '/pgdcn/pcn', menu: 'Sổ quản lý mẫu PCN', pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL], pcnSampleLots, pcnSampleItems, pcnSampleRoutes },
     { id: 'staff-pcn-drafting', role: ROLES.staff, path: '/pgdcn', menu: 'Soạn thảo văn bản', draftingDomain: 'PCN', pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL], pcnTemplates: [PCN_TEMPLATE] },
     { id: 'staff-customers', role: ROLES.staff, path: '/pgdcn', menu: 'Khách hàng', customers: [] },
     { id: 'customers-long', role: ROLES.admin, path: '/pgdcn', menu: 'Khách hàng', customers: CUSTOMER_FIXTURES, fixtureMarkers: [CUSTOMER_FIXTURES[0].customerCode, CUSTOMER_FIXTURES.at(-1).customerCode] },
-    { id: 'viewer-pcn-register', role: ROLES.viewer, path: '/pgdcn/pcn', menu: 'Sổ dữ liệu PCN', viewerMenu: true, pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL] },
+    { id: 'viewer-pcn-register', role: ROLES.viewer, path: '/pgdcn/pcn', menu: 'Sổ dữ liệu', viewerMenu: true, pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL] },
     { id: 'viewer-pcn-detail-readonly', role: ROLES.viewer, path: `/pgdcn/pcn/dossiers/${PCN_DOSSIER.id}`, pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL], pcnDocuments: [] },
     { id: 'pcn-issued-detail', role: ROLES.admin, path: `/pgdcn/pcn/dossiers/${PCN_DOSSIER.id}`, pcnDossiers: [pcnIssued], pcnProposals: [PCN_PROPOSAL] },
     { id: 'pcn-cancelled-detail', role: ROLES.admin, path: `/pgdcn/pcn/dossiers/${PCN_DOSSIER.id}`, pcnDossiers: [pcnCancelled], pcnProposals: [PCN_PROPOSAL] },
@@ -634,206 +625,6 @@ test('PGDCN density coverage captures missing roles, terminal states, intake, an
     assert.deepEqual(audit.externalRequests, [], `Unexpected external requests: ${JSON.stringify(audit.externalRequests)}`);
     assert.deepEqual(audit.captureErrors, [], `Capture/navigation failures: ${JSON.stringify(audit.captureErrors, null, 2)}`);
     assert.equal(audit.pageErrors.length, 0, `Browser page errors: ${JSON.stringify(audit.pageErrors, null, 2)}`);
-  } finally {
-    await browser.close();
-  }
-});
-
-test('PGDCN Superneat browser navigation preserves all destinations, history, notifications, and mobile focus', {
-  skip: !rawBaseUrl || process.env.PGDCN_COVERAGE_NAV_SMOKE !== '1' ? 'PGDCN navigation browser smoke is opt-in' : false,
-  timeout: 120000,
-}, async () => {
-  const base = new URL(rawBaseUrl);
-  assert.ok(['127.0.0.1', 'localhost'].includes(base.hostname), `Only loopback preview allowed, got ${base.hostname}`);
-  const audit = { mode: 'QA_MOCKED', scenario: 'superneat-navigation-smoke', apiGets: [], apiMutationAttempts: [], externalRequests: [], pageErrors: [], consoleErrors: [] };
-  const browser = await chromium.launch({ headless: true });
-  const destinations = [
-    { label: '\\u0054\\u1ed5ng quan', path: '/pgdcn' },
-    { label: 'Kh\\u00e1ch h\\u00e0ng', path: '/pgdcn?section=customers' },
-    { label: 'Tr\\u1ee3 l\\u00fd AI', path: '/pgdcn?section=assistant' },
-    { label: 'Nh\\u1eadt k\\u00fd h\\u1ec7 th\\u1ed1ng', path: '/pgdcn?section=activityLogs' },
-    { label: 'So\\u1ea1n th\\u1ea3o v\\u0103n b\\u1ea3n', path: '/pgdcn?section=document-drafting' },
-    { label: 'Ch\\u1ee9ng nh\\u1eadn', group: 'Ch\\u1ee9ng nh\\u1eadn \\u00b7 PCN', path: '/pgdcn/pcn' },
-    { label: 'S\\u1ed5 d\\u1eef li\\u1ec7u PCN', group: 'Ch\\u1ee9ng nh\\u1eadn \\u00b7 PCN', path: '/pgdcn/pcn?section=operations' },
-    { label: 'S\\u1ed5 qu\\u1ea3n l\\u00fd m\\u1eabu PCN', group: 'Ch\\u1ee9ng nh\\u1eadn \\u00b7 PCN', path: '/pgdcn/pcn?section=lab-operations' },
-    { label: 'Gi\\u00e1m \\u0111\\u1ecbnh', group: 'Gi\\u00e1m \\u0111\\u1ecbnh \\u00b7 PGD', path: '/pgdcn/pgd' },
-    { label: 'S\\u1ed5 d\\u1eef li\\u1ec7u PGD', group: 'Gi\\u00e1m \\u0111\\u1ecbnh \\u00b7 PGD', path: '/pgdcn/pgd?section=operations' },
-    { label: 'S\\u1ed5 qu\\u1ea3n l\\u00fd m\\u1eabu PGD', group: 'Gi\\u00e1m \\u0111\\u1ecbnh \\u00b7 PGD', path: '/pgdcn/pgd?section=sample-operations' },
-    { label: 'H\\u1ed3 s\\u01a1 m\\u1eabu', path: '/pgdcn?section=dossier-templates' },
-    { label: 'C\\u00e0i \\u0111\\u1eb7t h\\u1ec7 th\\u1ed1ng', path: '/pgdcn?section=system-settings' },
-  ];
-  const decodeUnicode = (value) => value.replace(/\\u([0-9a-f]{4})/giu, (_match, hex) => String.fromCharCode(parseInt(hex, 16)));
-  for (const destination of destinations) {
-    destination.label = decodeUnicode(destination.label);
-    if (destination.group) destination.group = decodeUnicode(destination.group);
-  }
-  try {
-    const desktop = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-    await installMocks(desktop, base.origin, ROLES.admin, { scenario: audit.scenario, notifications: [NOTIFICATION_FIXTURES[0]] }, audit);
-    await desktop.goto(new URL('/pgdcn', base).toString(), { waitUntil: 'domcontentloaded' });
-    await desktop.locator('#pgdcn-main-content').waitFor({ state: 'visible', timeout: 15000 });
-
-    const notificationToggle = desktop.getByRole('button', { name: decodeUnicode('Th\\u00f4ng b\\u00e1o ph\\u00f2ng') });
-    await notificationToggle.click();
-    const notificationDialog = desktop.getByRole('dialog', { name: decodeUnicode('Danh s\\u00e1ch th\\u00f4ng b\\u00e1o ph\\u00f2ng') });
-    await notificationDialog.waitFor({ state: 'visible' });
-    await desktop.getByRole('button', { name: destinations[1].label, exact: true }).click();
-    await notificationDialog.waitFor({ state: 'hidden' });
-
-    const navigationResults = [];
-    for (const destination of destinations) {
-      const target = desktop.getByRole('button', { name: destination.label, exact: true });
-      if (!(await target.isVisible().catch(() => false))) {
-        assert.ok(destination.group, `Missing destination without a collapsible group: ${destination.label}`);
-        await desktop.getByRole('button', { name: destination.group, exact: true }).click();
-      }
-      await target.click();
-      await desktop.waitForFunction((expected) => `${location.pathname}${location.search}` === expected, destination.path);
-      await target.waitFor({ state: 'visible' });
-      assert.equal(await target.getAttribute('aria-current'), 'page', `${destination.label} must be the active destination`);
-      navigationResults.push({ label: destination.label, path: destination.path });
-    }
-
-    await desktop.goBack();
-    await desktop.waitForFunction((expected) => `${location.pathname}${location.search}` === expected, destinations[11].path);
-    await desktop.getByRole('button', { name: destinations[11].label, exact: true }).waitFor({ state: 'visible' });
-    await desktop.waitForFunction(() => document.activeElement?.id === 'pgdcn-main-content');
-    const back = { path: await desktop.evaluate(() => location.pathname + location.search), focusRestored: true };
-    await desktop.goForward();
-    await desktop.waitForFunction((expected) => `${location.pathname}${location.search}` === expected, destinations[12].path);
-    await desktop.waitForFunction(() => document.activeElement?.id === 'pgdcn-main-content');
-    const forward = { path: await desktop.evaluate(() => location.pathname + location.search), focusRestored: true };
-    await desktop.close();
-
-    const canonical = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-    await installMocks(canonical, base.origin, ROLES.admin, {
-      scenario: audit.scenario,
-      pcnDossiers: [PCN_DOSSIER],
-      pcnProposals: [PCN_PROPOSAL],
-    }, audit);
-    const canonicalPath = `/pgdcn/pcn/dossiers/${encodeURIComponent(PCN_DOSSIER.id)}`;
-    await canonical.goto(new URL(canonicalPath, base).toString(), { waitUntil: 'domcontentloaded' });
-    await canonical.locator('#pgdcn-main-content').waitFor({ state: 'visible', timeout: 15000 });
-    const operationsTarget = canonical.getByRole('button', { name: destinations[6].label, exact: true });
-    if (!(await operationsTarget.isVisible().catch(() => false))) {
-      await canonical.getByRole('button', { name: destinations[6].group, exact: true }).click();
-    }
-    await operationsTarget.click();
-    await canonical.waitForFunction(() => `${location.pathname}${location.search}` === '/pgdcn/pcn?section=operations');
-    await canonical.goBack();
-    await canonical.waitForFunction((expected) => location.pathname === expected, canonicalPath);
-    const canonicalHistory = {
-      operationsPath: '/pgdcn/pcn?section=operations',
-      backPath: await canonical.evaluate(() => location.pathname + location.search),
-    };
-    await canonical.close();
-
-    const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
-    await installMocks(mobile, base.origin, ROLES.admin, { scenario: audit.scenario, notifications: [] }, audit);
-    await mobile.goto(new URL('/pgdcn', base).toString(), { waitUntil: 'domcontentloaded' });
-    await mobile.locator('#pgdcn-main-content').waitFor({ state: 'visible', timeout: 15000 });
-    const menuTrigger = mobile.getByRole('button', { name: decodeUnicode('M\\u1edf menu ph\\u00f2ng') });
-    await menuTrigger.click();
-    const drawer = mobile.getByRole('dialog', { name: decodeUnicode('Đi\\u1ec1u h\\u01b0\\u1edbng PGDCN') });
-    await drawer.waitFor({ state: 'visible' });
-    await mobile.keyboard.press('Escape');
-    await drawer.waitFor({ state: 'hidden' });
-    await mobile.waitForFunction((expected) => document.activeElement?.getAttribute('aria-label') === expected, decodeUnicode('M\\u1edf menu ph\\u00f2ng'));
-    await menuTrigger.click();
-    await drawer.waitFor({ state: 'visible' });
-    await mobile.getByRole('button', { name: destinations[1].label, exact: true }).click();
-    await drawer.waitFor({ state: 'hidden' });
-    await mobile.waitForFunction(() => document.activeElement?.id === 'pgdcn-main-content');
-    const mobileFocus = { escapeReturnedToTrigger: true, navigationReturnedToMain: true };
-    await mobile.close();
-
-    const result = { mode: audit.mode, baseUrl: base.origin, destinationCount: navigationResults.length, destinations: navigationResults, notificationClosedOnNavigation: true, back, forward, canonicalHistory, mobileFocus, apiMutationAttempts: audit.apiMutationAttempts, externalRequests: audit.externalRequests, pageErrors: audit.pageErrors, consoleErrors: audit.consoleErrors };
-    assert.equal(navigationResults.length, 13);
-    assert.deepEqual(audit.apiMutationAttempts, []);
-    assert.deepEqual(audit.externalRequests, []);
-    assert.deepEqual(audit.pageErrors, []);
-    assert.deepEqual(audit.consoleErrors, []);
-    await mkdir(artifactRoot, { recursive: true });
-    await writeFile(resolve(artifactRoot, 'navigation-smoke.json'), `${JSON.stringify(result, null, 2)}\\n`, 'utf8');
-  } finally {
-    await browser.close();
-  }
-});
-
-test('PGDCN PCN and PGD queue quick peek stays read-only and opens canonical dossiers on desktop and mobile', {
-  skip: !rawBaseUrl || process.env.PGDCN_COVERAGE_PEEK_SMOKE !== '1' ? 'PGDCN queue quick-peek browser smoke is opt-in' : false,
-  timeout: 120000,
-}, async () => {
-  const base = new URL(rawBaseUrl);
-  const audit = { mode: 'QA_MOCKED', scenario: 'superneat-quick-peek-smoke', apiGets: [], apiMutationAttempts: [], externalRequests: [], pageErrors: [], consoleErrors: [] };
-  const browser = await chromium.launch({ headless: true });
-  const pgdPeekRequest = makePgdRequest('qa-density-peek-pgd', 'WAITING_LAB_RESULTS', 91);
-  const journeys = [
-    {
-      domain: 'pcn',
-      path: '/pgdcn/pcn?section=operations',
-      dossierCode: PCN_DOSSIER.dossierCode,
-      dossierId: PCN_DOSSIER.id,
-      customerName: PCN_DOSSIER.customerSnapshot.name,
-      fixtures: { pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL] },
-    },
-    {
-      domain: 'pgd',
-      path: '/pgdcn/pgd?section=operations',
-      dossierCode: pgdPeekRequest.requestCode,
-      dossierId: pgdPeekRequest.id,
-      customerName: pgdPeekRequest.customerSnapshot.name,
-      fixtures: { pgdBootstrap: { ...EMPTY_PGD_BOOTSTRAP, requests: [pgdPeekRequest] } },
-    },
-  ];
-  try {
-    for (const journey of journeys) {
-      for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
-        const page = await browser.newPage({ viewport });
-        await installMocks(page, base.origin, ROLES.admin, { scenario: audit.scenario, ...journey.fixtures }, audit);
-        await page.goto(new URL(journey.path, base).toString(), { waitUntil: 'domcontentloaded' });
-        await page.locator('#pgdcn-main-content').waitFor({ state: 'visible', timeout: 15000 });
-        const peekTrigger = page.getByRole('button', { name: /Xem nhanh/u }).first();
-        await peekTrigger.waitFor({ state: 'visible', timeout: 10000 });
-        await peekTrigger.click();
-        const panel = page.getByRole('dialog', { name: new RegExp(`Xem nhanh.*${journey.dossierCode}`, 'u') });
-        await panel.waitFor({ state: 'visible', timeout: 5000 });
-        assert.equal(await panel.getAttribute('aria-modal'), 'true');
-        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth === document.documentElement.clientWidth), true, 'Quick peek must not create document-level horizontal overflow');
-        assert.equal(await panel.locator('form,input,select,textarea').count(), 0, 'Peek must not expose mutation forms');
-        await panel.getByRole('button', { name: 'Mở hồ sơ đầy đủ', exact: true }).waitFor({ state: 'visible' });
-        assert.ok(await panel.getByText(journey.customerName, { exact: false }).count(), 'Peek must show the dossier summary from the current queue projection');
-        const peekArtifactDirectory = resolve('docs/ux-audit/artifacts/superneat/2026-11-01');
-        await mkdir(peekArtifactDirectory, { recursive: true });
-        await page.addStyleTag({ content: '.nextjs-portal, nextjs-portal { display: none !important; }' });
-        const device = viewport.width >= 1024 ? 'desktop-1440' : 'mobile-390';
-        await page.screenshot({ path: resolve(peekArtifactDirectory, `quick-peek-${journey.domain}-${device}.png`), animations: 'disabled', fullPage: false });
-
-        if (viewport.width < 1024) {
-          const bounds = await panel.boundingBox();
-          assert.ok(bounds && bounds.width <= viewport.width, 'Mobile peek sheet must fit the viewport width');
-          await panel.getByRole('button', { name: 'Mở hồ sơ đầy đủ', exact: true }).focus();
-          await page.keyboard.press('Tab');
-          assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Đóng', 'Tab from the final mobile sheet action must remain inside the modal');
-          await page.keyboard.press('Shift+Tab');
-          assert.equal(await panel.getByRole('button', { name: 'Mở hồ sơ đầy đủ', exact: true }).evaluate((button) => document.activeElement === button), true, 'Shift+Tab from the close control must cycle to the final sheet action');
-          await page.keyboard.press('Escape');
-          await panel.waitFor({ state: 'hidden' });
-          await page.waitForFunction((trigger) => document.activeElement === trigger, await peekTrigger.elementHandle());
-          await peekTrigger.click();
-          await panel.waitFor({ state: 'visible' });
-        }
-
-        await panel.getByRole('button', { name: 'Mở hồ sơ đầy đủ', exact: true }).click();
-        await page.waitForURL(new RegExp(`/pgdcn/${journey.domain}/dossiers/${journey.dossierId}`));
-        await panel.waitFor({ state: 'hidden' });
-        await page.close();
-      }
-    }
-    assert.deepEqual(audit.apiMutationAttempts, [], 'Opening and closing peek must issue no API mutations');
-    assert.deepEqual(audit.externalRequests, []);
-    assert.deepEqual(audit.pageErrors, []);
-    assert.deepEqual(audit.consoleErrors, []);
   } finally {
     await browser.close();
   }

@@ -25,10 +25,10 @@ test('PCN dossier detail follows the PGD focus surface and work-panel rhythm', (
   const flow = read('../components/PcnDossierFlow.tsx');
   const workPanel = read('../components/PcnDossierNodeWorkPanel.tsx');
 
-  assert.match(detail, /data-testid="pcn-dossier-focus-shell"/);
-  assert.match(detail, /data-testid="pcn-legacy-workflow-shell"/);
-  assert.match(detail, /data-testid="pcn-legacy-review-summary"/);
-  assert.match(detail, /Việc cần làm ngay/);
+    assert.match(detail, /data-testid="pcn-dossier-focus-shell"/);
+    assert.match(detail, /data-testid="pcn-legacy-workflow-shell"/);
+    assert.match(detail, /data-testid="pcn-legacy-review-summary"/);
+    assert.match(detail, /Việc cần làm ngay/);
   assert.match(detail, /bg-white px-3 py-3 sm:flex-row/);
   assert.match(detail, /Xem danh sách tài liệu/);
   assert.doesNotMatch(detail, /Mở checklist/);
@@ -52,7 +52,6 @@ test('workflow presentation stays aligned with current work on PCN and PGD dossi
   assert.match(pgdWorkspace, /<PgdDossierFlow/);
   assert.match(pgdWorkspace, /<PgdDossierStepWorkPanel request=/);
 });
-
 test('contextual assistant opens with the current dossier in both domains', () => {
   const appShell = read('../components/PgdcnAppShell.tsx');
   const pcnWorkflow = read('../components/PcnDossierDetailView.tsx');
@@ -66,3 +65,4 @@ test('contextual assistant opens with the current dossier in both domains', () =
   assert.match(assistantShell, /props.initialPgdRequestId/);
   assert.ok(pcnAssistant.includes('initialDossierId?: string'));
 });
+// --- End of pgdcn-pgd-aligned-dossier-ui.test.ts ---

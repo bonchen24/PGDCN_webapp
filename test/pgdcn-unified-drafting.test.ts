@@ -8,16 +8,16 @@ function read(relativePath: string): string {
   return fs.readFileSync(new URL(`../${relativePath}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 }
 
-test('navigation includes the shared Tài liệu & Biểu mẫu entry', () => {
+test('navigation includes shared drafting entry Hỗ trợ soạn thảo văn bản', () => {
   const visible = getPgdcnVisibleNavigation(['PCN', 'PGD']);
   const draftingItem = visible.find((item) => item.id === 'document-drafting');
   assert.ok(draftingItem, 'document-drafting must be present in shared navigation');
-  assert.equal(draftingItem.label, 'Tài liệu & Biểu mẫu');
+  assert.equal(draftingItem.label, 'Hỗ trợ soạn thảo văn bản');
   assert.equal(draftingItem.kind, 'shared');
 
   const sidebar = read('components/PgdcnSidebar.tsx');
   assert.match(sidebar, /section:\s*'document-drafting'/);
-  assert.match(sidebar, /Tài liệu & Biểu mẫu/);
+  assert.match(sidebar, /Soạn thảo văn bản/);
 });
 
 test('shared drafting route page forwards domain, tabs and context to PgdcnAppShell', () => {
@@ -95,9 +95,8 @@ test('client wrappers pgdApi and pcnDraftApi support opt-in mineOnly querying', 
   assert.match(pgdApi, /params\.set\('mineOnly', 'true'\)/);
 
   const pcnDraftApi = read('utils/pcnDraftApi.ts');
-  assert.match(pcnDraftApi, /fetchPcnDraftWorkspaces\(options\?: \{ mineOnly\?: boolean; sourceDossierId\?: string \}\)/);
-  assert.match(pcnDraftApi, /if \(options\?\.mineOnly\) query\.set\('mineOnly', 'true'\)/);
-  assert.match(pcnDraftApi, /if \(options\?\.sourceDossierId\) query\.set\('sourceDossierId', options\.sourceDossierId\)/);
+  assert.match(pcnDraftApi, /fetchPcnDraftWorkspaces\(options\?: \{ mineOnly\?: boolean \}\)/);
+  assert.match(pcnDraftApi, /options\?\.mineOnly \? '\?mineOnly=true' : ''/);
 });
 
 test('unified drafting preserves mounted state of both editors without ternary unmounting', () => {
@@ -265,91 +264,3 @@ test('behavioral simulation: owner authorization logic protects private drafts a
   assert.deepEqual(authorizeDraftUpdate(legacySharedDraft, { username: 'userB', isManager: false }), { allowed: true, status: 200 });
 });
 
-
-test('shared domain and task navigation preserves active view and context without redundant pickers', () => {
-  const unifiedView = read('components/PgdcnUnifiedDraftingView.tsx');
-  const pcnWorkspace = read('components/PcnDraftingWorkspaceView.tsx');
-  const pgdWorkspace = read('components/PgdDraftingWorkspaceView.tsx');
-
-  // Unified view preserves deep context and passes initial props without inserting an extra wrapper picker
-  assert.match(unifiedView, /initialDossierId=\{selectedPcnDossierId \|\| initialPcnDossierId\}/);
-  assert.match(unifiedView, /initialRequestId=\{selectedPgdRequestId \|\| initialPgdRequestId\}/);
-
-  // When dossier or request context is active, source is auto-filled and locked against redundant picker choices
-  assert.match(pcnWorkspace, /contextLocked/);
-  assert.match(pcnWorkspace, /Bối cảnh từ bước hồ sơ đã được giữ cố định/);
-  assert.match(pgdWorkspace, /contextLocked/);
-  assert.match(pgdWorkspace, /Bối cảnh hồ sơ đã mở sẵn/);
-});
-
-test('DOCX template source loading uses catalog or database and never references /public', () => {
-  const unifiedView = read('components/PgdcnUnifiedDraftingView.tsx');
-  const pcnWorkspace = read('components/PcnDraftingWorkspaceView.tsx');
-  const pgdWorkspace = read('components/PgdDraftingWorkspaceView.tsx');
-  const pcnCatalog = read('utils/pcnOperationalTemplateCatalog.ts');
-  const pgdCatalog = read('utils/pgdDocumentTemplates.ts');
-
-  // Verify no fallback or hardcoded reference to /public in any drafting files or template catalogs
-  assert.doesNotMatch(unifiedView, /\/public\//);
-  assert.doesNotMatch(pcnWorkspace, /\/public\//);
-  assert.doesNotMatch(pgdWorkspace, /\/public\//);
-  assert.doesNotMatch(pcnCatalog, /\/public\//);
-  assert.doesNotMatch(pgdCatalog, /\/public\//);
-
-  // Template sources are catalog or database
-  assert.match(unifiedView, /sourceType: isDb \? 'DATABASE' : 'CATALOG'/);
-  assert.match(unifiedView, /sourceType: 'CATALOG'/);
-});
-
-test('drafting UI explicitly clarifies created/draft status is not confirmed in dossier and distinguishes external upload', () => {
-  const pcnWorkspace = read('components/PcnDraftingWorkspaceView.tsx');
-  const pgdWorkspace = read('components/PgdDraftingWorkspaceView.tsx');
-
-  // Clear notice that drafting/generating does NOT mean confirmed in dossier
-  assert.match(pcnWorkspace, /data-testid="pcn-draft-confirmation-notice"/);
-  assert.match(pcnWorkspace, /Lưu bản nháp hoặc sinh tệp DOCX không đồng nghĩa xác nhận vào hồ sơ/);
-  assert.match(pcnWorkspace, /Xác nhận & gắn vào bộ hồ sơ/);
-  assert.match(pcnWorkspace, /Bổ sung tệp ngoại sinh/);
-
-  assert.match(pgdWorkspace, /data-testid="pgd-draft-confirmation-notice"/);
-  assert.match(pgdWorkspace, /Lưu bản nháp hoặc sinh tệp DOCX không đồng nghĩa xác nhận vào hồ sơ/);
-  assert.match(pgdWorkspace, /Xác nhận & gắn vào bộ hồ sơ/);
-  assert.match(pgdWorkspace, /Bổ sung tệp ngoại sinh/);
-});
-
-test('desktop layout sequences saved drafts, input and output with mobile vertical ordering', () => {
-  const pcnWorkspace = read('components/PcnDraftingWorkspaceView.tsx');
-  const pgdWorkspace = read('components/PgdDraftingWorkspaceView.tsx');
-
-  // PCN layout structure contains drafts / input / output ordering
-  assert.match(pcnWorkspace, /data-testid="pcn-document-navigation"/);
-  assert.match(pcnWorkspace, /data-testid="pcn-draft-field-sections"/);
-  assert.match(pcnWorkspace, /data-testid="pcn-drafting-outputs"/);
-
-  // PGD layout structure contains drafts / input / output ordering
-  assert.match(pgdWorkspace, /data-testid="pgd-drafting-session-drafts"/);
-  assert.match(pgdWorkspace, /data-testid="pgd-drafting-form"/);
-  assert.match(pgdWorkspace, /data-testid="pgd-drafting-outputs"/);
-});
-
-test('workflow template management is strictly distinguished from domain DOCX template settings', () => {
-  const templateMgmt = read('components/PgdcnDossierTemplateManagementView.tsx');
-  const systemSettings = read('components/PgdcnSystemSettingsView.tsx');
-  const pcnWorkspace = read('components/PcnDraftingWorkspaceView.tsx');
-  const pgdWorkspace = read('components/PgdDraftingWorkspaceView.tsx');
-
-  // Dossier Template Management is for workflow templates (nút, chuyển tiếp, lưu trình)
-  assert.match(templateMgmt, /PgdcnDossierTemplateEditor/);
-  assert.match(templateMgmt, /PgdcnDossierTemplatePreview/);
-  assert.match(templateMgmt, /DossierTemplateEditorModel/);
-
-  // System Settings must NOT contain DOCX template configuration
-  assert.doesNotMatch(systemSettings, /PcnTemplateSettingsModal/);
-  assert.doesNotMatch(systemSettings, /PcnDocxSettingsModal/);
-
-  // DOCX settings are opened contextually in drafting workspaces
-  assert.match(pcnWorkspace, /PcnDocxSettingsModal/);
-  assert.match(pcnWorkspace, /Cài đặt DOCX/);
-  assert.match(pgdWorkspace, /onOpenSettings/);
-  assert.match(pgdWorkspace, /Cài đặt DOCX/);
-});

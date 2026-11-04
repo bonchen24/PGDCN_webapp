@@ -4,7 +4,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { requireSymlinkCapability } from './helpers/symlink-capability.mjs';
 import assert from 'node:assert/strict';
 import { startPreview } from '../bin/preview.mjs';
 import { loadDiagram, writeDiagram } from '../renderers/shared/cli.mjs';
@@ -100,8 +99,7 @@ test('compare rejects case-only future targets before input work when the direct
   assert.equal(receipt.stage, 'prepare');
 });
 
-test('render reports an output symlink cycle as a structured output diagnostic', (t) => {
-  if (!requireSymlinkCapability(t, 'file')) return;
+test('render reports an output symlink cycle as a structured output diagnostic', () => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-output-cycle-'));
   const input = path.join(cwd, 'diagram.workflow.json');
   const output = path.join(cwd, 'cycle-a.html');
@@ -127,8 +125,7 @@ test('render reports an output symlink cycle as a structured output diagnostic',
   assert.ok(failure.diagnostics[0].supportedFixes.length > 0);
 });
 
-test('render rejects an output symlink that aliases its JSON input', (t) => {
-  if (!requireSymlinkCapability(t, 'file')) return;
+test('render rejects an output symlink that aliases its JSON input', () => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-output-render-'));
   const input = path.join(cwd, 'diagram.workflow.json');
   const output = path.join(cwd, 'diagram.html');
@@ -190,8 +187,7 @@ test('render rejects a relative meta.output that escapes the working directory',
   assert.equal(fs.existsSync(output), false);
 });
 
-test('render rejects a meta.output that escapes through a directory symlink', (t) => {
-  if (!requireSymlinkCapability(t, 'dir')) return;
+test('render rejects a meta.output that escapes through a directory symlink', () => {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-output-meta-link-'));
   const cwd = path.join(parent, 'work');
   const outside = path.join(parent, 'outside');
@@ -226,8 +222,7 @@ test('render requires a meta.output target with an html extension', () => {
   assert.equal(fs.existsSync(output), false);
 });
 
-test('render rejects a meta.output symlink that resolves to a non-html target', (t) => {
-  if (!requireSymlinkCapability(t, 'file')) return;
+test('render rejects a meta.output symlink that resolves to a non-html target', () => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-output-meta-extension-link-'));
   const input = path.join(cwd, 'diagram.workflow.json');
   const target = path.join(cwd, 'authored.json');
@@ -245,8 +240,7 @@ test('render rejects a meta.output symlink that resolves to a non-html target', 
   assert.equal(fs.readFileSync(target, 'utf8'), 'trusted target');
 });
 
-test('deliver rejects a future-path alias of its JSON input with a structured diagnostic', (t) => {
-  if (!requireSymlinkCapability(t, 'dir')) return;
+test('deliver rejects a future-path alias of its JSON input with a structured diagnostic', () => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-output-deliver-'));
   const realDirectory = path.join(cwd, 'real');
   const linkedDirectory = path.join(cwd, 'linked');
@@ -266,8 +260,7 @@ test('deliver rejects a future-path alias of its JSON input with a structured di
   assert.deepEqual(fs.readFileSync(input), source);
 });
 
-test('deliver rechecks aliases immediately before committing a verified candidate', { timeout: 10000 }, async (t) => {
-  if (!requireSymlinkCapability(t, 'dir')) return;
+test('deliver rechecks aliases immediately before committing a verified candidate', { timeout: 10000 }, async () => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-output-deliver-race-'));
   const installedRoot = path.join(cwd, 'skill');
   const installedBin = path.join(installedRoot, 'bin');
@@ -350,8 +343,7 @@ console.log(JSON.stringify({
   assert.deepEqual(fs.readFileSync(input), source);
 });
 
-test('compare rejects an artifact path that aliases either architecture input', (t) => {
-  if (!requireSymlinkCapability(t, 'dir')) return;
+test('compare rejects an artifact path that aliases either architecture input', () => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-output-compare-'));
   const realDirectory = path.join(cwd, 'real');
   const linkedDirectory = path.join(cwd, 'linked');
@@ -391,8 +383,7 @@ test('compare rejects a receipt path that aliases either architecture input', ()
   assert.equal(fs.existsSync(output), false);
 });
 
-test('compare rejects a dangling receipt symlink to the future artifact path', (t) => {
-  if (!requireSymlinkCapability(t, 'file')) return;
+test('compare rejects a dangling receipt symlink to the future artifact path', () => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-output-compare-pair-'));
   const output = path.join(cwd, 'delta.html');
   const receiptPath = path.join(cwd, 'delta.receipt.json');
@@ -435,8 +426,7 @@ test('preview applies the meta.output relative-path boundary before starting a s
   assert.equal(fs.existsSync(output), false);
 });
 
-test('the shared renderer rechecks its guarded output immediately before writing', (t) => {
-  if (!requireSymlinkCapability(t, 'dir')) return;
+test('the shared renderer rechecks its guarded output immediately before writing', () => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-output-render-race-'));
   const inputDirectory = path.join(cwd, 'input');
   const initialOutputDirectory = path.join(cwd, 'safe-output');
@@ -472,8 +462,7 @@ test('the shared renderer rechecks its guarded output immediately before writing
   assert.deepEqual(fs.readFileSync(input), source);
 });
 
-test('compare rechecks every target immediately before committing the artifact pair', { timeout: 10000 }, async (t) => {
-  if (!requireSymlinkCapability(t, 'dir')) return;
+test('compare rechecks every target immediately before committing the artifact pair', { timeout: 10000 }, async () => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-output-compare-race-'));
   const installedRoot = path.join(cwd, 'skill');
   const installedBin = path.join(installedRoot, 'bin');

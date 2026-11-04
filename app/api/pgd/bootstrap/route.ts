@@ -1,9 +1,8 @@
 import { NextRequest } from 'next/server';
 import { pool } from '@/lib/server/db';
-import { getPgdSessionUser, requirePgdSession } from '@/lib/server/pgd';
+import { requirePgdSession } from '@/lib/server/pgd';
 import { mapDocumentRow } from '@/lib/server/collections';
 import { jsonOk, jsonServerError } from '@/lib/server/response';
-import { canProposePgdWorkflow, isPgdWorkflowManager } from '@/lib/server/workflow-templates';
 import { sanitizePcnUserRow } from '@/lib/server/users';
 import {
   DEFAULT_PGD_CATALOG,
@@ -20,7 +19,6 @@ import {
   PgdDocumentTemplate,
 } from '@/utils/pgdDocumentTemplates';
 import { inspectPgdTemplateSource } from '@/utils/pgdTemplatePack';
-import { filterPgdWorkflowTemplatesByScope, type PgdWorkflowTemplate } from '@/utils/pgdWorkflowTemplate';
 
 function projectPgdDocumentTemplate(template: PgdDocumentTemplate): PgdDocumentTemplate {
   return { ...template, sourceInspection: inspectPgdTemplateSource(template) };
@@ -31,7 +29,6 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   const sessionError = requirePgdSession(req);
   if (sessionError) return sessionError;
-  const actor = getPgdSessionUser(req)!;
 
   try {
     const collections = [
@@ -85,11 +82,6 @@ export async function GET(req: NextRequest) {
 
     const persistedCatalog = items[0].filter(isPgdCatalogRecordAllowed) as PgdCatalogItem[];
     const activeCatalog = getPgdActiveCatalog(mergePgdCatalogDefaults(persistedCatalog));
-    const workflowTemplates = filterPgdWorkflowTemplatesByScope(items[20] as PgdWorkflowTemplate[], {
-      username: actor.username,
-      canManage: isPgdWorkflowManager(actor),
-      canPropose: canProposePgdWorkflow(actor),
-    });
 
     return jsonOk({
       customers: customerResult.rows.map((row: any) => mapDocumentRow(row)),
@@ -116,7 +108,7 @@ export async function GET(req: NextRequest) {
       labResultReviews: items[17],
       dossierIndexes: items[18],
       calibrationInstruments: items[19],
-      workflowTemplates,
+      workflowTemplates: items[20].filter((template: any) => template?.domain === 'pgd'),
     });
   } catch (error: any) {
     console.error('PGD bootstrap error:', error);

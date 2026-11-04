@@ -214,7 +214,7 @@ export async function getPgdDossierDocuments(requestId: string): Promise<PgdRequ
   };
 }
 
-export async function savePgdDossierDocument(requestId: string, input: SavePgdDossierDocumentInput): Promise<{ dossierDocument: PgdDossierDocument; request?: PgdInspectionRequest }> {
+export async function savePgdDossierDocument(requestId: string, input: SavePgdDossierDocumentInput): Promise<PgdDossierDocument> {
   const form = new FormData();
   form.set('requirementCode', input.requirementCode);
   form.set('title', input.title);
@@ -224,17 +224,12 @@ export async function savePgdDossierDocument(requestId: string, input: SavePgdDo
   if (input.documentDate) form.set('documentDate', input.documentDate);
   if (input.note) form.set('note', input.note);
   const payload = await request(`/api/pgd/requests/${encodeURIComponent(requestId)}/dossier-documents`, { method: 'POST', body: form });
-  return { dossierDocument: payload.dossierDocument as PgdDossierDocument, request: payload.request as PgdInspectionRequest | undefined };
+  return payload.dossierDocument as PgdDossierDocument;
 }
 
-export async function attachPgdGeneratedDocument(requestId: string, input: { documentId: string; requirementCode: string; title?: string }): Promise<{ dossierDocument: PgdDossierDocument; request?: PgdInspectionRequest }> {
+export async function attachPgdGeneratedDocument(requestId: string, input: { documentId: string; requirementCode: string; title?: string }): Promise<PgdDossierDocument> {
   const payload = await request(`/api/pgd/requests/${encodeURIComponent(requestId)}/dossier-documents/attach-generated`, json(input));
-  return { dossierDocument: payload.dossierDocument as PgdDossierDocument, request: payload.request as PgdInspectionRequest | undefined };
-}
-
-export async function confirmPgdDossierDocument(requestId: string, requirementCode: string): Promise<{ dossierDocument: PgdDossierDocument; request: PgdInspectionRequest }> {
-  const payload = await request(`/api/pgd/requests/${encodeURIComponent(requestId)}/dossier-documents/confirm`, json({ requirementCode }));
-  return { dossierDocument: payload.dossierDocument as PgdDossierDocument, request: payload.request as PgdInspectionRequest };
+  return payload.dossierDocument as PgdDossierDocument;
 }
 
 export async function assignPgdDossierOwner(requestId: string, ownerUsername: string): Promise<PgdInspectionRequest> {
@@ -313,9 +308,9 @@ export async function savePgdFieldActivityLog(log: PgdFieldActivityLog): Promise
   return payload.log as PgdFieldActivityLog;
 }
 
-export async function savePgdLabResultReview(review: PgdLabResultReview): Promise<{ review: PgdLabResultReview; request?: PgdInspectionRequest }> {
+export async function savePgdLabResultReview(review: PgdLabResultReview): Promise<PgdLabResultReview> {
   const payload = await request('/api/pgd/lab-result-reviews', json(review));
-  return { review: payload.review as PgdLabResultReview, request: payload.request as PgdInspectionRequest | undefined };
+  return payload.review as PgdLabResultReview;
 }
 
 export async function savePgdDossierIndex(index: PgdDossierIndex): Promise<PgdDossierIndex> {

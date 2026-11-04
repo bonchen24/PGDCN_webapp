@@ -18,7 +18,7 @@ import { isPcnDocumentWaiverValid } from './pcnDocumentWaivers.ts';
 
 export interface PcnDossierInspectionItem {
   requirement: PcnDocumentRequirement;
-  status: 'PRESENT' | 'MISSING' | 'UPLOADED' | 'GENERATED' | 'CONFIRMED' | 'WAIVED';
+  status: 'PRESENT' | 'MISSING' | 'WAIVED';
   versionCount: number;
   currentVersion?: PcnDossierDocumentVersion;
   waiver?: PcnDossierDocumentWaiver;
@@ -67,18 +67,6 @@ export interface PcnDossierInspection {
   summary: PcnDossierInspectionSummary;
 }
 
-export function getPcnDossierInspectionStatusLabel(status: PcnDossierInspectionItem['status']): string {
-  const labels: Record<PcnDossierInspectionItem['status'], string> = {
-    PRESENT: 'Đã có',
-    MISSING: 'Còn thiếu',
-    UPLOADED: 'Đã tải lên · chờ xác nhận',
-    GENERATED: 'Đã sinh · chờ xác nhận',
-    CONFIRMED: 'Đã xác nhận',
-    WAIVED: 'Đã bỏ qua',
-  };
-  return labels[status];
-}
-
 const STAGE_ORDER: readonly PcnDocumentRequirementStage[] = [
   'INTAKE',
   'LAB_ROUTING',
@@ -106,10 +94,6 @@ const FALLBACK_STATION_BY_STAGE: Record<PcnDocumentRequirementStage, PcnDossierS
   ARCHIVE: 'DELIVERY_ARCHIVE',
 };
 
-function isResolvedChecklistStatus(status: PcnDossierInspectionItem['status']): boolean {
-  return status === 'PRESENT' || status === 'CONFIRMED' || status === 'WAIVED';
-}
-
 function getInspectionStationKeys(requirement: PcnDocumentRequirement): PcnDossierStationKey[] {
   const configured = Array.isArray(requirement.stationKeys)
     ? requirement.stationKeys.filter((key) => PCN_PIPELINE_STATIONS.some((station) => station.key === key))
@@ -125,9 +109,7 @@ function getCurrentVersion(document?: PcnDossierDocument): PcnDossierDocumentVer
 
 function buildInspectionItem(requirement: PcnDocumentRequirement, document?: PcnDossierDocument, waiver?: PcnDossierDocumentWaiver): PcnDossierInspectionItem {
   const currentVersion = getCurrentVersion(document);
-  const status = currentVersion
-    ? document?.lifecycleStatus || 'PRESENT'
-    : isPcnDocumentWaiverValid(waiver) ? 'WAIVED' as const : 'MISSING' as const;
+  const status = currentVersion ? 'PRESENT' as const : isPcnDocumentWaiverValid(waiver) ? 'WAIVED' as const : 'MISSING' as const;
   return {
     requirement,
     status,
@@ -163,9 +145,9 @@ export function buildPcnDossierInspection(input: {
         stage,
         label: STAGE_LABELS[stage],
         items: stageItems,
-        present: stageItems.filter((item) => item.status === 'PRESENT' || item.status === 'CONFIRMED').length,
+        present: stageItems.filter((item) => item.status === 'PRESENT').length,
         total: stageItems.length,
-        missing: stageItems.filter((item) => !isResolvedChecklistStatus(item.status)).length,
+        missing: stageItems.filter((item) => item.status === 'MISSING').length,
         ...(input.compact || input.documentWaivers ? { waived: stageItems.filter((item) => item.status === 'WAIVED').length } : {}),
       };
     })
@@ -188,29 +170,29 @@ export function buildPcnDossierInspection(input: {
           : item.requirement.stages.some((stage) => station.requirementStages.includes(stage)))
         : getInspectionStationKeys(item.requirement).includes(station.key));
       const requiredItems = stationItems.filter((item) => item.requirement.required);
-      const requiredPresent = requiredItems.filter((item) => item.status === 'PRESENT' || item.status === 'CONFIRMED').length;
+      const requiredPresent = requiredItems.filter((item) => item.status === 'PRESENT').length;
       const requiredWaived = requiredItems.filter((item) => item.status === 'WAIVED').length;
       return {
         key: station.key,
         number: station.number,
         label: station.title,
         items: stationItems,
-        present: stationItems.filter((item) => item.status === 'PRESENT' || item.status === 'CONFIRMED').length,
+        present: stationItems.filter((item) => item.status === 'PRESENT').length,
         total: stationItems.length,
-        missing: stationItems.filter((item) => !isResolvedChecklistStatus(item.status)).length,
+        missing: stationItems.filter((item) => item.status === 'MISSING').length,
         ...(input.compact || input.documentWaivers ? { waived: stationItems.filter((item) => item.status === 'WAIVED').length } : {}),
         requiredPresent,
         requiredTotal: requiredItems.length,
-        requiredMissing: requiredItems.filter((item) => !isResolvedChecklistStatus(item.status)).length,
+        requiredMissing: requiredItems.filter((item) => item.status === 'MISSING').length,
         ...(input.compact || input.documentWaivers ? { requiredWaived } : {}),
         stationScore: getPcnDossierStationScore({ requiredPresent: requiredPresent + requiredWaived, requiredTotal: requiredItems.length }),
       };
     })
     .filter((station) => station.items.length > 0);
-  const present = items.filter((item) => item.status === 'PRESENT' || item.status === 'CONFIRMED').length;
+  const present = items.filter((item) => item.status === 'PRESENT').length;
   const waived = items.filter((item) => item.status === 'WAIVED').length;
   const requiredItems = items.filter((item) => item.requirement.required);
-  const requiredPresent = requiredItems.filter((item) => item.status === 'PRESENT' || item.status === 'CONFIRMED').length;
+  const requiredPresent = requiredItems.filter((item) => item.status === 'PRESENT').length;
   const requiredWaived = requiredItems.filter((item) => item.status === 'WAIVED').length;
 
   return {
@@ -219,10 +201,10 @@ export function buildPcnDossierInspection(input: {
     summary: {
       total: items.length,
       present,
-    missing: items.filter((item) => !isResolvedChecklistStatus(item.status)).length,
+      missing: items.filter((item) => item.status === 'MISSING').length,
       requiredTotal: requiredItems.length,
       requiredPresent,
-    requiredMissing: requiredItems.filter((item) => !isResolvedChecklistStatus(item.status)).length,
+      requiredMissing: requiredItems.filter((item) => item.status === 'MISSING').length,
       ...(input.compact || input.documentWaivers ? { waived, requiredWaived } : {}),
     },
   };

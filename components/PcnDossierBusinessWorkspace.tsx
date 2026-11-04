@@ -75,7 +75,6 @@ export type PcnDossierBusinessWorkspaceProps = {
   onOpenCurrentStep: () => void;
   onOpenTab: (tab: 'overview' | 'documents' | 'lab' | 'issuance') => void;
   onOpenDocumentOutput?: (kind: PcnGeneratedDocumentKind) => void;
-  showTimeline?: boolean;
 };
 
 export function PcnDossierBusinessWorkspace({
@@ -100,7 +99,6 @@ export function PcnDossierBusinessWorkspace({
   onOpenCurrentStep,
   onOpenTab,
   onOpenDocumentOutput,
-  showTimeline = true,
 }: PcnDossierBusinessWorkspaceProps) {
   const customerSnapshot = getPcnDossierCustomerSnapshot(dossier, proposal);
   const inspection = buildPcnDossierInspection({
@@ -252,11 +250,11 @@ export function PcnDossierBusinessWorkspace({
       })),
       emptyText: 'Chưa có PYC PTN liên kết với hồ sơ này.',
     }}
-    timeline={showTimeline ? {
+    timeline={{
       title: 'Work Log · lịch sử hồ sơ',
       items: activityLogs.map((log) => ({ id: log.id, title: log.summary, occurredAt: log.createdAt, actor: getPcnActorDisplayName(log.actorName, log.actorUsername, users), detail: log.entityLabel ? activityEntityLabels[log.entityType] + ' · ' + log.entityLabel : activityEntityLabels[log.entityType], tone: log.action === 'CREATED' ? 'success' : 'info' })),
       emptyText: 'Chưa có activity log liên kết với hồ sơ này.',
-    } : undefined}
+    }}
   />;
 }
 export default PcnDossierBusinessWorkspace;

@@ -28,7 +28,6 @@ import {
   approvePgdStep,
   assignPgdDossierOwner,
   attachPgdGeneratedDocument,
-  confirmPgdDossierDocument as confirmPgdDossierDocumentApi,
   createPgdInspection,
   updatePgdInspectionRequest,
   deletePgdInspection,
@@ -106,7 +105,6 @@ interface PgdStoreState {
   saveDossierDocument: (requestId: string, input: Parameters<typeof savePgdDossierDocumentApi>[1]) => Promise<PgdDossierDocument>;
   assignOwner: (requestId: string, ownerUsername: string) => Promise<PgdInspectionRequest>;
   attachGeneratedDocument: (requestId: string, input: { documentId: string; requirementCode: string; title?: string }) => Promise<PgdDossierDocument>;
-  confirmDossierDocument: (requestId: string, requirementCode: string) => Promise<void>;
   splitSample: (input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string; sampledAt?: string; samplingLocation?: string; sampledByUsername?: string; sampleSize?: string; lotQuantity?: number; lotUnit?: string }) => Promise<PgdSample[]>;
   destroySample: (sampleId: string, note: string) => Promise<PgdSample>;
   saveLabRequest: (labRequest: PgdLabRequest) => Promise<PgdLabRequest>;
@@ -230,10 +228,8 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
     return next;
   },
   saveLabResultReview: async (review) => {
-    const result = await savePgdLabResultReview(review);
-    const next = result.review;
+    const next = await savePgdLabResultReview(review);
     set((state) => ({ labResultReviews: replaceOne(state.labResultReviews, next), requests: state.requests.map((request) => request.id === next.requestId ? { ...request, labResultReviewId: next.id } : request) }));
-    if (result.request) mergeRequest(set, result.request);
     return next;
   },
   saveCalibrationInstrument: async (instrument) => {
@@ -257,10 +253,8 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
     return result;
   },
   saveDossierDocument: async (requestId, input) => {
-    const result = await savePgdDossierDocumentApi(requestId, input);
-    const next = result.dossierDocument;
+    const next = await savePgdDossierDocumentApi(requestId, input);
     set((state) => ({ dossierDocuments: replaceOne(state.dossierDocuments, next) }));
-    if (result.request) mergeRequest(set, result.request);
     return next;
   },
   assignOwner: async (requestId, ownerUsername) => {
@@ -269,16 +263,9 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
     return next;
   },
   attachGeneratedDocument: async (requestId, input) => {
-    const result = await attachPgdGeneratedDocument(requestId, input);
-    const next = result.dossierDocument;
+    const next = await attachPgdGeneratedDocument(requestId, input);
     set((state) => ({ dossierDocuments: replaceOne(state.dossierDocuments, next) }));
-    if (result.request) mergeRequest(set, result.request);
     return next;
-  },
-  confirmDossierDocument: async (requestId, requirementCode) => {
-    const result = await confirmPgdDossierDocumentApi(requestId, requirementCode);
-    set((state) => ({ dossierDocuments: replaceOne(state.dossierDocuments, result.dossierDocument) }));
-    mergeRequest(set, result.request);
   },
   splitSample: async (input) => {
     const next = await splitPgdSampleApi(input);

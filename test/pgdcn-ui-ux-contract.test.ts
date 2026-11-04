@@ -27,8 +27,8 @@ test('dossier detail exposes a horizontally scrollable workflow rail', () => {
 
 test('Official/Superneat surfaces preserve state tones and restrained elevation', () => {
   const primitives = read('../components/PgdcnUiPrimitives.tsx');
-  assert.match(primitives, /const surfaceClass = 'pgdcn-semantic-surface min-w-0 border';/);
-  assert.doesNotMatch(primitives, /whiteSurfaceClass/);
+  assert.match(primitives, /const surfaceClass = 'min-w-0 rounded-xl border border-slate-200 shadow-sm';/);
+  assert.match(primitives, /const whiteSurfaceClass = 'bg-white';/);
   assert.doesNotMatch(primitives, /const surfaceClass = '[^']*bg-white/);
   assert.match(primitives, /PgdcnStatePanel[\s\S]*surfaceClass[\s\S]*statePanelToneClass/);
 
@@ -161,7 +161,7 @@ test('domain navigation keeps aria-current and uses distinct PCN, PGD, and share
   assert.match(pgdButton, /aria-current="page"/);
   assert.match(pgdButton, /bg-blue-600/);
   assert.match(sharedButton, /aria-current="page"/);
-  assert.match(sharedButton, /bg-slate-(700|800)/);
+  assert.match(sharedButton, /bg-slate-700/);
   assert.match(pcnMarkup, /title="Sổ dữ liệu PCN"/);
 });
 

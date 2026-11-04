@@ -55,7 +55,7 @@ function relativeLuminance([red, green, blue]: [number, number, number]): number
 }
 
 test('selected PCN navigation label keeps WCAG AA contrast on the active background', () => {
-  const selectedButton = sidebarMarkup.match(/<button(?=[^>]*aria-label="Sổ dữ liệu PCN")(?=[^>]*aria-current="page")[^>]*>/)?.[0] || '';
+  const selectedButton = sidebarMarkup.match(/<button(?=[^>]*aria-label="Sổ dữ liệu")(?=[^>]*aria-current="page")[^>]*>/)?.[0] || '';
   assert.match(selectedButton, /bg-emerald-700 text-white/);
 
   const theme = fs.readFileSync(new URL('../node_modules/tailwindcss/theme.css', import.meta.url), 'utf8');

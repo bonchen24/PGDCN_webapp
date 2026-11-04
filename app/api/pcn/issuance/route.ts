@@ -27,7 +27,6 @@ import {
   assertPcnTechnicalReviewSubmissionReady,
 } from '@/lib/server/pcn-dossiers';
 import { getPcnDossierStageGateDenial } from '@/utils/pcnDossierStageGate';
-import { getPcnWorkflowResultOutcome } from '@/utils/pcnWorkflowRuntime';
 import { getPcnDocumentRequirements } from '@/utils/pcnDossierDocuments';
 import { buildPcnIssuancePackage } from '@/utils/pcnIssuance';
 import {
@@ -260,7 +259,6 @@ export async function POST(req: NextRequest) {
           requirements: configuredRequirements.length > 0 ? configuredRequirements : undefined,
           documents: documentResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierDocument),
           documentWaivers: dossier.documentWaivers,
-          resultOutcome: getPcnWorkflowResultOutcome(returnedResultResult.rows.map((row: any) => mapDocumentRow(row) as ReturnedTestResult)),
           resolvedRequirementIds,
         });
         if (stageGateDenial) throw Object.assign(new Error(stageGateDenial), { statusCode: 409 });

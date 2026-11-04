@@ -1,18 +1,10 @@
 import PgdcnAppShell from '../../../components/PgdcnAppShell';
-import type { PcnSection } from '../../../utils/pcnNavigation';
 
 // Compatibility route: PcnAppShell is hosted by the shared PGDCN shell.
 
-const VALID_PCN_SECTIONS: ReadonlySet<string> = new Set<PcnSection>([
-  'proposals',
-  'operations',
-  'lab-operations',
-  'drafting',
-]);
-
-function getInitialPcnSection(value: string | string[] | undefined): PcnSection | undefined {
+function getInitialPcnSection(value: string | string[] | undefined): 'operations' | undefined {
   const candidate = Array.isArray(value) ? value[0] : value;
-  return candidate && VALID_PCN_SECTIONS.has(candidate) ? (candidate as PcnSection) : undefined;
+  return candidate === 'operations' ? 'operations' : undefined;
 }
 
 export default async function PcnWorkspacePage({

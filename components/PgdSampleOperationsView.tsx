@@ -124,7 +124,6 @@ export default function PgdSampleOperationsView({ requests, samples, labRequests
       sample.description,
       sample.laboratoryName,
       request?.requestCode,
-      request?.lotCode,
       request?.customerSnapshot.name,
       request?.productName,
       labRequest?.laboratoryName,
@@ -141,27 +140,25 @@ export default function PgdSampleOperationsView({ requests, samples, labRequests
     <PgdcnPageHeader eyebrow="PGD · Sổ vận hành" title="Sổ quản lý mẫu" description="Theo dõi từng mẫu, tuyến PTN và kết quả. Thông tin dài được mở khi cần để bảng luôn gọn." />
     <div className="grid grid-cols-2 gap-2 md:grid-cols-5"><Metric label="Tổng mẫu" value={rows.length} /><Metric label="Đã chuyển PTN" value={sentCount} tone="text-blue-700" /><Metric label="Chờ KQTN" value={waitingResultCount} tone="text-amber-700" /><Metric label="Lưu mẫu" value={retainedCount} tone="text-slate-700" /><Metric label="Có sự cố" value={issueCount} tone="text-rose-700" /></div>
     <div className="pgdcn-toolbar-nowrap rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-      <label className="pgdcn-toolbar-search block min-w-0"><span className="mb-1 block text-[11px] font-black text-slate-600">Tìm mẫu, hồ sơ hoặc PTN</span><div className="relative"><Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" /><input aria-label="Tìm mẫu, hồ sơ hoặc PTN" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Mã mẫu, mã PYC, khách hàng, PTN..." className="min-h-9 w-full rounded-md border border-slate-200 py-1.5 pl-8 pr-2 text-[10px] outline-none focus:border-blue-400" /></div></label>
-      <span className="pgdcn-toolbar-count text-[11px] font-bold text-slate-500">{visibleRows.length}/{rows.length} mẫu</span>
+      <label className="pgdcn-toolbar-search block min-w-0"><span className="mb-1 block text-[10px] font-black text-slate-600">Tìm mẫu, hồ sơ hoặc PTN</span><div className="relative"><Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" /><input aria-label="Tìm mẫu, hồ sơ hoặc PTN" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Mã mẫu, mã PYC, khách hàng, PTN..." className="min-h-9 w-full rounded-md border border-slate-200 py-1.5 pl-8 pr-2 text-[10px] outline-none focus:border-blue-400" /></div></label>
+      <span className="pgdcn-toolbar-count text-[10px] font-bold text-slate-400">{visibleRows.length}/{rows.length} mẫu</span>
     </div>
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="mobile-scroll-x overflow-x-auto">
         <table className="min-w-[1120px] w-full border-collapse text-left text-[10px]">
-          <thead><tr className="border-b border-slate-200 bg-slate-100 text-[11px] font-black uppercase tracking-wide text-slate-600"><th className="min-w-[110px] px-3 py-2">Mã mẫu</th><th className="min-w-[120px] px-3 py-2">Mã lô</th><th className="min-w-[190px] px-3 py-2">Loại / mô tả</th><th className="min-w-[205px] px-3 py-2">Hồ sơ / khách hàng</th><th className="min-w-[140px] px-3 py-2">Địa điểm</th><th className="min-w-[85px] px-3 py-2">Số lượng</th><th className="min-w-[100px] px-3 py-2">Phân loại</th><th className="min-w-[245px] px-3 py-2">PTN liên kết</th><th className="min-w-[110px] px-3 py-2">Trạng thái hồ sơ</th><th className="min-w-[100px] px-3 py-2">Hành động</th></tr></thead>
+          <thead><tr className="border-b border-slate-200 bg-slate-100 text-[9px] font-black uppercase tracking-wide text-slate-500"><th className="min-w-[110px] px-3 py-2">Mã mẫu</th><th className="min-w-[190px] px-3 py-2">Loại / mô tả</th><th className="min-w-[205px] px-3 py-2">Hồ sơ / khách hàng</th><th className="min-w-[85px] px-3 py-2">Số lượng</th><th className="min-w-[100px] px-3 py-2">Phân loại</th><th className="min-w-[245px] px-3 py-2">PTN liên kết</th><th className="min-w-[110px] px-3 py-2">Trạng thái hồ sơ</th><th className="min-w-[100px] px-3 py-2">Hành động</th></tr></thead>
           <tbody>{visibleRows.map(({ sample, request, labRequest, labResult }) => <tr key={sample.id} className="border-t border-slate-100 align-top hover:bg-slate-50/70">
             <td className="px-3 py-2">
               <CopyableIdentifier value={sample.sampleCode} label="mã mẫu" />
               {sample.sealNumber && <div className="mt-2 min-w-0"><p className="mb-0.5 text-[9px] text-slate-500">Niêm phong:</p><CopyableIdentifier value={sample.sealNumber} label="mã niêm phong" /></div>}
             </td>
-            <td className="px-3 py-2 font-mono font-bold text-slate-800">{request?.lotCode || request?.productDetails?.manufacturerLotCode || '—'}</td>
             <td className="px-3 py-2"><p className="font-black text-slate-700">{sample.customLabel || sample.sampleTypeLabel || 'Mẫu PGD'}</p><p className="mt-1 line-clamp-2 text-[9px] leading-4 text-slate-500">{sample.description || 'Chưa có mô tả'}</p></td>
             <td className="px-3 py-2"><p className="font-mono font-black text-slate-700">{request?.requestCode || '—'}</p><p className="mt-1 line-clamp-2 text-[9px] text-slate-600">{request?.customerSnapshot.name || 'Hồ sơ không còn trong sổ'}{request?.productName ? ` · ${request.productName}` : ''}</p></td>
-            <td className="px-3 py-2"><p className="flex items-center gap-1 font-bold text-slate-600">{sample.samplingLocation || request?.inspectionLocation || '—'}</p></td>
             <td className="px-3 py-2 font-black text-slate-700">{sample.quantity} {sample.unit || 'mẫu'}</td>
             <td className="px-3 py-2"><span className="rounded-full border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-black text-slate-600">{dispositionLabel(sample.disposition)}</span></td>
             <td className="px-3 py-2"><LaboratoryCell row={{ sample, request, labRequest, labResult }} /></td>
             <td className="px-3 py-2"><span className="rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] font-black text-blue-700">{request ? getPgdStatusLabel(request.status) : 'Thiếu hồ sơ'}</span></td>
-            <td className="px-3 py-2">{request ? <button type="button" onClick={() => onOpenRequest(request.id)} className="mobile-touch-target min-h-11 rounded-md border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-black text-blue-700 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">Mở hồ sơ</button> : <span className="text-[9px] text-slate-400">—</span>}</td>
+            <td className="px-3 py-2">{request ? <button type="button" onClick={() => onOpenRequest(request.id)} className="mobile-touch-target min-h-8 rounded-md border border-blue-200 bg-white px-2 text-[9px] font-black text-blue-700 hover:bg-blue-50">Mở hồ sơ</button> : <span className="text-[9px] text-slate-400">—</span>}</td>
           </tr>)}</tbody>
         </table>
       </div>

@@ -37,16 +37,14 @@ test('maps the combined label photo only to anh_1 before supporting photos', () 
     productPhoto1: 'product-1',
   });
 
-  assert.deepEqual(
-    [slots.anh_1, slots.anh_2, slots.anh_3, slots.anh_4, slots.anh_5, slots.anh_6],
-    ['combined-labels', 'sample', 'setup-voltage', 'setup-power', '', ''],
-  );
-  assert.deepEqual(
-    [slots.anh_1_1, slots.anh_1_2, slots.anh_tem_1, slots.anh_tem_2,
-      slots.has_anh_1_1, slots.has_anh_1_2, slots.has_anh_tem_1, slots.has_anh_tem_2,
-      slots.has_anh_1_3, slots.has_anh_tem_3],
-    ['label-1', 'label-2', 'label-1', 'label-2', true, true, true, true, false, false],
-  );
+  assert.deepEqual(slots, {
+    anh_1: 'combined-labels',
+    anh_2: 'sample',
+    anh_3: 'setup-voltage',
+    anh_4: 'setup-power',
+    anh_5: '',
+    anh_6: '',
+  });
 });
 
 test('combines all label photos side by side while preserving a valid PNG output', async () => {

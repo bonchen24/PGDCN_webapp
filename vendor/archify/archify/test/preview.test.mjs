@@ -6,7 +6,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { requireSymlinkCapability } from './helpers/symlink-capability.mjs';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 
@@ -56,8 +55,7 @@ function rawRequest(url, { method = 'GET', pathname = '/', hostHeader } = {}) {
   });
 }
 
-test('preview: rejects destructive or unsupported startup targets before watching', async (t) => {
-  if (!requireSymlinkCapability(t, 'dir')) return;
+test('preview: rejects destructive or unsupported startup targets before watching', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-preview-startup-'));
   const input = path.join(tmp, 'diagram.json');
   fs.writeFileSync(input, '{}');

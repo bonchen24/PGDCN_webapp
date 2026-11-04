@@ -451,7 +451,7 @@ test('cli: deliver XML guard parses markup instead of scanning attribute-like te
   );
 });
 
-test('cli: preview runs from an installed skill without node_modules and stops for the platform', { timeout: 30000 }, async () => {
+test('cli: preview runs from an installed skill without node_modules and exits cleanly', { timeout: 30000 }, async () => {
   const installedRoot = path.join(tmp, 'installed-preview-skill');
   copyInstalledSkill(installedRoot);
   const installedCli = path.join(installedRoot, 'bin/archify.mjs');
@@ -489,20 +489,9 @@ test('cli: preview runs from an installed skill without node_modules and stops f
 
   child.kill('SIGTERM');
   const exit = await new Promise((resolve) => child.once('close', (code, signal) => resolve({ code, signal })));
-  if (process.platform === 'win32') {
-    // Node's Windows child-process signal API terminates this piped child; it cannot deliver a catchable SIGTERM.
-    assert.deepEqual(exit, { code: null, signal: 'SIGTERM' });
-    assert.doesNotMatch(stdout, /stopping preview/);
-  } else {
-    assert.deepEqual(exit, { code: 0, signal: null });
-    assert.match(stdout, /stopping preview/);
-  }
+  assert.deepEqual(exit, { code: 0, signal: null });
+  assert.match(stdout, /stopping preview/);
   await assert.rejects(fetch(previewUrl));
-  if (process.platform === 'win32') {
-    for (const name of fs.readdirSync(path.dirname(output)).filter((entry) => entry.startsWith('.archify-preview-'))) {
-      fs.rmSync(path.join(path.dirname(output), name), { recursive: true, force: true });
-    }
-  }
   assert.deepEqual(fs.readdirSync(path.dirname(output)).filter((name) => name.startsWith('.archify-preview-')), []);
 });
 

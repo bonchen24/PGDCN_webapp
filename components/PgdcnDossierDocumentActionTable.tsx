@@ -7,7 +7,6 @@ export type PgdcnDossierDocumentActionRow = {
   step: string;
   title: string;
   required: boolean;
-  requirementTypeLabel?: string;
   status: string;
   statusTone?: 'success' | 'warning' | 'neutral' | 'danger';
   detail?: ReactNode;
@@ -30,7 +29,7 @@ const STATUS_TONE_CLASS: Record<NonNullable<PgdcnDossierDocumentActionRow['statu
 
 export default function PgdcnDossierDocumentActionTable({ rows, testId, emptyLabel = 'Chưa có tài liệu cần xử lý ở bước này.', renderRow }: Props) {
   return (
-    <div id={testId} className="min-w-0 rounded-lg border border-slate-200 bg-white" data-testid={testId}>
+    <div className="min-w-0 rounded-lg border border-slate-200 bg-white" data-testid={testId}>
       {rows.length > 0 ? (
         <>
           {renderRow ? (
@@ -69,13 +68,7 @@ export default function PgdcnDossierDocumentActionTable({ rows, testId, emptyLab
                     <th scope="row" className="block min-w-0 break-words border-0 px-0 py-1 font-semibold text-slate-800 md:table-cell md:border-b md:border-slate-100 md:px-3 md:py-1">
                       <span aria-hidden="true" className="mb-0.5 block text-xs font-black uppercase tracking-wide text-slate-500 md:hidden">Tài liệu cần có</span>
                       <span>{row.title}{row.required ? <span aria-hidden="true" className="ml-1 text-rose-600">*</span> : null}</span>
-                      {row.requirementTypeLabel ? (
-                        <span className={`ml-2 text-xs font-normal ${row.required ? 'text-rose-600' : 'text-slate-500'}`}>{row.requirementTypeLabel}</span>
-                      ) : row.required ? (
-                        <span className="ml-2 text-xs font-normal text-rose-600">Bắt buộc</span>
-                      ) : (
-                        <span className="ml-2 text-xs font-normal text-slate-500">Tùy chọn</span>
-                      )}
+                      {row.required ? <span className="ml-2 text-xs font-normal text-rose-600">Bắt buộc</span> : <span className="ml-2 text-xs font-normal text-slate-500">Tùy chọn</span>}
                       {row.detail ? <div className="mt-1 break-words text-xs font-normal leading-5 text-slate-600">{row.detail}</div> : null}
                     </th>
                     <td className="flex min-w-0 items-center gap-2 border-0 px-0 py-1 md:table-cell md:border-b md:border-slate-100 md:px-3 md:py-1">

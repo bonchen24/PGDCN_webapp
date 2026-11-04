@@ -54,7 +54,6 @@ export async function POST(
         throw Object.assign(new Error('Không tìm thấy template workflow PGD gốc.'), { statusCode: 404 });
       }
       const existing = mapDocumentRow(existingResult.rows[0]) as PgdWorkflowTemplate;
-      if (existing.scope === 'PERSONAL') throw Object.assign(new Error('Đề xuất cá nhân không có revision dùng chung.'), { statusCode: 409 });
       const revision = buildPgdWorkflowTemplateRecord(body?.template, actor, now, existing);
       revision.id = `${existing.id}-v${existing.version + 1}`;
       revision.version = existing.version + 1;
@@ -65,7 +64,7 @@ export async function POST(
         throw Object.assign(new Error('Mã revision workflow PGD không hợp lệ.'), { statusCode: 400 });
       }
 
-      const validation = validatePgdWorkflowTemplate(revision, { allowIncompleteDraft: true });
+      const validation = validatePgdWorkflowTemplate(revision);
       if (!validation.valid) {
         throw Object.assign(new Error(validation.errors.join(' ')), { statusCode: 400 });
       }
