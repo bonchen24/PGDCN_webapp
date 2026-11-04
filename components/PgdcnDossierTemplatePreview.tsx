@@ -578,74 +578,82 @@ export default function PgdcnDossierTemplatePreview(props: PgdcnDossierTemplateP
         </section>
       )}
 
-      {/* Transitions List */}
+      {/* Transitions List (Collapsed by default, hidden from main view) */}
       <section className="space-y-3" aria-label="Danh sách chuyển tiếp lưu trình">
-        <h3 className="text-sm font-bold text-slate-800">Danh sách chuyển tiếp lưu trình</h3>
-
         {model.transitions.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
             Chưa có đường nối giữa các bước.
           </div>
         ) : (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {model.transitions.map((transition) => {
-              const fromNode = nodeMap.get(transition.fromNodeId);
-              const toNode = nodeMap.get(transition.toNodeId);
-              const fromLabel = fromNode ? fromNode.label : transition.fromNodeId;
-              const toLabel = toNode ? toNode.label : transition.toNodeId;
-              const conditionLabel = transition.condition
-                ? CONDITION_LABELS[transition.condition] || transition.condition
-                : undefined;
-              const conditionParameter = transitionConditionParameter(transition, model.domain);
+          <details className="group rounded-2xl border border-slate-200 bg-slate-50/50 p-3.5 transition">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold text-slate-500 hover:text-slate-700">
+              <span className="flex items-center gap-2">
+                <span className="text-slate-400 transition-transform group-open:rotate-90">▸</span>
+                <span>Thông số kỹ thuật chuyển tiếp ({model.transitions.length} đường nối - bấm để xem chi tiết)</span>
+              </span>
+              <span className="text-[11px] font-normal text-slate-400">Ẩn mặc định</span>
+            </summary>
 
-              return (
-                <div
-                  key={transition.id}
-                  data-testid={`pgdcn-template-preview-transition-${transition.id}`}
-                  className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-xs"
-                >
-                  <div className="flex items-center gap-2 font-semibold text-slate-800">
-                    <span className="truncate">{fromLabel}</span>
-                    <ArrowRight size={14} className="shrink-0 text-slate-400" aria-hidden="true" />
-                    <span className="truncate">{toLabel}</span>
-                  </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {model.transitions.map((transition) => {
+                const fromNode = nodeMap.get(transition.fromNodeId);
+                const toNode = nodeMap.get(transition.toNodeId);
+                const fromLabel = fromNode ? fromNode.label : transition.fromNodeId;
+                const toLabel = toNode ? toNode.label : transition.toNodeId;
+                const conditionLabel = transition.condition
+                  ? CONDITION_LABELS[transition.condition] || transition.condition
+                  : undefined;
+                const conditionParameter = transitionConditionParameter(transition, model.domain);
 
-                  {transition.label && (
-                    <div className="mt-1 font-medium text-blue-700">
-                      {transition.label}
+                return (
+                  <div
+                    key={transition.id}
+                    data-testid={`pgdcn-template-preview-transition-${transition.id}`}
+                    className="rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2 font-semibold text-slate-800">
+                      <span className="truncate">{fromLabel}</span>
+                      <ArrowRight size={14} className="shrink-0 text-slate-400" aria-hidden="true" />
+                      <span className="truncate">{toLabel}</span>
                     </div>
-                  )}
 
-                  <div className="mt-2 space-y-0.5 border-t border-slate-200 pt-2 text-[11px] text-slate-500">
-                    {conditionLabel && (
-                      <div>
-                        <span>Điều kiện: </span>
-                        <span className="font-medium text-slate-700">{conditionLabel}</span>
+                    {transition.label && (
+                      <div className="mt-1 font-medium text-blue-700">
+                        {transition.label}
                       </div>
                     )}
-                    {conditionParameter && conditionParameter.values.length > 0 && (
-                      <div>
-                        <span>{conditionParameter.label}: </span>
-                        <span className="font-medium text-slate-700">{conditionParameter.values.join(' · ')}</span>
-                      </div>
-                    )}
-                    {transition.returnPolicy && (
-                      <div>
-                        <span>Chính sách trả: </span>
-                        <span className="font-medium text-slate-700">{RETURN_POLICY_LABELS[transition.returnPolicy] || transition.returnPolicy}</span>
-                      </div>
-                    )}
-                    {transition.priority !== undefined && (
-                      <div>
-                        <span>Độ ưu tiên: </span>
-                        <span className="font-medium text-slate-700">{transition.priority}</span>
-                      </div>
-                    )}
+
+                    <div className="mt-2 space-y-0.5 border-t border-slate-200 pt-2 text-[11px] text-slate-500">
+                      {conditionLabel && (
+                        <div>
+                          <span>Điều kiện: </span>
+                          <span className="font-medium text-slate-700">{conditionLabel}</span>
+                        </div>
+                      )}
+                      {conditionParameter && conditionParameter.values.length > 0 && (
+                        <div>
+                          <span>{conditionParameter.label}: </span>
+                          <span className="font-medium text-slate-700">{conditionParameter.values.join(' · ')}</span>
+                        </div>
+                      )}
+                      {transition.returnPolicy && (
+                        <div>
+                          <span>Chính sách trả: </span>
+                          <span className="font-medium text-slate-700">{RETURN_POLICY_LABELS[transition.returnPolicy] || transition.returnPolicy}</span>
+                        </div>
+                      )}
+                      {transition.priority !== undefined && (
+                        <div>
+                          <span>Độ ưu tiên: </span>
+                          <span className="font-medium text-slate-700">{transition.priority}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </details>
         )}
       </section>
     </article>
