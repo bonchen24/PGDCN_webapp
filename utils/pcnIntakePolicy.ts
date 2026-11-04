@@ -39,7 +39,7 @@ function isPgdSteelSource(proposal: Record<string, unknown>): boolean {
  * is committed. The function deliberately accepts unknown input so the same
  * policy can protect both the browser form and the server boundary.
  */
-export function validatePcnProposalIntake(input: unknown): PcnIntakeValidationResult {
+export function validatePcnProposalIntake(input: unknown, options: { requireStandards?: boolean } = {}): PcnIntakeValidationResult {
   const proposal = isRecord(input) ? input : {};
   const customer = isRecord(proposal.customerSnapshot) ? proposal.customerSnapshot : {};
   const issues: PcnIntakeValidationIssue[] = [];
@@ -56,6 +56,10 @@ export function validatePcnProposalIntake(input: unknown): PcnIntakeValidationRe
   addRequiredIssue(issues, proposal.brand, 'brand', 'Nhãn hiệu là bắt buộc.');
   addRequiredIssue(issues, proposal.specifications, 'specifications', 'Thông số kỹ thuật là bắt buộc.');
   addRequiredIssue(issues, proposal.manufacturer, 'manufacturer', 'Nhà sản xuất là bắt buộc.');
+  if (options.requireStandards) {
+    const standards = Array.isArray(proposal.standards) ? proposal.standards.map(text).filter(Boolean) : [text(proposal.standards)].filter(Boolean);
+    if (standards.length === 0) issues.push({ field: 'standards', message: 'Tiêu chuẩn / quy chuẩn là bắt buộc theo biểu mẫu Đề nghị chứng nhận.' });
+  }
 
   if (isPgdSteelSource(proposal)) {
     issues.push({

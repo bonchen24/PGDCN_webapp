@@ -6,7 +6,8 @@ import { getDocumentPayload, mapDocumentRow } from '@/lib/server/collections';
 import { buildActivityLog, validateActivityLogPayload } from '@/lib/server/activity-logs';
 import { formatPcnIntakeValidationIssues, validatePcnProposalIntake } from '@/utils/pcnIntakePolicy';
 import { formatPcnDossierCode, formatPcnProposalCode, getPcnVietnamDateKey } from '@/utils/pcnIdentifier';
-import { selectPcnPublishedWorkflowTemplate, snapshotPcnWorkflowTemplate } from '@/utils/pcnWorkflowTemplate';
+import { snapshotPcnWorkflowTemplate } from '@/utils/pcnWorkflowTemplate';
+import { matchPcnPublishedWorkflowTemplates, resolveWorkflowTemplateForCreate } from '@/utils/pgdcnIntakeTemplateMatching';
 import { buildPcnDossierChecklist } from '@/utils/pcnDossierDocuments';
 import { buildPcnWorkflowTaskSeed } from '@/utils/pcnWorkflowRuntime';
 import {
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
 
   const proposal = body?.proposal;
   const dossier = body?.dossier;
+  const workflowTemplateSelection = body?.workflowTemplateSelection as { id?: string; version?: number } | undefined;
   const proposalId = String(proposal?.id || '').trim();
   const dossierId = String(dossier?.id || '').trim();
   if (!proposalId || !dossierId || String(dossier?.proposalId || '').trim() !== proposalId) {
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
     return jsonError('Lĩnh vực của Đề nghị và hồ sơ phải giống nhau.', 400);
   }
   const intakeProposal = proposal;
-  const intakeValidation = validatePcnProposalIntake(intakeProposal);
+  const intakeValidation = validatePcnProposalIntake(intakeProposal, { requireStandards: true });
   if (!intakeValidation.valid) {
     return jsonError(formatPcnIntakeValidationIssues(intakeValidation.issues), 400, {
       code: 'PCN_INTAKE_VALIDATION_FAILED',
@@ -137,34 +139,38 @@ export async function POST(req: NextRequest) {
       const workflowTemplates = workflowTemplateResult.rows.map(
         (row: any) => mapDocumentRow(row) as PcnWorkflowTemplate
       );
-      const workflowTemplate = selectPcnPublishedWorkflowTemplate(workflowTemplates, {
+      const workflowCandidates = matchPcnPublishedWorkflowTemplates(workflowTemplates, {
         fieldCodes: Array.from(
           new Set(proposal.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean))
         ),
         method: dossier.method,
         dossierType: String(dossier.dossierType || '').trim() || undefined,
       });
-      if (!workflowTemplate) {
-        throw Object.assign(
-          new Error('Chưa có template lưu trình PUBLISHED phù hợp với Lĩnh vực và phương thức của hồ sơ.'),
-          { statusCode: 409 }
-        );
+      const workflowResolution = resolveWorkflowTemplateForCreate(workflowCandidates, workflowTemplateSelection);
+      if (workflowResolution.status === 'invalid-selection') {
+        throw Object.assign(new Error('Bộ hồ sơ mẫu đã chọn không còn được publish hoặc không còn phù hợp với thông tin Đề nghị.'), { statusCode: 409 });
       }
+      if (workflowResolution.status === 'ambiguous') {
+        throw Object.assign(new Error('Có nhiều bộ hồ sơ mẫu phù hợp. Vui lòng chọn một mẫu trước khi tạo Đề nghị.'), { statusCode: 409 });
+      }
+      const workflowTemplate = workflowResolution.status === 'resolved' ? workflowResolution.template : undefined;
       const sessionUser = actor;
-      const workflowSnapshot = snapshotPcnWorkflowTemplate(workflowTemplate, {
+      const workflowSnapshot = workflowTemplate ? snapshotPcnWorkflowTemplate(workflowTemplate, {
         capturedAt: now,
         capturedBy: sessionUser?.username || 'SYSTEM',
-      });
-      const dossierFieldSet = new Set(
-        proposal.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean)
-      );
-      workflowSnapshot.nodes = workflowSnapshot.nodes.map((node) => ({
-        ...node,
-        requirementIds: node.requirementIds.filter((requirementId) => {
-          const prefix = String(requirementId).split('-')[0].toUpperCase();
-          return !['QC4', 'QC9'].includes(prefix) || dossierFieldSet.has(prefix);
-        }),
-      }));
+      }) : undefined;
+      if (workflowSnapshot) {
+        const dossierFieldSet = new Set(
+          proposal.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean)
+        );
+        workflowSnapshot.nodes = workflowSnapshot.nodes.map((node) => ({
+          ...node,
+          requirementIds: node.requirementIds.filter((requirementId) => {
+            const prefix = String(requirementId).split('-')[0].toUpperCase();
+            return !['QC4', 'QC9'].includes(prefix) || dossierFieldSet.has(prefix);
+          }),
+        }));
+      }
 
       const storedProposal = {
         ...intakeProposal,
@@ -186,9 +192,11 @@ export async function POST(req: NextRequest) {
         proposalId,
         status: 'INTAKE_REVIEW',
         fieldCodes: storedProposal.fieldCodes,
-        workflowTemplateId: workflowTemplate.id,
-        workflowTemplateVersion: workflowTemplate.version,
-        workflowSnapshot,
+        ...(workflowTemplate && workflowSnapshot ? {
+          workflowTemplateId: workflowTemplate.id,
+          workflowTemplateVersion: workflowTemplate.version,
+          workflowSnapshot,
+        } : { workflowTemplatePending: true }),
         labRequestIds: Array.isArray(dossier.labRequestIds) ? dossier.labRequestIds : [],
         returnedResultIds: Array.isArray(dossier.returnedResultIds) ? dossier.returnedResultIds : [],
         createdAt: dossier.createdAt || now,
@@ -235,12 +243,12 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const workflowTasks = buildPcnWorkflowTaskSeed(
+      const workflowTasks = workflowSnapshot ? buildPcnWorkflowTaskSeed(
         workflowSnapshot,
         dossierId,
         sessionUser?.username || 'SYSTEM',
         now
-      );
+      ) : [];
       for (const task of workflowTasks) {
         await client.query(
           `INSERT INTO app_documents (collection_name, document_id, data, updated_at)

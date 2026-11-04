@@ -24,6 +24,12 @@ test('PCN intake accepts the complete required proposal shape', () => {
   assert.deepEqual(validatePcnProposalIntake(validProposal), { valid: true, issues: [] });
 });
 
+test('new PCN proposal intake requires the standard named by the effective proposal form', () => {
+  const result = validatePcnProposalIntake(validProposal, { requireStandards: true });
+  assert.deepEqual(result.issues.map((issue) => issue.field), ['standards']);
+  assert.equal(validatePcnProposalIntake({ ...validProposal, standards: ['QCVN 01'] }, { requireStandards: true }).valid, true);
+});
+
 test('PCN intake reports every missing required field before writing', () => {
   const result = validatePcnProposalIntake({ customerSnapshot: {}, fieldCodes: [] });
   assert.equal(result.valid, false);

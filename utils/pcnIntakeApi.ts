@@ -59,11 +59,12 @@ async function parseResponse(response: Response): Promise<any> {
 export async function createPcnIntake(
   proposal: CertificationProposal,
   dossier: CertificationDossier,
+  workflowTemplateSelection?: { id: string; version: number },
 ): Promise<PcnIntakeResponse> {
   const response = await fetch('/api/pcn/intake', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ proposal, dossier }),
+    body: JSON.stringify({ proposal, dossier, workflowTemplateSelection }),
   });
   return parseResponse(response) as Promise<PcnIntakeResponse>;
 }

@@ -216,7 +216,7 @@ export default function PcnDraftingWorkspaceView({ proposals, dossiers, template
   const dossierInspection = useMemo(() => source.dossier ? buildPcnDossierInspection({ dossierId: source.dossier.id, fieldCodes: source.dossier.fieldCodes, requirements: dossierRequirements, documents: dossierDocuments, documentWaivers: source.dossier.documentWaivers, compact: true }) : undefined, [dossierDocuments, dossierRequirements, source.dossier]);
   const fieldDefinitions = useMemo(() => getPcnDraftFieldDefinitions(kind), [kind]);
   const relatedSource = useMemo(() => ({ sampleLots, sampleRoutes, labRequests, returnedResults }), [labRequests, returnedResults, sampleLots, sampleRoutes]);
-  const sourceValues = useMemo(() => buildPcnDraftSourceValues(source.proposal, source.dossier, relatedSource), [relatedSource, source.dossier, source.proposal]);
+  const sourceValues = useMemo(() => buildPcnDraftSourceValues(source.proposal, source.dossier, relatedSource, kind), [kind, relatedSource, source.dossier, source.proposal]);
   const sourceFieldKeys = useMemo(() => new Set(Object.entries(sourceValues).filter(([, value]) => String(value ?? '').trim()).map(([key]) => key)), [sourceValues]);
   const fieldGroups = useMemo(() => {
     const groups = new Map<string, { section: { key: string; label: string }; fields: typeof fieldDefinitions; missingCount: number; autoFilledCount: number }>();

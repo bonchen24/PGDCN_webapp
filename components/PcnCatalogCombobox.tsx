@@ -22,6 +22,8 @@ export type PcnCatalogComboboxProps = {
   disabled?: boolean;
   invalid?: boolean;
   'aria-invalid'?: boolean;
+  ariaLabel?: string;
+  useParentLabel?: boolean;
   unmatchedOption?: PcnCatalogOption;
   hideLabel?: boolean;
 };
@@ -36,6 +38,8 @@ export function PcnCatalogCombobox({
   disabled = false,
   invalid = false,
   'aria-invalid': ariaInvalid = false,
+  ariaLabel,
+  useParentLabel = false,
   unmatchedOption,
   hideLabel = false,
 }: PcnCatalogComboboxProps) {
@@ -151,7 +155,7 @@ export function PcnCatalogCombobox({
 
           required={required}
           disabled={disabled}
-          aria-label={hideLabel ? label : undefined}
+          aria-label={hideLabel ? (useParentLabel ? ariaLabel : label) : undefined}
           aria-invalid={invalid || ariaInvalid || undefined}
           aria-expanded={isOpen}
           aria-controls={listboxId}

@@ -241,6 +241,10 @@ export interface CertificationProposal {
   channel: PcnProposalChannel;
   status: PcnProposalStatus;
   dossierId?: string;
+  /** Explicit value from the national one-door registration; never inferred from proposalCode. */
+  registrationNumber?: string;
+  /** Standards explicitly supplied on the intake proposal; not inferred from template text. */
+  standards?: string[];
   customerId?: string;
   customerSnapshot: Pick<CustomerRef, 'name' | 'address' | 'taxId' | 'phone' | 'email' | 'contactPerson'>;
   warehouseAddress?: string;
@@ -554,6 +558,8 @@ export interface CertificationDossier {
   workflowTemplateId?: string;
   workflowTemplateVersion?: number;
   workflowSnapshot?: PcnWorkflowSnapshot;
+  /** True only for new intake records saved before a matching published workflow template existed. */
+  workflowTemplatePending?: boolean;
   /** One accountable PCN operator from intake through packaging and archive. */
   ownerUsername?: string;
   /** Explicit operator-confirmed reason for an exception-lane status. */

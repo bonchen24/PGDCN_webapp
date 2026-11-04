@@ -56,7 +56,7 @@ import { usePcnStore } from '../store-pcn';
 import { usePcnSessionStore } from '../utils/pcnSessionState';
 import { clearPcnSession, getPcnSession } from '../utils/pcnAuthApi';
 import { ORGANIZATION_MANAGEMENT_ROLE_OPTIONS, PROFESSIONAL_ROLE_OPTIONS } from '../types';
-import type { AppNotification, CertificationDossier, CertificationProposal, PcnDossierDocument, PcnDocumentRequirement, PcnDossierStatus, PcnProposalStatus, PcnCertificationField, PcnSampleLot, PcnSampleItem, PcnSampleRoute } from '../types';
+import type { AppNotification, CertificationDossier, CertificationProposal, PcnCertificationMethod, PcnDossierDocument, PcnDocumentRequirement, PcnDossierStatus, PcnProposalStatus, PcnCertificationField, PcnSampleLot, PcnSampleItem, PcnSampleRoute, PcnWorkflowTemplate } from '../types';
 import type { PcnProposalUpdateInput } from '../utils/pcnProposalApi';
 import { PcnIntakeApiError } from '../utils/pcnIntakeApi';
 import { formatPcnIntakeValidationIssues, indexPcnIntakeValidationIssues, validatePcnProposalIntake } from '../utils/pcnIntakePolicy';
@@ -67,6 +67,7 @@ import { downloadPcnDossierPackage } from '../utils/pcnDossierPackageApi';
 import { getPcnNotificationDossierTab } from '../utils/pcnDossierNavigation';
 import { PCN_MOBILE_NAVIGATION, type PcnSection } from '../utils/pcnNavigation';
 import { PgdcnDateInput } from './PgdcnDateInput';
+import { matchPcnPublishedWorkflowTemplates, resolveTemplateSelectionState } from '../utils/pgdcnIntakeTemplateMatching';
 
 const sectionLabels: Record<PcnSection, string> = {
   dashboard: 'Tổng quan',
@@ -481,6 +482,68 @@ function ProposalRegisterRow({
   );
 }
 
+function PcnPendingWorkflowTemplatePanel({ dossier, workflowTemplates, documentRequirements, onAttach }: {
+  dossier: CertificationDossier;
+  workflowTemplates: PcnWorkflowTemplate[];
+  documentRequirements: PcnDocumentRequirement[];
+  onAttach: (dossierId: string, selection: { id: string; version: number }) => Promise<void>;
+}) {
+  const [selectedId, setSelectedId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const candidates = useMemo(() => matchPcnPublishedWorkflowTemplates(workflowTemplates, {
+    fieldCodes: dossier.fieldCodes,
+    method: dossier.method,
+    dossierType: dossier.dossierType,
+  }), [dossier.dossierType, dossier.fieldCodes, dossier.method, workflowTemplates]);
+  const selection = useMemo(() => resolveTemplateSelectionState({ candidates, selectedId }), [candidates, selectedId]);
+  const chosen = selection.selectedTemplate || selection.suggestedTemplate;
+  const options = useMemo<PcnCatalogOption[]>(() => candidates.map((template) => ({
+    value: template.id,
+    label: `${template.name} · ${template.code} · v${template.version}`,
+    searchText: `${template.name} ${template.code} v${template.version}`,
+    description: template.description,
+  })), [candidates]);
+  const requirementRows = useMemo(() => {
+    if (!chosen) return undefined;
+    const ids = [...new Set(chosen.nodes.flatMap((node) => node.requirementIds))];
+    const rows = ids.map((id) => ({ id, definition: documentRequirements.find((requirement) => requirement.id === id || requirement.code === id) }));
+    return {
+      required: rows.filter((row) => row.definition?.required),
+      optional: rows.filter((row) => row.definition && !row.definition.required),
+      unknown: rows.filter((row) => !row.definition),
+    };
+  }, [chosen, documentRequirements]);
+
+  if (dossier.workflowTemplatePending !== true) return null;
+  const attach = async () => {
+    if (!chosen) return;
+    setBusy(true);
+    setError('');
+    try {
+      await onAttach(dossier.id, { id: chosen.id, version: chosen.version });
+    } catch (cause: any) {
+      setError(cause?.message || 'Không thể gắn bộ hồ sơ mẫu.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return <section aria-label={`Gắn bộ hồ sơ mẫu cho ${dossier.dossierCode}`} className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-[10px] text-amber-950">
+    <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+      <div className="min-w-0"><p className="font-black uppercase tracking-wide text-amber-800">Hồ sơ đang chờ bộ hồ sơ mẫu</p>
+        {candidates.length === 0 ? <p className="mt-1">Chưa xác định bộ hồ sơ mẫu. Có thể quay lại sau khi catalog có mẫu đang publish phù hợp.</p> : <>
+          {candidates.length > 1 && <PcnCatalogCombobox id={`pcn-pending-template-${dossier.id}`} label="Chọn bộ hồ sơ mẫu" value={selection.selectedId || ''} options={options} onChange={setSelectedId} disabled={busy} invalid={selection.isAmbiguous} aria-invalid={selection.isAmbiguous} />}
+          {chosen && <div className="mt-1"><b>{candidates.length === 1 ? 'Đề xuất phù hợp' : 'Mẫu đã chọn'}:</b> {chosen.name} · <span className="font-mono">{chosen.code}</span> · phiên bản {chosen.version}</div>}
+          {requirementRows && <div className="mt-2 grid gap-1 sm:grid-cols-2"><p><b>Bắt buộc:</b> {requirementRows.required.map((row) => row.definition?.name || row.id).join(' · ') || 'Không có mục bắt buộc trong catalog.'}</p><p><b>Tùy chọn:</b> {requirementRows.optional.map((row) => row.definition?.name || row.id).join(' · ') || 'Không có mục tùy chọn trong catalog.'}</p>{requirementRows.unknown.length > 0 && <p className="sm:col-span-2"><b>Mã chưa có nhãn:</b> {requirementRows.unknown.map((row) => row.id).join(' · ')}</p>}</div>}
+        </>}
+        {error && <p role="alert" className="mt-1 font-bold text-rose-700">{error}</p>}
+      </div>
+      {candidates.length > 0 && <button type="button" onClick={() => void attach()} disabled={busy || !chosen || selection.isAmbiguous} className="mobile-touch-target min-h-11 rounded-lg bg-amber-700 px-3 py-2 text-[10px] font-black text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Đang gắn…' : 'Gắn bộ hồ sơ mẫu'}</button>}
+    </div>
+  </section>;
+}
+
 type PcnProposalForm = {
   channel: CertificationProposal['channel'];
   customerName: string;
@@ -500,6 +563,10 @@ type PcnProposalForm = {
   manufacturerAddress: string;
   quantity: string;
   receivedAt: string;
+  registrationNumber: string;
+  standards: string;
+  method: PcnCertificationMethod;
+  dossierType: string;
   fieldCodes: string[];
 };
 
@@ -508,6 +575,7 @@ function ProposalView({
   proposals,
   dossiers,
   documentRequirements,
+  workflowTemplates,
   dossierDocuments,
   dataLoaded,
   sampleLots = [],
@@ -519,6 +587,7 @@ function ProposalView({
   initialFieldCode,
   openFormRequest,
   onSave,
+  onAttachWorkflowTemplate,
   onUpdateProposal,
   onOpenDossier,
 }: {
@@ -526,6 +595,7 @@ function ProposalView({
   proposals: CertificationProposal[];
   dossiers: CertificationDossier[];
   documentRequirements: PcnDocumentRequirement[];
+  workflowTemplates: PcnWorkflowTemplate[];
   dossierDocuments: PcnDossierDocument[];
   dataLoaded: boolean;
   sampleLots?: PcnSampleLot[];
@@ -536,7 +606,8 @@ function ProposalView({
   initialDossierId?: string;
   initialFieldCode?: string;
   openFormRequest?: number;
-  onSave: (proposal: CertificationProposal) => Promise<void>;
+  onSave: (proposal: CertificationProposal, workflowTemplateSelection?: { id: string; version: number }, dossierContext?: { method: PcnCertificationMethod; dossierType?: string }) => Promise<void>;
+  onAttachWorkflowTemplate: (dossierId: string, selection: { id: string; version: number }) => Promise<void>;
   onUpdateProposal: (proposalId: string, updates: PcnProposalUpdateInput) => Promise<void>;
   onOpenDossier: (dossier: CertificationDossier) => void;
 }) {
@@ -547,6 +618,7 @@ function ProposalView({
   const [proposalMinimized, setProposalMinimized] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingProposal, setEditingProposal] = useState<CertificationProposal>();
+  const [workflowTemplateId, setWorkflowTemplateId] = useState('');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PcnDossierStatus | ''>('');
   const [fieldFilter, setFieldFilter] = useState(initialFieldCode || '');
@@ -558,7 +630,7 @@ function ProposalView({
   const emptyForm = () => ({
     channel: 'DIRECT' as CertificationProposal['channel'], customerName: '', customerId: '', address: '', warehouseAddress: '',
     contactPerson: '', taxId: '', phone: '', email: '', productName: '', model: '', brand: '', productType: '', specifications: '',
-    manufacturer: '', manufacturerAddress: '', quantity: '1', receivedAt: todayPcnDateInputValue(), fieldCodes: [],
+    manufacturer: '', manufacturerAddress: '', quantity: '1', receivedAt: todayPcnDateInputValue(), registrationNumber: '', standards: '', method: 'METHOD_1' as PcnCertificationMethod, dossierType: '', fieldCodes: [],
   });
   const [form, setForm] = useState<PcnProposalForm>(emptyForm());
   const customerOptions = useMemo<PcnCatalogOption[]>(() => customers.flatMap((customer) => {
@@ -570,10 +642,56 @@ function ProposalView({
       }] : [];
     }), [customers]);
   const customerValue = form.customerId || form.customerName;
+  const workflowCandidates = useMemo(() => matchPcnPublishedWorkflowTemplates(workflowTemplates, {
+    fieldCodes: form.fieldCodes,
+    method: form.method,
+    dossierType: form.dossierType || undefined,
+  }), [form.dossierType, form.fieldCodes, form.method, workflowTemplates]);
+  const workflowSelection = useMemo(() => resolveTemplateSelectionState({
+    candidates: workflowCandidates,
+    selectedId: workflowTemplateId,
+  }), [workflowCandidates, workflowTemplateId]);
+  const recommendedWorkflowTemplate = workflowSelection.selectedTemplate || workflowSelection.suggestedTemplate;
+  const workflowTemplateOptions = useMemo<PcnCatalogOption[]>(() => workflowCandidates.map((template) => ({
+    value: template.id,
+    label: `${template.name} · ${template.code} · v${template.version}`,
+    searchText: `${template.name} ${template.code} v${template.version}`,
+    description: template.description,
+  })), [workflowCandidates]);
+  const fieldOptions = useMemo<PcnCatalogOption[]>(() => fields.map((field) => ({
+    value: field.code,
+    label: `${field.code} · ${field.name}`,
+    searchText: `${field.code} ${field.name}`,
+  })), [fields]);
+  const channelOptions = useMemo<PcnCatalogOption[]>(() => [
+    { value: 'DIRECT', label: 'Trực tiếp' },
+    { value: 'EMAIL', label: 'Email' },
+    { value: 'ONLINE_ZALO', label: 'Online / Zalo' },
+    { value: 'OTHER', label: 'Khác' },
+  ], []);
+  const methodOptions = useMemo<PcnCatalogOption[]>(() => [
+    { value: 'METHOD_1', label: 'Phương thức 1 · đánh giá tại nơi sản xuất và thử nghiệm mẫu' },
+    { value: 'METHOD_5', label: 'Phương thức 5 · đánh giá quá trình và giám sát' },
+    { value: 'METHOD_7', label: 'Phương thức 7 · thử nghiệm lô sản phẩm' },
+  ], []);
+  const dossierTypeOptions = useMemo<PcnCatalogOption[]>(() => [...new Set(workflowTemplates
+    .filter((template) => template.status === 'PUBLISHED')
+    .map((template) => template.appliesTo?.dossierType?.trim())
+    .filter((value): value is string => Boolean(value)))].sort().map((value) => ({ value, label: value })), [workflowTemplates]);
+  const templateRequirementRows = useMemo(() => {
+    if (!recommendedWorkflowTemplate) return undefined;
+    const ids = [...new Set(recommendedWorkflowTemplate.nodes.flatMap((node) => node.requirementIds))];
+    const rows = ids.map((id) => ({ id, definition: documentRequirements.find((requirement) => requirement.id === id || requirement.code === id) }));
+    return {
+      required: rows.filter((row) => row.definition?.required),
+      optional: rows.filter((row) => row.definition && !row.definition.required),
+      unknown: rows.filter((row) => !row.definition),
+    };
+  }, [documentRequirements, recommendedWorkflowTemplate]);
   const legacyCustomerOption = customerValue && !customerOptions.some((option) => option.value === customerValue)
     ? { value: customerValue, label: `Giá trị hiện tại cần rà soát: ${form.customerName || customerValue}`, description: 'Giá trị cũ được giữ nguyên để bạn đối chiếu với Danh sách khách hàng.', disabled: true }
     : undefined;
-  const reset = () => { setForm(emptyForm()); setEditingProposal(undefined); setValidationErrors({}); };
+  const reset = () => { setForm(emptyForm()); setEditingProposal(undefined); setWorkflowTemplateId(''); setValidationErrors({}); };
   const rememberFormFocus = () => {
     const activeElement = document.activeElement;
     returnFocusRef.current = activeElement instanceof HTMLElement ? activeElement : null;
@@ -601,6 +719,7 @@ function ProposalView({
     rememberFormFocus();
     setForm(emptyForm());
     setEditingProposal(undefined);
+    setWorkflowTemplateId('');
     setValidationErrors({});
     setOpenForm(true);
     setProposalMinimized(false);
@@ -614,6 +733,8 @@ function ProposalView({
   const openEdit = (proposal: CertificationProposal) => {
     rememberFormFocus();
     setEditingProposal(proposal);
+    const linkedDossier = dossiers.find((item) => item.proposalId === proposal.id || item.id === proposal.dossierId);
+    setWorkflowTemplateId('');
     setForm({
       channel: proposal.channel,
       customerName: proposal.customerSnapshot.name || '',
@@ -633,6 +754,10 @@ function ProposalView({
       manufacturerAddress: proposal.manufacturerAddress || '',
       quantity: String(proposal.quantity || 1),
       receivedAt: proposalDateInputValue(proposal.receivedAt),
+      registrationNumber: proposal.registrationNumber || '',
+      standards: (proposal.standards || []).join(', '),
+      method: linkedDossier?.method || 'METHOD_1',
+      dossierType: linkedDossier?.dossierType || '',
       fieldCodes: proposal.fieldCodes,
     });
     setOpenForm(true);
@@ -660,6 +785,8 @@ function ProposalView({
       ...(ocrFields.phone ? { phone: ocrFields.phone } : {}),
       ...(ocrFields.email ? { email: ocrFields.email } : {}),
       ...(ocrFields.warehouseAddress ? { warehouseAddress: ocrFields.warehouseAddress } : {}),
+      ...(ocrFields.registrationNumber ? { registrationNumber: ocrFields.registrationNumber } : {}),
+      ...((ocrFields.standards || ocrFields.tieu_chuan) ? { standards: ocrFields.standards || ocrFields.tieu_chuan } : {}),
       ...(ocrFields.productName ? { productName: ocrFields.productName } : {}),
       ...(ocrFields.productType ? { productType: ocrFields.productType } : {}),
       ...(ocrFields.model ? { model: ocrFields.model } : {}),
@@ -694,7 +821,8 @@ function ProposalView({
       manufacturer: form.manufacturer,
       quantity: form.quantity,
       fieldCodes: form.fieldCodes,
-    });
+      standards: form.standards.split(',').map((value) => value.trim()).filter(Boolean),
+    }, { requireStandards: !editingProposal });
     const receivedAtError = isValidPcnDateInput(form.receivedAt) ? undefined : 'Ngày tiếp nhận phải là ngày hợp lệ.';
     if (!intakeValidation.valid || receivedAtError) {
       const nextValidationErrors = indexPcnIntakeValidationIssues(intakeValidation.issues);
@@ -704,6 +832,12 @@ function ProposalView({
       toast.error([formatPcnIntakeValidationIssues(intakeValidation.issues), receivedAtError].filter(Boolean).join(' '));
       return;
     }
+    if (!editingProposal && workflowSelection.isAmbiguous) {
+      setValidationErrors({ workflowTemplate: 'Có nhiều bộ hồ sơ mẫu phù hợp. Hãy chọn một mẫu hoặc điều chỉnh điều kiện tiếp nhận.' });
+      focusFirstInvalidProposalField();
+      toast.error('Hãy chọn một bộ hồ sơ mẫu phù hợp trước khi tạo Đề nghị.');
+      return;
+    }
     const customerSnapshot = { name: form.customerName.trim(), address: form.address.trim(), taxId: form.taxId.trim() || undefined, phone: form.phone.trim() || undefined, email: form.email.trim() || undefined, contactPerson: form.contactPerson.trim() || undefined };
     setSaving(true);
     try {
@@ -711,6 +845,8 @@ function ProposalView({
         await onUpdateProposal(editingProposal.id, {
           channel: form.channel,
           customerId: form.customerId.trim() || undefined,
+          registrationNumber: form.registrationNumber.trim() || undefined,
+          standards: form.standards.split(',').map((value) => value.trim()).filter(Boolean),
           customerSnapshot,
           warehouseAddress: form.warehouseAddress.trim(),
           productName: form.productName.trim(),
@@ -730,13 +866,19 @@ function ProposalView({
           proposalCode: '',
           channel: form.channel, status: 'RECEIVED', customerId: form.customerId || undefined,
           customerSnapshot,
+          registrationNumber: form.registrationNumber.trim() || undefined,
+          standards: form.standards.split(',').map((value) => value.trim()).filter(Boolean),
           warehouseAddress: form.warehouseAddress.trim() || undefined,
           productName: form.productName.trim(), model: form.model.trim() || undefined, brand: form.brand.trim() || undefined,
           productType: form.productType.trim() || undefined, specifications: form.specifications.trim() || undefined,
           manufacturer: form.manufacturer.trim() || undefined, manufacturerAddress: form.manufacturerAddress.trim() || undefined, quantity: Math.max(1, Number(form.quantity) || 1), fieldCodes: form.fieldCodes,
           receivedAt: form.receivedAt, createdAt: now, updatedAt: now,
         };
-        await onSave(proposal);
+        const selectedTemplate = workflowSelection.selectedTemplate || workflowSelection.suggestedTemplate;
+        await onSave(proposal, selectedTemplate ? { id: selectedTemplate.id, version: selectedTemplate.version } : undefined, {
+          method: form.method,
+          dossierType: form.dossierType || undefined,
+        });
         toast.success('Đã tạo Đề nghị và bộ hồ sơ.');
       }
       closeProposalForm();
@@ -1082,19 +1224,17 @@ function ProposalView({
 <Field label="Trạng thái Đề nghị">
 <div className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10px] font-bold text-slate-700" aria-live="polite">{editingProposal ? proposalStatusLabels[editingProposal.status] : 'Đã tiếp nhận · chờ hệ thống chuyển hồ sơ'}</div>
 </Field>
-<Field label="Kênh tiếp nhận">
-<select value={form.channel} onChange={(event) => setForm({ ...form, channel: event.target.value as CertificationProposal['channel'] })}>
-<option value="DIRECT">Trực tiếp</option>
-<option value="EMAIL">Email</option>
-<option value="ONLINE_ZALO">Online / Zalo</option>
-<option value="OTHER">Khác</option>
-</select>
+        <Field label="Kênh tiếp nhận">
+<PcnCatalogCombobox id="pcn-proposal-channel" label="Kênh tiếp nhận" hideLabel value={form.channel} options={channelOptions} onChange={(value) => setForm({ ...form, channel: value as CertificationProposal['channel'] })} disabled={saving} />
 </Field>
 <Field label="Số lượng mẫu *" error={validationErrors.quantity} errorId="pcn-proposal-error-quantity">
 <input id="pcn-proposal-quantity" type="number" min="1" step="1" inputMode="numeric" required value={form.quantity} aria-invalid={Boolean(validationErrors.quantity)} aria-describedby={validationErrors.quantity ? 'pcn-proposal-error-quantity' : undefined} onChange={(event) => setForm({ ...form, quantity: event.target.value })} />
 </Field>
 <Field label="Ngày tiếp nhận *" error={validationErrors.receivedAt} errorId="pcn-proposal-error-received-at">
 <PgdcnDateInput id="pcn-proposal-received-at" value={form.receivedAt} readOnly={Boolean(editingProposal)} required aria-required="true" aria-invalid={Boolean(validationErrors.receivedAt)} aria-describedby={validationErrors.receivedAt ? 'pcn-proposal-error-received-at' : undefined} onChange={(value) => setForm({ ...form, receivedAt: value })} />
+</Field>
+<Field label="Số đăng ký Một cửa quốc gia">
+<input id="pcn-proposal-registration-number" value={form.registrationNumber} onChange={(event) => setForm({ ...form, registrationNumber: event.target.value })} />
 </Field>
 </div>
 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-2">
@@ -1147,14 +1287,48 @@ function ProposalView({
 <textarea id="pcn-proposal-specifications" rows={2} required value={form.specifications} aria-invalid={Boolean(validationErrors.specifications)} aria-describedby={validationErrors.specifications ? 'pcn-proposal-error-specifications' : undefined} onChange={(event) => setForm({ ...form, specifications: event.target.value })} />
 </Field>
 </div>
+<Field label="Tiêu chuẩn / quy chuẩn *" error={validationErrors.standards} errorId="pcn-proposal-error-standards">
+<input id="pcn-proposal-standards" required value={form.standards} aria-invalid={Boolean(validationErrors.standards)} aria-describedby={validationErrors.standards ? 'pcn-proposal-error-standards' : undefined} onChange={(event) => setForm({ ...form, standards: event.target.value })} />
+</Field>
 <div>
 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Lĩnh vực <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></div>
-<div className="flex flex-wrap gap-2">{fields.map((field) => <label key={field.code} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold cursor-pointer ${form.fieldCodes.includes(field.code) ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}>
-<input type="checkbox" checked={form.fieldCodes.includes(field.code)} aria-invalid={Boolean(validationErrors.fieldCodes)} aria-describedby={validationErrors.fieldCodes ? 'pcn-proposal-error-field-codes' : undefined} disabled={Boolean(editingProposal)} onChange={(event) => setForm({ ...form, fieldCodes: event.target.checked ? [...form.fieldCodes, field.code] : form.fieldCodes.filter((code) => code !== field.code) })} />{field.name}{field.scopeStatus === 'NEEDS_PCN_CONFIRMATION' && <span className="rounded bg-amber-50 px-1 py-0.5 text-[8px] font-black text-amber-700">xác nhận phạm vi</span>}</label>)}</div>{validationErrors.fieldCodes && <p id="pcn-proposal-error-field-codes" role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{validationErrors.fieldCodes}</p>}</div>
+<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+  <Field label="Phương thức chứng nhận *">
+    <PcnCatalogCombobox id="pcn-proposal-method" label="Phương thức chứng nhận" hideLabel value={form.method} options={methodOptions} onChange={(value) => setForm({ ...form, method: value as PcnCertificationMethod })} disabled={saving || Boolean(editingProposal)} />
+  </Field>
+  <Field label="Loại hồ sơ theo mẫu">
+    <PcnCatalogCombobox id="pcn-proposal-dossier-type" label="Loại hồ sơ theo mẫu" hideLabel value={form.dossierType} options={dossierTypeOptions} onChange={(value) => setForm({ ...form, dossierType: value })} disabled={saving || Boolean(editingProposal)} />
+  </Field>
+</div>
+<div className="space-y-2">
+  <PcnCatalogCombobox id="pcn-proposal-field-picker" label="Thêm lĩnh vực" value="" options={fieldOptions.filter((option) => !form.fieldCodes.includes(option.value))} onChange={(value) => { if (value) setForm((current) => ({ ...current, fieldCodes: [...current.fieldCodes, value] })); }} disabled={saving || Boolean(editingProposal)} aria-invalid={Boolean(validationErrors.fieldCodes)} />
+  <div className="flex flex-wrap gap-1.5" aria-label="Lĩnh vực đã chọn">{form.fieldCodes.map((code) => {
+    const field = fields.find((item) => item.code === code);
+    return <button key={code} type="button" disabled={Boolean(editingProposal)} onClick={() => setForm((current) => ({ ...current, fieldCodes: current.fieldCodes.filter((item) => item !== code) }))} className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-800 disabled:cursor-default">{code} · {field?.name || code}{field?.scopeStatus === 'NEEDS_PCN_CONFIRMATION' ? ' · cần xác nhận phạm vi' : ''}</button>;
+  })}</div>
+  {validationErrors.fieldCodes && <p id="pcn-proposal-error-field-codes" role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{validationErrors.fieldCodes}</p>}
+</div>
+<section hidden={Boolean(editingProposal)} aria-live="polite" aria-label="Bộ hồ sơ mẫu phù hợp" className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 text-[10px] text-indigo-950">
+  <h3 className="font-black">Bộ hồ sơ mẫu</h3>
+  {workflowCandidates.length === 0 ? <p className="mt-1 font-bold text-amber-800">Chưa xác định bộ hồ sơ mẫu. Có thể lưu Đề nghị và gắn mẫu sau.</p> : <>
+    {workflowCandidates.length > 1 && <div className="mt-2"><PcnCatalogCombobox id="pcn-proposal-workflow-template" label="Chọn bộ hồ sơ mẫu" value={workflowSelection.selectedId || ''} options={workflowTemplateOptions} onChange={setWorkflowTemplateId} invalid={workflowSelection.isAmbiguous || Boolean(validationErrors.workflowTemplate)} aria-invalid={workflowSelection.isAmbiguous || Boolean(validationErrors.workflowTemplate)} disabled={saving} /><p className="mt-1 text-slate-600">Có {workflowCandidates.length} bộ mẫu phù hợp. Chọn đúng bộ hồ sơ để liên kết khi tạo.</p></div>}
+    {recommendedWorkflowTemplate && <div className="mt-2 rounded-lg border border-indigo-200 bg-white p-2.5">
+      <p className="font-black">{workflowCandidates.length === 1 ? 'Đề xuất phù hợp' : 'Mẫu đã chọn'}: {recommendedWorkflowTemplate.name}</p>
+      <p className="mt-0.5 font-mono text-slate-600">{recommendedWorkflowTemplate.code} · phiên bản {recommendedWorkflowTemplate.version}</p>
+      {templateRequirementRows && <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <div><b>Bắt buộc</b><p className="mt-0.5 leading-4">{templateRequirementRows.required.map((row) => row.definition?.name || row.id).join(' · ') || 'Không có mục bắt buộc được khai báo trong catalog.'}</p></div>
+        <div><b>Tùy chọn</b><p className="mt-0.5 leading-4">{templateRequirementRows.optional.map((row) => row.definition?.name || row.id).join(' · ') || 'Không có mục tùy chọn được khai báo trong catalog.'}</p></div>
+        {templateRequirementRows.unknown.length > 0 && <div className="sm:col-span-2"><b>Mã tài liệu chưa có nhãn trong catalog</b><p className="mt-0.5 leading-4">{templateRequirementRows.unknown.map((row) => row.id).join(' · ')}</p></div>}
+      </div>}
+    </div>}
+    {workflowSelection.isAmbiguous && validationErrors.workflowTemplate && <p role="alert" className="mt-1 font-bold text-rose-700">{validationErrors.workflowTemplate}</p>}
+  </>}
+</section>
+</div>
 <section aria-labelledby="pcn-proposal-domain-boundaries" className="rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 text-[10px] text-indigo-900">
 <h3 id="pcn-proposal-domain-boundaries" className="font-black">Dữ liệu bổ sung theo đúng vùng nghiệp vụ</h3>
 <p className="mt-1 leading-4">Đơn vị mẫu sẽ được ghi trong thông tin lô/mẫu sau khi hồ sơ được tiếp nhận; biểu mẫu Đề nghị không yêu cầu nhập đơn vị riêng.</p>
-<p className="mt-1 leading-4">Lĩnh vực được xác nhận ngay tại đây; tiêu chuẩn và phương thức chứng nhận được chốt trong phần Tổng quan hồ sơ.</p>
+<p className="mt-1 leading-4">Lĩnh vực và phương thức chứng nhận được xác nhận ngay tại đây để tìm đúng bộ hồ sơ mẫu trước khi lưu.</p>
 <p className="mt-1 leading-4">Tài liệu, chứng cứ và ghi chú vận hành được bổ sung tại danh mục tài liệu hồ sơ sau khi tạo Đề nghị.</p>
 <p className="mt-1 leading-4">Trạng thái do hệ thống quản lý theo quy trình; biểu mẫu không cho phép tự đổi trạng thái.</p>
 </section>
@@ -1162,6 +1336,7 @@ function ProposalView({
       </PgdcnWindowsWorkflowModal></>}
 
       {initialDossierId && <div className="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[10px] font-bold text-indigo-800">Đang tập trung hồ sơ: {dossiers.find((dossier) => dossier.id === initialDossierId)?.dossierCode || initialDossierId}</div>}
+      {dossiers.filter((dossier) => dossier.workflowTemplatePending === true).map((dossier) => <PcnPendingWorkflowTemplatePanel key={dossier.id} dossier={dossier} workflowTemplates={workflowTemplates} documentRequirements={documentRequirements} onAttach={onAttachWorkflowTemplate} />)}
       {proposals.length === 0 ? (
         <EmptyState title="Chưa có Đề nghị" description="Tiếp nhận Đề nghị từ khách hàng để tạo bộ hồ sơ chứng nhận." action={canEdit ? 'Tạo Đề nghị' : undefined} onAction={canEdit ? openProposalForm : undefined} />
       ) : visibleProposals.length === 0 ? (
@@ -1479,6 +1654,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
   ) : activeSection === 'proposals' ? (
     <ProposalView
       fields={pcn.fields}
+      workflowTemplates={pcn.workflowTemplates}
       proposals={pcn.proposals}
       dossiers={pcn.dossiers}
       documentRequirements={pcn.documentRequirements}
@@ -1492,7 +1668,17 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
       initialDossierId={focusedDossierId}
       initialFieldCode={selectedField}
       openFormRequest={proposalFormRequest}
-      onSave={(proposal) => pcn.addProposal(proposal)}
+      onSave={(proposal, selection, context) => pcn.addProposal(proposal, selection, context)}
+      onAttachWorkflowTemplate={async (dossierId, selection) => {
+        const response = await fetch(`/api/pcn/dossiers/${encodeURIComponent(dossierId)}/workflow-template`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(selection),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.error || payload?.message || 'Không thể gắn bộ hồ sơ mẫu PCN.');
+        await pcn.load(true);
+      }}
       onUpdateProposal={(proposalId, updates) => pcn.updateProposal(proposalId, updates)}
       onOpenDossier={openDossierAtCurrentStation}
     />

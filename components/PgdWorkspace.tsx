@@ -87,6 +87,8 @@ import {
 } from '../utils/pgdWorkflow';
 import { getCurrentPgdDossierDocuments, getPgdDossierRequirements } from '../utils/pgdDossier';
 import type { PgdDocumentTemplateKind } from '../utils/pgdDocumentTemplates';
+import type { PgdWorkflowTemplate } from '../utils/pgdWorkflowTemplate';
+import { matchPgdPublishedWorkflowTemplates, resolveTemplateSelectionState } from '../utils/pgdcnIntakeTemplateMatching';
 import { usePgdStore } from '../store-pgd';
 import PgdLoginScreen from './PgdLoginScreen';
 import PgdCaseEvidencePanel from './PgdCaseEvidencePanel';
@@ -281,7 +283,32 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
 }
 
 function SelectInput(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${props.className || ''}`} />;
+  const generatedId = React.useId();
+  const options = React.Children.toArray(props.children).flatMap((child) => {
+    if (!React.isValidElement<{ value?: string | number; disabled?: boolean; children?: React.ReactNode }>(child) || child.type !== 'option') return [];
+    const label = React.Children.toArray(child.props.children).map((part) => typeof part === 'string' || typeof part === 'number' ? String(part) : '').join('');
+    const value = String(child.props.value ?? label);
+    return [{ value, label, disabled: child.props.disabled }];
+  });
+  const value = String(props.value ?? props.defaultValue ?? '');
+  const accessibilityLabel = String(props['aria-label'] || props.title || props.name || 'Lựa chọn');
+  const unmatchedOption = value && !options.some((option) => option.value === value)
+    ? { value, label: value, disabled: true, description: 'Giá trị hiện tại' }
+    : undefined;
+  return <PcnCatalogCombobox
+    id={props.id || `pgd-select-${generatedId}`}
+    label={accessibilityLabel}
+    value={value}
+    options={options}
+    onChange={(nextValue) => props.onChange?.({ target: { value: nextValue }, currentTarget: { value: nextValue } } as React.ChangeEvent<HTMLSelectElement>)}
+    disabled={props.disabled}
+    required={props.required}
+    invalid={Boolean(props['aria-invalid'])}
+    ariaLabel={props['aria-label'] as string | undefined}
+    useParentLabel={!props['aria-label']}
+    hideLabel
+    unmatchedOption={unmatchedOption}
+  />;
 }
 
 function StatusBadge({ status }: { status: PgdInspectionStatus }) {
@@ -321,6 +348,7 @@ function PgdSteelSamplingPreview({
 
 function PgdIntakeForm({
   catalog,
+  workflowTemplates,
   customers,
   currentUser,
   canMutate,
@@ -329,6 +357,7 @@ function PgdIntakeForm({
   onSavingChange,
 }: {
   catalog: PgdCatalogItem[];
+  workflowTemplates: PgdWorkflowTemplate[];
   customers: CustomerRef[];
   currentUser: PcnUserAccount;
   canMutate: boolean;
@@ -342,9 +371,36 @@ function PgdIntakeForm({
   }, [catalog]);
   const [form, setForm] = useState<IntakeForm>(() => ({ ...initialIntake, standards: activeCatalog[0]?.defaultStandards.join(', ') || '' }));
   const [sampleDrafts, setSampleDrafts] = useState<PgdIntakeSampleDraft[]>([]);
+  const [workflowTemplateId, setWorkflowTemplateId] = useState('');
   const [saving, setSaving] = useState(false);
   const createRequest = usePgdStore((state) => state.createRequest);
   const selectedCatalog = activeCatalog.find((item) => item.id === form.catalogItemId) || activeCatalog[0] || DEFAULT_PGD_CATALOG[0];
+  const workflowCandidates = useMemo(() => matchPgdPublishedWorkflowTemplates(workflowTemplates, {
+    productGroups: form.productGroup ? [form.productGroup] : [],
+    methodCode: form.method || undefined,
+  }), [form.method, form.productGroup, workflowTemplates]);
+  const workflowSelection = useMemo(() => resolveTemplateSelectionState({
+    candidates: workflowCandidates,
+    selectedId: workflowTemplateId,
+  }), [workflowCandidates, workflowTemplateId]);
+  const recommendedWorkflowTemplate = workflowSelection.selectedTemplate || workflowSelection.suggestedTemplate;
+  const workflowTemplateOptions = useMemo<PcnCatalogOption[]>(() => workflowCandidates.map((template) => ({
+    value: template.id,
+    label: `${template.name} · ${template.code} · v${template.version}`,
+    searchText: `${template.name} ${template.code} v${template.version}`,
+    description: template.description,
+  })), [workflowCandidates]);
+  const templateRequirementRows = useMemo(() => {
+    if (!recommendedWorkflowTemplate) return undefined;
+    const requirements = getPgdDossierRequirements(form.productGroup);
+    const ids = [...new Set(recommendedWorkflowTemplate.nodes.flatMap((node) => node.requirementCodes))];
+    const rows = ids.map((id) => ({ id, definition: requirements.find((requirement) => requirement.code === id) }));
+    return {
+      required: rows.filter((row) => row.definition?.required),
+      optional: rows.filter((row) => row.definition && !row.definition.required),
+      unknown: rows.filter((row) => !row.definition),
+    };
+  }, [form.productGroup, recommendedWorkflowTemplate]);
   const activeProductGroups = useMemo(() => [...new Set(activeCatalog.map((item) => item.productGroup))], [activeCatalog]);
   const customerOptions = useMemo<PcnCatalogOption[]>(() => customers.flatMap((customer) => {
     const value = customer.customerCode || customer.name;
@@ -356,6 +412,15 @@ function PgdIntakeForm({
       description: [customer.address, customer.contactPerson].filter(Boolean).join(' · '),
     }];
   }), [customers]);
+  const productGroupOptions = useMemo<PcnCatalogOption[]>(() => activeProductGroups.map((group) => ({ value: group, label: PGD_PRODUCT_GROUP_LABELS[group] })), [activeProductGroups]);
+  const catalogItemOptions = useMemo<PcnCatalogOption[]>(() => activeCatalog.map((item) => ({ value: item.id, label: `${item.code} · ${item.name}`, searchText: `${item.code} ${item.name} ${item.productGroup}` })), [activeCatalog]);
+  const priorityOptions = useMemo<PcnCatalogOption[]>(() => [{ value: 'NORMAL', label: 'Bình thường' }, { value: 'URGENT', label: 'Gấp / ưu tiên' }], []);
+  const intakeChannelOptions = useMemo<PcnCatalogOption[]>(() => [
+    { value: 'DIRECT', label: 'Trực tiếp' }, { value: 'PHONE', label: 'Điện thoại' },
+    { value: 'ONLINE_ZALO', label: 'Zalo / Online' }, { value: 'EMAIL', label: 'Email' }, { value: 'OTHER', label: 'Khác' },
+  ], []);
+  const methodOptions = useMemo<PcnCatalogOption[]>(() => selectedCatalog.methodOptions.map((method) => ({ value: method.code, label: `${method.code} · ${method.name}`, searchText: `${method.code} ${method.name}` })), [selectedCatalog.methodOptions]);
+  const assessmentMethodOptions = useMemo<PcnCatalogOption[]>(() => PGD_ASSESSMENT_METHOD_OPTIONS.map((option) => ({ value: option.code, label: option.name, searchText: `${option.code} ${option.name}` })), []);
   const selectedCustomerValue = useMemo(() => {
     const customer = customers.find((item) => item.name === form.customerName && (!form.customerTaxId || item.taxId === form.customerTaxId));
     return customer?.customerCode || (customer ? customer.name : '');
@@ -449,6 +514,10 @@ function PgdIntakeForm({
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (workflowSelection.isAmbiguous) {
+      toast.error('Có nhiều bộ hồ sơ mẫu phù hợp. Hãy chọn một mẫu hoặc điều chỉnh tiêu chí trước khi tạo PYC.');
+      return;
+    }
     setSaving(true);
     onSavingChange?.(true);
     try {
@@ -517,6 +586,12 @@ function PgdIntakeForm({
         standards,
         method: form.method.trim() || undefined,
         assessmentMethod: form.assessmentMethod.trim() ? form.assessmentMethod as PgdInspectionRequestInput['assessmentMethod'] : undefined,
+        ...(workflowSelection.selectedTemplate || workflowSelection.suggestedTemplate ? {
+          workflowTemplateSelection: {
+            id: (workflowSelection.selectedTemplate || workflowSelection.suggestedTemplate)!.id,
+            version: (workflowSelection.selectedTemplate || workflowSelection.suggestedTemplate)!.version,
+          },
+        } : {}),
         note: form.note.trim() || undefined,
         sampleDrafts,
       };
@@ -534,6 +609,21 @@ function PgdIntakeForm({
   return <div className="space-y-3 p-3 md:p-5">
     <form id={formId} onSubmit={submit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:p-5">
       <div data-testid="pgd-selected-group-code" className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-100 bg-blue-50/50 px-2.5 py-2 text-[11px] text-blue-800"><span className="font-black">Nhóm nghiệp vụ PGD:</span><span className="rounded-full border border-blue-200 bg-white px-2 py-1 font-black">{selectedCatalog.groupCode ? PGD_GROUP_LABELS[selectedCatalog.groupCode] : 'Chưa gắn nhóm nghiệp vụ'}</span><span className="text-blue-600">Mã phân tuyến: {selectedCatalog.code}</span></div>
+      <section aria-live="polite" aria-label="Bộ hồ sơ mẫu phù hợp" className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-[10px] text-blue-950">
+        <h2 className="font-black">Bộ hồ sơ mẫu PGD</h2>
+        {workflowCandidates.length === 0 ? <p className="mt-1 font-bold text-amber-800">Chưa xác định bộ hồ sơ mẫu. Có thể lưu PYC và gắn mẫu sau.</p> : <>
+          {workflowCandidates.length > 1 && <div className="mt-2"><PcnCatalogCombobox id="pgd-intake-workflow-template" label="Chọn bộ hồ sơ mẫu" value={workflowSelection.selectedId || ''} options={workflowTemplateOptions} onChange={setWorkflowTemplateId} required invalid={workflowSelection.isAmbiguous} aria-invalid={workflowSelection.isAmbiguous} disabled={saving} /><p className="mt-1 text-slate-600">Có {workflowCandidates.length} bộ mẫu phù hợp. Chọn bộ hồ sơ sẽ dùng cho phiếu này.</p></div>}
+          {recommendedWorkflowTemplate && <div className="mt-2 rounded-lg border border-blue-200 bg-white p-2.5">
+            <p className="font-black">{workflowCandidates.length === 1 ? 'Đề xuất phù hợp' : 'Mẫu đã chọn'}: {recommendedWorkflowTemplate.name}</p>
+            <p className="mt-0.5 font-mono text-slate-600">{recommendedWorkflowTemplate.code} · phiên bản {recommendedWorkflowTemplate.version}</p>
+            {templateRequirementRows && <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <div><b>Bắt buộc</b><p className="mt-0.5 leading-4">{templateRequirementRows.required.map((row) => row.definition?.title || row.id).join(' · ') || 'Không có mục bắt buộc trong catalog.'}</p></div>
+              <div><b>Tùy chọn</b><p className="mt-0.5 leading-4">{templateRequirementRows.optional.map((row) => row.definition?.title || row.id).join(' · ') || 'Không có mục tùy chọn trong catalog.'}</p></div>
+              {templateRequirementRows.unknown.length > 0 && <div className="sm:col-span-2"><b>Mã tài liệu chưa có nhãn trong catalog</b><p className="mt-0.5 leading-4">{templateRequirementRows.unknown.map((row) => row.id).join(' · ')}</p></div>}
+            </div>}
+          </div>}
+        </>}
+      </section>
       <PgdcnIntakeDropzone disabled={saving || !canMutate} onExtract={runPgdOcr} onDraftApply={applyPgdOcr} onFileAccepted={(file) => update('note', `Tài liệu nhập nhanh: ${file.name}${form.note.trim() ? `\n${form.note.trim()}` : ''}`)} />
       <section className="rounded-xl border border-blue-100 bg-blue-50/40 p-3"><h2 className="mb-2 text-xs font-black text-slate-800">Thông tin bên yêu cầu</h2><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Field label="Người / đơn vị yêu cầu *"><TextInput required value={form.requesterName} onChange={(event) => update('requesterName', event.target.value)} /></Field><Field label="Địa chỉ bên yêu cầu *"><TextInput required value={form.requesterAddress} onChange={(event) => update('requesterAddress', event.target.value)} /></Field><Field label="Người liên hệ *"><TextInput required value={form.requesterContact} onChange={(event) => update('requesterContact', event.target.value)} /></Field><Field label="Điện thoại *"><TextInput required value={form.requesterPhone} onChange={(event) => update('requesterPhone', event.target.value)} /></Field><Field label="Email"><TextInput type="email" value={form.requesterEmail} onChange={(event) => update('requesterEmail', event.target.value)} /></Field><Field label="Mức ưu tiên"><SelectInput value={form.priority} onChange={(event) => update('priority', event.target.value as IntakeForm['priority'])}><option value="NORMAL">Bình thường</option><option value="URGENT">Gấp / ưu tiên</option></SelectInput></Field><Field label="Lý do ưu tiên" wide><TextInput required={form.priority === 'URGENT'} value={form.urgentReason} onChange={(event) => update('urgentReason', event.target.value)} /></Field></div></section>
       <section><h2 className="mb-2 flex items-center gap-2 text-xs font-black text-slate-800"><Building2 size={15} className="text-blue-600" /> Đơn vị yêu cầu / khách hàng</h2><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-lg border border-blue-100 bg-blue-50/60 px-2.5 py-2 text-[11px] text-blue-800"><span className="block font-black">Số hồ sơ / PYC</span><span className="mt-1 block">Hệ thống tự cấp theo ngày: <b className="font-mono">PGD-YYMMDD-TT</b></span></div><Field label="Kênh tiếp nhận"><SelectInput value={form.intakeChannel} onChange={(event) => update('intakeChannel', event.target.value as IntakeForm['intakeChannel'])}><option value="DIRECT">Trực tiếp</option><option value="PHONE">Điện thoại</option><option value="ONLINE_ZALO">Zalo / Online</option><option value="EMAIL">Email</option><option value="OTHER">Khác</option></SelectInput></Field><Field label="Tìm khách hàng dùng chung"><PcnCatalogCombobox id="pgd-customer-catalog" label="Tìm khách hàng dùng chung" hideLabel value={selectedCustomerValue} options={customerOptions} onChange={chooseCustomer} disabled={saving} /></Field><Field label="Tên đơn vị *"><TextInput required value={form.customerName} onChange={(event) => update('customerName', event.target.value)} /></Field><Field label="Địa chỉ *"><TextInput required value={form.customerAddress} onChange={(event) => update('customerAddress', event.target.value)} /></Field><Field label="Mã số thuế"><TextInput value={form.customerTaxId} onChange={(event) => update('customerTaxId', event.target.value)} /></Field><Field label="Người liên hệ"><TextInput value={form.customerContact} onChange={(event) => update('customerContact', event.target.value)} /></Field><Field label="Điện thoại"><TextInput value={form.customerPhone} onChange={(event) => update('customerPhone', event.target.value)} /></Field><Field label="Email"><TextInput type="email" value={form.customerEmail} onChange={(event) => update('customerEmail', event.target.value)} /></Field></div></section>
@@ -1176,6 +1266,7 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
   const [reportInputs, setReportInputs] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [workflowTemplateId, setWorkflowTemplateId] = useState('');
   const [mobileSection, setMobileSection] = useState<'work' | 'auxiliary'>('work');
   const [selectedStepId, setSelectedStepId] = useState<PgdDossierFlowStepId>(() => reconcilePgdDossierStepSelection({
     selectedStepId: initialStepId || getPgdDossierFlowStepIdForStatus(request.status),
@@ -1186,6 +1277,22 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
   }));
   const stepSelectionContext = useRef<PgdDossierStepSelectionContext>({ requestId: request.id, initialStepId });
   const dossierFetchSequence = useRef(0);
+
+  const pendingWorkflowCandidates = useMemo(() => matchPgdPublishedWorkflowTemplates(pgd.workflowTemplates, {
+    productGroups: [request.productGroup],
+    methodCode: request.method || undefined,
+  }), [pgd.workflowTemplates, request.method, request.productGroup]);
+  const pendingWorkflowSelection = useMemo(() => resolveTemplateSelectionState({
+    candidates: pendingWorkflowCandidates,
+    selectedId: workflowTemplateId,
+  }), [pendingWorkflowCandidates, workflowTemplateId]);
+  const selectedPendingWorkflowTemplate = pendingWorkflowSelection.selectedTemplate || pendingWorkflowSelection.suggestedTemplate;
+  const pendingWorkflowOptions = useMemo<PcnCatalogOption[]>(() => pendingWorkflowCandidates.map((template) => ({
+    value: template.id,
+    label: `${template.name} · ${template.code} · v${template.version}`,
+    searchText: `${template.name} ${template.code} v${template.version}`,
+    description: template.description,
+  })), [pendingWorkflowCandidates]);
 
   const assignment = pgd.assignments.find((item) => item.requestId === request.id);
   const fieldInspection = pgd.fieldInspections.find((item) => item.requestId === request.id);
@@ -1365,6 +1472,23 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
     try { await action(); toast.success(success); } catch (error: any) { toast.error(error?.message || 'Không thể cập nhật hồ sơ PGD.'); } finally { setBusy(false); }
   };
 
+  const attachWorkflowTemplate = () => {
+    if (!selectedPendingWorkflowTemplate) {
+      toast.error('Chọn một bộ hồ sơ mẫu phù hợp trước khi gắn.');
+      return;
+    }
+    void run(async () => {
+      const response = await fetch(`/api/pgd/requests/${encodeURIComponent(request.id)}/workflow-template`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: selectedPendingWorkflowTemplate.id, version: selectedPendingWorkflowTemplate.version }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || payload?.message || 'Không thể gắn bộ hồ sơ mẫu PGD.');
+      await pgd.load(true);
+    }, `Đã gắn bộ hồ sơ mẫu ${selectedPendingWorkflowTemplate.code} v${selectedPendingWorkflowTemplate.version}.`);
+  };
+
 
   const saveAssignment = () => run(async () => {
     const inspectorUsernames = inspectorInput.split(',').map((item) => item.trim()).filter(Boolean);
@@ -1521,6 +1645,19 @@ Chủ hồ sơ: {getPgdUserDisplayName(request.ownerUsername, pgd.users) || 'Ch�
         </div>
         {completeCurrentStep ? <button data-testid="pgd-dossier-priority-cta" type="button" onClick={completeCurrentStep} disabled={primaryActionDisabled} aria-busy={busy ? 'true' : undefined} aria-describedby="pgd-dossier-priority-guidance" className="mobile-touch-target inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-xs font-black text-white shadow-sm hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">{busy ? 'Đang xử lý…' : primaryActionLabel || 'Hoàn tất việc'}</button> : <p className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-800">Hồ sơ đã ở cuối quy trình.</p>}
       </section>
+
+      {request.workflowTemplatePending === true && <section aria-label="Gắn bộ hồ sơ mẫu còn thiếu" className="mb-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 md:p-4">
+        <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.75fr)] md:items-end">
+          <div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-wide text-amber-800">Bộ hồ sơ mẫu chưa được gắn</p>
+            {pendingWorkflowCandidates.length === 0 ? <p className="mt-1 text-[11px] text-amber-900">Chưa có bộ mẫu PGD đang publish phù hợp. Có thể quay lại sau khi catalog được cập nhật.</p> : <>
+              {pendingWorkflowCandidates.length === 1 && selectedPendingWorkflowTemplate && <p className="mt-1 text-[11px] text-amber-950"><b>{selectedPendingWorkflowTemplate.name}</b> · {selectedPendingWorkflowTemplate.code} · phiên bản {selectedPendingWorkflowTemplate.version}</p>}
+              {pendingWorkflowCandidates.length > 1 && <PcnCatalogCombobox id="pgd-pending-workflow-template" label="Chọn bộ hồ sơ mẫu" value={pendingWorkflowSelection.selectedId || ''} options={pendingWorkflowOptions} onChange={setWorkflowTemplateId} disabled={busy} />}
+              {pendingWorkflowCandidates.length > 1 && selectedPendingWorkflowTemplate && <p className="mt-1 text-[11px] text-amber-950"><b>{selectedPendingWorkflowTemplate.name}</b> · {selectedPendingWorkflowTemplate.code} · phiên bản {selectedPendingWorkflowTemplate.version}</p>}
+            </>}
+          </div>
+          {pendingWorkflowCandidates.length > 0 && <button type="button" onClick={attachWorkflowTemplate} disabled={busy || !selectedPendingWorkflowTemplate || pendingWorkflowSelection.isAmbiguous} className="mobile-touch-target min-h-11 rounded-lg bg-amber-700 px-3 py-2 text-[11px] font-black text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Đang gắn mẫu…' : 'Gắn bộ hồ sơ mẫu'}</button>}
+        </div>
+      </section>}
 
       {/* Horizontal Workflow Rail - Unhidden, compact top placement matching PCN */}
       <div className="mt-3">
@@ -2195,7 +2332,7 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
       onRestore={() => setIntakeMinimized(false)}
       footer={<><p className="text-[11px] text-slate-400">{canMutate ? 'PYC được tạo ở Bản nháp; các dòng mẫu được lưu cùng hồ sơ.' : 'Tài khoản chỉ đọc: không được tạo hoặc sửa hồ sơ PGD.'}</p><div className="flex flex-wrap items-center gap-2"><button type="button" onClick={() => setIntakeOpen(false)} disabled={intakeSaving} className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-3 text-[11px] font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Hủy</button><button type="submit" form="pgd-intake-form" disabled={intakeSaving || !canMutate} className="mobile-touch-target inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-600 px-3 text-[11px] font-black text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"><FilePlus2 size={14} />{intakeSaving ? 'Đang tạo PYC...' : 'Tạo PYC & mở hồ sơ'}</button></div></>}
     >
-      <PgdIntakeForm catalog={pgd.catalog} customers={pgd.customers} currentUser={currentUser} canMutate={canMutate} onCreated={createDone} onSavingChange={setIntakeSaving} />
+      <PgdIntakeForm catalog={pgd.catalog} workflowTemplates={pgd.workflowTemplates} customers={pgd.customers} currentUser={currentUser} canMutate={canMutate} onCreated={createDone} onSavingChange={setIntakeSaving} />
     </PgdcnWindowsWorkflowModal>
   </>;
 }

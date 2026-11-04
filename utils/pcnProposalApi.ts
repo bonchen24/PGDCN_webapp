@@ -4,6 +4,8 @@ export type PcnProposalUpdateInput = Partial<Pick<
   CertificationProposal,
   | 'channel'
   | 'customerId'
+  | 'registrationNumber'
+  | 'standards'
   | 'warehouseAddress'
   | 'productName'
   | 'productType'
