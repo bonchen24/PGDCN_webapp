@@ -20,6 +20,8 @@ import {
   validatePgdIntakeSampleDrafts,
 } from '@/utils/pgdDomain';
 import { buildPgdDossierChecklist } from '@/utils/pgdDossier';
+import { matchPgdPublishedWorkflowTemplates, resolveWorkflowTemplateForCreate } from '@/utils/pgdcnIntakeTemplateMatching';
+import { snapshotPgdWorkflowTemplate, type PgdWorkflowTemplate } from '@/utils/pgdWorkflowTemplate';
 import { writePgdActivity } from '@/lib/server/pgd-operations';
 import { buildPgdNotificationDraft } from '@/utils/pgdcnNotification';
 
@@ -39,7 +41,15 @@ export async function POST(req: NextRequest) {
       return jsonBadRequest(`Dữ liệu mẫu PGD chưa hợp lệ: ${sampleIssues.map((issue) => issue.field).join(', ')}`);
     }
 
-    const { sampleDrafts: _sampleDrafts, ...requestInput } = input;
+    const {
+      sampleDrafts: _sampleDrafts,
+      workflowTemplateSelection,
+      workflowTemplateId: _clientWorkflowTemplateId,
+      workflowTemplateVersion: _clientWorkflowTemplateVersion,
+      workflowSnapshot: _clientWorkflowSnapshot,
+      workflowTemplatePending: _clientWorkflowTemplatePending,
+      ...requestInput
+    } = input;
     const catalogResult = await pool.query(
       `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd' ORDER BY document_id`,
       [PGD_COLLECTIONS.catalog],
@@ -84,6 +94,24 @@ export async function POST(req: NextRequest) {
         catalog,
       );
 
+      const workflowTemplateResult = await client.query(
+        `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd' AND data->>'status' = 'PUBLISHED'`,
+        [PGD_COLLECTIONS.workflowTemplates],
+      );
+      const workflowTemplates = workflowTemplateResult.rows.map((row: any) => mapDocumentRow(row) as PgdWorkflowTemplate);
+      const workflowCandidates = matchPgdPublishedWorkflowTemplates(workflowTemplates, {
+        productGroups: [createdRequest.productGroup],
+        methodCode: createdRequest.method || undefined,
+      });
+      const workflowResolution = resolveWorkflowTemplateForCreate(workflowCandidates, workflowTemplateSelection);
+      if (workflowResolution.status === 'invalid-selection') {
+        throw Object.assign(new Error('Bộ hồ sơ mẫu đã chọn không còn được publish hoặc không còn phù hợp với thông tin PYC.'), { statusCode: 409 });
+      }
+      if (workflowResolution.status === 'ambiguous') {
+        throw Object.assign(new Error('Có nhiều bộ hồ sơ mẫu phù hợp. Vui lòng chọn một mẫu trước khi tạo PYC.'), { statusCode: 409 });
+      }
+      const selectedWorkflowTemplate = workflowResolution.status === 'resolved' ? workflowResolution.template : undefined;
+
       const samples = sampleDrafts.map((draft) =>
         createPgdSampleFromIntakeDraft(createdRequest.id, draft, actor.username, now),
       );
@@ -92,6 +120,14 @@ export async function POST(req: NextRequest) {
         ...createdRequest,
         sampleIds: samples.map((sample) => sample.id),
         dossierChecklist: buildPgdDossierChecklist(createdRequest.productGroup, now),
+        ...(selectedWorkflowTemplate ? {
+          workflowTemplateId: selectedWorkflowTemplate.id,
+          workflowTemplateVersion: selectedWorkflowTemplate.version,
+          workflowSnapshot: snapshotPgdWorkflowTemplate(selectedWorkflowTemplate, {
+            capturedAt: now,
+            capturedBy: actor.username || 'SYSTEM',
+          }),
+        } : { workflowTemplatePending: true }),
       };
 
       const duplicateCode = await client.query(

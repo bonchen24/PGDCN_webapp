@@ -31,7 +31,7 @@ test('PCN drafting exposes exact Vietnamese missing labels with focus actions', 
     .filter((field) => validation.missingKeys.includes(field.key))
     .map((field) => field.label);
 
-  for (const label of ['Số Đề nghị / đăng ký', 'Tên khách hàng', 'Tên sản phẩm', 'Số lượng mẫu']) assert.ok(labels.includes(label), `missing exact label: ${label}`);
+  for (const label of ['Số đăng ký trên Một cửa quốc gia', 'Tên khách hàng', 'Tên sản phẩm', 'Số lượng mẫu']) assert.ok(labels.includes(label), `missing exact label: ${label}`);
   assert.match(workspace, /onIssueClick=\{\(issue\) => focusField\(issue\.key\)\}/);
   assert.match(workspace, /scrollIntoView\(\{ behavior: 'smooth', block: 'center' \}\)/);
   assert.match(workspace, /Đi tới trường còn thiếu/);

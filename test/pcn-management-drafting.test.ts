@@ -98,6 +98,14 @@ test('draft source prefills sample, PYC and handover forms from the dossier samp
   assert.equal(values.nguoi_nhan, 'PTN EMC');
 });
 
+test('PCN proposal DOCX source uses its explicit national registry number while other drafts keep the proposal code', () => {
+  const registeredProposal = { ...proposal, registrationNumber: 'MOT-CUA-2026-014', standards: ['QCVN 01:2025', 'TCVN 123'] };
+  assert.equal(buildPcnDraftSourceValues(registeredProposal, dossier(), {}, 'PROPOSAL_FORM').so_dang_ky, 'MOT-CUA-2026-014');
+  assert.equal(buildPcnDraftSourceValues(registeredProposal, dossier(), {}, 'PROPOSAL_FORM').tieu_chuan, 'QCVN 01:2025, TCVN 123');
+  assert.equal(buildPcnDraftSourceValues(registeredProposal, dossier(), {}, 'COMMERCIAL').so_dang_ky, 'DN-001');
+  assert.equal(getPcnDraftFieldDefinitions('PROPOSAL_FORM').some((field) => field.key === 'tieu_chuan' && field.required), true);
+});
+
 test('assistant snapshot carries the five-step dossier context and sample flow for AI questions', () => {
   const lot: PcnSampleLot = { id: 'lot-1', dossierId: 'd-1', lotCode: 'LO-QC4-01', sampleName: 'Thiết bị A', quantity: 2, fieldCodes: ['QC4'], routeIds: ['route-1'], status: 'AT_LAB', currentLocation: 'Phòng thử EMC' };
   const route: PcnSampleRoute = { id: 'route-1', sampleLotId: 'lot-1', labCode: 'EMC', labName: 'Phòng thử EMC', status: 'RECEIVED', labRequestId: 'pyc-1' };

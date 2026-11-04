@@ -66,7 +66,14 @@ const COMMON_FIELDS: PcnDraftFieldDefinition[] = [
 ];
 
 const FORM_FIELDS: Record<PcnDraftFormKind, PcnDraftFieldDefinition[]> = {
-  PROPOSAL_FORM: [...COMMON_FIELDS, { key: 'dia_chi_kho', label: 'Địa chỉ/kho lấy mẫu' }, { key: 'so_luong_mau', label: 'Số lượng mẫu', required: true }, { key: 'thong_so_ky_thuat', label: 'Thông số kỹ thuật', type: 'textarea', required: true }],
+  PROPOSAL_FORM: [
+    ...COMMON_FIELDS.map((field) => field.key === 'so_dang_ky'
+      ? { ...field, label: 'Số đăng ký trên Một cửa quốc gia' }
+      : field.key === 'tieu_chuan' ? { ...field, required: true } : field),
+    { key: 'dia_chi_kho', label: 'Địa chỉ/kho lấy mẫu' },
+    { key: 'so_luong_mau', label: 'Số lượng mẫu', required: true },
+    { key: 'thong_so_ky_thuat', label: 'Thông số kỹ thuật', type: 'textarea', required: true },
+  ],
   DOSSIER_COVER: [...COMMON_FIELDS, { key: 'nguoi_danh_gia', label: 'Người phụ trách/đánh giá' }],
   ASSIGNMENT_FORM: [...COMMON_FIELDS, { key: 'dia_chi_kho', label: 'Địa chỉ/kho lấy mẫu' }, { key: 'ngay_lap', label: 'Ngày lập', type: 'date', required: true }, { key: 'ngay_phan_cong', label: 'Ngày phân công', type: 'date', required: true }, { key: 'ngay_lay_mau', label: 'Ngày dự kiến lấy mẫu', type: 'date', required: true }, { key: 'nguoi_giao', label: 'Người phân công/giao' }, { key: 'nguoi_danh_gia', label: 'Người đánh giá', required: true }, { key: 'nguoi_tham_xet', label: 'Người soát xét', required: true }],
   EVALUATION_PLAN: [...COMMON_FIELDS, { key: 'ngay_bat_dau', label: 'Ngày bắt đầu', type: 'date', required: true }, { key: 'ngay_ket_thuc', label: 'Ngày kết thúc', type: 'date', required: true }, { key: 'dia_diem_lap', label: 'Địa điểm đánh giá', required: true }, { key: 'nguoi_danh_gia', label: 'Người đánh giá', required: true }, { key: 'nguoi_tham_xet', label: 'Người soát xét', required: true }],
@@ -196,7 +203,12 @@ function newestFirst<T extends { updatedAt?: string; createdAt?: string }>(items
   return [...items].sort((left, right) => String(right.updatedAt || right.createdAt || '').localeCompare(String(left.updatedAt || left.createdAt || '')));
 }
 
-export function buildPcnDraftSourceValues(proposal?: CertificationProposal, dossier?: CertificationDossier, related: PcnDraftRelatedSource = {}): Record<string, unknown> {
+export function buildPcnDraftSourceValues(
+  proposal?: CertificationProposal,
+  dossier?: CertificationDossier,
+  related: PcnDraftRelatedSource = {},
+  formKind?: PcnDraftFormKind,
+): Record<string, unknown> {
   const customer = dossier?.customerSnapshot || proposal?.customerSnapshot;
   const dossierId = dossier?.id;
   const lots = newestFirst((related.sampleLots || []).filter((lot) => Boolean(dossierId) && lot.dossierId === dossierId));
@@ -215,7 +227,9 @@ export function buildPcnDraftSourceValues(proposal?: CertificationProposal, doss
   const evaluator = dossier?.evaluatorUsername || '';
   const reviewer = dossier?.reviewerUsername || '';
   return {
-    so_dang_ky: proposal?.proposalCode || '',
+    so_dang_ky: formKind === 'PROPOSAL_FORM'
+      ? proposal?.registrationNumber || ''
+      : proposal?.proposalCode || '',
     ma_ho_so: dossier?.dossierCode || '',
     ten_cong_ty: customer?.name || '',
     ma_so_thue: customer?.taxId || '',
@@ -224,6 +238,7 @@ export function buildPcnDraftSourceValues(proposal?: CertificationProposal, doss
     dien_thoai: customer?.phone || '',
     email: customer?.email || '',
     loai_sp: proposal?.productName || '',
+    tieu_chuan: Array.isArray(proposal?.standards) ? proposal.standards.join(', ') : '',
     // Prefer the actual sampled lot values below when available.
     nha_san_xuat: proposal?.manufacturer || '',
     dia_chi_nha_san_xuat: proposal?.manufacturerAddress || '',

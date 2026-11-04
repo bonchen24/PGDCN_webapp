@@ -106,7 +106,7 @@ test('focused PCN controls and modal surfaces keep touch, focus and scroll contr
   assert.match(combobox, /focus-visible/);
   assert.match(combobox, /mobile-touch-target/);
   const comboboxInput = combobox.slice(combobox.indexOf('<input'), combobox.indexOf('/>', combobox.indexOf('<input')));
-  assert.match(comboboxInput, /aria-label=\{hideLabel \? label : undefined\}/);
+  assert.match(comboboxInput, /aria-label=\{hideLabel \? \(useParentLabel \? ariaLabel : label\) : undefined\}/);
 
   for (const path of [
     '../components/PcnDocumentOutputModal.tsx',

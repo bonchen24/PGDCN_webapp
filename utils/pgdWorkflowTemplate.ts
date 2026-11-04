@@ -71,6 +71,49 @@ export interface PgdWorkflowTemplate {
   updatedBy: string;
 }
 
+export interface PgdWorkflowSnapshot {
+  templateCode: string;
+  templateVersion: number;
+  nodes: PgdWorkflowNodeDefinition[];
+  transitions: PgdWorkflowTransitionDefinition[];
+  capturedAt: string;
+  capturedBy: string;
+}
+
+export function snapshotPgdWorkflowTemplate(
+  template: PgdWorkflowTemplate,
+  metadata: { capturedAt: string; capturedBy: string },
+): PgdWorkflowSnapshot {
+  if (template.domain !== 'pgd' || template.status !== 'PUBLISHED') {
+    throw new Error('Chỉ được tạo snapshot từ mẫu quy trình PGD đã PUBLISHED.');
+  }
+  const validation = validatePgdWorkflowTemplate(template);
+  if (!validation.valid) {
+    throw new Error(`Mẫu quy trình PGD không hợp lệ: ${validation.errors.join(' ')}`);
+  }
+  return {
+    templateCode: template.code,
+    templateVersion: template.version,
+    nodes: template.nodes.map((node) => ({ ...node, requirementCodes: [...node.requirementCodes] })),
+    transitions: template.transitions.map((transition) => ({
+      ...transition,
+      ...(transition.conditionConfig ? {
+        conditionConfig: {
+          ...transition.conditionConfig,
+          ...(transition.conditionConfig.expectedProductGroups
+            ? { expectedProductGroups: [...transition.conditionConfig.expectedProductGroups] }
+            : {}),
+          ...(transition.conditionConfig.expectedMethodCodes
+            ? { expectedMethodCodes: [...transition.conditionConfig.expectedMethodCodes] }
+            : {}),
+        },
+      } : {}),
+    })),
+    capturedAt: metadata.capturedAt,
+    capturedBy: metadata.capturedBy,
+  };
+}
+
 const ALLOWED_CONDITIONS = new Set<PgdWorkflowCondition>([
   'ALWAYS',
   'REQUIRED_DOCUMENTS_COMPLETE',

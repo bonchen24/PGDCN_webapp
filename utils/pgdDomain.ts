@@ -1,5 +1,6 @@
 import type { CustomerRef, OrganizationManagementRoleCode, ProfessionalRoleCode } from '../types.ts';
 import type { PgdDocumentTemplateSnapshot } from './pgdDocumentTemplates.ts';
+import type { PgdWorkflowSnapshot } from './pgdWorkflowTemplate.ts';
 import { isOrganizationLeader } from './pcnRbac.ts';
 
 export const PGD_DOMAIN = 'pgd' as const;
@@ -746,6 +747,12 @@ export interface PgdInspectionRequestInput {
   ownerUsername?: string;
   ownerAssignedAt?: string;
   dossierChecklist?: PgdDossierChecklistItem[];
+  /** Immutable workflow template reference/snapshot for newly linked records; absent on legacy requests. */
+  workflowTemplateId?: string;
+  workflowTemplateVersion?: number;
+  workflowSnapshot?: PgdWorkflowSnapshot;
+  /** True only when a new request was saved before a matching published workflow template existed. */
+  workflowTemplatePending?: boolean;
   status?: PgdInspectionStatus;
 }
 
@@ -773,6 +780,7 @@ export interface PgdIntakeSampleDraft {
 /** Create-only envelope; draft sample rows are persisted in the same transaction as the request. */
 export interface PgdInspectionRequestCreateInput extends PgdInspectionRequestInput {
   sampleDrafts?: PgdIntakeSampleDraft[];
+  workflowTemplateSelection?: { id: string; version: number };
 }
 
 export interface PgdInspectionRequest extends Omit<PgdInspectionRequestInput, 'status' | 'documentPointers' | 'requestCode'> {

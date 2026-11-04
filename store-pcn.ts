@@ -116,7 +116,7 @@ interface PcnStoreState {
   addCustomer: (customer: Partial<CustomerRef>) => Promise<void>;
   updateCustomer: (customerCodeOrName: string, updates: Partial<CustomerRef>) => Promise<void>;
   deleteCustomer: (customerCodeOrName: string) => Promise<void>;
-  addProposal: (proposal: CertificationProposal) => Promise<void>;
+  addProposal: (proposal: CertificationProposal, workflowTemplateSelection?: { id: string; version: number }, dossierContext?: { method: CertificationDossier['method']; dossierType?: string }) => Promise<void>;
   updateProposal: (proposalId: string, updates: PcnProposalUpdateInput) => Promise<void>;
   addDossier: (dossier: CertificationDossier) => Promise<void>;
   createWorkflowTemplate: (template: PcnWorkflowTemplate) => Promise<PcnWorkflowTemplate>;
@@ -649,7 +649,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     }
   },
 
-  addProposal: async (proposal) => {
+  addProposal: async (proposal, workflowTemplateSelection, dossierContext) => {
     assertPcnStoreMutationAllowed();
     const existingDossier = get().dossiers.find((item) => item.proposalId === proposal.id);
     const now = new Date().toISOString();
@@ -659,7 +659,8 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
       proposalId: proposal.id,
       customerSnapshot: { ...proposal.customerSnapshot },
       fieldCodes: proposal.fieldCodes,
-      method: 'METHOD_1',
+      method: dossierContext?.method || 'METHOD_1',
+      ...(dossierContext?.dossierType ? { dossierType: dossierContext.dossierType } : {}),
       status: 'INTAKE_REVIEW',
       labRequestIds: [],
       returnedResultIds: [],
@@ -668,7 +669,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     };
     const convertedProposal = markPcnProposalConverted(proposal, dossier.id);
     const dossierWithSnapshot = ensurePcnDossierCustomerSnapshot(dossier, proposal);
-    const result = await createPcnIntake(convertedProposal, dossierWithSnapshot);
+    const result = await createPcnIntake(convertedProposal, dossierWithSnapshot, workflowTemplateSelection);
     set((state) => ({
       proposals: [result.proposal, ...state.proposals.filter((item) => item.id !== result.proposal.id)],
       dossiers: [result.dossier, ...state.dossiers.filter((item) => item.id !== result.dossier.id)],

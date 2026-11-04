@@ -48,6 +48,8 @@ export async function POST(
     'channel',
     'customerId',
     'customerSnapshot',
+    'registrationNumber',
+    'standards',
     'warehouseAddress',
     'productName',
     'productType',
@@ -183,6 +185,8 @@ export async function POST(
       }
       for (const field of [
         'customerId',
+        'registrationNumber',
+        'standards',
         'warehouseAddress',
         'productName',
         'productType',
@@ -231,6 +235,8 @@ export async function POST(
         'channel',
         'customerId',
         'customerSnapshot',
+        'registrationNumber',
+        'standards',
         'warehouseAddress',
         'productName',
         'productType',
