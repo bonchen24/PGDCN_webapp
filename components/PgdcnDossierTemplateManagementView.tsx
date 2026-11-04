@@ -435,34 +435,32 @@ export default function PgdcnDossierTemplateManagementView(props: PgdcnDossierTe
 
       {/* Main Content: Filter & Cards */}
       <section className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm md:p-5">
-        <div className="pgdcn-toolbar-nowrap" data-testid="pgdcn-dossier-template-filters">
-          <label className="pgdcn-toolbar-search block">
-            <span className="mb-1.5 block text-xs font-bold text-slate-700">Tìm kiếm bộ hồ sơ mẫu</span>
-            <div className="relative">
-              <Search size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
-              <input 
-                aria-label="Tìm kiếm bộ hồ sơ mẫu" 
-                placeholder="Nhập mã, tên hoặc từ khóa tìm kiếm..." 
-                value={query} 
-                onChange={(event) => setQuery(event.target.value)} 
-                className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50/50 pl-10 pr-3 text-xs md:text-sm text-slate-800 transition focus:border-indigo-500 focus:bg-white focus:outline-none" 
-              />
-            </div>
-          </label>
-          <label className="pgdcn-toolbar-filter block">
-            <span className="mb-1.5 block text-xs font-bold text-slate-700">Trạng thái</span>
+        <div className="pgdcn-toolbar-nowrap flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs" data-testid="pgdcn-dossier-template-filters">
+          <div className="pgdcn-toolbar-search relative min-w-[220px] sm:min-w-[260px] max-w-sm flex-1 shrink-0">
+            <label htmlFor="pgdcn-template-search" className="sr-only">Tìm kiếm bộ hồ sơ mẫu</label>
+            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              id="pgdcn-template-search"
+              aria-label="Tìm kiếm bộ hồ sơ mẫu" 
+              placeholder="Nhập mã, tên hoặc từ khóa tìm kiếm..." 
+              value={query} 
+              onChange={(event) => setQuery(event.target.value)} 
+              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100" 
+            />
+          </div>
+          <div className="pgdcn-toolbar-filter shrink-0">
             <select 
               aria-label="Lọc trạng thái bộ hồ sơ mẫu" 
               value={status} 
               onChange={(event) => setStatus(event.target.value as TemplateStatus)} 
-              className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50/50 px-3 text-xs md:text-sm font-semibold text-slate-800 transition focus:border-indigo-500 focus:bg-white focus:outline-none"
+              className="h-9 min-w-[140px] rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none transition hover:border-slate-300 focus:border-indigo-500 shadow-3xs cursor-pointer"
             >
               <option value="ALL">Tất cả trạng thái</option>
               <option value="DRAFT">Bản nháp</option>
               <option value="PUBLISHED">Đang áp dụng</option>
               <option value="RETIRED">Đã ngừng</option>
             </select>
-          </label>
+          </div>
         </div>
 
         {/* Template Cards Grid */}

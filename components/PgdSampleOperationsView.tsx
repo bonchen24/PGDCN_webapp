@@ -179,18 +179,20 @@ export default function PgdSampleOperationsView({ requests, samples, labRequests
       </div>
 
       {/* Toolbar */}
-      <div className="pgdcn-toolbar-nowrap rounded-xl border border-slate-200 bg-white p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div className="pgdcn-toolbar-search relative min-w-0 flex-1 max-w-md">
-          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <div className="pgdcn-toolbar-nowrap flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs">
+        <div className="pgdcn-toolbar-search relative min-w-[220px] sm:min-w-[260px] max-w-sm flex-1 shrink-0">
+          <label htmlFor="pgd-sample-operations-search" className="sr-only">Tìm mẫu, hồ sơ hoặc PTN</label>
+          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
+            id="pgd-sample-operations-search"
             aria-label="Tìm mẫu, hồ sơ hoặc PTN"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Tìm mã mẫu, mã PYC, khách hàng, PTN..."
-            className="mobile-touch-target min-h-11 w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs font-bold shadow-2xs outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
           />
         </div>
-        <span className="pgdcn-toolbar-count rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">
+        <span className="pgdcn-toolbar-count ml-auto flex shrink-0 items-center text-xs font-bold text-slate-400">
           {visibleRows.length}/{rows.length} mẫu
         </span>
       </div>

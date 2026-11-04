@@ -362,14 +362,14 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = ({ currentUser: p
                 <option value="PGD">PGD · Giám định</option>
               </select>
             </label>
-            <label className="pgdcn-toolbar-search relative">
-              <span className="mb-1 block text-[11px] font-black text-slate-600">Tìm kiếm nhật ký</span>
+            <label className="pgdcn-toolbar-search relative min-w-[220px] sm:min-w-[260px] max-w-sm flex-1 shrink-0">
+              <span className="sr-only">Tìm kiếm nhật ký</span>
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} aria-hidden="true" />
               <input
                 value={filters.search}
                 onChange={event => updateFilter('search', event.target.value)}
-
-                className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-xs outline-none transition focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 focus:ring-2 focus:ring-emerald-100 sm:min-h-9"
+                placeholder="Tìm theo hành động, người dùng, mã hồ sơ..."
+                className="h-9 min-h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs outline-none transition focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 focus:ring-2 focus:ring-emerald-100"
               />
             </label>
             <div className="pgdcn-toolbar-filter relative">

@@ -1887,7 +1887,7 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
       </div>
 
       {/* Unified Search & Status Pills Filter Bar (TVCI Lab Standard) */}
-      <div data-testid="pgd-register-toolbar" className="pgdcn-toolbar-nowrap flex items-center gap-2">
+      <div data-testid="pgd-register-toolbar" className="pgdcn-toolbar-nowrap flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs">
         {/* Search input with rounded-xl */}
         <div className="pgdcn-toolbar-search relative flex-1 min-w-[240px] max-w-md">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
