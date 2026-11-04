@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -13,6 +13,10 @@ import {
   ArrowRight,
   TrendingUp,
   FolderOpen,
+  PlusCircle,
+  Filter,
+  X,
+  Layers,
 } from 'lucide-react';
 
 import { usePcnStore } from '@/store-pcn';
@@ -25,12 +29,64 @@ import {
   getPgdcnMyWorkProjection,
   type PgdcnMyWorkItem,
 } from '@/utils/pgdcnDashboard';
+import { CreatePcnProposalDialog } from './create-pcn-proposal-dialog';
+import { CreatePgdRequestDialog } from './create-pgd-request-dialog';
+
+type KpiFilterType = 'ALL' | 'IN_PROGRESS' | 'AWAITING_APPROVAL' | 'OVERDUE';
+
+function getPcnStatusBadgeClass(status: string) {
+  switch (status) {
+    case 'INTAKE_REVIEW':
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    case 'TECHNICAL_REVIEW':
+    case 'DOCUMENT_VERIFICATION':
+      return 'bg-blue-50 text-blue-700 border-blue-200';
+    case 'SAMPLING':
+    case 'TESTING':
+      return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'APPROVAL_PENDING':
+    case 'LEADER_APPROVAL':
+    case 'DIRECTOR_APPROVAL':
+      return 'bg-purple-50 text-purple-700 border-purple-200';
+    case 'ISSUANCE':
+    case 'COMPLETED':
+      return 'bg-teal-50 text-teal-700 border-teal-200';
+    case 'REJECTED':
+      return 'bg-rose-50 text-rose-700 border-rose-200';
+    default:
+      return 'bg-slate-50 text-slate-700 border-slate-200';
+  }
+}
+
+function getPgdStatusBadgeClass(status: string) {
+  switch (status) {
+    case 'CAPABILITY_REVIEW':
+      return 'bg-sky-50 text-sky-700 border-sky-200';
+    case 'FIELD_INSPECTION':
+      return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    case 'WAITING_LAB_RESULTS':
+      return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'REPORT_APPROVAL':
+    case 'CERTIFICATE_APPROVAL':
+      return 'bg-purple-50 text-purple-700 border-purple-200';
+    case 'COMPLETED':
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    case 'DRAFT':
+      return 'bg-slate-100 text-slate-700 border-slate-200';
+    default:
+      return 'bg-blue-50 text-blue-700 border-blue-200';
+  }
+}
 
 export default function WorkspaceDashboard() {
   const router = useRouter();
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const pcn = usePcnStore();
   const pgd = usePgdStore();
+
+  const [openPcnCreate, setOpenPcnCreate] = useState(false);
+  const [openPgdCreate, setOpenPgdCreate] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<KpiFilterType>('ALL');
 
   const scopes = currentUser?.departmentScopes || ['PCN', 'PGD'];
   const hasPcn = scopes.length === 0 || scopes.includes('PCN') || currentUser?.systemRole === 'admin';
@@ -60,195 +116,385 @@ export default function WorkspaceDashboard() {
   }, [currentUser, scopes, pcn.dossiers, pcn.proposals, pcn.workflowTasks, pgd.requests, pgd.assignments]);
 
   const kpis = projection.kpis;
-  const myWorkItems: PgdcnMyWorkItem[] = myWork?.items || [];
+  const rawMyWorkItems: PgdcnMyWorkItem[] = myWork?.items || [];
+
+  // Toggle KPI filter
+  const handleToggleFilter = (filter: KpiFilterType) => {
+    setActiveFilter((prev) => (prev === filter ? 'ALL' : filter));
+  };
+
+  // Filtered PCN dossiers
+  const filteredPcnDossiers = useMemo(() => {
+    return pcn.dossiers.filter((dossier) => {
+      if (activeFilter === 'ALL') return true;
+      if (activeFilter === 'IN_PROGRESS') {
+        return !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(dossier.status);
+      }
+      if (activeFilter === 'AWAITING_APPROVAL') {
+        return ['APPROVAL_PENDING', 'LEADER_APPROVAL', 'DIRECTOR_APPROVAL', 'INTAKE_REVIEW'].includes(dossier.status);
+      }
+      if (activeFilter === 'OVERDUE') {
+        return rawMyWorkItems.some((item) => item.domain === 'PCN' && item.id === dossier.id && item.isOverdue);
+      }
+      return true;
+    });
+  }, [pcn.dossiers, activeFilter, rawMyWorkItems]);
+
+  // Filtered PGD requests
+  const filteredPgdRequests = useMemo(() => {
+    return pgd.requests.filter((request) => {
+      if (request.deletedAt) return false;
+      if (activeFilter === 'ALL') return true;
+      if (activeFilter === 'IN_PROGRESS') {
+        return !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(request.status);
+      }
+      if (activeFilter === 'AWAITING_APPROVAL') {
+        return ['REPORT_APPROVAL', 'CERTIFICATE_APPROVAL', 'CAPABILITY_REVIEW'].includes(request.status);
+      }
+      if (activeFilter === 'OVERDUE') {
+        return rawMyWorkItems.some((item) => item.domain === 'PGD' && item.id === request.id && item.isOverdue);
+      }
+      return true;
+    });
+  }, [pgd.requests, activeFilter, rawMyWorkItems]);
+
+  // Filtered My Work items
+  const filteredMyWorkItems = useMemo(() => {
+    return rawMyWorkItems.filter((item) => {
+      if (activeFilter === 'ALL') return true;
+      if (activeFilter === 'IN_PROGRESS') {
+        return true;
+      }
+      if (activeFilter === 'AWAITING_APPROVAL') {
+        return item.status.includes('APPROVAL') || item.status.includes('REVIEW');
+      }
+      if (activeFilter === 'OVERDUE') {
+        return item.isOverdue;
+      }
+      return true;
+    });
+  }, [rawMyWorkItems, activeFilter]);
+
+  const filterLabels: Record<KpiFilterType, string> = {
+    ALL: 'Tất cả hồ sơ',
+    IN_PROGRESS: 'Hồ sơ đang xử lý',
+    AWAITING_APPROVAL: 'Hồ sơ chờ phê duyệt',
+    OVERDUE: 'Hồ sơ quá hạn cam kết',
+  };
 
   return (
     <div className="space-y-6 p-6">
       {/* Welcome Banner */}
-      <div className="flex flex-col gap-2 rounded-2xl border border-slate-200/80 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-cyan-500/10 p-6 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-r from-emerald-600/10 via-teal-500/5 to-blue-600/10 p-6 shadow-xs sm:flex sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+              <Layers className="h-3 w-3" />
+              Bàn làm việc tổng hợp
+            </span>
+            <span className="text-xs text-slate-500">•</span>
+            <span className="text-xs font-medium text-slate-600">
+              Phòng Giám định & Chứng nhận
+            </span>
+          </div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
             Bàn làm việc Giám định & Chứng nhận
           </h1>
-          <p className="mt-1 text-xs text-slate-600 sm:text-sm">
-            Xin chào, <span className="font-semibold text-slate-900">{currentUser?.name || currentUser?.username}</span>. Theo dõi chỉ số vận hành và hồ sơ đang xử lý.
+          <p className="text-xs text-slate-600 sm:text-sm">
+            Xin chào, <span className="font-semibold text-slate-900">{currentUser?.name || currentUser?.username}</span>. Theo dõi chỉ số vận hành và tạo hồ sơ nghiệp vụ.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0">
+
+        {/* Primary Action Buttons */}
+        <div className="mt-4 flex flex-wrap items-center gap-2.5 sm:mt-0">
           {hasPcn && (
             <Button
               size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
-              onClick={() => router.push('/pcn')}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs hover:shadow transition-all"
+              onClick={() => setOpenPcnCreate(true)}
             >
-              <Award className="mr-1.5 h-3.5 w-3.5" />
-              Hàng đợi PCN
+              <PlusCircle className="mr-1.5 h-4 w-4" />
+              Tạo đề nghị PCN
             </Button>
           )}
           {hasPgd && (
             <Button
               size="sm"
-              variant="outline"
-              className="border-slate-300 hover:bg-slate-100 text-slate-800 font-semibold"
-              onClick={() => router.push('/pgd')}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs hover:shadow transition-all"
+              onClick={() => setOpenPgdCreate(true)}
             >
-              <ClipboardCheck className="mr-1.5 h-3.5 w-3.5 text-blue-600" />
-              Hàng đợi PGD
+              <PlusCircle className="mr-1.5 h-4 w-4" />
+              Tạo phiếu yêu cầu PGD
             </Button>
           )}
         </div>
       </div>
 
-      {/* 4 Core KPI Stat Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* KPI 1: In Progress */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition-shadow hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hồ sơ đang xử lý</span>
-            <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
-              <FolderOpen className="h-5 w-5" />
-            </div>
+      {/* 4 Interactive KPI Stat Filter Cards */}
+      <div>
+        <div className="mb-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <Filter className="h-3.5 w-3.5 text-slate-400" />
+            <span>Chỉ số vận hành · Bấm thẻ để lọc hồ sơ</span>
           </div>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-black tracking-tight text-slate-900">{kpis.inProgress}</span>
-            <span className="text-xs font-medium text-slate-500">hồ sơ toàn phòng</span>
-          </div>
-          <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3 text-[11px] text-slate-500">
-            {hasPcn && <span>PCN: <strong className="text-slate-800">{kpis.pcnWork}</strong></span>}
-            {hasPcn && hasPgd && <span>•</span>}
-            {hasPgd && <span>PGD: <strong className="text-slate-800">{kpis.pgdWork}</strong></span>}
-          </div>
+          {activeFilter !== 'ALL' && (
+            <button
+              type="button"
+              onClick={() => setActiveFilter('ALL')}
+              className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+            >
+              <X className="h-3 w-3" />
+              Xóa bộ lọc ({filterLabels[activeFilter]})
+            </button>
+          )}
         </div>
 
-        {/* KPI 2: Awaiting Approval */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition-shadow hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Chờ phê duyệt</span>
-            <div className="rounded-lg bg-amber-50 p-2 text-amber-600">
-              <Clock className="h-5 w-5" />
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+          {/* KPI 1: In Progress (Emerald) */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => handleToggleFilter('IN_PROGRESS')}
+            className={`group relative cursor-pointer rounded-xl border bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+              activeFilter === 'IN_PROGRESS'
+                ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20 shadow-xs'
+                : 'border-slate-200/90 hover:border-emerald-300'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                Đang xử lý
+              </span>
+              <div className="rounded-lg bg-emerald-100 p-2 text-emerald-700 group-hover:scale-105 transition-transform">
+                <FolderOpen className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2.5 flex items-baseline gap-2">
+              <span className="text-2xl font-black tracking-tight text-emerald-800">
+                {kpis.inProgress}
+              </span>
+              <span className="text-[11px] font-medium text-slate-500">hồ sơ toàn phòng</span>
+            </div>
+            <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-500">
+              <div className="flex items-center gap-1.5">
+                {hasPcn && <span>PCN: <strong className="text-emerald-700">{kpis.pcnWork}</strong></span>}
+                {hasPcn && hasPgd && <span>•</span>}
+                {hasPgd && <span>PGD: <strong className="text-blue-700">{kpis.pgdWork}</strong></span>}
+              </div>
+              {activeFilter === 'IN_PROGRESS' && (
+                <Badge variant="outline" className="border-emerald-300 bg-emerald-100 text-[10px] text-emerald-800 font-bold py-0">
+                  Đang lọc
+                </Badge>
+              )}
             </div>
           </div>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-black tracking-tight text-amber-600">{kpis.awaitingApproval}</span>
-            <span className="text-xs font-medium text-slate-500">cần duyệt</span>
-          </div>
-          <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3 text-[11px] text-slate-500">
-            <span>Mốc phê duyệt 2 cấp PCN/PGD</span>
-          </div>
-        </div>
 
-        {/* KPI 3: Overdue */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition-shadow hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hồ sơ quá hạn</span>
-            <div className="rounded-lg bg-rose-50 p-2 text-rose-600">
-              <AlertTriangle className="h-5 w-5" />
+          {/* KPI 2: Awaiting Approval (Amber) */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => handleToggleFilter('AWAITING_APPROVAL')}
+            className={`group relative cursor-pointer rounded-xl border bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+              activeFilter === 'AWAITING_APPROVAL'
+                ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20 shadow-xs'
+                : 'border-slate-200/90 hover:border-amber-300'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                Chờ phê duyệt
+              </span>
+              <div className="rounded-lg bg-amber-100 p-2 text-amber-700 group-hover:scale-105 transition-transform">
+                <Clock className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2.5 flex items-baseline gap-2">
+              <span className="text-2xl font-black tracking-tight text-amber-700">
+                {kpis.awaitingApproval}
+              </span>
+              <span className="text-[11px] font-medium text-slate-500">cần duyệt</span>
+            </div>
+            <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-500">
+              <span>Mốc phê duyệt 2 cấp</span>
+              {activeFilter === 'AWAITING_APPROVAL' && (
+                <Badge variant="outline" className="border-amber-300 bg-amber-100 text-[10px] text-amber-800 font-bold py-0">
+                  Đang lọc
+                </Badge>
+              )}
             </div>
           </div>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className={`text-3xl font-black tracking-tight ${kpis.overdue > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
-              {kpis.overdue}
-            </span>
-            <span className="text-xs font-medium text-slate-500">quá cam kết</span>
-          </div>
-          <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3 text-[11px] text-slate-500">
-            <span>Cần chú ý: <strong className="text-rose-600">{kpis.attention}</strong> hồ sơ</span>
-          </div>
-        </div>
 
-        {/* KPI 4: Total Dossiers */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition-shadow hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tổng hồ sơ tiếp nhận</span>
-            <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
-              <CheckCircle2 className="h-5 w-5" />
+          {/* KPI 3: Overdue (Rose) */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => handleToggleFilter('OVERDUE')}
+            className={`group relative cursor-pointer rounded-xl border bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+              activeFilter === 'OVERDUE'
+                ? 'border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/20 shadow-xs'
+                : 'border-slate-200/90 hover:border-rose-300'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                Hồ sơ quá hạn
+              </span>
+              <div className="rounded-lg bg-rose-100 p-2 text-rose-700 group-hover:scale-105 transition-transform">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2.5 flex items-baseline gap-2">
+              <span className={`text-2xl font-black tracking-tight ${kpis.overdue > 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+                {kpis.overdue}
+              </span>
+              <span className="text-[11px] font-medium text-slate-500">quá cam kết</span>
+            </div>
+            <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-500">
+              <span>Cần chú ý: <strong className="text-rose-600">{kpis.attention}</strong> hồ sơ</span>
+              {activeFilter === 'OVERDUE' && (
+                <Badge variant="outline" className="border-rose-300 bg-rose-100 text-[10px] text-rose-800 font-bold py-0">
+                  Đang lọc
+                </Badge>
+              )}
             </div>
           </div>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-black tracking-tight text-slate-900">
-              {kpis.pcnDossiers + kpis.pgdRequests}
-            </span>
-            <span className="text-xs font-medium text-slate-500">toàn thời gian</span>
-          </div>
-          <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3 text-[11px] text-slate-500">
-            <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-            <span>Tiến độ vận hành thông suốt</span>
+
+          {/* KPI 4: Total (Indigo / Slate) */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => handleToggleFilter('ALL')}
+            className={`group relative cursor-pointer rounded-xl border bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+              activeFilter === 'ALL'
+                ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/20 shadow-xs'
+                : 'border-slate-200/90 hover:border-indigo-300'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                Tổng tiếp nhận
+              </span>
+              <div className="rounded-lg bg-indigo-100 p-2 text-indigo-700 group-hover:scale-105 transition-transform">
+                <CheckCircle2 className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2.5 flex items-baseline gap-2">
+              <span className="text-2xl font-black tracking-tight text-slate-900">
+                {kpis.pcnDossiers + kpis.pgdRequests}
+              </span>
+              <span className="text-[11px] font-medium text-slate-500">toàn thời gian</span>
+            </div>
+            <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-500">
+              <div className="flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 text-emerald-600" />
+                <span>Vận hành thông suốt</span>
+              </div>
+              {activeFilter === 'ALL' && (
+                <Badge variant="outline" className="border-indigo-300 bg-indigo-100 text-[10px] text-indigo-800 font-bold py-0">
+                  Mặc định
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Workspaces & Direct Navigation Rails */}
+      {/* Workspaces Rails: PCN & PGD Cards */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* PCN Section Card */}
         {hasPcn && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="rounded-2xl border border-emerald-200/80 bg-white p-5 shadow-xs transition-shadow hover:shadow-md">
+            {/* Header PCN */}
+            <div className="flex items-center justify-between border-b border-emerald-100 pb-3.5">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 ring-1 ring-emerald-300/40">
                   <Award className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900">Phòng Chứng nhận · PCN</h2>
-                  <p className="text-xs text-slate-500">Quy trình 7 bước chứng nhận sản phẩm, hàng hóa</p>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-bold text-slate-900">Phòng Chứng nhận · PCN</h2>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                      7 Bước
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">Quy trình chứng nhận sản phẩm & hàng hóa</p>
                 </div>
               </div>
               <Link
                 href="/pcn"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
               >
-                Vào hàng đợi <ArrowRight className="h-3.5 w-3.5" />
+                Hàng đợi PCN <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
 
             {/* Quick Links */}
-            <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="mt-3.5 grid grid-cols-3 gap-2.5">
               <Link
                 href="/pcn"
-                className="flex flex-col rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-center transition-colors hover:border-emerald-200 hover:bg-emerald-50/40"
+                className="flex flex-col rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-center transition-all hover:border-emerald-300 hover:bg-emerald-50/40"
               >
-                <span className="text-lg font-bold text-slate-900">{pcn.dossiers.length}</span>
-                <span className="mt-0.5 text-[11px] font-medium text-slate-600">Tổng hồ sơ</span>
+                <span className="text-base font-bold text-slate-900">{pcn.dossiers.length}</span>
+                <span className="text-[11px] font-medium text-slate-600">Tổng hồ sơ</span>
               </Link>
               <Link
                 href="/pcn?tab=operations"
-                className="flex flex-col rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-center transition-colors hover:border-emerald-200 hover:bg-emerald-50/40"
+                className="flex flex-col rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-center transition-all hover:border-emerald-300 hover:bg-emerald-50/40"
               >
-                <span className="text-lg font-bold text-slate-900">{pcn.proposals.length}</span>
-                <span className="mt-0.5 text-[11px] font-medium text-slate-600">Sổ tổng hợp</span>
+                <span className="text-base font-bold text-slate-900">{pcn.proposals.length}</span>
+                <span className="text-[11px] font-medium text-slate-600">Sổ tổng hợp</span>
               </Link>
               <Link
                 href="/pcn?tab=samples"
-                className="flex flex-col rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-center transition-colors hover:border-emerald-200 hover:bg-emerald-50/40"
+                className="flex flex-col rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-center transition-all hover:border-emerald-300 hover:bg-emerald-50/40"
               >
-                <span className="text-lg font-bold text-slate-900">{pcn.sampleLots.length}</span>
-                <span className="mt-0.5 text-[11px] font-medium text-slate-600">Lô mẫu thử</span>
+                <span className="text-base font-bold text-slate-900">{pcn.sampleLots.length}</span>
+                <span className="text-[11px] font-medium text-slate-600">Lô mẫu thử</span>
               </Link>
             </div>
 
-            {/* Recent Dossiers */}
-            <div className="mt-5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Hồ sơ gần đây</span>
+            {/* Recent Dossiers List */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Hồ sơ gần đây {activeFilter !== 'ALL' && `(${filterLabels[activeFilter]})`}
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {filteredPcnDossiers.length} hồ sơ
+                </span>
+              </div>
               <div className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-100">
-                {pcn.dossiers.slice(0, 4).map((dossier) => (
-                  <div
-                    key={dossier.id}
-                    onClick={() => router.push(`/pcn/dossiers/${dossier.id}`)}
-                    className="flex cursor-pointer items-center justify-between p-2.5 transition-colors hover:bg-slate-50"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-emerald-700">{dossier.dossierCode}</span>
-                        <Badge variant="outline" className="text-[10px] py-0">
-                          {dossier.status}
-                        </Badge>
-                      </div>
-                      <p className="mt-0.5 truncate text-[11px] text-slate-600">
-                        {dossier.customerSnapshot?.name || 'Khách hàng'}
-                      </p>
-                    </div>
-                    <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
+                {filteredPcnDossiers.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-slate-400">
+                    Không có hồ sơ PCN nào phù hợp bộ lọc
                   </div>
-                ))}
+                ) : (
+                  filteredPcnDossiers.slice(0, 4).map((dossier) => (
+                    <div
+                      key={dossier.id}
+                      onClick={() => router.push(`/pcn/dossiers/${dossier.id}`)}
+                      className="group flex cursor-pointer items-center justify-between p-2.5 transition-colors hover:bg-emerald-50/30"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-emerald-800">
+                            {dossier.dossierCode}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={`text-[9px] py-0 font-medium ${getPcnStatusBadgeClass(dossier.status)}`}
+                          >
+                            {dossier.status}
+                          </Badge>
+                        </div>
+                        <p className="mt-0.5 truncate text-[11px] text-slate-600 font-medium">
+                          {dossier.customerSnapshot?.name || 'Khách hàng'}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-emerald-600 transition-colors shrink-0" />
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -256,74 +502,98 @@ export default function WorkspaceDashboard() {
 
         {/* PGD Section Card */}
         {hasPgd && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="rounded-2xl border border-blue-200/80 bg-white p-5 shadow-xs transition-shadow hover:shadow-md">
+            {/* Header PGD */}
+            <div className="flex items-center justify-between border-b border-blue-100 pb-3.5">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 ring-1 ring-blue-500/20">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700 ring-1 ring-blue-300/40">
                   <ClipboardCheck className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900">Phòng Giám định · PGD</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-bold text-slate-900">Phòng Giám định · PGD</h2>
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
+                      KTNN
+                    </span>
+                  </div>
                   <p className="text-xs text-slate-500">Giám định kỹ thuật & kiểm tra nhà nước hàng hóa</p>
                 </div>
               </div>
               <Link
                 href="/pgd"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
               >
-                Vào hàng đợi <ArrowRight className="h-3.5 w-3.5" />
+                Hàng đợi PGD <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
 
             {/* Quick Links */}
-            <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="mt-3.5 grid grid-cols-3 gap-2.5">
               <Link
                 href="/pgd"
-                className="flex flex-col rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-center transition-colors hover:border-blue-200 hover:bg-blue-50/40"
+                className="flex flex-col rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-center transition-all hover:border-blue-300 hover:bg-blue-50/40"
               >
-                <span className="text-lg font-bold text-slate-900">{pgd.requests.length}</span>
-                <span className="mt-0.5 text-[11px] font-medium text-slate-600">Hồ sơ PYC</span>
+                <span className="text-base font-bold text-slate-900">{pgd.requests.length}</span>
+                <span className="text-[11px] font-medium text-slate-600">Hồ sơ PYC</span>
               </Link>
               <Link
                 href="/pgd?tab=operations"
-                className="flex flex-col rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-center transition-colors hover:border-blue-200 hover:bg-blue-50/40"
+                className="flex flex-col rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-center transition-all hover:border-blue-300 hover:bg-blue-50/40"
               >
-                <span className="text-lg font-bold text-slate-900">{pgd.assignments.length}</span>
-                <span className="mt-0.5 text-[11px] font-medium text-slate-600">Phân công GĐ</span>
+                <span className="text-base font-bold text-slate-900">{pgd.assignments.length}</span>
+                <span className="text-[11px] font-medium text-slate-600">Phân công GĐ</span>
               </Link>
               <Link
                 href="/pgd?tab=samples"
-                className="flex flex-col rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-center transition-colors hover:border-blue-200 hover:bg-blue-50/40"
+                className="flex flex-col rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-center transition-all hover:border-blue-300 hover:bg-blue-50/40"
               >
-                <span className="text-lg font-bold text-slate-900">{pgd.samples.length}</span>
-                <span className="mt-0.5 text-[11px] font-medium text-slate-600">Mẫu giám định</span>
+                <span className="text-base font-bold text-slate-900">{pgd.samples.length}</span>
+                <span className="text-[11px] font-medium text-slate-600">Mẫu giám định</span>
               </Link>
             </div>
 
-            {/* Recent Requests */}
-            <div className="mt-5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">PYC giám định gần đây</span>
+            {/* Recent Requests List */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  PYC gần đây {activeFilter !== 'ALL' && `(${filterLabels[activeFilter]})`}
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {filteredPgdRequests.length} PYC
+                </span>
+              </div>
               <div className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-100">
-                {pgd.requests.slice(0, 4).map((request) => (
-                  <div
-                    key={request.id}
-                    onClick={() => router.push(`/pgd/dossiers/${request.id}`)}
-                    className="flex cursor-pointer items-center justify-between p-2.5 transition-colors hover:bg-slate-50"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-blue-700">{request.requestCode}</span>
-                        <Badge variant="outline" className="text-[10px] py-0">
-                          {request.status}
-                        </Badge>
-                      </div>
-                      <p className="mt-0.5 truncate text-[11px] text-slate-600">
-                        {request.customerSnapshot?.name || 'Khách hàng'}
-                      </p>
-                    </div>
-                    <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
+                {filteredPgdRequests.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-slate-400">
+                    Không có PYC nào phù hợp bộ lọc
                   </div>
-                ))}
+                ) : (
+                  filteredPgdRequests.slice(0, 4).map((request) => (
+                    <div
+                      key={request.id}
+                      onClick={() => router.push(`/pgd/dossiers/${request.id}`)}
+                      className="group flex cursor-pointer items-center justify-between p-2.5 transition-colors hover:bg-blue-50/30"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-blue-800">
+                            {request.requestCode}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={`text-[9px] py-0 font-medium ${getPgdStatusBadgeClass(request.status)}`}
+                          >
+                            {request.status}
+                          </Badge>
+                        </div>
+                        <p className="mt-0.5 truncate text-[11px] text-slate-600 font-medium">
+                          {request.customerSnapshot?.name || 'Khách hàng'}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-600 transition-colors shrink-0" />
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -331,59 +601,86 @@ export default function WorkspaceDashboard() {
       </div>
 
       {/* Actionable Tasks List */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
-        <h2 className="text-sm font-bold text-slate-900">Việc của tôi cần xử lý ngay</h2>
-        <p className="mt-0.5 text-xs text-slate-500">Các nhiệm vụ và phân công được giao cho tài khoản hiện tại</p>
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">Việc của tôi cần xử lý ngay</h2>
+            <p className="text-xs text-slate-500">Các nhiệm vụ và phân công được giao cho tài khoản hiện tại</p>
+          </div>
+          {filteredMyWorkItems.length > 0 && (
+            <Badge className="bg-slate-100 text-slate-700 font-bold hover:bg-slate-200">
+              {filteredMyWorkItems.length} nhiệm vụ
+            </Badge>
+          )}
+        </div>
 
-        {myWorkItems.length === 0 ? (
+        {filteredMyWorkItems.length === 0 ? (
           <div className="mt-4 flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 p-8 text-center">
             <CheckCircle2 className="h-8 w-8 text-emerald-500" />
             <p className="mt-2 text-xs font-semibold text-slate-700">Không có việc tồn đọng!</p>
-            <p className="text-[11px] text-slate-500">Tất cả nhiệm vụ được giao đã hoàn thành xuất sắc.</p>
+            <p className="text-[11px] text-slate-500">Tất cả nhiệm vụ được giao đã hoàn thành hoặc không có việc thuộc bộ lọc.</p>
           </div>
         ) : (
-          <div className="mt-4 space-y-2">
-            {myWorkItems.map((item) => {
+          <div className="mt-3.5 space-y-2">
+            {filteredMyWorkItems.map((item) => {
               const isPcn = item.domain === 'PCN';
               return (
                 <div
                   key={`${item.domain}-${item.id}`}
                   onClick={() => router.push(isPcn ? `/pcn/dossiers/${item.id}` : `/pgd/dossiers/${item.id}`)}
-                  className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-200/80 p-3 transition-colors hover:bg-slate-50"
+                  className="group flex cursor-pointer items-center justify-between rounded-xl border border-slate-200/90 p-3 transition-all hover:border-slate-300 hover:bg-slate-50/80 hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`rounded-lg p-1.5 ${
-                        isPcn ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                      className={`rounded-lg p-2 ${
+                        isPcn ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
                       }`}
                     >
                       {isPcn ? <FileText className="h-4 w-4" /> : <ClipboardCheck className="h-4 w-4" />}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-slate-800">{item.label}</span>
-                        <Badge variant="outline" className="text-[10px]">
+                        <span className="font-mono text-xs font-bold text-slate-900">{item.label}</span>
+                        <Badge
+                          className={`text-[9px] py-0 font-bold ${
+                            isPcn ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white'
+                          }`}
+                        >
                           {item.domain}
                         </Badge>
                         <Badge
-                          variant={item.isOverdue ? 'destructive' : 'secondary'}
-                          className="text-[10px]"
+                          variant={item.isOverdue ? 'destructive' : 'outline'}
+                          className="text-[9px] py-0"
                         >
                           {item.statusLabel}
                         </Badge>
                       </div>
-                      <p className="text-[11px] text-slate-600">
+                      <p className="mt-0.5 text-[11px] text-slate-600">
                         {item.customerName} · <strong className="text-slate-800">{item.nextAction.label}</strong>
                       </p>
                     </div>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-slate-400" />
+                  <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-slate-700 transition-colors" />
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Dialogs */}
+      {hasPcn && (
+        <CreatePcnProposalDialog
+          open={openPcnCreate}
+          onOpenChange={setOpenPcnCreate}
+        />
+      )}
+      {hasPgd && (
+        <CreatePgdRequestDialog
+          open={openPgdCreate}
+          onOpenChange={setOpenPgdCreate}
+        />
+      )}
     </div>
   );
 }

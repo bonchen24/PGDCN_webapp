@@ -32,6 +32,38 @@ const PGD_METHOD_OPTIONS = [
   { value: 'GENERIC', label: 'Chung' },
 ] as const;
 
+const ACTION_KEY_OPTIONS = [
+  { value: '', label: 'Chưa gắn thao tác' },
+  { value: 'INTAKE', label: 'Tiếp nhận hồ sơ (INTAKE)' },
+  { value: 'DOCUMENTS', label: 'Bổ sung hồ sơ (DOCUMENTS)' },
+  { value: 'ASSIGNMENT', label: 'Phân công chuyên gia (ASSIGNMENT)' },
+  { value: 'PLAN', label: 'Lập kế hoạch (PLAN)' },
+  { value: 'EVALUATION', label: 'Kế hoạch & Đánh giá (EVALUATION)' },
+  { value: 'FIELD', label: 'Giám định hiện trường (FIELD)' },
+  { value: 'SAMPLING_LAB', label: 'Lập PYC & Lấy mẫu (SAMPLING_LAB)' },
+  { value: 'SAMPLE_CODING', label: 'Mã hóa mẫu (SAMPLE_CODING)' },
+  { value: 'SAMPLE_HANDOVER', label: 'Giao nhận mẫu (SAMPLE_HANDOVER)' },
+  { value: 'SAMPLE_RETURN', label: 'Bàn giao trả mẫu (SAMPLE_RETURN)' },
+  { value: 'LAB_SUBCONTRACTOR', label: 'Giao mẫu & nhận KQTN (LAB_SUBCONTRACTOR)' },
+  { value: 'TEST_REPORT', label: 'Tiếp nhận KQTN (TEST_REPORT)' },
+  { value: 'TECHNICAL_REVIEW', label: 'Hoàn thiện kết quả (TECHNICAL_REVIEW)' },
+  { value: 'RESULT_ISSUANCE', label: 'Rà soát & lập báo cáo (RESULT_ISSUANCE)' },
+  { value: 'APPROVAL', label: 'Phê duyệt lãnh đạo (APPROVAL)' },
+  { value: 'DELIVERY', label: 'Bàn giao khách hàng (DELIVERY)' },
+  { value: 'ARCHIVE', label: 'Đóng & lưu trữ (ARCHIVE)' },
+];
+
+const STANDARD_ROLES = [
+  'Lãnh đạo phòng',
+  'Chuyên gia chứng nhận',
+  'Người soát xét kỹ thuật',
+  'Điều phối / tiếp nhận mẫu',
+  'Văn thư hồ sơ',
+  'Giám định viên',
+  'Quản lý',
+  'Chuyên viên',
+];
+
 const LANE_OPTIONS = [
   { value: 'default', label: 'Chưa phân nhóm' },
   { value: 'intake', label: 'Tiếp nhận' },
@@ -122,7 +154,26 @@ export default function PgdcnDossierTemplateInspector(props: PgdcnDossierTemplat
       <p id={`${idPrefix}-node-label-hint`} className="mt-1 text-xs text-slate-600">Bắt buộc. Tên bước cần dễ hiểu với người xử lý.</p>
       <label htmlFor={`${idPrefix}-node-description`} className="mt-4 block text-xs font-medium text-slate-600">Mô tả hướng dẫn</label>
       <input id={`${idPrefix}-node-description`} value={node.description || ''} onChange={(event) => props.onChangeNode({ description: event.target.value })} className="mt-1 min-h-11 w-full min-w-0 max-w-full rounded-lg border border-slate-300 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2" />
-      <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2"><div className="min-w-0"><label htmlFor={`${idPrefix}-node-sla`} className="block text-xs text-slate-600">SLA (ngày)</label><input id={`${idPrefix}-node-sla`} type="number" min={0} aria-describedby={`${idPrefix}-node-sla-hint`} value={node.slaDays ?? ''} onChange={(event) => props.onChangeNode({ slaDays: event.target.value === '' ? undefined : Number(event.target.value) })} className="mt-1 min-h-11 w-full min-w-0 max-w-full rounded-lg border border-slate-300 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2" /><p id={`${idPrefix}-node-sla-hint`} className="mt-1 text-xs text-slate-600">Tối thiểu 0 ngày.</p></div><div className="min-w-0"><label htmlFor={`${idPrefix}-node-role`} className="block text-xs text-slate-600">Vai trò</label><input id={`${idPrefix}-node-role`} value={node.assigneeRole || ''} onChange={(event) => props.onChangeNode({ assigneeRole: event.target.value })} className="mt-1 min-h-11 w-full min-w-0 max-w-full rounded-lg border border-slate-300 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2" /></div></div>
+      <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="min-w-0">
+          <label htmlFor={`${idPrefix}-node-action-key`} className="block text-xs font-medium text-slate-600">Thao tác nghiệp vụ</label>
+          <select id={`${idPrefix}-node-action-key`} value={node.actionKey || ''} onChange={(event) => props.onChangeNode({ actionKey: event.target.value || undefined })} className="mt-1 min-h-11 w-full min-w-0 max-w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2">
+            {ACTION_KEY_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </div>
+        <div className="min-w-0">
+          <label htmlFor={`${idPrefix}-node-role`} className="block text-xs font-medium text-slate-600">Vai trò phụ trách</label>
+          <input id={`${idPrefix}-node-role`} list={`${idPrefix}-role-list`} value={node.assigneeRole || ''} onChange={(event) => props.onChangeNode({ assigneeRole: event.target.value })} placeholder="Chọn hoặc nhập vai trò..." className="mt-1 min-h-11 w-full min-w-0 max-w-full rounded-lg border border-slate-300 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2" />
+          <datalist id={`${idPrefix}-role-list`}>
+            {STANDARD_ROLES.map((role) => <option key={role} value={role} />)}
+          </datalist>
+        </div>
+      </div>
+      <div className="mt-4">
+        <label htmlFor={`${idPrefix}-node-sla`} className="block text-xs text-slate-600">SLA thời gian xử lý (ngày)</label>
+        <input id={`${idPrefix}-node-sla`} type="number" min={0} aria-describedby={`${idPrefix}-node-sla-hint`} value={node.slaDays ?? ''} onChange={(event) => props.onChangeNode({ slaDays: event.target.value === '' ? undefined : Number(event.target.value) })} className="mt-1 min-h-11 w-full min-w-0 max-w-full rounded-lg border border-slate-300 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2" />
+        <p id={`${idPrefix}-node-sla-hint`} className="mt-1 text-xs text-slate-600">Tối thiểu 0 ngày.</p>
+      </div>
       <fieldset className="mt-5">
         <legend className="text-xs font-semibold text-slate-800">Vị trí trên lưu trình</legend>
         <div className="mt-2 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
