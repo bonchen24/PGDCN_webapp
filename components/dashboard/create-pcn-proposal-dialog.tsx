@@ -42,9 +42,9 @@ export function CreatePcnProposalDialog({ open, onOpenChange }: CreatePcnProposa
 
   // Quick fill from existing customer
   const handleSelectExistingCustomer = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const custKey = e.target.value;
-    if (!custKey) return;
-    const customer = pcn.customers.find((c) => (c.taxId || c.customerCode || c.name) === custKey);
+    const custIndex = e.target.value;
+    if (custIndex === '') return;
+    const customer = pcn.customers[Number(custIndex)];
     if (customer) {
       setCustomerName(customer.name || '');
       setCustomerTaxId(customer.taxId || '');
@@ -159,11 +159,11 @@ export function CreatePcnProposalDialog({ open, onOpenChange }: CreatePcnProposa
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               >
                 <option value="">-- Chọn khách hàng sẵn có --</option>
-                {pcn.customers.map((c) => {
-                  const key = c.taxId || c.customerCode || c.name;
+                {pcn.customers.map((c, idx) => {
+                  const key = `${c.customerCode || c.taxId || 'cust'}-${idx}-${c.name}`;
                   return (
-                    <option key={key} value={key}>
-                      {c.name} {c.taxId ? `(${c.taxId})` : ''}
+                    <option key={key} value={idx}>
+                      {c.name} {c.customerCode ? `[${c.customerCode}]` : ''} {c.taxId ? `(${c.taxId})` : ''}
                     </option>
                   );
                 })}

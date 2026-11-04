@@ -10,7 +10,7 @@ test('PCN dossier management follows the PGD queue and toolbar anatomy', () => {
   const pgdQueue = read('../components/PgdDossierQueueView.tsx');
 
   assert.match(operations, /<PgdcnPageHeader/);
-  assert.match(operations, /<PcnDossierQueueView/);
+  assert.match(operations, /<PgdcnDossierSummaryGrid/);
   assert.match(queue, /data-testid="pcn-dossier-queue"/);
   assert.match(queue, /PCN · Hàng đợi công việc/);
   assert.match(queue, /data-testid="pcn-dossier-table-scroll"/);

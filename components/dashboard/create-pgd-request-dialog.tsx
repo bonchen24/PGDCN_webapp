@@ -46,9 +46,9 @@ export function CreatePgdRequestDialog({ open, onOpenChange }: CreatePgdRequestD
 
   // Quick fill from existing customers if any
   const handleSelectExistingCustomer = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const custKey = e.target.value;
-    if (!custKey) return;
-    const customer = pgd.customers.find((c) => (c.taxId || c.customerCode || c.name) === custKey);
+    const custIndex = e.target.value;
+    if (custIndex === '') return;
+    const customer = pgd.customers[Number(custIndex)];
     if (customer) {
       setCustomerName(customer.name || '');
       setCustomerTaxId(customer.taxId || '');
@@ -175,11 +175,11 @@ export function CreatePgdRequestDialog({ open, onOpenChange }: CreatePgdRequestD
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="">-- Chọn khách hàng sẵn có --</option>
-                {pgd.customers.map((c) => {
-                  const key = c.taxId || c.customerCode || c.name;
+                {pgd.customers.map((c, idx) => {
+                  const key = `${c.customerCode || c.taxId || 'cust'}-${idx}-${c.name}`;
                   return (
-                    <option key={key} value={key}>
-                      {c.name} {c.taxId ? `(${c.taxId})` : ''}
+                    <option key={key} value={idx}>
+                      {c.name} {c.customerCode ? `[${c.customerCode}]` : ''} {c.taxId ? `(${c.taxId})` : ''}
                     </option>
                   );
                 })}

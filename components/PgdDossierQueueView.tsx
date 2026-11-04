@@ -19,13 +19,17 @@ import {
   Copy,
   Printer,
   SlidersHorizontal,
-  Eye,
+  Download,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react';
 import { useMemo, useState, useEffect, type MouseEvent } from 'react';
 import { toast } from 'sonner';
 
 import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
+import { usePcnSessionStore } from '../utils/pcnSessionState';
+import { usePgdStore } from '../store-pgd';
+import { getPgdDossierPackageUrl } from '../utils/pgdApi';
 import {
   PgdcnDossierCardExpanded,
   PgdcnDossierQuickActions,
@@ -257,6 +261,9 @@ function PgdDossierSummaryCard({ item, isExpanded, onToggleExpand, onOpenDetail,
 }
 
 export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQueueViewProps) {
+  const currentUser = usePcnSessionStore((state) => state.currentUser);
+  const isManagerOrAdmin = Boolean(currentUser && (currentUser.systemRole === 'admin' || currentUser.role === 'admin' || currentUser.pgdRole === 'PGD_ADMIN' || currentUser.pgdRole === 'PGD_MANAGER'));
+  const deleteRequest = usePgdStore((state) => state.deleteRequest);
   const [query, setQuery] = useState('');
   const [activeChip, setActiveChip] = useState<PgdFilterChipId>('ALL');
   const [productFiltersOpen, setProductFiltersOpen] = useState(false);
@@ -314,10 +321,10 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
         onClick={() => setActiveChip(chip.id)}
         aria-label={`${chip.label}, ${count} hồ sơ`}
         aria-pressed={active}
-        className={`mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 md:min-h-8 ${
+        className={`mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1 text-[11px] font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
           active
-            ? 'bg-blue-600 text-white shadow-xs'
-            : 'border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
+            ? 'border-slate-900 bg-slate-900 text-white shadow-xs ring-2 ring-slate-700 ring-offset-1'
+            : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
         }`}
       >
         <span>{chip.label}</span>
@@ -517,6 +524,51 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
     }
   }, [query, itemModels]);
 
+  const handleDownloadPackage = async (row: PgdDossierQueueRow) => {
+    try {
+      const response = await fetch(getPgdDossierPackageUrl(row.requestId), { credentials: 'same-origin' });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || `Không thể đóng gói hồ sơ (HTTP ${response.status}).`);
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = `${row.requestCode}-bo-ho-so.zip`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      toast.success(`Đã tải bộ hồ sơ ${row.requestCode}.`);
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể tải bộ hồ sơ PGD.');
+    }
+  };
+
+  const handleDeleteRequest = async (row: PgdDossierQueueRow) => {
+    if (!isManagerOrAdmin) return;
+    const reason = typeof window !== 'undefined'
+      ? window.prompt('Nhập lý do xóa vĩnh viễn hồ sơ PGD:', '')?.trim()
+      : undefined;
+    if (!reason) return;
+    const confirmationCode = typeof window !== 'undefined'
+      ? window.prompt(`Nhập lại chính xác mã hồ sơ để xác nhận xóa: ${row.requestCode}`, '')?.trim()
+      : undefined;
+    if (!confirmationCode) return;
+    if (confirmationCode !== row.requestCode) {
+      toast.error('Mã xác nhận không khớp với mã hồ sơ.');
+      return;
+    }
+    if (typeof window !== 'undefined' && !window.confirm(`Bạn chắc chắn muốn XÓA VĨNH VIỄN hồ sơ ${row.requestCode}? Toàn bộ dữ liệu liên kết sẽ bị xóa, không thể khôi phục.`)) return;
+    try {
+      await deleteRequest(row.requestId, reason, confirmationCode);
+      toast.success(`Đã xóa vĩnh viễn hồ sơ PGD ${row.requestCode}.`);
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể xóa hồ sơ PGD.');
+    }
+  };
+
   const handleQuickView = (row: PgdDossierQueueRow) => {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
@@ -543,11 +595,13 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
 
   return (
     <section className="min-w-0 space-y-3 p-3 md:p-4" aria-label="Hàng đợi hồ sơ PGD">
-      {/* Header: Title and View Switcher (Zero KPI Viewport Wastage) */}
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600">PGD · Hàng đợi công việc</p>
-          <h2 className="mt-0.5 text-sm md:text-base font-black text-slate-950">Mở đúng hồ sơ, xử lý đúng việc</h2>
+      {/* Header: 1-line compact with brand color badge */}
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-blue-700">
+            PGD · Hàng đợi công việc
+          </span>
+          <h2 className="text-sm md:text-base font-black text-slate-900">Mở đúng hồ sơ, xử lý đúng việc</h2>
         </div>
       </div>
 
@@ -564,7 +618,7 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Tìm mã PYC, khách hàng, đối tượng, phân loại, kết quả..."
-              className="w-full bg-white border border-slate-200/80 rounded-xl pl-9 pr-3 py-1.5 text-base font-bold outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs transition-all md:text-[11px]"
+              className="mobile-touch-target min-h-11 w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs font-bold shadow-2xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             />
           </div>
           {hasActiveSearchOrFilter ? (
@@ -618,6 +672,14 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
         </div>
       </div>
 
+      <p role="status" aria-live="polite" aria-atomic="true" className="text-xs font-medium text-slate-600">
+        {rows.length === 0
+          ? 'Chưa có hồ sơ PGD trong hàng đợi.'
+          : filteredRows.length === 0
+          ? `Không có hồ sơ phù hợp trong ${rows.length} hồ sơ PGD.`
+          : `Đang hiển thị ${filteredRows.length} trong ${rows.length} hồ sơ PGD.`}
+      </p>
+
       {/* Bảng hồ sơ PGD */}
       {filteredRows.length > 0 ? (
         <div
@@ -630,36 +692,39 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
             <p className="border-b border-slate-100 px-3 py-2 text-[11px] text-slate-600 sm:hidden">Vuốt ngang để xem đầy đủ bảng hồ sơ PGD.</p>
             <table aria-label="Bảng hàng đợi hồ sơ PGD" className="w-full min-w-0 border-collapse text-left text-xs">
               <caption className="sr-only">Danh sách hồ sơ PGD đang cần xử lý</caption>
-              <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-wide text-slate-500">
+              <thead className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th scope="col" className="sticky left-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <span className="block font-black text-slate-700">Mã PYC</span>
-                    <span className="block text-[9px] font-semibold text-slate-400 normal-case">Số ngoài / QC20</span>
+                  <th scope="col" className="sticky left-0 z-10 w-44 min-w-[160px] border-b border-slate-200 bg-slate-50 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Mã PYC</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Số ngoài / QC20</span>
                   </th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-2.5">
-                    <span className="block font-black text-slate-700">Khách hàng</span>
-                    <span className="block text-[9px] font-semibold text-slate-400 normal-case">Đối tượng / Hàng hóa</span>
+                  <th scope="col" className="w-[22%] min-w-[180px] border-b border-slate-200 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Khách hàng</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Đối tượng / Hàng hóa</span>
                   </th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-2.5">
-                    <span className="block font-black text-slate-700">Nhóm sản phẩm / phân loại</span>
-                    <span className="block text-[9px] font-semibold text-slate-400 normal-case">Quy chuẩn / Catalog</span>
+                  <th scope="col" className="w-[18%] min-w-[150px] border-b border-slate-200 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Nhóm sản phẩm / phân loại</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Quy chuẩn / Catalog</span>
                   </th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-2.5">
-                    <span className="block font-black text-slate-700">Bước hiện tại / tiếp theo</span>
-                    <span className="block text-[9px] font-semibold text-slate-400 normal-case">Giai đoạn</span>
+                  <th scope="col" className="w-[18%] min-w-[150px] border-b border-slate-200 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Bước hiện tại / tiếp theo</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Giai đoạn</span>
                   </th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-2.5">
-                    <span className="block font-black text-slate-700">Tiến độ</span>
-                    <span className="block text-[9px] font-semibold text-slate-400 normal-case">Hoàn thiện</span>
+                  <th scope="col" className="w-28 min-w-[110px] border-b border-slate-200 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Tiến độ</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Hoàn thiện</span>
                   </th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-2.5">
-                    <span className="block font-black text-slate-700">Chủ hồ sơ</span>
-                    <span className="block text-[9px] font-semibold text-slate-400 normal-case">Phụ trách kỹ thuật</span>
+                  <th scope="col" className="w-28 min-w-[110px] border-b border-slate-200 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Chủ hồ sơ</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Phụ trách kỹ thuật</span>
                   </th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-3">Trạng thái hồ sơ</th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-2.5 text-right">
-                    <span className="block font-black text-slate-700">Thao tác</span>
-                    <span className="block text-[9px] font-semibold text-slate-400 normal-case">Xử lý / Xem</span>
+                  <th scope="col" className="w-32 min-w-[120px] border-b border-slate-200 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Trạng thái hồ sơ</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Tình trạng đầu mục</span>
+                  </th>
+                  <th scope="col" className="w-32 min-w-[120px] border-b border-slate-200 px-3 py-3 text-right">
+                    <span className="block font-bold text-slate-700">Thao tác</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Mở / Tải / Xóa</span>
                   </th>
                 </tr>
               </thead>
@@ -667,89 +732,112 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
                 {filteredRows.map((row) => {
                   const score = row.requiredDocumentTotal > 0 ? Math.round((row.requiredDocumentPresent / row.requiredDocumentTotal) * 100) : 100;
                   return (
-                    <tr key={row.requestId} className="align-top transition-colors hover:bg-blue-50/40 border-b border-slate-100">
+                    <tr key={row.requestId} className="align-top transition-colors hover:bg-slate-50/70 border-b border-slate-100">
                       {/* 1. Mã PYC */}
-                      <th scope="row" className="sticky left-0 z-[1] bg-white px-3 py-2.5 font-normal border-b border-slate-100">
+                      <th scope="row" className="sticky left-0 z-[1] bg-white px-3 py-3 font-normal border-b border-slate-100">
                         <button
                           type="button"
                           onClick={() => onOpenDossier(row.requestId)}
                           aria-label={`Mở chi tiết hồ sơ ${row.requestCode}`}
-                          className="font-mono text-xs font-black text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                          className="font-mono text-xs font-bold text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
                         >
                           {row.requestCode}
                         </button>
-                        <p className="mt-0.5 font-mono text-[9px] text-slate-400">QC20 · PYC-PGD</p>
+                        <p className="mt-0.5 font-mono text-[10px] text-slate-400">QC20 · PYC-PGD</p>
                       </th>
 
                       {/* 2. Khách hàng */}
-                      <td className="px-3 py-2.5 max-w-[200px]">
-                        <p className="line-clamp-1 font-bold text-slate-800 text-xs" title={row.customerName}>{row.customerName || 'Chưa có khách hàng'}</p>
-                        <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-500" title={row.productName}>{row.productName || 'Chưa có đối tượng'}</p>
+                      <td className="px-3 py-3 text-xs font-semibold text-slate-900">
+                        <p className="line-clamp-2" title={row.customerName}>{row.customerName || 'Chưa có khách hàng'}</p>
+                        <p className="mt-0.5 line-clamp-1 text-[10px] font-normal text-slate-500" title={row.productName}>{row.productName || 'Chưa có đối tượng'}</p>
                       </td>
 
                       {/* 3. Nhóm sản phẩm / phân loại */}
-                      <td className="px-3 py-2.5 max-w-[200px]">
-                        <p className="font-semibold text-slate-800 text-xs">{row.productGroup || 'Chưa xác định nhóm'}</p>
+                      <td className="px-3 py-3 text-xs text-slate-700">
+                        <p className="font-semibold text-slate-800">{row.productGroup || 'Chưa xác định nhóm'}</p>
                         <span className="mt-0.5 inline-block text-[10px] text-slate-500 font-medium">
                           {row.catalogLabel || 'Chưa phân loại'}
                         </span>
                       </td>
 
                       {/* 4. Bước hiện tại / tiếp theo */}
-                      <td className="px-3 py-2.5">
-                        <p className="font-semibold text-blue-900 text-xs">Bước {row.currentStepNumber} · {row.currentStepLabel}</p>
-                        <p className="mt-0.5 text-[10px] text-slate-600"><span className="font-semibold">Tiếp theo:</span> {row.nextActionLabel || 'Chờ xử lý tiếp'}</p>
+                      <td className="px-3 py-3 text-xs">
+                        <p className="font-semibold text-blue-900">Bước {row.currentStepNumber} · {row.currentStepLabel}</p>
+                        <p className="mt-0.5 text-[10px] text-slate-500"><span className="font-semibold text-slate-600">Tiếp theo:</span> {row.nextActionLabel || 'Chờ xử lý tiếp'}</p>
                       </td>
 
                       {/* 5. Tiến độ / Hoàn thiện */}
-                      <td className="px-3 py-2.5 min-w-[100px]">
-                        <div className="flex items-center gap-1.5">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
-                            <div className="h-full bg-blue-500 rounded-full" style={{ width: `${score}%` }} />
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <div className="h-1.5 w-14 overflow-hidden rounded-full bg-slate-100">
+                              <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${score}%` }} />
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-800">{score}%</span>
                           </div>
-                          <span className="text-[10px] font-black text-slate-700">{score}%</span>
+                          <p className="text-[10px] text-slate-500">{row.requiredDocumentPresent}/{row.requiredDocumentTotal} mục</p>
                         </div>
-                        <p className="mt-0.5 text-[10px] text-slate-400">{row.requiredDocumentPresent}/{row.requiredDocumentTotal} mục</p>
                       </td>
 
                       {/* 6. Chủ hồ sơ */}
-                      <td className="px-3 py-2.5">
-                        <p className="text-xs font-semibold text-slate-800">{row.ownerDisplayName || row.ownerUsername || 'Chưa phân công'}</p>
-                        <p className="mt-0.5 text-[10px] text-slate-400">{row.ownerDisplayName || row.ownerUsername ? 'Chủ hồ sơ' : 'Chờ phân công'}</p>
+                      <td className="px-3 py-3 text-xs font-medium text-slate-700">
+                        {row.ownerDisplayName || row.ownerUsername ? (
+                          <span className="text-slate-800 font-semibold">{row.ownerDisplayName || row.ownerUsername}</span>
+                        ) : (
+                          <span className="text-slate-400 italic">Chưa phân công</span>
+                        )}
                       </td>
 
                       {/* 7. Trạng thái hồ sơ */}
-                      <td className="px-3 py-2.5">
+                      <td className="px-3 py-3">
                         <PgdcnStatusBadge compact domain="PGD" status={row.status} label={row.statusLabel} />
-                        <p className="mt-0.5 text-[10px]">
+                        <p className="mt-1 text-[10px]">
                           <span className="sr-only">Đầu mục hồ sơ còn thiếu: </span>
-                          <span className={row.missingRequiredCount > 0 ? 'font-semibold text-amber-700' : 'text-emerald-700'}>
-                            {row.missingRequiredCount > 0 ? `Còn thiếu ${row.missingRequiredCount} đầu mục` : 'Đủ đầu mục bắt buộc'}
+                          <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-semibold ${
+                            row.missingRequiredCount > 0
+                              ? 'border border-amber-200/80 bg-amber-50 text-amber-800'
+                              : 'border border-emerald-200/80 bg-emerald-50 text-emerald-800'
+                          }`}>
+                            {row.missingRequiredCount > 0 ? `Thiếu ${row.missingRequiredCount} đầu mục` : 'Đủ đầu mục bắt buộc'}
                           </span>
                         </p>
                       </td>
 
                       {/* 8. Thao tác */}
-                      <td className="px-3 py-2.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="px-3 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
-                            onClick={() => handleQuickView(row)}
-                            aria-label={`Xem nhanh ${row.requestCode}`}
-                            title="Xem nhanh trong ngăn kéo"
-                            className="mobile-touch-target inline-flex min-h-8 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 cursor-pointer"
-                          >
-                            <Eye size={12} aria-hidden="true" />
-                            <span className="sr-only sm:not-sr-only text-[11px]">Xem</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="mobile-touch-target dossier-action-compact inline-flex min-h-8 items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                            className="mobile-touch-target dossier-action-compact rounded-lg border border-blue-600 bg-blue-600 p-2 text-white shadow-2xs transition hover:bg-blue-700 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             onClick={() => onOpenDossier(row.requestId)}
+                            title="Mở chi tiết hồ sơ"
+                            aria-label={`Mở hồ sơ ${row.requestCode}`}
                           >
-                            <span>Mở hồ sơ</span>
-                            <ArrowRight size={12} aria-hidden="true" />
+                            <FolderOpen size={14} aria-hidden="true" />
+                            <span className="sr-only">Mở hồ sơ</span>
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDownloadPackage(row)}
+                            title="Tải gói tài liệu hồ sơ"
+                            aria-label={`Tải tài liệu hồ sơ ${row.requestCode}`}
+                            className="mobile-touch-target rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-2xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-blue-700 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                          >
+                            <Download size={14} aria-hidden="true" />
+                            <span className="sr-only">Tải tài liệu</span>
+                          </button>
+                          {isManagerOrAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteRequest(row)}
+                              title="Xóa vĩnh viễn hồ sơ"
+                              aria-label={`Xóa hồ sơ ${row.requestCode}`}
+                              className="mobile-touch-target rounded-lg border border-rose-200 bg-white p-2 text-rose-600 shadow-2xs transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                            >
+                              <Trash2 size={14} aria-hidden="true" />
+                              <span className="sr-only">Xóa hồ sơ</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

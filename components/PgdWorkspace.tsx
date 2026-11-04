@@ -1536,7 +1536,7 @@ Chủ hồ sơ: {getPgdUserDisplayName(request.ownerUsername, pgd.users) || 'Ch�
             mobileSection === 'work' ? 'bg-white text-blue-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Checklist & Thao tác (Chính 65%)
+          Kiểm tra & Thao tác (Chính 65%)
         </button>
         <button
           type="button"

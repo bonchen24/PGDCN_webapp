@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Building, Check, Download, Edit2, FileSpreadsheet, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { AlertCircle, Building, Check, Download, Edit2, FileSpreadsheet, Mail, Phone, Plus, Search, Trash2, Upload, User, X } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
@@ -60,17 +60,17 @@ export function hasPcnCustomerContact(customer: CustomerRef): boolean {
 
 export function PcnCustomerCodeDisplay({ customer }: { customer: CustomerRef }) {
   return hasPcnCustomerCode(customer)
-    ? <span className="rounded-md border border-emerald-100/50 bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-700">{customer.customerCode?.trim()}</span>
-    : <span title="Khách hàng chưa có mã khách hàng" className="inline-flex max-w-full items-center gap-1 rounded-md border border-amber-300 bg-amber-100 px-1.5 py-1 text-[11px] font-bold text-amber-900"><AlertCircle size={12} /> Chưa có mã</span>;
+    ? <span className="inline-flex items-center rounded border border-emerald-200/80 bg-emerald-50/70 px-2 py-0.5 font-mono text-[11px] font-semibold text-emerald-800 tracking-tight">{customer.customerCode?.trim()}</span>
+    : <span title="Khách hàng chưa có mã khách hàng" className="inline-flex items-center gap-1 rounded border border-amber-200/80 bg-amber-50/80 px-2 py-0.5 text-[10px] font-medium text-amber-800"><AlertCircle size={11} className="shrink-0 text-amber-600" /> Chưa có mã</span>;
 }
 
 export function PcnCustomerContactDisplay({ customer }: { customer: CustomerRef }) {
   return (
-    <div className="space-y-0.5">
-      {customer.phone?.trim() && <div className="text-[11px] text-slate-600"><span className="font-semibold text-slate-400">SĐT:</span> <span className="font-mono">{customer.phone.trim()}</span></div>}
-      {customer.email?.trim() && <div className="text-[11px] text-slate-600"><span className="font-semibold text-slate-400">Email:</span> {customer.email.trim()}</div>}
-      {customer.contactPerson?.trim() && <div className="text-[11px] text-slate-600"><span className="font-semibold text-slate-400">LH:</span> <span className="font-bold">{customer.contactPerson.trim()}</span></div>}
-      {!hasPcnCustomerContact(customer) && <span role="status" className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800"><AlertCircle size={12} /> Chưa có liên hệ</span>}
+    <div className="space-y-1">
+      {customer.phone?.trim() && <div className="text-[11px] text-slate-600"><span className="font-semibold text-slate-400">SĐT:</span> <span className="font-mono font-medium text-slate-700">{customer.phone.trim()}</span></div>}
+      {customer.email?.trim() && <div className="text-[11px] text-slate-600"><span className="font-semibold text-slate-400">Email:</span> <span className="text-slate-700">{customer.email.trim()}</span></div>}
+      {customer.contactPerson?.trim() && <div className="text-[11px] text-slate-600"><span className="font-semibold text-slate-400">LH:</span> <span className="font-semibold text-slate-800">{customer.contactPerson.trim()}</span></div>}
+      {!hasPcnCustomerContact(customer) && <span role="status" className="inline-flex items-center gap-1 rounded border border-amber-200/80 bg-amber-50/70 px-2 py-0.5 text-[10px] font-medium text-amber-800"><AlertCircle size={11} className="shrink-0 text-amber-600" /> Chưa có liên hệ</span>}
     </div>
   );
 }
@@ -107,10 +107,10 @@ export function PcnCustomerMetadataFilterControls({
 }) {
   return (
     <>
-      {options.regions.length > 0 && <label className="block min-w-0"><span className="mb-1 block text-[11px] font-black text-slate-600">Khu vực</span><select aria-label="Lọc khu vực" value={regionFilter} onChange={(event) => onRegionChange(event.target.value)} className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-700 outline-none focus:border-emerald-500">
+      {options.regions.length > 0 && <label className="block min-w-0 sm:w-44"><span className="sr-only">Khu vực</span><select aria-label="Lọc khu vực" value={regionFilter} onChange={(event) => onRegionChange(event.target.value)} className="mobile-touch-target min-h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs outline-none transition focus:border-emerald-500">
         <option value="">Tất cả khu vực</option>{options.regions.map((region) => <option key={region} value={region}>{region}</option>)}
       </select></label>}
-      {options.businessTypes.length > 0 && <label className="block min-w-0"><span className="mb-1 block text-[11px] font-black text-slate-600">Loại doanh nghiệp</span><select aria-label="Lọc loại doanh nghiệp" value={businessTypeFilter} onChange={(event) => onBusinessTypeChange(event.target.value)} className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-700 outline-none focus:border-emerald-500">
+      {options.businessTypes.length > 0 && <label className="block min-w-0 sm:w-48"><span className="sr-only">Loại doanh nghiệp</span><select aria-label="Lọc loại doanh nghiệp" value={businessTypeFilter} onChange={(event) => onBusinessTypeChange(event.target.value)} className="mobile-touch-target min-h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs outline-none transition focus:border-emerald-500">
         <option value="">Tất cả loại doanh nghiệp</option>{options.businessTypes.map((businessType) => <option key={businessType} value={businessType}>{businessType}</option>)}
       </select></label>}
     </>
@@ -876,11 +876,11 @@ export default function PcnCustomersManagementView({ initialSearchQuery = '' }: 
   };
 
   return (
-    <div data-testid="pcn-customers-management-surface" className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/50 p-3 mobile-safe-bottom md:p-4 [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 [&_*:focus-visible]:ring-emerald-500">
-      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+    <div data-testid="pcn-customers-management-surface" className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/50 p-3 mobile-safe-bottom md:p-5 [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 [&_*:focus-visible]:ring-emerald-500">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h2 className="flex items-center gap-2 text-base font-black tracking-tight text-slate-800"><Building className="text-emerald-600" size={20} /> Danh sách khách hàng</h2>
-          <p className="mt-0.5 text-[11px] font-medium text-slate-500">Dữ liệu khách hàng PCN dùng để lập Đề nghị và bộ hồ sơ chứng nhận.</p>
+          <h2 className="flex items-center gap-2 text-base font-bold tracking-tight text-slate-800"><Building className="text-emerald-600" size={20} /> Danh sách khách hàng</h2>
+          <p className="mt-0.5 text-xs text-slate-500">Dữ liệu khách hàng PCN dùng để lập Đề nghị và bộ hồ sơ chứng nhận.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -919,49 +919,223 @@ export default function PcnCustomersManagementView({ initialSearchQuery = '' }: 
         </div>
       </div>
 
-      <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <label className="block min-w-0"><span className="mb-1 block text-[11px] font-black text-slate-600">Tìm kiếm khách hàng</span><div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-          <input aria-label="Tìm khách hàng" type="search" value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setCurrentPage(1); }} className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 py-1.5 pl-8 pr-3 text-[11px] font-medium shadow-2xs outline-none focus:border-emerald-500" />
-        </div></label>
-        <label className="block min-w-0"><span className="mb-1 block text-[11px] font-black text-slate-600">Tình trạng liên hệ</span><select aria-label="Lọc tình trạng liên hệ" value={contactStatusFilter} onChange={(event) => { setContactStatusFilter(event.target.value as PcnCustomerContactFilter); setCurrentPage(1); }} className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-700 outline-none focus:border-emerald-500">
-          <option value="all">Tất cả tình trạng liên hệ</option><option value="with-contact">Có liên hệ</option><option value="without-contact">Chưa có liên hệ</option>
-        </select></label>
-        <PcnCustomerMetadataFilterControls
-          options={customerFilterOptions}
-          regionFilter={regionFilter}
-          onRegionChange={(value) => { setRegionFilter(value); setCurrentPage(1); }}
-          businessTypeFilter={businessTypeFilter}
-          onBusinessTypeChange={(value) => { setBusinessTypeFilter(value); setCurrentPage(1); }}
-        />
-      </div>
+      <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-xs">
+        {/* Thanh tìm kiếm & bộ lọc */}
+        <div className="border-b border-slate-100 bg-slate-50/60 p-3 sm:px-4">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-1 flex-wrap items-center gap-2">
+              <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                <input
+                  aria-label="Tìm khách hàng"
+                  type="search"
+                  value={searchQuery}
+                  placeholder="Tìm theo tên, mã KH, MST, người liên hệ, SĐT..."
+                  onChange={(event) => { setSearchQuery(event.target.value); setCurrentPage(1); }}
+                  className="mobile-touch-target min-h-9 w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs font-medium text-slate-800 placeholder:text-slate-400 shadow-2xs outline-none transition focus:border-emerald-500"
+                />
+              </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
+              <div className="min-w-[170px]">
+                <select
+                  aria-label="Lọc tình trạng liên hệ"
+                  value={contactStatusFilter}
+                  onChange={(event) => { setContactStatusFilter(event.target.value as PcnCustomerContactFilter); setCurrentPage(1); }}
+                  className="mobile-touch-target min-h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-2xs outline-none transition focus:border-emerald-500"
+                >
+                  <option value="all">Tất cả tình trạng liên hệ</option>
+                  <option value="with-contact">Có liên hệ</option>
+                  <option value="without-contact">Chưa có liên hệ</option>
+                </select>
+              </div>
+
+              <PcnCustomerMetadataFilterControls
+                options={customerFilterOptions}
+                regionFilter={regionFilter}
+                onRegionChange={(value) => { setRegionFilter(value); setCurrentPage(1); }}
+                businessTypeFilter={businessTypeFilter}
+                onBusinessTypeChange={(value) => { setBusinessTypeFilter(value); setCurrentPage(1); }}
+              />
+
+              {(Boolean(searchQuery) || contactStatusFilter !== 'all' || Boolean(regionFilter) || Boolean(businessTypeFilter)) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setContactStatusFilter('all');
+                    setRegionFilter('');
+                    setBusinessTypeFilter('');
+                    setCurrentPage(1);
+                  }}
+                  className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-dashed border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                >
+                  <X size={13} /> Xóa lọc
+                </button>
+              )}
+            </div>
+
+            <div className="flex shrink-0 items-center justify-end">
+              <span className="rounded-md border border-slate-200/80 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-2xs">
+                {filteredCustomers.length === customers.length
+                  ? `${customers.length} khách hàng`
+                  : `${filteredCustomers.length} / ${customers.length} khách hàng`}
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="hidden md:table w-full border-collapse text-left text-[11px]">
-            <thead><tr className="border-b border-slate-200 bg-slate-50 font-black uppercase tracking-wider text-slate-500"><th className="w-28 p-3 pl-4">Mã KH</th><th className="w-56 p-3">Tên doanh nghiệp</th><th className="w-56 p-3">Địa chỉ & MST</th><th className="p-3">Thông tin liên hệ</th><th className="w-32 p-3 pr-4 text-right">Thao tác</th></tr></thead>
+          <table className="hidden md:table w-full border-collapse text-left text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <th className="w-28 py-3 pl-4 pr-3">Mã KH</th>
+                <th className="w-[30%] py-3 px-3">Tên doanh nghiệp</th>
+                <th className="w-[34%] py-3 px-3">Địa chỉ & MST</th>
+                <th className="py-3 px-3">Thông tin liên hệ</th>
+                <th className="w-24 py-3 pl-3 pr-4 text-right">Thao tác</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-slate-100">
-              {isAdding && canEditCustomers && <tr className="bg-emerald-50/30">
-                <td className="p-2.5 pl-4"><CustomerInput value={addForm.customerCode} ariaLabel="Mã khách hàng mới" onChange={(value) => setAddForm({ ...addForm, customerCode: value })} /></td>
-                <td className="p-2.5"><CustomerInput value={addForm.name} ariaLabel="Tên doanh nghiệp mới" onChange={(value) => setAddForm({ ...addForm, name: value })} /></td>
-                <td className="space-y-1 p-2.5"><CustomerInput value={addForm.address} placeholder="Địa chỉ" ariaLabel="Địa chỉ" onChange={(value) => setAddForm({ ...addForm, address: value })} /><CustomerInput value={addForm.taxId} placeholder="Mã số thuế" ariaLabel="Mã số thuế" onChange={(value) => setAddForm({ ...addForm, taxId: value })} /></td>
-                <td className="space-y-1 p-2.5"><div className="grid grid-cols-2 gap-1"><CustomerInput value={addForm.phone} placeholder="Số điện thoại" ariaLabel="Số điện thoại" onChange={(value) => setAddForm({ ...addForm, phone: value })} /><CustomerInput type="email" value={addForm.email} placeholder="Email" ariaLabel="Email" onChange={(value) => setAddForm({ ...addForm, email: value })} /></div><CustomerInput value={addForm.contactPerson} placeholder="Người liên hệ" ariaLabel="Người liên hệ" onChange={(value) => setAddForm({ ...addForm, contactPerson: value })} /></td>
-                <td className="p-2.5 pr-4 text-right"><div className="flex justify-end gap-1"><button disabled={isSaving} onClick={handleSaveAdd} className="mobile-touch-target min-h-11 min-w-11 rounded-md bg-emerald-600 p-1 text-white hover:bg-emerald-500 disabled:opacity-50" title="Lưu" aria-label="Lưu khách hàng mới"><Check size={14} /></button><button disabled={isSaving} onClick={() => { setIsAdding(false); setAddForm(emptyCustomerForm); }} className="mobile-touch-target min-h-11 min-w-11 rounded-md bg-slate-100 p-1 text-slate-500 hover:bg-slate-200 disabled:opacity-50" title="Hủy" aria-label="Hủy thêm khách hàng"><X size={14} /></button></div></td>
-              </tr>}
+              {isAdding && canEditCustomers && (
+                <tr className="bg-emerald-50/40 border-b border-emerald-100">
+                  <td className="py-3 pl-4 pr-3 align-top">
+                    <CustomerInput value={addForm.customerCode} placeholder="Mã KH" ariaLabel="Mã khách hàng mới" onChange={(value) => setAddForm({ ...addForm, customerCode: value })} />
+                  </td>
+                  <td className="py-3 px-3 align-top">
+                    <CustomerInput value={addForm.name} placeholder="Tên doanh nghiệp" ariaLabel="Tên doanh nghiệp mới" onChange={(value) => setAddForm({ ...addForm, name: value })} />
+                  </td>
+                  <td className="space-y-1.5 py-3 px-3 align-top">
+                    <CustomerInput value={addForm.address} placeholder="Địa chỉ" ariaLabel="Địa chỉ" onChange={(value) => setAddForm({ ...addForm, address: value })} />
+                    <CustomerInput value={addForm.taxId} placeholder="Mã số thuế" ariaLabel="Mã số thuế" onChange={(value) => setAddForm({ ...addForm, taxId: value })} />
+                  </td>
+                  <td className="space-y-1 py-3 px-3 align-top">
+                    <div className="grid grid-cols-2 gap-1">
+                      <CustomerInput value={addForm.phone} placeholder="Số điện thoại" ariaLabel="Số điện thoại" onChange={(value) => setAddForm({ ...addForm, phone: value })} />
+                      <CustomerInput type="email" value={addForm.email} placeholder="Email" ariaLabel="Email" onChange={(value) => setAddForm({ ...addForm, email: value })} />
+                    </div>
+                    <CustomerInput value={addForm.contactPerson} placeholder="Người liên hệ" ariaLabel="Người liên hệ" onChange={(value) => setAddForm({ ...addForm, contactPerson: value })} />
+                  </td>
+                  <td className="py-3 pl-3 pr-4 text-right align-top">
+                    <div className="flex justify-end gap-1">
+                      <button disabled={isSaving} onClick={handleSaveAdd} className="mobile-touch-target rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-500 disabled:opacity-50" title="Lưu" aria-label="Lưu khách hàng mới">
+                        <Check size={14} />
+                      </button>
+                      <button disabled={isSaving} onClick={() => { setIsAdding(false); setAddForm(emptyCustomerForm); }} className="mobile-touch-target rounded-md bg-slate-100 p-1.5 text-slate-600 hover:bg-slate-200 disabled:opacity-50" title="Hủy" aria-label="Hủy thêm khách hàng">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
 
-              {filteredCustomers.length === 0 && !isAdding ? <tr><td colSpan={5} className="p-6 text-center text-[11px] italic text-slate-400">Không tìm thấy khách hàng nào phù hợp.</td></tr> : paginatedCustomers.map((customer, index) => {
-                const customerId = getPcnDocumentId(customer);
-                const rowKey = customerId || `pcn-customer-${index}`;
-                const isEditing = editingId === customerId;
-                const emptyRecord = isEmptyCustomer(customer);
-                return <tr key={rowKey} className={`transition-colors hover:bg-slate-50/55 ${isEditing ? 'bg-emerald-50/20' : emptyRecord ? 'bg-amber-50/60' : ''}`}>
-                  <td className="p-2.5 pl-4">{isEditing ? <CustomerInput value={editForm.customerCode} onChange={() => undefined} disabled ariaLabel="Mã khách hàng" /> : <PcnCustomerCodeDisplay customer={customer} />}</td>
-                  <td className="p-2.5">{isEditing ? <CustomerInput value={editForm.name} ariaLabel="Tên khách hàng" onChange={(value) => setEditForm({ ...editForm, name: value })} /> : <div className="space-y-1"><div className="text-xs font-bold text-slate-800">{customer.name || 'Chưa có tên khách hàng'}</div>{emptyRecord && <span title="Không có dữ liệu nghiệp vụ" className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-100 px-1.5 py-0.5 text-[11px] font-black text-amber-800"><AlertCircle size={10} /> Cần rà soát</span>}</div>}</td>
-                  <td className="space-y-1 p-2.5">{isEditing ? <><CustomerInput value={editForm.address} placeholder="Địa chỉ" ariaLabel="Địa chỉ" onChange={(value) => setEditForm({ ...editForm, address: value })} /><CustomerInput value={editForm.taxId} placeholder="Mã số thuế" ariaLabel="Mã số thuế" onChange={(value) => setEditForm({ ...editForm, taxId: value })} /></> : <><div className="text-[11px] text-slate-500">{customer.address ? <><span className="font-semibold text-slate-400">ĐC:</span> {customer.address}</> : <span className="italic text-slate-400">Chưa có địa chỉ</span>}</div>{customer.taxId && <div className="font-mono text-[11px] text-slate-500"><span className="font-semibold text-slate-400">MST:</span> {customer.taxId}</div>}</>}</td>
-                  <td className="p-2.5">{isEditing ? <div className="space-y-1"><div className="grid grid-cols-2 gap-1"><CustomerInput value={editForm.phone} placeholder="Số điện thoại" ariaLabel="Số điện thoại" onChange={(value) => setEditForm({ ...editForm, phone: value })} /><CustomerInput type="email" value={editForm.email} placeholder="Email" ariaLabel="Email" onChange={(value) => setEditForm({ ...editForm, email: value })} /></div><CustomerInput value={editForm.contactPerson} placeholder="Người liên hệ" ariaLabel="Người liên hệ" onChange={(value) => setEditForm({ ...editForm, contactPerson: value })} /></div> : <PcnCustomerContactDisplay customer={customer} />}</td>
-                  <td className="p-2.5 pr-4 text-right">{canEditCustomers && <div className="flex justify-end gap-1">{isEditing ? <><button disabled={isSaving} onClick={handleSaveEdit} className="mobile-touch-target min-h-11 min-w-11 rounded-md bg-emerald-600 p-1 text-white hover:bg-emerald-500 disabled:opacity-50" title="Lưu" aria-label="Lưu thông tin khách hàng"><Check size={14} /></button><button disabled={isSaving} onClick={cancelEditing} className="mobile-touch-target min-h-11 min-w-11 rounded-md bg-slate-100 p-1 text-slate-500 hover:bg-slate-200 disabled:opacity-50" title="Hủy" aria-label="Hủy chỉnh sửa"><X size={14} /></button></> : confirmDelete === customerId ? <div className="flex items-center gap-1 rounded-md border border-red-100 bg-red-50 p-1"><span className="px-1 text-[11px] font-bold text-red-600">Xóa?</span><button disabled={isSaving} onClick={() => handleDelete(customerId)} className="mobile-touch-target min-h-11 rounded bg-red-500 px-2 text-[11px] font-bold text-white hover:bg-red-600 disabled:opacity-50">Có</button><button disabled={isSaving} onClick={() => setConfirmDelete(null)} className="mobile-touch-target min-h-11 rounded bg-slate-200 px-2 text-[11px] font-bold text-slate-700 hover:bg-slate-300">Không</button></div> : <><button onClick={() => handleStartEdit(customer)} className="mobile-touch-target min-h-11 min-w-11 rounded-md p-1 text-slate-400 transition-all hover:bg-emerald-50 hover:text-emerald-700" title="Sửa khách hàng" aria-label={`Sửa khách hàng ${customer.name || customer.customerCode}`}><Edit2 size={13} /></button><button onClick={() => setConfirmDelete(customerId)} className="mobile-touch-target min-h-11 min-w-11 rounded-md p-1 text-slate-400 transition-all hover:bg-red-50 hover:text-red-600" title="Xóa khách hàng" aria-label={`Xóa khách hàng ${customer.name || customer.customerCode}`}><Trash2 size={13} /></button></>}</div>}</td>
-                </tr>;
-              })}
+              {filteredCustomers.length === 0 && !isAdding ? (
+                <tr>
+                  <td colSpan={5} className="py-10 text-center text-xs italic text-slate-400">
+                    Không tìm thấy khách hàng nào phù hợp.
+                  </td>
+                </tr>
+              ) : (
+                paginatedCustomers.map((customer, index) => {
+                  const customerId = getPcnDocumentId(customer);
+                  const rowKey = customerId || `pcn-customer-${index}`;
+                  const isEditing = editingId === customerId;
+                  const emptyRecord = isEmptyCustomer(customer);
+
+                  return (
+                    <tr key={rowKey} className={`transition-colors hover:bg-slate-50/70 ${isEditing ? 'bg-emerald-50/20' : emptyRecord ? 'bg-amber-50/40' : ''}`}>
+                      <td className="py-3 pl-4 pr-3 align-top">
+                        {isEditing ? (
+                          <CustomerInput value={editForm.customerCode} onChange={() => undefined} disabled ariaLabel="Mã khách hàng" />
+                        ) : (
+                          <PcnCustomerCodeDisplay customer={customer} />
+                        )}
+                      </td>
+                      <td className="py-3 px-3 align-top">
+                        {isEditing ? (
+                          <CustomerInput value={editForm.name} ariaLabel="Tên khách hàng" onChange={(value) => setEditForm({ ...editForm, name: value })} />
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="text-xs font-semibold text-slate-900 leading-snug">
+                              {customer.name || <span className="italic font-normal text-slate-400">Chưa có tên khách hàng</span>}
+                            </div>
+                            {emptyRecord && (
+                              <span title="Không có dữ liệu nghiệp vụ" className="inline-flex items-center gap-1 rounded border border-amber-200/80 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                                <AlertCircle size={10} /> Cần rà soát
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 align-top">
+                        {isEditing ? (
+                          <div className="space-y-1.5">
+                            <CustomerInput value={editForm.address} placeholder="Địa chỉ" ariaLabel="Địa chỉ" onChange={(value) => setEditForm({ ...editForm, address: value })} />
+                            <CustomerInput value={editForm.taxId} placeholder="Mã số thuế" ariaLabel="Mã số thuế" onChange={(value) => setEditForm({ ...editForm, taxId: value })} />
+                          </div>
+                        ) : (
+                          <div className="space-y-1 text-xs">
+                            <div className="text-slate-600 leading-snug line-clamp-2" title={customer.address || undefined}>
+                              {customer.address ? (
+                                customer.address
+                              ) : (
+                                <span className="italic text-slate-400 text-[11px]">Chưa có địa chỉ</span>
+                              )}
+                            </div>
+                            {customer.taxId ? (
+                              <div className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-600">
+                                <span className="text-slate-400 font-sans">MST:</span>
+                                <span>{customer.taxId}</span>
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 align-top">
+                        {isEditing ? (
+                          <div className="space-y-1">
+                            <div className="grid grid-cols-2 gap-1">
+                              <CustomerInput value={editForm.phone} placeholder="Số điện thoại" ariaLabel="Số điện thoại" onChange={(value) => setEditForm({ ...editForm, phone: value })} />
+                              <CustomerInput type="email" value={editForm.email} placeholder="Email" ariaLabel="Email" onChange={(value) => setEditForm({ ...editForm, email: value })} />
+                            </div>
+                            <CustomerInput value={editForm.contactPerson} placeholder="Người liên hệ" ariaLabel="Người liên hệ" onChange={(value) => setEditForm({ ...editForm, contactPerson: value })} />
+                          </div>
+                        ) : (
+                          <PcnCustomerContactDisplay customer={customer} />
+                        )}
+                      </td>
+                      <td className="py-3 pl-3 pr-4 text-right align-top">
+                        {canEditCustomers && <div className="flex justify-end gap-1">
+                          {isEditing ? (
+                            <>
+                              <button disabled={isSaving} onClick={handleSaveEdit} className="mobile-touch-target rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-500 disabled:opacity-50" title="Lưu" aria-label="Lưu thông tin khách hàng">
+                                <Check size={14} />
+                              </button>
+                              <button disabled={isSaving} onClick={cancelEditing} className="mobile-touch-target rounded-md bg-slate-100 p-1.5 text-slate-600 hover:bg-slate-200 disabled:opacity-50" title="Hủy" aria-label="Hủy chỉnh sửa">
+                                <X size={14} />
+                              </button>
+                            </>
+                          ) : confirmDelete === customerId ? (
+                            <div className="flex items-center gap-1 rounded-md border border-red-200 bg-red-50 p-1">
+                              <span className="px-1 text-[11px] font-bold text-red-600">Xóa?</span>
+                              <button disabled={isSaving} onClick={() => handleDelete(customerId)} className="mobile-touch-target rounded bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white hover:bg-red-700 disabled:opacity-50">Có</button>
+                              <button disabled={isSaving} onClick={() => setConfirmDelete(null)} className="mobile-touch-target rounded bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700 hover:bg-slate-300">Không</button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end gap-0.5">
+                              <button onClick={() => handleStartEdit(customer)} className="mobile-touch-target rounded-md p-1.5 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700" title="Sửa khách hàng" aria-label={`Sửa khách hàng ${customer.name || customer.customerCode}`}>
+                                <Edit2 size={14} />
+                              </button>
+                              <button onClick={() => setConfirmDelete(customerId)} className="mobile-touch-target rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600" title="Xóa khách hàng" aria-label={`Xóa khách hàng ${customer.name || customer.customerCode}`}>
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          )}
+                        </div>}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -1060,9 +1234,9 @@ export default function PcnCustomersManagementView({ initialSearchQuery = '' }: 
 
         {/* Thanh phân trang Pagination */}
         {filteredCustomers.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-[11px]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/80 bg-slate-50/60 px-4 py-3 text-xs">
             <div className="flex items-center gap-2 text-slate-500">
-              <span>Hiển thị:</span>
+              <span>Hiển thị</span>
               <select
                 aria-label="Số bản ghi khách hàng trên mỗi trang"
                 value={pageSize}
@@ -1071,7 +1245,7 @@ export default function PcnCustomersManagementView({ initialSearchQuery = '' }: 
                   setPageSize(val);
                   setCurrentPage(1);
                 }}
-                className="mobile-touch-target min-h-9 rounded border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-emerald-400"
+                className="mobile-touch-target min-h-8 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-2xs outline-none transition focus:border-emerald-500"
               >
                 <option value={20}>20 / trang</option>
                 <option value={50}>50 / trang</option>
@@ -1087,18 +1261,18 @@ export default function PcnCustomersManagementView({ initialSearchQuery = '' }: 
                   type="button"
                   disabled={safeCurrentPage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="mobile-touch-target min-h-9 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:border-emerald-300 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mobile-touch-target min-h-8 rounded-md border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-2xs transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Trước
                 </button>
-                <span className="px-2 text-xs font-bold text-slate-700">
+                <span className="px-2 text-xs font-semibold text-slate-700">
                   Trang {safeCurrentPage} / {totalPages}
                 </span>
                 <button
                   type="button"
                   disabled={safeCurrentPage >= totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="mobile-touch-target min-h-9 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:border-emerald-300 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mobile-touch-target min-h-8 rounded-md border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-2xs transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Sau
                 </button>

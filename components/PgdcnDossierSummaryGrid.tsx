@@ -41,6 +41,26 @@ function columnStorageKey(domain: Props['domain'], username: string): string {
   return `summary_grid_cols_${domain}_${username}`;
 }
 
+function getColumnHeaderTone(domain: Props['domain'], columnId: string): string {
+  const cid = columnId.toLowerCase();
+  if (cid.includes('code') || cid.includes('number') || cid.includes('dossier') || cid.includes('request')) {
+    return domain === 'PCN' ? 'bg-emerald-100/70 text-emerald-950 font-black' : 'bg-blue-100/70 text-blue-950 font-black';
+  }
+  if (cid.includes('customer') || cid.includes('client') || cid.includes('contact')) {
+    return 'bg-amber-100/60 text-amber-950 font-black';
+  }
+  if (cid.includes('product') || cid.includes('model') || cid.includes('brand') || cid.includes('origin')) {
+    return 'bg-indigo-100/60 text-indigo-950 font-black';
+  }
+  if (cid.includes('status') || cid.includes('step') || cid.includes('station') || cid.includes('complete') || cid.includes('missing')) {
+    return 'bg-teal-100/60 text-teal-950 font-black';
+  }
+  if (cid.includes('invoice') || cid.includes('fee') || cid.includes('payment') || cid.includes('receipt')) {
+    return 'bg-purple-100/60 text-purple-950 font-black';
+  }
+  return 'bg-slate-100 text-slate-700 font-black';
+}
+
 export default function PgdcnDossierSummaryGrid({
   domain,
   columns: defaultColumns,
@@ -283,7 +303,7 @@ export default function PgdcnDossierSummaryGrid({
 
   return (
     <div data-testid="dossier-summary-grid" className="space-y-3">
-      <div data-testid="dossier-summary-toolbar" className="pgdcn-toolbar-nowrap rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div data-testid="dossier-summary-toolbar" className={`pgdcn-toolbar-nowrap rounded-xl border bg-white p-3 shadow-sm ${domain === 'PCN' ? 'border-emerald-200/90' : 'border-blue-200/90'}`}>
         <div className="pgdcn-toolbar-search min-w-0">
           <label htmlFor={`summary-grid-search-${domain}`} className="mb-1 block text-[10px] font-black text-slate-600">Tìm kiếm Sổ tổng hợp {domain}</label>
           <input
@@ -341,17 +361,17 @@ export default function PgdcnDossierSummaryGrid({
 
       {cellError && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-bold text-rose-700">{cellError}</div>}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
         <div className="mobile-scroll-x overflow-x-auto">
-          <table className="w-full min-w-[1400px] text-left text-[11px]">
-            <thead className="bg-slate-50 text-[9px] font-black uppercase tracking-wide text-slate-500">
-              <tr>
-{visibleColumns.map((column, index) => { const sortDirection = sortState?.columnId === column.id ? sortState.direction : null; return <th key={column.id} aria-sort={sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none'} style={{ width: column.width, minWidth: column.width }} className={'relative whitespace-nowrap border-b border-slate-200 px-2 py-1.5 ' + (column.sticky || index === 0 ? 'sticky left-0 z-10 bg-slate-50' : '')}><button type='button' aria-label={'Sắp xếp theo ' + column.label + ' (' + (sortDirection === 'asc' ? 'tăng dần' : sortDirection === 'desc' ? 'giảm dần' : 'chưa sắp xếp') + ')'} aria-pressed={Boolean(sortDirection)} onClick={() => setSortState((current) => toggleSummarySort(current, column.id))} className='inline-flex min-h-11 min-w-11 items-center gap-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500'>{column.label}<span aria-hidden='true' className='text-slate-400'>{sortDirection === 'asc' ? '↑' : sortDirection === 'desc' ? '↓' : '↕'}</span></button><span role='separator' aria-label={'Đổi độ rộng cột ' + column.label} onMouseDown={(event) => startResize(event, column)} className={'absolute right-0 top-0 h-full w-1.5 cursor-col-resize ' + (resizingColumnId === column.id ? 'bg-emerald-400' : 'hover:bg-emerald-200')} /></th>; })}
-                <th className="sticky right-0 z-10 border-b border-slate-200 bg-slate-50 px-2 py-1.5 text-right">Hồ sơ</th>
+          <table className="w-full min-w-[1400px] border-collapse text-left text-[11px]">
+            <thead className="bg-slate-100 text-[9px] font-black uppercase tracking-wide text-slate-600">
+              <tr className="border-b-2 border-slate-300">
+{visibleColumns.map((column, index) => { const sortDirection = sortState?.columnId === column.id ? sortState.direction : null; const headerTone = getColumnHeaderTone(domain, column.id); return <th key={column.id} aria-sort={sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none'} style={{ width: column.width, minWidth: column.width }} className={'relative whitespace-nowrap border-b-2 border-r border-slate-300 px-2.5 py-2 ' + headerTone + ' ' + (column.sticky || index === 0 ? 'sticky left-0 z-10 border-r-2 border-slate-300' : '')}><button type='button' aria-label={'Sắp xếp theo ' + column.label + ' (' + (sortDirection === 'asc' ? 'tăng dần' : sortDirection === 'desc' ? 'giảm dần' : 'chưa sắp xếp') + ')'} aria-pressed={Boolean(sortDirection)} onClick={() => setSortState((current) => toggleSummarySort(current, column.id))} className='inline-flex min-h-11 min-w-11 items-center gap-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500'>{column.label}<span aria-hidden='true' className='text-slate-400'>{sortDirection === 'asc' ? '↑' : sortDirection === 'desc' ? '↓' : '↕'}</span></button><span role='separator' aria-label={'Đổi độ rộng cột ' + column.label} onMouseDown={(event) => startResize(event, column)} className={'absolute right-0 top-0 h-full w-1.5 cursor-col-resize ' + (resizingColumnId === column.id ? 'bg-emerald-400' : 'hover:bg-emerald-200')} /></th>; })}
+                <th className={`sticky right-0 z-10 border-b-2 border-l-2 border-slate-300 px-2.5 py-1.5 text-right font-black ${domain === 'PCN' ? 'bg-emerald-50 text-emerald-950' : 'bg-blue-50 text-blue-950'}`}>Hồ sơ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {pageRows.map((row, rowIndex) => <tr key={row.id} className="hover:bg-emerald-50/30">
+            <tbody className="divide-y divide-slate-200">
+              {pageRows.map((row, rowIndex) => <tr key={row.id} className={"group transition-colors even:bg-slate-50/60 " + (domain === "PCN" ? "hover:bg-emerald-50/40" : "hover:bg-blue-50/40")}>
                 {visibleColumns.map((column, index) => {
                   const isEditing = editingCell?.rowId === row.id && editingCell.columnId === column.id;
                   const cellValue = summaryCellText(row.displayCells?.[column.id] ?? row.cells[column.id]);
@@ -366,11 +386,11 @@ export default function PgdcnDossierSummaryGrid({
                         }}
                         tabIndex={column.editable && isRowEditable(row.id) ? 0 : undefined}
                         aria-label={column.editable && isRowEditable(row.id) ? `${column.label}, dòng ${rowIndex + 1}` : undefined}
-                        className={`max-w-[280px] border-slate-100 px-2 py-4 md:py-1.5 align-top ${column.sticky || index === 0 ? 'sticky left-0 z-[1] bg-white' : ''} ${column.editable && isRowEditable(row.id) ? 'cursor-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500' : ''}`}>
+                        className={`max-w-[280px] border-r border-slate-200 px-2.5 py-4 md:py-1.5 align-top ${column.sticky || index === 0 ? 'sticky left-0 z-[1] bg-white border-r-2 border-slate-300' : ''} ${column.editable && isRowEditable(row.id) ? 'cursor-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500' : ''}`}>
                     {isEditing ? renderEditor(row, column) : isPcnDossierCode ? <button type="button" onClick={(event) => { event.stopPropagation(); onOpenRow(row.id); }} aria-label={`Mở chi tiết hồ sơ ${cellValue}`} className="max-w-[260px] whitespace-pre-wrap break-words text-left font-mono font-black text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">{cellValue}</button> : <div title={cellValue} className={`${column.id === 'requestCode' || column.id === 'dossierCode' ? 'font-mono font-black text-slate-800' : 'font-medium text-slate-700'} max-w-[260px] whitespace-pre-wrap break-words`}>{cellValue || <span className="text-slate-300">—</span>}</div>}
                   </td>;
                 })}
-                <td className="sticky right-0 z-[1] bg-white px-2 py-1.5 text-right"><button type="button" onClick={() => onOpenRow(row.id)} className="mobile-touch-target min-h-11 whitespace-nowrap rounded-md border border-slate-200 px-2 py-1.5 text-[9px] font-black text-emerald-700 hover:border-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">Mở hồ sơ</button>{savingRowId === row.id && <div className="mt-1 text-[9px] text-amber-600">Đang lưu…</div>}</td>
+                <td className={"sticky right-0 z-[1] bg-white border-l-2 border-slate-300 px-2.5 py-1.5 text-right " + (domain === "PCN" ? "group-hover:bg-emerald-50/40" : "group-hover:bg-blue-50/40")}><button type="button" onClick={() => onOpenRow(row.id)} className="mobile-touch-target min-h-11 whitespace-nowrap rounded-md border border-slate-200 px-2 py-1.5 text-[9px] font-black text-emerald-700 hover:border-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">Mở hồ sơ</button>{savingRowId === row.id && <div className="mt-1 text-[9px] text-amber-600">Đang lưu…</div>}</td>
               </tr>)}
             </tbody>
           </table>

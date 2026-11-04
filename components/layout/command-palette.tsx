@@ -19,6 +19,7 @@ import {
 import type { PcnUserAccount } from '@/types';
 import { usePcnStore } from '@/store-pcn';
 import { usePgdStore } from '@/store-pgd';
+import { getPgdcnDashboardStatusLabel } from '@/utils/pgdcnDashboard';
 
 export interface CommandItem {
   id: string;
@@ -175,7 +176,7 @@ export function CommandPalette({ open, onClose, currentUser }: CommandPalettePro
           id: `pcn-${dossier.id}`,
           category: 'dossier',
           title: `${dossier.dossierCode || 'Chưa có mã'} · ${dossier.customerSnapshot?.name || 'Khách hàng'}`,
-          subtitle: `Chứng nhận PCN · Trạng thái: ${dossier.status}`,
+          subtitle: `Chứng nhận PCN · Trạng thái: ${getPgdcnDashboardStatusLabel('PCN', dossier.status)}`,
           icon: Award,
           badge: 'PCN',
           action: () => {
@@ -200,7 +201,7 @@ export function CommandPalette({ open, onClose, currentUser }: CommandPalettePro
           id: `pgd-${req.id}`,
           category: 'dossier',
           title: `${req.requestCode || 'Chưa có mã'} · ${req.customerSnapshot?.name || 'Khách hàng'}`,
-          subtitle: `Giám định PGD · Trạng thái: ${req.status}`,
+          subtitle: `Giám định PGD · Trạng thái: ${getPgdcnDashboardStatusLabel('PGD', req.status)}`,
           icon: ClipboardCheck,
           badge: 'PGD',
           action: () => {

@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   FolderOpen,
   ChevronDown,
+  Download,
+  Trash2,
 } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
@@ -21,6 +23,10 @@ import { toast } from 'sonner';
 import type { PcnOperationsRegisterRow } from '../utils/pcnOperationsRegister';
 import { getPgdcnDashboardStatusLabel } from '../utils/pgdcnDashboard';
 import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
+import { usePcnSessionStore } from '../utils/pcnSessionState';
+import { isPcnSystemManager } from '../utils/pcnRbac';
+import { usePcnStore } from '../store-pcn';
+import { downloadPcnDossierPackage } from '../utils/pcnDossierPackageApi';
 
 export interface PcnDossierQueueViewProps {
   rows: PcnOperationsRegisterRow[];
@@ -49,6 +55,9 @@ export const PCN_FILTER_CHIPS = [
 type PcnFilterChipId = typeof PCN_FILTER_CHIPS[number]['id'];
 
 export default function PcnDossierQueueView({ rows, onOpenDossier, filterControls }: PcnDossierQueueViewProps) {
+  const currentUser = usePcnSessionStore((state) => state.currentUser);
+  const isManagerOrAdmin = Boolean(currentUser && (currentUser.systemRole === 'admin' || currentUser.role === 'admin' || isPcnSystemManager(currentUser)));
+  const deleteDossier = usePcnStore((state) => state.deleteDossier);
   const [query, setQuery] = useState('');
   const [activeChip, setActiveChip] = useState<PcnFilterChipId>('ALL');
   const [showFilters, setShowFilters] = useState(false);
@@ -102,13 +111,71 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
     );
   }, [query, rows, activeChip]);
 
+  const handleQuickView = (row: PcnOperationsRegisterRow) => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('pgdcn:quickview', {
+          detail: {
+            domain: 'PCN',
+            dossierCode: row.dossierCode,
+            item: {
+              dossierCode: row.dossierCode,
+              domain: 'PCN',
+              customerName: row.customerName,
+              productName: row.productName,
+              status: row.dossierStatus,
+              statusLabel: statusLabel(row.dossierStatus),
+              currentStage: row.stationTitle,
+              nextStep: row.stationActionLabel || 'Chờ xử lý tiếp',
+              assigneeName: row.ownerUsername,
+            },
+          },
+        })
+      );
+    }
+  };
+
+  const handleDownloadPackage = async (row: PcnOperationsRegisterRow) => {
+    try {
+      await downloadPcnDossierPackage(row.dossierId, row.dossierCode);
+      toast.success(`Đã tải bộ hồ sơ ${row.dossierCode}.`);
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể tải bộ hồ sơ PCN.');
+    }
+  };
+
+  const handleDeleteDossier = async (row: PcnOperationsRegisterRow) => {
+    if (!isManagerOrAdmin) return;
+    const reason = typeof window !== 'undefined'
+      ? window.prompt('Nhập lý do xóa vĩnh viễn hồ sơ PCN:', '')?.trim()
+      : undefined;
+    if (!reason) return;
+    const confirmationCode = typeof window !== 'undefined'
+      ? window.prompt(`Nhập lại chính xác mã hồ sơ để xác nhận xóa: ${row.dossierCode}`, '')?.trim()
+      : undefined;
+    if (!confirmationCode) return;
+    if (confirmationCode !== row.dossierCode) {
+      toast.error('Mã xác nhận không khớp với mã hồ sơ.');
+      return;
+    }
+    if (typeof window !== 'undefined' && !window.confirm(`Bạn chắc chắn muốn XÓA VĨNH VIỄN hồ sơ ${row.dossierCode}? Toàn bộ dữ liệu liên kết sẽ bị xóa, không thể khôi phục.`)) return;
+    try {
+      await deleteDossier(row.dossierId, reason, confirmationCode);
+      toast.success(`Đã xóa vĩnh viễn hồ sơ PCN ${row.dossierCode}.`);
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể xóa hồ sơ PCN.');
+    }
+  };
+
   return (
     <section data-testid="pcn-dossier-queue" className="min-w-0 space-y-3 p-3 md:p-4" aria-label="Hàng đợi hồ sơ PCN">
-      {/* Header: Title and View Switcher (Zero KPI Viewport Wastage) */}
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-600">PCN · Hàng đợi công việc</p>
-          <h2 className="mt-0.5 text-sm md:text-base font-black text-slate-950">Mở đúng hồ sơ, xử lý đúng việc</h2>
+      {/* Header: 1-line compact with brand color badge */}
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-800">
+            PCN · Hàng đợi công việc
+          </span>
+          <h2 className="text-sm md:text-base font-black text-slate-900">Mở đúng hồ sơ, xử lý đúng việc</h2>
         </div>
       </div>
 
@@ -218,22 +285,46 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
             <p className="border-b border-slate-100 px-3 py-2 text-[11px] text-slate-600 sm:hidden">Vuốt ngang để xem đầy đủ bảng hồ sơ.</p>
             <table aria-label="Bảng hàng đợi hồ sơ PCN" className="w-full min-w-[980px] border-collapse text-left text-sm">
               <caption className="sr-only">Danh sách hồ sơ PCN đang chờ xử lý</caption>
-              <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
+              <thead className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th scope="col" className="sticky left-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-3">Hồ sơ / Đề nghị</th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-3">Khách hàng</th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-3">Sản phẩm</th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-3">Bước hiện tại</th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-3">Hoàn thiện</th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-3">Tài liệu</th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-3">Chủ hồ sơ</th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-3 text-right">Thao tác</th>
+                  <th scope="col" className="sticky left-0 z-10 w-44 min-w-[160px] border-b border-slate-200 bg-slate-50 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Hồ sơ / Đề nghị</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Mã hồ sơ · Trạng thái</span>
+                  </th>
+                  <th scope="col" className="w-[22%] min-w-[180px] border-b border-slate-200 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Khách hàng</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Doanh nghiệp đề nghị</span>
+                  </th>
+                  <th scope="col" className="w-[18%] min-w-[150px] border-b border-slate-200 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Sản phẩm</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Tên & kiểu loại</span>
+                  </th>
+                  <th scope="col" className="w-[18%] min-w-[150px] border-b border-slate-200 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Bước hiện tại</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Công đoạn xử lý</span>
+                  </th>
+                  <th scope="col" className="w-28 min-w-[110px] border-b border-slate-200 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Hoàn thiện</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Tiến độ hồ sơ</span>
+                  </th>
+                  <th scope="col" className="w-32 min-w-[120px] border-b border-slate-200 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Tài liệu</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Tình trạng đầu mục</span>
+                  </th>
+                  <th scope="col" className="w-28 min-w-[110px] border-b border-slate-200 px-3 py-3">
+                    <span className="block font-bold text-slate-700">Chủ hồ sơ</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Phụ trách kỹ thuật</span>
+                  </th>
+                  <th scope="col" className="w-32 min-w-[120px] border-b border-slate-200 px-3 py-3 text-right">
+                    <span className="block font-bold text-slate-700">Thao tác</span>
+                    <span className="block text-[10px] font-medium text-slate-400 normal-case">Mở / Tải / Xóa</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredRows.map((row) => (
-                  <tr key={row.dossierId} className="align-top transition-colors hover:bg-blue-50/40">
-                    <th scope="row" className="sticky left-0 z-[1] bg-white px-3 py-3 font-normal">
+                  <tr key={row.dossierId} className="align-top transition-colors hover:bg-slate-50/70 border-b border-slate-100">
+                    <th scope="row" className="sticky left-0 z-[1] bg-white px-3 py-3 font-normal border-b border-slate-100">
                       <div className="min-w-[150px]">
                         <button
                           type="button"
@@ -243,39 +334,94 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
                         >
                           {row.dossierCode}
                         </button>
-                        <p className="mt-1 text-xs text-slate-500">Đề nghị {row.registrationCode}</p>
-                        <PgdcnStatusBadge compact domain="PCN" status={row.dossierStatus} label={statusLabel(row.dossierStatus)} />
+                        <p className="mt-0.5 text-[11px] text-slate-500">Đề nghị {row.registrationCode}</p>
+                        <div className="mt-1">
+                          <PgdcnStatusBadge compact domain="PCN" status={row.dossierStatus} label={statusLabel(row.dossierStatus)} />
+                        </div>
                       </div>
                     </th>
-                    <td className="max-w-[190px] px-3 py-3 align-top text-sm font-medium text-slate-900">
-                      <span className="line-clamp-2">{row.customerName || 'Chưa có khách hàng'}</span>
+                    <td className="px-3 py-3 align-top text-xs font-semibold text-slate-900">
+                      <span className="line-clamp-2" title={row.customerName || undefined}>{row.customerName || 'Chưa có khách hàng'}</span>
                     </td>
-                    <td className="max-w-[190px] px-3 py-3 align-top text-sm text-slate-700">
-                      <span className="line-clamp-2">{row.productName || 'Chưa có sản phẩm'}</span>
+                    <td className="px-3 py-3 align-top text-xs text-slate-700">
+                      <span className="line-clamp-2" title={row.productName || undefined}>{row.productName || 'Chưa có sản phẩm'}</span>
+                      {row.model && <span className="block mt-0.5 font-mono text-[10px] text-slate-400">{row.model}</span>}
                     </td>
                     <td className="px-3 py-3 align-top">
-                      <p className="font-semibold text-blue-900">{row.stationTitle}</p>
-                      <p className="mt-1 text-xs text-slate-500">{row.stationActionLabel}</p>
+                      <p className="text-xs font-semibold text-blue-900">{row.stationTitle}</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">{row.stationActionLabel}</p>
                     </td>
                     <td className="whitespace-nowrap px-3 py-3 align-top">
-                      <span className="font-semibold text-slate-900">{row.completenessScore}%</span>
-                      <p className="mt-1 text-xs text-slate-500">{row.requiredDocumentPresent}/{row.requiredDocumentTotal} bắt buộc</p>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-1.5 w-14 overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                row.completenessScore >= 100
+                                  ? 'bg-emerald-600'
+                                  : row.completenessScore >= 60
+                                  ? 'bg-blue-600'
+                                  : 'bg-amber-500'
+                              }`}
+                              style={{ width: `${Math.min(100, Math.max(0, row.completenessScore))}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] font-bold text-slate-800">{row.completenessScore}%</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500">{row.requiredDocumentPresent}/{row.requiredDocumentTotal} bắt buộc</p>
+                      </div>
                     </td>
-                    <td className="max-w-[230px] px-3 py-3 align-top">
-                      <span className={row.missingRequiredCount > 0 ? 'font-semibold text-amber-800' : 'font-semibold text-emerald-700'}>
+                    <td className="px-3 py-3 align-top">
+                      <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold ${
+                        row.missingRequiredCount > 0
+                          ? 'border border-amber-200/80 bg-amber-50 text-amber-800'
+                          : 'border border-emerald-200/80 bg-emerald-50 text-emerald-800'
+                      }`}>
                         {row.missingRequiredCount > 0 ? `Thiếu ${row.missingRequiredCount} mục` : 'Đủ tài liệu bắt buộc'}
                       </span>
                     </td>
-                    <td className="px-3 py-3 align-top text-sm text-slate-700">{row.ownerUsername || 'Chưa phân công'}</td>
+                    <td className="px-3 py-3 align-top text-xs font-medium text-slate-700">
+                      {row.ownerUsername ? (
+                        <span className="text-slate-800 font-semibold">{row.ownerUsername}</span>
+                      ) : (
+                        <span className="text-slate-400 italic">Chưa phân công</span>
+                      )}
+                    </td>
                     <td className="px-3 py-3 align-top text-right">
-                      <button
-                        type="button"
-                        className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center gap-1.5 rounded-md bg-emerald-700 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 cursor-pointer"
-                        onClick={() => onOpenDossier(row.dossierId)}
-                      >
-                        <span>Mở hồ sơ</span>
-                        <ArrowRight size={13} aria-hidden="true" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => onOpenDossier(row.dossierId)}
+                          title="Mở chi tiết hồ sơ"
+                          aria-label={`Mở hồ sơ ${row.dossierCode}`}
+                          className="mobile-touch-target dossier-action-compact rounded-lg border border-emerald-600 bg-emerald-600 p-2 text-white shadow-2xs transition hover:bg-emerald-700 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                        >
+                          <FolderOpen size={14} aria-hidden="true" />
+                          <span className="sr-only">Mở hồ sơ</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDownloadPackage(row)}
+                          title="Tải gói tài liệu hồ sơ"
+                          aria-label={`Tải tài liệu hồ sơ ${row.dossierCode}`}
+                          className="mobile-touch-target rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-2xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-emerald-700 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                        >
+                          <Download size={14} aria-hidden="true" />
+                          <span className="sr-only">Tải tài liệu</span>
+                        </button>
+                        {isManagerOrAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteDossier(row)}
+                            title="Xóa vĩnh viễn hồ sơ"
+                            aria-label={`Xóa hồ sơ ${row.dossierCode}`}
+                            className="mobile-touch-target rounded-lg border border-rose-200 bg-white p-2 text-rose-600 shadow-2xs transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
+                            <span className="sr-only">Xóa hồ sơ</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

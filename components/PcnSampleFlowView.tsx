@@ -61,7 +61,7 @@ function RequiredMarker() {
   return <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>;
 }
 function TestAssignment({ label, options, selected, onToggle }: { label: string; options: Array<{ code: PcnSampleLabCode; name: string }>; selected: PcnSampleLabCode[]; onToggle: (code: PcnSampleLabCode, checked: boolean) => void }) {
-  return <div className="rounded-lg border border-slate-200 bg-white p-2.5"><div className="text-[11px] font-black text-slate-700">{label}</div><div className="mt-1.5 flex flex-wrap gap-1.5">{options.map((lab) => <label key={lab.code} className={`mobile-touch-target min-h-11 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-1.5 text-[11px] font-bold ${selected.includes(lab.code) ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}><input type="checkbox" checked={selected.includes(lab.code)} onChange={(event) => onToggle(lab.code, event.target.checked)} />{lab.name}</label>)}</div>{selected.length === 0 && <p className="mt-1 text-[11px] font-bold text-rose-700">Chưa gán phép thử</p>}</div>;
+  return <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs"><div className="text-[11px] font-black text-slate-700">{label}</div><div className="mt-2 flex flex-wrap gap-1.5">{options.map((lab) => <label key={lab.code} className={`mobile-touch-target min-h-11 inline-flex cursor-pointer items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all ${selected.includes(lab.code) ? 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}><input type="checkbox" checked={selected.includes(lab.code)} onChange={(event) => onToggle(lab.code, event.target.checked)} className="rounded text-emerald-600" />{lab.name}</label>)}</div>{selected.length === 0 && <p className="mt-1 text-[11px] font-bold text-rose-700">Chưa gán phép thử</p>}</div>;
 }
 function nextActionLabel(status: PcnSampleRouteStatus): string {
   return status === 'SENT' ? 'Gửi mẫu' : status === 'RECEIVED' ? 'Xác nhận nhận' : status === 'RESULT_RETURNED' ? 'Ghi nhận KQ' : status === 'RETURNED_TO_PCN' ? 'Nhận mẫu về PCN' : status === 'CLOSED' ? 'Đóng tuyến' : 'Cập nhật';
@@ -87,12 +87,47 @@ function emptyPcnSampleForm(): PcnSampleForm {
 }
 
 function RouteCell({ route, editable, busyRouteId, canStart = true, onAdvance, onOpenHandover }: { route?: PcnSampleRoute; editable: boolean; busyRouteId?: string; canStart?: boolean; onAdvance: (route: PcnSampleRoute, status: PcnSampleRouteStatus, update?: PcnSampleRouteUpdate) => void; onOpenHandover?: (routeId: string) => void }) {
-  if (!route) return <div className="min-w-[150px] rounded-lg border border-dashed border-slate-200 p-2 text-[11px] text-slate-500">Chưa đăng ký tuyến</div>;
+  if (!route) return <div className="min-w-[150px] rounded-xl border border-dashed border-slate-200 p-2.5 text-xs text-slate-500">Chưa đăng ký tuyến</div>;
   const nextStatus = getNextPcnSampleRouteStatuses(route.status).find((status) => status !== 'CANCELLED');
   const timestamp = route.status === 'SENT' ? route.sentAt : route.status === 'RECEIVED' ? route.receivedAt : route.status === 'RESULT_RETURNED' ? route.resultReturnedAt : route.returnedAt;
   const isBusy = busyRouteId === route.id;
   const blockedBySequence = route.status === 'PENDING' && !canStart;
-  return <div className="min-w-[150px] rounded-lg border border-slate-200 bg-white p-2"><span className={`inline-flex rounded-full border px-1.5 py-0.5 text-[9px] font-black ${ROUTE_STATUS_CLASSES[route.status]}`}>{ROUTE_STATUS_LABELS[route.status]}</span><div className="mt-1 text-[9px] text-slate-400">{formatDate(timestamp)}</div>{route.labRequestId && <div className="mt-1 truncate font-mono text-[9px] text-slate-500">PYC: {route.labRequestId}</div>}{route.execution && <div className="mt-1 text-[9px] font-bold text-indigo-700">{executionLabel(route.execution.status)}{route.execution.scheduledDate ? ` · Lịch ${formatDate(route.execution.scheduledDate)}` : ''}{route.execution.outcome && route.execution.outcome !== 'PENDING' ? ` · ${route.execution.outcome}` : ''}</div>}{blockedBySequence && <div className="mt-1 text-[11px] font-bold text-amber-700">Chờ chặng trước kết thúc</div>}<div className="mt-2 flex flex-wrap gap-1">{onOpenHandover && <button type="button" onClick={() => onOpenHandover(route.id)} className="mobile-touch-target min-h-11 rounded-md border border-indigo-200 bg-indigo-50 px-2 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100">Chi tiết / biên bản</button>}{editable && nextStatus && <button type="button" onClick={() => onAdvance(route, nextStatus)} disabled={isBusy || blockedBySequence} aria-busy={isBusy} className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"><ArrowRight size={10} />{isBusy ? 'Đang lưu...' : blockedBySequence ? 'Chờ chặng trước' : nextActionLabel(nextStatus)}</button>}</div></div>;
+  return (
+    <div className="min-w-[160px] rounded-xl border border-slate-200 bg-white p-2.5 shadow-2xs">
+      <div className="flex items-center justify-between gap-1">
+        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-black ${ROUTE_STATUS_CLASSES[route.status]}`}>{ROUTE_STATUS_LABELS[route.status]}</span>
+        <span className="text-[10px] font-medium text-slate-400">{formatDate(timestamp)}</span>
+      </div>
+      {route.labRequestId && <div className="mt-1 truncate font-mono text-[10px] text-slate-600 font-semibold">PYC: {route.labRequestId}</div>}
+      {route.execution && (
+        <div className="mt-1 text-[10px] font-bold text-indigo-700">
+          {executionLabel(route.execution.status)}
+          {route.execution.scheduledDate ? ` · Lịch ${formatDate(route.execution.scheduledDate)}` : ''}
+          {route.execution.outcome && route.execution.outcome !== 'PENDING' ? ` · ${route.execution.outcome}` : ''}
+        </div>
+      )}
+      {blockedBySequence && <div className="mt-1 text-[11px] font-bold text-amber-700">Chờ chặng trước kết thúc</div>}
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {onOpenHandover && (
+          <button type="button" onClick={() => onOpenHandover(route.id)} className="mobile-touch-target min-h-9 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition cursor-pointer">
+            Chi tiết / biên bản
+          </button>
+        )}
+        {editable && nextStatus && (
+          <button
+            type="button"
+            onClick={() => onAdvance(route, nextStatus)}
+            disabled={isBusy || blockedBySequence}
+            aria-busy={isBusy}
+            className="mobile-touch-target inline-flex min-h-9 items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 transition cursor-pointer"
+          >
+            <ArrowRight size={12} />
+            {isBusy ? 'Đang lưu...' : blockedBySequence ? 'Chờ chặng trước' : nextActionLabel(nextStatus)}
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function PcnSampleFlowView({ sampleLots, sampleItems = [], sampleRoutes, dossiers, proposals, fields, currentUser, initialDossierId, canEdit = true, onCreate, onRouteStatusChange, onOpenHandover }: { sampleLots: PcnSampleLot[]; sampleItems?: PcnSampleItem[]; sampleRoutes: PcnSampleRoute[]; dossiers: CertificationDossier[]; proposals: CertificationProposal[]; fields: PcnCertificationField[]; currentUser: UserAccount | null; initialDossierId?: string; canEdit?: boolean; onCreate: (draft: PcnSampleLotDraft) => Promise<void>; onRouteStatusChange: (routeId: string, status: PcnSampleRouteStatus, update?: PcnSampleRouteUpdate) => Promise<void>; onOpenHandover?: (routeId: string) => void }) {
@@ -209,109 +244,361 @@ export function PcnSampleFlowView({ sampleLots, sampleItems = [], sampleRoutes, 
     issues: issueSamples,
   };
 
-  return <div data-testid="pcn-sample-flow-surface" className="pcn-page-surface min-w-0 bg-slate-50/60 p-3 pb-20 md:p-5 [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 [&_*:focus-visible]:ring-emerald-500">
-    <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Phòng Chứng nhận (PCN)</p><h1 className="mt-1 text-xl font-black text-slate-900">Phiếu yêu cầu & Luân chuyển mẫu nội bộ</h1><p className="mt-1 text-[11px] text-slate-500">Theo dõi từng mẫu thử trong một lô và chỉ hiển thị các phép thử đã gán cho mẫu đó. PYC trên trang này chỉ gửi các phòng thử nội bộ thuộc Trung tâm TVCI.</p>{initialDossierId && <p className="mt-1 text-[10px] font-bold text-indigo-700">Đang tập trung hồ sơ: {dossiers.find((dossier) => dossier.id === initialDossierId)?.dossierCode || initialDossierId}</p>}</div>{editable && !openForm && <button type="button" onClick={() => { if (initialDossierId) selectDossier(initialDossierId); setOpenForm(true); }} className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-black text-white shadow-sm hover:bg-emerald-500"><Plus size={14} /> Tạo lô mẫu</button>}</div>
-    <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4"><div className="pgdcn-kpi-card"><div className="min-w-0"><div className="truncate text-[11px] font-black uppercase text-slate-400">Tổng mẫu thử</div><div className="mt-0.5 text-lg font-black leading-5 text-slate-800">{stats.lots}</div></div></div><div className="pgdcn-kpi-card"><div className="min-w-0"><div className="truncate text-[11px] font-black uppercase text-slate-400">Đang luân chuyển</div><div className="mt-0.5 text-lg font-black leading-5 text-blue-700">{stats.moving}</div></div></div><div className="pgdcn-kpi-card"><div className="min-w-0"><div className="truncate text-[11px] font-black uppercase text-slate-400">Chờ KQTN</div><div className="mt-0.5 text-lg font-black leading-5 text-amber-700">{stats.waitingResults}</div></div></div><div className="pgdcn-kpi-card"><div className="min-w-0"><div className="truncate text-[11px] font-black uppercase text-slate-400">Có sự cố</div><div className="mt-0.5 text-lg font-black leading-5 text-rose-700">{stats.issues}</div></div></div></div>
-    {editable && openForm && <form onSubmit={submit} className="mt-4 space-y-3 rounded-xl border border-emerald-200 bg-white p-3 shadow-sm md:p-4"><div className="flex items-center justify-between"><div><h2 className="text-sm font-black text-slate-800">Tạo lô mẫu PCN</h2><p className="mt-0.5 text-[11px] text-slate-500">Một lô có thể đi nhiều phòng thử; mỗi tuyến hiển thị thành một cell riêng.</p></div><button type="button" onClick={resetForm} disabled={saving} aria-label="Đóng biểu mẫu tạo lô mẫu" className="mobile-touch-target min-h-11 min-w-11 text-slate-400 disabled:opacity-40"><X size={16} /></button></div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><label className="block"><span className="mb-1 block text-[11px] font-black text-slate-500">Hồ sơ chứng nhận <RequiredMarker /></span><PcnCatalogCombobox id="pcn-sample-flow-dossier" label="Hồ sơ chứng nhận" hideLabel required value={form.dossierId} onChange={selectDossier} options={dossierOptions} /></label><div className="rounded-md border border-indigo-100 bg-indigo-50/60 px-2.5 py-1.5"><div className="text-[11px] font-black text-indigo-900">Mã hóa lô</div><p className="mt-0.5 text-[11px] font-bold text-indigo-700">Server tự cấp theo dạng CN TTTT-YY khi lưu</p></div><label className="block"><span className="mb-1 block text-[11px] font-black text-slate-500">Số lượng mẫu <RequiredMarker /></span><input required type="number" min="1" aria-label="Số lượng mẫu" className="mobile-touch-target min-h-11 w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" value={form.quantity} onChange={(event) => setForm({ ...form, quantity: event.target.value })} /></label></div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><label className="block"><span className="mb-1 block text-[11px] font-black text-slate-500">Loại mẫu/kiểu loại đầu tiên <RequiredMarker /></span><input required className="mobile-touch-target min-h-11 w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" value={form.sampleName} onChange={(event) => setForm({ ...form, sampleName: event.target.value })} /></label><label className="block"><span className="mb-1 block text-[11px] font-black text-slate-500">Kiểu loại đầu tiên <RequiredMarker /></span><input required className="mobile-touch-target min-h-11 w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" value={form.model} onChange={(event) => setForm({ ...form, model: event.target.value })} /></label><label className="block"><span className="mb-1 block text-[11px] font-black text-slate-500">Nhãn hiệu</span><input className="mobile-touch-target min-h-11 w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" value={form.brand} onChange={(event) => setForm({ ...form, brand: event.target.value })} /></label></div>
-      <div className="rounded-lg border border-indigo-100 bg-indigo-50/50 p-3"><div className="flex items-center justify-between gap-2"><div><div className="text-[11px] font-black text-indigo-900">Mẫu/kiểu loại bổ sung trong cùng lô</div><p className="mt-0.5 text-[11px] text-indigo-700">Mỗi dòng là một mẫu riêng; PYC vẫn được tạo theo toàn bộ lô.</p></div><button type="button" onClick={addSampleItem} className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-[11px] font-black text-indigo-700"><Plus size={11} /> Thêm mẫu/kiểu loại</button></div>{form.sampleItems.length > 0 && <div className="mt-2 space-y-2">{form.sampleItems.map((item, index) => <div key={`${index}-${item.sampleCode}`} className="rounded-md border border-indigo-100 bg-white p-2"><div className="mb-1.5 grid gap-1.5 text-[11px] font-black uppercase tracking-wide text-slate-500 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_6rem_6rem_auto]"><span>Mã mẫu</span><span>Loại mẫu <RequiredMarker /></span><span>Kiểu loại <RequiredMarker /></span><span>Số lượng <RequiredMarker /></span><span>Đơn vị</span><span /></div><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_6rem_6rem_auto]"><input aria-label={`Mã mẫu bổ sung ${index + 1}`} value={item.sampleCode} onChange={(event) => updateSampleItem(index, { sampleCode: event.target.value })} className="mobile-touch-target min-h-11 rounded border border-slate-200 px-2 py-1 text-[11px]" /><input required aria-required="true" aria-label={`Loại mẫu bổ sung ${index + 1}`} value={item.sampleType} onChange={(event) => updateSampleItem(index, { sampleType: event.target.value })} className="mobile-touch-target min-h-11 rounded border border-slate-200 px-2 py-1 text-[11px]" /><input required aria-required="true" aria-label={`Kiểu loại bổ sung ${index + 1}`} value={item.model} onChange={(event) => updateSampleItem(index, { model: event.target.value })} className="mobile-touch-target min-h-11 rounded border border-slate-200 px-2 py-1 text-[11px]" /><input required aria-required="true" aria-label={`Số lượng bổ sung ${index + 1}`} type="number" min="1" value={item.quantity} onChange={(event) => updateSampleItem(index, { quantity: event.target.value })} className="mobile-touch-target min-h-11 rounded border border-slate-200 px-2 py-1 text-[11px]" /><input aria-label={`Đơn vị bổ sung ${index + 1}`} value={item.unit} onChange={(event) => updateSampleItem(index, { unit: event.target.value })} className="mobile-touch-target min-h-11 rounded border border-slate-200 px-2 py-1 text-[11px]" /><button type="button" onClick={() => removeSampleItem(index)} aria-label={`Xóa mẫu bổ sung ${index + 1}`} className="mobile-touch-target min-h-11 rounded border border-rose-200 px-2 py-1 text-[11px] font-bold text-rose-700">Xóa</button><div className="sm:col-span-2 lg:col-span-6"><TestAssignment label={`Phép thử cho ${item.sampleCode || `mẫu bổ sung ${index + 1}`}`} options={availableLabOptions} selected={item.testLabCodes} onToggle={(code, checked) => toggleSampleItemTest(index, code, checked)} /></div></div></div>)}</div>}</div>
-      <div aria-required="true"><div className="mb-1.5 text-[11px] font-black text-slate-500">Phép thử gán cho từng mẫu <RequiredMarker /></div><p className="mb-1.5 text-[11px] text-slate-500">Mã mẫu vật lý do hệ thống tạo mặc định theo mã lô; tại đây chọn đúng phép thử nội bộ cho từng mẫu. Kiểu loại có số lượng lớn hơn 1 chạy song song; kiểu loại chỉ có 1 mẫu chạy luân phiên theo chặng.</p>{availableLabOptions.length === 0 ? <p className="text-[11px] text-slate-500">Chọn Lĩnh vực để hiển thị các phép thử nội bộ phù hợp.</p> : <div className="space-y-2"><TestAssignment label="Mẫu chính · mã mẫu cấp khi lưu" options={availableLabOptions} selected={form.testLabCodes} onToggle={togglePrimaryTest} />{form.sampleItems.map((item, index) => <TestAssignment key={`${index}-${item.sampleCode}`} label={`${item.sampleCode || `Mẫu bổ sung ${index + 1}`} · ${item.model || 'chưa có kiểu loại'}`} options={availableLabOptions} selected={item.testLabCodes} onToggle={(code, checked) => toggleSampleItemTest(index, code, checked)} />)}</div>}</div>
-      <div role="group" aria-required="true"><div className="mb-1.5 text-[11px] font-black text-slate-500">Lĩnh vực liên quan <RequiredMarker /></div>{!selectedDossier ? <p className="text-[11px] text-slate-500">Chọn hồ sơ trước để hiển thị các Lĩnh vực được phép.</p> : availableFields.length === 0 ? <p className="text-[11px] text-amber-700">Hồ sơ chưa có Lĩnh vực để gắn lô mẫu.</p> : <div className="flex flex-wrap gap-2">{availableFields.map((field) => <label key={field.code} className={`mobile-touch-target min-h-11 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold ${form.fieldCodes.includes(field.code) ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}><input type="checkbox" checked={form.fieldCodes.includes(field.code)} onChange={(event) => toggleField(field.code, event.target.checked)} />{field.name}</label>)}</div>}</div>
-      <label className="block"><span className="mb-1 block text-[11px] font-black text-slate-500">Ghi chú</span><textarea rows={2} className="mobile-touch-target min-h-11 w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px]" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label><div className="flex justify-end gap-2"><button type="button" onClick={resetForm} disabled={saving} className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-600 disabled:opacity-40">Hủy</button><button type="submit" disabled={saving} className="mobile-touch-target min-h-11 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-black text-white disabled:opacity-50">{saving ? 'Đang lưu...' : 'Tạo lô và tuyến'}</button></div>
-    </form>}
-    <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center">
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <Search size={14} className="shrink-0 text-slate-400" />
-        <input className="mobile-touch-target min-h-11 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] outline-none focus:border-emerald-400" value={query} onChange={(event) => setQuery(event.target.value)} />
+  return (
+    <div data-testid="pcn-sample-flow-surface" className="pcn-page-surface min-w-0 space-y-4 bg-slate-50/60 p-3 pb-20 md:p-5 [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 [&_*:focus-visible]:ring-emerald-500">
+      {/* Header: 1-line compact with brand color badge */}
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-800">
+            <Boxes size={12} className="text-emerald-600" />
+            PCN · Sổ quản lý mẫu
+          </span>
+          <h1 className="text-sm md:text-base font-black tracking-tight text-slate-900">Phiếu yêu cầu & Luân chuyển mẫu nội bộ</h1>
+          <span className="hidden xl:inline text-xs font-medium text-slate-400 truncate max-w-lg" title="Theo dõi từng mẫu thử trong một lô và chỉ hiển thị các phép thử đã gán cho mẫu đó. PYC trên trang này chỉ gửi các phòng thử nội bộ thuộc Trung tâm TVCI.">
+            • Theo dõi từng mẫu thử trong lô và phép thử nội bộ
+          </span>
+          {initialDossierId && <span className="rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700">Hồ sơ: {dossiers.find((dossier) => dossier.id === initialDossierId)?.dossierCode || initialDossierId}</span>}
+        </div>
+        {editable && !openForm && (
+          <button
+            type="button"
+            onClick={() => { if (initialDossierId) selectDossier(initialDossierId); setOpenForm(true); }}
+            className="mobile-touch-target inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-black text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
+          >
+            <Plus size={14} /> Tạo lô mẫu
+          </button>
+        )}
       </div>
-      <div className="flex shrink-0 items-center justify-end gap-1.5">
-        <button type="button" onClick={expandVisibleLots} disabled={visibleLots.length === 0} className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-black text-slate-600 hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"><ChevronsDownUp size={13} /> Mở tất cả</button>
-        <button type="button" onClick={collapseVisibleLots} disabled={visibleLots.length === 0} className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-black text-slate-600 hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"><ChevronsUpDown size={13} /> Thu gọn tất cả</button>
+
+      {/* KPI Metric Cards */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="pgdcn-kpi-card flex items-center gap-3.5 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+            <Boxes size={20} />
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-[10px] font-black uppercase tracking-wider text-slate-400">Tổng mẫu thử</div>
+            <div className="mt-0.5 text-xl font-black text-emerald-950 leading-tight">{stats.lots}</div>
+          </div>
+        </div>
+        <div className="pgdcn-kpi-card flex items-center gap-3.5 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+            <Send size={18} />
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-[10px] font-black uppercase tracking-wider text-slate-400">Đang luân chuyển</div>
+            <div className="mt-0.5 text-xl font-black text-blue-700 leading-tight">{stats.moving}</div>
+          </div>
+        </div>
+        <div className="pgdcn-kpi-card flex items-center gap-3.5 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+            <ClipboardList size={18} />
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-[10px] font-black uppercase tracking-wider text-slate-400">Chờ KQTN</div>
+            <div className="mt-0.5 text-xl font-black text-amber-700 leading-tight">{stats.waitingResults}</div>
+          </div>
+        </div>
+        <div className="pgdcn-kpi-card flex items-center gap-3.5 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100">
+            <Boxes size={18} />
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-[10px] font-black uppercase tracking-wider text-slate-400">Có sự cố</div>
+            <div className="mt-0.5 text-xl font-black text-rose-700 leading-tight">{stats.issues}</div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-      <table className="min-w-[980px] w-full border-collapse text-left">
-        <thead className="bg-slate-50">
-          <tr className="border-b border-slate-200">
-            <th className="w-[220px] px-3 py-2.5 text-[11px] font-black uppercase tracking-wider text-slate-500">Lô mẫu / hồ sơ</th>
-            <th className="w-[210px] px-3 py-2.5 text-[11px] font-black uppercase tracking-wider text-slate-500">Mẫu / model</th>
-            <th className="w-[70px] px-3 py-2.5 text-[11px] font-black uppercase tracking-wider text-slate-500">SL</th>
-            <th className="px-3 py-2.5 text-[11px] font-black uppercase tracking-wider text-slate-500">Luồng phép thử đã gán</th>
-            <th className="w-[150px] px-3 py-2.5 text-[11px] font-black uppercase tracking-wider text-slate-500">Vị trí hiện tại</th>
-            <th className="w-[150px] px-3 py-2.5 text-[11px] font-black uppercase tracking-wider text-slate-500">Trạng thái lô</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visibleLots.length === 0 ? <tr><td colSpan={6} className="p-10 text-center text-[11px] text-slate-400">Chưa có lô mẫu phù hợp.</td></tr> : visibleLots.map((lot) => {
-            const dossier = dossiers.find((item) => item.id === lot.dossierId);
-            const proposal = proposals.find((item) => item.id === dossier?.proposalId);
-            const customerSnapshot = dossier ? getPcnDossierCustomerSnapshot(dossier, proposal) : undefined;
-            const routes = routesByLot.get(lot.id) || [];
-            const items = sampleItems.filter((item) => item.sampleLotId === lot.id);
-            const itemRouteGroups = items.map((item) => ({ item, routes: routes.filter((route) => isPcnSampleRouteAssignedToItem(route, item.id, item)).map((route) => getPcnSampleRouteSnapshotForItem(route, item.id)) })).filter((group) => group.routes.length > 0);
-            const lotProjection = derivePcnSampleLotStatus(routes, items);
-            const hasItemSnapshots = routes.some((route) => Object.keys(route.itemSnapshots || {}).length > 0);
-            const isExpanded = expandedLotIds.has(lot.id);
-            return <tr key={lot.id} className="border-b border-slate-100 align-top last:border-0">
-              <td className="px-3 py-3">
-                <div className="flex items-center gap-1.5"><Boxes size={14} className="text-emerald-600" /><span className="font-mono text-xs font-black text-slate-800">{lot.lotCode}</span></div>
-                <div className="mt-1 text-[11px] font-bold text-slate-600">{dossier?.dossierCode || lot.dossierId}</div>
-                <div className="text-[11px] text-slate-500">{proposal?.proposalCode || 'Đề nghị'} • {customerSnapshot?.name || 'Chưa có khách hàng'}</div>
-              </td>
-              <td className="px-3 py-3">
-                <button type="button" onClick={() => toggleLot(lot.id)} aria-expanded={isExpanded} aria-controls={`lot-flow-${lot.id}`} className="flex w-full min-w-0 items-start gap-1.5 text-left">
-                  <ChevronDown size={15} className={`mt-0.5 shrink-0 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                  <span className="min-w-0">
-                    <span className="block text-[11px] font-bold text-slate-700">{items.length > 0 ? items.map((item) => <span key={item.id} className="mr-1 inline-flex rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700">{item.sampleCode} · {item.model} · SL {item.quantity} · {item.quantity > 1 ? 'Song song' : 'Tuần tự'}</span>) : lot.sampleName}</span>
-                    <span className="mt-1 block text-[11px] text-slate-500">{lot.brand || '—'}{lot.model ? ` • ${lot.model}` : ''}</span>
-                    <span className="mt-1 flex flex-wrap gap-1">{lot.fieldCodes.map((code) => <span key={code} className="rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">{code}</span>)}</span>
-                  </span>
-                </button>
-              </td>
-              <td className="px-3 py-3 text-center"><span className="text-sm font-black text-slate-700">{lot.quantity}</span><span className="block text-[9px] text-slate-400">{lot.unit || 'mẫu'}</span></td>
-              <td className="px-3 py-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-black text-slate-600">{routes.length} phép thử đã gán{hasItemSnapshots ? ' · đã đồng bộ mẫu' : ''}</span>
-                  <button type="button" onClick={() => toggleLot(lot.id)} aria-expanded={isExpanded} aria-controls={`lot-flow-${lot.id}`} className="mobile-touch-target min-h-11 shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-black text-emerald-700 hover:border-emerald-300">{isExpanded ? 'Thu gọn' : 'Mở luồng'}</button>
-                </div>
-                {/* Tuyến thử tuần tự nối mũi tên theo Mục 3.6 */}
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {routes.length === 0 ? <span className="rounded-lg border border-dashed border-slate-200 px-2 py-1 text-[11px] text-slate-500">Chưa gán phép thử</span> : routes.map((route, rIndex) => (
-                    <div key={route.id} className="flex items-center gap-1">
-                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold ${
-                        route.status === 'RESULT_RETURNED' || route.status === 'CLOSED'
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                          : route.status === 'SENT' || route.status === 'RECEIVED'
-                          ? 'border-blue-200 bg-blue-50 text-blue-800 animate-pulse'
-                          : 'border-slate-200 bg-slate-50 text-slate-600'
-                      }`}>
-                        <span className="font-mono text-[8px] opacity-75">{rIndex + 1}.</span> {route.labName} {route.labRequestId ? '· Có PYC' : ''}
-                      </span>
-                      {rIndex < routes.length - 1 && <ArrowRight size={10} className="shrink-0 text-slate-400" />}
+
+      {/* Form tạo lô mẫu */}
+      {editable && openForm && (
+        <form onSubmit={submit} className="space-y-4 rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm md:p-5">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h2 className="text-sm md:text-base font-black text-slate-900">Tạo lô mẫu PCN mới</h2>
+              <p className="mt-0.5 text-xs text-slate-500">Một lô có thể đi nhiều phòng thử; mỗi tuyến hiển thị thành một cell riêng.</p>
+            </div>
+            <button type="button" onClick={resetForm} disabled={saving} aria-label="Đóng biểu mẫu tạo lô mẫu" className="mobile-touch-target min-h-11 min-w-11 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-40 transition cursor-pointer">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="block">
+              <span className="mb-1 block text-xs font-black text-slate-600">Hồ sơ chứng nhận <RequiredMarker /></span>
+              <PcnCatalogCombobox id="pcn-sample-flow-dossier" label="Hồ sơ chứng nhận" hideLabel required value={form.dossierId} onChange={selectDossier} options={dossierOptions} />
+            </label>
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-2.5">
+              <div className="text-xs font-black text-indigo-900">Mã hóa lô</div>
+              <p className="mt-0.5 text-[11px] font-bold text-indigo-700">Server tự cấp theo dạng CN TTTT-YY khi lưu</p>
+            </div>
+            <label className="block">
+              <span className="mb-1 block text-xs font-black text-slate-600">Số lượng mẫu <RequiredMarker /></span>
+              <input required type="number" min="1" aria-label="Số lượng mẫu" className="mobile-touch-target min-h-11 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" value={form.quantity} onChange={(event) => setForm({ ...form, quantity: event.target.value })} />
+            </label>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="block">
+              <span className="mb-1 block text-xs font-black text-slate-600">Loại mẫu/kiểu loại đầu tiên <RequiredMarker /></span>
+              <input required className="mobile-touch-target min-h-11 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" value={form.sampleName} onChange={(event) => setForm({ ...form, sampleName: event.target.value })} />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-black text-slate-600">Kiểu loại đầu tiên <RequiredMarker /></span>
+              <input required className="mobile-touch-target min-h-11 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" value={form.model} onChange={(event) => setForm({ ...form, model: event.target.value })} />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-black text-slate-600">Nhãn hiệu</span>
+              <input className="mobile-touch-target min-h-11 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" value={form.brand} onChange={(event) => setForm({ ...form, brand: event.target.value })} />
+            </label>
+          </div>
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3.5">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="text-xs font-black text-indigo-900">Mẫu/kiểu loại bổ sung trong cùng lô</div>
+                <p className="mt-0.5 text-[11px] text-indigo-700">Mỗi dòng là một mẫu riêng; PYC vẫn được tạo theo toàn bộ lô.</p>
+              </div>
+              <button type="button" onClick={addSampleItem} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-black text-indigo-700 shadow-2xs hover:bg-indigo-50 transition cursor-pointer">
+                <Plus size={13} /> Thêm mẫu/kiểu loại
+              </button>
+            </div>
+            {form.sampleItems.length > 0 && (
+              <div className="mt-3 space-y-2.5">
+                {form.sampleItems.map((item, index) => (
+                  <div key={`${index}-${item.sampleCode}`} className="rounded-xl border border-indigo-100 bg-white p-3 shadow-2xs">
+                    <div className="mb-1.5 grid gap-1.5 text-[11px] font-black uppercase tracking-wide text-slate-500 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_6rem_6rem_auto]">
+                      <span>Mã mẫu</span><span>Loại mẫu <RequiredMarker /></span><span>Kiểu loại <RequiredMarker /></span><span>Số lượng <RequiredMarker /></span><span>Đơn vị</span><span />
                     </div>
-                  ))}
-                </div>
-                <div id={`lot-flow-${lot.id}`} hidden={!isExpanded} className="mt-2 flex flex-wrap gap-2 border-t border-slate-100 pt-2">
-                  {itemRouteGroups.length > 0 ? itemRouteGroups.map(({ item, routes: itemRoutes }) => <div key={item.id} className="w-full rounded-lg border border-indigo-100 bg-indigo-50/40 p-2"><div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] font-black text-indigo-800"><span>{item.sampleCode} · {item.model}</span><span className="rounded-full bg-white px-1.5 py-0.5 text-[9px] text-indigo-700">SL {item.quantity} · {item.quantity > 1 ? 'Song song' : 'Luân phiên'}</span></div><div className="flex flex-wrap gap-2">{itemRoutes.map((route) => <RouteCell key={`${item.id}-${route.id}`} route={route} canStart={canStartRouteForLot(route, routes, [item])} editable={editable} busyRouteId={busyRouteId} onAdvance={(nextRoute, status) => void advanceRoute(nextRoute, status)} onOpenHandover={onOpenHandover} />)}</div></div>) : routes.map((route) => <RouteCell key={route.id} route={route} canStart={canStartRouteForLot(route, routes, items)} editable={editable} busyRouteId={busyRouteId} onAdvance={(nextRoute, status) => void advanceRoute(nextRoute, status)} onOpenHandover={onOpenHandover} />)}
-                </div>
-              </td>
-              <td className="px-3 py-3">
-                <div className="flex items-start gap-1.5 text-[11px] font-bold text-slate-600"><MapPin size={13} className="mt-0.5 shrink-0 text-slate-400" />{lotProjection.currentLocation}</div>
-                <div className="mt-1 text-[9px] text-slate-400">Cập nhật: {formatDate(lot.updatedAt)}</div>
-              </td>
-              <td className="px-3 py-3">
-                <span className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-black ${LOT_STATUS_CLASSES[lotProjection.status]}`}>{LOT_STATUS_LABELS[lotProjection.status]}</span>
-                <div className="mt-2 text-[9px] text-slate-400">{routes.length} tuyến đã gán</div>
-              </td>
-            </tr>;
-          })}
-        </tbody>
-      </table>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_6rem_6rem_auto]">
+                      <input aria-label={`Mã mẫu bổ sung ${index + 1}`} value={item.sampleCode} onChange={(event) => updateSampleItem(index, { sampleCode: event.target.value })} className="mobile-touch-target min-h-11 rounded-xl border border-slate-200 px-2.5 py-1 text-xs" />
+                      <input required aria-required="true" aria-label={`Loại mẫu bổ sung ${index + 1}`} value={item.sampleType} onChange={(event) => updateSampleItem(index, { sampleType: event.target.value })} className="mobile-touch-target min-h-11 rounded-xl border border-slate-200 px-2.5 py-1 text-xs" />
+                      <input required aria-required="true" aria-label={`Kiểu loại bổ sung ${index + 1}`} value={item.model} onChange={(event) => updateSampleItem(index, { model: event.target.value })} className="mobile-touch-target min-h-11 rounded-xl border border-slate-200 px-2.5 py-1 text-xs" />
+                      <input required aria-required="true" aria-label={`Số lượng bổ sung ${index + 1}`} type="number" min="1" value={item.quantity} onChange={(event) => updateSampleItem(index, { quantity: event.target.value })} className="mobile-touch-target min-h-11 rounded-xl border border-slate-200 px-2.5 py-1 text-xs" />
+                      <input aria-label={`Đơn vị bổ sung ${index + 1}`} value={item.unit} onChange={(event) => updateSampleItem(index, { unit: event.target.value })} className="mobile-touch-target min-h-11 rounded-xl border border-slate-200 px-2.5 py-1 text-xs" />
+                      <button type="button" onClick={() => removeSampleItem(index)} aria-label={`Xóa mẫu bổ sung ${index + 1}`} className="mobile-touch-target min-h-11 rounded-xl border border-rose-200 px-2.5 py-1 text-xs font-bold text-rose-700 hover:bg-rose-50 transition cursor-pointer">
+                        Xóa
+                      </button>
+                      <div className="sm:col-span-2 lg:col-span-6">
+                        <TestAssignment label={`Phép thử cho ${item.sampleCode || `mẫu bổ sung ${index + 1}`}`} options={availableLabOptions} selected={item.testLabCodes} onToggle={(code, checked) => toggleSampleItemTest(index, code, checked)} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div aria-required="true">
+            <div className="mb-1.5 text-xs font-black text-slate-700">Phép thử gán cho từng mẫu <RequiredMarker /></div>
+            <p className="mb-2 text-xs text-slate-500">Mã mẫu vật lý do hệ thống tạo mặc định theo mã lô; tại đây chọn đúng phép thử nội bộ cho từng mẫu. Kiểu loại có số lượng lớn hơn 1 chạy song song; kiểu loại chỉ có 1 mẫu chạy luân phiên theo chặng.</p>
+            {availableLabOptions.length === 0 ? (
+              <p className="text-xs text-slate-500">Chọn Lĩnh vực để hiển thị các phép thử nội bộ phù hợp.</p>
+            ) : (
+              <div className="space-y-2.5">
+                <TestAssignment label="Mẫu chính · mã mẫu cấp khi lưu" options={availableLabOptions} selected={form.testLabCodes} onToggle={togglePrimaryTest} />
+                {form.sampleItems.map((item, index) => (
+                  <TestAssignment key={`${index}-${item.sampleCode}`} label={`${item.sampleCode || `Mẫu bổ sung ${index + 1}`} · ${item.model || 'chưa có kiểu loại'}`} options={availableLabOptions} selected={item.testLabCodes} onToggle={(code, checked) => toggleSampleItemTest(index, code, checked)} />
+                ))}
+              </div>
+            )}
+          </div>
+          <div role="group" aria-required="true">
+            <div className="mb-1.5 text-xs font-black text-slate-700">Lĩnh vực liên quan <RequiredMarker /></div>
+            {!selectedDossier ? (
+              <p className="text-xs text-slate-500">Chọn hồ sơ trước để hiển thị các Lĩnh vực được phép.</p>
+            ) : availableFields.length === 0 ? (
+              <p className="text-xs text-amber-700">Hồ sơ chưa có Lĩnh vực để gắn lô mẫu.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {availableFields.map((field) => (
+                  <label key={field.code} className={`mobile-touch-target min-h-11 inline-flex cursor-pointer items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition ${form.fieldCodes.includes(field.code) ? 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>
+                    <input type="checkbox" checked={form.fieldCodes.includes(field.code)} onChange={(event) => toggleField(field.code, event.target.checked)} className="rounded text-emerald-600" />
+                    {field.name}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+          <label className="block">
+            <span className="mb-1 block text-xs font-black text-slate-600">Ghi chú</span>
+            <textarea rows={2} className="mobile-touch-target min-h-11 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+          </label>
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+            <button type="button" onClick={resetForm} disabled={saving} className="mobile-touch-target min-h-11 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer">
+              Hủy
+            </button>
+            <button type="submit" disabled={saving} className="mobile-touch-target min-h-11 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white hover:bg-emerald-700 disabled:opacity-50 shadow-xs transition cursor-pointer">
+              {saving ? 'Đang lưu...' : 'Tạo lô và tuyến'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Toolbar */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            aria-label="Tìm mã lô, tên mẫu, model, mã đề nghị, khách hàng"
+            className="mobile-touch-target min-h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-xs font-bold shadow-2xs outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button type="button" onClick={expandVisibleLots} disabled={visibleLots.length === 0} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-2xs hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 transition cursor-pointer">
+            <ChevronsDownUp size={14} /> Mở tất cả
+          </button>
+          <button type="button" onClick={collapseVisibleLots} disabled={visibleLots.length === 0} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-2xs hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 transition cursor-pointer">
+            <ChevronsUpDown size={14} /> Thu gọn tất cả
+          </button>
+        </div>
+      </div>
+
+      {/* Bảng danh sách lô mẫu */}
+      <div className="mt-3 overflow-x-auto mobile-scroll-x rounded-2xl border border-slate-200 bg-white shadow-2xs">
+        <table className="min-w-[980px] w-full border-collapse text-left">
+          <thead className="bg-slate-50/90 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            <tr className="border-b border-slate-200">
+              <th className="w-[220px] px-3.5 py-3 text-[11px] font-black uppercase tracking-wider text-emerald-950 bg-emerald-50/40">Lô mẫu / hồ sơ</th>
+              <th className="w-[220px] px-3.5 py-3 text-[11px] font-black uppercase tracking-wider text-indigo-950 bg-indigo-50/40">Mẫu / model</th>
+              <th className="w-[70px] px-3.5 py-3 text-center text-[11px] font-black uppercase tracking-wider text-slate-600">SL</th>
+              <th className="px-3.5 py-3 text-[11px] font-black uppercase tracking-wider text-teal-950 bg-teal-50/40">Luồng phép thử đã gán</th>
+              <th className="w-[160px] px-3.5 py-3 text-[11px] font-black uppercase tracking-wider text-slate-600">Vị trí hiện tại</th>
+              <th className="w-[150px] px-3.5 py-3 text-[11px] font-black uppercase tracking-wider text-slate-600">Trạng thái lô</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {visibleLots.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="p-12 text-center text-xs text-slate-400">
+                  <Boxes size={32} className="mx-auto text-slate-300 mb-2" />
+                  Chưa có lô mẫu phù hợp.
+                </td>
+              </tr>
+            ) : (
+              visibleLots.map((lot) => {
+                const dossier = dossiers.find((item) => item.id === lot.dossierId);
+                const proposal = proposals.find((item) => item.id === dossier?.proposalId);
+                const customerSnapshot = dossier ? getPcnDossierCustomerSnapshot(dossier, proposal) : undefined;
+                const routes = routesByLot.get(lot.id) || [];
+                const items = sampleItems.filter((item) => item.sampleLotId === lot.id);
+                const itemRouteGroups = items.map((item) => ({ item, routes: routes.filter((route) => isPcnSampleRouteAssignedToItem(route, item.id, item)).map((route) => getPcnSampleRouteSnapshotForItem(route, item.id)) })).filter((group) => group.routes.length > 0);
+                const lotProjection = derivePcnSampleLotStatus(routes, items);
+                const hasItemSnapshots = routes.some((route) => Object.keys(route.itemSnapshots || {}).length > 0);
+                const isExpanded = expandedLotIds.has(lot.id);
+
+                return (
+                  <tr key={lot.id} className="align-top transition-colors hover:bg-slate-50/70 border-b border-slate-100 last:border-0">
+                    <td className="px-3.5 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <Boxes size={15} className="text-emerald-600 shrink-0" />
+                        <span className="font-mono text-xs font-black text-slate-900">{lot.lotCode}</span>
+                      </div>
+                      <div className="mt-1 text-[11px] font-bold text-slate-600">{dossier?.dossierCode || lot.dossierId}</div>
+                      <div className="mt-0.5 text-[11px] text-slate-500 truncate" title={customerSnapshot?.name}>{proposal?.proposalCode || 'Đề nghị'} • {customerSnapshot?.name || 'Chưa có khách hàng'}</div>
+                    </td>
+                    <td className="px-3.5 py-3">
+                      <button type="button" onClick={() => toggleLot(lot.id)} aria-expanded={isExpanded} aria-controls={`lot-flow-${lot.id}`} className="flex w-full min-w-0 items-start gap-1.5 text-left cursor-pointer">
+                        <ChevronDown size={15} className={`mt-0.5 shrink-0 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        <span className="min-w-0">
+                          <span className="block text-xs font-bold text-slate-800">
+                            {items.length > 0 ? items.map((item) => (
+                              <span key={item.id} className="mr-1 inline-flex rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-black text-indigo-700 border border-indigo-100">
+                                {item.sampleCode} · {item.model} · SL {item.quantity} · {item.quantity > 1 ? 'Song song' : 'Tuần tự'}
+                              </span>
+                            )) : lot.sampleName}
+                          </span>
+                          <span className="mt-1 block text-[11px] text-slate-500">{lot.brand || '—'}{lot.model ? ` • ${lot.model}` : ''}</span>
+                          <span className="mt-1 flex flex-wrap gap-1">{lot.fieldCodes.map((code) => <span key={code} className="rounded-md bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 text-[9px] font-bold text-emerald-700">{code}</span>)}</span>
+                        </span>
+                      </button>
+                    </td>
+                    <td className="px-3.5 py-3 text-center">
+                      <span className="text-base font-black text-slate-800">{lot.quantity}</span>
+                      <span className="block text-[10px] text-slate-400 font-medium">{lot.unit || 'mẫu'}</span>
+                    </td>
+                    <td className="px-3.5 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-black text-slate-600">{routes.length} phép thử đã gán{hasItemSnapshots ? ' · đã đồng bộ mẫu' : ''}</span>
+                        <button type="button" onClick={() => toggleLot(lot.id)} aria-expanded={isExpanded} aria-controls={`lot-flow-${lot.id}`} className="mobile-touch-target min-h-8 shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 transition cursor-pointer">
+                          {isExpanded ? 'Thu gọn' : 'Mở luồng'}
+                        </button>
+                      </div>
+                      {/* Tuyến thử tuần tự nối mũi tên theo Mục 3.6 */}
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        {routes.length === 0 ? (
+                          <span className="rounded-lg border border-dashed border-slate-200 px-2.5 py-1 text-xs text-slate-500">Chưa gán phép thử</span>
+                        ) : (
+                          routes.map((route, rIndex) => (
+                            <div key={route.id} className="flex items-center gap-1">
+                              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
+                                route.status === 'RESULT_RETURNED' || route.status === 'CLOSED'
+                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                                  : route.status === 'SENT' || route.status === 'RECEIVED'
+                                  ? 'border-blue-200 bg-blue-50 text-blue-800 animate-pulse'
+                                  : 'border-slate-200 bg-slate-50 text-slate-600'
+                              }`}>
+                                <span className="font-mono text-[9px] opacity-75">{rIndex + 1}.</span> {route.labName} {route.labRequestId ? '· Có PYC' : ''}
+                              </span>
+                              {rIndex < routes.length - 1 && <ArrowRight size={11} className="shrink-0 text-slate-400" />}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div id={`lot-flow-${lot.id}`} hidden={!isExpanded} className="mt-3 flex flex-wrap gap-2.5 border-t border-slate-100 pt-3">
+                        {itemRouteGroups.length > 0 ? itemRouteGroups.map(({ item, routes: itemRoutes }) => (
+                          <div key={item.id} className="w-full rounded-xl border border-indigo-100 bg-indigo-50/40 p-2.5">
+                            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-black text-indigo-900">
+                              <span>{item.sampleCode} · {item.model}</span>
+                              <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-indigo-700 border border-indigo-100">SL {item.quantity} · {item.quantity > 1 ? 'Song song' : 'Luân phiên'}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {itemRoutes.map((route) => <RouteCell key={`${item.id}-${route.id}`} route={route} canStart={canStartRouteForLot(route, routes, [item])} editable={editable} busyRouteId={busyRouteId} onAdvance={(nextRoute, status) => void advanceRoute(nextRoute, status)} onOpenHandover={onOpenHandover} />)}
+                            </div>
+                          </div>
+                        )) : routes.map((route) => <RouteCell key={route.id} route={route} canStart={canStartRouteForLot(route, routes, items)} editable={editable} busyRouteId={busyRouteId} onAdvance={(nextRoute, status) => void advanceRoute(nextRoute, status)} onOpenHandover={onOpenHandover} />)}
+                      </div>
+                    </td>
+                    <td className="px-3.5 py-3">
+                      <div className="flex items-start gap-1.5 text-[11px] font-bold text-slate-600"><MapPin size={14} className="mt-0.5 shrink-0 text-slate-400" />
+                        {lotProjection.currentLocation}
+                      </div>
+                      <div className="mt-1 text-[10px] text-slate-400">Cập nhật: {formatDate(lot.updatedAt)}</div>
+                    </td>
+                    <td className="px-3.5 py-3">
+                      <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-black ${LOT_STATUS_CLASSES[lotProjection.status]}`}>
+                        {LOT_STATUS_LABELS[lotProjection.status]}
+                      </span>
+                      <div className="mt-1.5 text-[10px] text-slate-400 font-medium">{routes.length} tuyến đã gán</div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {onOpenHandover && (
+        <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3">
+          <div className="text-xs font-black text-indigo-900">Mở nhanh biên bản theo tuyến</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {visibleLots.flatMap((lot) => (routesByLot.get(lot.id) || []).map((route) => (
+              <button key={route.id} type="button" onClick={() => onOpenHandover(route.id)} className="mobile-touch-target min-h-9 rounded-lg border border-indigo-200 bg-white px-3 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition cursor-pointer">
+                {lot.lotCode} · {route.labName}
+              </button>
+            )))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <ClipboardList size={14} className="text-emerald-600" />
+        Kiểu loại có số lượng lớn hơn 1 mới chạy song song; kiểu loại chỉ có 1 mẫu chạy luân phiên theo các chặng đã gán.
+        <span className="mx-1 text-slate-300">•</span>
+        <Send size={14} className="text-blue-600" />
+        Lịch thử và kết quả được đồng bộ từ app phòng thử nội bộ.
+      </div>
     </div>
-    {onOpenHandover && <div className="mt-3 rounded-lg border border-indigo-100 bg-indigo-50/60 p-2"><div className="text-[11px] font-black text-indigo-800">Mở nhanh biên bản theo tuyến</div><div className="mt-1.5 flex flex-wrap gap-1.5">{visibleLots.flatMap((lot) => (routesByLot.get(lot.id) || []).map((route) => <button key={route.id} type="button" onClick={() => onOpenHandover(route.id)} className="mobile-touch-target min-h-11 rounded-md border border-indigo-200 bg-white px-2 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100">{lot.lotCode} · {route.labName}</button>))}</div></div>}
-    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-600"><ClipboardList size={13} className="text-emerald-600" />Kiểu loại có số lượng lớn hơn 1 mới chạy song song; kiểu loại chỉ có 1 mẫu chạy luân phiên theo các chặng đã gán.<span className="mx-1 text-slate-300">•</span><Send size={13} className="text-blue-600" />Lịch thử và kết quả được đồng bộ từ app phòng thử nội bộ.</div>
-  </div>;
+  );
 }
 
 export default PcnSampleFlowView;

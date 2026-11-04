@@ -50,7 +50,31 @@ const statePanelToneClass: Record<'loading' | 'empty' | 'error' | 'success', str
 };
 
 export function PgdcnPageHeader({ eyebrow, title, description, actions }: { eyebrow?: string; title: string; description?: string; actions?: ReactNode }) {
-  return <header className="flex min-w-0 flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{eyebrow || 'PGDCN'}</p><h1 className="mt-1 truncate text-xl font-black text-slate-900">{title}</h1>{description && <p className="mt-1 max-w-3xl text-[11px] leading-4 text-slate-500">{description}</p>}</div>{actions && <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div>}</header>;
+  const isPcn = (eyebrow || '').includes('PCN') || (title || '').includes('PCN');
+  const isPgd = (eyebrow || '').includes('PGD') || (title || '').includes('PGD');
+
+  return (
+    <header className="flex min-w-0 flex-wrap items-center justify-between gap-2.5">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+          isPcn
+            ? 'border-emerald-200/90 bg-emerald-50 text-emerald-800'
+            : isPgd
+            ? 'border-indigo-200/90 bg-indigo-50 text-indigo-800'
+            : 'border-slate-200 bg-slate-100 text-slate-700'
+        }`}>
+          {eyebrow || 'PGDCN'}
+        </span>
+        <h1 className="text-sm md:text-base font-black tracking-tight text-slate-900">{title}</h1>
+        {description && (
+          <span className="hidden xl:inline text-xs font-medium text-slate-400 truncate max-w-xl" title={description}>
+            • {description}
+          </span>
+        )}
+      </div>
+      {actions && <div className="flex min-w-0 shrink-0 items-center gap-2">{actions}</div>}
+    </header>
+  );
 }
 
 export function PgdcnToolbar({ children, actions }: { children: ReactNode; actions?: ReactNode }) {

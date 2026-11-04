@@ -1,0 +1,11 @@
+{
+  "buildPath": "code",
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [
+      "test/**",
+      "backups/**",
+      "dist/**"
+    ]
+  }
+}

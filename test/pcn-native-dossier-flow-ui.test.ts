@@ -34,10 +34,9 @@ test('node work exposes guarded action affordances', () => {
 });
 
 test('PCN management defaults to a task queue and retains the data register', () => {
-  assert.match(operationsSource, /PcnDossierQueueView/);
-  assert.match(operationsSource, /QUEUE/);
-  assert.match(operationsSource, /DATA/);
-  assert.match(operationsSource, /Hàng đợi hồ sơ/);
-  assert.match(operationsSource, /Sổ dữ liệu/);
+  const pcnPageSource = fs.readFileSync(new URL('../app/(workspace)/pcn/page.tsx', import.meta.url), 'utf8');
+  assert.match(pcnPageSource, /PcnDossierQueueView/);
+  assert.match(pcnPageSource, /PcnOperationsRegisterView/);
+  assert.match(operationsSource, /Sổ tổng hợp PCN/);
   assert.match(operationsSource, /PgdcnDossierSummaryGrid/);
 });

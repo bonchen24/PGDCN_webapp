@@ -71,7 +71,7 @@ export function UserNav({ currentUser }: UserNavProps) {
         </span>
         {currentUser.systemRole === 'admin' && (
           <span className="hidden sm:inline-block rounded bg-rose-50 border border-rose-200 px-1 py-0.2 text-[9px] font-black text-rose-700 uppercase">
-            Admin
+            Quản trị
           </span>
         )}
       </button>
@@ -92,7 +92,7 @@ export function UserNav({ currentUser }: UserNavProps) {
                 {managementRoleName}
               </span>
               <span className="inline-block rounded bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[9px] font-black text-emerald-700 uppercase">
-                {currentUser.systemRole || 'STAFF'}
+                {currentUser.systemRole === 'admin' ? 'Quản trị viên' : 'Chuyên viên'}
               </span>
             </div>
           </div>
