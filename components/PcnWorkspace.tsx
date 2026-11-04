@@ -842,7 +842,7 @@ function ProposalView({
           <p className="text-xs text-slate-500 mt-0.5">Phòng Giám định - Chứng nhận và Phát triển thị trường · Danh sách hồ sơ chuẩn dạng bảng TVCI Lab</p>
         </div>
         <div className="flex items-center gap-2">
-          {!openForm && canEdit && (
+          {canEdit && (
             <button
               onClick={openProposalForm}
               className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-black text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
