@@ -16,7 +16,7 @@ childEnv.NODE_OPTIONS = nodeOptions.includes(preloadPath)
   : `${nodeOptions} --require=${preloadPath}`.trim();
 
 const port = process.env.PORT || '1357';
-const child = spawn(process.execPath, [nextBinPath, 'dev', '-p', String(port)], {
+const child = spawn(process.execPath, [nextBinPath, 'dev', '-p', String(port), '--webpack'], {
   cwd: projectRoot,
   env: childEnv,
   stdio: 'inherit',
