@@ -112,9 +112,7 @@ export function PgdcnWorkflowRail({ steps, className = '', onSelectStep }: { ste
               >
                 {index + 1}
               </span>
-              <span className={`min-w-0 truncate text-[11px] ${isCurrent ? 'font-black text-indigo-950' : 'font-bold'}`}>
-                {step.label}
-              </span>
+              <span className="min-w-0 truncate text-[11px] font-black">{step.label}</span>
               {badgeText && (
                 <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
                   isCurrent

@@ -92,7 +92,7 @@ export function AppHeader({ currentUser, onOpenCommand, onRefreshData }: AppHead
         </span>
 
         {/* Dynamic Breadcrumbs */}
-        <nav aria-label="Đường dẫn trang" className="flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
           {breadcrumbs.map((crumb, idx) => (
             <React.Fragment key={idx}>
               {idx > 0 && <ChevronRight size={12} className="shrink-0 text-slate-400" aria-hidden="true" />}
