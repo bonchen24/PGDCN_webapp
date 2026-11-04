@@ -12,13 +12,11 @@ test('dossier detail exposes a compact context summary before secondary content'
   assert.match(detailSource, /missingRequiredCount > 0/);
 });
 
-test('workflow-first detail keeps the current work ahead of the collapsed step flow', () => {
-  assert.match(workflowSource, /data-testid="pcn-current-step-summary"/);
-  assert.match(workflowSource, /Bước cần xử lý/);
+test('workflow-first detail renders the 7-stage flow prominently at top without collapsed disclosure', () => {
   assert.match(workflowSource, /data-testid="pcn-workflow-map"/);
-  assert.match(workflowSource, /Các bước hồ sơ PCN/);
-  assert.match(workflowSource, /data-testid="pcn-workflow-map-disclosure"/);
-  assert.match(workflowSource, /Xem tiến trình hồ sơ/);
+  assert.match(workflowSource, /PcnDossierFlow/);
+  assert.doesNotMatch(workflowSource, /data-testid="pcn-current-step-summary"/);
+  assert.doesNotMatch(workflowSource, /data-testid="pcn-workflow-map-disclosure"/);
 });
 
 test('detail primary work region uses action-first language', () => {
@@ -26,12 +24,4 @@ test('detail primary work region uses action-first language', () => {
   assert.match(detailSource, /data-testid="pcn-step-secondary-actions"/);
   assert.match(detailSource, /Xem thêm hành động/);
   assert.match(detailSource, /data-testid="pcn-dossier-secondary-actions"/);
-});
-
-test('PCN current-step action and section label meet the compact readable typography floor', () => {
-  const currentStepSummary = workflowSource.match(/<section data-testid="pcn-current-step-summary"[\s\S]*?<\/section>/)?.[0] || '';
-
-  assert.ok(currentStepSummary, 'the current-step summary remains present');
-  assert.match(currentStepSummary, /text-\[11px\][^>]*>Bước cần xử lý/);
-  assert.match(currentStepSummary, /mobile-touch-target min-h-11[^\"]*text-\[11px\][^>]*>Mở bước này/);
 });
