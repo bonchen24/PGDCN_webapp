@@ -13,7 +13,8 @@ test('PCN dossier management follows the PGD queue and toolbar anatomy', () => {
   assert.match(operations, /<PcnDossierQueueView/);
   assert.match(queue, /data-testid="pcn-dossier-queue"/);
   assert.match(queue, /PCN · Hàng đợi công việc/);
-  assert.match(queue, /grid grid-cols-1 md:grid-cols-2 gap-4/);
+  assert.match(queue, /data-testid="pcn-dossier-table-scroll"/);
+  assert.doesNotMatch(queue, /viewMode === 'card'/);
   assert.match(queue, /mobile-scroll-x[\s\S]*overflow-x-auto/);
   assert.match(queue, /dossier-action-compact/);
   assert.match(pgdQueue, /PGD · Hàng đợi công việc/);
@@ -31,8 +32,8 @@ test('PCN dossier detail follows the PGD focus surface and work-panel rhythm', (
   assert.match(detail, /bg-white px-3 py-3 sm:flex-row/);
   assert.match(detail, /Xem danh sách tài liệu/);
   assert.doesNotMatch(detail, /Mở checklist/);
-  assert.match(detail, /data-testid="pcn-legacy-process-map"/);
-  assert.match(detail, /Các bước hồ sơ PCN/);
+  assert.doesNotMatch(detail, /PcnWorkflowMap/);
+  assert.match(detail, /PgdcnWorkflowRail/);
   assert.doesNotMatch(detail, /Mở sơ đồ quy trình/);
   assert.match(detail, /data-testid="pcn-workflow-step-checklist"[\s\S]*<summary/);
   assert.match(detail, /data-testid="pcn-operational-forms"[\s\S]*<summary/);
@@ -43,12 +44,13 @@ test('PCN dossier detail follows the PGD focus surface and work-panel rhythm', (
   assert.match(workPanel, /min-h-0 space-y-4 p-4/);
 });
 
-test('workflow rail is naturally positioned above node work on PCN and PGD dossier surfaces', () => {
+test('workflow presentation stays aligned with current work on PCN and PGD dossier surfaces', () => {
   const pcnWorkflow = read('../components/PcnDossierWorkflowPanel.tsx');
   const pgdWorkspace = read('../components/PgdWorkspace.tsx');
   assert.match(pcnWorkflow, /Việc cần làm:/);
-  assert.ok(pcnWorkflow.indexOf('<PcnDossierFlow') < pcnWorkflow.indexOf('<PcnDossierNodeWorkPanel'));
-  assert.ok(pgdWorkspace.indexOf('<PgdDossierFlow') < pgdWorkspace.indexOf('<PgdDossierStepWorkPanel'));
+  assert.match(pcnWorkflow, /data-testid="pcn-workflow-map-disclosure"/);
+  assert.match(pgdWorkspace, /<PgdDossierFlow/);
+  assert.match(pgdWorkspace, /<PgdDossierStepWorkPanel request=/);
 });
 
 test('contextual assistant opens with the current dossier in both domains', () => {

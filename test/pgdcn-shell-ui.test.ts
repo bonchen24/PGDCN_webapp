@@ -25,9 +25,9 @@ test('shared system settings remains available without a PGD settings route', ()
   assert.doesNotMatch(source, /if \(section === 'settings'\)/);
 });
 
-test('department dashboard exposes six KPIs, domain cards and a shared activity entrypoint', () => {
+test('department dashboard exposes four KPI stats strip, domain cards and a shared activity entrypoint', () => {
   const source = read('../components/PgdcnDashboardView.tsx');
-  for (const marker of ['data-testid="pgdcn-dashboard-kpi-grid"', 'Hồ sơ PCN', 'Hồ sơ PGD', 'PCN cần xử lý', 'PGD cần xử lý', 'Cần AI hỗ trợ', 'Quá hạn / chú ý', 'Việc cần chú ý']) {
+  for (const marker of ['data-testid="pgdcn-dashboard-kpi-grid"', 'Việc cần làm', 'Hồ sơ đang xử lý', 'Chờ phê duyệt', 'Hồ sơ quá hạn', 'Việc cần chú ý']) {
     assert.ok(source.includes(marker), `Missing dashboard marker: ${marker}`);
   }
   assert.doesNotMatch(source, /Nhật ký hoạt động/);

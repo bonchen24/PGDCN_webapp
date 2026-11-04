@@ -10,7 +10,7 @@ function renderFlow(status: PgdDossierFlowProps['status'], evidence: PgdTransiti
   return renderToStaticMarkup(createElement(PgdDossierFlow, {
     status,
     evidence,
-    selectedStepId: 'sampling',
+    selectedStepId: 'execution',
     onSelectStep: () => undefined,
   }));
 }
@@ -21,7 +21,7 @@ function cardFor(markup: string, stepId: string) {
   return card;
 }
 
-test('PGD flow counts only verified evidence as completed progress', () => {
+test('PGD flow counts only verified evidence as completed progress in 7 stages', () => {
   const beforeLabResults = renderFlow('WAITING_LAB_RESULTS', {
     hasApprovedAssignment: true,
     hasFieldInspection: true,
@@ -29,13 +29,11 @@ test('PGD flow counts only verified evidence as completed progress', () => {
     labRequests: [],
   });
 
-  assert.match(beforeLabResults, /2\/12 việc đã xong/);
-  assert.match(cardFor(beforeLabResults, 'assignment'), /Đã hoàn tất/);
-  assert.match(cardFor(beforeLabResults, 'sampling'), /Đã qua · chưa xác minh/);
-  assert.match(cardFor(beforeLabResults, 'sampling'), /Chưa bàn giao/);
-  assert.doesNotMatch(cardFor(beforeLabResults, 'sampling'), /Đã hoàn tất/);
-  assert.match(cardFor(beforeLabResults, 'lab-request'), /Đã qua · chưa xác minh/);
-  assert.match(cardFor(beforeLabResults, 'lab-request'), /0 PYC PTN/);
+  // 7 stages progress verification
+  assert.match(beforeLabResults, /Đang ở giai đoạn 5\/7/);
+  assert.match(cardFor(beforeLabResults, 'review-assignment'), /Đã hoàn tất/);
+  assert.match(cardFor(beforeLabResults, 'plan'), /Đã hoàn tất/);
+  assert.match(cardFor(beforeLabResults, 'execution'), /Đã kiểm tra hiện trường/);
 
   const beforeReview = renderFlow('RESULTS_REVIEW', {
     hasSampleHandover: true,
@@ -50,7 +48,6 @@ test('PGD flow counts only verified evidence as completed progress', () => {
     }],
   });
 
-  assert.match(cardFor(beforeReview, 'lab-result'), /Đã qua · chưa xác minh/);
-  assert.match(cardFor(beforeReview, 'lab-result'), /0\/1 KQTN/);
-  assert.doesNotMatch(cardFor(beforeReview, 'lab-result'), /Đã hoàn tất/);
+  assert.match(cardFor(beforeReview, 'results-evaluation'), /0\/1 KQTN/);
+  assert.doesNotMatch(cardFor(beforeReview, 'results-evaluation'), /Đã hoàn tất/);
 });

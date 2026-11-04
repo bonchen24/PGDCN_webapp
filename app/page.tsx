@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation';
+import PcnAppShell from '../components/PcnAppShell';
 
 export default function Page() {
-  redirect('/pgdcn');
+  return <PcnAppShell />;
 }
-

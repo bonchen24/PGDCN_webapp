@@ -74,6 +74,10 @@ export interface PgdcnDashboardProjection {
     pgdWork: number;
     aiCandidates: number;
     attention: number;
+    pendingWork: number;
+    inProgress: number;
+    awaitingApproval: number;
+    overdue: number;
   };
   attention: PgdcnDashboardAttentionItem[];
   domainSummaries: PgdcnDashboardDomainSummary[];
@@ -369,6 +373,13 @@ export function getPgdcnDashboardProjection(input: PgdcnDashboardInput): PgdcnDa
       aiCandidates: pcnStatuses.filter((status) => PCN_AI_STATUSES.has(status)).length
         + pgdStatuses.filter((status) => PGD_AI_STATUSES.has(status)).length,
       attention: attention.length,
+      pendingWork: pcnStatuses.filter((status) => PCN_WORK_STATUSES.has(status)).length
+        + pgdStatuses.filter((status) => PGD_WORK_STATUSES.has(status)).length,
+      inProgress: pcnStatuses.filter((status) => !PCN_CLOSED_STATUSES.has(status) && status !== 'DRAFT').length
+        + pgdStatuses.filter((status) => !PGD_CLOSED_STATUSES.has(status) && status !== 'DRAFT').length,
+      awaitingApproval: pcnStatuses.filter((status) => PCN_APPROVAL_STATUSES.has(status) || status === 'PLAN_PENDING_APPROVAL').length
+        + pgdStatuses.filter((status) => PGD_APPROVAL_STATUSES.has(status)).length,
+      overdue: attention.filter((item) => item.reason === 'OVERDUE').length,
     },
     attention,
     domainSummaries: [

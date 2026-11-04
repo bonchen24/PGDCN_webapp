@@ -29,6 +29,10 @@ test('projects scope-correct domain summaries, attention ordering and milestones
     pgdWork: 2,
     aiCandidates: 1,
     attention: 4,
+    pendingWork: 4,
+    inProgress: 4,
+    awaitingApproval: 1,
+    overdue: 1,
   });
   assert.deepEqual(result.attention.map((item) => item.id), ['pcn-overdue', 'pgd-capability', 'pgd-lab', 'pcn-approval']);
   assert.equal(result.attention[0].reason, 'OVERDUE');

@@ -21,11 +21,32 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { PgdInspectionStatus, PgdTransitionContext } from '../utils/pgdDomain';
 import { getPgdStatusLabel } from '../utils/pgdDomain';
 
-export type PgdDossierFlowStepId =
+/**
+ * 7 Chuẩn hóa giai đoạn chính của quy trình hồ sơ Giám định PGD:
+ * 1. intake: Tiếp nhận hồ sơ (Tiếp nhận PYC)
+ * 2. review-assignment: Xem xét & phân công (Kiểm tra năng lực, phân công giám định)
+ * 3. plan: Lập kế hoạch (Kế hoạch giám định hiện trường)
+ * 4. execution: Thực hiện giám định (Hiện trường, lấy mẫu & niêm phong, giao mẫu PTN)
+ * 5. results-evaluation: Xử lý & đánh giá kết quả (Tiếp nhận KQTN, xem xét KQTN)
+ * 6. reporting-approval: Báo cáo & phê duyệt (Lập báo cáo, phê duyệt, ký chứng thư)
+ * 7. issuance-archive: Trả kết quả & lưu trữ (Đóng gói, bàn giao kết quả & hoàn tất lưu trữ)
+ */
+export type PgdDossierFlowStageId =
   | 'intake'
+  | 'review-assignment'
+  | 'plan'
+  | 'execution'
+  | 'results-evaluation'
+  | 'reporting-approval'
+  | 'issuance-archive';
+
+/**
+ * Backward compatibility alias for legacy 12-step identifiers.
+ * Maps legacy IDs to the canonical 7 stages.
+ */
+export type PgdDossierLegacyStepId =
   | 'capability'
   | 'assignment'
-  | 'plan'
   | 'field'
   | 'sampling'
   | 'lab-request'
@@ -34,6 +55,8 @@ export type PgdDossierFlowStepId =
   | 'report'
   | 'approval'
   | 'return';
+
+export type PgdDossierFlowStepId = PgdDossierFlowStageId | PgdDossierLegacyStepId;
 
 export type PgdDossierFlowStepStatus = 'LOCKED' | 'READY' | 'IN_PROGRESS' | 'WAITING' | 'RETURNED' | 'COMPLETED';
 
@@ -46,11 +69,21 @@ export interface PgdDossierFlowProps {
 
 type FlowType = 'FILE' | 'ACTION' | 'APPROVAL' | 'END';
 
-type FlowStep = {
-  id: PgdDossierFlowStepId;
+export type PgdFlowStageTask = {
+  id: string;
+  legacyStepId: PgdDossierFlowStepId;
+  title: string;
+  description: string;
+  required: boolean;
+  type: FlowType;
+};
+
+export type FlowStep = {
+  id: PgdDossierFlowStageId;
   label: string;
   description: string;
   type: FlowType;
+  tasks: readonly PgdFlowStageTask[];
 };
 
 type StatusMeta = {
@@ -59,20 +92,191 @@ type StatusMeta = {
   className: string;
 };
 
+/**
+ * Danh mục 7 giai đoạn chuẩn hóa PGD, lưu giữ đầy đủ các công việc từ 12 bước cũ.
+ */
 export const PGD_DOSSIER_FLOW_STEPS: readonly FlowStep[] = [
-  { id: 'intake', label: 'Tiếp nhận PYC', description: 'Kiểm tra hồ sơ đầu vào và danh mục chứng từ.', type: 'FILE' },
-  { id: 'capability', label: 'Kiểm tra phạm vi & năng lực', description: 'Đối chiếu phạm vi, tiêu chuẩn và khả năng thực hiện.', type: 'ACTION' },
-  { id: 'assignment', label: 'Phân công giám định', description: 'Chọn đoàn giám định và người soát xét kỹ thuật.', type: 'APPROVAL' },
-  { id: 'plan', label: 'Lập kế hoạch', description: 'Xác nhận ngày, nội dung và lịch giám định.', type: 'FILE' },
-  { id: 'field', label: 'Kiểm tra hiện trường', description: 'Ghi nhận hiện trạng, đo kiểm và đại diện khách hàng.', type: 'FILE' },
-  { id: 'sampling', label: 'Lấy mẫu & niêm phong', description: 'Tách mẫu PTN, mẫu lưu và thông tin niêm phong.', type: 'ACTION' },
-  { id: 'lab-request', label: 'Giao mẫu / lập PYC PTN', description: 'Lập yêu cầu thử nghiệm và bàn giao mẫu.', type: 'ACTION' },
-  { id: 'lab-result', label: 'Tiếp nhận KQTN', description: 'Ghi nhận báo cáo và dữ liệu kết quả PTN.', type: 'FILE' },
-  { id: 'result-review', label: 'Xem xét KQTN', description: 'Đánh giá tính đầy đủ, phù hợp và nhu cầu thử lại.', type: 'APPROVAL' },
-  { id: 'report', label: 'Lập báo cáo', description: 'Hoàn thiện báo cáo giám định và bản chụp tiêu chuẩn.', type: 'FILE' },
-  { id: 'approval', label: 'Phê duyệt & ký', description: 'Phê duyệt chuyên môn, lãnh đạo và ký chứng thư.', type: 'APPROVAL' },
-  { id: 'return', label: 'Trả kết quả & lưu trữ', description: 'Đóng gói, trả kết quả và lưu hồ sơ.', type: 'END' },
+  {
+    id: 'intake',
+    label: 'Tiếp nhận hồ sơ',
+    description: 'Tiếp nhận PYC, kiểm tra hồ sơ đầu vào và danh mục chứng từ.',
+    type: 'FILE',
+    tasks: [
+      {
+        id: 'task-intake-pyc',
+        legacyStepId: 'intake',
+        title: 'Tiếp nhận PYC & Hồ sơ',
+        description: 'Kiểm tra hồ sơ đầu vào, kiểm tra chứng từ hải quan/thương mại.',
+        required: true,
+        type: 'FILE',
+      },
+    ],
+  },
+  {
+    id: 'review-assignment',
+    label: 'Xem xét & Phân công',
+    description: 'Kiểm tra phạm vi năng lực và phân công đoàn giám định.',
+    type: 'APPROVAL',
+    tasks: [
+      {
+        id: 'task-capability-review',
+        legacyStepId: 'capability',
+        title: 'Kiểm tra phạm vi & năng lực',
+        description: 'Đối chiếu phạm vi, tiêu chuẩn kỹ thuật và năng lực thực hiện.',
+        required: true,
+        type: 'ACTION',
+      },
+      {
+        id: 'task-assignment',
+        legacyStepId: 'assignment',
+        title: 'Phân công giám định viên',
+        description: 'Chỉ định giám định viên hiện trường và người soát xét kỹ thuật.',
+        required: true,
+        type: 'APPROVAL',
+      },
+    ],
+  },
+  {
+    id: 'plan',
+    label: 'Lập kế hoạch',
+    description: 'Xác nhận ngày, nội dung trọng tâm và lịch giám định.',
+    type: 'FILE',
+    tasks: [
+      {
+        id: 'task-plan-preparation',
+        legacyStepId: 'plan',
+        title: 'Lập kế hoạch giám định',
+        description: 'Lập phương án, lịch làm việc và thông báo cho khách hàng.',
+        required: true,
+        type: 'FILE',
+      },
+    ],
+  },
+  {
+    id: 'execution',
+    label: 'Thực hiện giám định',
+    description: 'Kiểm tra hiện trường, lấy mẫu, niêm phong và gửi mẫu PTN.',
+    type: 'ACTION',
+    tasks: [
+      {
+        id: 'task-field-inspection',
+        legacyStepId: 'field',
+        title: 'Kiểm tra hiện trường',
+        description: 'Ghi nhận hiện trạng lô hàng, đo kiểm và lập biên bản hiện trường.',
+        required: true,
+        type: 'FILE',
+      },
+      {
+        id: 'task-field-sampling',
+        legacyStepId: 'sampling',
+        title: 'Lấy mẫu & niêm phong',
+        description: 'Tách mẫu gửi PTN, lưu mẫu, lập biên bản lấy mẫu và niêm phong.',
+        required: false,
+        type: 'ACTION',
+      },
+      {
+        id: 'task-lab-dispatch',
+        legacyStepId: 'lab-request',
+        title: 'Giao mẫu / Lập PYC PTN',
+        description: 'Lập phiếu yêu cầu thử nghiệm và bàn giao mẫu cho phòng thử nghiệm.',
+        required: false,
+        type: 'ACTION',
+      },
+    ],
+  },
+  {
+    id: 'results-evaluation',
+    label: 'Xử lý & Đánh giá kết quả',
+    description: 'Tiếp nhận kết quả thử nghiệm và đánh giá sự phù hợp.',
+    type: 'APPROVAL',
+    tasks: [
+      {
+        id: 'task-lab-result-receive',
+        legacyStepId: 'lab-result',
+        title: 'Tiếp nhận KQTN',
+        description: 'Tiếp nhận phiếu KQTN từ phòng thử nghiệm nội bộ hoặc nhà thầu phụ.',
+        required: false,
+        type: 'FILE',
+      },
+      {
+        id: 'task-result-review',
+        legacyStepId: 'result-review',
+        title: 'Xem xét & Đánh giá KQTN',
+        description: 'Đánh giá tính hợp lệ của KQTN, đối chiếu tiêu chuẩn kỹ thuật.',
+        required: false,
+        type: 'APPROVAL',
+      },
+    ],
+  },
+  {
+    id: 'reporting-approval',
+    label: 'Báo cáo & Phê duyệt',
+    description: 'Lập báo cáo giám định, phê duyệt chuyên môn và ký chứng thư.',
+    type: 'APPROVAL',
+    tasks: [
+      {
+        id: 'task-report-preparation',
+        legacyStepId: 'report',
+        title: 'Lập báo cáo giám định',
+        description: 'Tổng hợp kết quả, soạn thảo dự thảo chứng thư / chứng chỉ giám định.',
+        required: true,
+        type: 'FILE',
+      },
+      {
+        id: 'task-approval-signature',
+        legacyStepId: 'approval',
+        title: 'Phê duyệt & Ký chứng thư',
+        description: 'Soát xét kỹ thuật, trình lãnh đạo phê duyệt và ký số chứng thư.',
+        required: true,
+        type: 'APPROVAL',
+      },
+    ],
+  },
+  {
+    id: 'issuance-archive',
+    label: 'Trả kết quả & Lưu trữ',
+    description: 'Đóng gói chứng thư, trả kết quả cho khách hàng và lưu trữ hồ sơ.',
+    type: 'END',
+    tasks: [
+      {
+        id: 'task-return-archive',
+        legacyStepId: 'return',
+        title: 'Trả kết quả & Lưu trữ',
+        description: 'Bàn giao chứng thư cho khách hàng và hoàn tất đóng hồ sơ lưu trữ.',
+        required: true,
+        type: 'END',
+      },
+    ],
+  },
 ] as const;
+
+/**
+ * Mapping từ mã bước cũ sang mã giai đoạn 7 bước mới
+ */
+export const PGD_LEGACY_STEP_TO_STAGE: Record<string, PgdDossierFlowStageId> = {
+  intake: 'intake',
+  capability: 'review-assignment',
+  assignment: 'review-assignment',
+  plan: 'plan',
+  field: 'execution',
+  sampling: 'execution',
+  'lab-request': 'execution',
+  'lab-result': 'results-evaluation',
+  'result-review': 'results-evaluation',
+  report: 'reporting-approval',
+  approval: 'reporting-approval',
+  return: 'issuance-archive',
+  // Direct mappings
+  'review-assignment': 'review-assignment',
+  execution: 'execution',
+  'results-evaluation': 'results-evaluation',
+  'reporting-approval': 'reporting-approval',
+  'issuance-archive': 'issuance-archive',
+};
+
+export function canonicalizePgdStepId(stepId: PgdDossierFlowStepId | string): PgdDossierFlowStageId | undefined {
+  return PGD_LEGACY_STEP_TO_STAGE[stepId];
+}
 
 const TYPE_META: Record<FlowType, { label: string; icon: LucideIcon; className: string }> = {
   FILE: { label: 'Tài liệu', icon: FileText, className: 'border-indigo-200 bg-indigo-50 text-indigo-700' },
@@ -90,36 +294,47 @@ const STATUS_META: Record<PgdDossierFlowStepStatus, StatusMeta> = {
   COMPLETED: { label: 'Đã hoàn tất', icon: CheckCircle2, className: 'text-emerald-700' },
 };
 
+/**
+ * Tính số thứ tự giai đoạn hiện tại (1 -> 7) theo trạng thái PGD
+ */
 export function getPgdDossierCurrentStepNumber(status: PgdInspectionStatus): number {
-  if (status === 'DRAFT') return 1;
-  if (status === 'REJECTED' || status === 'ON_HOLD') return 2;
-  if (status === 'CAPABILITY_REVIEW') return 2;
-  if (status === 'READY_TO_EXECUTE') return 3;
-  if (status === 'PREPARING') return 4;
-  if (status === 'FIELD_INSPECTION') return 5;
-  if (status === 'WAITING_LAB_RESULTS') return 8;
-  if (status === 'RESULTS_REVIEW') return 9;
-  if (status === 'TECHNICAL_REVIEW') return 10;
-  if (status === 'LEADERSHIP_APPROVAL') return 11;
-  return 12;
+  if (status === 'DRAFT') return 1; // 1. Tiếp nhận hồ sơ
+  if (status === 'REJECTED' || status === 'ON_HOLD') return 2; // 2. Xem xét & phân công
+  if (status === 'CAPABILITY_REVIEW') return 2; // 2. Xem xét & phân công
+  if (status === 'READY_TO_EXECUTE') return 2; // 2. Xem xét & phân công
+  if (status === 'PREPARING') return 3; // 3. Lập kế hoạch
+  if (status === 'FIELD_INSPECTION') return 4; // 4. Thực hiện giám định
+  if (status === 'WAITING_LAB_RESULTS') return 5; // 5. Xử lý & đánh giá KQTN
+  if (status === 'RESULTS_REVIEW') return 5; // 5. Xử lý & đánh giá KQTN
+  if (status === 'TECHNICAL_REVIEW') return 6; // 6. Báo cáo & phê duyệt
+  if (status === 'LEADERSHIP_APPROVAL') return 6; // 6. Báo cáo & phê duyệt
+  return 7; // 7. Trả kết quả & lưu trữ (SIGNED, RESULT_RETURNED, ARCHIVED)
 }
 
 function hasStepCompletionEvidence(step: FlowStep, evidence: PgdTransitionContext | undefined, status: PgdInspectionStatus): boolean {
-  if (step.id === 'assignment') return evidence?.hasApprovedAssignment === true;
-  if (step.id === 'field') return evidence?.hasFieldInspection === true;
-  if (step.id === 'sampling') return evidence?.hasSampleHandover === true;
-  if (step.id === 'lab-request') return (evidence?.labRequests?.length || 0) > 0;
-  if (step.id === 'lab-result') {
-    const requests = evidence?.labRequests || [];
-    return requests.length > 0 && requests.every((request) => ['RESULT_RECEIVED', 'CLOSED'].includes(request.status));
+  if (step.id === 'intake') {
+    return status !== 'DRAFT';
   }
-  if (step.id === 'result-review') {
+  if (step.id === 'review-assignment') {
+    return evidence?.hasApprovedAssignment === true || ['PREPARING', 'FIELD_INSPECTION', 'WAITING_LAB_RESULTS', 'RESULTS_REVIEW', 'TECHNICAL_REVIEW', 'LEADERSHIP_APPROVAL', 'SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status);
+  }
+  if (step.id === 'plan') {
+    return ['FIELD_INSPECTION', 'WAITING_LAB_RESULTS', 'RESULTS_REVIEW', 'TECHNICAL_REVIEW', 'LEADERSHIP_APPROVAL', 'SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status);
+  }
+  if (step.id === 'execution') {
+    return evidence?.hasFieldInspection === true && (evidence?.hasSampleHandover === true || ['WAITING_LAB_RESULTS', 'RESULTS_REVIEW', 'TECHNICAL_REVIEW', 'LEADERSHIP_APPROVAL', 'SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status));
+  }
+  if (step.id === 'results-evaluation') {
     const review = evidence?.labResultReview;
-    return review?.status === 'FINAL' && review.retestRequired !== true && review.conformity !== 'NON_CONFORMING';
+    const reviewComplete = review?.status === 'FINAL' && review.retestRequired !== true && review.conformity !== 'NON_CONFORMING';
+    return reviewComplete || ['TECHNICAL_REVIEW', 'LEADERSHIP_APPROVAL', 'SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status);
   }
-  if (step.id === 'report') return evidence?.reportReady === true;
-  if (step.id === 'approval') return evidence?.signed === true;
-  if (step.id === 'return') return ['RESULT_RETURNED', 'ARCHIVED'].includes(status) && evidence?.signed === true;
+  if (step.id === 'reporting-approval') {
+    return evidence?.signed === true || ['SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status);
+  }
+  if (step.id === 'issuance-archive') {
+    return ['RESULT_RETURNED', 'ARCHIVED'].includes(status) && evidence?.signed === true;
+  }
   return false;
 }
 
@@ -129,7 +344,7 @@ function currentStatusForStep(stepNumber: number, status: PgdInspectionStatus, e
   const verifiedComplete = step ? hasStepCompletionEvidence(step, evidence, status) : false;
   if (stepNumber > current) return 'LOCKED';
   if (stepNumber < current) return verifiedComplete ? 'COMPLETED' : 'READY';
-  if (stepNumber === 12 && ['SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status)) {
+  if (stepNumber === 7 && ['SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status)) {
     if (status === 'SIGNED' && evidence?.signed === true) return 'WAITING';
     return verifiedComplete ? 'COMPLETED' : 'READY';
   }
@@ -146,36 +361,49 @@ function stepStatusLabel(stepNumber: number, stepStatus: PgdDossierFlowStepStatu
 }
 
 function stepProgress(step: FlowStep, evidence: PgdTransitionContext | undefined, status: PgdInspectionStatus): string {
-  if (step.id === 'assignment') return evidence?.hasApprovedAssignment === true ? 'Đã duyệt' : evidence?.hasApprovedAssignment === false ? 'Chưa duyệt' : 'Chưa có dữ liệu xác minh';
-  if (step.id === 'field') return evidence?.hasFieldInspection === true ? 'Đã ghi nhận' : evidence?.hasFieldInspection === false ? 'Chưa ghi nhận' : 'Chưa có dữ liệu xác minh';
-  if (step.id === 'sampling') return evidence?.hasSampleHandover === true ? 'Đã bàn giao' : evidence?.hasSampleHandover === false ? 'Chưa bàn giao' : 'Chưa có dữ liệu xác minh';
-  if (step.id === 'lab-request') return evidence?.labRequests ? `${evidence.labRequests.length} PYC PTN` : 'Chưa có dữ liệu xác minh';
-  if (step.id === 'lab-result') {
-    if (!evidence?.labRequests) return 'Chưa có dữ liệu xác minh';
-    const requests = evidence.labRequests;
-    if (requests.length === 0) return 'Chưa có PYC PTN';
-    const completed = requests.filter((item) => ['RESULT_RECEIVED', 'CLOSED'].includes(item.status)).length;
-    return `${completed}/${requests.length} KQTN`;
+  if (!evidence) {
+    return 'Chưa có dữ liệu xác minh';
   }
-  if (step.id === 'result-review') {
+  if (step.id === 'intake') {
+    return status === 'DRAFT' ? 'Chờ xác nhận' : 'Đã tiếp nhận';
+  }
+  if (step.id === 'review-assignment') {
+    return evidence?.hasApprovedAssignment === true ? 'Đã phân công' : evidence?.hasApprovedAssignment === false ? 'Chưa phân công' : 'Chưa duyệt';
+  }
+  if (step.id === 'plan') {
+    return getPgdDossierCurrentStepNumber(status) > 3 ? 'Đã lập kế hoạch' : 'Đang lập';
+  }
+  if (step.id === 'execution') {
+    if (evidence?.hasFieldInspection === true) {
+      return evidence?.hasSampleHandover === true ? 'Đã kiểm tra & lấy mẫu' : 'Đã kiểm tra hiện trường';
+    }
+    return 'Chưa ghi nhận hiện trường';
+  }
+  if (step.id === 'results-evaluation') {
+    const requests = evidence?.labRequests || [];
     const review = evidence?.labResultReview;
-    if (!review) return 'Chưa có dữ liệu xác minh';
-    if (review.status !== 'FINAL') return 'Chưa hoàn tất xem xét';
-    if (review.retestRequired === true || review.conformity === 'NON_CONFORMING') return 'Cần xử lý thêm';
-    return 'Đã xem xét';
+    if (requests.length > 0) {
+      const completed = requests.filter((item) => ['RESULT_RECEIVED', 'CLOSED'].includes(item.status)).length;
+      return `${completed}/${requests.length} KQTN`;
+    }
+    if (review?.status === 'FINAL') return 'Đã xem xét KQTN';
+    return 'Chưa có KQTN';
   }
-  if (step.id === 'report') return evidence?.reportReady === true ? 'Đã có báo cáo' : evidence?.reportReady === false ? 'Chưa có báo cáo' : 'Chưa có dữ liệu xác minh';
-  if (step.id === 'approval') return evidence?.signed === true ? 'Đã ký' : evidence?.hasCertificate === true ? 'Chưa ký' : evidence?.hasCertificate === false ? 'Chưa có chứng thư' : 'Chưa có dữ liệu xác minh';
-  if (step.id === 'return') {
-    if (evidence?.signed !== true) return evidence?.signed === false ? 'Chưa ký' : 'Chưa có dữ liệu xác minh';
+  if (step.id === 'reporting-approval') {
+    if (evidence?.signed === true) return 'Đã ký chứng thư';
+    if (evidence?.reportReady === true) return 'Đã có báo cáo';
+    return 'Chưa duyệt báo cáo';
+  }
+  if (step.id === 'issuance-archive') {
     if (status === 'ARCHIVED') return 'Đã lưu trữ';
     if (status === 'RESULT_RETURNED') return 'Đã trả kết quả';
-    return 'Đã ký · chờ trả';
+    if (evidence?.signed === true) return 'Đã ký · chờ trả';
+    return 'Chờ ký phát hành';
   }
   return 'Chưa có dữ liệu xác minh';
 }
 
-export function getPgdDossierFlowStepIdForStatus(status: PgdInspectionStatus): PgdDossierFlowStepId {
+export function getPgdDossierFlowStepIdForStatus(status: PgdInspectionStatus): PgdDossierFlowStageId {
   const step = PGD_DOSSIER_FLOW_STEPS[getPgdDossierCurrentStepNumber(status) - 1];
   return step?.id || 'intake';
 }
@@ -184,15 +412,19 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const currentNumber = getPgdDossierCurrentStepNumber(status);
-  const selectedStep = PGD_DOSSIER_FLOW_STEPS.find((step) => step.id === selectedStepId) || PGD_DOSSIER_FLOW_STEPS[Math.min(currentNumber - 1, PGD_DOSSIER_FLOW_STEPS.length - 1)];
+  
+  // Canonicalize selectedStepId if passed legacy ID (e.g., 'capability' -> 'review-assignment')
+  const canonicalSelectedId = canonicalizePgdStepId(selectedStepId);
+  const selectedStep = PGD_DOSSIER_FLOW_STEPS.find((step) => step.id === canonicalSelectedId) || PGD_DOSSIER_FLOW_STEPS[Math.min(currentNumber - 1, PGD_DOSSIER_FLOW_STEPS.length - 1)];
   const selectedIndex = PGD_DOSSIER_FLOW_STEPS.findIndex((step) => step.id === selectedStep?.id);
   const resolvedSteps = PGD_DOSSIER_FLOW_STEPS.filter((_, index) => currentStatusForStep(index + 1, status, evidence) === 'COMPLETED').length;
   const selectableIndexes = useMemo(() => PGD_DOSSIER_FLOW_STEPS.map((_, index) => index).filter((index) => index + 1 <= currentNumber), [currentNumber]);
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
-    const selectedIndex = PGD_DOSSIER_FLOW_STEPS.findIndex((step) => step.id === selectedStepId);
-    const selectedTab = selectedIndex >= 0 ? tabRefs.current[selectedIndex] : null;
+    const currentCanonical = canonicalizePgdStepId(selectedStepId);
+    const selectedIdx = PGD_DOSSIER_FLOW_STEPS.findIndex((step) => step.id === currentCanonical);
+    const selectedTab = selectedIdx >= 0 ? tabRefs.current[selectedIdx] : null;
     if (!scrollContainer || !selectedTab) return;
 
     const scrollBounds = scrollContainer.getBoundingClientRect();
@@ -244,18 +476,23 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
     <section className="min-w-0 space-y-3" data-testid="pgd-dossier-native-flow" aria-label="Tiến trình hồ sơ PGD">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600">PGD · Tiến trình hồ sơ</p>
-          <h2 className="mt-1 text-base font-black text-slate-950">Xử lý từng việc theo đúng thứ tự</h2>
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600">PGD · Tiến trình 7 giai đoạn</p>
+          <h2 className="mt-1 text-base font-black text-slate-950">Quy trình hồ sơ giám định chuẩn hóa (7 giai đoạn)</h2>
         </div>
-        <p className="text-xs text-slate-600" aria-live="polite">Đang ở bước {currentNumber}/{PGD_DOSSIER_FLOW_STEPS.length} · {resolvedSteps}/{PGD_DOSSIER_FLOW_STEPS.length} việc đã xong · {getPgdStatusLabel(status)}</p>
+        <p className="text-xs text-slate-600" aria-live="polite">
+          Đang ở giai đoạn {currentNumber}/{PGD_DOSSIER_FLOW_STEPS.length} · {resolvedSteps}/{PGD_DOSSIER_FLOW_STEPS.length} giai đoạn hoàn tất · {getPgdStatusLabel(status)}
+        </p>
       </div>
 
       <div className="h-1.5 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
-        <div className="h-full rounded-full bg-blue-600 transition-[width] duration-200" style={{ width: `${Math.round((resolvedSteps / PGD_DOSSIER_FLOW_STEPS.length) * 100)}%` }} />
+        <div
+          className="h-full rounded-full bg-blue-600 transition-[width] duration-200"
+          style={{ width: `${Math.round((resolvedSteps / PGD_DOSSIER_FLOW_STEPS.length) * 100)}%` }}
+        />
       </div>
 
-      <div ref={scrollContainerRef} className="mobile-scroll-x min-w-0 overflow-x-auto pb-1" data-testid="pgd-dossier-flow-scroll">
-        <div className="flex min-w-max items-stretch gap-2" role="tablist" aria-label="Các việc xử lý hồ sơ PGD">
+      <div ref={scrollContainerRef} className="mobile-scroll-x min-w-0 overflow-x-auto scroll-smooth touch-pan-x pb-1" data-testid="pgd-dossier-flow-scroll">
+        <div className="flex min-w-max items-stretch gap-2" role="tablist" aria-label="Các giai đoạn xử lý hồ sơ PGD">
           {PGD_DOSSIER_FLOW_STEPS.map((step, index) => {
             const stepStatus = currentStatusForStep(index + 1, status, evidence);
             const statusMeta = STATUS_META[stepStatus];
@@ -265,6 +502,11 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
             const StatusIcon = statusMeta.icon;
             const disabled = stepStatus === 'LOCKED';
             const selected = selectedStep?.id === step.id;
+            
+            // Build task summary badge for compact viewing
+            const completedTasks = step.tasks.filter((t) => hasStepCompletionEvidence(step, evidence, status)).length;
+            const totalTasks = step.tasks.length;
+            
             return (
               <div className="flex items-center gap-2" key={step.id}>
                 <button
@@ -280,20 +522,40 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
                   aria-posinset={index + 1}
                   aria-setsize={PGD_DOSSIER_FLOW_STEPS.length}
                   disabled={disabled}
-                  title={disabled ? `${step.label} · Chưa đến bước` : step.description}
+                  title={disabled ? `${step.label} · Chưa đến giai đoạn` : step.description}
                   onClick={() => onSelectStep(step.id)}
                   onKeyDown={(event) => handleKeyDown(event, index)}
-                  className={`mobile-touch-target group flex min-h-[106px] w-[218px] flex-col justify-between rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-100/80 text-slate-400 opacity-70' : selected ? 'border-blue-500 bg-white shadow-sm ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30'}`}
+                  className={`mobile-touch-target group flex min-w-[11rem] sm:min-w-[13.5rem] items-center gap-2.5 rounded-lg border px-3 py-2 text-left shadow-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+                    disabled
+                      ? 'cursor-not-allowed border-slate-200 bg-slate-100/80 text-slate-400 opacity-70'
+                      : selected
+                      ? 'border-blue-500 bg-blue-50/90 text-blue-950 font-black shadow-md ring-2 ring-blue-500 ring-offset-1'
+                      : stepStatus === 'COMPLETED'
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30 text-slate-700'
+                  }`}
                 >
-                  <span className="flex items-start justify-between gap-2">
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm font-bold ${typeMeta.className}`}>{index + 1}</span>
-                    <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-bold tracking-wide ${typeMeta.className}`}><TypeIcon size={13} aria-hidden="true" />{typeMeta.label}</span>
+                  <span
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${
+                      selected
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : stepStatus === 'COMPLETED'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-white text-slate-700 ring-1 ring-current/20'
+                    }`}
+                  >
+                    0{index + 1}
                   </span>
-                  <span className="mt-2 line-clamp-2 text-sm font-semibold text-slate-900">{step.label}</span>
-                  <span className="mt-2 flex items-center justify-between gap-2 text-xs">
-                    <span className="truncate text-slate-500">{stepProgress(step, evidence, status)}</span>
-                    <span id={`pgd-step-status-${step.id}`} className={`inline-flex shrink-0 items-center gap-1 font-medium ${statusMeta.className}`}><StatusIcon size={14} aria-hidden="true" />{displayedStatusLabel}</span>
-                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`truncate text-xs ${selected ? 'font-black text-blue-950' : 'font-bold text-slate-900'}`}>{step.label}</span>
+                      <span className={`inline-flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.2 text-[9px] font-bold ${typeMeta.className}`}><TypeIcon size={10} aria-hidden="true" />{typeMeta.label}</span>
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between gap-1 text-[10px]">
+                      <span className="truncate text-slate-500">{stepProgress(step, evidence, status)}</span>
+                      <span id={`pgd-step-status-${step.id}`} className={`inline-flex shrink-0 items-center gap-0.5 font-medium ${statusMeta.className}`}><StatusIcon size={11} aria-hidden="true" />{displayedStatusLabel}</span>
+                    </div>
+                  </div>
                 </button>
                 {index < PGD_DOSSIER_FLOW_STEPS.length - 1 ? <ChevronRight className="shrink-0 text-slate-300" size={18} aria-hidden="true" /> : null}
               </div>
@@ -301,7 +563,7 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
           })}
         </div>
       </div>
-      <p className="px-1 text-[11px] text-slate-500 md:hidden">Vuốt ngang để xem đủ 12 bước</p>
+      <p className="px-1 text-[11px] text-slate-500 md:hidden">Vuốt ngang để xem đủ 7 giai đoạn quy trình</p>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600" aria-label="Chú giải loại việc">
         {(Object.keys(TYPE_META) as FlowType[]).map((type) => {
@@ -312,9 +574,9 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
       </div>
 
       <div className="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 text-sm text-slate-700" data-testid="pgd-dossier-flow-context">
-        <span className="font-semibold text-slate-950">Bước {selectedIndex + 1}: {selectedStep.label}</span>
+        <span className="font-semibold text-slate-950">Giai đoạn {selectedIndex + 1}: {selectedStep.label}</span>
         <span className="ml-2 text-slate-600">· {selectedStep.description}</span>
-        {currentNumber < selectedIndex + 1 ? <span className="ml-2 text-amber-800">· Việc này đang bị khóa theo quy trình</span> : null}
+        {currentNumber < selectedIndex + 1 ? <span className="ml-2 text-amber-800">· Giai đoạn này đang bị khóa theo quy trình</span> : null}
       </div>
     </section>
   );

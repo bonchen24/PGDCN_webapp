@@ -7,36 +7,20 @@ import {
   FileWarning,
   Search,
   UserRound,
-  LayoutGrid,
-  List,
   Building2,
   Package,
   Clock,
   Layers,
   CheckCircle2,
   FolderOpen,
-  Edit3,
-  Copy,
-  Printer,
   ChevronDown,
 } from 'lucide-react';
-import { useMemo, useState, useEffect, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 import type { PcnOperationsRegisterRow } from '../utils/pcnOperationsRegister';
 import { getPgdcnDashboardStatusLabel } from '../utils/pgdcnDashboard';
 import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
-import {
-  PgdcnDossierCard,
-  PgdcnDossierCardExpanded,
-  PgdcnDossierQuickActions,
-  PgdcnDossierQuickPeek,
-  type PgdcnDossierItemModel,
-  type DossierComponentStage,
-  type DossierBlockerItem,
-  type DossierQuickAction,
-  type DossierBusinessBadge,
-} from './PgdcnDossierDeck';
 
 export interface PcnDossierQueueViewProps {
   rows: PcnOperationsRegisterRow[];
@@ -66,10 +50,7 @@ type PcnFilterChipId = typeof PCN_FILTER_CHIPS[number]['id'];
 
 export default function PcnDossierQueueView({ rows, onOpenDossier, filterControls }: PcnDossierQueueViewProps) {
   const [query, setQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [activeChip, setActiveChip] = useState<PcnFilterChipId>('ALL');
-  const [peekItem, setPeekItem] = useState<PgdcnDossierItemModel | null>(null);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
 
   const actionCount = rows.filter(isActionable).length;
@@ -80,15 +61,6 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
   const resetFilters = () => {
     setQuery('');
     setActiveChip('ALL');
-  };
-
-  const toggleExpand = (id: string) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   };
 
   const filteredRows = useMemo(() => {
@@ -130,200 +102,6 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
     );
   }, [query, rows, activeChip]);
 
-  // Convert PCN Row to Unified Item Model
-  const itemModels = useMemo<PgdcnDossierItemModel[]>(() => {
-    return filteredRows.map((row) => {
-      const blockers: DossierBlockerItem[] = [];
-      if (row.missingRequiredCount > 0) {
-        blockers.push({
-          id: `pcn-missing-${row.dossierId}`,
-          title: 'Thiếu tài liệu bắt buộc',
-          reason: `Còn thiếu ${row.missingRequiredCount} mục tài liệu theo quy định.`,
-          severity: 'HARD',
-          actionLabel: 'Mở tài liệu',
-          onAction: () => onOpenDossier(row.dossierId),
-        });
-      }
-      if (!row.ownerUsername) {
-        blockers.push({
-          id: `pcn-unassigned-${row.dossierId}`,
-          title: 'Chưa phân công chủ hồ sơ',
-          reason: 'Hồ sơ chưa có cán bộ phụ trách xử lý.',
-          severity: 'WARNING',
-          actionLabel: 'Mở phân công',
-          onAction: () => onOpenDossier(row.dossierId),
-        });
-      }
-      if (row.labStatuses.some((st) => /chờ|đang|gửi/i.test(st))) {
-        blockers.push({
-          id: `pcn-lab-${row.dossierId}`,
-          title: 'Đang theo dõi thử nghiệm PTN',
-          reason: `Tiến độ phòng thử: ${row.labStatuses.join('; ')}`,
-          severity: 'WARNING',
-          actionLabel: 'Xem PTN',
-          onAction: () => onOpenDossier(row.dossierId),
-        });
-      }
-
-      // Zone 4: Compact Business Badges
-      const businessBadges: DossierBusinessBadge[] = [
-        {
-          id: 'samples',
-          label: `Mẫu ${row.sampleQuantity || 1}`,
-          tone: 'default',
-        },
-        {
-          id: 'lab',
-          label: row.labStatuses.length > 0 ? `PTN: ${row.labStatuses.length} phòng` : 'PTN: Sẵn sàng',
-          tone: 'info',
-        },
-        {
-          id: 'kqtn',
-          label: row.lastResultReceivedAt ? 'KQTN ✓' : 'Chờ KQTN',
-          tone: row.lastResultReceivedAt ? 'success' : 'warning',
-        },
-        {
-          id: 'approval',
-          label: ['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(row.dossierStatus) ? 'Đã duyệt' : 'Chờ duyệt',
-          tone: ['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(row.dossierStatus) ? 'success' : 'default',
-        },
-      ];
-
-      // 8 PCN workflow stages breakdown
-      const stages: DossierComponentStage[] = [
-        {
-          id: 'intake',
-          name: 'Đề nghị',
-          status: 'COMPLETED',
-          statusLabel: 'Đã nhận',
-        },
-        {
-          id: 'documents',
-          name: 'Tài liệu',
-          status: row.missingRequiredCount > 0 ? 'MISSING' : 'COMPLETED',
-          statusLabel: `${row.requiredDocumentPresent}/${row.requiredDocumentTotal}`,
-          actionLabel: 'Mở',
-          onAction: () => onOpenDossier(row.dossierId),
-        },
-        {
-          id: 'evaluation',
-          name: 'Hiện trường',
-          status: ['EVALUATION', 'TESTING', 'REVIEW', 'APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(row.dossierStatus)
-            ? 'COMPLETED'
-            : row.dossierStatus === 'INTAKE_REVIEW' || row.dossierStatus === 'AWAITING_DOCUMENTS'
-            ? 'WAITING'
-            : 'IN_PROGRESS',
-          statusLabel: row.evaluationAt ? 'Đã đánh giá' : 'Chờ ĐG',
-        },
-        {
-          id: 'samples',
-          name: 'Mẫu thử',
-          status: (row.sampleQuantity ?? 0) > 0 ? 'COMPLETED' : 'WAITING',
-          statusLabel: `${row.sampleQuantity || 1} mẫu`,
-        },
-        {
-          id: 'lab',
-          name: 'Gửi PTN',
-          status: row.labStatuses.length > 0 ? 'IN_PROGRESS' : 'WAITING',
-          statusLabel: row.labStatuses.length > 0 ? 'Đã gửi' : 'Chưa gửi',
-        },
-        {
-          id: 'results',
-          name: 'KQTN',
-          status: row.lastResultReceivedAt ? 'COMPLETED' : 'WAITING',
-          statusLabel: row.lastResultOutcome ? 'Đã có KQ' : 'Chờ KQ',
-        },
-        {
-          id: 'review',
-          name: 'Phê duyệt',
-          status: ['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(row.dossierStatus) ? 'COMPLETED' : 'LOCKED',
-          statusLabel: ['APPROVED', 'ISSUED', 'DELIVERED', 'ARCHIVED'].includes(row.dossierStatus) ? 'Đã duyệt' : 'Chưa duyệt',
-        },
-        {
-          id: 'issuance',
-          name: 'Phát hành',
-          status: ['ISSUED', 'DELIVERED', 'ARCHIVED'].includes(row.dossierStatus) ? 'COMPLETED' : 'LOCKED',
-          statusLabel: row.issuanceNumber ? 'Đã cấp CN' : 'Chưa cấp',
-        },
-      ];
-
-      return {
-        id: row.dossierId,
-        domain: 'PCN',
-        primaryCode: row.dossierCode,
-        secondaryCode: `ĐN: ${row.registrationCode}`,
-        status: row.dossierStatus,
-        statusLabel: statusLabel(row.dossierStatus),
-        customerName: row.customerName || 'Chưa có khách hàng',
-        productName: row.productName || 'Chưa có sản phẩm',
-        brandOrGroup: [row.brand, row.model].filter(Boolean).join(' · '),
-        fieldOrCatalogBadge: row.fieldCodes.join(', '),
-        ownerName: row.ownerUsername || 'Chưa phân công',
-        currentStepLabel: [row.stationTitle, row.stationActionLabel].filter(Boolean).join(' · '),
-        completenessPercent: row.completenessScore,
-        completenessLabel: `${row.completenessScore}%`,
-        missingRequiredCount: row.missingRequiredCount,
-        businessBadges,
-        deepSearchTokens: [
-          row.registrationCode,
-          row.dossierCode,
-          row.customerName,
-          row.productName,
-          row.stationTitle,
-          typeof row.sampleQuantity === 'number' ? String(row.sampleQuantity) : undefined,
-          row.ownerUsername,
-          row.brand,
-          row.model,
-          ...row.fieldCodes,
-          ...row.labStatuses,
-        ].filter(Boolean),
-        nextAction: {
-          title: row.stationActionLabel || 'Tiếp tục xử lý hồ sơ',
-          reason:
-            row.missingRequiredCount > 0
-              ? `Còn ${row.missingRequiredCount} tài liệu bắt buộc cần bổ sung.`
-              : `Hồ sơ sẵn sàng thực hiện bước ${row.stationTitle}.`,
-          owner: row.ownerUsername || 'Chưa phân công',
-          actionLabel: row.stationActionLabel || 'Tiếp tục xử lý',
-          onAction: () => onOpenDossier(row.dossierId),
-        },
-        blockers,
-        stages,
-      };
-    });
-  }, [filteredRows, onOpenDossier]);
-
-  // Auto-expand card on search match
-  useEffect(() => {
-    if (!query || !query.trim()) return;
-    const q = query.trim().toLowerCase();
-    const matchingIds = itemModels
-      .filter((item) => {
-        const tokens = [
-          item.primaryCode,
-          item.secondaryCode,
-          item.customerName,
-          item.productName,
-          item.brandOrGroup,
-          item.ownerName,
-          ...(item.deepSearchTokens || []),
-        ]
-          .filter(Boolean)
-          .map((t) => String(t).toLowerCase());
-
-        return tokens.some((t) => t.includes(q));
-      })
-      .map((i) => i.id);
-
-    if (matchingIds.length > 0) {
-      setExpandedIds((prev) => {
-        const next = new Set(prev);
-        matchingIds.forEach((id) => next.add(id));
-        return next;
-      });
-    }
-  }, [query, itemModels]);
-
   return (
     <section data-testid="pcn-dossier-queue" className="min-w-0 space-y-3 p-3 md:p-4" aria-label="Hàng đợi hồ sơ PCN">
       {/* Header: Title and View Switcher (Zero KPI Viewport Wastage) */}
@@ -331,42 +109,6 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-600">PCN · Hàng đợi công việc</p>
           <h2 className="mt-0.5 text-sm md:text-base font-black text-slate-950">Mở đúng hồ sơ, xử lý đúng việc</h2>
-        </div>
-
-        {/* View Switcher (DDT pattern) */}
-        <div role="group" aria-label="Chế độ hiển thị hồ sơ" className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setViewMode('card')}
-            aria-label="Xem dạng thẻ"
-            aria-pressed={viewMode === 'card'}
-            className={`mobile-touch-target flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-3 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
-              viewMode === 'card'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-            title="Xem dạng thẻ chuẩn DDT"
-          >
-            <LayoutGrid size={13} />
-            <span className="sm:hidden">Thẻ</span>
-            <span className="hidden sm:inline">Dạng thẻ</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('table')}
-            aria-label="Xem dạng bảng"
-            aria-pressed={viewMode === 'table'}
-            className={`mobile-touch-target flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-3 text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
-              viewMode === 'table'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-            title="Xem bảng truyền thống"
-          >
-            <List size={13} />
-            <span className="sm:hidden">Bảng</span>
-            <span className="hidden sm:inline">Dạng bảng</span>
-          </button>
         </div>
       </div>
 
@@ -464,44 +206,15 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
           : `Đang hiển thị ${filteredRows.length} trong ${rows.length} hồ sơ PCN.`}
       </p>
 
-      {/* Grid: Desktop 2 Columns, Mobile 1 Column */}
+      {/* Bảng hồ sơ PCN */}
       {filteredRows.length > 0 ? (
-        viewMode === 'card' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {itemModels.map((item) => {
-              const quickActions: DossierQuickAction[] = [
-                {
-                  id: 'open-detail',
-                  label: 'Mở chi tiết',
-                  icon: FolderOpen,
-                  tone: 'primary',
-                  onClick: () => onOpenDossier(item.id),
-                },
-              ];
-
-              return (
-                <PgdcnDossierCard
-                  key={item.id}
-                  item={item}
-                  quickActions={quickActions}
-                  isExpanded={expandedIds.has(item.id)}
-                  onToggleExpand={() => toggleExpand(item.id)}
-                  onOpenDetail={() => onOpenDossier(item.id)}
-                  onOpenPeek={(item) => setPeekItem(item)}
-                  searchQuery={query}
-                />
-              );
-            })}
-          </div>
-        ) : (
-          /* Table View (Secondary Traditional Table) */
-          <div
-            data-testid="pcn-dossier-table-scroll"
-            role="region"
-            aria-label="Bảng hồ sơ PCN, cuộn ngang để xem các cột khác"
-            tabIndex={0}
-            className="mobile-scroll-x min-w-0 max-w-full overflow-x-auto overscroll-x-contain touch-pan-x rounded-xl border border-slate-200 bg-white shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
-          >
+        <div
+          data-testid="pcn-dossier-table-scroll"
+          role="region"
+          aria-label="Bảng hồ sơ PCN, cuộn ngang để xem các cột khác"
+          tabIndex={0}
+          className="mobile-scroll-x min-w-0 max-w-full overflow-x-auto overscroll-x-contain touch-pan-x rounded-xl border border-slate-200 bg-white shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+        >
             <p className="border-b border-slate-100 px-3 py-2 text-[11px] text-slate-600 sm:hidden">Vuốt ngang để xem đầy đủ bảng hồ sơ.</p>
             <table aria-label="Bảng hàng đợi hồ sơ PCN" className="w-full min-w-[980px] border-collapse text-left text-sm">
               <caption className="sr-only">Danh sách hồ sơ PCN đang chờ xử lý</caption>
@@ -569,7 +282,6 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
               </tbody>
             </table>
           </div>
-        )
       ) : (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <Layers size={28} className="mx-auto text-slate-300" />

@@ -82,7 +82,7 @@ test('visible PGD work controls use readable labels and 44px mobile targets', ()
   assert.doesNotMatch(pgdStepWork, /<button[^>]*onClick=\{onCompleteCurrent\}[^>]*>[^<]*(?:Bắt đầu xử lý|Hoàn tất việc)/, 'the selected-step panel does not render a duplicate completion mutation');
 
   assert.ok(/openCreateRequest\} className="mobile-touch-target inline-flex min-h-11[^\"]*text-\[11px\]/.test(pgdWorkspace), 'request creation action meets touch and type size');
-  assert.ok(/className=\{`mobile-touch-target min-h-11 flex items-center gap-1 px-2.5 py-1 text-xs/.test(pgdWorkspace), 'register card/table toggles meet the mobile target size');
+  assert.ok(/PgdRegisterTable/.test(pgdWorkspace), 'register table view is active without card toggle');
   assert.ok(/className="mobile-touch-target pgdcn-toolbar-actions inline-flex min-h-11 min-w-11/.test(pgdWorkspace), 'register refresh action meets mobile target size');
   assert.ok(/<p className="mt-0\.5 text-\[11px\] text-slate-400">Danh sách hồ sơ phát sinh trong ứng dụng; mở dòng để lập biên bản và đóng gói\.<\/p>/.test(pgdWorkspace), 'register instruction is readable');
   assert.ok(/<thead className="bg-slate-50 text-\[11px\]/.test(pgdWorkspace), 'register table decision headers are readable');
@@ -102,7 +102,7 @@ test('active PGD station and evidence controls keep readable form text and touch
   assert.ok(/className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-rose-200 bg-white px-2 text-\[11px\]/.test(caseEvidence), 'sample removal action meets touch and type size');
   assert.ok(pgdWorkspace.includes('text-[11px] font-black text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">Sửa thông tin hồ sơ'), 'PGD dossier edit action is readable');
   assert.ok(pgdWorkspace.includes('text-[11px] font-black text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Bot'), 'PGD contextual assistant action is readable');
-  assert.ok(pgdWorkspace.includes(`data-testid="pgd-dossier-workflow-rail"`) && pgdWorkspace.includes("Tiến trình 12 bước PGD") && pgdWorkspace.includes(`data-testid="pgd-dossier-step-work-state"`) && pgdWorkspace.includes("Đang mở") && pgdWorkspace.includes("Mở để xem"), "12-step rail and checklist expose readable disclosure states");
+  assert.ok(pgdWorkspace.includes('<PgdDossierFlow') && pgdWorkspace.includes('lg:grid-cols-[65%_35%]'), 'workflow rail and 65/35 workspace are active');
   assert.ok(pgdWorkspace.includes('text-[11px] leading-4 text-amber-800">Theo bảng cỡ lô của QT-GĐ-14'), 'sampling instruction is readable');
   assert.ok(pgdWorkspace.includes('mobile-touch-target min-h-11 flex items-center gap-2 self-end rounded-lg border border-amber-200 bg-white px-2.5 py-2 text-[11px] font-bold text-amber-900'), 'sampling option is a full mobile target');
   assert.ok(pgdWorkspace.includes('text-[11px] text-slate-700">{plan ? <div className="grid gap-2 sm:grid-cols-4">'), 'sampling counts use readable text');

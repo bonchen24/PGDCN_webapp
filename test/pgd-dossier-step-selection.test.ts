@@ -5,7 +5,7 @@ import type { PgdDossierFlowStepId } from '../components/PgdDossierFlow';
 import * as pgdWorkspace from '../components/PgdWorkspace';
 import type { PgdInspectionStatus } from '../utils/pgdDomain';
 
-test('PGD detail preserves accessible step selection and reconciles request and deep-link changes', () => {
+test('PGD detail preserves accessible step selection and reconciles request and deep-link changes across 7 stages', () => {
   const resolver = (pgdWorkspace as unknown as Record<string, unknown>).reconcilePgdDossierStepSelection;
   assert.equal(typeof resolver, 'function');
   const reconcilePgdDossierStepSelection = resolver as (input: {
@@ -16,36 +16,45 @@ test('PGD detail preserves accessible step selection and reconciles request and 
     previousContext: { requestId: string; initialStepId?: PgdDossierFlowStepId };
   }) => string;
 
+  // Selected stage 2 (review-assignment) while at stage 5 (WAITING_LAB_RESULTS) -> allowed to inspect past stage
   assert.equal(reconcilePgdDossierStepSelection({
-    selectedStepId: 'capability',
+    selectedStepId: 'review-assignment',
     status: 'WAITING_LAB_RESULTS',
     requestId: 'request-1',
     previousContext: { requestId: 'request-1' },
-  }), 'capability');
+  }), 'review-assignment');
+
+  // Forward jump to stage 4 (execution) while at stage 3 (PREPARING) -> clamped to current stage (plan)
   assert.equal(reconcilePgdDossierStepSelection({
-    selectedStepId: 'sampling',
+    selectedStepId: 'execution',
     status: 'PREPARING',
     requestId: 'request-1',
     previousContext: { requestId: 'request-1' },
   }), 'plan');
+
+  // Switching request context with no initialStepId resets to the target request current stage (results-evaluation for WAITING_LAB_RESULTS)
   assert.equal(reconcilePgdDossierStepSelection({
-    selectedStepId: 'capability',
+    selectedStepId: 'review-assignment',
     status: 'WAITING_LAB_RESULTS',
     requestId: 'request-2',
     previousContext: { requestId: 'request-1' },
-  }), 'lab-result');
+  }), 'results-evaluation');
+
+  // Deep-link initialStepId preserved if it is a completed or current stage
   assert.equal(reconcilePgdDossierStepSelection({
-    selectedStepId: 'report',
+    selectedStepId: 'reporting-approval',
     status: 'WAITING_LAB_RESULTS',
     requestId: 'request-1',
-    initialStepId: 'field',
-    previousContext: { requestId: 'request-1', initialStepId: 'capability' },
-  }), 'field');
+    initialStepId: 'execution',
+    previousContext: { requestId: 'request-1', initialStepId: 'review-assignment' },
+  }), 'execution');
+
+  // Deep-link forward jump clamped to intake for DRAFT
   assert.equal(reconcilePgdDossierStepSelection({
-    selectedStepId: 'report',
+    selectedStepId: 'reporting-approval',
     status: 'DRAFT',
     requestId: 'request-1',
-    initialStepId: 'field',
+    initialStepId: 'execution',
     previousContext: { requestId: 'request-1' },
   }), 'intake');
 });

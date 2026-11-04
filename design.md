@@ -120,15 +120,60 @@ Mỗi node là một **vùng thao tác và cổng bắt buộc**: người đư�
 - Upload/tải lên trong Node là đường phụ cho tài liệu ngoại sinh (KQTN, ảnh, bản scan đã ký, chứng cứ khách hàng). UI phải phân biệt **Soạn thảo tài liệu** với **Bổ sung file ngoại sinh**, không đẩy người dùng vào upload PDF để thay cho biểu mẫu nội bộ.
 - Bề mặt **Soát xét hồ sơ** phải chiếu từ checklist, Node runtime và dữ liệu Đề nghị/KQTN hiện hành; tối thiểu hiển thị người đang thao tác, vai trò kế tiếp, tài liệu thiếu/đã sinh/đã xác nhận, cảnh báo mâu thuẫn và thao tác trả sửa. Soát xét là read/write theo quyền nghiệp vụ nhưng không tạo lifecycle hoặc collection song song.
 
-#### 0A.2.3. Flow native phẳng theo việc cho lưu trình hồ sơ PGD
+#### 0A.2.3. Quy trình 7 giai đoạn chuẩn hóa PGD (Stage-based Superneat Workflow)
 
-- Trang chi tiết hồ sơ **PGD** dùng một rail native chạy ngang toàn chiều rộng, không render `PgdWorkflowMap`/Archify làm bản đồ chính. Mỗi việc là một tab độc lập, đánh số liên tục `1`, `2`, `3`...; không dùng phân cấp `1.1`, `1.2`.
-- Rail chuẩn gồm 12 việc: `1` Tiếp nhận PYC, `2` Kiểm tra phạm vi & năng lực, `3` Phân công giám định, `4` Lập kế hoạch, `5` Kiểm tra hiện trường, `6` Lấy mẫu & niêm phong, `7` Giao mẫu / lập PYC PTN, `8` Tiếp nhận KQTN, `9` Xem xét KQTN, `10` Lập báo cáo, `11` Phê duyệt & ký, `12` Trả kết quả & lưu trữ.
-- Mỗi tab hiển thị số thứ tự, nhãn việc, loại (`FILE`, `ACTION`, `APPROVAL`, `END`), trạng thái bằng chữ, người phụ trách/projection tiến độ khi có và cue khóa. Các loại bước dùng blue accent của PGD; màu loại và màu trạng thái là hai token độc lập.
-- Tab đang chọn mở đúng vùng công việc tương ứng bên dưới. Các form PGD hiện hành (`PgdCaseEvidencePanel`, `PgdDossierOperationsPanel`, các panel phân công/kế hoạch/hiện trường/PTN/báo cáo) được tái sử dụng theo việc, không tạo API hoặc trạng thái lifecycle mới. Các việc nhỏ chỉ là projection UI của năm trạm nghiệp vụ hiện có.
-- Bước chưa tới được xem nhãn/cấu hình nhưng bị khóa thao tác; bước hiện tại và bước trước được mở theo `getPgdOperationalStepAccess`. Các nút lưu, upload, sinh tài liệu, ghi nhận KQTN, phê duyệt, tải gói hồ sơ và đóng hồ sơ tiếp tục đi qua callback/store/RBAC hiện hành.
-- Mobile giữ cùng chuỗi bằng `mobile-scroll-x` bên trong rail, panel công việc nằm dưới rail trong vùng `min-w-0`/cuộn dọc; không tạo body-level horizontal overflow. Rail hỗ trợ bàn phím và mỗi trạng thái màu luôn đi kèm nhãn/icon.
-- Trang quản lý PGD dùng **Hàng đợi hồ sơ** làm projection mặc định: mỗi dòng/card phải cho thấy mã PYC, khách hàng, đối tượng, việc hiện tại, mức hoàn thiện, tài liệu còn thiếu, chủ hồ sơ và nút mở hồ sơ. **Sổ dữ liệu** giữ ở chế độ phụ để chỉnh cell/bảng khi cần, không thay thế hàng đợi công việc.
+- **Quyết định chuẩn hóa 7 giai đoạn**: Kế thừa toàn bộ 12 bước nghiệp vụ truyền thống của PGD nhưng tinh gọn thành **7 giai đoạn chính** (`01 → 02 → 03 → 04 → 05 → 06 → 07`). Giao diện loại bỏ hoàn toàn các card nặng 218px và thanh 12 node cồng kềnh, chuyển sang thanh tiến trình Superneat compact, mật độ thông tin cao.
+- **Bảng đối chiếu 12 bước cũ → 7 giai đoạn chuẩn hóa**:
+  | STT Giai đoạn | Mã giai đoạn | Tên giai đoạn chính | Nghiệp vụ tích hợp từ 12 bước cũ | Loại |
+  | :--- | :--- | :--- | :--- | :--- |
+  | **01** | `intake` | **Tiếp nhận hồ sơ** | 1. Tiếp nhận PYC & kiểm tra tính đầy đủ hồ sơ đầu vào | `FILE` |
+  | **02** | `review-assignment` | **Xem xét & Phân công** | 2. Kiểm tra phạm vi, năng lực kỹ thuật<br>3. Phân công giám định viên & người soát xét | `APPROVAL` |
+  | **03** | `plan` | **Lập kế hoạch** | 4. Lập kế hoạch giám định & thông báo khách hàng | `FILE` |
+  | **04** | `execution` | **Thực hiện giám định** | 5. Kiểm tra hiện trường & lập biên bản<br>6. Lấy mẫu & niêm phong mẫu<br>7. Giao mẫu PTN / Lập PYC PTN | `ACTION` |
+  | **05** | `results-evaluation` | **Xử lý & Đánh giá kết quả** | 8. Tiếp nhận phiếu KQTN từ PTN<br>9. Xem xét, đánh giá sự phù hợp của KQTN | `APPROVAL` |
+  | **06** | `reporting-approval` | **Báo cáo & Phê duyệt** | 10. Lập dự thảo báo cáo giám định<br>11. Phê duyệt chuyên môn & ký chứng thư | `APPROVAL` |
+  | **07** | `issuance-archive` | **Trả kết quả & Lưu trữ** | 12. Bàn giao chứng thư cho khách hàng & hoàn tất đóng hồ sơ lưu trữ | `END` |
+
+- **Cấu trúc phân cấp 3 tầng**:
+  `Bộ hồ sơ (Dossier) → 7 Giai đoạn (Stages) → Danh mục công việc (Tasks) & Tài liệu (Documents)`.
+  - Mỗi giai đoạn quản lý danh sách tasks và checklist tài liệu tương ứng, có trạng thái thực hiện, điều kiện hoàn thành và người phụ trách.
+  - Các công việc/tài liệu không áp dụng cho loại hồ sơ được đánh dấu `Không áp dụng` (Waiver), không làm tắc nghẽn quy trình.
+- **Ánh xạ trạng thái (Lifecycle mapping)**:
+  - 1: `DRAFT` → Giai đoạn 1 (`intake`)
+  - 2: `REJECTED`, `ON_HOLD`, `CAPABILITY_REVIEW`, `READY_TO_EXECUTE` → Giai đoạn 2 (`review-assignment`)
+  - 3: `PREPARING` → Giai đoạn 3 (`plan`)
+  - 4: `FIELD_INSPECTION` → Giai đoạn 4 (`execution`)
+  - 5: `WAITING_LAB_RESULTS`, `RESULTS_REVIEW` → Giai đoạn 5 (`results-evaluation`)
+  - 6: `TECHNICAL_REVIEW`, `LEADERSHIP_APPROVAL` → Giai đoạn 6 (`reporting-approval`)
+  - 7: `SIGNED`, `RESULT_RETURNED`, `ARCHIVED` → Giai đoạn 7 (`issuance-archive`)
+- **Tương thích ngược**:
+  Hàm `canonicalizePgdStepId` quy đổi mượt mà các mã định danh legacy (`capability`, `assignment`, `sampling`, `lab-request`, `lab-result`,...) về đúng 7 giai đoạn cha mà không làm gián đoạn bookmark hoặc dữ liệu cũ.
+- **Bố cục màn hình Superneat (Desktop 65/35 split & Mobile touch rail)**:
+  - Phía trên: Thanh rail ngang hiển thị 7 tab (`01 → 07`) với số thứ tự, nhãn, loại và tiến độ xác minh. Tab được chọn có viền `ring-2 ring-blue-500 ring-offset-1`.
+  - Cột chính (65%): Bảng danh mục công việc trong giai đoạn (Stage Tasks Breakdown), kèm các form nghiệp vụ tích hợp và panel thao tác.
+  - Cột phụ (35%): Trợ lý AI TVCI, căn cứ quy chuẩn kỹ thuật (QC20), nhật ký hồ sơ và bằng chứng hiện trường.
+  - Mobile: Rail cuộn ngang cảm ứng mượt mà (`mobile-scroll-x`), tab chuyển đổi linh hoạt giữa Công việc (65%) và Hồ sơ/Trợ lý (35%).
+
+#### 0A.2.4. Chuẩn hóa 7 giai đoạn cho PCN & Loại bỏ hoàn toàn giao diện Thẻ (100% Data Table)
+
+- **Chuẩn hóa 7 giai đoạn thống nhất cho PCN**:
+  Đồng bộ mô hình quy trình chứng nhận PCN về 7 giai đoạn chính tương đương PGD, loại bỏ hoàn toàn thanh tiến trình 15 node cồng kềnh trên rail chính:
+  | STT | Mã giai đoạn | Tên giai đoạn chính PCN | Danh mục node/công việc con tương ứng | Loại |
+  | :--- | :--- | :--- | :--- | :--- |
+  | **01** | `intake` | **Tiếp nhận hồ sơ** | Đề nghị chứng nhận (`proposal`), Hồ sơ thương mại/hợp đồng (`commercial`) | `FILE` |
+  | **02** | `review-assignment` | **Xem xét & Phân công** | Phân công chuyên gia chứng nhận (`assignment`) | `APPROVAL` |
+  | **03** | `plan` | **Lập kế hoạch** | Kế hoạch đánh giá chứng nhận sản phẩm (`evaluation-plan`) | `FILE` |
+  | **04** | `execution` | **Thực hiện đánh giá & lấy mẫu** | Kiểm tra hiện trường (`field-inspection`), Lập PYC PTN (`pyc`), Mã hóa mẫu (`sample-coding`), Giao nhận mẫu (`sample-handover`), Trả mẫu (`sample-return`) | `ACTION` |
+  | **05** | `results-evaluation` | **Xử lý & Đánh giá kết quả** | Tiếp nhận KQTN (`receive-test-result`), Hoàn thiện kết quả đánh giá (`complete-result`) | `APPROVAL` |
+  | **06** | `reporting-approval` | **Báo cáo & Phê duyệt** | Dự thảo Giấy chứng nhận (`certificate`), Dự thảo Quyết định (`decision`), Phê duyệt lãnh đạo (`approval`) | `APPROVAL` |
+  | **07** | `issuance-archive` | **Phát hành & Lưu trữ** | Bàn giao khách hàng (`deliver`), Đóng lưu trữ hồ sơ (`archive`) | `END` |
+- **Cơ chế hiển thị 2 cấp (Two-tier Flow Navigation)**:
+  - Cấp 1 (Main Rail): Thanh 7 tab (`01 → 07`) hiển thị tiến độ vĩ mô của bộ hồ sơ ("Đang ở giai đoạn X/7 · Y/7 giai đoạn đã xong").
+  - Cấp 2 (Stage Sub-tasks Bar): Khi chọn một giai đoạn, hiển thị danh mục các công việc con (`nodes`) của giai đoạn đó. Người dùng click chọn công việc để mở panel thao tác chuyên biệt (`PcnDossierNodeWorkPanel`).
+  - Dữ liệu snapshot, requirement, document và transition của 15 node runtime được bảo toàn 100%, không bị xáo trộn hoặc làm mất tính tương thích.
+- **Loại bỏ 100% giao diện dạng Thẻ (Card Grid)**:
+  - Toàn bộ các bề mặt quản lý hồ sơ gồm Sổ đăng ký Đề nghị PCN (`PcnWorkspace`), Hàng đợi PCN (`PcnDossierQueueView`), Sổ đăng ký PYC PGD (`PgdWorkspace`), Hàng đợi PGD (`PgdDossierQueueView`) đã loại bỏ triệt để chế độ xem Card grid và các nút toggle `Dạng thẻ / Dạng bảng`.
+  - Cố định hiển thị bằng Data Table chuẩn Superneat: sticky cột mã hồ sơ, thanh trạng thái trực quan, tiến độ hoàn thiện phần trăm, hạn xử lý, phân công và cụm thao tác nhanh; trang bị `mobile-scroll-x` chống tràn màn hình.
 
 Sau khi được Lãnh đạo duyệt, hồ sơ phải đi tuần tự qua `APPROVED` → `ISSUED` → `DELIVERED` → `ARCHIVED`. Thao tác giao khách hàng phải lưu thời điểm, người/đơn vị nhận và ghi chú giao nhận; chỉ hồ sơ đã giao mới được chuyển vào kho lưu trữ. Các chuyển tiếp tạo bộ trình duyệt (`TECHNICAL_REVIEW → WAITING_APPROVAL`), quyết định phê duyệt (`WAITING_APPROVAL → APPROVED` hoặc trả về kỹ thuật), cấp số (`APPROVED → ISSUED`), giao (`ISSUED → DELIVERED`) và lưu trữ (`DELIVERED → ARCHIVED`) phải đi qua boundary chuyên biệt của bộ phát hành để cập nhật đồng thời `IssuancePackage`, hồ sơ, bước liên quan và audit; mutation metadata chung của `CertificationDossier` phải từ chối các chuyển tiếp này. Không xóa hoặc ghi đè metadata phát hành khi lưu trữ.
 

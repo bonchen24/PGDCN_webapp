@@ -235,7 +235,7 @@ async function createPostgresDump(filePath: string): Promise<void> {
   ]);
 }
 
-export async function createBackup(label: 'manual'): Promise<BackupInfo> {
+export async function createBackup(label: 'manual' | 'auto' = 'manual'): Promise<BackupInfo> {
   ensureBackupDir();
   const filename = `${backupPrefix}_${label}_${timestampSlug(new Date())}.zip`;
   const archivePath = path.join(BACKUP_DIR, filename);
@@ -383,6 +383,20 @@ export function applyRetention(
     } catch (err: any) {
       console.error(`Failed to remove stale backup ${backup.filename}:`, err.message);
     }
+  }
+
+  try {
+    const staleDumps = fs.readdirSync(BACKUP_DIR).filter((f) => f.startsWith('.') && f.endsWith('.dump'));
+    const now = Date.now();
+    for (const f of staleDumps) {
+      const fullPath = path.join(BACKUP_DIR, f);
+      const stat = fs.statSync(fullPath);
+      if (now - stat.mtimeMs > 60 * 60 * 1000) {
+        fs.unlinkSync(fullPath);
+      }
+    }
+  } catch {
+    // Stale dump cleanup is best-effort
   }
 }
 

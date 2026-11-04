@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const read = (relativePath: string) => fs.readFileSync(new URL(`../${relativePath}`, import.meta.url), 'utf8');
 
-test('PGD dossier detail uses a flat native rail with twelve numbered work tabs', () => {
+test('PGD dossier detail uses a flat native rail with seven standardized stages', () => {
   const flow = read('components/PgdDossierFlow.tsx');
   const workspace = read('components/PgdWorkspace.tsx');
   for (const marker of [
@@ -15,18 +15,13 @@ test('PGD dossier detail uses a flat native rail with twelve numbered work tabs'
     'aria-selected',
     'ArrowRight',
     'Home',
-    'Tiếp nhận PYC',
-    'Kiểm tra phạm vi & năng lực',
-    'Phân công giám định',
+    'Tiếp nhận hồ sơ',
+    'Xem xét & Phân công',
     'Lập kế hoạch',
-    'Kiểm tra hiện trường',
-    'Lấy mẫu & niêm phong',
-    'Giao mẫu / lập PYC PTN',
-    'Tiếp nhận KQTN',
-    'Xem xét KQTN',
-    'Lập báo cáo',
-    'Phê duyệt & ký',
-    'Trả kết quả & lưu trữ',
+    'Thực hiện giám định',
+    'Xử lý & Đánh giá kết quả',
+    'Báo cáo & Phê duyệt',
+    'Trả kết quả & Lưu trữ',
     'FILE',
     'ACTION',
     'APPROVAL',
@@ -38,7 +33,7 @@ test('PGD dossier detail uses a flat native rail with twelve numbered work tabs'
   assert.doesNotMatch(workspace, /PgdWorkflowMap/);
 });
 
-test('PGD native step panel keeps the existing work actions behind each tab', () => {
+test('PGD native step panel keeps the existing work actions behind each stage', () => {
   const panel = read('components/PgdDossierStepWorkPanel.tsx');
   const workspace = read('components/PgdWorkspace.tsx');
   for (const marker of [
@@ -49,6 +44,8 @@ test('PGD native step panel keeps the existing work actions behind each tab', ()
     'PgdFieldInspectionStepPanel',
     'PgdLabRequestStepPanel',
     'PgdResultsStepPanel',
+    'Bắt đầu xử lý',
+    'Hoàn tất giai đoạn',
     'Xem danh sách tài liệu',
     'Mở hồ sơ đầy đủ',
   ]) assert.match(panel, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
@@ -70,5 +67,5 @@ test('PGD dossier rail reveals the selected tab through its own reduced-motion-a
   assert.match(scrollEffect, /scrollContainer\.scrollLeft = targetLeft/);
   assert.doesNotMatch(scrollEffect, /\.focus\(/);
   assert.doesNotMatch(flow, /\.scrollIntoView\(/);
-  assert.match(flow, /md:hidden[^\n]*Vuốt ngang để xem đủ 12 bước/);
+  assert.match(flow, /md:hidden[^\n]*Vuốt ngang để xem đủ 7 giai đoạn quy trình/);
 });
