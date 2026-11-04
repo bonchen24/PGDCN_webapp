@@ -5,6 +5,7 @@ import { getDocumentPayload, mapDocumentRow } from '@/lib/server/collections';
 import { jsonBadRequest, jsonNotFound, jsonOk } from '@/lib/server/response';
 import { toPcnUserAccount } from '@/utils/pcnAuth';
 import { diffActivityFields } from '@/utils/activityLog';
+import { buildPgdNotificationDraft } from '@/utils/pgdcnNotification';
 import {
   assignPgdDossierOwner,
   PGD_COLLECTIONS,
@@ -66,9 +67,11 @@ export async function PUT(
       const owner = ownerResult.rows[0]
         ? toPcnUserAccount({ documentId: ownerResult.rows[0].document_id, data: ownerResult.rows[0].data || {} })
         : undefined;
-      if (!owner || owner.active === false || !owner.departmentScopes?.includes('PGD') || owner.pgdRole === 'PGD_VIEWER') {
+      if (!owner || owner.active === false || !owner.departmentScopes?.includes('PGD') || owner.pgdRole === 'PGD_VIEWER' || (owner.systemRole || owner.role) === 'viewer') {
         throw Object.assign(new Error('Chủ hồ sơ phải là nhân sự đang hoạt động và có scope PGD.'), { statusCode: 400 });
       }
+
+      if (current.ownerUsername === owner.username) return current;
 
       const now = new Date().toISOString();
       const next = assignPgdDossierOwner(current, owner.username, now);
@@ -79,7 +82,7 @@ export async function PUT(
       );
 
       await writePgdActivity(client, actor, {
-        action: 'UPDATED',
+        action: 'ASSIGNED',
         entityType: 'PGD_REQUEST',
         entityId: next.id,
         entityLabel: next.requestCode,
@@ -87,6 +90,15 @@ export async function PUT(
         summary: `Phân công lại chủ hồ sơ PGD ${next.requestCode} cho ${owner.username}`,
         changes: diffActivityFields(current, next, ['ownerUsername', 'ownerAssignedAt']),
         idSuffix: `owner-${next.id}-${now}`,
+        notify: buildPgdNotificationDraft({
+          entityType: 'PGD_REQUEST',
+          action: 'ASSIGNED',
+          entityId: next.id,
+          entityLabel: next.requestCode,
+          requestCode: next.requestCode,
+          actorName: actor.name || actor.username,
+          targetUsernames: [owner.username],
+        }),
       });
 
       return next;

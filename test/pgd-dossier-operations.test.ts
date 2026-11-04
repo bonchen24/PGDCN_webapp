@@ -52,6 +52,14 @@ function request(): PgdInspectionRequest {
   return createPgdInspectionRequest(intake, '2026-09-03T01:00:00.000Z');
 }
 
+test('PGD creation ignores supplied owner snapshots until explicit assignment', () => {
+  const created = createPgdInspectionRequest({ ...intake, ownerUsername: 'creator', ownerAssignedAt: '2026-09-03T01:00:00.000Z' });
+  assert.equal(created.ownerUsername, '');
+  assert.equal(created.ownerAssignedAt, undefined);
+  assert.equal(created.id, intake.id);
+  assert.equal(created.status, 'DRAFT');
+});
+
 test('PGD request has an explicit dossier owner and manager reassignment keeps an audit timestamp', () => {
   const initial = assignPgdDossierOwner(request(), 'nv.phu.trach', '2026-09-03T02:00:00.000Z');
   assert.equal(initial.ownerUsername, 'nv.phu.trach');

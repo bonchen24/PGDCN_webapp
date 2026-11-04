@@ -68,6 +68,16 @@ test('PCN dossier assignment notification targets newly assigned operators', () 
   assert.deepEqual(notification.targetUsernames, ['new-owner', 'reviewer-qc4']);
 });
 
+test('PCN owner-only assignment notifies only the new owner and leaves existing reviewer and evaluator targets out', () => {
+  const notification = buildPcnNotificationFromActivity(activity({
+    action: 'ASSIGNED', entityType: 'PCN_DOSSIER',
+    changes: [{ field: 'ownerUsername', before: 'creator', after: 'selected-owner' }],
+  }));
+  assert.ok(notification);
+  assert.equal(notification.action, 'ASSIGNED');
+  assert.deepEqual(notification.targetUsernames, ['selected-owner']);
+});
+
 test('import and restore audit entries do not create noisy PCN notifications', () => {
   assert.equal(buildPcnNotificationFromActivity(activity({ source: 'IMPORT' })), null);
   assert.equal(buildPcnNotificationFromActivity(activity({ source: 'RESTORE' })), null);

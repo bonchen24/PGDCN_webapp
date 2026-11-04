@@ -1451,6 +1451,8 @@ export function createPgdInspectionRequest(input: PgdInspectionRequestInput, now
   return {
     ...clone(input),
     requestCode: String(input.requestCode).trim(),
+    ownerUsername: '',
+    ownerAssignedAt: undefined,
     domain: PGD_DOMAIN,
     ...(pgdGroupCode ? { pgdGroupCode } : {}),
     ...(registryMetadata ? { registryMetadata } : {}),
