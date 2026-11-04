@@ -183,47 +183,43 @@ export default function WorkspaceDashboard() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 p-3.5 md:p-5">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-r from-emerald-600/10 via-teal-500/5 to-blue-600/10 p-6 shadow-xs sm:flex sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+      <div className="relative overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-r from-emerald-600/10 via-teal-500/5 to-blue-600/10 px-4 py-2.5 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white/90 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-800">
               <Layers className="h-3 w-3" />
               Bàn làm việc tổng hợp
             </span>
-            <span className="text-xs text-slate-500">•</span>
-            <span className="text-xs font-medium text-slate-600">
-              Phòng Giám định & Chứng nhận
-            </span>
+            <h1 className="text-sm md:text-base font-black tracking-tight text-slate-900 truncate">
+              Bàn làm việc Giám định & Chứng nhận
+            </h1>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-            Bàn làm việc Giám định & Chứng nhận
-          </h1>
-          <p className="text-xs text-slate-600 sm:text-sm">
-            Xin chào, <span className="font-semibold text-slate-900">{currentUser?.name || currentUser?.username}</span>. Theo dõi chỉ số vận hành và tạo hồ sơ nghiệp vụ.
+          <p className="mt-0.5 text-xs text-slate-500 truncate">
+            Xin chào, <strong className="font-semibold text-slate-800">{currentUser?.name || currentUser?.username}</strong> • Theo dõi chỉ số vận hành và tạo hồ sơ nghiệp vụ.
           </p>
         </div>
 
         {/* Primary Action Buttons */}
-        <div className="mt-4 flex flex-wrap items-center gap-2.5 sm:mt-0">
+        <div className="flex shrink-0 items-center gap-2">
           {hasPcn && (
             <Button
               size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs hover:shadow transition-all"
+              className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 text-xs shadow-xs hover:shadow transition-all cursor-pointer"
               onClick={() => setOpenPcnCreate(true)}
             >
-              <PlusCircle className="mr-1.5 h-4 w-4" />
+              <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
               Tạo đề nghị PCN
             </Button>
           )}
           {hasPgd && (
             <Button
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs hover:shadow transition-all"
+              className="h-8 bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 text-xs shadow-xs hover:shadow transition-all cursor-pointer"
               onClick={() => setOpenPgdCreate(true)}
             >
-              <PlusCircle className="mr-1.5 h-4 w-4" />
+              <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
               Tạo phiếu yêu cầu PGD
             </Button>
           )}
@@ -231,17 +227,17 @@ export default function WorkspaceDashboard() {
       </div>
 
       {/* 4 Interactive KPI Stat Filter Cards */}
-      <div>
-        <div className="mb-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wider">
-            <Filter className="h-3.5 w-3.5 text-slate-400" />
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <Filter className="h-3 w-3 text-slate-400" />
             <span>Chỉ số vận hành · Bấm thẻ để lọc hồ sơ</span>
           </div>
           {activeFilter !== 'ALL' && (
             <button
               type="button"
               onClick={() => setActiveFilter('ALL')}
-              className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+              className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
             >
               <X className="h-3 w-3" />
               Xóa bộ lọc ({filterLabels[activeFilter]})
@@ -249,43 +245,43 @@ export default function WorkspaceDashboard() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
           {/* KPI 1: In Progress (Emerald) */}
           <div
             role="button"
             tabIndex={0}
             onClick={() => handleToggleFilter('IN_PROGRESS')}
-            className={`group relative cursor-pointer rounded-xl border bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+            className={`group relative cursor-pointer rounded-xl border bg-white p-2.5 transition-all duration-150 hover:shadow-xs flex items-center gap-3 ${
               activeFilter === 'IN_PROGRESS'
-                ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20 shadow-xs'
+                ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/30 shadow-xs'
                 : 'border-slate-200/90 hover:border-emerald-300'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                Đang xử lý
-              </span>
-              <div className="rounded-lg bg-emerald-100 p-2 text-emerald-700 group-hover:scale-105 transition-transform">
-                <FolderOpen className="h-4 w-4" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+              <FolderOpen className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-1">
+                <span className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Đang xử lý
+                </span>
+                {activeFilter === 'IN_PROGRESS' && (
+                  <Badge variant="outline" className="border-emerald-300 bg-emerald-100 text-[9px] text-emerald-800 font-bold px-1.5 py-0 h-4">
+                    Đang lọc
+                  </Badge>
+                )}
               </div>
-            </div>
-            <div className="mt-2.5 flex items-baseline gap-2">
-              <span className="text-2xl font-black tracking-tight text-emerald-800">
-                {kpis.inProgress}
-              </span>
-              <span className="text-[11px] font-medium text-slate-500">hồ sơ toàn phòng</span>
-            </div>
-            <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-500">
-              <div className="flex items-center gap-1.5">
-                {hasPcn && <span>PCN: <strong className="text-emerald-700">{kpis.pcnWork}</strong></span>}
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl font-black leading-none text-emerald-800">
+                  {kpis.inProgress}
+                </span>
+                <span className="text-[10px] font-medium text-slate-400">hồ sơ toàn phòng</span>
+              </div>
+              <div className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-400 truncate">
+                {hasPcn && <span>PCN: <strong className="font-bold text-emerald-700">{kpis.pcnWork}</strong></span>}
                 {hasPcn && hasPgd && <span>•</span>}
-                {hasPgd && <span>PGD: <strong className="text-blue-700">{kpis.pgdWork}</strong></span>}
+                {hasPgd && <span>PGD: <strong className="font-bold text-blue-700">{kpis.pgdWork}</strong></span>}
               </div>
-              {activeFilter === 'IN_PROGRESS' && (
-                <Badge variant="outline" className="border-emerald-300 bg-emerald-100 text-[10px] text-emerald-800 font-bold py-0">
-                  Đang lọc
-                </Badge>
-              )}
             </div>
           </div>
 
@@ -294,33 +290,35 @@ export default function WorkspaceDashboard() {
             role="button"
             tabIndex={0}
             onClick={() => handleToggleFilter('AWAITING_APPROVAL')}
-            className={`group relative cursor-pointer rounded-xl border bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+            className={`group relative cursor-pointer rounded-xl border bg-white p-2.5 transition-all duration-150 hover:shadow-xs flex items-center gap-3 ${
               activeFilter === 'AWAITING_APPROVAL'
-                ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20 shadow-xs'
+                ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/30 shadow-xs'
                 : 'border-slate-200/90 hover:border-amber-300'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                Chờ phê duyệt
-              </span>
-              <div className="rounded-lg bg-amber-100 p-2 text-amber-700 group-hover:scale-105 transition-transform">
-                <Clock className="h-4 w-4" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+              <Clock className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-1">
+                <span className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Chờ phê duyệt
+                </span>
+                {activeFilter === 'AWAITING_APPROVAL' && (
+                  <Badge variant="outline" className="border-amber-300 bg-amber-100 text-[9px] text-amber-800 font-bold px-1.5 py-0 h-4">
+                    Đang lọc
+                  </Badge>
+                )}
               </div>
-            </div>
-            <div className="mt-2.5 flex items-baseline gap-2">
-              <span className="text-2xl font-black tracking-tight text-amber-700">
-                {kpis.awaitingApproval}
-              </span>
-              <span className="text-[11px] font-medium text-slate-500">cần duyệt</span>
-            </div>
-            <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-500">
-              <span>Mốc phê duyệt 2 cấp</span>
-              {activeFilter === 'AWAITING_APPROVAL' && (
-                <Badge variant="outline" className="border-amber-300 bg-amber-100 text-[10px] text-amber-800 font-bold py-0">
-                  Đang lọc
-                </Badge>
-              )}
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl font-black leading-none text-amber-700">
+                  {kpis.awaitingApproval}
+                </span>
+                <span className="text-[10px] font-medium text-slate-400">cần duyệt</span>
+              </div>
+              <div className="mt-0.5 flex items-center text-[10px] text-slate-400 truncate">
+                <span>Mốc phê duyệt 2 cấp</span>
+              </div>
             </div>
           </div>
 
@@ -329,33 +327,35 @@ export default function WorkspaceDashboard() {
             role="button"
             tabIndex={0}
             onClick={() => handleToggleFilter('OVERDUE')}
-            className={`group relative cursor-pointer rounded-xl border bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+            className={`group relative cursor-pointer rounded-xl border bg-white p-2.5 transition-all duration-150 hover:shadow-xs flex items-center gap-3 ${
               activeFilter === 'OVERDUE'
-                ? 'border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/20 shadow-xs'
+                ? 'border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/30 shadow-xs'
                 : 'border-slate-200/90 hover:border-rose-300'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                Hồ sơ quá hạn
-              </span>
-              <div className="rounded-lg bg-rose-100 p-2 text-rose-700 group-hover:scale-105 transition-transform">
-                <AlertTriangle className="h-4 w-4" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-1">
+                <span className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Hồ sơ quá hạn
+                </span>
+                {activeFilter === 'OVERDUE' && (
+                  <Badge variant="outline" className="border-rose-300 bg-rose-100 text-[9px] text-rose-800 font-bold px-1.5 py-0 h-4">
+                    Đang lọc
+                  </Badge>
+                )}
               </div>
-            </div>
-            <div className="mt-2.5 flex items-baseline gap-2">
-              <span className={`text-2xl font-black tracking-tight ${kpis.overdue > 0 ? 'text-rose-600' : 'text-slate-800'}`}>
-                {kpis.overdue}
-              </span>
-              <span className="text-[11px] font-medium text-slate-500">quá cam kết</span>
-            </div>
-            <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-500">
-              <span>Cần chú ý: <strong className="text-rose-600">{kpis.attention}</strong> hồ sơ</span>
-              {activeFilter === 'OVERDUE' && (
-                <Badge variant="outline" className="border-rose-300 bg-rose-100 text-[10px] text-rose-800 font-bold py-0">
-                  Đang lọc
-                </Badge>
-              )}
+              <div className="flex items-baseline gap-1.5">
+                <span className={`text-xl font-black leading-none ${kpis.overdue > 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+                  {kpis.overdue}
+                </span>
+                <span className="text-[10px] font-medium text-slate-400">quá cam kết</span>
+              </div>
+              <div className="mt-0.5 flex items-center text-[10px] text-slate-400 truncate">
+                <span>Cần chú ý: <strong className="font-bold text-rose-600">{kpis.attention}</strong> hồ sơ</span>
+              </div>
             </div>
           </div>
 
@@ -364,43 +364,43 @@ export default function WorkspaceDashboard() {
             role="button"
             tabIndex={0}
             onClick={() => handleToggleFilter('ALL')}
-            className={`group relative cursor-pointer rounded-xl border bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+            className={`group relative cursor-pointer rounded-xl border bg-white p-2.5 transition-all duration-150 hover:shadow-xs flex items-center gap-3 ${
               activeFilter === 'ALL'
-                ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/20 shadow-xs'
+                ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/30 shadow-xs'
                 : 'border-slate-200/90 hover:border-indigo-300'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                Tổng tiếp nhận
-              </span>
-              <div className="rounded-lg bg-indigo-100 p-2 text-indigo-700 group-hover:scale-105 transition-transform">
-                <CheckCircle2 className="h-4 w-4" />
-              </div>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
+              <CheckCircle2 className="h-4 w-4" />
             </div>
-            <div className="mt-2.5 flex items-baseline gap-2">
-              <span className="text-2xl font-black tracking-tight text-slate-900">
-                {kpis.pcnDossiers + kpis.pgdRequests}
-              </span>
-              <span className="text-[11px] font-medium text-slate-500">toàn thời gian</span>
-            </div>
-            <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-500">
-              <div className="flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-emerald-600" />
-                <span>Vận hành thông suốt</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-1">
+                <span className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Tổng tiếp nhận
+                </span>
+                {activeFilter === 'ALL' && (
+                  <Badge variant="outline" className="border-indigo-300 bg-indigo-100 text-[9px] text-indigo-800 font-bold px-1.5 py-0 h-4">
+                    Mặc định
+                  </Badge>
+                )}
               </div>
-              {activeFilter === 'ALL' && (
-                <Badge variant="outline" className="border-indigo-300 bg-indigo-100 text-[10px] text-indigo-800 font-bold py-0">
-                  Mặc định
-                </Badge>
-              )}
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl font-black leading-none text-slate-900">
+                  {kpis.pcnDossiers + kpis.pgdRequests}
+                </span>
+                <span className="text-[10px] font-medium text-slate-400">toàn thời gian</span>
+              </div>
+              <div className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-400 truncate">
+                <TrendingUp className="h-3 w-3 text-emerald-600 shrink-0" />
+                <span className="truncate">Vận hành thông suốt</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Workspaces Rails: PCN & PGD Cards */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* PCN Section Card */}
         {hasPcn && (
           <div className="rounded-2xl border border-emerald-200/80 bg-white p-5 shadow-xs transition-shadow hover:shadow-md">
