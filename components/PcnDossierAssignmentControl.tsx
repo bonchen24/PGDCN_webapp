@@ -40,6 +40,8 @@ export function PcnDossierAssignmentControl({
   const assignmentOptions = assignableUsers.map((user) => ({
     username: user.username,
     displayName: getPcnUserDisplayName(user.username, users),
+    searchText: [user.username, user.name, user.position, user.departmentRoleCode, user.systemRole].filter(Boolean).join(' '),
+    description: [user.position, user.username].filter(Boolean).join(' · '),
   }));
 
   const resolvedClaimDenial = claimDenial ?? (!currentUser

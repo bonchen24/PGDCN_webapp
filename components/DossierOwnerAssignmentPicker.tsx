@@ -4,7 +4,12 @@ import React, { useId, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import PcnCatalogCombobox from './PcnCatalogCombobox';
 
-export type DossierOwnerAssignmentOption = { username: string; displayName: string };
+export type DossierOwnerAssignmentOption = {
+  username: string;
+  displayName: string;
+  searchText?: string;
+  description?: string;
+};
 
 export type DossierOwnerAssignmentPickerProps = {
   options: readonly DossierOwnerAssignmentOption[];
@@ -93,7 +98,12 @@ export function DossierOwnerAssignmentPicker({
                   id={`${id}-employee`}
                   label="Tìm nhân viên"
                   value={selectedUsername}
-                  options={options.map((option) => ({ value: option.username, label: option.displayName, description: option.username }))}
+                  options={options.map((option) => ({
+                    value: option.username,
+                    label: option.displayName,
+                    searchText: option.searchText,
+                    description: option.description || option.username,
+                  }))}
                   onChange={(username) => { setSelectedUsername(username); setError(''); }}
                   disabled={blocked}
                 />

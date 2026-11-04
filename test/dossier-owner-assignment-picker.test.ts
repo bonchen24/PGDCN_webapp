@@ -15,7 +15,7 @@ async function withPicker(run: (page: Page) => Promise<void>, props = {}) {
         window.mount = (props) => {
           window.calls = [];
           createRoot(document.getElementById('fixture')).render(React.createElement(Picker, {
-            options: [{username:'dang', displayName:'Đặng Ánh'}, {username:'binh', displayName:'Bình Nguyễn'}],
+            options: [{username:'dang', displayName:'Đặng Ánh', searchText:'Trưởng phòng PCN_LEADER manager', description:'Trưởng phòng · dang'}, {username:'binh', displayName:'Bình Nguyễn'}],
             ownerUsername: '', ownerDisplayName: '', canAssign:true, compact:true,
             onAssign: username => { window.calls.push(username); return new Promise((resolve,reject) => {
               window.resolveAssign = resolve; window.rejectAssign = () => reject(new Error('Không thể lưu phân công'));
@@ -107,6 +107,20 @@ test('saving blocks duplicate submissions and dismissal; success closes only aft
     await page.evaluate(() => (window as any).resolveAssign());
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByRole('status')).toContainText('Đã phân công cho Đặng Ánh');
+  });
+});
+
+test('catalog search preserves accent-insensitive position and department/system role metadata', async () => {
+  await withPicker(async (page) => {
+    await page.getByRole('button', { name: 'Phân công người thực hiện' }).click();
+    const search = page.getByRole('combobox', { name: 'Tìm nhân viên' });
+    for (const query of ['truong phong', 'PCN_LEADER', 'manager', 'dang anh truong phong']) {
+      await search.fill(query);
+      await expect(page.getByRole('option', { name: /Đặng Ánh/ })).toBeVisible();
+      assert.equal(await page.getByRole('option', { name: /Bình/ }).count(), 0);
+    }
+    await expect(page.getByRole('option', { name: /Đặng Ánh/ })).toContainText('Trưởng phòng · dang');
+    assert.deepEqual(await page.evaluate(() => (window as any).calls), []);
   });
 });
 

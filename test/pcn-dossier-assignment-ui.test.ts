@@ -15,6 +15,8 @@ test('assignment control exposes manager assignment and staff self-claim states'
   assert.match(source, /DossierOwnerAssignmentPicker/);
   assert.match(source, /canAssign=\{canManageAssignment\}/);
   assert.doesNotMatch(source, /<PcnCatalogCombobox/);
+  assert.match(source, /searchText: \[user\.username, user\.name, user\.position, user\.departmentRoleCode, user\.systemRole\]/);
+  assert.match(source, /description: \[user\.position, user\.username\]/);
 });
 
 test('pipeline card wires the shared assignment control and manager assignment callback', () => {
