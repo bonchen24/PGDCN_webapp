@@ -96,7 +96,7 @@ test('the default runtime entrypoint cannot accidentally launch the legacy DDT s
   assert.doesNotMatch(packageJson, /"dev:ddt"/);
   assert.match(nativeNextDev, /buildPcnChildEnv/);
   assert.match(nativeNextDev, /'next', 'dist', 'bin', 'next'/);
-  assert.match(nativeNextDev, /\[nextBinPath,\s*'dev',\s*'-p',\s*String\(port\)\]/);
+  assert.match(nativeNextDev, /\[nextBinPath,\s*'dev',\s*'-p',\s*String\(port\),\s*'--webpack'\]/);
   assert.match(nativeNextDev, /process\.env\.PORT\s*\|\|\s*'1357'/);
   assert.match(nativePcnEnv, /APP_PROFILE\s*=\s*'pcn'/);
   assert.match(nativePcnEnv, /PORT\s*=\s*'1357'/);
