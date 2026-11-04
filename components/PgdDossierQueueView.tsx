@@ -758,6 +758,7 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
               <p id="pgd-queue-state-filter-label" className="sr-only md:not-sr-only md:mb-1 md:text-[10px] md:font-black md:uppercase md:tracking-wider md:text-slate-400">Trạng thái / tiến độ hồ sơ</p>
               <div role="group" aria-labelledby="pgd-queue-state-filter-label" className="mobile-scroll-x flex max-w-full flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain md:flex-wrap md:overflow-visible md:pb-0">
                 {dossierStateChips.map(renderFilterChip)}
+              </div>
             </div>
           </div>
         </div>
