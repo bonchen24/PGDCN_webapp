@@ -193,6 +193,25 @@ export default function PgdcnDossierTemplatePreview(props: PgdcnDossierTemplateP
 
   const scopeBadges = useMemo(() => formatScopeLabels(model), [model]);
 
+  const nodeConnections = useMemo(() => {
+    const outgoing = new Map<string, DossierTemplateEditorTransition[]>();
+    const incoming = new Map<string, DossierTemplateEditorTransition[]>();
+    for (const transition of model.transitions) {
+      if (!outgoing.has(transition.fromNodeId)) outgoing.set(transition.fromNodeId, []);
+      outgoing.get(transition.fromNodeId)!.push(transition);
+      if (!incoming.has(transition.toNodeId)) incoming.set(transition.toNodeId, []);
+      incoming.get(transition.toNodeId)!.push(transition);
+    }
+    return { outgoing, incoming };
+  }, [model.transitions]);
+
+  const flowSequence = useMemo(() => {
+    return [...model.nodes].sort((a, b) => {
+      if (a.column !== b.column) return a.column - b.column;
+      return a.sortOrder - b.sortOrder;
+    });
+  }, [model.nodes]);
+
   return (
     <article
       data-testid="pgdcn-dossier-template-preview"
@@ -460,6 +479,104 @@ export default function PgdcnDossierTemplatePreview(props: PgdcnDossierTemplateP
           </div>
         )}
       </section>
+
+      {/* Visual Flowchart Pipeline */}
+      {model.nodes.length > 0 && model.transitions.length > 0 && (
+        <section className="space-y-3" aria-label="Sơ đồ luồng đồ họa">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">
+                Sơ đồ luồng quy trình (Flowchart trực quan)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Các trạm công việc được nối bằng mũi tên tuần tự từ khởi tạo đến lưu trữ
+              </p>
+            </div>
+            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+              {model.nodes.length} trạm · {model.transitions.length} luồng chuyển tiếp
+            </span>
+          </div>
+
+          <div className="mobile-scroll-x min-w-0 max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-slate-50 p-4 shadow-2xs">
+            <div className="flex min-w-max items-center gap-2 py-2">
+              {flowSequence.map((node, index) => {
+                const outgoing = nodeConnections.outgoing.get(node.id) || [];
+                const primaryTransition = outgoing[0];
+                const isLast = index === flowSequence.length - 1;
+                const kindLabel = KIND_LABELS[node.kind] || node.kind;
+
+                return (
+                  <div key={node.id} className="flex items-center">
+                    {/* Node Station Card */}
+                    <div
+                      className={`relative flex min-w-[170px] max-w-[210px] flex-col rounded-xl border p-3.5 shadow-xs transition hover:shadow-sm ${
+                        node.kind === 'END'
+                          ? 'border-slate-300 bg-slate-100/90'
+                          : node.kind === 'APPROVAL_TASK'
+                            ? 'border-purple-200 bg-purple-50/70'
+                            : 'border-blue-200 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 text-[10px]">
+                        <span className="rounded-md bg-slate-900 px-1.5 py-0.5 font-mono font-bold text-white">
+                          #{String(index + 1).padStart(2, '0')}
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+                          Cột {node.column}
+                        </span>
+                      </div>
+
+                      <h4 className="mt-2 line-clamp-2 text-xs font-bold text-slate-900" title={node.label}>
+                        {node.label}
+                      </h4>
+
+                      <div className="mt-1 flex items-center justify-between gap-1 text-[10px] text-slate-500">
+                        <span className="truncate">{kindLabel}</span>
+                        {node.slaDays !== undefined && (
+                          <span className="shrink-0 font-medium text-slate-600">
+                            SLA: {node.slaDays}d
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* SVG Flowchart Arrow Connector */}
+                    {!isLast && (
+                      <div className="flex shrink-0 flex-col items-center px-1.5">
+                        {primaryTransition?.label && (
+                          <span className="mb-0.5 max-w-[120px] truncate text-[10px] font-semibold text-blue-700">
+                            {primaryTransition.label}
+                          </span>
+                        )}
+                        <div className="flex items-center">
+                          <div className="h-0.5 w-7 bg-blue-500 sm:w-9" />
+                          <svg
+                            className="-ml-1 h-3.5 w-3.5 text-blue-600"
+                            viewBox="0 0 12 12"
+                            fill="currentColor"
+                            aria-hidden="true"
+                          >
+                            <path d="M2 1l8 5-8 5V1z" />
+                          </svg>
+                        </div>
+                        {primaryTransition?.condition && primaryTransition.condition !== 'ALWAYS' ? (
+                          <span className="mt-0.5 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold text-amber-800">
+                            {CONDITION_LABELS[primaryTransition.condition] || primaryTransition.condition}
+                          </span>
+                        ) : (
+                          <span className="mt-0.5 text-[9px] font-medium text-slate-400">
+                            tiếp tục
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Transitions List */}
       <section className="space-y-3" aria-label="Danh sách chuyển tiếp lưu trình">
