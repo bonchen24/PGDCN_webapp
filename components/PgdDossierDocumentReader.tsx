@@ -28,14 +28,23 @@ export default function PgdDossierDocumentReader({
   isLoading = false,
   loadError,
   onRetry,
+  selectedDocumentId: externalSelectedDocumentId,
+  onSelectDocumentId,
 }: {
   documents: readonly PgdDossierDocument[];
   isLoading?: boolean;
   loadError?: string | null;
   onRetry?: () => void;
+  selectedDocumentId?: string;
+  onSelectDocumentId?: (id: string) => void;
 }) {
   const currentFiles = getCurrentPgdDossierDocuments(documents).filter((document) => Boolean(document.fileAssetId));
-  const [selectedDocumentId, setSelectedDocumentId] = useState('');
+  const [internalSelectedDocumentId, setInternalSelectedDocumentId] = useState('');
+  const selectedDocumentId = externalSelectedDocumentId || internalSelectedDocumentId;
+  const setSelectedDocumentId = (id: string) => {
+    setInternalSelectedDocumentId(id);
+    onSelectDocumentId?.(id);
+  };
   const [preview, setPreview] = useState<PreviewState>({});
   const selected = currentFiles.find((document) => document.id === selectedDocumentId) || currentFiles[0];
   const previewKind = selected ? getPgdDossierPreviewKind(selected.mimeType, selected.fileName) : undefined;
@@ -83,7 +92,7 @@ export default function PgdDossierDocumentReader({
 
   return (
     <section data-testid="pgd-dossier-document-reader" aria-label="Đọc tài liệu hồ sơ PGD" className="flex min-h-[24rem] min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <header className="flex shrink-0 flex-wrap items-start justify-between gap-2 border-b border-slate-200 px-3 py-2.5">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
         <div className="min-w-0">
           <h3 className="text-sm font-black text-slate-900">Tài liệu hồ sơ</h3>
           <p className="mt-0.5 truncate text-[11px] text-slate-500" title={selected?.fileName || undefined}>
@@ -92,10 +101,10 @@ export default function PgdDossierDocumentReader({
         </div>
         {selected && downloadUrl ? (
           <div className="flex shrink-0 flex-wrap gap-1.5">
-            {previewUrl ? <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+            {previewUrl ? <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8">
               <ExternalLink size={14} aria-hidden="true" /> Mở bản xem
             </a> : null}
-            <a href={downloadUrl} download={selected.fileName} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-700 px-2.5 text-[11px] font-black text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+            <a href={downloadUrl} download={selected.fileName} className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-lg bg-blue-700 px-2.5 text-[11px] font-black text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8">
               <Download size={14} aria-hidden="true" /> Tải xuống
             </a>
           </div>
@@ -122,8 +131,8 @@ export default function PgdDossierDocumentReader({
                   <li key={document.id}>
                     <button type="button" onClick={() => setSelectedDocumentId(document.id)} aria-pressed={isSelected} className={'mobile-touch-target min-h-11 w-full rounded-lg px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset ' + (isSelected ? 'bg-blue-50 text-blue-950' : 'text-slate-700 hover:bg-slate-50')}>
                       <span className="block break-words text-[11px] font-bold leading-4">{document.title}</span>
-                      <span className="mt-0.5 block break-all text-[10px] text-slate-500">{document.fileName} · v{document.version}</span>
-                      {supplementaryStageLabel ? <span className="mt-1 inline-flex rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-800">Tệp phụ trợ · {supplementaryStageLabel}</span> : null}
+                      <span className="mt-0.5 block break-all text-[11px] text-slate-500">{document.fileName} · v{document.version}</span>
+                      {supplementaryStageLabel ? <span className="mt-1 inline-flex rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-blue-800">Tệp phụ trợ · {supplementaryStageLabel}</span> : null}
                     </button>
                   </li>
                 );

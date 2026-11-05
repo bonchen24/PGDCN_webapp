@@ -432,11 +432,15 @@ function DossierWorkflowSummary({ projection, selectedNodeKey, completeness, own
   </section>;
 }
 
-function DossierOwnerPanel({ dossier, users, currentUser, canEdit, authorityHint: _authorityHint, onAssign }: { dossier: CertificationDossier; users: PcnUserAccount[]; currentUser: UserAccount; canEdit: boolean; authorityHint: string; onAssign: (username: string) => Promise<void> }) {
+function DossierOwnerPanel({ dossier, users, currentUser, canEdit, authorityHint, onAssign }: { dossier: CertificationDossier; users: PcnUserAccount[]; currentUser: UserAccount; canEdit: boolean; authorityHint: string; onAssign: (username: string) => Promise<void> }) {
   const manager = isPcnDossierAssignmentManager(currentUser);
   return (
-    <section data-testid="pcn-dossier-owner-assignment" aria-label="Phân công hồ sơ PCN" className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5">
-      <p className="text-[11px] font-black text-slate-800">Chủ hồ sơ</p>
+    <section data-testid="pcn-dossier-owner-assignment" aria-label="Phân công hồ sơ PCN" title={authorityHint} className="mb-2.5 flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-slate-50/70 px-2.5 py-1">
+      <div className="flex min-w-0 items-center gap-2 text-[11px] text-slate-600">
+        <span className="font-bold uppercase tracking-wider text-slate-500">Chủ hồ sơ</span>
+        <span className="hidden text-slate-300 sm:inline">·</span>
+        <span className="hidden truncate text-slate-500 md:inline">Bước hiện tại: <strong className="font-semibold text-slate-700">{getPcnDossierStatusLabel(dossier.status)}</strong></span>
+      </div>
       <PcnDossierAssignmentControl
         dossier={dossier}
         users={users}
@@ -1044,6 +1048,8 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
           dossier={dossier}
           requirements={requirements}
           documents={dossierDocumentsForCompleteness}
+          attachments={dossierAttachments}
+          onSelectFile={(file) => setSelectedReaderFileId(file.id)}
           documentWaivers={dossier.documentWaivers}
           results={dossierResults}
           approvalSteps={dossierApprovalSteps}

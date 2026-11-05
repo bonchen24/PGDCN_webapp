@@ -13,10 +13,10 @@ export default function PgdDossierWorkspacePage({
   const router = useRouter();
 
   return (
-    <div className="min-w-0">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <PgdWorkspace
         embedded={true}
-        initialRequestId={resolvedParams.requestId}
+        initialRequestId={decodeURIComponent(resolvedParams.requestId)}
         onRequestClose={() => router.push('/pgd')}
       />
     </div>

@@ -89,7 +89,7 @@ export function DossierOwnerAssignmentPicker({
             {owner ? (ownerDisplayName || owner) : unassignedLabel}
           </span>
           {canAssign && <Dialog.Trigger asChild>
-            <button type="button" disabled={disabled || saving} className={`min-h-9 rounded-md px-2 py-1 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${focusClass} ${owner ? 'text-emerald-700 hover:bg-emerald-50' : 'border border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800'}`}>
+            <button type="button" disabled={disabled || saving} className={`${compact ? 'min-h-7 px-2 py-0.5' : 'min-h-9 px-2 py-1'} rounded-md text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${focusClass} ${owner ? 'border border-emerald-200 bg-emerald-50/70 text-emerald-700 hover:bg-emerald-100/80' : 'border border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800'}`}>
               {actionLabel}
             </button>
           </Dialog.Trigger>}

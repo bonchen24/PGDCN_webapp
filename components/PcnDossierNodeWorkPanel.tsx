@@ -341,27 +341,36 @@ export function PcnDossierNodeWorkPanel({
 
     return (
       <tr key={item.requirementId} data-testid={`pcn-node-document-${item.requirementId}`} className="hover:bg-slate-50/70 transition-colors">
-        <td className="border-b border-slate-100 px-3 py-2.5 font-medium text-xs text-slate-500">{sourceNodeLabel}</td>
-        <th scope="row" className="border-b border-slate-100 px-3 py-2.5 font-semibold text-slate-800">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-bold text-slate-900">{item.label}{item.required ? <span aria-hidden="true" className="ml-1 text-rose-600 font-bold">*</span> : null}</span>
-            <span className={`inline-flex min-h-5 items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${item.required ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
+        <td className="border-b border-slate-100 px-2.5 py-2 font-medium text-[11px] text-slate-500">{sourceNodeLabel}</td>
+        <th scope="row" className="border-b border-slate-100 px-2.5 py-2 font-semibold text-slate-800">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-bold text-slate-900">{item.label}{item.required ? <span aria-hidden="true" className="ml-0.5 text-rose-600 font-bold">*</span> : null}</span>
+            <span className={`inline-flex items-center rounded border px-1.5 py-0.2 text-[11px] font-bold ${item.required ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
               {item.required ? 'Bắt buộc' : 'Tùy chọn'}
             </span>
           </div>
           {hasCurrentFile && version ? (
-            <div className="mt-1 flex items-center gap-1.5 text-xs font-normal">
+            <div className="mt-0.5 flex items-center gap-1 text-[11px] font-normal">
               <span className="text-slate-400">Tệp:</span>
-              <span className="font-semibold text-slate-700 truncate max-w-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onSelectFile && version) {
+                    onSelectFile({ id: `document:${item.requirementId}:${version.assetId}`, assetId: version.assetId, fileName: version.fileName || item.label, mimeType: version.mimeType });
+                  }
+                }}
+                className="font-semibold text-emerald-700 hover:underline truncate max-w-[16rem] text-left cursor-pointer"
+                title={version.fileName || 'Tài liệu hiện tại'}
+              >
                 {version.fileName || 'Tài liệu hiện tại'}
-              </span>
+              </button>
             </div>
           ) : null}
-          {item.status === 'WAIVED' && item.waiverReason ? <p className="mt-1 text-[11px] font-normal text-amber-700">Lý do bỏ qua: {item.waiverReason}</p> : null}
-          {sourceRequiresRework ? <p className="mt-1 text-[11px] font-normal text-violet-700">Cập nhật mục này sẽ yêu cầu rà soát lại các bước sau.</p> : null}
+          {item.status === 'WAIVED' && item.waiverReason ? <p className="mt-0.5 text-[11px] font-normal text-amber-700">Lý do bỏ qua: {item.waiverReason}</p> : null}
+          {sourceRequiresRework ? <p className="mt-0.5 text-[11px] font-normal text-violet-700">Cập nhật mục này sẽ yêu cầu rà soát lại các bước sau.</p> : null}
         </th>
-        <td className="border-b border-slate-100 px-3 py-2.5"><span className={`inline-flex min-h-7 items-center rounded-full border px-2 py-1 text-[11px] font-black ${statusClass}`}>{(DOCUMENT_STATUS_LABELS[item.status] || item.status)}</span></td>
-        <td className="border-b border-slate-100 px-3 py-2.5">
+        <td className="border-b border-slate-100 px-2.5 py-2"><span className={`inline-flex min-h-6 items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusClass}`}>{(DOCUMENT_STATUS_LABELS[item.status] || item.status)}</span></td>
+        <td className="border-b border-slate-100 px-2.5 py-2">
           <div className="flex flex-wrap items-center gap-1">
             {hasCurrentFile && version && item.actions.includes('VIEW') ? (
               <a
@@ -402,21 +411,21 @@ export function PcnDossierNodeWorkPanel({
   }
 
   return (
-    <aside id={panelId} role="tabpanel" className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200 bg-white shadow-xs [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-blue-500 [&_*:focus-visible]:ring-offset-2" data-testid="pcn-node-work-panel">
+    <aside id={panelId} role="tabpanel" className="flex min-h-0 min-w-0 flex-col bg-white [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-blue-500 [&_*:focus-visible]:ring-offset-2" data-testid="pcn-node-work-panel">
       {/* Header gọn gàng của bước */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2.5 sm:px-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/90 bg-slate-50/70 px-3 py-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h3 className="break-words text-sm font-black text-slate-900">{projection.nodeLabel}</h3>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+          <h3 className="break-words text-xs font-black text-slate-900">{projection.nodeLabel}</h3>
+          <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-bold text-slate-600">
             {STATUS_LABELS[projection.status]} · Vòng {projection.cycleNo}
           </span>
-          <div className="flex flex-wrap items-center gap-1.5 ml-1" aria-label="Tiến độ tài liệu trong giai đoạn" data-testid="pcn-node-progress">
-            <span data-testid="pcn-required-progress" className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs text-rose-800">
+          <div className="flex flex-wrap items-center gap-1.5" aria-label="Tiến độ tài liệu trong giai đoạn" data-testid="pcn-node-progress">
+            <span data-testid="pcn-required-progress" className="inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[11px] text-rose-800">
               <span className="font-semibold">Bắt buộc</span>
               <strong className="tabular-nums">{requiredResolvedCount}/{stageRequiredDocuments.length}</strong>
               <span>đã xử lý</span>
             </span>
-            <span data-testid="pcn-optional-progress" className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+            <span data-testid="pcn-optional-progress" className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] text-slate-700">
               <span className="font-semibold">Tùy chọn</span>
               <strong className="tabular-nums">{optionalCompletedCount}/{stageOptionalDocuments.length}</strong>
               <span>đã hoàn tất</span>
@@ -454,10 +463,10 @@ export function PcnDossierNodeWorkPanel({
         </div>
       </div>
 
-      <div className="min-h-0 space-y-3 p-3 sm:p-4">
+      <div className="min-h-0 space-y-2.5 pt-2.5">
         {/* Phần trọng tâm: Bảng tài liệu cần thiết của bước đang chọn */}
         <section>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <div>
               <h3 className="text-xs font-black text-slate-900">Tài liệu và hồ sơ liên quan</h3>
               <p className="text-[11px] text-slate-500">Danh sách tài liệu áp dụng cho giai đoạn đang chọn.</p>

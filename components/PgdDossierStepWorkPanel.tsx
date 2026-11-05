@@ -45,6 +45,7 @@ type Props = {
   onUploadSupplementary?: (stageId: PgdDossierFlowStageId, file: File) => Promise<void>;
   onRequestException?: (status: 'REJECTED' | 'ON_HOLD', reason: string) => void;
   exceptionBusy?: boolean;
+  onSelectDocument?: (documentId: string) => void;
 };
 
 // Định nghĩa thông tin 7 giai đoạn chuẩn hóa
@@ -168,6 +169,7 @@ export default function PgdDossierStepWorkPanel({
   onUploadSupplementary,
   onRequestException,
   exceptionBusy = false,
+  onSelectDocument,
 }: Props) {
   const canonicalStageId = canonicalizePgdStepId(selectedStepId);
   const meta = STAGE_META[canonicalStageId];
@@ -280,7 +282,8 @@ export default function PgdDossierStepWorkPanel({
           download={document.fileName}
           title="Xem tài liệu"
           aria-label="Xem tài liệu"
-          className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          onClick={() => onSelectDocument?.(document.id)}
+          className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
         >
           <Eye size={14} aria-hidden="true" />
         </a>
@@ -289,7 +292,7 @@ export default function PgdDossierStepWorkPanel({
           download={document.fileName}
           title="Tải xuống"
           aria-label="Tải xuống"
-          className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
         >
           <Download size={14} aria-hidden="true" />
         </a>
@@ -300,7 +303,7 @@ export default function PgdDossierStepWorkPanel({
       <a href={draftingHref}
         title="Soạn thảo tài liệu"
         aria-label="Soạn thảo tài liệu"
-        className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+        className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
       >
         <Pencil size={14} aria-hidden="true" />
       </a>
@@ -313,7 +316,7 @@ export default function PgdDossierStepWorkPanel({
         }}
         title="Bổ sung tệp"
         aria-label="Bổ sung tệp"
-        className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
       >
         <Upload size={14} aria-hidden="true" />
       </button>
@@ -454,7 +457,7 @@ export default function PgdDossierStepWorkPanel({
       data-testid="pgd-dossier-selected-step-panel"
       className="min-w-0 space-y-2.5"
     >
-      <header className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-200 bg-white px-3 py-2 sm:px-4 shadow-xs">
+      <header className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200/80 bg-blue-50/40 px-3 py-1.5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-xs font-black text-white">0{meta.number}</span>
@@ -475,13 +478,13 @@ export default function PgdDossierStepWorkPanel({
               disabled={completionUnavailable}
               aria-busy={completionPending ? 'true' : undefined}
               aria-describedby={continuationReason ? continuationReasonId : undefined}
-              className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-3 text-xs font-black text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-8"
             >
               {completionPending ? 'Đang xử lý…' : (completeLabel || 'Hoàn tất việc')}
             </button>
           ) : null}
           {draftingHref ? (
-            <a href={draftingHref} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-3 text-xs font-black text-white hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+            <a href={draftingHref} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-2.5 text-xs font-black text-white hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8">
               Soạn thảo biểu mẫu
             </a>
           ) : null}
@@ -503,17 +506,17 @@ export default function PgdDossierStepWorkPanel({
         <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 py-1.5 text-[11px]" aria-label="Các công việc thuộc giai đoạn này">
           <span className="font-bold text-slate-700 mr-1">Công việc ({stageTasks.length}):</span>
           {stageTasks.map((task, idx) => (
-            <span key={task.id} className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 border border-slate-200 text-slate-700 text-[10px] font-medium shadow-2xs">
+            <span key={task.id} className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 border border-slate-200 text-slate-700 text-[11px] font-medium shadow-2xs">
               <span className="font-mono font-bold text-slate-400">{meta.number}.{idx + 1}</span>
               <span className="font-semibold text-slate-800">{task.title}</span>
-              {task.required && <span className="text-[9px] text-rose-600 font-bold" title="Bắt buộc">*</span>}
+              {task.required && <span className="text-[11px] text-rose-600 font-bold" title="Bắt buộc">*</span>}
             </span>
           ))}
         </div>
       )}
 
       {/* Trọng tâm: Bảng tài liệu cần hoàn thiện trong giai đoạn */}
-      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs" aria-label="Danh sách tài liệu cần hoàn thiện PGD">
+      <section className="border-t border-slate-200/80 pt-2.5" aria-label="Danh sách tài liệu cần hoàn thiện PGD">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-xs font-black text-slate-900">Tài liệu và hồ sơ liên quan</h3>
@@ -555,7 +558,8 @@ export default function PgdDossierStepWorkPanel({
                   download={doc.fileName}
                   title="Xem tài liệu"
                   aria-label="Xem tài liệu"
-                  className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  onClick={() => onSelectDocument?.(doc.id)}
+                  className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
                 >
                   <Eye size={14} aria-hidden="true" />
                 </a>
@@ -564,7 +568,7 @@ export default function PgdDossierStepWorkPanel({
                   download={doc.fileName}
                   title="Tải xuống"
                   aria-label="Tải xuống"
-                  className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
                 >
                   <Download size={14} aria-hidden="true" />
                 </a>
@@ -650,9 +654,9 @@ export default function PgdDossierStepWorkPanel({
     </section>
 
       {/* Soát xét giai đoạn */}
-      <section className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-2.5 text-xs" aria-label="Soát xét tài liệu bắt buộc ở bước PGD hiện tại">
+      <section className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-blue-100 bg-blue-50/40 px-3 py-1.5 text-xs" aria-label="Soát xét tài liệu bắt buộc ở bước PGD hiện tại">
         <div className="min-w-0 break-words">
-          <span className="mr-2 text-xs font-black uppercase tracking-wide text-blue-700">Soát xét bước này</span>
+          <span className="mr-2 text-xs font-black uppercase tracking-wide text-blue-700">Soát xét giai đoạn</span>
           <strong aria-live="polite" className="break-words text-slate-800">
             {dossierStatusUnknown
               ? dossierLoadPending
@@ -680,7 +684,7 @@ export default function PgdDossierStepWorkPanel({
         data-testid="pgd-step-continuation-guidance"
         aria-label="Hướng dẫn tiếp tục giai đoạn PGD"
         aria-live="polite"
-        className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-2xs sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+        className="grid min-w-0 gap-2 rounded-lg border border-slate-200/80 bg-slate-50/60 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
       >
         <div className="min-w-0 break-words">
           <h4 className="text-xs font-black text-slate-900">Điều kiện và việc tiếp theo</h4>

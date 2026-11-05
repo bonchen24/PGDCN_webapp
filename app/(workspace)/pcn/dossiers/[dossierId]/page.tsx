@@ -1,14 +1,17 @@
 'use client';
 
 import React, { use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 
 import { usePcnStore } from '@/store-pcn';
 import { usePcnSessionStore } from '@/utils/pcnSessionState';
 import PcnDossierDetailView from '@/components/PcnDossierDetailView';
 import { downloadPcnDossierPackage } from '@/utils/pcnDossierPackageApi';
+import type { PcnDossierDetailTab } from '@/utils/pcnDossierNavigation';
 import { Button } from '@/components/ui/button';
+
+const DETAIL_TABS = new Set<PcnDossierDetailTab>(['overview', 'documents', 'lab', 'results', 'issuance']);
 
 export default function PcnDossierWorkspacePage({
   params,
@@ -17,7 +20,11 @@ export default function PcnDossierWorkspacePage({
 }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const dossierId = resolvedParams.dossierId;
+  const searchParams = useSearchParams();
+  const dossierId = decodeURIComponent(resolvedParams.dossierId);
+  const rawTab = searchParams.get('tab')?.trim();
+  const initialTab = rawTab && DETAIL_TABS.has(rawTab as PcnDossierDetailTab) ? (rawTab as PcnDossierDetailTab) : undefined;
+  const initialNodeId = searchParams.get('node')?.trim() || undefined;
 
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const pcn = usePcnStore();
@@ -54,7 +61,7 @@ export default function PcnDossierWorkspacePage({
   );
 
   return (
-    <div className="min-w-0">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <PcnDossierDetailView
         dossier={dossier}
         proposal={proposal}
@@ -77,6 +84,8 @@ export default function PcnDossierWorkspacePage({
         users={pcn.users}
         currentUser={currentUser}
         standalone={true}
+        initialTab={initialTab}
+        initialNodeId={initialNodeId}
         workflowTasks={pcn.workflowTasks}
         onStartWorkflowTask={(taskId) => pcn.startWorkflowTask(dossier.id, taskId)}
         onCompleteWorkflowTask={(taskId) => pcn.completeWorkflowTask(dossier.id, taskId)}

@@ -429,17 +429,27 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
     }
   };
 
+  const shortLabels: Record<PgdDossierFlowStageId, string> = {
+    intake: 'Tiếp nhận',
+    'review-assignment': 'Phân công',
+    plan: 'Kế hoạch',
+    execution: 'Hiện trường',
+    'results-evaluation': 'KQTN',
+    'reporting-approval': 'Phê duyệt',
+    'issuance-archive': 'Lưu trữ',
+  };
+
   return (
-    <section className="min-w-0 space-y-2" data-testid="pgd-dossier-native-flow" aria-label="Bước xử lý">
+    <section className="min-w-0 space-y-1.5" data-testid="pgd-dossier-native-flow" aria-label="Bước xử lý">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-black text-slate-900">Bước xử lý</h3>
-        <p className="text-[11px] text-slate-600" aria-live="polite">
-          Đang ở giai đoạn {currentNumber}/7 · {getPgdStatusLabel(status)}
+        <h3 className="text-xs font-black uppercase tracking-wider text-slate-700">Bước xử lý</h3>
+        <p className="text-[11px] font-medium text-slate-500" aria-live="polite">
+          Giai đoạn <strong className="text-slate-800">{currentNumber}/7</strong> · {getPgdStatusLabel(status)}
         </p>
       </div>
 
-      <div className="min-w-0 overflow-x-auto pb-1" data-testid="pgd-dossier-flow-scroll">
-        <div className="grid min-w-max grid-cols-7 gap-1.5 md:w-full md:min-w-0" role="tablist" aria-label="Các giai đoạn xử lý hồ sơ PGD">
+      <div className="min-w-0 overflow-x-auto pb-0.5" data-testid="pgd-dossier-flow-scroll">
+        <div className="grid min-w-max grid-cols-7 gap-1 md:w-full md:min-w-0" role="tablist" aria-label="Các giai đoạn xử lý hồ sơ PGD">
           {PGD_DOSSIER_FLOW_STEPS.map((step, index) => {
             const stepStatus = currentStatusForStep(index + 1, status, evidence);
             const displayedStatusLabel = stepStatusLabel(index + 1, stepStatus, status);
@@ -447,9 +457,9 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
             const selected = selectedStep?.id === step.id;
             const disabled = index + 1 > currentNumber;
             const stepClassName = disabled
-              ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 opacity-70'
+              ? 'cursor-not-allowed border-slate-200/80 bg-slate-50 text-slate-400 opacity-70'
               : selected
-                ? 'border-blue-500 bg-blue-50 text-blue-950 shadow-sm'
+                ? 'border-blue-600 bg-blue-50 text-blue-950 shadow-xs'
                 : stepStatus === 'COMPLETED'
                   ? 'border-emerald-200 bg-emerald-50/70 text-emerald-900 hover:bg-emerald-50'
                   : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/30';
@@ -477,11 +487,12 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
                 title={disabled ? step.label + ' · Chưa đến giai đoạn' : step.description}
                 onClick={() => onSelectStep(step.id)}
                 onKeyDown={(event) => handleKeyDown(event, index)}
-                className={'mobile-touch-target flex min-h-11 min-w-11 items-center justify-center rounded-md border px-1.5 py-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ' + stepClassName}
+                className={'mobile-touch-target flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-lg border px-1 py-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ' + stepClassName}
               >
-                <span className={'flex h-6 w-8 items-center justify-center rounded-md text-[10px] font-black tabular-nums ' + numberClassName}>
+                <span className={'flex h-5 w-7 items-center justify-center rounded text-[11px] font-black tabular-nums ' + numberClassName}>
                   0{index + 1}
                 </span>
+                <span className="hidden w-full truncate text-[11px] font-semibold leading-tight text-slate-600 xl:block">{shortLabels[step.id]}</span>
                 <span id={'pgd-step-status-' + step.id} className="sr-only">{progressLabel}</span>
               </button>
             );

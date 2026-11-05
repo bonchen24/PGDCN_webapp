@@ -1297,6 +1297,7 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
   const [editOpen, setEditOpen] = useState(false);
   const [workflowTemplateId, setWorkflowTemplateId] = useState('');
   const [mobileSection, setMobileSection] = useState<'work' | 'reader'>('work');
+  const [selectedReaderDocId, setSelectedReaderDocId] = useState('');
   const [selectedStepId, setSelectedStepId] = useState<PgdDossierFlowStepId>(() => reconcilePgdDossierStepSelection({
     selectedStepId: initialStepId || getPgdDossierFlowStepIdForStatus(request.status),
     status: request.status,
@@ -1630,12 +1631,12 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
 <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{request.requestCode}</span>
 <h2 className="break-words text-sm font-black text-slate-800">{request.productName} · {request.customerSnapshot.name}</h2>
 <StatusBadge status={request.status} />
-<span className="text-[10px] text-slate-400">Cập nhật {formatDate(request.updatedAt)}</span>
+<span className="text-[11px] text-slate-400">Cập nhật {formatDate(request.updatedAt)}</span>
 </div>
 <div data-testid="pgd-dossier-context-summary" className="mt-1 flex min-w-0 flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-600">
-  <span><span className="font-bold uppercase tracking-wider text-[10px] text-slate-400">Bước hiện tại:</span> <span className="font-semibold text-slate-800">{currentStep.label}</span></span>
-  <span><span className="font-bold uppercase tracking-wider text-[10px] text-slate-400">Checklist:</span> <span className="font-semibold text-slate-800">{checklistReadinessKnown ? (presentRequiredCount + '/' + requiredDossierRequirements.length + ' · thiếu ' + missingRequiredCount) : dossierLoading ? 'Đang tải' : dossierError ? 'Chưa xác định' : 'Chưa có checklist'}</span></span>
-  <span><span className="font-bold uppercase tracking-wider text-[10px] text-slate-400">Chủ hồ sơ:</span> <span className="font-semibold text-slate-800">{request.ownerUsername ? getPgdUserDisplayName(request.ownerUsername, pgd.users) : 'Chưa phân công'}</span></span>
+  <span><span className="font-bold uppercase tracking-wider text-[11px] text-slate-400">Bước hiện tại:</span> <span className="font-semibold text-slate-800">{currentStep.label}</span></span>
+  <span><span className="font-bold uppercase tracking-wider text-[11px] text-slate-400">Checklist:</span> <span className="font-semibold text-slate-800">{checklistReadinessKnown ? (presentRequiredCount + '/' + requiredDossierRequirements.length + ' · thiếu ' + missingRequiredCount) : dossierLoading ? 'Đang tải' : dossierError ? 'Chưa xác định' : 'Chưa có checklist'}</span></span>
+  <span><span className="font-bold uppercase tracking-wider text-[11px] text-slate-400">Chủ hồ sơ:</span> <span className="font-semibold text-slate-800">{request.ownerUsername ? getPgdUserDisplayName(request.ownerUsername, pgd.users) : 'Chưa phân công'}</span></span>
 </div>
 </div>
 <div data-testid="pgd-dossier-mobile-actions" aria-label="Thao tác hồ sơ PGD" className="flex w-full min-w-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto">{showDossierActions && <button type="button" disabled={!canEditDossier} onClick={() => setEditOpen(true)} title={editDenial || 'Sửa thông tin hồ sơ PGD'} className="mobile-touch-target dossier-action-compact min-h-8 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-black text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">Sửa thông tin hồ sơ</button>}{onOpenContextualAssistant ? <button type="button" onClick={() => onOpenContextualAssistant(request.id)} title="Mở trợ lý theo đúng hồ sơ PGD đang xem" aria-label={'Mở Trợ lý hồ sơ cho ' + request.requestCode} className="mobile-touch-target dossier-action-compact inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-black text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Bot size={13} aria-hidden="true" /> Trợ lý hồ sơ</button> : null}<button type="button" onClick={onClose} aria-label="Đóng chi tiết hồ sơ PGD" className="mobile-touch-target inline-flex min-h-8 min-w-8 items-center justify-center rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
@@ -1643,7 +1644,7 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
 </button>
 </div>
 </header>
-    <div data-testid="pgd-dossier-scroll-area" className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 pb-5 md:p-5">
+    <div data-testid="pgd-dossier-scroll-area" className="mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-2.5 md:p-3.5">
       {request.workflowTemplatePending === true && <details aria-label="Gắn bộ hồ sơ mẫu còn thiếu" className="mb-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3">
         <summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-black text-amber-900">
           <span>Bộ hồ sơ mẫu chưa được gắn</span><span className="text-[10px] font-semibold">Mở để gắn mẫu</span>
@@ -1660,7 +1661,7 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
         </div>
       </details>}
 
-      <section data-testid="pgd-dossier-owner-assignment" aria-label="Phân công hồ sơ PGD" className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5">
+      <section data-testid="pgd-dossier-owner-assignment" aria-label="Phân công hồ sơ PGD" className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-slate-50/70 px-2.5 py-1">
         <p className="text-[11px] font-black text-slate-800">Chủ hồ sơ</p>
         <PgdDossierAssignmentControl
           requestId={request.id}
@@ -1717,7 +1718,7 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
             <div id="pgd-dossier-current-work" className="min-w-0">
               {dossierLoading && <p role="status" className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800">Đang tải trạng thái chứng từ hồ sơ…</p>}
               {dossierError && <div role="alert" className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border-2 border-amber-400 bg-amber-50 px-3 py-2.5 text-amber-950 shadow-sm"><p className="min-w-0 flex-1 text-xs font-bold leading-5">{dossierError}</p><button type="button" disabled={dossierLoading} aria-busy={dossierLoading} onClick={() => void loadDossierDocuments()} className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-500 bg-white px-3 text-xs font-black text-amber-900 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-70"><RefreshCw size={14} className={dossierLoading ? 'animate-spin' : ''} aria-hidden="true" />{dossierLoading ? 'Đang tải lại tài liệu…' : 'Tải lại tài liệu'}</button></div>}
-              <PgdDossierStepWorkPanel request={request} currentUser={currentUser} selectedStepId={selectedStepId} dossierRequirements={dossierRequirements} dossierDocuments={dossierDocuments} dossierLoadStatus={dossierLoading ? 'loading' : dossierError ? 'error' : 'loaded'} samples={samples} canMutate={canMutate} completeDisabled={!selectedStepIsCurrent || Boolean(nextDenial) || busy || !canMutate} isProcessing={busy} completeLabel={primaryActionLabel} onCompleteCurrent={completeCurrentStep} onOpenChecklist={() => setSelectedStepId('intake')} onOpenDrafting={(input) => onOpenDrafting?.(request, input, selectedStepId)} onUploadSupplementary={async (stageId, file) => { await pgd.saveDossierDocument(request.id, { supplementaryStageId: stageId, file }); }} onRequestException={requestException} exceptionBusy={busy} />
+              <PgdDossierStepWorkPanel request={request} currentUser={currentUser} selectedStepId={selectedStepId} dossierRequirements={dossierRequirements} dossierDocuments={dossierDocuments} dossierLoadStatus={dossierLoading ? 'loading' : dossierError ? 'error' : 'loaded'} samples={samples} canMutate={canMutate} completeDisabled={!selectedStepIsCurrent || Boolean(nextDenial) || busy || !canMutate} isProcessing={busy} completeLabel={primaryActionLabel} onCompleteCurrent={completeCurrentStep} onOpenChecklist={() => setSelectedStepId('intake')} onOpenDrafting={(input) => onOpenDrafting?.(request, input, selectedStepId)} onUploadSupplementary={async (stageId, file) => { await pgd.saveDossierDocument(request.id, { supplementaryStageId: stageId, file }); }} onRequestException={requestException} exceptionBusy={busy} onSelectDocument={(docId) => setSelectedReaderDocId(docId)} />
             </div>
           </div>
 
@@ -1828,9 +1829,9 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
 
         {/* Right Column (40%): private dossier document reader */}
         <aside role="tabpanel" id="pgd-dossier-reader-region" aria-labelledby="pgd-dossier-mobile-tab-reader" tabIndex={0} aria-label="Đọc tài liệu hồ sơ PGD" className={'min-w-0 ' + (mobileSection === 'work' ? 'hidden lg:block' : 'block')}>
-          <PgdDossierDocumentReader documents={dossierDocuments} isLoading={dossierLoading} loadError={dossierError} onRetry={() => void loadDossierDocuments()} />
+          <PgdDossierDocumentReader documents={dossierDocuments} selectedDocumentId={selectedReaderDocId} onSelectDocumentId={setSelectedReaderDocId} isLoading={dossierLoading} loadError={dossierError} onRetry={() => void loadDossierDocuments()} />
         </aside>
-      </div></div><footer data-testid="pgd-dossier-mobile-footer" className="mobile-safe-bottom flex shrink-0 flex-col items-stretch justify-between gap-2 border-t border-slate-200 bg-white px-3 py-3 text-[10px] text-slate-500 sm:flex-row sm:items-center md:px-5"><span className="min-w-0 break-words">Lĩnh vực: <b className="font-mono text-blue-700">{PGD_DOMAIN}</b> · Người thao tác: {currentUser.username}</span><div className="flex w-full flex-wrap justify-start gap-2 sm:w-auto sm:justify-end"><button type="button" disabled={!showDeleteControl || busy || !canDelete} onClick={deleteDossier} title={deletionDenial || 'Xóa vĩnh viễn hồ sơ PGD'} className="mobile-touch-target min-h-11 rounded-lg border border-rose-200 px-3 text-[11px] font-black text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50">Xóa hồ sơ</button><button type="button" onClick={onClose} className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-3 text-[11px] font-bold text-slate-600 hover:bg-slate-50">Đóng</button></div></footer></div></div>;
+      </div></div><footer data-testid="pgd-dossier-mobile-footer" className="mobile-safe-bottom flex shrink-0 flex-col items-stretch justify-between gap-2 border-t border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-500 sm:flex-row sm:items-center md:px-5"><span className="min-w-0 break-words">Lĩnh vực: <b className="font-mono text-blue-700">{PGD_DOMAIN}</b> · Người thao tác: {currentUser.username}</span><div className="flex w-full flex-wrap justify-start gap-2 sm:w-auto sm:justify-end"><button type="button" disabled={!showDeleteControl || busy || !canDelete} onClick={deleteDossier} title={deletionDenial || 'Xóa vĩnh viễn hồ sơ PGD'} className="mobile-touch-target min-h-11 rounded-lg border border-rose-200 px-3 text-[11px] font-black text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-8">Xóa hồ sơ</button><button type="button" onClick={onClose} className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-3 text-[11px] font-bold text-slate-600 hover:bg-slate-50 sm:min-h-8">Đóng</button></div></footer></div></div>;
 }
 
 export type PgdWorkspaceProps = {

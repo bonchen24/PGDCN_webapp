@@ -45,37 +45,37 @@ export default function PgdcnDossierDocumentActionTable({ rows, testId, emptyLab
             tabIndex={renderRow ? 0 : undefined}
           >
             <table className={renderRow
-              ? 'min-w-[760px] w-full border-collapse text-left text-sm'
-              : 'block w-full min-w-0 border-collapse text-left text-sm md:table'}>
+              ? 'w-full min-w-0 border-collapse text-left text-xs'
+              : 'block w-full min-w-0 border-collapse text-left text-xs md:table'}>
               <caption className="sr-only">Danh sách tài liệu cần hoàn thiện</caption>
               <thead className={renderRow
-                ? 'bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-500'
-                : 'sr-only bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-500 md:not-sr-only md:table-header-group'}>
+                ? 'bg-slate-50/80 text-[11px] font-black uppercase tracking-wide text-slate-500'
+                : 'sr-only bg-slate-50/80 text-[11px] font-black uppercase tracking-wide text-slate-500 md:not-sr-only md:table-header-group'}>
                 <tr>
-                  <th scope="col" className="w-36 border-b border-slate-200 px-3 py-2">Bước</th>
-                  <th scope="col" className="border-b border-slate-200 px-3 py-2">Tài liệu cần có</th>
-                  <th scope="col" className="w-28 border-b border-slate-200 px-3 py-2">Trạng thái</th>
-                  <th scope="col" className="w-40 border-b border-slate-200 px-3 py-2">Hành động</th>
+                  <th scope="col" className="w-28 border-b border-slate-200 px-2.5 py-1.5">Bước</th>
+                  <th scope="col" className="border-b border-slate-200 px-2.5 py-1.5">Tài liệu cần có</th>
+                  <th scope="col" className="w-24 border-b border-slate-200 px-2.5 py-1.5">Trạng thái</th>
+                  <th scope="col" className="w-40 border-b border-slate-200 px-2.5 py-1.5">Hành động</th>
                 </tr>
               </thead>
               <tbody className={renderRow ? undefined : 'block space-y-2 md:table-row-group md:space-y-0'}>
                 {rows.map((row) => renderRow ? renderRow(row) : (
-                  <tr key={row.id} className="block min-w-0 rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:bg-blue-50/40 md:table-row md:rounded-none md:border-0 md:p-0 md:shadow-none">
-                    <td className="flex min-w-0 items-start gap-2 break-words border-0 px-0 py-1 font-semibold text-slate-500 md:table-cell md:border-b md:border-slate-100 md:px-3 md:py-1">
+                  <tr key={row.id} className="block min-w-0 rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm transition-colors hover:bg-blue-50/40 md:table-row md:rounded-none md:border-0 md:p-0 md:shadow-none">
+                    <td className="flex min-w-0 items-start gap-2 break-words border-0 px-0 py-1 font-semibold text-slate-500 md:table-cell md:border-b md:border-slate-100 md:px-2.5 md:py-1.5">
                       <span aria-hidden="true" className="w-24 shrink-0 text-xs font-black uppercase tracking-wide text-slate-500 md:hidden">Bước</span>
                       <span className="min-w-0 break-words">{row.step}</span>
                     </td>
-                    <th scope="row" className="block min-w-0 break-words border-0 px-0 py-1 font-semibold text-slate-800 md:table-cell md:border-b md:border-slate-100 md:px-3 md:py-1">
+                    <th scope="row" className="block min-w-0 break-words border-0 px-0 py-1 font-semibold text-slate-800 md:table-cell md:border-b md:border-slate-100 md:px-2.5 md:py-1.5">
                       <span aria-hidden="true" className="mb-0.5 block text-xs font-black uppercase tracking-wide text-slate-500 md:hidden">Tài liệu cần có</span>
                       <span>{row.title}{row.required ? <span aria-hidden="true" className="ml-1 text-rose-600">*</span> : null}</span>
-                      {row.required ? <span className="ml-2 text-xs font-normal text-rose-600">Bắt buộc</span> : <span className="ml-2 text-xs font-normal text-slate-500">Tùy chọn</span>}
-                      {row.detail ? <div className="mt-1 break-words text-xs font-normal leading-5 text-slate-600">{row.detail}</div> : null}
+                      {row.required ? <span className="ml-1.5 text-[11px] font-normal text-rose-600">Bắt buộc</span> : <span className="ml-1.5 text-[11px] font-normal text-slate-500">Tùy chọn</span>}
+                      {row.detail ? <div className="mt-0.5 break-words text-[11px] font-normal leading-4 text-slate-500">{row.detail}</div> : null}
                     </th>
-                    <td className="flex min-w-0 items-center gap-2 border-0 px-0 py-1 md:table-cell md:border-b md:border-slate-100 md:px-3 md:py-1">
+                    <td className="flex min-w-0 items-center gap-2 border-0 px-0 py-1 md:table-cell md:border-b md:border-slate-100 md:px-2.5 md:py-1.5">
                       <span aria-hidden="true" className="w-24 shrink-0 text-xs font-black uppercase tracking-wide text-slate-500 md:hidden">Trạng thái</span>
-                      {row.status ? <span className={`inline-flex min-h-8 items-center rounded-full border px-2.5 py-1 text-xs font-black max-w-full whitespace-normal break-words ${STATUS_TONE_CLASS[row.statusTone || 'neutral']}`}>{row.status}</span> : null}
+                      {row.status ? <span className={`inline-flex min-h-6 items-center rounded-full border px-2 py-0.5 text-[11px] font-bold max-w-full whitespace-normal break-words ${STATUS_TONE_CLASS[row.statusTone || 'neutral']}`}>{row.status}</span> : null}
                     </td>
-                    <td className="flex min-w-0 flex-wrap items-center gap-2 border-0 px-0 py-1 md:table-cell md:border-b md:border-slate-100 md:px-3 md:py-1">
+                    <td className="flex min-w-0 flex-wrap items-center gap-1.5 border-0 px-0 py-1 md:table-cell md:border-b md:border-slate-100 md:px-2.5 md:py-1.5">
                       {row.action !== null && row.action !== undefined ? (
                         <>
                           <span aria-hidden="true" className="w-24 shrink-0 text-xs font-black uppercase tracking-wide text-slate-500 md:hidden">Hành động</span>

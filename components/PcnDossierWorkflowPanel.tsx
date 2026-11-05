@@ -129,16 +129,21 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, atta
       <section
         data-testid="pcn-workflow-step-card"
         aria-labelledby="pcn-workflow-step-title"
-        className="min-w-0 rounded-xl border border-slate-200 bg-white p-3"
+        className="min-w-0 rounded-xl border border-slate-200 bg-white p-2.5 sm:p-3 shadow-xs"
       >
-        <div className="flex min-h-10 items-center justify-between gap-3">
-          <h2 id="pcn-workflow-step-title" className="text-sm font-black text-slate-950">Bước xử lý</h2>
+        <div className="flex items-center justify-between gap-2 pb-2">
+          <h2 id="pcn-workflow-step-title" className="text-xs font-black uppercase tracking-wider text-slate-700">Bước xử lý</h2>
+          {selectedStageLabel ? (
+            <span className="text-[11px] font-medium text-slate-500">
+              Đang chọn: <strong className="text-slate-800">{selectedStageLabel}</strong>
+            </span>
+          ) : null}
         </div>
-        <div className="mt-2">
+        <div>
           <PcnDossierFlow nodes={runtime.nodes} projections={projections} selectedNodeId={selectedNodeId} onSelectNode={selectNode} />
         </div>
 
-        <div className="mt-3 border-t border-slate-200 pt-3">
+        <div className="mt-2.5 border-t border-slate-100 pt-2.5">
           {selectedProjection?.isSelectable ? (
             <PcnDossierNodeWorkPanel
               panelId={`pcn-node-panel-${selectedProjection.nodeId}`}

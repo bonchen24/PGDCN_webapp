@@ -97,7 +97,7 @@ export function PcnDossierAssignmentControl({
 
   if (canManageAssignment) {
     return (
-      <div data-testid="pcn-dossier-assignment-control" className={compact ? 'min-w-0 flex-1' : 'mt-3'}>
+      <div data-testid="pcn-dossier-assignment-control" className={compact ? 'min-w-0' : 'mt-3'}>
         <DossierOwnerAssignmentPicker
           ownerUsername={ownerUsername}
           ownerDisplayName={getPcnUserDisplayName(ownerUsername, users)}
@@ -112,7 +112,7 @@ export function PcnDossierAssignmentControl({
           options={assignmentOptions}
           disabled={disabled || saving}
         />
-        <p className="mt-1 text-[9px] text-emerald-700">Quản trị viên/Quản lý chọn nhân viên đang hoạt động trong phòng và đúng phạm vi lĩnh vực.</p>
+        {!compact && <p className="mt-1 text-[9px] text-emerald-700">Quản trị viên/Quản lý chọn nhân viên đang hoạt động trong phòng và đúng phạm vi lĩnh vực.</p>}
       </div>
     );
   }

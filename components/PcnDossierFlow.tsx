@@ -268,6 +268,15 @@ export function PcnDossierFlow({ nodes, selectedNodeId, onSelectNode }: PcnDossi
           const isSelected = selectedStage?.id === stage.id;
           const disabled = !stage.isSelectable;
           const stageNumber = String(index + 1).padStart(2, '0');
+          const shortLabels: Record<PcnDossierFlowStageId, string> = {
+            intake: 'Tiếp nhận',
+            'review-assignment': 'Phân công',
+            plan: 'Kế hoạch',
+            execution: 'Hiện trường',
+            'results-evaluation': 'KQTN',
+            'reporting-approval': 'Phê duyệt',
+            'issuance-archive': 'Phát hành',
+          };
           return (
             <button
               ref={(element) => { tabRefs.current[index] = element; }}
@@ -287,17 +296,18 @@ export function PcnDossierFlow({ nodes, selectedNodeId, onSelectNode }: PcnDossi
               title={stage.label}
               onClick={() => selectStage(index)}
               onKeyDown={(event) => handleKeyDown(event, index)}
-              className={`mobile-touch-target flex min-h-11 min-w-0 items-center justify-center rounded-md border px-1 text-[11px] font-black tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
+              className={`mobile-touch-target flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg border px-1 py-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
                 disabled
-                  ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70'
+                  ? 'cursor-not-allowed border-slate-200/80 bg-slate-50 text-slate-400 opacity-70'
                   : isSelected
-                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-xs'
                     : stage.status === 'COMPLETED'
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50'
+                      ? 'border-emerald-200 bg-emerald-50/80 text-emerald-800 hover:bg-emerald-100/80'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50'
               }`}
             >
-              {stageNumber}
+              <span className="text-[11px] font-black leading-none tabular-nums">{stageNumber}</span>
+              <span className={`hidden w-full truncate text-[11px] font-semibold leading-tight xl:block ${isSelected ? 'text-emerald-50' : disabled ? 'text-slate-400' : 'text-slate-600'}`}>{shortLabels[stage.id]}</span>
             </button>
           );
         })}
