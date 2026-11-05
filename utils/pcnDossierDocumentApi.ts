@@ -123,6 +123,26 @@ export async function uploadPcnDossierDocument(input: {
   }
 }
 
+export async function uploadPcnDossierSupplementaryAttachment(input: {
+  dossierId: string;
+  stageId: string;
+  file: File;
+}): Promise<{ attachment: PcnDossierAttachment; activityLog?: ActivityLog }> {
+  const form = new FormData();
+  form.set('stageId', input.stageId);
+  form.set('file', input.file);
+  const response = await fetch(`/api/pcn/dossiers/${encodeURIComponent(input.dossierId)}/supplementary-attachments`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    body: form,
+  });
+  const payload = await parseResponse(response);
+  return {
+    attachment: payload.attachment as PcnDossierAttachment,
+    ...(payload.activityLog ? { activityLog: payload.activityLog as ActivityLog } : {}),
+  };
+}
+
 export async function confirmPcnGeneratedDocumentIntoChecklist(input: {
   dossierId: string;
   generated: PcnGeneratedDocument;

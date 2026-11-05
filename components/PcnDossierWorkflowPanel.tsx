@@ -31,6 +31,7 @@ export interface PcnDossierWorkflowPanelProps {
   onReturnTask?: (taskId: string, input: { targetNodeId: string; reason: string }) => Promise<void>;
   onOpenDocuments?: (nodeId: string) => void;
   onUploadDocument?: (requirementId: string, file: File) => Promise<void>;
+  onUploadSupplementary?: (stageId: string, file: File) => Promise<void>;
   onCreateFromForm?: (requirementId: string) => void;
   onOpenDrafting?: (item: PcnDossierNodeDocumentItem, nodeId: string) => string | undefined;
   onGenerateAndAttach?: (nodeId: string, requirementId: string) => Promise<void>;
@@ -41,7 +42,7 @@ export interface PcnDossierWorkflowPanelProps {
   onOpenBusiness?: (fact: PcnDossierNodeBusinessFact) => void;
 }
 
-export function PcnDossierWorkflowPanel({ dossier, requirements, documents, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], workflowTasks, users: _users = [], currentUser, canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onCreateFromForm, onOpenDrafting, onGenerateAndAttach, onConfirmDocument, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, initialNodeId }: PcnDossierWorkflowPanelProps) {
+export function PcnDossierWorkflowPanel({ dossier, requirements, documents, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], workflowTasks, users: _users = [], currentUser, canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onUploadSupplementary, onCreateFromForm, onOpenDrafting, onGenerateAndAttach, onConfirmDocument, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, initialNodeId }: PcnDossierWorkflowPanelProps) {
   const workflow = useMemo(() => getPcnWorkflowForDossier(dossier), [dossier]);
   const dossierTasks = useMemo(() => workflowTasks.filter((task) => task.dossierId === dossier.id), [dossier.id, workflowTasks]);
   const requiredRequirementIds = useMemo(() => {
@@ -133,6 +134,7 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
               returnTargets={returnTargets}
               onOpenDocuments={onOpenDocuments ? () => onOpenDocuments(selectedProjection.nodeId) : undefined}
               onUploadDocument={onUploadDocument}
+              onUploadSupplementary={onUploadSupplementary || ((stageId, file) => usePcnStore.getState().uploadDossierSupplementary(dossier.id, stageId, file))}
               onCreateFromForm={onCreateFromForm}
               onOpenDrafting={onOpenDrafting ? (item) => onOpenDrafting(item, selectedProjection.nodeId) : undefined}
               onGenerateAndAttach={(requirementId) => generateAndAttach(selectedProjection.nodeId, requirementId)}

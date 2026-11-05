@@ -91,7 +91,7 @@ function PcnDossierDocumentReader({
         fileName: attachment.fileName,
         mimeType: attachment.mimeType,
         uploadedAt: attachment.importedAt,
-        sourceLabel: 'Tệp đính kèm',
+        sourceLabel: attachment.supplementaryStageId ? attachment.mappingReason || 'Tệp phụ trợ' : 'Tệp đính kèm',
       })),
   ];
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);

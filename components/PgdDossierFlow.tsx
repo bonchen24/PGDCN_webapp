@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useMemo, useRef, type ReactNode } from 'react';
 
 import type { PgdInspectionStatus, PgdTransitionContext } from '../utils/pgdDomain';
 import { getPgdStatusLabel } from '../utils/pgdDomain';
@@ -398,43 +398,12 @@ export function PgdDossierStageGate({
 
 export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep }: PgdDossierFlowProps) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const currentNumber = getPgdDossierCurrentStepNumber(status);
   
   // Canonicalize selectedStepId if passed legacy ID (e.g., 'capability' -> 'review-assignment')
   const canonicalSelectedId = canonicalizePgdStepId(selectedStepId);
   const selectedStep = PGD_DOSSIER_FLOW_STEPS.find((step) => step.id === canonicalSelectedId) || PGD_DOSSIER_FLOW_STEPS[Math.min(currentNumber - 1, PGD_DOSSIER_FLOW_STEPS.length - 1)];
-  const selectedIndex = PGD_DOSSIER_FLOW_STEPS.findIndex((step) => step.id === selectedStep?.id);
-  const resolvedSteps = PGD_DOSSIER_FLOW_STEPS.filter((_, index) => currentStatusForStep(index + 1, status, evidence) === 'COMPLETED').length;
   const selectableIndexes = useMemo(() => PGD_DOSSIER_FLOW_STEPS.map((_, index) => index).filter((index) => index + 1 <= currentNumber), [currentNumber]);
-
-  useEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
-    const currentCanonical = canonicalizePgdStepId(selectedStepId);
-    const selectedIdx = PGD_DOSSIER_FLOW_STEPS.findIndex((step) => step.id === currentCanonical);
-    const selectedTab = selectedIdx >= 0 ? tabRefs.current[selectedIdx] : null;
-    if (!scrollContainer || !selectedTab) return;
-
-    const scrollBounds = scrollContainer.getBoundingClientRect();
-    const tabBounds = selectedTab.getBoundingClientRect();
-    const visibleLeft = scrollBounds.left + scrollContainer.clientLeft;
-    const visibleRight = visibleLeft + scrollContainer.clientWidth;
-    const nextScrollLeft = tabBounds.left < visibleLeft
-      ? scrollContainer.scrollLeft + tabBounds.left - visibleLeft
-      : tabBounds.right > visibleRight
-        ? scrollContainer.scrollLeft + tabBounds.right - visibleRight
-        : scrollContainer.scrollLeft;
-    const maxScrollLeft = Math.max(0, scrollContainer.scrollWidth - scrollContainer.clientWidth);
-    const targetLeft = Math.max(0, Math.min(nextScrollLeft, maxScrollLeft));
-    if (Math.abs(targetLeft - scrollContainer.scrollLeft) < 1) return;
-
-    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-    if (prefersReducedMotion || typeof scrollContainer.scrollTo !== 'function') {
-      scrollContainer.scrollLeft = targetLeft;
-      return;
-    }
-    scrollContainer.scrollTo({ left: targetLeft, behavior: 'smooth' });
-  }, [selectedStepId]);
 
   const focusRelative = (index: number, direction: 1 | -1) => {
     const position = selectableIndexes.indexOf(index);
@@ -465,20 +434,16 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-black text-slate-900">Bước xử lý</h3>
         <p className="text-[11px] text-slate-600" aria-live="polite">
-          Giai đoạn {currentNumber}/7 · {getPgdStatusLabel(status)}
+          Đang ở giai đoạn {currentNumber}/7 · {getPgdStatusLabel(status)}
         </p>
       </div>
 
-      <div className="h-1 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
-        <div className="h-full rounded-full bg-blue-600 transition-[width] duration-200" style={{ width: Math.round((resolvedSteps / PGD_DOSSIER_FLOW_STEPS.length) * 100) + '%' }} />
-      </div>
-
-      <div ref={scrollContainerRef} className="mobile-scroll-x min-w-0 overflow-x-auto touch-pan-x pb-1" data-testid="pgd-dossier-flow-scroll">
-        <div className="flex min-w-max items-stretch gap-1.5 md:grid md:w-full md:min-w-0 md:grid-cols-7" role="tablist" aria-label="Các giai đoạn xử lý hồ sơ PGD">
+      <div className="min-w-0 overflow-x-auto pb-1" data-testid="pgd-dossier-flow-scroll">
+        <div className="grid min-w-max grid-cols-7 gap-1.5 md:w-full md:min-w-0" role="tablist" aria-label="Các giai đoạn xử lý hồ sơ PGD">
           {PGD_DOSSIER_FLOW_STEPS.map((step, index) => {
             const stepStatus = currentStatusForStep(index + 1, status, evidence);
-            const statusMeta = STATUS_META[stepStatus];
             const displayedStatusLabel = stepStatusLabel(index + 1, stepStatus, status);
+            const progressLabel = stepProgress(step, evidence, status);
             const selected = selectedStep?.id === step.id;
             const disabled = index + 1 > currentNumber;
             const stepClassName = disabled
@@ -512,17 +477,12 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
                 title={disabled ? step.label + ' · Chưa đến giai đoạn' : step.description}
                 onClick={() => onSelectStep(step.id)}
                 onKeyDown={(event) => handleKeyDown(event, index)}
-                className={'mobile-touch-target group flex min-h-14 min-w-[6rem] items-start gap-1.5 rounded-lg border px-2 py-1.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 md:min-w-0 ' + stepClassName}
+                className={'mobile-touch-target flex min-h-11 min-w-11 items-center justify-center rounded-md border px-1.5 py-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ' + stepClassName}
               >
-                <span className={'flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[9px] font-black ' + numberClassName}>
+                <span className={'flex h-6 w-8 items-center justify-center rounded-md text-[10px] font-black tabular-nums ' + numberClassName}>
                   0{index + 1}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block line-clamp-2 break-words text-[9px] font-black leading-3">{step.label}</span>
-                  <span id={'pgd-step-status-' + step.id} className={'mt-0.5 block truncate text-[8px] font-semibold ' + statusMeta.className}>
-                    {displayedStatusLabel}
-                  </span>
-                </span>
+                <span id={'pgd-step-status-' + step.id} className="sr-only">{progressLabel}</span>
               </button>
             );
           })}

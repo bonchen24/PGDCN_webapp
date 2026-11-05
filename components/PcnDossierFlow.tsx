@@ -287,7 +287,7 @@ export function PcnDossierFlow({ nodes, selectedNodeId, onSelectNode }: PcnDossi
               title={stage.label}
               onClick={() => selectStage(index)}
               onKeyDown={(event) => handleKeyDown(event, index)}
-              className={`mobile-touch-target flex min-h-10 min-w-0 items-center justify-center rounded-md border px-1 text-[11px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
+              className={`mobile-touch-target flex min-h-11 min-w-0 items-center justify-center rounded-md border px-1 text-[11px] font-black tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
                 disabled
                   ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70'
                   : isSelected

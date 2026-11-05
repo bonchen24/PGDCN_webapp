@@ -662,6 +662,7 @@ export interface PcnDossierAttachment {
   dossierId: string;
   fieldCode: PcnCertificationFieldCode;
   kind: PcnHistoricalFileKind;
+  supplementaryStageId?: string;
   requirementId?: string;
   mappingStatus?: PcnAttachmentMappingStatus;
   mappingReason?: string;

@@ -93,8 +93,8 @@ test('internal drafting links stay in-app while file preview/download links keep
   const pgdStep = read('components/PgdDossierStepWorkPanel.tsx');
   assert.doesNotMatch(pcnNode, /href=\{draftingHref\}[^\n]*target="_blank"/);
   assert.doesNotMatch(pgdStep, /href=\{draftingHref\}[^\n]*target="_blank"/);
-  assert.match(pcnNode, /href=\{getPcnFileUrl\(version\.assetId\)\} target="_blank"/);
-  assert.match(pgdStep, /getPgdDossierDocumentDownloadUrl\(document\.id\).*target="_blank"/);
+  assert.match(pcnNode, /href=\{getPcnFileUrl\(version\.assetId\)\} target="_blank"[\s\S]*?aria-label="Mở tệp"/);
+  assert.match(pgdStep, /getPgdDossierDocumentDownloadUrl\(document\.id\)[\s\S]*?target="_blank"/);
 });
 
 test('successful attach exposes the dossier return action without advancing workflow', () => {

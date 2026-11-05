@@ -182,6 +182,7 @@ export interface PgdDossierDocument {
   mimeType?: string;
   byteSize?: number;
   supersedesDocumentId?: string;
+  supplementaryStageId?: string;
   originCollection?: typeof PGD_COLLECTIONS.documents;
   originDocumentId?: string;
 }
@@ -417,6 +418,7 @@ export function buildPgdDossierDocument(input: Partial<PgdDossierDocument>, now 
     ...(clean((input as PgdDossierDocument).mimeType) ? { mimeType: clean((input as PgdDossierDocument).mimeType) } : {}),
     ...(Number.isFinite((input as PgdDossierDocument).byteSize) ? { byteSize: (input as PgdDossierDocument).byteSize } : {}),
     ...(clean((input as PgdDossierDocument).supersedesDocumentId) ? { supersedesDocumentId: clean((input as PgdDossierDocument).supersedesDocumentId) } : {}),
+    ...(clean((input as PgdDossierDocument).supplementaryStageId) ? { supplementaryStageId: clean((input as PgdDossierDocument).supplementaryStageId) } : {}),
     ...(originCollection ? { originCollection: PGD_COLLECTIONS.documents, originDocumentId } : {}),
   };
 }

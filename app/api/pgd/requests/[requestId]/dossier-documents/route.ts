@@ -19,6 +19,17 @@ import {
   writePgdActivity,
 } from '@/lib/server/pgd-operations';
 import { sanitizePcnPathSegment } from '@/lib/server/pcn-files';
+import type { PgdOperationalStationKey } from '@/utils/pgdWorkflow';
+
+const PGD_SUPPLEMENTARY_STAGE_STATIONS: Record<string, PgdOperationalStationKey> = {
+  intake: 'INTAKE_CAPABILITY',
+  'review-assignment': 'PREPARATION',
+  plan: 'PREPARATION',
+  execution: 'FIELD_SAMPLING',
+  'results-evaluation': 'LAB_RESULTS',
+  'reporting-approval': 'REPORT_APPROVAL_RETURN',
+  'issuance-archive': 'REPORT_APPROVAL_RETURN',
+};
 
 function buildPgdDossierMetadataChecksum(input: {
   requestId: string;
@@ -97,6 +108,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
   const file = formData.get('file') as File | null;
   const requirementCode = String(formData.get('requirementCode') || '').trim();
   const title = String(formData.get('title') || '').trim();
+  const supplementaryStageId = String(formData.get('supplementaryStageId') || '').trim();
   const documentNumber = String(formData.get('documentNumber') || '').trim();
   const documentDate = String(formData.get('documentDate') || '').trim();
   const note = String(formData.get('note') || '').trim();
@@ -105,9 +117,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
     ? sanitizePcnPathSegment(file.name)
     : sanitizePcnPathSegment(requestedFileName || `${requirementCode || 'pgd-dossier'}.meta`);
 
-  if (!requestId || !requirementCode || !title) {
+  const isSupplementary = Boolean(supplementaryStageId);
+  const allowedSupplementaryExtensions = /\.(?:pdf|docx|png|jpe?g|gif|webp|avif)$/i;
+  if (!requestId) {
+    return jsonBadRequest('Thiếu mã hồ sơ PGD.');
+  }
+  if (isSupplementary && !file) {
+    return jsonBadRequest('Cần chọn tệp phụ trợ PGD.');
+  }
+  if (!isSupplementary && (!requirementCode || !title)) {
     return jsonBadRequest('Cần có requestId, requirementCode và tiêu đề chứng từ PGD.');
   }
+  if (isSupplementary && (!PGD_SUPPLEMENTARY_STAGE_STATIONS[supplementaryStageId] || !file || !allowedSupplementaryExtensions.test(file.name))) {
+    return jsonBadRequest('Tệp phụ trợ PGD cần thuộc giai đoạn hợp lệ và dùng định dạng PDF, DOCX hoặc ảnh được hỗ trợ.');
+  }
+  if (isSupplementary && file && file.size <= 0) return jsonBadRequest('Tệp phụ trợ PGD không được để trống.');
   if (file && !isPgdStorageConfigured()) {
     return jsonServerError('Private Storage PGD chưa được cấu hình; hiện chỉ cho phép lưu metadata chứng từ, chưa thể nhận byte file.');
   }
@@ -126,14 +150,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       assertPgdRequestEvidenceMutationAllowed(request);
 
       const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || []);
-      const requirement = requirements.find((item) => item.code === requirementCode);
-      if (!requirement) {
+      const requirement = isSupplementary ? undefined : requirements.find((item) => item.code === requirementCode);
+      if (!isSupplementary && !requirement) {
         throw Object.assign(new Error('Mã yêu cầu checklist PGD không thuộc nhóm sản phẩm của hồ sơ.'), { statusCode: 400 });
       }
-      const effectiveRequired = request.dossierChecklist?.find((item) => item.requirementCode === requirementCode)?.required ?? requirement.required;
+      const resolvedRequirementCode = isSupplementary
+        ? `PGD_SUPPLEMENTARY_${supplementaryStageId.toUpperCase().replace(/-/g, '_')}_${randomUUID()}`
+        : requirementCode;
+      const resolvedTitle = isSupplementary ? title || `Tệp phụ trợ · ${fileName}` : title;
+      const requirementStageLabel = requirement && requirement.stageLabel;
+      const effectiveRequired = requirement
+        ? request.dossierChecklist?.find((item) => item.requirementCode === requirementCode)?.required ?? requirement.required
+        : false;
+      const targetStationKey = isSupplementary
+        ? PGD_SUPPLEMENTARY_STAGE_STATIONS[supplementaryStageId]
+        : getPgdDossierRequirementStationKeyForSnapshot(requirement!.code, requirement!.customDefinition?.businessModuleKey, request.workflowSnapshot?.stages);
       const requirementAccess = getPgdOperationalStepAccess({
         status: request.status,
-        targetStationKey: getPgdDossierRequirementStationKeyForSnapshot(requirement.code, requirement.customDefinition?.businessModuleKey, request.workflowSnapshot?.stages),
+        targetStationKey,
       });
       if (!requirementAccess.editable) {
         throw Object.assign(new Error(requirementAccess.reason || 'Checklist PGD đang bị khóa theo trạm hồ sơ.'), { statusCode: 409 });
@@ -149,7 +183,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
           ORDER BY COALESCE((data->>'version')::int, 0) DESC, updated_at DESC, document_id DESC
           LIMIT 1
           FOR UPDATE`,
-        [PGD_COLLECTIONS.dossierDocuments, request.id, requirementCode],
+        [PGD_COLLECTIONS.dossierDocuments, request.id, resolvedRequirementCode],
       );
       const current = currentResult.rows[0] ? (mapDocumentRow(currentResult.rows[0]) as PgdDossierDocument) : undefined;
       const version = (Number(current?.version) || 0) + 1;
@@ -165,8 +199,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         ? createHash('sha256').update(fileBuffer).digest('hex')
         : buildPgdDossierMetadataChecksum({
             requestId: request.id,
-            requirementCode,
-            title,
+            requirementCode: resolvedRequirementCode,
+            title: resolvedTitle,
             fileName,
             version,
             documentNumber,
@@ -183,7 +217,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         const bucketName = getPgdStorageBucket();
         const assetId = `pgd-file-${checksum.slice(0, 16)}-${randomUUID().slice(0, 8)}`;
         const safeFileName = sanitizePcnPathSegment(fileName);
-        const objectPath = `pgd/dossierDocuments/${sanitizePcnPathSegment(request.id)}/${sanitizePcnPathSegment(requirementCode)}/${assetId}-${checksum}-${safeFileName}`;
+        const objectPath = `pgd/dossierDocuments/${sanitizePcnPathSegment(request.id)}/${sanitizePcnPathSegment(resolvedRequirementCode)}/${assetId}-${checksum}-${safeFileName}`;
         mimeType = String(file.type || 'application/octet-stream').toLowerCase();
         byteSize = fileBuffer.byteLength;
 
@@ -205,7 +239,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         fileAssetId = assetId;
       }
 
-      if (requirement.customDefinition && effectiveRequired && !fileAssetId) {
+      if (!isSupplementary && requirement?.customDefinition && effectiveRequired && !fileAssetId) {
         throw Object.assign(new Error('Yêu cầu custom bắt buộc phải có tệp private hợp lệ trước khi xác nhận.'), { statusCode: 400 });
       }
 
@@ -213,8 +247,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         {
           id: documentId,
           requestId: request.id,
-          requirementCode,
-          title,
+          requirementCode: resolvedRequirementCode,
+          title: resolvedTitle,
           fileName,
           version,
           checksum,
@@ -226,6 +260,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
           ...(mimeType ? { mimeType } : {}),
           ...(byteSize !== undefined ? { byteSize } : {}),
           ...(current?.id ? { supersedesDocumentId: current.id } : {}),
+          ...(isSupplementary ? { supplementaryStageId } : {}),
         } as Partial<PgdDossierDocument>,
         now,
       );
@@ -235,28 +270,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         [PGD_COLLECTIONS.dossierDocuments, next.id, JSON.stringify(getDocumentPayload(next))],
       );
 
-      const nextChecklist = markPgdDossierChecklistPresent(
-        request.productGroup,
-        request.dossierChecklist,
-        {
-          requirementCode: next.requirementCode,
-          id: next.id,
-          version: next.version,
-        },
-        now,
-        requirement.customDefinition ? 'UPLOADED' : 'PRESENT',
-      );
+      let nextRequest = request;
+      if (!isSupplementary) {
+        const nextChecklist = markPgdDossierChecklistPresent(
+          request.productGroup,
+          request.dossierChecklist,
+          {
+            requirementCode: next.requirementCode,
+            id: next.id,
+            version: next.version,
+          },
+          now,
+          requirement!.customDefinition ? 'UPLOADED' : 'PRESENT',
+        );
 
-      const nextRequest: PgdInspectionRequest = {
-        ...request,
-        dossierChecklist: nextChecklist,
-        updatedAt: now,
-      };
-
-      await client.query(
-        `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP WHERE collection_name = $1 AND document_id = $3`,
-        [PGD_COLLECTIONS.requests, JSON.stringify(getDocumentPayload(nextRequest)), request.id],
-      );
+        nextRequest = { ...request, dossierChecklist: nextChecklist, updatedAt: now };
+        await client.query(
+          `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP WHERE collection_name = $1 AND document_id = $3`,
+          [PGD_COLLECTIONS.requests, JSON.stringify(getDocumentPayload(nextRequest)), request.id],
+        );
+      }
 
       await writePgdActivity(client, actor, {
         action: 'CREATED',
@@ -264,11 +297,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         entityId: request.id,
         entityLabel: request.requestCode,
         requestCode: request.requestCode,
-        summary: [`Tải lên chứng từ ${fileName} cho mục ${requirement.title} của ${request.requestCode}`, requirement.stageLabel ? `Giai đoạn: ${requirement.stageLabel}` : ''].filter(Boolean).join(' · '),
+        summary: isSupplementary
+          ? `Tải lên tệp phụ trợ ${fileName} cho giai đoạn ${supplementaryStageId} của ${request.requestCode}`
+          : [`Tải lên chứng từ ${fileName} cho mục ${requirement?.title || title} của ${request.requestCode}`, requirementStageLabel ? `Giai đoạn: ${requirementStageLabel}` : ''].filter(Boolean).join(' · '),
         idSuffix: `dossier-doc-${next.id}`,
       });
 
-      return { dossierDocument: next, request: nextRequest };
+      return { dossierDocument: next, ...(isSupplementary ? {} : { request: nextRequest }) };
     });
 
     return jsonCreated(persisted);

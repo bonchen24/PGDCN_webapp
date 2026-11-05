@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { CheckCircle2, ChevronRight, Eye, FileText, Upload } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Eye, Pencil, Upload } from 'lucide-react';
 
 import type { PcnUserAccount } from '../types';
 import type { PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
@@ -42,6 +42,7 @@ type Props = {
   initialRequirementCode?: string;
   onOpenFullDossier?: () => void;
   onOpenDrafting?: (input: { templateKind: PgdDocumentTemplateKind; requirementCode: string }) => string | undefined;
+  onUploadSupplementary?: (stageId: PgdDossierFlowStageId, file: File) => Promise<void>;
   onRequestException?: (status: 'REJECTED' | 'ON_HOLD', reason: string) => void;
   exceptionBusy?: boolean;
 };
@@ -164,6 +165,7 @@ export default function PgdDossierStepWorkPanel({
   initialRequirementCode,
   onOpenFullDossier,
   onOpenDrafting,
+  onUploadSupplementary,
   onRequestException,
   exceptionBusy = false,
 }: Props) {
@@ -187,6 +189,8 @@ export default function PgdDossierStepWorkPanel({
   const [exceptionReason, setExceptionReason] = useState('');
   const [selectedSupplementRequirementCode, setSelectedSupplementRequirementCode] = useState<string>();
   const [activeTaskTab, setActiveTaskTab] = useState<string>('all');
+  const [supplementaryUploadBusy, setSupplementaryUploadBusy] = useState(false);
+  const [supplementaryUploadError, setSupplementaryUploadError] = useState<string | null>(null);
 
   const exceptionAllowed = Boolean(onRequestException && canMutate && !['SIGNED', 'RESULT_RETURNED', 'ARCHIVED', 'CANCELLED'].includes(request.status));
   
@@ -244,6 +248,18 @@ export default function PgdDossierStepWorkPanel({
 
   const continuationReasonId = `pgd-step-continuation-reasons-${selectedStepId}`;
   const draftingHref = canMutate && templateKind && requirement && onOpenDrafting ? onOpenDrafting({ templateKind, requirementCode: requirement.code }) : undefined;
+  const uploadSupplementary = async (file: File | undefined) => {
+    if (!file || !onUploadSupplementary) return;
+    setSupplementaryUploadBusy(true);
+    setSupplementaryUploadError(null);
+    try {
+      await onUploadSupplementary(canonicalStageId, file);
+    } catch (error) {
+      setSupplementaryUploadError(error instanceof Error ? error.message : 'Không thể tải tệp phụ trợ.');
+    } finally {
+      setSupplementaryUploadBusy(false);
+    }
+  };
 
   const documentActionRows = stepRequirements.map((item) => {
     const document = currentDocumentsByCode.get(item.code);
@@ -272,7 +288,7 @@ export default function PgdDossierStepWorkPanel({
         aria-label="Soạn thảo tài liệu"
         className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
       >
-        <FileText size={14} aria-hidden="true" />
+        <Pencil size={14} aria-hidden="true" />
       </a>
     ) : !document && !isWaived && onOpenChecklist ? (
       <button
@@ -578,8 +594,18 @@ export default function PgdDossierStepWorkPanel({
             <h3 className="text-xs font-black text-slate-900">Tài liệu cần hoàn thiện trong giai đoạn</h3>
             <p className="mt-1 text-xs leading-5 text-slate-600">Mỗi dòng cho biết tài liệu đã có chưa và việc cần làm tiếp theo.</p>
           </div>
-          <span className="text-xs font-bold text-slate-600">{stepRequirements.length} mục ở giai đoạn này</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-600">{stepRequirements.length} mục ở giai đoạn này</span>
+            {canMutate && onUploadSupplementary && !dossierStatusUnknown ? (
+              <label title={`Tải tệp phụ trợ cho giai đoạn ${meta.title}`} aria-label={`Tải tệp phụ trợ cho giai đoạn ${meta.title}`} className="mobile-touch-target inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-xs font-bold text-blue-800 hover:bg-blue-100 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
+                <Upload size={14} aria-hidden="true" />
+                <span>Tệp phụ trợ</span>
+                <input type="file" className="sr-only" accept=".pdf,.docx,.png,.jpg,.jpeg,.gif,.webp,.avif" disabled={supplementaryUploadBusy} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; void uploadSupplementary(file); }} />
+              </label>
+            ) : null}
+          </div>
         </div>
+        {supplementaryUploadError ? <p role="alert" className="mb-2 text-xs font-semibold text-rose-700">{supplementaryUploadError}</p> : null}
         <PgdcnDossierDocumentActionTable testId="pgd-dossier-document-action-table" rows={documentActionRows} />
       </section>
 

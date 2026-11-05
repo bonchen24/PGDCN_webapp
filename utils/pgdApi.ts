@@ -66,9 +66,10 @@ export interface PgdRequestDossierDocumentsResponse {
 }
 
 export interface SavePgdDossierDocumentInput {
-  requirementCode: string;
-  title: string;
+  requirementCode?: string;
+  title?: string;
   file?: File;
+  supplementaryStageId?: string;
   fileName?: string;
   documentNumber?: string;
   documentDate?: string;
@@ -216,9 +217,10 @@ export async function getPgdDossierDocuments(requestId: string): Promise<PgdRequ
 
 export async function savePgdDossierDocument(requestId: string, input: SavePgdDossierDocumentInput): Promise<{ dossierDocument: PgdDossierDocument; request?: PgdInspectionRequest }> {
   const form = new FormData();
-  form.set('requirementCode', input.requirementCode);
-  form.set('title', input.title);
+  if (input.requirementCode) form.set('requirementCode', input.requirementCode);
+  if (input.title) form.set('title', input.title);
   if (input.file) form.set('file', input.file);
+  if (input.supplementaryStageId) form.set('supplementaryStageId', input.supplementaryStageId);
   if (input.fileName) form.set('fileName', input.fileName);
   if (input.documentNumber) form.set('documentNumber', input.documentNumber);
   if (input.documentDate) form.set('documentDate', input.documentDate);

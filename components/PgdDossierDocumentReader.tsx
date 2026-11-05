@@ -5,6 +5,7 @@ import { Download, ExternalLink, FileText, RefreshCw } from 'lucide-react';
 
 import { getCurrentPgdDossierDocuments, type PgdDossierDocument } from '../utils/pgdDossier';
 import { getPgdDossierDocumentDownloadUrl } from '../utils/pgdApi';
+import { PGD_DOSSIER_FLOW_STEPS } from './PgdDossierFlow';
 
 type PgdDossierPreviewKind = 'PDF' | 'IMAGE' | 'UNSUPPORTED';
 
@@ -114,11 +115,15 @@ export default function PgdDossierDocumentReader({
             <ul className="max-h-44 overflow-y-auto p-1.5 lg:max-h-[68dvh]">
               {currentFiles.map((document) => {
                 const isSelected = (selected?.id === document.id);
+                const supplementaryStageLabel = document.supplementaryStageId
+                  ? PGD_DOSSIER_FLOW_STEPS.find((step) => step.id === document.supplementaryStageId)?.label || document.supplementaryStageId
+                  : undefined;
                 return (
                   <li key={document.id}>
                     <button type="button" onClick={() => setSelectedDocumentId(document.id)} aria-pressed={isSelected} className={'mobile-touch-target min-h-11 w-full rounded-lg px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset ' + (isSelected ? 'bg-blue-50 text-blue-950' : 'text-slate-700 hover:bg-slate-50')}>
                       <span className="block break-words text-[11px] font-bold leading-4">{document.title}</span>
                       <span className="mt-0.5 block break-all text-[10px] text-slate-500">{document.fileName} · v{document.version}</span>
+                      {supplementaryStageLabel ? <span className="mt-1 inline-flex rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-800">Tệp phụ trợ · {supplementaryStageLabel}</span> : null}
                     </button>
                   </li>
                 );

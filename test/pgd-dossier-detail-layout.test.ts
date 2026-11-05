@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import PgdDossierFlow, { PgdDossierStageGate } from '../components/PgdDossierFlow';
 import PgdDossierDocumentReader, { getPgdDossierPreviewKind } from '../components/PgdDossierDocumentReader';
 import { PGD_COLLECTIONS, PGD_DOMAIN } from '../utils/pgdDomain';
-import type { PgdDossierDocument } from '../utils/pgdDossier';
+import { buildPgdDossierDocument, type PgdDossierDocument } from '../utils/pgdDossier';
 
 const read = (relativePath: string) => fs.readFileSync(new URL(relativePath, import.meta.url), 'utf8');
 const workspace = read('../components/PgdWorkspace.tsx');
@@ -25,7 +25,41 @@ test('the PGD detail flow presents seven compact numbered stage controls', () =>
   assert.deepEqual(tabs.map((tab) => tab.match(/>\s*(0[1-7])\s*<\/span>/)?.[1]), ['01', '02', '03', '04', '05', '06', '07']);
   assert.match(markup, /Bước xử lý/);
   assert.match(markup, /aria-label="Các giai đoạn xử lý hồ sơ PGD"/);
+  assert.match(markup, /min-h-11 min-w-11/);
+  assert.doesNotMatch(markup, /line-clamp-2/);
   assert.doesNotMatch(markup, /min-w-\[(?:11rem|13\.5rem)\]/);
+});
+
+test('PGD stages accept supplementary files outside the required checklist and use the pencil drafting action', () => {
+  const workPanel = read('../components/PgdDossierStepWorkPanel.tsx');
+  const route = read('../app/api/pgd/requests/[requestId]/dossier-documents/route.ts');
+
+  assert.match(workPanel, /onUploadSupplementary/);
+  assert.match(workPanel, /aria-label=/);
+  assert.match(workPanel, /<Pencil size=/);
+  assert.match(workPanel, /accept="\.pdf,\.docx,\.png,\.jpg,\.jpeg,\.gif,\.webp,\.avif"/);
+  assert.doesNotMatch(workPanel, /accept="[^"]*\.doc,/);
+  assert.match(detail, /onUploadSupplementary=\{/);
+  assert.match(route, /supplementaryStageId/);
+  assert.match(route, /if \(!isSupplementary\)[\s\S]*markPgdDossierChecklistPresent/);
+});
+
+test('PGD supplementary document metadata retains its stage while using a non-checklist code', () => {
+  const supplementary = buildPgdDossierDocument({
+    id: 'supplement-1',
+    requestId: 'request-1',
+    requirementCode: 'PGD_SUPPLEMENTARY_EXECUTION_RANDOM',
+    title: 'Tệp phụ trợ · field.pdf',
+    fileName: 'field.pdf',
+    version: 1,
+    checksum: 'b'.repeat(64),
+    uploadedByUsername: 'operator',
+    fileAssetId: 'asset-1',
+    supplementaryStageId: 'execution',
+  });
+
+  assert.equal(supplementary.supplementaryStageId, 'execution');
+  assert.match(supplementary.requirementCode, /^PGD_SUPPLEMENTARY_/);
 });
 
 test('legacy step ids reveal only their canonical stage content', () => {
@@ -91,6 +125,19 @@ test('PGD dossier reader previews safe raster and PDF files, opens previews in a
   assert.match(markup, /Tải tệp xuống để mở bằng ứng dụng phù hợp/);
   assert.doesNotMatch(markup, /target="_blank"/);
   assert.doesNotMatch(markup, /<iframe|<img/);
+
+  const supplementary = buildPgdDossierDocument({
+    ...docx,
+    id: 'supplementary-execution',
+    sourceDocumentId: 'supplementary-execution',
+    requirementCode: 'PGD_SUPPLEMENTARY_EXECUTION_RANDOM',
+    title: 'Tệp phụ trợ · field.pdf',
+    fileName: 'field.pdf',
+    checksum: 'c'.repeat(64),
+    supplementaryStageId: 'execution',
+  });
+  const supplementaryMarkup = renderToStaticMarkup(createElement(PgdDossierDocumentReader, { documents: [supplementary] }));
+  assert.match(supplementaryMarkup, /Thực hiện giám định/);
 
   const readerSource = read('../components/PgdDossierDocumentReader.tsx');
   assert.match(readerSource, /fetch\(getPgdDossierDocumentDownloadUrl\(selected\.id\)[\s\S]*credentials: 'same-origin'/);

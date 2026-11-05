@@ -42,6 +42,7 @@ import { generatePcnOfficialDocuments, preflightPcnOfficialDocuments } from './u
 import type { PcnOfficialPreflightResponse } from './utils/pcnOfficialDocumentApi';
 import { reviewPcnTemplate as reviewPcnTemplateApi, uploadPcnTemplate as uploadPcnTemplateApi } from './utils/pcnTemplateApi';
 import { annotatePcnTemplate as annotatePcnTemplateApi } from './utils/pcnTemplateAnnotationApi';
+import { uploadPcnDossierSupplementaryAttachment } from './utils/pcnDossierDocumentApi';
 import { getPcnDocumentId, mergePcnCustomers } from './utils/pcnStorePolicy';
 import { getPcnIssuanceReadiness } from './utils/pcnIssuance';
 import { actOnPcnApprovalStep, archivePcnIssuance, attachPcnIssuanceFile, createPcnIssuanceBundle, deliverPcnIssuance, withdrawPcnIssuance } from './utils/pcnIssuanceApi';
@@ -129,6 +130,7 @@ interface PcnStoreState {
   completeWorkflowTask: (dossierId: string, taskId: string, expectedCycleNo?: number) => Promise<void>;
   returnWorkflowTask: (dossierId: string, taskId: string, input: { targetNodeId: string; reason: string }) => Promise<void>;
   uploadDossierDocument: (dossierId: string, requirementId: string, file: File) => Promise<void>;
+  uploadDossierSupplementary: (dossierId: string, stageId: string, file: File) => Promise<void>;
   confirmDossierDocument: (dossierId: string, requirementId: string) => Promise<void>;
   waiveDossierDocument: (dossierId: string, requirementId: string, reason: string) => Promise<void>;
   removeCurrentDossierDocument: (dossierId: string, requirementId: string) => Promise<void>;
@@ -827,6 +829,15 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
       ...(result.dossier ? { dossiers: state.dossiers.map((item) => item.id === result.dossier?.id ? result.dossier! : item) } : {}),
       ...(result.workflowTasks?.length ? { workflowTasks: mergeManyById(state.workflowTasks, result.workflowTasks) } : {}),
       ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs] } : {}),
+    }));
+  },
+
+  uploadDossierSupplementary: async (dossierId, stageId, file) => {
+    assertPcnStoreMutationAllowed();
+    const result = await uploadPcnDossierSupplementaryAttachment({ dossierId, stageId, file });
+    set((state) => ({
+      dossierAttachments: [result.attachment, ...state.dossierAttachments.filter((item) => item.id !== result.attachment.id)],
+      ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs.filter((item) => item.id !== result.activityLog!.id)] } : {}),
     }));
   },
 

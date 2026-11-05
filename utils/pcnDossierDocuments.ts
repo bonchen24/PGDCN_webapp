@@ -356,4 +356,35 @@ export function buildPcnUploadedDossierAttachment(input: {
   };
 }
 
+export function buildPcnSupplementaryDossierAttachment(input: {
+  dossierId: string;
+  fieldCode: PcnCertificationFieldCode;
+  stageId: string;
+  stageLabel: string;
+  assetId: string;
+  fileName: string;
+  mimeType: string;
+  byteSize: number;
+  sha256: string;
+  uploadedAt: string;
+}): PcnDossierAttachment {
+  const fileName = input.fileName.trim().slice(0, 255);
+  return {
+    id: `pcn-attachment-supplementary-${input.assetId}`,
+    dossierId: input.dossierId,
+    fieldCode: input.fieldCode,
+    kind: 'OTHER',
+    supplementaryStageId: input.stageId,
+    mappingStatus: 'MANUAL_MAPPED',
+    mappingReason: `Tệp phụ trợ của bước ${input.stageLabel}.`,
+    fileName,
+    sourceRelativePath: `PCN_SUPPLEMENTARY/${input.stageId}/${fileName}`,
+    assetId: input.assetId,
+    mimeType: input.mimeType,
+    byteSize: input.byteSize,
+    sha256: input.sha256,
+    importedAt: input.uploadedAt,
+  };
+}
+
 // --- End of pcnDossierDocuments.ts ---
