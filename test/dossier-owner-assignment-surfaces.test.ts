@@ -194,9 +194,13 @@ test('shared summary grid renders a caller-provided owner cell while preserving 
 
 test('PGD detail assignment status and action are rendered before the existing seven-step workflow rail', () => {
   const source = read('components/PgdWorkspace.tsx');
+  const operations = read('components/PgdDossierOperationsPanel.tsx');
   const assignment = source.indexOf('data-testid="pgd-dossier-owner-assignment"');
   const workflowRail = source.indexOf('<PgdDossierFlow status={request.status}');
   assert.ok(assignment >= 0, 'detail owner status/action block should exist');
+  assert.match(source, /<PgdDossierAssignmentControl/);
+  assert.match(source, /ownerUsername=\{request\.ownerUsername\}/);
+  assert.doesNotMatch(operations, /PgdDossierAssignmentControl|aria-label="Chọn người phụ trách hồ sơ PGD"|Lưu chủ hồ sơ/);
   assert.ok(workflowRail > assignment, 'owner status/action should precede the workflow rail');
   assert.equal((source.match(/PGD_DOSSIER_FLOW_STEPS/g) || []).length >= 2, true, 'the existing seven-step flow remains in place');
 });

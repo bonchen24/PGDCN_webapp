@@ -1,7 +1,7 @@
 'use client';
 
 import { ClipboardList, Download, PackageOpen, UserRound } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { usePcnSessionStore } from '../utils/pcnSessionState';
@@ -25,7 +25,6 @@ type Props = {
 export default function PgdDossierOperationsPanel({ request, requirements, dossierDocuments, canMutate, editable }: Props) {
   const currentUser = usePcnSessionStore((state) => state.currentUser);
   const pgd = usePgdStore();
-  const [ownerInput, setOwnerInput] = useState(request.ownerUsername || currentUser?.username || '');
   const [busy, setBusy] = useState(false);
   const [packageBusy, setPackageBusy] = useState(false);
   const [packageManifest, setPackageManifest] = useState<PgdDossierPackageManifest | null>(null);
@@ -36,9 +35,8 @@ export default function PgdDossierOperationsPanel({ request, requirements, dossi
     || currentUser.pgdRole === 'PGD_ADMIN'
     || currentUser.pgdRole === 'PGD_MANAGER'
   ));
-  const ownerUsername = request.ownerUsername || currentUser?.username || '';
+  const ownerUsername = request.ownerUsername || '';
   const isOwner = Boolean(currentUser && ownerUsername.toLowerCase() === currentUser.username.toLowerCase());
-  const ownerEditable = Boolean(isManager && editable && currentUser);
   const dossierEditable = Boolean(canMutate && editable && (isManager || isOwner));
   const generatedDocuments = useMemo(() => pgd.documents.filter((document) => document.requestId === request.id), [pgd.documents, request.id]);
   const currentDossierDocuments = useMemo(() => getCurrentPgdDossierDocuments(dossierDocuments), [dossierDocuments]);
@@ -46,10 +44,6 @@ export default function PgdDossierOperationsPanel({ request, requirements, dossi
   const requiredTotal = requirements.filter((requirement) => requirement.required).length;
   const requiredPresent = requirements.filter((requirement) => requirement.required && currentDossierDocuments.some((document) => document.requirementCode === requirement.code)).length;
   const lockedReason = getPgdPostSignatureMutationDenial(request.status);
-
-  useEffect(() => {
-    setOwnerInput(request.ownerUsername || currentUser?.username || '');
-  }, [currentUser?.username, request.id, request.ownerUsername]);
 
   const run = async (action: () => Promise<void>, message: string) => {
     setBusy(true);
@@ -62,11 +56,6 @@ export default function PgdDossierOperationsPanel({ request, requirements, dossi
       setBusy(false);
     }
   };
-
-  const saveOwner = () => run(async () => {
-    if (!ownerInput.trim()) throw new Error('Cần chọn người phụ trách hồ sơ PGD.');
-    await pgd.assignOwner(request.id, ownerInput.trim());
-  }, 'Đã cập nhật người phụ trách hồ sơ PGD.');
 
   const attachGenerated = (document: PgdGeneratedDocument) => run(async () => {
     const requirement = getPgdDossierRequirementForTemplate(document.kind as Parameters<typeof getPgdDossierRequirementForTemplate>[0], request.productGroup);
@@ -104,14 +93,12 @@ export default function PgdDossierOperationsPanel({ request, requirements, dossi
 
   return (
     <section className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/40 p-3 shadow-sm" aria-label="Bộ hồ sơ và thao tác PGD">
-      <PgdcnPageHeader eyebrow="PGD · Hồ sơ" title="Bộ hồ sơ & đóng gói" description="Làm việc trực tiếp trên hồ sơ: chọn người phụ trách hồ sơ, điền ô dữ liệu, sinh DOCX/PDF, đưa biểu mẫu vào danh mục tài liệu và đóng gói bản phát hành." actions={<button type="button" onClick={() => void downloadPackage()} disabled={packageBusy} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-2.5 text-[11px] font-black text-blue-700 hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60"><PackageOpen size={13} /> {packageBusy ? 'Đang đóng gói...' : 'Tải gói hồ sơ'}</button>} />
+      <PgdcnPageHeader eyebrow="PGD · Hồ sơ" title="Bộ hồ sơ & đóng gói" description="Làm việc trực tiếp trên hồ sơ: điền ô dữ liệu, sinh DOCX/PDF, đưa biểu mẫu vào danh mục tài liệu và đóng gói bản phát hành." actions={<button type="button" onClick={() => void downloadPackage()} disabled={packageBusy} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-2.5 text-[11px] font-black text-blue-700 hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60"><PackageOpen size={13} /> {packageBusy ? 'Đang đóng gói...' : 'Tải gói hồ sơ'}</button>} />
 
       {packageManifest && !packageManifest.complete && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-900"><div className="font-black">Bộ hồ sơ chưa sẵn sàng để trình phê duyệt hai cấp.</div>{packageManifest.missingRequirementCodes.length > 0 && <div className="mt-1">Thiếu danh mục tài liệu: <span className="font-mono">{packageManifest.missingRequirementCodes.join(', ')}</span></div>}{packageManifest.missingAssetIds.length > 0 && <div className="mt-1">Thiếu tệp riêng: <span className="font-mono">{packageManifest.missingAssetIds.join(', ')}</span></div>}</div>}
 
       <div className="rounded-lg border border-blue-100 bg-white p-2.5" aria-label="Chủ hồ sơ PGD">
         <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-1.5 text-[11px] font-black text-slate-700"><UserRound size={13} className="text-blue-600" /> Người phụ trách hồ sơ PGD: <span className="font-mono text-blue-700">{ownerUsername || 'Chưa gán'}</span></div><span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-bold text-slate-500">{isOwner ? 'Bạn đang phụ trách' : 'Chủ hồ sơ'}</span></div>
-        <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><select aria-label="Chọn người phụ trách hồ sơ PGD" value={ownerInput} onChange={(event) => setOwnerInput(event.target.value)} disabled={!ownerEditable || busy || Boolean(lockedReason)} className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-bold outline-none focus:border-blue-400 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><option value={ownerUsername}>{ownerUsername || 'Chưa gán'}</option>{pgd.users.filter((user) => user.active !== false && user.departmentScopes?.includes('PGD') && user.pgdRole !== 'PGD_VIEWER' && user.username !== ownerUsername).map((user) => <option key={user.username} value={user.username}>{user.username} · {user.name}</option>)}</select><button type="button" onClick={() => void saveOwner()} disabled={!ownerEditable || busy || !ownerInput.trim() || ownerInput.trim() === ownerUsername || Boolean(lockedReason)} className="mobile-touch-target min-h-11 rounded-lg border border-blue-200 bg-blue-50 px-3 text-[11px] font-black text-blue-700 disabled:cursor-not-allowed disabled:opacity-50">Lưu chủ hồ sơ</button></div>
-        {!isManager && <p className="mt-1 text-[11px] text-slate-400">Chỉ Quản trị viên/Quản lý có phạm vi PGD được thay đổi chủ hồ sơ.</p>}
         {lockedReason && <p className="mt-1 text-[11px] font-bold text-amber-700">{lockedReason}</p>}
       </div>
 
