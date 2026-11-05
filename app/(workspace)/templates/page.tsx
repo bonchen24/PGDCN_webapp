@@ -28,8 +28,10 @@ export default function TemplatesCatalogPage() {
         currentUser={currentUser}
         pcnTemplates={pcn.workflowTemplates}
         pcnRequirements={pcn.documentRequirements}
+        pcnDocxTemplates={pcn.templates}
         pgdTemplates={pgd.workflowTemplates}
         pgdRequirements={PGD_TEMPLATE_REQUIREMENTS}
+        pgdDocxTemplates={pgd.documentTemplates}
         onCreatePcnWorkflowTemplate={pcn.createWorkflowTemplate}
         onUpdatePcnWorkflowTemplate={pcn.updateWorkflowTemplate}
         onCreatePcnWorkflowRevision={pcn.createWorkflowRevision}

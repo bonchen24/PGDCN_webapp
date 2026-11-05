@@ -259,12 +259,13 @@ export function CommandPalette({ open, onClose, currentUser }: CommandPalettePro
       {/* Palette Dialog */}
       <div
         role="dialog"
+        aria-modal="true"
         aria-label="Tìm kiếm toàn hệ thống"
-        className="relative z-50 w-full max-w-xl overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl"
+        className="relative z-50 w-full max-w-xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
       >
         {/* Search Input Bar */}
-        <div className="flex items-center border-b border-slate-800 px-3 py-3">
-          <Search size={18} className="text-slate-400 shrink-0" />
+        <div className="flex items-center border-b border-slate-200 bg-slate-50/70 px-3 py-2.5">
+          <Search size={16} className="text-slate-400 shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -275,22 +276,22 @@ export function CommandPalette({ open, onClose, currentUser }: CommandPalettePro
             }}
             onKeyDown={handleKeyDown}
             placeholder="Tìm kiếm mã hồ sơ, khách hàng, hoặc lối tắt (Ctrl+K)..."
-            className="ml-3 flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+            className="ml-2.5 flex-1 bg-transparent text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none"
           />
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+            className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 cursor-pointer"
             aria-label="Đóng bảng tìm kiếm"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
 
         {/* Results List */}
-        <div className="max-h-80 overflow-y-auto p-2" role="listbox">
+        <div className="max-h-80 overflow-y-auto p-1.5" role="listbox">
           {filteredItems.length === 0 ? (
-            <div className="py-8 text-center text-xs text-slate-500">
+            <div className="py-6 text-center text-xs text-slate-500">
               Không tìm thấy hồ sơ hoặc lối tắt phù hợp với &quot;{query}&quot;
             </div>
           ) : (
@@ -308,16 +309,16 @@ export function CommandPalette({ open, onClose, currentUser }: CommandPalettePro
                     onClose();
                   }}
                   onMouseEnter={() => setSelectedIndex(index)}
-                  className={`flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-xs transition-colors ${
-                    isSelected ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                  className={`flex cursor-pointer items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
+                    isSelected ? 'bg-emerald-600 text-white' : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Icon size={16} className={`shrink-0 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Icon size={15} className={`shrink-0 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-white">{item.title}</p>
+                      <p className={`truncate font-semibold ${isSelected ? 'text-white' : 'text-slate-900'}`}>{item.title}</p>
                       {item.subtitle && (
-                        <p className={`truncate text-[10px] ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>
+                        <p className={`truncate text-[10px] ${isSelected ? 'text-emerald-100' : 'text-slate-500'}`}>
                           {item.subtitle}
                         </p>
                       )}
@@ -326,11 +327,13 @@ export function CommandPalette({ open, onClose, currentUser }: CommandPalettePro
                   {item.badge && (
                     <span
                       className={`ml-2 shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black uppercase ${
-                        item.badge === 'PCN'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        isSelected
+                          ? 'bg-white/20 text-white'
+                          : item.badge === 'PCN'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           : item.badge === 'PGD'
-                          ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                          : 'bg-slate-700 text-slate-300'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : 'bg-slate-100 text-slate-600'
                       }`}
                     >
                       {item.badge}
@@ -343,19 +346,19 @@ export function CommandPalette({ open, onClose, currentUser }: CommandPalettePro
         </div>
 
         {/* Footer Shortcut Hints */}
-        <div className="flex items-center justify-between border-t border-slate-800 bg-slate-950/60 px-3 py-1.5 text-[10px] text-slate-500">
+        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] text-slate-500">
           <div className="flex items-center gap-3">
             <span>
-              <kbd className="rounded border border-slate-700 bg-slate-800 px-1 font-mono text-[9px] text-slate-400">↑↓</kbd> Di chuyển
+              <kbd className="rounded border border-slate-300 bg-white px-1 font-mono text-[9px] text-slate-600">↑↓</kbd> Di chuyển
             </span>
             <span>
-              <kbd className="rounded border border-slate-700 bg-slate-800 px-1 font-mono text-[9px] text-slate-400">Enter</kbd> Chọn
+              <kbd className="rounded border border-slate-300 bg-white px-1 font-mono text-[9px] text-slate-600">Enter</kbd> Chọn
             </span>
             <span>
-              <kbd className="rounded border border-slate-700 bg-slate-800 px-1 font-mono text-[9px] text-slate-400">Esc</kbd> Đóng
+              <kbd className="rounded border border-slate-300 bg-white px-1 font-mono text-[9px] text-slate-600">Esc</kbd> Đóng
             </span>
           </div>
-          <span>Tìm kiếm tốc độ cao PGDCN V2</span>
+          <span>Tìm kiếm nhanh PGDCN</span>
         </div>
       </div>
     </div>

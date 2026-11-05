@@ -16,7 +16,7 @@ const LANES = [
   { id: 'intake', label: 'Tiếp nhận', color: 'from-blue-50 to-indigo-100/60 text-blue-900' },
   { id: 'preparation', label: 'Chuẩn bị', color: 'from-cyan-50 to-teal-100/60 text-teal-900' },
   { id: 'field', label: 'Hiện trường', color: 'from-amber-50 to-orange-100/60 text-amber-900' },
-  { id: 'lab', label: 'PTN & kết quả', color: 'from-purple-50 to-violet-100/60 text-purple-900' },
+  { id: 'lab', label: 'PTN & kết quả', color: 'from-sky-50 to-blue-100/60 text-blue-900' },
   { id: 'review', label: 'Rà soát & phê duyệt', color: 'from-emerald-50 to-teal-100/60 text-emerald-900' },
   { id: 'archive', label: 'Trả kết quả & lưu trữ', color: 'from-slate-100 to-zinc-200/60 text-slate-900' },
 ] as const;
@@ -184,9 +184,9 @@ function getNodeCardStyling(node: DossierTemplateEditorNode) {
   }
   if (node.kind === 'APPROVAL_TASK') {
     return {
-      wrap: 'border-purple-200 bg-gradient-to-b from-purple-50/50 to-fuchsia-50/20 hover:border-purple-300 shadow-xs hover:shadow-purple-500/10',
-      tag: 'bg-purple-100 text-purple-800',
-      badge: 'border-purple-200 text-purple-700',
+      wrap: 'border-emerald-200 bg-gradient-to-b from-emerald-50/50 to-teal-50/20 hover:border-emerald-300 shadow-xs hover:shadow-emerald-500/10',
+      tag: 'bg-emerald-100 text-emerald-800',
+      badge: 'border-emerald-200 text-emerald-700',
     };
   }
   if (node.kind === 'DECISION') {
@@ -361,7 +361,7 @@ export default function PgdcnDossierTemplatePreview(props: PgdcnDossierTemplateP
                         node.kind === 'END'
                           ? 'border-slate-300 bg-gradient-to-b from-slate-100 to-slate-200/70'
                           : node.kind === 'APPROVAL_TASK'
-                            ? 'border-purple-200 bg-gradient-to-b from-purple-50/80 to-fuchsia-50/50'
+                            ? 'border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-teal-50/50'
                             : 'border-blue-200/90 bg-white'
                       }`}
                     >

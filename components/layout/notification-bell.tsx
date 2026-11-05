@@ -11,6 +11,10 @@ import {
   markAllPgdcnNotificationsRead,
   clearPgdcnNotifications,
 } from '@/utils/pgdcnNotificationApi';
+import {
+  getPgdcnNotificationActionLabel,
+  getPgdcnNotificationNavigation,
+} from '@/utils/pgdcnNotification';
 import { formatDateTimeDdMmYyyy } from '@/utils/formatter';
 import { toast } from 'sonner';
 
@@ -86,20 +90,25 @@ export function NotificationBell({ currentUser }: NotificationBellProps) {
 
     setOpen(false);
 
-    // Route target navigation
-    if (notif.domain === 'PGD') {
-      if (notif.entityId) {
-        router.push(`/pgd/dossiers/${notif.entityId}`);
+    const target = getPgdcnNotificationNavigation(notif);
+    if (target) {
+      if (target.domain === 'PGD') {
+        if (target.section === 'field' || target.section === 'labs') {
+          router.push('/pgd?tab=samples');
+        } else {
+          router.push(`/pgd/dossiers/${target.recordId}`);
+        }
       } else {
-        router.push('/pgd');
+        if (target.section === 'lab-operations') {
+          router.push('/pcn?tab=samples');
+        } else {
+          router.push(`/pcn/dossiers/${target.recordId}`);
+        }
       }
-    } else {
-      if (notif.entityId) {
-        router.push(`/pcn/dossiers/${notif.entityId}`);
-      } else {
-        router.push('/pcn');
-      }
+      return;
     }
+
+    router.push(notif.domain === 'PGD' ? '/pgd' : '/pcn');
   };
 
   return (
@@ -111,7 +120,7 @@ export function NotificationBell({ currentUser }: NotificationBellProps) {
         aria-label="Thông báo phòng ban"
         aria-expanded={open}
         title="Thông báo phòng ban"
-        className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-700 transition-colors shadow-3xs cursor-pointer"
+        className="mobile-touch-target relative flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-700 transition-colors shadow-3xs cursor-pointer"
       >
         <Bell size={15} />
         {unreadCount > 0 && (
@@ -196,9 +205,14 @@ export function NotificationBell({ currentUser }: NotificationBellProps) {
                         {!item.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />}
                       </div>
                       <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-600">{item.message}</p>
-                      <span className="mt-1 block text-[9px] text-slate-400">
-                        {formatDateTimeDdMmYyyy(item.createdAt) || 'Vừa xong'}
-                      </span>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <span className="text-[9px] text-slate-400">
+                          {formatDateTimeDdMmYyyy(item.createdAt) || 'Vừa xong'}
+                        </span>
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-700">
+                          {getPgdcnNotificationActionLabel(item)}
+                        </span>
+                      </div>
                     </div>
                   </button>
                 );

@@ -93,6 +93,7 @@ function PgdPageContent() {
         catalog={pgd.catalog}
         users={pgd.users}
         currentUsername={currentUser?.username}
+        currentUser={currentUser}
         canEdit={Boolean(currentUser && currentUser.systemRole !== 'viewer')}
         onOpenRequest={handleOpenDossier}
         onUpdateRequest={pgd.updateRequest}
@@ -118,6 +119,9 @@ function PgdPageContent() {
       <PgdDossierQueueView
         rows={queueRows}
         onOpenDossier={handleOpenDossier}
+        currentUser={currentUser}
+        users={pgd.users}
+        onAssignOwner={pgd.assignOwner}
       />
     </div>
   );

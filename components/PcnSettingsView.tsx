@@ -84,7 +84,114 @@ export function PcnTemplateAdminPanel({ templates, onUploadTemplate, onReviewTem
       setReviewingId(null);
     }
   };
-  return <><Panel icon={FileCheck2} title="Mẫu DOCX chính thức" description="Tải lên bản GCN/QĐ đã được phòng xác nhận, sau đó soát xét từng tệp. Tệp mới luôn phải được duyệt lại trước khi phát hành."><div className="space-y-2">{templates.length === 0 ? <p className="text-[10px] text-slate-500">Chưa có mẫu PCN trong cơ sở dữ liệu.</p> : templates.map((template) => { const busy = reviewingId === template.id; const statusClass = template.status === 'APPROVED' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : template.status === 'RETIRED' ? 'border-slate-200 bg-slate-100 text-slate-500' : 'border-amber-200 bg-amber-50 text-amber-700'; return <article key={template.id} className="rounded-lg border border-slate-200 bg-slate-50/70 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><div className="flex flex-wrap items-center gap-1.5"><span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-black text-emerald-700">{template.fieldCode}</span><span className="text-[11px] font-black text-slate-800">{template.displayName}</span><span className={`rounded-full border px-2 py-0.5 text-[8px] font-black ${statusClass}`}>{templateStatusLabel(template.status)}</span></div><p className="mt-1 text-[9px] text-slate-500">Tệp hiện tại: <b>{template.fileAssetId ? 'Đã tải lên' : 'Chưa có tệp'}</b></p>{template.importedAt && <p className="mt-1 text-[9px] text-slate-500">Cập nhật: {formatDateTimeDdMmYyyy(template.importedAt) || 'Chưa cập nhật'}</p>}{template.approvedByUsername && <p className="mt-1 text-[9px] text-emerald-700">Duyệt bởi: {template.approvedByUsername}{template.approvedAt ? ` · ${formatDateTimeDdMmYyyy(template.approvedAt) || 'Chưa cập nhật'}` : ''}</p>}</div><div className="flex flex-wrap gap-1.5"><button type="button" onClick={() => setSelectedTemplate(template)} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-white px-2 py-1.5 text-[9px] font-black text-emerald-700"><Upload size={12} /> Tải bản mới</button>{template.fileAssetId && <a href={getPcnFileUrl(template.fileAssetId, { download: true })} className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1.5 text-[9px] font-black text-indigo-700"><FileDown size={12} /> Tải xuống</a>}</div></div>{template.fileAssetId && <div className="mt-2 flex flex-wrap gap-1.5 border-t border-slate-200 pt-2"><button type="button" disabled={busy || template.status === 'APPROVED'} onClick={() => void review(template, 'APPROVE')} className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-1.5 text-[9px] font-black text-white hover:bg-emerald-700 disabled:bg-slate-300"><CheckCircle2 size={12} /> Phê duyệt</button><button type="button" disabled={busy || template.status === 'RETIRED'} onClick={() => void review(template, 'REQUEST_ANNOTATION')} className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-white px-2 py-1.5 text-[9px] font-black text-amber-700 hover:bg-amber-50 disabled:opacity-50"><MessageSquareWarning size={12} /> Yêu cầu chỉnh sửa</button><button type="button" disabled={busy || template.status === 'RETIRED'} onClick={() => void review(template, 'RETIRE')} className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-[9px] font-black text-slate-600 hover:bg-slate-100 disabled:opacity-50"><CircleSlash2 size={12} /> Ngừng dùng</button>{busy && <Loader2 size={14} className="animate-spin self-center text-slate-400" />}</div>}</article>; })}</div><p className="mt-2 text-[9px] font-bold text-slate-400">Tệp được lưu trong vùng lưu trữ riêng của PCN. Tải bản mới sẽ thay thế tệp hiện tại và buộc soát xét lại; không hiển thị đường dẫn thư mục nghiên cứu.</p></Panel>{selectedTemplate && <PcnTemplateSettingsModal template={selectedTemplate} onUploadTemplate={onUploadTemplate} onClose={() => setSelectedTemplate(null)} />}</>;
+  return (
+    <>
+      <Panel
+        icon={FileCheck2}
+        title="Mẫu DOCX chính thức"
+        description="Tải lên bản GCN/QĐ đã được phòng xác nhận, sau đó soát xét từng tệp. Tệp mới luôn phải được duyệt lại trước khi phát hành."
+      >
+        <div className="space-y-2">
+          {templates.length === 0 ? (
+            <p className="text-[10px] text-slate-500">Chưa có mẫu PCN trong cơ sở dữ liệu.</p>
+          ) : (
+            templates.map((template) => {
+              const busy = reviewingId === template.id;
+              const statusClass =
+                template.status === 'APPROVED'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : template.status === 'RETIRED'
+                    ? 'border-slate-200 bg-slate-100 text-slate-500'
+                    : 'border-amber-200 bg-amber-50 text-amber-700';
+              return (
+                <article key={template.id} className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-black text-emerald-700">
+                          {template.fieldCode}
+                        </span>
+                        <span className="text-[11px] font-black text-slate-800">{template.displayName}</span>
+                        <span className={`rounded-full border px-2 py-0.5 text-[8px] font-black ${statusClass}`}>
+                          {templateStatusLabel(template.status)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[9px] text-slate-500">
+                        Tệp hiện tại: <b>{template.fileAssetId ? 'Đã tải lên' : 'Chưa có tệp'}</b>
+                      </p>
+                      {template.importedAt && (
+                        <p className="mt-1 text-[9px] text-slate-500">
+                          Cập nhật: {formatDateTimeDdMmYyyy(template.importedAt) || 'Chưa cập nhật'}
+                        </p>
+                      )}
+                      {template.approvedByUsername && (
+                        <p className="mt-1 text-[9px] text-emerald-700">
+                          Duyệt bởi: {template.approvedByUsername}
+                          {template.approvedAt ? ` · ${formatDateTimeDdMmYyyy(template.approvedAt) || 'Chưa cập nhật'}` : ''}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTemplate(template)}
+                        className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-white px-2 py-1.5 text-[9px] font-black text-emerald-700"
+                      >
+                        <Upload size={12} /> Tải bản mới
+                      </button>
+                      {template.fileAssetId && (
+                        <a
+                          href={getPcnFileUrl(template.fileAssetId, { download: true })}
+                          className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1.5 text-[9px] font-black text-indigo-700"
+                        >
+                          <FileDown size={12} /> Tải xuống
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  {template.fileAssetId && (
+                    <div className="mt-2 flex flex-wrap gap-1.5 border-t border-slate-200 pt-2">
+                      <button
+                        type="button"
+                        disabled={busy || template.status === 'APPROVED'}
+                        onClick={() => void review(template, 'APPROVE')}
+                        className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-1.5 text-[9px] font-black text-white hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        <CheckCircle2 size={12} /> Phê duyệt
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy || template.status === 'RETIRED'}
+                        onClick={() => void review(template, 'REQUEST_ANNOTATION')}
+                        className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-white px-2 py-1.5 text-[9px] font-black text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                      >
+                        <MessageSquareWarning size={12} /> Yêu cầu chỉnh sửa
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy || template.status === 'RETIRED'}
+                        onClick={() => void review(template, 'RETIRE')}
+                        className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-[9px] font-black text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                      >
+                        <CircleSlash2 size={12} /> Ngừng dùng
+                      </button>
+                      {busy && <Loader2 size={14} className="animate-spin self-center text-slate-400" />}
+                    </div>
+                  )}
+                </article>
+              );
+            })
+          )}
+        </div>
+        <p className="mt-2 text-[9px] font-bold text-slate-400">
+          Tệp được lưu trong vùng lưu trữ riêng của PCN. Tải bản mới sẽ thay thế tệp hiện tại và buộc soát xét lại; không hiển thị đường dẫn thư mục nghiên cứu.
+        </p>
+      </Panel>
+      {selectedTemplate && (
+        <PcnTemplateSettingsModal template={selectedTemplate} onUploadTemplate={onUploadTemplate} onClose={() => setSelectedTemplate(null)} />
+      )}
+    </>
+  );
 }
 
 export default function PcnSettingsView({ currentUser, templates, onUploadTemplate, onReviewTemplate }: { currentUser: UserAccount | null; templates: PcnTemplateDefinition[]; onUploadTemplate: (templateId: string, file: File) => Promise<unknown>; onReviewTemplate: (templateId: string, action: PcnTemplateReviewAction, reason?: string) => Promise<unknown> }) {

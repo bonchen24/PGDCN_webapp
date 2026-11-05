@@ -263,25 +263,25 @@ function AppSidebarInner({ currentUser }: AppSidebarProps) {
 
     if (tone === 'pcn') {
       return {
-        container: 'bg-emerald-500/15 text-emerald-300 font-semibold ring-1 ring-emerald-500/30 shadow-xs',
-        icon: 'text-emerald-400',
-        indicator: 'before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-emerald-400',
+        container: 'bg-emerald-600 text-white font-semibold shadow-2xs',
+        icon: 'text-white',
+        indicator: '',
       };
     }
 
     if (tone === 'pgd') {
       return {
-        container: 'bg-blue-500/15 text-blue-300 font-semibold ring-1 ring-blue-500/30 shadow-xs',
-        icon: 'text-blue-400',
-        indicator: 'before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-blue-400',
+        container: 'bg-blue-600 text-white font-semibold shadow-2xs',
+        icon: 'text-white',
+        indicator: '',
       };
     }
 
     // Shared default
     return {
-      container: 'bg-slate-800/90 text-white font-semibold ring-1 ring-slate-700/80 shadow-xs',
+      container: 'bg-slate-800 text-white font-semibold ring-1 ring-slate-700/80 shadow-2xs',
       icon: 'text-emerald-400',
-      indicator: 'before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-emerald-400',
+      indicator: '',
     };
   };
 
@@ -289,16 +289,16 @@ function AppSidebarInner({ currentUser }: AppSidebarProps) {
     <div className="flex h-full flex-col bg-slate-900 text-slate-200 select-none">
       {/* Brand Header */}
       <div
-        className={`flex h-14 shrink-0 items-center border-b border-slate-800/80 px-3 ${
+        className={`flex h-11 shrink-0 items-center border-b border-slate-800/80 px-2.5 ${
           collapsed ? 'justify-center' : 'justify-between'
         }`}
       >
         <Link
           href="/"
-          className={`flex items-center gap-2.5 overflow-hidden group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1`}
+          className="flex items-center gap-2 overflow-hidden group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1"
           title="Về trang chủ PGDCN"
         >
-          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white p-0.5 shadow-sm ring-1 ring-slate-700/60 group-hover:scale-105 transition-transform duration-200">
+          <div className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white p-0.5 shadow-2xs ring-1 ring-slate-700/60">
             <img
               src="/icons/iemm-logo-192.png"
               alt="TVCI Logo"
@@ -307,14 +307,9 @@ function AppSidebarInner({ currentUser }: AppSidebarProps) {
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[12px] font-black tracking-wider text-white uppercase truncate">
-                  PGDCN • TVCI
-                </span>
-                <span className="inline-flex items-center rounded px-1 py-0.2 text-[9px] font-bold bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30">
-                  v2
-                </span>
-              </div>
+              <span className="text-[11px] font-black tracking-wider text-white uppercase truncate">
+                PGDCN · TVCI
+              </span>
               <span className="text-[10px] font-medium text-slate-400 truncate">
                 Giám định & Chứng nhận
               </span>
@@ -335,7 +330,7 @@ function AppSidebarInner({ currentUser }: AppSidebarProps) {
       </div>
 
       {/* Navigation Group List */}
-      <nav className="flex-1 space-y-3 overflow-y-auto px-2 py-3 scrollbar-thin scrollbar-thumb-slate-800" aria-label="Điều hướng chính">
+      <nav className="flex-1 space-y-2 overflow-y-auto px-2 py-2 scrollbar-thin scrollbar-thumb-slate-800" aria-label="Điều hướng chính">
         {navGroups
           .filter((group) => group.visible)
           .map((group, groupIdx) => {
@@ -345,28 +340,28 @@ function AppSidebarInner({ currentUser }: AppSidebarProps) {
             const setIsOpen = isPcnGroup ? setPcnOpen : isPgdGroup ? setPgdOpen : undefined;
 
             return (
-              <div key={groupIdx} className={`${groupIdx > 0 ? 'pt-2 border-t border-slate-800/40' : ''}`}>
+              <div key={groupIdx} className={`${groupIdx > 0 ? 'pt-1.5 border-t border-slate-800/40' : ''}`}>
                 {!collapsed && (
                   group.collapsible && setIsOpen ? (
                     <button
                       type="button"
                       onClick={() => setIsOpen(!isOpen)}
                       aria-expanded={isOpen}
-                      className="group/btn flex w-full items-center justify-between px-2.5 py-1.5 mb-0.5 rounded-md text-left transition-colors hover:bg-slate-800/60 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                      className="group/btn flex w-full items-center justify-between px-2 py-1 mb-0.5 rounded-md text-left transition-colors hover:bg-slate-800/60 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                       aria-label={`Mở rộng hoặc thu gọn ${group.groupTitle}`}
                     >
                       <span className="text-[10px] font-bold tracking-wider text-slate-400 group-hover/btn:text-slate-200 uppercase transition-colors">
                         {group.groupTitle}
                       </span>
                       <ChevronDown
-                        size={13}
+                        size={12}
                         className={`text-slate-400 group-hover/btn:text-slate-200 transition-transform duration-200 ${
                           isOpen ? 'rotate-180' : ''
                         }`}
                       />
                     </button>
                   ) : (
-                    <div className="flex items-center justify-between px-2.5 py-1 mb-0.5">
+                    <div className="flex items-center justify-between px-2 py-0.5 mb-0.5">
                       <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
                         {group.groupTitle}
                       </span>
@@ -392,14 +387,14 @@ function AppSidebarInner({ currentUser }: AppSidebarProps) {
                             aria-current={active ? 'page' : undefined}
                             className={`relative flex items-center rounded-lg text-xs transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${
                               styles.container
-                            } ${styles.indicator} ${
+                            } ${
                               collapsed
-                                ? 'h-9 w-9 mx-auto justify-center p-0'
-                                : 'gap-2.5 px-2.5 py-2'
+                                ? 'h-8 w-8 mx-auto justify-center p-0'
+                                : 'gap-2 px-2 py-1.5'
                             }`}
                           >
                             <Icon
-                              size={16}
+                              size={15}
                               className={`shrink-0 transition-colors ${styles.icon}`}
                             />
                             {!collapsed && (
@@ -436,17 +431,16 @@ function AppSidebarInner({ currentUser }: AppSidebarProps) {
 
       {/* Footer Profile & Collapse Toggle */}
       <div className="shrink-0 border-t border-slate-800/80 bg-slate-950/70 p-2 backdrop-blur-xs">
-        <div className={`flex items-center gap-2 p-1 ${collapsed ? 'justify-center' : ''}`}>
-          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-xs font-bold text-emerald-400 uppercase ring-1 ring-emerald-500/30">
+        <div className={`flex items-center gap-2 p-0.5 ${collapsed ? 'justify-center' : ''}`}>
+          <div className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-[11px] font-bold text-emerald-400 uppercase ring-1 ring-emerald-500/30">
             {currentUser.name
               ? currentUser.name.trim().split(/\s+/).pop()?.slice(0, 2).toUpperCase()
               : 'US'}
-            <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-slate-900" />
           </div>
 
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-bold text-slate-100">
+              <p className="truncate text-[11px] font-bold text-slate-100">
                 {currentUser.name || currentUser.username}
               </p>
               <p className="truncate text-[10px] text-slate-400 font-medium">
@@ -473,7 +467,7 @@ function AppSidebarInner({ currentUser }: AppSidebarProps) {
           <button
             type="button"
             onClick={toggleCollapse}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-semibold text-slate-400 hover:bg-slate-800/80 hover:text-slate-200 transition-colors cursor-pointer"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1 text-[10px] font-semibold text-slate-400 hover:bg-slate-800/80 hover:text-slate-200 transition-colors cursor-pointer"
             title={collapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
           >
             {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
@@ -497,7 +491,7 @@ function AppSidebarInner({ currentUser }: AppSidebarProps) {
           <aside
             id="mobile-sidebar"
             aria-label="Menu điều hướng phòng ban"
-            className="fixed inset-y-0 left-0 z-50 w-72 max-w-[calc(100vw-3rem)] shadow-2xl transition-transform"
+            className="fixed inset-y-0 left-0 z-50 w-64 max-w-[calc(100vw-3rem)] shadow-2xl transition-transform"
           >
             {sidebarContent}
           </aside>
@@ -509,7 +503,7 @@ function AppSidebarInner({ currentUser }: AppSidebarProps) {
         id="desktop-sidebar"
         aria-label="Thanh điều hướng chính"
         className={`hidden shrink-0 border-r border-slate-800/80 transition-[width] duration-200 ease-out lg:block ${
-          collapsed ? 'w-16' : 'w-64'
+          collapsed ? 'w-14' : 'w-56'
         }`}
       >
         {sidebarContent}
@@ -522,7 +516,7 @@ export function AppSidebar(props: AppSidebarProps) {
   return (
     <Suspense
       fallback={
-        <aside className="hidden lg:block w-64 shrink-0 bg-slate-900 border-r border-slate-800" />
+        <aside className="hidden lg:block w-56 shrink-0 bg-slate-900 border-r border-slate-800" />
       }
     >
       <AppSidebarInner {...props} />

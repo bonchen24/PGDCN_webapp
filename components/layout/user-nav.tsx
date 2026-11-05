@@ -2,12 +2,13 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, Settings, Activity } from 'lucide-react';
+import { LogOut, Settings, Activity, UserCog } from 'lucide-react';
 
 import type { PcnUserAccount } from '@/types';
 import { clearPcnSession } from '@/utils/pcnAuthApi';
 import { usePcnSessionStore } from '@/utils/pcnSessionState';
 import { ORGANIZATION_MANAGEMENT_ROLE_OPTIONS } from '@/types';
+import PcnPersonalSettingsPanel from '@/components/PcnPersonalSettingsPanel';
 
 interface UserNavProps {
   currentUser: PcnUserAccount;
@@ -16,6 +17,7 @@ interface UserNavProps {
 export function UserNav({ currentUser }: UserNavProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [personalSettingsOpen, setPersonalSettingsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const clearCurrentUser = usePcnSessionStore((state) => state.clearCurrentUser);
 
@@ -116,6 +118,18 @@ export function UserNav({ currentUser }: UserNavProps) {
               role="menuitem"
               onClick={() => {
                 setOpen(false);
+                setPersonalSettingsOpen(true);
+              }}
+              className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-slate-700 hover:bg-slate-50 hover:text-emerald-700 transition-colors cursor-pointer"
+            >
+              <UserCog size={14} className="text-slate-400" />
+              <span>Cài đặt cá nhân</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
                 router.push('/settings');
               }}
               className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-slate-700 hover:bg-slate-50 hover:text-emerald-700 transition-colors cursor-pointer"
@@ -137,6 +151,9 @@ export function UserNav({ currentUser }: UserNavProps) {
             </button>
           </div>
         </div>
+      )}
+      {personalSettingsOpen && (
+        <PcnPersonalSettingsPanel currentUser={currentUser} onClose={() => setPersonalSettingsOpen(false)} />
       )}
     </div>
   );

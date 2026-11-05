@@ -57,7 +57,7 @@ export default function PgdProductGroupFields({
 }: PgdProductGroupFieldsProps) {
   if (productGroup === 'MACHINERY_LINE') {
     return <section className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3" aria-label="Thông tin máy móc / dây chuyền">
-      <div className="mb-2 flex flex-wrap items-start justify-between gap-2"><div><h2 className="text-xs font-black text-indigo-950">Thông tin máy móc / dây chuyền</h2><p className="mt-1 text-[10px] leading-4 text-indigo-800">Nhập theo hồ sơ kỹ thuật, kiểu loại/số sê-ri, tình trạng và mức độ đầy đủ của máy. Tính đồng bộ là bằng chứng riêng khi áp dụng QT-GĐ-12.</p></div><span className="rounded-full border border-indigo-200 bg-white px-2 py-1 text-[9px] font-black text-indigo-700">GĐ-MAY-01</span></div>
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-2"><div><h2 className="text-xs font-black text-slate-900">Thông tin máy móc / dây chuyền</h2><p className="mt-1 text-[10px] leading-4 text-slate-600">Nhập theo hồ sơ kỹ thuật, kiểu loại/số sê-ri, tình trạng và mức độ đầy đủ của máy. Tính đồng bộ là bằng chứng riêng khi áp dụng QT-GĐ-12.</p></div><span className="rounded-full border border-blue-200 bg-white px-2 py-1 text-[9px] font-black text-blue-700">GĐ-MAY-01</span></div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <ProductField label="Loại máy / thiết bị" required value={machinery.machineType} onChange={(value) => onMachineryChange('machineType', value)} />
         <ProductField label="Kiểu loại máy" required value={machinery.model} onChange={(value) => onMachineryChange('model', value)} />

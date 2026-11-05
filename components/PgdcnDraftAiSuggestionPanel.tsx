@@ -123,7 +123,7 @@ export default function PgdcnDraftAiSuggestionPanel({
         </article>
 
         <article aria-labelledby={`${panelId}-suggestion-title`} className="min-w-0 rounded-lg border border-violet-200 bg-violet-50/60 p-3">
-          <h3 id={`${panelId}-suggestion-title`} className="text-sm font-bold text-violet-950">
+          <h3 id={`${panelId}-suggestion-title`} className="text-sm font-bold text-slate-900">
             Đề xuất AI
           </h3>
           <p className="mt-2 min-h-12 whitespace-pre-wrap break-words text-sm leading-6 text-slate-900">
