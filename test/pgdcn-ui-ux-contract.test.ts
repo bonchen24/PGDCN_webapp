@@ -115,7 +115,7 @@ import type { PgdcnNavigationTarget } from '../components/PgdcnSidebar';
 test('login renders the two real organization logos and a short responsive form heading', () => {
   const markup = renderToStaticMarkup(createElement(PcnLoginScreen));
   assert.match(markup, /src="\/icons\/iemm-logo-192\.png"[^>]*alt="Logo IEMM"/);
-  assert.match(markup, /src="\/icons\/tvci-icon-192\.png"[^>]*alt="Logo TVCI"/);
+  assert.match(markup, /src="\/tvci_logo\.jpg"[^>]*alt="Logo TVCI"/);
   assert.match(markup, /<h1[^>]*>Đăng nhập<\/h1>/);
   // Before: this expected a hyphen where the rendered tagline uses “và”.
   const organizationTagline = markup.match(/<p\b[^>]*>([\s\S]*?)<\/p>/)?.[1] || '';

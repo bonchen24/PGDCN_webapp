@@ -85,7 +85,7 @@ export default function PcnLoginScreen() {
           <div role="group" aria-label="Logo đơn vị" className="flex items-center justify-center gap-3">
             <img src="/icons/iemm-logo-192.png" alt="Logo IEMM" width={64} height={64} className="h-14 w-14 rounded-xl border border-slate-200/20 bg-white object-contain p-1.5 sm:h-16 sm:w-16" />
             <span aria-hidden="true" className="h-8 w-px bg-slate-700" />
-            <img src="/icons/tvci-icon-192.png" alt="Logo TVCI" width={64} height={64} className="h-14 w-14 rounded-xl border border-slate-200/20 bg-white object-contain p-1.5 sm:h-16 sm:w-16" />
+            <img src="/tvci_logo.jpg" alt="Logo TVCI" width={64} height={64} className="h-14 w-14 rounded-xl border border-slate-200/20 bg-white object-contain p-1.5 sm:h-16 sm:w-16" />
           </div>
           <h1 className="mt-5 text-center text-2xl font-bold tracking-tight text-white">Đăng nhập</h1>
           <p className="mt-1 max-w-md text-center text-sm leading-5 text-slate-300">Phòng Giám định - Chứng nhận và Phát triển thị trường</p>

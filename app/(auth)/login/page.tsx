@@ -93,7 +93,7 @@ export default function LoginPage() {
             />
             <span className="h-8 w-px bg-slate-800" aria-hidden="true" />
             <img
-              src="/icons/tvci-icon-192.png"
+              src="/tvci_logo.jpg"
               alt="Logo TVCI"
               width={56}
               height={56}
