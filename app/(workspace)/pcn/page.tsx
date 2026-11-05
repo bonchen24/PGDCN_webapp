@@ -94,6 +94,9 @@ function PcnPageContent() {
       <PcnDossierQueueView
         rows={registerRows}
         onOpenDossier={handleOpenDossier}
+        users={pcn.users}
+        currentUser={currentUser}
+        onAssignDossier={(dossierId, ownerUsername) => pcn.updateDossier(dossierId, { ownerUsername })}
       />
     </div>
   );

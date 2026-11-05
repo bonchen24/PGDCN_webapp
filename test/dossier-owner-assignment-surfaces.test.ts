@@ -192,6 +192,114 @@ test('shared summary grid renders a caller-provided owner cell while preserving 
   assert.match(markup, /PGD-001/);
 });
 
+test('PCN pipeline board and work queue keep manager assignment and staff self-claim on the shared control', async () => {
+  const { PcnPipelineBoard } = await import('../components/PcnPipelineBoard.tsx');
+  const { PcnWorkQueueView } = await import('../components/PcnWorkQueueView.tsx');
+  const pcnManager = {
+    username: 'pcn-manager', name: 'Quản lý PCN', role: 'admin', systemRole: 'admin',
+    managementRoleCode: 'DEPARTMENT_HEAD', departmentRoleCode: 'PCN_MANAGER',
+    departmentScopes: ['PCN'], fieldCodes: ['QC4'], active: true,
+  };
+  const pcnStaff = {
+    username: 'pcn-staff', name: 'Nhân viên PCN', role: 'staff', systemRole: 'staff',
+    departmentRoleCode: 'PCN_TECHNICAL', departmentScopes: ['PCN'], fieldCodes: ['QC4'], active: true,
+  };
+  const pcnUsers = [pcnStaff, pcnManager];
+  const proposal = {
+    id: 'pcn-proposal-1', proposalCode: 'PCN-001', channel: 'DIRECT', status: 'CONVERTED',
+    customerSnapshot: { name: 'Công ty PCN', address: 'Hà Nội' }, productName: 'Sản phẩm PCN',
+    quantity: 1, fieldCodes: ['QC4'], receivedAt: '2026-11-01T00:00:00.000Z',
+  };
+  const dossier = {
+    id: 'pcn-dossier-1', dossierCode: 'HS-PCN-001', proposalId: proposal.id,
+    fieldCodes: ['QC4'], method: 'METHOD_1', status: 'INTAKE_REVIEW', ownerUsername: '',
+    labRequestIds: [], returnedResultIds: [],
+  };
+  const onClaimDossier = async () => undefined;
+  const onAssignDossier = async () => undefined;
+  const renderSurfaces = (currentUser: typeof pcnManager | typeof pcnStaff) => ({
+    board: renderToStaticMarkup(createElement(PcnPipelineBoard, {
+      dossiers: [dossier], proposals: [proposal], fields: [], requirements: [], documents: [],
+      users: pcnUsers, currentUser, onClaimDossier, onAssignDossier: async () => onAssignDossier(),
+      onOpenDossier: () => undefined,
+    } as any)),
+    queue: renderToStaticMarkup(createElement(PcnWorkQueueView, {
+      dossiers: [dossier], proposals: [proposal], documentRequirements: [], dossierDocuments: [],
+      users: pcnUsers, currentUser, onClaimDossier, onAssignDossier: async () => onAssignDossier(),
+      onOpenDossier: () => undefined,
+    } as any)),
+  });
+
+  const managerMarkup = renderSurfaces(pcnManager);
+  const staffMarkup = renderSurfaces(pcnStaff);
+  for (const markup of [managerMarkup.board, managerMarkup.queue]) {
+    assert.match(markup, /data-testid="pcn-dossier-assignment-control"/);
+    assert.match(markup, /Phân công người thực hiện/);
+  }
+  for (const markup of [staffMarkup.board, staffMarkup.queue]) {
+    assert.match(markup, /Nhận hồ sơ/);
+    assert.doesNotMatch(markup, /Phân công người thực hiện|Chuyển người thực hiện/);
+  }
+});
+
+test('PCN owner candidates must be active PCN employees matching every dossier field code', async () => {
+  const { getPcnAssignableDossierUsers } = await import('../utils/pcnDossierAssignment.ts');
+  const candidates = getPcnAssignableDossierUsers(['QC4', 'QC9'], [
+    { username: 'both-fields', name: 'Đủ hai lĩnh vực', active: true, systemRole: 'staff', departmentScopes: ['PCN'], fieldCodes: ['QC4', 'QC9'] },
+    { username: 'qc4-only', name: 'Chỉ QC4', active: true, systemRole: 'staff', departmentScopes: ['PCN'], fieldCodes: ['QC4'] },
+    { username: 'qc9-only', name: 'Chỉ QC9', active: true, systemRole: 'staff', departmentScopes: ['PCN'], fieldCodes: ['QC9'] },
+    { username: 'inactive', name: 'Đã nghỉ', active: false, systemRole: 'staff', departmentScopes: ['PCN'], fieldCodes: ['QC4', 'QC9'] },
+    { username: 'pgd-only', name: 'Chỉ PGD', active: true, systemRole: 'staff', departmentScopes: ['PGD'], fieldCodes: ['QC4', 'QC9'] },
+    { username: 'viewer', name: 'Viewer', active: true, systemRole: 'viewer', departmentScopes: ['PCN'], fieldCodes: ['QC4', 'QC9'] },
+  ]);
+  assert.deepEqual(candidates.map((user) => user.username), ['both-fields']);
+});
+
+test('PCN workspace register uses the confirmed owner control and keeps staff and viewer cells read-only', async () => {
+  const Register = (await import('../components/PcnOperationsRegisterView.tsx')).default;
+  const pcnManager = {
+    username: 'pcn-manager', name: 'Quản lý PCN', role: 'staff', systemRole: 'staff',
+    managementRoleCode: 'DEPARTMENT_HEAD', departmentRoleCode: 'PCN_MANAGER',
+    departmentScopes: ['PCN'], fieldCodes: ['PCN_FIELD'], active: true,
+  };
+  const pcnStaff = {
+    username: 'pcn-staff', name: 'Nhân viên PCN', role: 'staff', systemRole: 'staff',
+    departmentRoleCode: 'PCN_TECHNICAL', departmentScopes: ['PCN'], fieldCodes: ['PCN_FIELD'], active: true,
+  };
+  const pcnViewer = { ...pcnStaff, username: 'pcn-viewer', name: 'Viewer PCN', role: 'viewer', systemRole: 'viewer' };
+  const pcnUsers = [pcnManager, pcnStaff, { ...pcnStaff, username: 'reviewer-1', name: 'Người soát xét' }];
+  const proposal = {
+    id: 'pcn-register-proposal', proposalCode: 'PCN-REGISTER-001', channel: 'DIRECT', status: 'CONVERTED',
+    customerSnapshot: { name: 'Công ty PCN', address: 'Hà Nội' }, productName: 'Sản phẩm PCN',
+    quantity: 1, fieldCodes: ['PCN_FIELD'], receivedAt: '2026-11-01T00:00:00.000Z',
+  };
+  const dossier = {
+    id: 'pcn-register-dossier', dossierCode: 'HS-PCN-REGISTER-001', proposalId: proposal.id,
+    fieldCodes: ['PCN_FIELD'], method: 'METHOD_1', status: 'INTAKE_REVIEW',
+    ownerUsername: '', evaluatorUsername: 'pcn-staff', reviewerUsername: 'reviewer-1',
+    labRequestIds: [], returnedResultIds: [],
+  };
+  const render = (currentUser: typeof pcnManager | typeof pcnStaff, ownerUsername = '') => renderToStaticMarkup(createElement(Register, {
+    fields: [],
+    proposals: [proposal],
+    dossiers: [{ ...dossier, ownerUsername }],
+    sampleLots: [], sampleRoutes: [], labRequests: [], returnedResults: [], issuancePackages: [],
+    documentRequirements: [], dossierDocuments: [], users: pcnUsers, currentUser,
+    currentUsername: currentUser.username, canEdit: true,
+    onOpenDossier: () => undefined, onUpdateProposal: async () => undefined, onUpdateDossier: async () => undefined,
+  } as any));
+
+  const unassigned = render(pcnManager);
+  assert.match(unassigned, /Phân công người thực hiện/);
+  assert.match(unassigned, /Chưa gán người thực hiện/);
+  const assigned = render(pcnManager, 'pcn-staff');
+  assert.match(assigned, /Nhân viên PCN/);
+  assert.match(assigned, /Chuyển người thực hiện/);
+  for (const currentUser of [pcnStaff, pcnViewer]) {
+    assert.doesNotMatch(render(currentUser), /Phân công người thực hiện|Chuyển người thực hiện/);
+  }
+});
+
 test('PGD detail assignment status and action are rendered before the existing seven-step workflow rail', () => {
   const source = read('components/PgdWorkspace.tsx');
   const operations = read('components/PgdDossierOperationsPanel.tsx');

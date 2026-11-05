@@ -87,3 +87,77 @@ test('PCN queue view enforces table-only display and table data contains sample 
   assert.match(tableScroll.text(), /HS-PCN-COMPACT-001/);
   assert.match(tableScroll.text(), /Thiết bị đo công suất/);
 });
+
+test('PCN queue owner cell uses the confirmed PCN assignment control for managers and stays read-only for staff and viewers', () => {
+  const manager = {
+    username: 'pcn-manager', name: 'Quản lý PCN', role: 'admin', systemRole: 'admin',
+    departmentRoleCode: 'PCN_MANAGER', departmentScopes: ['PCN'], fieldCodes: ['QC4'], active: true,
+  };
+  const staff = {
+    username: 'pcn-staff', name: 'Nhân viên PCN', role: 'staff', systemRole: 'staff',
+    departmentRoleCode: 'PCN_TECHNICAL', departmentScopes: ['PCN'], fieldCodes: ['QC4'], active: true,
+  };
+  const viewer = {
+    username: 'pcn-viewer', name: 'Viewer PCN', role: 'viewer', systemRole: 'viewer',
+    departmentRoleCode: 'PCN_VIEWER', departmentScopes: ['PCN'], fieldCodes: ['QC4'], active: true,
+  };
+  const users = [staff, { ...staff, username: 'wrong-field', name: 'Sai lĩnh vực', fieldCodes: ['QC9'] }, { ...staff, username: 'inactive', active: false }];
+  const row = {
+    dossierId: 'pcn-assignment-1',
+    dossierCode: 'HS-PCN-ASSIGN-001',
+    registrationCode: 'PCN-ASSIGN-001',
+    customerName: 'Công ty PCN',
+    sampleQuantity: 1,
+    sampleLocations: [],
+    productName: 'Sản phẩm PCN',
+    model: 'M-1',
+    standardRefs: [],
+    fieldCodes: ['QC4'],
+    reportNumbers: [],
+    testCriteria: [],
+    labStatuses: [],
+    dossierStatus: 'INTAKE_REVIEW',
+    stationKey: 'INTAKE',
+    stationTitle: 'Tiếp nhận Đề nghị',
+    stationActionLabel: 'Kiểm tra Đề nghị',
+    completenessScore: 60,
+    requiredDocumentTotal: 1,
+    requiredDocumentPresent: 0,
+    missingRequiredCount: 1,
+    stationDocumentTotal: 1,
+    stationDocumentPresent: 0,
+    missingRequiredByStage: [],
+    stationMissingLabels: [],
+    ownerUsername: '',
+  };
+  const renderFor = (currentUser: typeof manager | typeof staff | typeof viewer, ownerUsername = '') => {
+    return renderToStaticMarkup(React.createElement(PcnDossierQueueView, {
+      rows: [{ ...row, ownerUsername } as never],
+      onOpenDossier: () => {},
+      users: users as any,
+      currentUser: currentUser as any,
+      onAssignDossier: async () => undefined,
+    }));
+  };
+
+  const unassigned = renderFor(manager);
+  assert.match(unassigned, /data-testid="pcn-dossier-assignment-control"/);
+  assert.match(unassigned, /Phân công người thực hiện/);
+  assert.match(unassigned, /Chưa gán người thực hiện/);
+
+  const assigned = renderFor(manager, 'pcn-staff');
+  assert.match(assigned, /Nhân viên PCN/);
+  assert.match(assigned, /Chuyển người thực hiện/);
+
+  for (const currentUser of [staff, viewer]) {
+    const markup = renderFor(currentUser, '');
+    assert.doesNotMatch(markup, /Phân công người thực hiện|Chuyển người thực hiện/);
+    assert.match(markup, /Chưa gán người thực hiện/);
+  }
+});
+
+test('PCN page passes its PCN users, actor, and existing dossier update mutation to the queue', () => {
+  const source = fs.readFileSync(new URL('../app/(workspace)/pcn/page.tsx', import.meta.url), 'utf8');
+  assert.match(source, /<PcnDossierQueueView[\s\S]{0,350}users=\{pcn\.users\}[\s\S]{0,100}currentUser=\{currentUser\}/);
+  assert.match(source, /onAssignDossier=\{\(dossierId, ownerUsername\) => pcn\.updateDossier\(dossierId, \{ ownerUsername \}\)\}/);
+});

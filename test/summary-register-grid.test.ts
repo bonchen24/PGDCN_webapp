@@ -10,8 +10,10 @@ import { sortSummaryRows, toggleSummarySort } from '../utils/summaryRegister';
 import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import * as cheerio from 'cheerio';
 import PgdcnDossierSummaryGrid from '../components/PgdcnDossierSummaryGrid';
 import PgdSummaryRegisterView from '../components/PgdSummaryRegisterView';
+import PcnOperationsRegisterView from '../components/PcnOperationsRegisterView';
 
 const pgdRequestFixture = {
   domain: 'pgd',
@@ -403,6 +405,43 @@ test('PCN summary cell mapping routes proposal and dossier fields to their ownin
     target: 'dossier',
     updates: { targetDate: '2026-09-20' },
   });
+});
+
+test('PCN summary register renders owner assignment separately while evaluator and reviewer remain editable', () => {
+  const currentUser = {
+    username: 'pcn-manager', name: 'Quản lý PCN', role: 'admin', systemRole: 'admin',
+    managementRoleCode: 'DEPARTMENT_HEAD', departmentRoleCode: 'PCN_MANAGER',
+    departmentScopes: ['PCN'], fieldCodes: ['PCN_FIELD'], active: true,
+  } as any;
+  const users = [
+    currentUser,
+    { username: 'owner-1', name: 'Nhân viên phụ trách', role: 'staff', systemRole: 'staff', departmentRoleCode: 'PCN_TECHNICAL', departmentScopes: ['PCN'], fieldCodes: ['PCN_FIELD'], active: true },
+    { username: 'evaluator-1', name: 'Đánh giá viên', role: 'staff', systemRole: 'staff', departmentRoleCode: 'PCN_TECHNICAL', departmentScopes: ['PCN'], fieldCodes: ['PCN_FIELD'], active: true },
+    { username: 'reviewer-1', name: 'Người soát xét', role: 'staff', systemRole: 'staff', departmentRoleCode: 'PCN_TECHNICAL', departmentScopes: ['PCN'], fieldCodes: ['PCN_FIELD'], active: true },
+  ];
+  const markup = renderToStaticMarkup(createElement(PcnOperationsRegisterView, {
+    fields: [], proposals: [pcnProposalFixture],
+    dossiers: [{ ...pcnDossierFixture, ownerUsername: '', reviewerUsername: 'reviewer-1' }],
+    sampleLots: [], sampleRoutes: [], labRequests: [], returnedResults: [], issuancePackages: [],
+    documentRequirements: [], dossierDocuments: [], users, currentUser,
+    currentUsername: currentUser.username, canEdit: true,
+    onOpenDossier: () => undefined, onUpdateProposal: async () => undefined, onUpdateDossier: async () => undefined,
+  }));
+  const $ = cheerio.load(markup);
+  const grid = $('[data-testid="dossier-summary-grid"]');
+  const headerCells = grid.find('thead th').toArray();
+  const rowCells = grid.find('tbody tr').first().children('td');
+  const cellFor = (label: string) => {
+    const index = headerCells.findIndex((cell) => $(cell).text().includes(label));
+    assert.ok(index >= 0, `the ${label} column should remain visible`);
+    return rowCells.eq(index);
+  };
+  const ownerCell = cellFor('Chủ hồ sơ');
+  assert.match(ownerCell.text(), /Chưa gán người thực hiện/);
+  assert.match(ownerCell.text(), /Phân công người thực hiện/);
+  assert.equal(ownerCell.attr('tabindex'), undefined, 'owner is not opened as the generic inline editor');
+  assert.equal(cellFor('Đánh giá viên').attr('tabindex'), '0', 'evaluator remains independently editable');
+  assert.equal(cellFor('Người soát xét').attr('tabindex'), '0', 'reviewer remains independently editable');
 });
 
 test('shared summary search input uses the caller-provided placeholder', () => {

@@ -27,10 +27,15 @@ import { usePcnSessionStore } from '../utils/pcnSessionState';
 import { isPcnSystemManager } from '../utils/pcnRbac';
 import { usePcnStore } from '../store-pcn';
 import { downloadPcnDossierPackage } from '../utils/pcnDossierPackageApi';
+import PcnDossierAssignmentControl from './PcnDossierAssignmentControl';
+import type { PcnUserAccount, UserAccount } from '../types';
 
 export interface PcnDossierQueueViewProps {
   rows: PcnOperationsRegisterRow[];
   onOpenDossier: (dossierId: string) => void;
+  users?: PcnUserAccount[];
+  currentUser?: UserAccount | null;
+  onAssignDossier?: (dossierId: string, ownerUsername: string) => Promise<unknown>;
   filterControls?: ReactNode;
 }
 
@@ -54,10 +59,14 @@ export const PCN_FILTER_CHIPS = [
 
 type PcnFilterChipId = typeof PCN_FILTER_CHIPS[number]['id'];
 
-export default function PcnDossierQueueView({ rows, onOpenDossier, filterControls }: PcnDossierQueueViewProps) {
-  const currentUser = usePcnSessionStore((state) => state.currentUser);
+export default function PcnDossierQueueView({ rows, onOpenDossier, users: providedUsers, currentUser: providedCurrentUser, onAssignDossier, filterControls }: PcnDossierQueueViewProps) {
+  const sessionUser = usePcnSessionStore((state) => state.currentUser);
+  const currentUser = providedCurrentUser === undefined ? sessionUser : providedCurrentUser;
   const isManagerOrAdmin = Boolean(currentUser && (currentUser.systemRole === 'admin' || currentUser.role === 'admin' || isPcnSystemManager(currentUser)));
   const deleteDossier = usePcnStore((state) => state.deleteDossier);
+  const storeUsers = usePcnStore((state) => state.users);
+  const updateDossier = usePcnStore((state) => state.updateDossier);
+  const users = providedUsers ?? storeUsers;
   const [query, setQuery] = useState('');
   const [activeChip, setActiveChip] = useState<PcnFilterChipId>('ALL');
   const [showFilters, setShowFilters] = useState(false);
@@ -380,12 +389,17 @@ export default function PcnDossierQueueView({ rows, onOpenDossier, filterControl
                         {row.missingRequiredCount > 0 ? `Thiếu ${row.missingRequiredCount} mục` : 'Đủ tài liệu bắt buộc'}
                       </span>
                     </td>
-                    <td className="px-3 py-3 align-top text-xs font-medium text-slate-700">
-                      {row.ownerUsername ? (
-                        <span className="text-slate-800 font-semibold">{row.ownerUsername}</span>
-                      ) : (
-                        <span className="text-slate-400 italic">Chưa phân công</span>
-                      )}
+                    <td className="min-w-[190px] px-3 py-3 align-top text-xs font-medium text-slate-700">
+                      <PcnDossierAssignmentControl
+                        dossier={{ id: row.dossierId, dossierCode: row.dossierCode, fieldCodes: row.fieldCodes, ownerUsername: row.ownerUsername }}
+                        users={users}
+                        currentUser={currentUser}
+                        onAssign={async (ownerUsername) => {
+                          if (onAssignDossier) await onAssignDossier(row.dossierId, ownerUsername);
+                          else await updateDossier(row.dossierId, { ownerUsername });
+                        }}
+                        compact
+                      />
                     </td>
                     <td className="px-3 py-3 align-top text-right">
                       <div className="flex items-center justify-end gap-1">

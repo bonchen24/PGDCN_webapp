@@ -10,6 +10,7 @@ import { buildPcnOperationsRegisterRows, getPcnSummaryCellUpdate } from '../util
 import type { SummaryGridColumn, SummaryGridRow } from '../utils/summaryRegister';
 import type { PgdcnSavedFilterSnapshot } from '../utils/pgdcnSavedFilters';
 import PgdcnDossierSummaryGrid from './PgdcnDossierSummaryGrid';
+import PcnDossierAssignmentControl from './PcnDossierAssignmentControl';
 
 import { PgdcnPageHeader } from './PgdcnUiPrimitives';
 
@@ -55,7 +56,7 @@ const columns: SummaryGridColumn[] = [
   { id: 'fieldCodes', label: 'Lĩnh vực', width: 150 },
   { id: 'standardRefs', label: 'Tiêu chuẩn', width: 190 },
   { id: 'dossierStatus', label: 'Trạng thái HS', width: 155 },
-  { id: 'ownerUsername', label: 'Chủ hồ sơ', width: 150, inputType: 'select', editable: true },
+  { id: 'ownerUsername', label: 'Chủ hồ sơ', width: 150 },
   { id: 'evaluatorUsername', label: 'Đánh giá viên', width: 150, inputType: 'select', editable: true },
   { id: 'reviewerUsername', label: 'Người soát xét', width: 150, inputType: 'select', editable: true },
   { id: 'targetDate', label: 'Hạn xử lý', width: 122, inputType: 'date', editable: true },
@@ -143,7 +144,7 @@ export default function PcnOperationsRegisterView(props: Props) {
     const userNames = new Map(props.users.map((user) => [user.username, user.name || 'Người dùng hệ thống']));
     return { id: row.dossierId, cells, displayCells: { ownerUsername: row.ownerUsername ? userNames.get(row.ownerUsername) : undefined, evaluatorUsername: row.evaluatorUsername ? userNames.get(row.evaluatorUsername) : undefined, reviewerUsername: dossier?.reviewerUsername ? userNames.get(dossier.reviewerUsername) : undefined }, searchText: Object.values(cells).map((value) => Array.isArray(value) ? value.join(' ') : String(value ?? '')).join(' ') };
   }), [dossierById, proposalById, props.users, registerRows]);
-  const configuredColumns = useMemo(() => columns.map((column) => ['ownerUsername', 'evaluatorUsername', 'reviewerUsername'].includes(column.id) ? { ...column, options: userOptions(props.users) } : column), [props.users]);
+  const configuredColumns = useMemo(() => columns.map((column) => ['evaluatorUsername', 'reviewerUsername'].includes(column.id) ? { ...column, options: userOptions(props.users) } : column), [props.users]);
   const filterRows = useMemo(() => (items: SummaryGridRow[]) => items.filter((row) => {
     const source = registerRows.find((item) => item.dossierId === row.id);
     if (!source) return false;
@@ -189,7 +190,18 @@ export default function PcnOperationsRegisterView(props: Props) {
       <PgdcnPageHeader eyebrow="Quản lý PCN" title="Sổ tổng hợp PCN" description="Mỗi dòng là một hồ sơ PCN, mỗi cột là một trường dữ liệu. Các ô được phép chỉnh sửa trực tiếp theo đúng ranh giới hồ sơ." />
       <div className="min-w-0 max-w-full">
         <p className="mb-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600 sm:hidden">Vuốt ngang để xem thêm cột. Cột đầu tiên và thao tác luôn được ghim.</p>
-        <PgdcnDossierSummaryGrid domain="PCN" columns={configuredColumns} rows={rows} currentUsername={props.currentUsername} canEdit={props.canEdit} canEditRow={canEditRow} filterRows={filterRows} filterControls={filterControls} onOpenRow={(rowId) => { const dossier = dossierById.get(rowId); if (dossier) props.onOpenDossier(dossier, 'documents'); }} onCommitCell={commitCell} savedFilterState={savedFilterState} searchPlaceholder="Tìm mã đề nghị, mã hồ sơ, khách hàng, sản phẩm, lĩnh vực..." emptyTitle="Không có hồ sơ PCN phù hợp" emptyDescription="Hãy điều chỉnh từ khóa hoặc các bộ lọc Sổ tổng hợp." />
+        <PgdcnDossierSummaryGrid domain="PCN" columns={configuredColumns} rows={rows} currentUsername={props.currentUsername} canEdit={props.canEdit} canEditRow={canEditRow} filterRows={filterRows} filterControls={filterControls} onOpenRow={(rowId) => { const dossier = dossierById.get(rowId); if (dossier) props.onOpenDossier(dossier, 'documents'); }} onCommitCell={commitCell} renderCell={({ row, column }) => {
+          if (column.id !== 'ownerUsername') return undefined;
+          const dossier = dossierById.get(row.id);
+          if (!dossier) return undefined;
+          return <PcnDossierAssignmentControl
+            dossier={dossier}
+            users={props.users}
+            currentUser={props.currentUser ?? null}
+            onAssign={async (ownerUsername) => { await props.onUpdateDossier(dossier.id, { ownerUsername }); }}
+            compact
+          />;
+        }} savedFilterState={savedFilterState} searchPlaceholder="Tìm mã đề nghị, mã hồ sơ, khách hàng, sản phẩm, lĩnh vực..." emptyTitle="Không có hồ sơ PCN phù hợp" emptyDescription="Hãy điều chỉnh từ khóa hoặc các bộ lọc Sổ tổng hợp." />
       </div>
     </div>
   );
