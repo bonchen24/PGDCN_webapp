@@ -6,12 +6,15 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { chromium } from 'playwright';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import PizZip from 'pizzip';
+import mammoth from 'mammoth';
 
 const baseUrl = process.env.PGDCN_UX_BASE_URL || 'http://localhost:1357';
 const viewports = [
   { width: 1366, height: 768 },
   { width: 1440, height: 900 },
   { width: 390, height: 844 },
+  { width: 320, height: 740 },
 ];
 
 const pcnDossier = {
@@ -137,7 +140,32 @@ async function createPdf() {
   return Buffer.from(await pdf.save());
 }
 
-async function installSyntheticRoutes(page, base, department, pdfBytes, audit) {
+async function createDocx() {
+  const zip = new PizZip();
+  zip.file('[Content_Types].xml', '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+  zip.file('_rels/.rels', '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+  zip.file('word/document.xml', '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Synthetic DOCX preview</w:t></w:r></w:p></w:body></w:document>');
+  const bytes = zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+  const extracted = await mammoth.extractRawText({ buffer: bytes });
+  assert.match(extracted.value, /Synthetic DOCX preview/, 'The synthetic fixture is a readable DOCX package');
+  return bytes;
+}
+
+function readMultipartField(body, name) {
+  return body.match(new RegExp(`name="${name}"\\r\\n\\r\\n([^\\r\\n]*)`))?.[1] || '';
+}
+
+async function installSyntheticRoutes(page, base, department, pdfBytes, audit, options = {}) {
+  const activePgdDocument = options.docxBytes ? {
+    ...pgdDocument,
+    id: 'qa-wheel-pgd-docx',
+    sourceDocumentId: 'qa-wheel-pgd-docx',
+    title: 'Synthetic DOCX document',
+    fileName: 'synthetic-wheel-pgd.docx',
+    fileAssetId: 'qa-wheel-pgd-docx-asset',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  } : pgdDocument;
+  const pgdDocuments = department === 'PGD' ? [activePgdDocument] : [];
   await page.route('**/*', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -163,6 +191,38 @@ async function installSyntheticRoutes(page, base, department, pdfBytes, audit) {
 
     audit.apiRequests.push({ method, pathname: url.pathname });
 
+    if (method !== 'GET' && department === 'PGD' && options.supplementaryWriteMode
+      && url.pathname === '/api/pgd/requests/qa-wheel-pgd/dossier-documents') {
+      const body = request.postData() || '';
+      const title = readMultipartField(body, 'title');
+      const note = readMultipartField(body, 'note');
+      const supplementaryStageId = readMultipartField(body, 'supplementaryStageId');
+      audit.syntheticWrites.push({ method, title, note, supplementaryStageId, hasFile: /name="file"/.test(body) });
+      if (options.supplementaryWriteMode === 'failure') {
+        await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Synthetic supplementary save failed.' }) });
+        return;
+      }
+      const document = {
+        id: 'qa-wheel-pgd-supplementary',
+        domain: 'pgd',
+        requestId: 'qa-wheel-pgd',
+        requirementCode: `PGD_SUPPLEMENTARY_${supplementaryStageId.toUpperCase().replace(/-/g, '_')}_SYNTHETIC`,
+        title,
+        fileName: 'pgd-dossier.meta',
+        sourceCollection: 'pgdDossierDocuments',
+        sourceDocumentId: 'qa-wheel-pgd-supplementary',
+        version: 1,
+        checksum: 'synthetic-metadata-checksum',
+        uploadedByUsername: 'synthetic_admin',
+        uploadedAt: '2026-11-05T08:00:00.000Z',
+        note,
+        supplementaryStageId,
+      };
+      pgdDocuments.push(document);
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ dossierDocument: document }) });
+      return;
+    }
+
     if (method !== 'GET') {
       audit.apiMutations.push({ url: request.url(), method });
       await route.abort('blockedbyclient');
@@ -181,7 +241,7 @@ async function installSyntheticRoutes(page, base, department, pdfBytes, audit) {
         body: JSON.stringify({
           customers: [], users: [], catalog: [], requests: department === 'PGD' ? [pgdRequest] : [], assignments: [], fieldInspections: [],
           samples: [], labRequests: [], labResults: [], templates: [], documentTemplates: [], reports: [],
-          certificates: [], approvals: [], dossierDocuments: department === 'PGD' ? [pgdDocument] : [], documents: [], inspectionPlans: [],
+          certificates: [], approvals: [], dossierDocuments: pgdDocuments, documents: [], inspectionPlans: [],
           caseEvents: [], fieldActivityLogs: [], labResultReviews: [], dossierIndexes: [],
           calibrationInstruments: [], workflowTemplates: [],
         }),
@@ -208,13 +268,17 @@ async function installSyntheticRoutes(page, base, department, pdfBytes, audit) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ dossierDocuments: [pgdDocument], requirements: [] }),
+        body: JSON.stringify({ dossierDocuments: pgdDocuments, requirements: [] }),
       });
       return;
     }
 
     if (url.pathname.startsWith('/api/pgd/dossier-documents/')) {
-      await route.fulfill({ status: 200, contentType: 'application/pdf', body: pdfBytes });
+      await route.fulfill({
+        status: 200,
+        contentType: options.docxBytes ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf',
+        body: options.docxBytes || pdfBytes,
+      });
       return;
     }
 
@@ -222,8 +286,8 @@ async function installSyntheticRoutes(page, base, department, pdfBytes, audit) {
   });
 }
 
-async function openDossier(page, base, department, pdfBytes, audit) {
-  await installSyntheticRoutes(page, base, department, pdfBytes, audit);
+async function openDossier(page, base, department, pdfBytes, audit, options) {
+  await installSyntheticRoutes(page, base, department, pdfBytes, audit, options);
   const pathname = department === 'PCN'
     ? '/pgdcn/pcn/dossiers/qa-wheel-pcn?tab=overview'
     : '/pgdcn/pgd/dossiers/qa-wheel-pgd';
@@ -643,6 +707,119 @@ test('synthetic PCN/PGD dossiers scroll with the mouse wheel without moving the 
       consoleWarningCount: audit.consoleErrors.length,
       consoleWarnings: audit.consoleErrors.map((message) => message.slice(0, 180)),
     }, null, 2));
+  } finally {
+    await browser.close();
+  }
+});
+
+test('synthetic PGD document actions separate reader, new tab, download, and supplementary modal states', async () => {
+  const base = new URL(baseUrl);
+  const pdfBytes = await createPdf();
+  const audit = { apiRequests: [], apiResponses: [], browserApiRequests: [], failedRequests: [], pageErrors: [], hydrationWarnings: [], apiMutations: [], syntheticWrites: [], externalRequests: [], consoleErrors: [], cases: [] };
+  const browser = await chromium.launch({ headless: true });
+  const pageErrors = [];
+
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    page.on('download', (download) => { audit.unexpectedDownloads = [...(audit.unexpectedDownloads || []), { url: download.url(), fileName: download.suggestedFilename() }]; });
+    await openDossier(page, base, 'PGD', pdfBytes, audit, { supplementaryWriteMode: 'failure' });
+    await page.locator('#pgd-dossier-mobile-tab-work').click();
+    await page.getByTestId('pgd-dossier-native-flow').getByRole('tab').first().click();
+
+    const documentTable = page.getByTestId('pgd-dossier-document-action-table');
+    const documentRow = documentTable.getByRole('row').filter({ hasText: pgdDocument.fileName });
+    assert.equal(await documentRow.count(), 1, 'The fixture document appears in the intake-stage table');
+    assert.ok(await documentRow.getByRole('button', { name: `Xem ${pgdDocument.title}` }).count(), 'The document row exposes the Eye control');
+    const eye = documentRow.getByRole('button', { name: `Xem ${pgdDocument.title}` });
+    const downloadsBeforeEye = audit.unexpectedDownloads?.length || 0;
+    await eye.click();
+    await page.waitForTimeout(100);
+    assert.equal(await page.locator('#pgd-dossier-mobile-tab-reader').getAttribute('aria-selected'), 'true', 'Eye selects the Reader tab on mobile');
+    assert.equal(page.context().pages().length, 1, 'Eye does not open a second tab');
+    assert.ok(await page.getByTestId('pgd-dossier-document-reader').locator('iframe').isVisible(), 'Eye selects the PDF in the in-page reader');
+    assert.equal(audit.unexpectedDownloads?.length || 0, downloadsBeforeEye, `Eye does not trigger a download: ${JSON.stringify(audit.unexpectedDownloads || [])}`);
+
+    await page.locator('#pgd-dossier-mobile-tab-work').click();
+    await page.context().route('**/api/pgd/dossier-documents/*/download*', async (route) => {
+      audit.syntheticPreviewGets = (audit.syntheticPreviewGets || 0) + 1;
+      await route.fulfill({ status: 200, contentType: 'application/pdf', body: pdfBytes });
+    });
+    const openInNewTab = page.getByRole('link', { name: `Mở ${pgdDocument.title} trong tab mới` });
+    const inlineHref = new URL(await openInNewTab.getAttribute('href'), base);
+    assert.equal(inlineHref.origin, base.origin, 'External open stays on the authenticated same origin');
+    assert.equal(inlineHref.searchParams.get('inline'), '1', 'External open requests inline MIME disposition');
+    const popupPromise = page.waitForEvent('popup');
+    await openInNewTab.click();
+    const popup = await popupPromise;
+    await popup.waitForTimeout(100);
+    assert.equal(page.context().pages().length, 2, 'FileText opens a distinct tab');
+    await popup.close();
+
+    const downloadPromise = page.waitForEvent('download');
+    await documentRow.getByRole('link', { name: 'Tải xuống' }).click();
+    const download = await downloadPromise;
+    assert.equal(download.suggestedFilename(), pgdDocument.fileName, 'Download keeps the original file name');
+
+    await page.getByTestId('pgd-supplementary-trigger').click();
+    const dialog = page.getByRole('dialog', { name: /Thêm đầu mục tài liệu phụ trợ/ });
+    await dialog.waitFor({ state: 'visible' });
+    await page.getByTestId('pgd-supplementary-submit').click();
+    assert.ok(await dialog.getByRole('alert').isVisible(), 'Empty title validation stays inline');
+    await page.getByLabel('Tên tài liệu phụ trợ').fill('Synthetic metadata only');
+    await page.getByLabel('Mô tả tài liệu phụ trợ').fill('Synthetic description retained on failure');
+    await page.getByTestId('pgd-supplementary-submit').click();
+    assert.ok(await dialog.isVisible(), 'A failed metadata save keeps the modal open');
+    assert.match(await dialog.getByRole('alert').innerText(), /Synthetic supplementary save failed/i);
+    assert.equal(await page.getByLabel('Tên tài liệu phụ trợ').inputValue(), 'Synthetic metadata only');
+    assert.equal(await page.getByLabel('Mô tả tài liệu phụ trợ').inputValue(), 'Synthetic description retained on failure');
+    await dialog.getByRole('button', { name: 'Hủy' }).click();
+
+    await page.close();
+    const successPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    successPage.on('pageerror', (error) => pageErrors.push(error.message));
+    await openDossier(successPage, base, 'PGD', pdfBytes, audit, { supplementaryWriteMode: 'success' });
+    await successPage.locator('#pgd-dossier-mobile-tab-work').click();
+    await successPage.getByTestId('pgd-dossier-native-flow').getByRole('tab').first().click();
+    await successPage.getByTestId('pgd-supplementary-trigger').click();
+    await successPage.getByLabel('Tên tài liệu phụ trợ').fill('Synthetic metadata saved');
+    await successPage.getByLabel('Mô tả tài liệu phụ trợ').fill('No file is required for a metadata-only item');
+    await successPage.getByTestId('pgd-supplementary-submit').click();
+    await successPage.getByRole('row', { name: /Synthetic metadata saved/ }).waitFor({ state: 'visible' });
+    assert.equal(await successPage.getByRole('dialog', { name: /Thêm đầu mục tài liệu phụ trợ/ }).count(), 0, 'Successful save closes the modal');
+
+    assert.deepEqual(audit.apiMutations, [], 'Every API write was intercepted by the synthetic mock');
+    assert.deepEqual(audit.externalRequests, [], 'Synthetic UI QA does not call external services');
+    assert.deepEqual(audit.syntheticWrites.map(({ method, title, note, supplementaryStageId, hasFile }) => ({ method, title, note, supplementaryStageId, hasFile })), [
+      { method: 'POST', title: 'Synthetic metadata only', note: 'Synthetic description retained on failure', supplementaryStageId: 'intake', hasFile: false },
+      { method: 'POST', title: 'Synthetic metadata saved', note: 'No file is required for a metadata-only item', supplementaryStageId: 'intake', hasFile: false },
+    ], 'The mock receives the expected stage and text with no file bytes');
+    assert.equal(audit.syntheticPreviewGets, 1, 'The external tab uses the inline, same-origin preview endpoint');
+    assert.deepEqual(pageErrors, [], 'No browser runtime errors occur');
+  } finally {
+    await browser.close();
+  }
+});
+
+test('synthetic DOCX preview renders private file text inside the dossier reader', async () => {
+  const base = new URL(baseUrl);
+  const docxBytes = await createDocx();
+  const audit = { apiRequests: [], apiResponses: [], browserApiRequests: [], failedRequests: [], pageErrors: [], hydrationWarnings: [], apiMutations: [], externalRequests: [], consoleErrors: [], cases: [] };
+  const browser = await chromium.launch({ headless: true });
+
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    page.on('pageerror', (error) => audit.pageErrors.push(error.message));
+    await openDossier(page, base, 'PGD', Buffer.alloc(0), audit, { docxBytes });
+    const preview = page.locator('[aria-label="Bản xem chỉ đọc: synthetic-wheel-pgd.docx"]');
+    await preview.waitFor({ state: 'visible', timeout: 10000 });
+    assert.match(await preview.innerText(), /Synthetic DOCX preview/);
+    const openInNewTab = page.getByRole('link', { name: 'Mở bản xem' });
+    assert.equal(await openInNewTab.getAttribute('href'), '/api/pgd/dossier-documents/qa-wheel-pgd-docx/download?inline=1');
+    assert.deepEqual(audit.apiMutations, [], 'DOCX preview is read-only');
+    assert.deepEqual(audit.externalRequests, [], 'Private DOCX bytes stay on the same origin');
+    assert.deepEqual(audit.pageErrors, [], 'No browser runtime errors occur');
+    await page.close();
   } finally {
     await browser.close();
   }

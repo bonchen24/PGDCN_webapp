@@ -52,7 +52,6 @@ export default function PgdcnDossierDocumentActionTable({ rows, testId, emptyLab
                 ? 'bg-slate-50/80 text-[11px] font-black uppercase tracking-wide text-slate-500'
                 : 'sr-only bg-slate-50/80 text-[11px] font-black uppercase tracking-wide text-slate-500 md:not-sr-only md:table-header-group'}>
                 <tr>
-                  <th scope="col" className="w-28 border-b border-slate-200 px-2.5 py-1.5">Bước</th>
                   <th scope="col" className="border-b border-slate-200 px-2.5 py-1.5">Tài liệu cần có</th>
                   <th scope="col" className="w-24 border-b border-slate-200 px-2.5 py-1.5">Trạng thái</th>
                   <th scope="col" className="w-40 border-b border-slate-200 px-2.5 py-1.5">Hành động</th>
@@ -61,10 +60,6 @@ export default function PgdcnDossierDocumentActionTable({ rows, testId, emptyLab
               <tbody className={renderRow ? undefined : 'block space-y-2 md:table-row-group md:space-y-0'}>
                 {rows.map((row) => renderRow ? renderRow(row) : (
                   <tr key={row.id} className="block min-w-0 rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm transition-colors hover:bg-blue-50/40 md:table-row md:rounded-none md:border-0 md:p-0 md:shadow-none">
-                    <td className="flex min-w-0 items-start gap-2 break-words border-0 px-0 py-1 font-semibold text-slate-500 md:table-cell md:border-b md:border-slate-100 md:px-2.5 md:py-1.5">
-                      <span aria-hidden="true" className="w-24 shrink-0 text-xs font-black uppercase tracking-wide text-slate-500 md:hidden">Bước</span>
-                      <span className="min-w-0 break-words">{row.step}</span>
-                    </td>
                     <th scope="row" className="block min-w-0 break-words border-0 px-0 py-1 font-semibold text-slate-800 md:table-cell md:border-b md:border-slate-100 md:px-2.5 md:py-1.5">
                       <span aria-hidden="true" className="mb-0.5 block text-xs font-black uppercase tracking-wide text-slate-500 md:hidden">Tài liệu cần có</span>
                       <span>{row.title}{row.required ? <span aria-hidden="true" className="ml-1 text-rose-600">*</span> : null}</span>

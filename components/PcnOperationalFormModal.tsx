@@ -118,7 +118,7 @@ function FormField({ label, field, error, errorId, wide, required = false, child
   </label>;
 }
 
-export function PcnOperationalFormModal({ kind, initialValue, users, currentUser, sampleLots = [], canEdit = true, onSave, onClose }: {
+export function PcnOperationalFormModal({ kind, initialValue, users, currentUser, sampleLots = [], canEdit = true, onSave, onClose, confirmCloseWithUnsavedChanges = false }: {
   kind: PcnOperationalFormKind;
   initialValue?: PcnOperationalFormValue;
   users: PcnUserAccount[];
@@ -127,9 +127,11 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
   canEdit?: boolean;
   onSave: (value: PcnOperationalFormValue) => Promise<void>;
   onClose: () => void;
+  confirmCloseWithUnsavedChanges?: boolean;
 }) {
   const [form, setForm] = useState<FormState>(() => initialFormState(kind, initialValue));
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saveError, setSaveError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
   const activeUsers = useMemo(() => users.filter((user) => user.active && (user.systemRole || user.role) !== 'viewer').sort((left, right) => left.name.localeCompare(right.name, 'vi')), [users]);
@@ -137,6 +139,7 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
   useEffect(() => {
     setForm(initialFormState(kind, initialValue));
     setErrors({});
+    setSaveError('');
   }, [kind, initialValue]);
 
   const setField = (field: string, value: string | number | string[]) => {
@@ -147,6 +150,14 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
       delete next[field];
       return next;
     });
+  };
+
+  const closeForm = () => {
+    if (isSaving) return;
+    const changed = JSON.stringify(form) !== JSON.stringify(initialFormState(kind, initialValue));
+    if (confirmCloseWithUnsavedChanges && changed && typeof window !== 'undefined'
+      && !window.confirm('Có thay đổi chưa lưu. Bạn có muốn đóng biểu mẫu và bỏ phần nhập này không?')) return;
+    onClose();
   };
 
   const controlClass = 'mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs md:text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-slate-100';
@@ -198,6 +209,8 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
       const saved = normalized[key];
       if (saved) await onSave(saved as PcnOperationalFormValue);
       onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Không thể lưu và gắn tài liệu. Nội dung vẫn còn trong biểu mẫu.');
     } finally {
       setIsSaving(false);
     }
@@ -207,10 +220,11 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
     <div className="flex max-h-[94dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
       <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
         <div className="flex min-w-0 items-start gap-2"><span className="rounded-lg bg-emerald-50 p-2 text-emerald-700"><FileText size={17} /></span><div className="min-w-0"><h2 id="pcn-operational-form-title" className="text-sm font-black text-slate-900">{PCN_OPERATIONAL_FORM_LABELS[kind]}</h2><p className="mt-1 text-[10px] leading-4 text-slate-500">{FORM_DESCRIPTIONS[kind]}</p></div></div>
-        <button type="button" onClick={onClose} aria-label="Đóng biểu mẫu nghiệp vụ" className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={18} /></button>
+        <button type="button" onClick={closeForm} aria-label="Đóng biểu mẫu nghiệp vụ" className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={18} /></button>
       </header>
       <form noValidate onSubmit={(event) => void submit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="min-h-0 flex-1 mobile-scroll-y overflow-y-auto">
+          {saveError ? <p role="alert" className="mx-3 mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-800">{saveError}</p> : null}
           {Object.keys(errors).length > 0 && <div ref={errorSummaryRef} id="pcn-operational-form-error-summary" role="alert" tabIndex={-1} className="mx-3 mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-800">
             <h3 className="text-xs font-black">Cần kiểm tra lại thông tin</h3>
             <ul className="mt-1 list-disc pl-4 text-[11px]">
@@ -220,7 +234,7 @@ export function PcnOperationalFormModal({ kind, initialValue, users, currentUser
           {kind === 'SAMPLE_CODING' && sampleLots.length > 0 && <div className="mx-4 mt-3 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-[10px] text-indigo-800"><b>Lô mẫu trong hồ sơ:</b> {sampleLots.map((lot) => `${lot.lotCode} · ${lot.sampleName}`).join(' • ')}<p className="mt-1 text-[9px]">Mã lô, mã mẫu vật lý và mã tem niêm phong được quản lý thành ba trường riêng.</p></div>}
           <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-4">{fields}</div>
         </div>
-        <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3"><span className="text-[9px] text-slate-500">Các trường có lỗi sẽ được đánh dấu ngay tại biểu mẫu.</span><div className="flex gap-2"><button type="button" onClick={onClose} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-600 hover:bg-slate-100">Hủy</button><button type="submit" disabled={!canEdit || isSaving} className="mobile-touch-target min-h-11 inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-[10px] font-black text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"><Save size={13} />{isSaving ? 'Đang lưu…' : 'Lưu biểu mẫu vào hồ sơ'}</button></div></footer>
+        <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3"><span className="text-[9px] text-slate-500">Các trường có lỗi sẽ được đánh dấu ngay tại biểu mẫu.</span><div className="flex gap-2"><button type="button" onClick={closeForm} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-600 hover:bg-slate-100">Hủy</button><button type="submit" disabled={!canEdit || isSaving} className="mobile-touch-target min-h-11 inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-[10px] font-black text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"><Save size={13} />{isSaving ? 'Đang lưu…' : 'Lưu biểu mẫu vào hồ sơ'}</button></div></footer>
       </form>
     </div>
   </div>;

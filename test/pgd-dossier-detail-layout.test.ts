@@ -99,7 +99,7 @@ test('PGD work card gates operation forms by stage and reserves the right column
 test('PGD dossier reader previews safe raster and PDF files, opens previews in a new tab, and downloads DOCX', () => {
   assert.equal(getPgdDossierPreviewKind('application/pdf', 'report.pdf'), 'PDF');
   assert.equal(getPgdDossierPreviewKind('image/png', 'field.png'), 'IMAGE');
-  assert.equal(getPgdDossierPreviewKind('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'report.docx'), 'UNSUPPORTED');
+  assert.equal(getPgdDossierPreviewKind('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'report.docx'), 'DOCX');
 
   const docx: PgdDossierDocument = {
     id: 'docx-report',
@@ -119,11 +119,11 @@ test('PGD dossier reader previews safe raster and PDF files, opens previews in a
   };
   const markup = renderToStaticMarkup(createElement(PgdDossierDocumentReader, { documents: [docx] }));
 
-  assert.match(markup, /Báo cáo giám định/);
-  assert.match(markup, /Định dạng này chưa hỗ trợ xem trực tiếp trong trình duyệt/);
+  assert.match(markup, /report\.docx/);
+  assert.match(markup, /Đang đọc tài liệu DOCX/);
+  assert.match(markup, /href="\/api\/pgd\/dossier-documents\/docx-report\/download\?inline=1" target="_blank"/);
   assert.match(markup, /href="\/api\/pgd\/dossier-documents\/docx-report\/download" download="report\.docx"/);
-  assert.match(markup, /Tải tệp xuống để mở bằng ứng dụng phù hợp/);
-  assert.doesNotMatch(markup, /target="_blank"/);
+  assert.match(markup, /target="_blank"/);
   assert.doesNotMatch(markup, /<iframe|<img/);
 
   const supplementary = buildPgdDossierDocument({
@@ -137,11 +137,12 @@ test('PGD dossier reader previews safe raster and PDF files, opens previews in a
     supplementaryStageId: 'execution',
   });
   const supplementaryMarkup = renderToStaticMarkup(createElement(PgdDossierDocumentReader, { documents: [supplementary] }));
-  assert.match(supplementaryMarkup, /Thực hiện giám định/);
+  assert.match(supplementaryMarkup, /field\.pdf/);
+  assert.doesNotMatch(supplementaryMarkup, /Từ bước:|Nguồn:/);
 
   const readerSource = read('../components/PgdDossierDocumentReader.tsx');
   assert.match(readerSource, /fetch\(getPgdDossierDocumentDownloadUrl\(selected\.id\)[\s\S]*credentials: 'same-origin'/);
-  assert.match(readerSource, /href=\{previewUrl\} target="_blank"/);
+  assert.match(readerSource, /href=\{previewKind === 'DOCX' \? inlineUrl : previewUrl\} target="_blank"/);
   assert.match(readerSource, /previewKind === 'PDF'[\s\S]*<iframe/);
   assert.match(readerSource, /<img src=\{previewUrl\}/);
 });

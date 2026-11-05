@@ -42,6 +42,7 @@ import type { PcnDossierUpdateInput } from '../utils/pcnDossierApi';
 import { getPcnDossierDeletionDenial, getPcnDossierEditDenial, isOrganizationLeader, isPcnSystemManager } from '../utils/pcnRbac';
 import { isPcnDossierAssignmentManager } from '../utils/pcnDossierAssignment';
 import type { PcnDossierNodeBusinessFact } from '../utils/pcnDossierNodeWork';
+import { getPcnNodeDocumentGenerationKind, getPcnNodeDraftFormKind } from '../utils/pcnDossierNodeWork';
 import PcnCatalogCombobox, { type PcnCatalogOption } from './PcnCatalogCombobox';
 import PcnDossierAssignmentControl from './PcnDossierAssignmentControl';
 import PcnDossierBusinessWorkspace from './PcnDossierBusinessWorkspace';
@@ -88,7 +89,7 @@ function PcnDossierDocumentReader({
         }));
       }),
     ...attachments
-      .filter((attachment) => attachment.dossierId === dossierId)
+      .filter((attachment) => attachment.dossierId === dossierId && !attachment.metadataOnly && Boolean(attachment.assetId))
       .map((attachment) => ({
         id: `attachment:${attachment.id}`,
         assetId: attachment.assetId,
@@ -557,6 +558,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
   const [documentOutput, setDocumentOutput] = useState<{ kind: PcnGeneratedDocumentKind; sampleRouteId?: string; labRequestId?: string } | null>(null);
   const [proposalDetailOpen, setProposalDetailOpen] = useState(false);
   const [operationalFormOpen, setOperationalFormOpen] = useState<PcnOperationalFormKind | null>(null);
+  const [nodeDraftingTarget, setNodeDraftingTarget] = useState<{ kind: PcnOperationalFormKind; nodeId: string; requirementId: string } | null>(null);
   const [handoverRouteId, setHandoverRouteId] = useState<string | null>(null);
   const openGenerationRegion = () => {
     setDocumentOutput({ kind: getPcnDossierStationGenerationKind(station.key, dossier.status) });
@@ -609,7 +611,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
   const dossierInspection = buildPcnDossierInspection({ dossierId: dossier.id, fieldCodes: dossier.fieldCodes, requirements, documents: dossierDocumentsForCompleteness, documentWaivers: dossier.documentWaivers, compact: true });
   const missingRequiredCount = dossierInspection.summary.requiredMissing;
   const attachmentIds = [...dossierResults.flatMap((result) => result.fileAssetId ? [result.fileAssetId] : []), ...(issuance?.fileAssetIds || [])];
-  const dossierAttachmentsForPackage = dossierAttachments.filter((attachment) => attachment.dossierId === dossier.id).sort((left, right) => left.fileName.localeCompare(right.fileName, 'vi'));
+  const dossierAttachmentsForPackage = dossierAttachments.filter((attachment) => attachment.dossierId === dossier.id && !attachment.metadataOnly && Boolean(attachment.assetId)).sort((left, right) => left.fileName.localeCompare(right.fileName, 'vi'));
   const exceptionReasonLabel = dossier.exceptionReason?.trim();
   const generationKind = getPcnDossierStationGenerationKind(station.key, dossier.status);
   const dossierEntityIds = new Set<string>([dossier.id, proposal?.id, ...dossierRequests.map((request) => request.id), ...dossierResults.map((result) => result.id), ...dossierApprovalSteps.map((step) => step.id), issuance?.id].filter((id): id is string => Boolean(id)));
@@ -669,7 +671,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
     setDocumentOutput({ kind, sampleRouteId, labRequestId });
   };
 
-  const saveOperationalForm = async (kind: PcnOperationalFormKind, value: PcnOperationalFormValue) => {
+  const saveOperationalForm = async (kind: PcnOperationalFormKind, value: PcnOperationalFormValue, suppressSuccessToast = false) => {
     if (!canEditDossierSteps) {
       toast.error(currentStepAccess.reason || 'Bạn không có quyền hoàn thiện bước này.');
       return;
@@ -680,7 +682,32 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
     }
     const operationalForms = mergePcnOperationalForm({}, kind, value);
     await onUpdateDossier({ operationalForms });
-    toast.success(`Đã lưu ${PCN_OPERATIONAL_FORM_LABELS[kind].toLowerCase()} vào hồ sơ.`);
+    if (!suppressSuccessToast) toast.success(`Đã lưu ${PCN_OPERATIONAL_FORM_LABELS[kind].toLowerCase()} vào hồ sơ.`);
+  };
+
+  const canDraftNodeInPlace = (item: import('../utils/pcnDossierNodeWork').PcnDossierNodeDocumentItem) => {
+    const kind = getPcnNodeDraftFormKind(item.code);
+    return Boolean(kind
+      && ['ASSIGNMENT_FORM', 'EVALUATION_PLAN', 'FIELD_INSPECTION', 'SAMPLE_CODING'].includes(kind)
+      && getPcnNodeDocumentGenerationKind(item.code));
+  };
+
+  const openNodeDraftInPlace = (item: import('../utils/pcnDossierNodeWork').PcnDossierNodeDocumentItem, nodeId: string) => {
+    const kind = getPcnNodeDraftFormKind(item.code);
+    if (!kind || !canDraftNodeInPlace(item)) return;
+    const operationalKind = kind as PcnOperationalFormKind;
+    setNodeDraftingTarget({ kind: operationalKind, nodeId, requirementId: item.requirementId });
+    setOperationalFormOpen(operationalKind);
+  };
+
+  const saveNodeDraftInPlace = async (target: NonNullable<typeof nodeDraftingTarget>, value: PcnOperationalFormValue) => {
+    await saveOperationalForm(target.kind, value, true);
+    const result = await usePcnStore.getState().generateAndAttachDossierNodeDocument(dossier.id, target.nodeId, target.requirementId);
+    const version = result.document?.versions.find((candidate) => candidate.assetId === result.document?.currentVersionId);
+    if (!result.document || !version) throw new Error('Biểu mẫu đã lưu nhưng chưa sinh được tệp gắn vào yêu cầu. Bạn có thể thử lại mà không mất dữ liệu đã nhập.');
+    setSelectedReaderFileId(`document:${result.document.id}:${version.assetId}`);
+    setMobileWorkspaceTab('auxiliary');
+    toast.success(`Đã lưu và gắn ${version.fileName} vào hồ sơ.`);
   };
 
   useEffect(() => {
@@ -985,7 +1012,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
   </details> : null;
   const auxiliaryModals = <>
     {dossierEditOpen && canEditDossier && <PcnDossierEditPanel dossier={dossier} users={users} ownerOptions={ownerOptions} evaluatorOptions={evaluatorOptions} reviewerOptions={reviewerOptions} onSave={onUpdateDossier} onClose={() => setDossierEditOpen(false)} />}
-    {operationalFormOpen && <PcnOperationalFormModal kind={operationalFormOpen} initialValue={dossier.operationalForms?.[getPcnOperationalFormKey(operationalFormOpen)]} users={users} currentUser={currentUser} sampleLots={sampleLots.filter((lot) => lot.dossierId === dossier.id)} canEdit={canEditDossierSteps && canProcessPcnOperationalForm(dossier, operationalFormOpen)} onSave={(value) => saveOperationalForm(operationalFormOpen, value)} onClose={() => setOperationalFormOpen(null)} />}
+    {operationalFormOpen && <PcnOperationalFormModal kind={operationalFormOpen} initialValue={dossier.operationalForms?.[getPcnOperationalFormKey(operationalFormOpen)]} users={users} currentUser={currentUser} sampleLots={sampleLots.filter((lot) => lot.dossierId === dossier.id)} canEdit={canEditDossierSteps && canProcessPcnOperationalForm(dossier, operationalFormOpen)} confirmCloseWithUnsavedChanges={Boolean(nodeDraftingTarget)} onSave={(value) => nodeDraftingTarget ? saveNodeDraftInPlace(nodeDraftingTarget, value) : saveOperationalForm(operationalFormOpen, value)} onClose={() => { setOperationalFormOpen(null); setNodeDraftingTarget(null); }} />}
     {proposalDetailOpen && proposal && <PcnProposalDetailModal proposal={proposal} dossier={dossier} fields={fields} onOpenDocuments={(kind) => { setProposalDetailOpen(false); openDocumentOutput(kind); }} onClose={() => setProposalDetailOpen(false)} />}
     {selectedHandoverRoute && selectedHandoverLot && <PcnSampleHandoverModal lot={selectedHandoverLot} route={selectedHandoverRoute} request={selectedHandoverRequest} canEdit={canEditDossierSteps && canProcessPcnSampleFlow(dossier)} onSaveHandover={onSaveHandover && selectedHandoverRequest ? (details) => onSaveHandover(selectedHandoverRequest, details) : undefined} onOpenDocuments={(kind, routeId) => { setHandoverRouteId(null); openDocumentOutput(kind, routeId); }} onClose={() => setHandoverRouteId(null)} />}
     {documentOutput && <PcnDocumentOutputModal dossier={dossier} proposalUpdatedAt={proposal?.updatedAt} templates={templates} documentRequirements={requirements} generatedDocuments={generatedDocuments} sampleLots={sampleLots} sampleRoutes={sampleRoutes} labRequests={labRequests} users={users} kind={documentOutput.kind} sampleRouteId={documentOutput.sampleRouteId} labRequestId={documentOutput.labRequestId} canGenerate={canEditDossierSteps} onPreflight={onPreflight} onGenerate={onGenerateDocuments} onConfirmGenerated={confirmGeneratedDocument} onClose={() => setDocumentOutput(null)} />}
@@ -1049,7 +1076,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
           requirements={requirements}
           documents={dossierDocumentsForCompleteness}
           attachments={dossierAttachments}
-          onSelectFile={(file) => setSelectedReaderFileId(file.id)}
+          onSelectFile={(file) => { setSelectedReaderFileId(file.id); setMobileWorkspaceTab('auxiliary'); }}
           documentWaivers={dossier.documentWaivers}
           results={dossierResults}
           approvalSteps={dossierApprovalSteps}
@@ -1072,6 +1099,8 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
             return Promise.resolve();
           }}
           onCreateFromForm={openNodeForm}
+          canDraftInPlace={canDraftNodeInPlace}
+          onDraftInPlace={openNodeDraftInPlace}
           onOpenDrafting={(item, nodeId) =>
             buildPcnNodeDraftingRoute({
               dossierId: dossier.id,

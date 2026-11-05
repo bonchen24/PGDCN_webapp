@@ -57,7 +57,7 @@ import { createPcnWorkflowRevision, createPcnWorkflowTemplate, fetchPcnWorkflowT
 import { completePcnWorkflowTask, returnPcnWorkflowTask, startPcnWorkflowTask } from './utils/pcnWorkflowTaskApi';
 import { updatePcnProposal, type PcnProposalUpdateInput } from './utils/pcnProposalApi';
 import { deletePcnDossier, updatePcnDossier, type PcnDossierUpdateInput } from './utils/pcnDossierApi';
-import { confirmPcnDossierDocument, confirmPcnGeneratedDocumentIntoChecklist, generateAndAttachPcnDossierNodeDocument, removeCurrentPcnDossierDocument, uploadPcnDossierDocument, waivePcnDossierDocument } from './utils/pcnDossierDocumentApi';
+import { confirmPcnDossierDocument, confirmPcnGeneratedDocumentIntoChecklist, generateAndAttachPcnDossierNodeDocument, removeCurrentPcnDossierDocument, uploadPcnDossierDocument, waivePcnDossierDocument, type PcnDossierDocumentMutationResponse } from './utils/pcnDossierDocumentApi';
 import { generatePcnDossierDocuments, preflightPcnDossierDocuments } from './utils/pcnDocumentGenerationApi';
 import type { PcnDossierDocumentContext } from './utils/pcnDocumentGeneration';
 import { createPcnSampleLot as createPcnSampleLotApi, updatePcnSampleRoute as updatePcnSampleRouteApi } from './utils/pcnSampleApi';
@@ -130,11 +130,11 @@ interface PcnStoreState {
   completeWorkflowTask: (dossierId: string, taskId: string, expectedCycleNo?: number) => Promise<void>;
   returnWorkflowTask: (dossierId: string, taskId: string, input: { targetNodeId: string; reason: string }) => Promise<void>;
   uploadDossierDocument: (dossierId: string, requirementId: string, file: File) => Promise<void>;
-  uploadDossierSupplementary: (dossierId: string, stageId: string, file: File) => Promise<void>;
+  uploadDossierSupplementary: (dossierId: string, input: { stageId: string; title: string; description?: string; file?: File; supplementaryItemId?: string }) => Promise<PcnDossierAttachment>;
   confirmDossierDocument: (dossierId: string, requirementId: string) => Promise<void>;
   waiveDossierDocument: (dossierId: string, requirementId: string, reason: string) => Promise<void>;
   removeCurrentDossierDocument: (dossierId: string, requirementId: string) => Promise<void>;
-  generateAndAttachDossierNodeDocument: (dossierId: string, nodeId: string, requirementId: string) => Promise<void>;
+  generateAndAttachDossierNodeDocument: (dossierId: string, nodeId: string, requirementId: string) => Promise<PcnDossierDocumentMutationResponse & { generated?: PcnGeneratedDocument }>;
   confirmGeneratedDocument: (dossierId: string, generated: PcnGeneratedDocument, requirement: PcnDocumentRequirement) => Promise<void>;
   updateDossier: (dossierId: string, updates: PcnDossierUpdateInput) => Promise<void>;
   deleteDossier: (dossierId: string, reason: string, confirmationCode: string) => Promise<void>;
@@ -832,13 +832,14 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     }));
   },
 
-  uploadDossierSupplementary: async (dossierId, stageId, file) => {
+  uploadDossierSupplementary: async (dossierId, input) => {
     assertPcnStoreMutationAllowed();
-    const result = await uploadPcnDossierSupplementaryAttachment({ dossierId, stageId, file });
+    const result = await uploadPcnDossierSupplementaryAttachment({ dossierId, ...input });
     set((state) => ({
       dossierAttachments: [result.attachment, ...state.dossierAttachments.filter((item) => item.id !== result.attachment.id)],
       ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs.filter((item) => item.id !== result.activityLog!.id)] } : {}),
     }));
+    return result.attachment;
   },
 
   confirmDossierDocument: async (dossierId, requirementId) => {
@@ -883,6 +884,7 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
       ...(result.workflowTasks?.length ? { workflowTasks: mergeManyById(state.workflowTasks, result.workflowTasks) } : {}),
       ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs.filter((item) => item.id !== result.activityLog?.id)] } : {}),
     }));
+    return result;
   },
 
   confirmGeneratedDocument: async (dossierId, generated, requirement) => {

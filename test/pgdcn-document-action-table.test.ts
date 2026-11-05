@@ -24,13 +24,13 @@ test('document action table is readable and keyboard-scrollable without changing
   assert.match(table, /tabIndex=\{renderRow \? 0 : undefined\}/);
   assert.match(table, /focus-visible:ring-2/);
   assert.match(table, /Kéo ngang để xem thêm/);
-  assert.match(table, /min-w-\[760px\] w-full border-collapse text-left text-sm/);
-  assert.match(table, /: 'block w-full min-w-0 border-collapse text-left text-sm md:table'/);
+  assert.match(table, /w-full min-w-0 border-collapse text-left text-xs/);
+  assert.match(table, /: 'block w-full min-w-0 border-collapse text-left text-xs md:table'/);
   assert.doesNotMatch(table, /<p className="border-b border-slate-100/);
-  assert.match(table, /md:py-1/);
+  assert.match(table, /md:py-1\.5/);
   assert.match(table, /text-xs font-black uppercase tracking-wide/);
-  assert.match(table, /min-h-8 items-center rounded-full border px-2\.5 py-1 text-xs font-black/);
-  assert.match(table, /text-xs font-normal/);
+  assert.match(table, /min-h-6 items-center rounded-full border px-2 py-0\.5 text-\[11px\] font-bold/);
+  assert.match(table, /text-\[11px\] font-normal/);
   assert.match(table, /\{row\.status \?/);
   assert.match(table, /\{row\.status\}/);
   assert.match(table, /row\.required/);
@@ -51,7 +51,8 @@ test('PGD dossier presents the current step documents as an action table', () =>
   const table = read('components/PgdcnDossierDocumentActionTable.tsx');
 
   assert.match(source, /testId="pgd-dossier-document-action-table"/);
-  assert.match(table, /Bước/);
+  assert.equal((table.match(/<th scope="col"/g) ?? []).length, 3);
+  assert.doesNotMatch(table, /\{row\.step\}/);
   assert.match(table, /Tài liệu cần có/);
   assert.match(source, /Đã có/);
   assert.match(source, /Chưa có/);

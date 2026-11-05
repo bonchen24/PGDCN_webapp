@@ -78,7 +78,7 @@ test('step summary counts only required items for the selected step', () => {
   const requiredRows = tableRows.filter((row) => allRequiredRequirements.some((requirement) => row.includes(requirement.title)));
   const rowStatuses = requiredRows.map((row) => {
     const rowCells = Array.from(row.matchAll(/<(?:td|th)\b[^>]*>([\s\S]*?)<\/(?:td|th)>/g), (match) => match[1]);
-    const statusCell = rowCells[2] || '';
+    const statusCell = rowCells[1] || '';
     // Missing-item action cells repeat their label; read only the status column.
     return statusCell.match(/<span\b[^>]*>(Đã bỏ qua|Chưa có|Đã có)<\/span>/)?.[1] || '';
   });
@@ -207,7 +207,8 @@ test('document actions respect read-only access while preserving available evide
     }
 
     const present = render(canMutate, 'present');
-    assert.match(present.draftRow, /aria-label="Xem tài liệu"/);
+    assert.match(present.draftRow, /aria-label="Xem Phiếu yêu cầu giám định"/);
+    assert.match(present.draftRow, /<button[^>]*aria-label="Xem Phiếu yêu cầu giám định"/);
     assert.match(present.draftRow, /download="intake\.pdf"/);
     if (canMutate) assert.match(present.uploadRow, /aria-label="Bổ sung tệp"/);
     else assert.match(present.uploadRow, /Nhờ người có quyền bổ sung/);

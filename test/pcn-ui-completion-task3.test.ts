@@ -74,10 +74,10 @@ test('wide work tables scroll locally and the PGD edit dialog keeps its footer o
 
 test('visible PGD work controls use readable labels and 44px mobile targets', () => {
   assert.ok(/dossier-action-compact inline-flex min-h-11 min-w-11/.test(pgdStepWork), 'document row icon actions meet the mobile target size');
-  assert.ok(/dossier-action-compact inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-3 text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'document drafting action meets touch and type size');
+  assert.ok(/dossier-action-compact inline-flex min-h-11 min-w-11[^\"]*bg-emerald-600/.test(pgdStepWork), 'document drafting action meets touch size');
   assert.ok(/mobile-touch-target min-h-11 rounded-lg bg-rose-600 px-3 text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'exception confirmation meets touch and type size');
   assert.ok(/id="pgd-exception-reason"[\s\S]{0,300}?className="mobile-touch-target mt-1 min-h-11[^\"]*text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'exception reason field meets touch and type size');
-  assert.ok(/className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'complete-step action meets touch and type size');
+  assert.ok(/className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-3 text-(?:\[11px\]|xs|sm)/.test(pgdStepWork), 'complete-step action meets touch and type size');
 
   assert.ok(/openCreateRequest\} className="mobile-touch-target inline-flex min-h-11[^\"]*text-\[11px\]/.test(pgdWorkspace), 'request creation action meets touch and type size');
   assert.ok(/PgdRegisterTable/.test(pgdWorkspace), 'register table view is active without card toggle');
@@ -100,7 +100,7 @@ test('active PGD station and evidence controls keep readable form text and touch
   assert.ok(/className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-rose-200 bg-white px-2 text-\[11px\]/.test(caseEvidence), 'sample removal action meets touch and type size');
   assert.ok(pgdWorkspace.includes('text-[11px] font-black text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">Sửa thông tin hồ sơ'), 'PGD dossier edit action is readable');
   assert.ok(pgdWorkspace.includes('text-[11px] font-black text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Bot'), 'PGD contextual assistant action is readable');
-  assert.ok(pgdWorkspace.includes('<PgdDossierFlow') && pgdWorkspace.includes('lg:grid-cols-[65%_35%]'), 'workflow rail and 65/35 workspace are active');
+  assert.ok(pgdWorkspace.includes('<PgdDossierFlow') && pgdWorkspace.includes('lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]'), 'workflow rail and 60/40 workspace are active');
   assert.ok(pgdWorkspace.includes('text-[11px] leading-4 text-amber-800">Theo bảng cỡ lô của QT-GĐ-14'), 'sampling instruction is readable');
   assert.ok(pgdWorkspace.includes('mobile-touch-target min-h-11 flex items-center gap-2 self-end rounded-lg border border-amber-200 bg-white px-2.5 py-2 text-[11px] font-bold text-amber-900'), 'sampling option is a full mobile target');
   assert.ok(pgdWorkspace.includes('text-[11px] text-slate-700">{plan ? <div className="grid gap-2 sm:grid-cols-4">'), 'sampling counts use readable text');

@@ -195,8 +195,9 @@ export function getPgdDocumentDownloadUrl(documentId: string): string {
   return `/api/pgd/documents/${encodeURIComponent(documentId)}/download`;
 }
 
-export function getPgdDossierDocumentDownloadUrl(documentId: string): string {
-  return `/api/pgd/dossier-documents/${encodeURIComponent(documentId)}/download`;
+export function getPgdDossierDocumentDownloadUrl(documentId: string, options: { inline?: boolean } = {}): string {
+  const query = options.inline ? '?inline=1' : '';
+  return `/api/pgd/dossier-documents/${encodeURIComponent(documentId)}/download${query}`;
 }
 
 export function getPgdDossierPackageUrl(requestId: string): string {

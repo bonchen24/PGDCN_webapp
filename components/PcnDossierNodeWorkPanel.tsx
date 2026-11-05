@@ -31,9 +31,11 @@ export interface PcnDossierNodeWorkPanelProps {
   returnTargets?: Array<{ id: string; label: string }>;
   onOpenDocuments?: () => void;
   onUploadDocument?: (requirementId: string, file: File) => Promise<void>;
-  onUploadSupplementary?: (stageId: string, file: File) => Promise<void>;
+  onUploadSupplementary?: (input: { stageId: string; title: string; description?: string; file?: File; supplementaryItemId?: string }) => Promise<void>;
   onCreateFromForm?: (requirementId: string) => void | Promise<void>;
   onOpenDrafting?: (item: PcnDossierNodeDocumentItem) => string | undefined;
+  canDraftInPlace?: (item: PcnDossierNodeDocumentItem) => boolean;
+  onDraftInPlace?: (item: PcnDossierNodeDocumentItem) => void;
   onGenerateAndAttach?: (item: PcnDossierNodeDocumentItem) => Promise<void>;
   onConfirmDocument?: (requirementId: string) => Promise<void>;
   onRemoveCurrent?: (requirementId: string) => Promise<void>;
@@ -105,6 +107,8 @@ export function PcnDossierNodeWorkPanel({
   onUploadSupplementary,
   onCreateFromForm,
   onOpenDrafting,
+  canDraftInPlace: canDraftInPlaceForItem,
+  onDraftInPlace,
   onGenerateAndAttach,
   onConfirmDocument,
   onRemoveCurrent,
@@ -120,20 +124,46 @@ export function PcnDossierNodeWorkPanel({
   const [returnReason, setReturnReason] = useState('');
   const [supplementaryUploadError, setSupplementaryUploadError] = useState<string | null>(null);
   const [supplementaryModalOpen, setSupplementaryModalOpen] = useState(false);
+  const [supplementaryItemId, setSupplementaryItemId] = useState<string>();
   const [suppTitle, setSuppTitle] = useState('');
   const [suppDescription, setSuppDescription] = useState('');
   const [suppFile, setSuppFile] = useState<File | null>(null);
 
-  const stageAttachments = useMemo(() => {
-    return attachments.filter((att) => !att.supplementaryStageId || att.supplementaryStageId === projection.nodeId);
-  }, [attachments, projection.nodeId]);
+  const stageDocumentItems = documentProjection?.documents || projection.documents;
+  const stageNodeIds = useMemo(() => new Set([
+    projection.nodeId,
+    ...stageDocumentItems.map((item) => item.sourceNodeId).filter((id): id is string => Boolean(id)),
+  ]), [projection.nodeId, stageDocumentItems]);
+  const stageAttachments = useMemo(
+    () => attachments.filter((att) => Boolean(att.supplementaryStageId && stageNodeIds.has(att.supplementaryStageId))),
+    [attachments, stageNodeIds],
+  );
+  const supplementaryItems = useMemo(() => {
+    const groups = new Map<string, { id: string; title: string; description?: string; currentFile?: PcnDossierAttachment; sourceNodeLabel?: string }>();
+    for (const attachment of [...stageAttachments].sort((left, right) => right.importedAt.localeCompare(left.importedAt))) {
+      const id = attachment.supplementaryItemId || attachment.id;
+      const sourceNodeLabel = stageDocumentItems.find((item) => item.sourceNodeId === attachment.supplementaryStageId)?.sourceNodeLabel
+        || (attachment.supplementaryStageId === projection.nodeId ? projection.nodeLabel : attachment.supplementaryStageId);
+      const item = groups.get(id) || { id, title: attachment.title || attachment.fileName || 'Tệp phụ trợ', sourceNodeLabel };
+      if (attachment.metadataOnly) {
+        item.title = attachment.title || item.title;
+        item.description = attachment.description;
+      } else if (attachment.assetId && !item.currentFile) {
+        item.title = attachment.title || item.title;
+        item.description = attachment.description || item.description;
+        item.currentFile = attachment;
+      }
+      groups.set(id, item);
+    }
+    return Array.from(groups.values());
+  }, [projection.nodeId, projection.nodeLabel, stageAttachments, stageDocumentItems]);
 
   const documentByRequirementId = useMemo(() => new Map(documents.map((document) => [document.requirementId, document])), [documents]);
-  const stageDocumentItems = documentProjection?.documents || projection.documents;
   const orderedDocuments = useMemo(
     () => [...stageDocumentItems].sort((left, right) => Number(right.required) - Number(left.required)),
     [stageDocumentItems],
   );
+  const hasMultipleSourceNodes = new Set(stageDocumentItems.map((item) => item.sourceNodeId || projection.nodeId)).size > 1;
   const requiredDocuments = projection.documents.filter((item) => item.required);
   const optionalDocuments = projection.documents.filter((item) => !item.required);
   const unresolvedRequiredDocuments = requiredDocuments.filter((item) => !['PRESENT', 'CONFIRMED', 'WAIVED'].includes(item.status));
@@ -208,16 +238,56 @@ export function PcnDossierNodeWorkPanel({
     void run(`upload:${item.requirementId}`, () => onUploadDocument(item.requirementId, file));
   }
 
-  function handleSupplementaryUpload(file: File | undefined) {
-    if (!file || !onUploadSupplementary) return;
+  function renderSupplementaryRow(item: { id: string; title: string; description?: string; currentFile?: PcnDossierAttachment; sourceNodeLabel?: string }) {
+    const file = item.currentFile;
+    return (
+      <tr key={`supplementary:${item.id}`} data-testid={`pcn-supplementary-${item.id}`} className="hover:bg-slate-50/70 transition-colors">
+        <th scope="row" className="border-b border-slate-100 px-2.5 py-2 font-semibold text-slate-800">
+          <span className="text-xs font-bold text-slate-900">{item.title}</span>
+          {hasMultipleSourceNodes ? <p className="mt-0.5 text-[11px] font-normal text-slate-500" title={`Nguồn: ${item.sourceNodeLabel || projection.nodeLabel}`}>Từ bước: {item.sourceNodeLabel || projection.nodeLabel}</p> : null}
+          {item.description ? <p className="mt-0.5 text-[11px] font-normal text-slate-500">{item.description}</p> : null}
+          {file ? <p className="mt-0.5 text-[11px] font-normal text-slate-500">{file.fileName}</p> : null}
+        </th>
+        <td className="border-b border-slate-100 px-2.5 py-2"><span className={`inline-flex min-h-6 items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${file ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>{file ? 'Đã tải lên' : 'Chưa có tệp'}</span></td>
+        <td className="border-b border-slate-100 px-2.5 py-2">
+          <div className="flex flex-wrap items-center gap-1">
+            {file ? <>
+              <button type="button" onClick={() => onSelectFile?.({ id: `attachment:${file.id}`, assetId: file.assetId, fileName: file.fileName, mimeType: file.mimeType })} title={`Xem ${item.title}`} aria-label={`Xem ${item.title}`} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9"><Eye size={14} aria-hidden="true" /></button>
+              <a href={getPcnFileUrl(file.assetId)} target="_blank" rel="noreferrer" title={`Mở ${item.title} trong tab mới`} aria-label={`Mở ${item.title} trong tab mới`} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9"><FileText size={14} aria-hidden="true" /></a>
+              <a href={getPcnFileUrl(file.assetId)} download={file.fileName} title={`Tải ${item.title}`} aria-label={`Tải ${item.title}`} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9"><Download size={14} aria-hidden="true" /></a>
+            </> : null}
+            {canEdit && onUploadSupplementary ? <button type="button" onClick={() => openSupplementaryModal(item)} title={`Tải tệp cho ${item.title}`} aria-label={`Tải tệp cho ${item.title}`} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9"><Upload size={14} aria-hidden="true" /></button> : null}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  function openSupplementaryModal(item?: { id: string; title: string; description?: string }) {
+    setSupplementaryItemId(item?.id);
+    setSuppTitle(item?.title || '');
+    setSuppDescription(item?.description || '');
+    setSuppFile(null);
     setSupplementaryUploadError(null);
-    void run(`supplementary:${projection.nodeId}`, async () => {
-      try {
-        await onUploadSupplementary(projection.nodeId, file);
-      } catch (error) {
-        setSupplementaryUploadError(error instanceof Error ? error.message : 'Không thể tải tệp phụ trợ.');
-      }
-    });
+    setSupplementaryModalOpen(true);
+  }
+
+  async function saveSupplementary(): Promise<boolean> {
+    if (!onUploadSupplementary || !suppTitle.trim() || (supplementaryItemId && !suppFile)) return false;
+    setSupplementaryUploadError(null);
+    try {
+      await run(`supplementary:${projection.nodeId}`, () => onUploadSupplementary({
+        stageId: projection.nodeId,
+        title: suppTitle.trim(),
+        description: suppDescription.trim(),
+        ...(suppFile ? { file: suppFile } : {}),
+        ...(supplementaryItemId ? { supplementaryItemId } : {}),
+      }));
+      return true;
+    } catch (error) {
+      setSupplementaryUploadError(error instanceof Error ? error.message : 'Không thể lưu đầu mục phụ trợ.');
+      return false;
+    }
   }
 
   function renderDocument(item: PcnDossierNodeDocumentItem) {
@@ -324,13 +394,14 @@ export function PcnDossierNodeWorkPanel({
     const reason = waiverReasons[item.requirementId] || '';
     const editable = canEdit && sourceNodeEditable;
     const hasDraftTemplate = Boolean(getPcnNodeDraftFormKind(item.code));
-    const draftingHref = editable && hasDraftTemplate ? onOpenDrafting?.(item) : undefined;
+    const canDraftInPlace = editable && hasDraftTemplate && Boolean(canDraftInPlaceForItem?.(item)) && Boolean(onDraftInPlace);
+    const draftingHref = editable && hasDraftTemplate && !canDraftInPlace ? onOpenDrafting?.(item) : undefined;
     const canGenerateAndAttach = Boolean(getPcnNodeDocumentGenerationKind(item.code));
     const hasCurrentFile = Boolean(version) && ['PRESENT', 'CONFIRMED', 'UPLOADED', 'GENERATED'].includes(item.status);
     const hasMoreActions = (item.actions.includes('CONFIRM') && editable && Boolean(onConfirmDocument))
       || (item.actions.includes('REPLACE') && editable)
       || (item.actions.includes('REMOVE_CURRENT') && editable)
-      || (item.actions.includes('CREATE_FROM_FORM') && canGenerateAndAttach && editable && !draftingHref && Boolean(onGenerateAndAttach || onCreateFromForm))
+      || (item.actions.includes('CREATE_FROM_FORM') && canGenerateAndAttach && editable && !canDraftInPlace && !draftingHref && Boolean(onGenerateAndAttach || onCreateFromForm))
       || (item.actions.includes('CLEAR_WAIVER') && editable && Boolean(onClearWaiver))
       || (item.actions.includes('WAIVE') && editable && Boolean(onWaive));
     const statusClass = ['PRESENT', 'CONFIRMED'].includes(item.status)
@@ -341,7 +412,6 @@ export function PcnDossierNodeWorkPanel({
 
     return (
       <tr key={item.requirementId} data-testid={`pcn-node-document-${item.requirementId}`} className="hover:bg-slate-50/70 transition-colors">
-        <td className="border-b border-slate-100 px-2.5 py-2 font-medium text-[11px] text-slate-500">{sourceNodeLabel}</td>
         <th scope="row" className="border-b border-slate-100 px-2.5 py-2 font-semibold text-slate-800">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs font-bold text-slate-900">{item.label}{item.required ? <span aria-hidden="true" className="ml-0.5 text-rose-600 font-bold">*</span> : null}</span>
@@ -349,6 +419,7 @@ export function PcnDossierNodeWorkPanel({
               {item.required ? 'Bắt buộc' : 'Tùy chọn'}
             </span>
           </div>
+          {hasMultipleSourceNodes ? <p className="mt-0.5 text-[11px] font-normal text-slate-500" title={`Nguồn: ${sourceNodeLabel}`}>Từ bước: {sourceNodeLabel}</p> : null}
           {hasCurrentFile && version ? (
             <div className="mt-0.5 flex items-center gap-1 text-[11px] font-normal">
               <span className="text-slate-400">Tệp:</span>
@@ -373,23 +444,9 @@ export function PcnDossierNodeWorkPanel({
         <td className="border-b border-slate-100 px-2.5 py-2">
           <div className="flex flex-wrap items-center gap-1">
             {hasCurrentFile && version && item.actions.includes('VIEW') ? (
-              <a
-                className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9"
-                href={getPcnFileUrl(version.assetId)}
-                target="_blank"
-                rel="noreferrer"
-                title={`Xem ${item.label}`}
-                aria-label="Xem tài liệu"
-                onClick={() => {
-                  if (onSelectFile && version) {
-                    onSelectFile({ id: `document:${item.requirementId}:${version.assetId}`, assetId: version.assetId, fileName: version.fileName || item.label, mimeType: version.mimeType });
-                  }
-                }}
-              >
-                <Eye size={14} aria-hidden="true" />
-              </a>
+              <button type="button" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9" onClick={() => onSelectFile?.({ id: `document:${document.id}:${version.assetId}`, assetId: version.assetId, fileName: version.fileName || item.label, mimeType: version.mimeType })} title={`Xem ${item.label}`} aria-label={`Xem ${item.label}`}><Eye size={14} aria-hidden="true" /></button>
             ) : null}
-            {item.status === 'MISSING' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} title={`Soạn thảo ${item.label}`} aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9"><Pencil size={14} aria-hidden="true" /></a> : null}
+            {item.status === 'MISSING' && item.actions.includes('CREATE_FROM_FORM') && canDraftInPlace ? <button type="button" onClick={() => onDraftInPlace?.(item)} title={`Soạn thảo ${item.label} trong hồ sơ`} aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9"><Pencil size={14} aria-hidden="true" /></button> : item.status === 'MISSING' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} title={`Soạn thảo ${item.label}`} aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9"><Pencil size={14} aria-hidden="true" /></a> : null}
             {item.actions.includes('UPLOAD') && editable && !(item.status === 'MISSING' && draftingHref) ? <label className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 sm:min-h-9 sm:min-w-9" title={`Tải lên ${item.label}`} aria-label="Tải tài liệu"><Upload size={14} aria-hidden="true" /><input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
             {hasCurrentFile && version ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title={`Mở tệp ${item.label}`} aria-label="Mở tệp"><FileText size={14} aria-hidden="true" /></a> : null}
             {hasCurrentFile && version ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9" href={getPcnFileUrl(version.assetId, { download: true })} download={version.fileName} title={`Tải xuống ${item.label}`} aria-label="Tải xuống"><Download size={14} aria-hidden="true" /></a> : null}
@@ -398,7 +455,7 @@ export function PcnDossierNodeWorkPanel({
               <div className="absolute right-0 z-10 mt-1 flex min-w-48 flex-col gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
                 {item.actions.includes('CONFIRM') && editable && onConfirmDocument ? <button type="button" className="mobile-touch-target min-h-11 min-w-11 rounded-md bg-emerald-600 p-2 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9" title={actionLabel('CONFIRM')} aria-label={actionLabel('CONFIRM')} aria-busy={busyKey === `confirm:${item.requirementId}`} disabled={busyKey === `confirm:${item.requirementId}`} onClick={() => void run(`confirm:${item.requirementId}`, () => onConfirmDocument(item.requirementId))}><CheckCircle2 size={16} aria-hidden="true" /></button> : null}
                 {item.actions.includes('REPLACE') && editable ? <label title="Thay phiên bản" aria-label="Thay phiên bản" className="mobile-touch-target inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-2 text-blue-700 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 sm:min-h-9 sm:min-w-9"><Upload size={16} aria-hidden="true" /><input className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
-                {item.actions.includes('CREATE_FROM_FORM') && canGenerateAndAttach && editable && !draftingHref && (onGenerateAndAttach || onCreateFromForm) ? <button type="button" className="mobile-touch-target min-h-11 min-w-11 rounded-md border border-indigo-200 bg-indigo-50 p-2 text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9" title="Tạo và gắn tài liệu" aria-label="Tạo và gắn tài liệu" disabled={busyKey === `generate:${item.requirementId}`} onClick={() => void run(`generate:${item.requirementId}`, async () => { if (onGenerateAndAttach) await onGenerateAndAttach(item); else await onCreateFromForm!(item.requirementId); })}><FileOutput size={16} aria-hidden="true" /></button> : null}
+                {item.actions.includes('CREATE_FROM_FORM') && canGenerateAndAttach && editable && !canDraftInPlace && !draftingHref && (onGenerateAndAttach || onCreateFromForm) ? <button type="button" className="mobile-touch-target min-h-11 min-w-11 rounded-md border border-indigo-200 bg-indigo-50 p-2 text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9" title="Tạo và gắn tài liệu" aria-label="Tạo và gắn tài liệu" disabled={busyKey === `generate:${item.requirementId}`} onClick={() => void run(`generate:${item.requirementId}`, async () => { if (onGenerateAndAttach) await onGenerateAndAttach(item); else await onCreateFromForm!(item.requirementId); })}><FileOutput size={16} aria-hidden="true" /></button> : null}
                 {item.actions.includes('REMOVE_CURRENT') && editable ? <button type="button" className="mobile-touch-target min-h-11 min-w-11 rounded-md border border-rose-200 p-2 text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9" title="Xóa tài liệu hiện tại" aria-label="Xóa tài liệu hiện tại" disabled={busyKey === `remove:${item.requirementId}`} onClick={() => onRemoveCurrent && void run(`remove:${item.requirementId}`, () => onRemoveCurrent(item.requirementId))}><Trash2 size={16} aria-hidden="true" /></button> : null}
                 {item.actions.includes('CLEAR_WAIVER') && editable && onClearWaiver ? <button type="button" className="mobile-touch-target min-h-11 min-w-11 rounded-md border border-amber-200 bg-amber-50 p-2 text-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 sm:min-h-9 sm:min-w-9" title="Bỏ trạng thái bỏ qua" aria-label="Bỏ trạng thái bỏ qua" disabled={busyKey === `clear-waiver:${item.requirementId}`} onClick={() => void run(`clear-waiver:${item.requirementId}`, () => onClearWaiver(item.requirementId))}><RotateCcw size={16} aria-hidden="true" /></button> : null}
                 {item.actions.includes('WAIVE') && editable && onWaive ? <div className="rounded-md bg-amber-50 p-2"><label className="block text-[11px] font-bold text-amber-900" htmlFor={`pcn-waive-${sourceNodeId}-${item.requirementId}`}>Lý do bỏ qua</label><textarea id={`pcn-waive-${sourceNodeId}-${item.requirementId}`} className="mt-1 min-h-16 w-full rounded-md border border-amber-200 bg-white p-2 text-[11px] text-slate-900 outline-none focus:border-amber-500" value={reason} onChange={(event) => setWaiverReasons((current) => ({ ...current, [item.requirementId]: event.target.value }))} /><button type="button" className="mt-1 mobile-touch-target min-h-11 min-w-11 rounded-md bg-amber-600 p-2 text-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 disabled:opacity-50 sm:min-h-9 sm:min-w-9" title={`Bỏ qua ${item.label}`} aria-label="Bỏ qua mục này" disabled={!reason.trim() || busyKey === `waive:${item.requirementId}`} onClick={() => void run(`waive:${item.requirementId}`, () => onWaive(item.requirementId, reason.trim()))}><CheckCircle2 size={16} aria-hidden="true" /></button></div> : null}
@@ -472,8 +529,8 @@ export function PcnDossierNodeWorkPanel({
               <p className="text-[11px] text-slate-500">Danh sách tài liệu áp dụng cho giai đoạn đang chọn.</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-500">{stageDocumentItems.length} mục</span>
-              {canEditNode && onUploadSupplementary ? <label title={'Tải tệp phụ trợ cho bước ' + projection.nodeLabel} aria-label={'Tải tệp phụ trợ cho bước ' + projection.nodeLabel} className="mobile-touch-target inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-800 hover:bg-blue-100 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 sm:min-h-9"><Upload size={14} aria-hidden="true" /><span>Tệp phụ trợ</span><input type="file" className="sr-only" accept=".pdf,.docx,.png,.jpg,.jpeg,.gif,.webp,.avif" disabled={busyKey === ('supplementary:' + projection.nodeId)} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; handleSupplementaryUpload(file); }} /></label> : null}
+              <span className="text-xs font-semibold text-slate-500">{stageDocumentItems.length + supplementaryItems.length} mục</span>
+              {canEditNode && onUploadSupplementary ? <button type="button" data-testid="pcn-supplementary-trigger" title={'Thêm đầu mục phụ trợ cho bước ' + projection.nodeLabel} aria-label={'Thêm đầu mục phụ trợ cho bước ' + projection.nodeLabel} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-800 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-9" onClick={() => openSupplementaryModal()}><Upload size={14} aria-hidden="true" /><span>Tệp phụ trợ</span></button> : null}
               {onOpenDocuments ? <button type="button" className="mobile-touch-target min-h-11 sm:min-h-9 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" onClick={onOpenDocuments}>Mở toàn bộ tài liệu</button> : null}
             </div>
           </div>
@@ -481,7 +538,7 @@ export function PcnDossierNodeWorkPanel({
           <div>
             <PgdcnDossierDocumentActionTable
               testId="pcn-dossier-document-action-table"
-              rows={orderedDocuments.map((item) => ({
+              rows={[...orderedDocuments.map((item) => ({
                 id: item.requirementId,
                 step: item.sourceNodeLabel || projection.nodeLabel,
                 title: item.label,
@@ -489,8 +546,10 @@ export function PcnDossierNodeWorkPanel({
                 status: (DOCUMENT_STATUS_LABELS[item.status] || item.status),
                 statusTone: ['PRESENT', 'CONFIRMED'].includes(item.status) ? 'success' : item.status === 'WAIVED' ? 'neutral' : 'warning',
                 action: null,
-              }))}
-              renderRow={(row) => renderDocumentRow(orderedDocuments.find((item) => item.requirementId === row.id)!)}
+              })), ...supplementaryItems.map((item) => ({ id: `supplementary:${item.id}`, step: projection.nodeLabel, title: item.title, required: false, status: item.currentFile ? 'Đã tải lên' : 'Chưa có tệp', action: null }))]}
+              renderRow={(row) => row.id.startsWith('supplementary:')
+                ? renderSupplementaryRow(supplementaryItems.find((item) => `supplementary:${item.id}` === row.id)!)
+                : renderDocumentRow(orderedDocuments.find((item) => item.requirementId === row.id)!)}
             />
           </div>
         </section>
@@ -575,7 +634,7 @@ export function PcnDossierNodeWorkPanel({
               Thêm đầu mục tài liệu phụ trợ · {projection.nodeLabel}
             </h3>
             <p className="mt-1 text-xs text-slate-500">
-              Nhập thông tin mô tả và có thể tải tệp đính kèm ngay hoặc tải sau từ bảng danh sách.
+              {supplementaryItemId ? 'Chọn tệp để thêm phiên bản cho đầu mục này.' : 'Nhập tiêu đề và mô tả. Có thể đính kèm tệp ngay hoặc tải lên sau.'}
             </p>
             <div className="mt-3 space-y-3">
               <div>
@@ -584,6 +643,8 @@ export function PcnDossierNodeWorkPanel({
                   type="text"
                   value={suppTitle}
                   onChange={(e) => setSuppTitle(e.target.value)}
+                  aria-label="Tên tài liệu phụ trợ"
+                  readOnly={Boolean(supplementaryItemId)}
                   placeholder="Ví dụ: Bổ sung chứng từ kiểm tra..."
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
@@ -594,14 +655,17 @@ export function PcnDossierNodeWorkPanel({
                   rows={2}
                   value={suppDescription}
                   onChange={(e) => setSuppDescription(e.target.value)}
+                  aria-label="Mô tả tài liệu phụ trợ"
+                  readOnly={Boolean(supplementaryItemId)}
                   placeholder="Nhập ghi chú tóm tắt nội dung tài liệu..."
                   className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700">Tệp tài liệu (tùy chọn)</label>
+                <label className="block text-xs font-bold text-slate-700">Tệp tài liệu {supplementaryItemId ? '(bắt buộc)' : '(tùy chọn)'}</label>
                 <input
                   type="file"
+                  data-testid="pcn-supplementary-file"
                   accept=".pdf,.docx,.png,.jpg,.jpeg,.gif,.webp,.avif"
                   aria-label={'Tải tệp phụ trợ cho bước ' + projection.nodeLabel}
                   onChange={(e) => setSuppFile(e.target.files?.[0] || null)}
@@ -609,6 +673,7 @@ export function PcnDossierNodeWorkPanel({
                 />
               </div>
             </div>
+            {supplementaryUploadError ? <p role="alert" className="mt-3 text-xs font-semibold text-rose-700">{supplementaryUploadError}</p> : null}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
@@ -617,6 +682,8 @@ export function PcnDossierNodeWorkPanel({
                   setSuppTitle('');
                   setSuppDescription('');
                   setSuppFile(null);
+                  setSupplementaryItemId(undefined);
+                  setSupplementaryUploadError(null);
                 }}
                 className="mobile-touch-target rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100"
               >
@@ -624,19 +691,28 @@ export function PcnDossierNodeWorkPanel({
               </button>
               <button
                 type="button"
+                data-testid="pcn-supplementary-submit"
                 disabled={busyKey === `supplementary:${projection.nodeId}`}
                 onClick={async () => {
-                  if (suppFile) {
-                    await handleSupplementaryUpload(suppFile);
+                  if (!suppTitle.trim()) {
+                    setSupplementaryUploadError('Nhập tiêu đề tài liệu phụ trợ.');
+                    return;
                   }
+                  if (supplementaryItemId && !suppFile) {
+                    setSupplementaryUploadError('Chọn tệp cần tải lên.');
+                    return;
+                  }
+                  const saved = await saveSupplementary();
+                  if (!saved) return;
                   setSupplementaryModalOpen(false);
                   setSuppTitle('');
                   setSuppDescription('');
                   setSuppFile(null);
+                  setSupplementaryItemId(undefined);
                 }}
                 className="mobile-touch-target rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                {busyKey === `supplementary:${projection.nodeId}` ? 'Đang lưu…' : 'Xác nhận'}
+                {busyKey === `supplementary:${projection.nodeId}` ? 'Đang lưu…' : supplementaryItemId ? 'Tải phiên bản' : 'Lưu đầu mục'}
               </button>
             </div>
           </div>

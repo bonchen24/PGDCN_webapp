@@ -440,7 +440,7 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
   };
 
   return (
-    <section className="min-w-0 space-y-1.5" data-testid="pgd-dossier-native-flow" aria-label="Bước xử lý">
+    <section className="w-full min-w-0 max-w-full space-y-1.5" data-testid="pgd-dossier-native-flow" aria-label="Bước xử lý">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-xs font-black uppercase tracking-wider text-slate-700">Bước xử lý</h3>
         <p className="text-[11px] font-medium text-slate-500" aria-live="polite">
@@ -448,7 +448,7 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
         </p>
       </div>
 
-      <div className="min-w-0 overflow-x-auto pb-0.5" data-testid="pgd-dossier-flow-scroll">
+      <div className="w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain touch-pan-x pb-0.5 md:overflow-x-hidden" data-testid="pgd-dossier-flow-scroll">
         <div className="grid min-w-max grid-cols-7 gap-1 md:w-full md:min-w-0" role="tablist" aria-label="Các giai đoạn xử lý hồ sơ PGD">
           {PGD_DOSSIER_FLOW_STEPS.map((step, index) => {
             const stepStatus = currentStatusForStep(index + 1, status, evidence);
@@ -487,7 +487,7 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
                 title={disabled ? step.label + ' · Chưa đến giai đoạn' : step.description}
                 onClick={() => onSelectStep(step.id)}
                 onKeyDown={(event) => handleKeyDown(event, index)}
-                className={'mobile-touch-target flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-lg border px-1 py-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ' + stepClassName}
+                className={'mobile-touch-target relative flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-lg border px-1 py-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ' + stepClassName}
               >
                 <span className={'flex h-5 w-7 items-center justify-center rounded text-[11px] font-black tabular-nums ' + numberClassName}>
                   0{index + 1}

@@ -1978,12 +1978,14 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 - **Tối ưu UI/UX Chi tiết hồ sơ Superneat & Document-First (PCN & PGD)**:
   - Header thu gọn tối đa chiều cao (`py-2`), gom mã hồ sơ, tên khách hàng/hàng hóa, trạng thái, người phụ trách và CTA trên hàng tinh gọn, giữ nguyên data-testid và không cắt chữ.
   - Card Bước xử lý 7 nút nhỏ (01–07) trên một hàng; danh sách công việc con hiển thị dạng micro-badges; loại bỏ hoàn toàn các khối mô tả trùng lặp.
-  - Bảng tài liệu và hồ sơ liên quan (`PgdcnDossierDocumentActionTable`) đưa lên ngay dưới header bước xử lý, chiếm phần lớn diện tích cột trái: ưu tiên 3 cột Tên tài liệu – Trạng thái – Thao tác, hỗ trợ bàn phím, cuộn nội bộ mượt mà không cuộn trang.
-  - Thao tác tài liệu dùng icon gọn gàng (Xem `Eye`, Soạn thảo `Pencil`, Upload `Upload`, Mở tệp `FileText`, Tải xuống `Download`, Thao tác khác `MoreHorizontal`), đạt diện tích chạm chuẩn di động.
-  - Cột phải chuyên biệt làm reader tài liệu và danh sách tệp; khi chưa chọn file hiển thị empty-state gọn gàng.
+  - Ở viewport 320px, rail 7 bước cuộn ngang bên trong vùng của nó để giữ đủ nút và không làm rộng trang; vẫn hỗ trợ focus và điều hướng bàn phím.
+  - Workspace desktop giữ tỷ lệ 60/40 cho Công việc/Xem tài liệu; mobile dùng hai tab tương ứng và thao tác Mắt tự chuyển sang tab Xem tài liệu.
+  - Bảng tài liệu và hồ sơ liên quan (`PgdcnDossierDocumentActionTable`) đưa lên ngay dưới header bước xử lý, chiếm phần lớn diện tích cột trái: đúng 3 cột Tên tài liệu – Trạng thái – Thao tác, không lặp cột Bước khi stage đã được chọn; PCN chỉ hiện nguồn node khi một stage gộp nhiều node. Hỗ trợ bàn phím, cuộn nội bộ mượt mà không cuộn trang.
+  - Icon Mắt chỉ chọn tài liệu trong reader; `FileText` mở riêng tab mới với phản hồi inline; `Download` tải tệp riêng. Các icon giữ nhãn truy cập, focus rõ và vùng chạm tối thiểu 44px trên mobile.
+  - Cột phải chỉ làm reader, không lặp danh sách tệp đã có ở bảng trái; giữ empty-state, loading và lỗi preview. PDF/ảnh xem inline. DOCX được đọc qua endpoint cùng origin có xác thực và trích văn bản tại trình duyệt bằng Mammoth; không gửi tài liệu riêng tư sang dịch vụ ngoài, vẫn có mở tab/tải xuống khi preview lỗi.
   - Gom Căn cứ pháp lý, Trợ lý AI và Lịch sử hoạt động vào một mục thu gọn "Thông tin hỗ trợ", mặc định đóng.
-  - Tích hợp tệp phụ trợ / tệp đính kèm vào thẳng bảng tài liệu và hồ sơ liên quan; nút tệp phụ trợ mở modal tạo đầu mục tài liệu (nhập tiêu đề, mô tả, tải tệp tùy chọn).
-  - Khung đọc tài liệu cột phải (Reader) đưa iframe/ảnh xem trước lên sát trên cùng, loại bỏ danh sách tệp thừa chiếm diện tích; chọn xem tệp từ bảng trái sẽ nạp ngay vào khung đọc.
+  - Modal tệp phụ trợ lưu tiêu đề/mô tả thành đầu mục metadata-only và nhận tệp tùy chọn; đầu mục chưa có tệp không xuất hiện trong reader, không đổi checklist, trạng thái hoặc gate. Tải tệp về sau tạo phiên bản mới trên cùng đầu mục, giữ quyền, kiểm toán và phiên bản hóa hiện có.
+  - Khi requirement thiếu và có template khớp, `Pencil` mở modal soạn thảo ngay trong hồ sơ với đúng request/dossier, stage và requirement; dùng lại workspace/form hiện có, nạp dữ liệu đã lưu, lưu và gắn phiên bản vào cùng requirement rồi làm mới reader. Nếu không có template hoặc luồng không an toàn, dùng đường dẫn soạn thảo/upload phù hợp.
   - Loại bỏ các khối trùng lặp phía dưới (Biểu mẫu nghiệp vụ, Bảng kiểm trực quan 7 bước) để người dùng tập trung 100% vào thanh quy trình 7 bước và bảng tài liệu trọng tâm.
 
 
@@ -1994,4 +1996,4 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 - Bộ đếm của trợ lý hồ sơ lấy từ projection của giai đoạn đang chọn và các node runtime đang hoạt động tại gate đó. Mục bắt buộc `MISSING` là thiếu; `UPLOADED` / `GENERATED` đang chờ xác nhận; `PRESENT`, `CONFIRMED` và `WAIVED` đã xử lý; tài liệu tùy chọn và nhánh không thỏa điều kiện không làm tăng số thiếu bắt buộc. Khi không có giai đoạn hiện tại, không khẳng định có mục đang chặn.
 - Mọi số đếm lấy từ inspection toàn hồ sơ phải ghi rõ “toàn bộ hồ sơ”; không dùng số toàn hồ sơ để mô tả điều kiện hoàn tất bước đang chọn. Bản thân nội dung trợ lý không thay đổi stage gate hay điều kiện nghiệp vụ.
 - Nút CTA và nút thao tác icon trên desktop dùng chiều cao khoảng 32–36px, chữ tối thiểu 11–12px; trên mobile giữ vùng chạm tối thiểu 44px. Nút icon có nhãn truy cập theo đúng tài liệu, focus nhìn thấy, trạng thái disabled/loading rõ ràng. Menu phụ chỉ hiện khi có ít nhất một thao tác khả dụng. Khi tài liệu chưa có và có template hợp lệ, soạn thảo là hành động chính; upload là phương án dự phòng khi không có template.
-- Giữ nguyên API, schema, RBAC, mã workflow, gate, upload bản chính, tệp phụ trợ, gán chủ hồ sơ và reader riêng tư. Các thay đổi chỉ tổ chức projection và affordance của giao diện.
+  - Giữ nguyên RBAC, mã workflow, gate, upload bản chính, gán chủ hồ sơ và reader riêng tư. Hợp đồng bổ sung metadata/phiên bản chỉ phục vụ đầu mục phụ trợ; không cập nhật checklist, đổi trạng thái hay thêm điều kiện chặn nghiệp vụ.

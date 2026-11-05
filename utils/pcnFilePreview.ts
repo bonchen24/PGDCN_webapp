@@ -2,7 +2,7 @@
 // OS support: Web
 // Description: Safe client-side classification for the PCN inline file preview
 
-export type PcnFilePreviewKind = 'PDF' | 'IMAGE' | 'UNSUPPORTED';
+export type PcnFilePreviewKind = 'PDF' | 'IMAGE' | 'DOCX' | 'UNSUPPORTED';
 
 const SAFE_RASTER_IMAGE_TYPES = new Set([
   'image/avif',
@@ -25,6 +25,7 @@ function fileExtension(fileName?: string): string {
 export function getPcnFilePreviewKind(mimeType?: string, fileName?: string): PcnFilePreviewKind {
   const normalized = normalizedMimeType(mimeType);
   if (normalized === 'application/pdf' || (!normalized && fileExtension(fileName) === 'pdf')) return 'PDF';
+  if (normalized === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || (!normalized && fileExtension(fileName) === 'docx')) return 'DOCX';
   if (SAFE_RASTER_IMAGE_TYPES.has(normalized)) return 'IMAGE';
   if (!normalized && ['avif', 'gif', 'jpeg', 'jpg', 'png', 'webp'].includes(fileExtension(fileName))) return 'IMAGE';
   return 'UNSUPPORTED';

@@ -193,6 +193,7 @@ async function collectDetailMetrics(page, role, viewport, pageErrors) {
     const workCard = detail?.querySelector('[data-testid="pgd-dossier-step-work-panel"][aria-label="Bước xử lý hồ sơ PGD"]') || null;
     const selectedStepPanel = detail?.querySelector('[data-testid="pgd-dossier-selected-step-panel"]') || null;
     const flow = workCard?.querySelector('[role="tablist"][aria-label="Các giai đoạn xử lý hồ sơ PGD"]') || null;
+    const flowScroll = workCard?.querySelector('[data-testid="pgd-dossier-flow-scroll"]') || null;
     const stageTabs = Array.from(flow?.querySelectorAll('[role="tab"]') || []);
     const relatedDocuments = selectedStepPanel?.querySelector('[aria-label="Danh sách tài liệu cần hoàn thiện PGD"]') || null;
     const reader = detail?.querySelector('[data-testid="pgd-dossier-document-reader"]') || null;
@@ -231,6 +232,9 @@ async function collectDetailMetrics(page, role, viewport, pageErrors) {
       selectedStepPanelVisible: visible(selectedStepPanel),
       flowStageCount: stageTabs.length,
       flowStageNumbers: stageTabs.map((tab) => tab.querySelector('span')?.textContent?.trim() || ''),
+      flowScrollBounds: rect(flowScroll),
+      flowScrollWidth: flowScroll?.scrollWidth ?? null,
+      flowScrollClientWidth: flowScroll?.clientWidth ?? null,
       selectedFlowStageCount: stageTabs.filter((tab) => tab.getAttribute('aria-selected') === 'true').length,
       relatedDocumentsVisible: visible(relatedDocuments),
       relatedDocumentsHeading: relatedDocuments?.querySelector('h3')?.textContent?.trim() || null,
@@ -253,6 +257,19 @@ async function collectDetailMetrics(page, role, viewport, pageErrors) {
       documentOverflow: Math.max(doc.scrollWidth, body.scrollWidth) > window.innerWidth,
       documentScrollWidth: doc.scrollWidth,
       bodyScrollWidth: body.scrollWidth,
+      overflowingElements: Array.from(document.querySelectorAll('body *')).flatMap((element) => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.right > window.innerWidth + 1 ? [{
+          tag: element.tagName.toLowerCase(),
+          id: element.id || null,
+          testId: element.getAttribute('data-testid'),
+          className: typeof element.className === 'string' ? element.className : '',
+          left: Math.round(bounds.left),
+          right: Math.round(bounds.right),
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+        }] : [];
+      }).slice(0, 12),
       pageScrollerHeight: detail?.querySelector('[data-testid="pgd-dossier-scroll-area"]')?.scrollHeight ?? null,
       pageScrollerTop: detail?.querySelector('[data-testid="pgd-dossier-scroll-area"]')?.scrollTop ?? null,
     };
@@ -298,11 +315,13 @@ test('D09 PGD detail has one seven-stage work card, a related-documents table, a
       }, null, 2)}\n`, 'utf8');
     }
 
-    console.log('D09 PGD detail observations:', JSON.stringify(audit.screens));
+    console.log('D09 PGD viewport/rail metrics:', JSON.stringify(audit.screens.map(({ role, width, documentScrollWidth, documentOverflow, flowScrollBounds, flowScrollWidth, flowScrollClientWidth }) => ({ role, width, documentScrollWidth, documentOverflow, flowScrollBounds, flowScrollWidth, flowScrollClientWidth }))));
     assert.deepEqual(audit.apiMutations, [], `Expected zero API mutations: ${JSON.stringify(audit.apiMutations)}`);
     assert.deepEqual(audit.externalRequests, [], `Expected zero external requests: ${JSON.stringify(audit.externalRequests)}`);
     assert.ok(audit.screens.every((item) => item.pageErrors.length === 0), `Expected no page errors: ${JSON.stringify(audit.screens)}`);
-    assert.ok(audit.screens.filter((item) => item.width >= 390).every((item) => !item.documentOverflow), `Expected no document horizontal overflow at 390px and wider: ${JSON.stringify(audit.screens)}`);
+    const documentOverflowScreens = audit.screens.filter((item) => item.documentOverflow).map(({ role, width, documentScrollWidth, flowScrollBounds, overflowingElements }) => ({ role, width, documentScrollWidth, flowScrollBounds, overflowingElements }));
+    assert.deepEqual(documentOverflowScreens, [], `Expected no document horizontal overflow at all viewport widths: ${JSON.stringify(documentOverflowScreens)}`);
+    assert.ok(audit.screens.filter((item) => item.width <= 430).every((item) => item.flowScrollBounds?.left >= 0 && item.flowScrollBounds?.right <= item.width + 1), `Expected the seven-stage rail to stay inside the mobile viewport: ${JSON.stringify(audit.screens)}`);
     assert.ok(audit.screens.every((item) => item.workCardVisible && item.workCardCount === 1), 'Expected exactly one visible Bước xử lý card');
     assert.ok(audit.screens.every((item) => item.selectedStepPanelVisible && item.selectedStepPanelCount === 1), 'Expected one selected-step panel inside the work card');
     assert.ok(audit.screens.every((item) => item.flowStageCount === 7 && item.flowStageNumbers.join(',') === '01,02,03,04,05,06,07' && item.selectedFlowStageCount === 1), 'Expected exactly seven numbered 01–07 stages');

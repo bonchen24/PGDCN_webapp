@@ -33,9 +33,11 @@ export interface PcnDossierWorkflowPanelProps {
   onReturnTask?: (taskId: string, input: { targetNodeId: string; reason: string }) => Promise<void>;
   onOpenDocuments?: (nodeId: string) => void;
   onUploadDocument?: (requirementId: string, file: File) => Promise<void>;
-  onUploadSupplementary?: (stageId: string, file: File) => Promise<void>;
+  onUploadSupplementary?: (input: { stageId: string; title: string; description?: string; file?: File; supplementaryItemId?: string }) => Promise<void>;
   onCreateFromForm?: (requirementId: string) => void;
   onOpenDrafting?: (item: PcnDossierNodeDocumentItem, nodeId: string) => string | undefined;
+  canDraftInPlace?: (item: PcnDossierNodeDocumentItem) => boolean;
+  onDraftInPlace?: (item: PcnDossierNodeDocumentItem, nodeId: string) => void;
   onGenerateAndAttach?: (nodeId: string, requirementId: string) => Promise<void>;
   onConfirmDocument?: (requirementId: string) => Promise<void>;
   onRemoveCurrent?: (requirementId: string) => Promise<void>;
@@ -45,7 +47,7 @@ export interface PcnDossierWorkflowPanelProps {
   onCurrentStageAssistantMessage?: (message: string) => void;
 }
 
-export function PcnDossierWorkflowPanel({ dossier, requirements, documents, attachments = [], onSelectFile, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], workflowTasks, users: _users = [], currentUser, canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onUploadSupplementary, onCreateFromForm, onOpenDrafting, onGenerateAndAttach, onConfirmDocument, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, onCurrentStageAssistantMessage, initialNodeId }: PcnDossierWorkflowPanelProps) {
+export function PcnDossierWorkflowPanel({ dossier, requirements, documents, attachments = [], onSelectFile, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], workflowTasks, users: _users = [], currentUser, canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onUploadSupplementary, onCreateFromForm, onOpenDrafting, canDraftInPlace, onDraftInPlace, onGenerateAndAttach, onConfirmDocument, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, onCurrentStageAssistantMessage, initialNodeId }: PcnDossierWorkflowPanelProps) {
   const workflow = useMemo(() => getPcnWorkflowForDossier(dossier), [dossier]);
   const dossierTasks = useMemo(() => workflowTasks.filter((task) => task.dossierId === dossier.id), [dossier.id, workflowTasks]);
   const requiredRequirementIds = useMemo(() => {
@@ -96,7 +98,7 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, atta
 
   const generateAndAttach = useCallback((nodeId: string, requirementId: string) => {
     if (onGenerateAndAttach) return onGenerateAndAttach(nodeId, requirementId);
-    return usePcnStore.getState().generateAndAttachDossierNodeDocument(dossier.id, nodeId, requirementId);
+    return (async () => { await usePcnStore.getState().generateAndAttachDossierNodeDocument(dossier.id, nodeId, requirementId); })();
   }, [dossier.id, onGenerateAndAttach]);
 
   const selectedNode = selectedNodeId ? runtime.byNodeId[selectedNodeId] : undefined;
@@ -161,9 +163,14 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, atta
               returnTargets={returnTargets}
               onOpenDocuments={onOpenDocuments ? () => onOpenDocuments(selectedProjection.nodeId) : undefined}
               onUploadDocument={onUploadDocument}
-              onUploadSupplementary={onUploadSupplementary || ((stageId, file) => usePcnStore.getState().uploadDossierSupplementary(dossier.id, stageId, file))}
+              onUploadSupplementary={onUploadSupplementary || (async (input) => {
+                const attachment = await usePcnStore.getState().uploadDossierSupplementary(dossier.id, input);
+                if (attachment.assetId) onSelectFile?.({ id: `attachment:${attachment.id}`, assetId: attachment.assetId, fileName: attachment.fileName, mimeType: attachment.mimeType });
+              })}
               onCreateFromForm={onCreateFromForm}
               onOpenDrafting={onOpenDrafting ? (item) => onOpenDrafting(item, item.sourceNodeId || selectedProjection.nodeId) : undefined}
+              canDraftInPlace={canDraftInPlace}
+              onDraftInPlace={onDraftInPlace ? (item) => onDraftInPlace(item, item.sourceNodeId || selectedProjection.nodeId) : undefined}
               onGenerateAndAttach={(item) => generateAndAttach(item.sourceNodeId || selectedProjection.nodeId, item.requirementId)}
               onConfirmDocument={onConfirmDocument || ((requirementId) => usePcnStore.getState().confirmDossierDocument(dossier.id, requirementId))}
               onRemoveCurrent={onRemoveCurrent || ((requirementId) => usePcnStore.getState().removeCurrentDossierDocument(dossier.id, requirementId))}

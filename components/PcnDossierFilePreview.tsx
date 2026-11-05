@@ -6,6 +6,7 @@ import { ExternalLink, FileText, Maximize2, X } from 'lucide-react';
 import type { PcnDossierDocumentVersion } from '../types';
 import { getPcnFileUrl } from '../utils/pcnFileApi';
 import { getPcnFilePreviewKind } from '../utils/pcnFilePreview';
+import { PgdcnDocxPreview } from './PgdcnDocxPreview';
 
 function PcnDossierFilePreview({
   version,
@@ -111,6 +112,7 @@ function PcnDossierFilePreview({
       <div className="min-h-0 flex-1 overflow-auto overscroll-contain bg-slate-100 p-3 sm:p-4">
         {previewKind === 'PDF' && <iframe title={`Xem nhanh ${version.fileName}`} src={fileUrl} className="h-[68dvh] min-h-[12rem] w-full rounded-lg border border-slate-200 bg-white sm:h-[72dvh] sm:min-h-[24rem]" />}
         {previewKind === 'IMAGE' && <div className="flex min-h-[12rem] items-center justify-center rounded-lg border border-slate-200 bg-slate-900/5 p-3 sm:min-h-[24rem]"><img src={fileUrl} alt={version.fileName} className="max-h-[68dvh] max-w-full rounded-md object-contain shadow-sm sm:max-h-[72dvh]" /></div>}
+        {previewKind === 'DOCX' && <PgdcnDocxPreview url={fileUrl} fileName={version.fileName} />}
       </div>
     </div>
   </div>;

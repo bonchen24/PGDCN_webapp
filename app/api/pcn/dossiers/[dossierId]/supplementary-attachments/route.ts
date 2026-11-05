@@ -6,8 +6,8 @@ import { getPcnSessionUser, requirePcnMutation } from '@/lib/server/auth';
 import { getDocumentPayload, mapDocumentRow } from '@/lib/server/helpers';
 import { jsonBadRequest, jsonConflict, jsonCreated, jsonError, jsonNotFound } from '@/lib/server/response';
 import { getPcnStorageBucket, getPcnStorageClient, PCN_FILE_MAX_BYTES } from '@/lib/server/storage';
-import { CertificationDossier, PcnDossierWorkflowTask } from '@/types';
-import { buildPcnSupplementaryDossierAttachment } from '@/utils/pcnDossierDocuments';
+import { CertificationDossier, PcnDossierAttachment, PcnDossierWorkflowTask } from '@/types';
+import { buildPcnSupplementaryDossierAttachment, buildPcnSupplementaryDossierMetadata } from '@/utils/pcnDossierDocuments';
 import { isPcnDossierPostApprovalLocked } from '@/utils/pcnDossierStepAccess';
 import { isPcnSystemManager } from '@/utils/pcnRbac';
 import { buildActivityLog, validateActivityLogPayload } from '@/utils/activityLog';
@@ -29,12 +29,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
 
   const file = formData.get('file') as File | null;
   const stageId = String(formData.get('stageId') || '').trim();
+  const title = String(formData.get('title') || '').trim();
+  const description = String(formData.get('description') || '').trim();
+  const supplementaryItemId = String(formData.get('supplementaryItemId') || '').trim();
   const originalName = String(file?.name || '').trim();
   const extension = originalName.toLowerCase().split('.').pop() || '';
-  if (!file || !stageId || stageId.length > 200 || !SUPPORTED_FILE_EXTENSIONS.has(extension)) {
-    return jsonBadRequest('Cần chọn tệp PDF, DOCX hoặc ảnh được hỗ trợ cho bước PCN.');
+  if (!stageId || stageId.length > 200 || title.length > 255 || description.length > 2000 || supplementaryItemId.length > 200) {
+    return jsonBadRequest('Thiếu giai đoạn hoặc thông tin đầu mục phụ trợ PCN không hợp lệ.');
   }
-  if (file.size <= 0 || file.size > PCN_FILE_MAX_BYTES) {
+  if (!file && (!title || supplementaryItemId)) {
+    return jsonBadRequest(supplementaryItemId ? 'Cần chọn tệp để bổ sung vào đầu mục hiện có.' : 'Cần có tiêu đề cho đầu mục phụ trợ PCN.');
+  }
+  if (file && !SUPPORTED_FILE_EXTENSIONS.has(extension)) {
+    return jsonBadRequest('Tệp phụ trợ PCN cần dùng PDF, DOCX hoặc ảnh được hỗ trợ.');
+  }
+  if (file && (file.size <= 0 || file.size > PCN_FILE_MAX_BYTES)) {
     return jsonBadRequest(`Kích thước tệp PCN phải từ 1 byte đến ${PCN_FILE_MAX_BYTES} byte.`);
   }
 
@@ -80,45 +89,97 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
       }
       const fieldCode = dossier.fieldCodes?.[0];
       if (!fieldCode) throw Object.assign(new Error('Hồ sơ PCN chưa có lĩnh vực để gắn tệp phụ trợ.'), { statusCode: 409 });
-
-      const fileBuffer = Buffer.from(await file.arrayBuffer());
-      const sha256 = createHash('sha256').update(fileBuffer).digest('hex');
-      const assetId = `pcn-file-${sha256.slice(0, 16)}-${randomUUID().slice(0, 8)}`;
-      const safeFileName = sanitizePcnPathSegment(originalName);
-      const attachmentId = `pcn-attachment-supplementary-${assetId}`;
-      const bucketName = getPcnStorageBucket();
-      const objectPath = `pcnFiles/dossierAttachments/${sanitizePcnPathSegment(dossier.id)}/${sanitizePcnPathSegment(node.id)}/${assetId}-${sha256}-${safeFileName}`;
-      const mimeType = String(file.type || 'application/octet-stream').toLowerCase();
-      uploadedBucketName = bucketName;
-      uploadedObjectPath = objectPath;
-
-      const storage = getPcnStorageClient();
-      await storage.ensurePrivateBucket(bucketName, PCN_FILE_MAX_BYTES);
-      await storage.uploadObject({ bucketName, objectPath, body: fileBuffer, mimeType });
-      await client.query(
-        `INSERT INTO file_assets (id, bucket_name, object_path, source_collection, source_document_id, source_json_path, mime_type, byte_size, sha256)
-         VALUES ($1, $2, $3, 'dossierAttachments', $4, 'assetId', $5, $6, $7)`,
-        [assetId, bucketName, objectPath, attachmentId, mimeType, fileBuffer.byteLength, sha256],
-      );
-
       const now = new Date().toISOString();
-      const attachment = buildPcnSupplementaryDossierAttachment({
-        dossierId: dossier.id,
-        fieldCode,
-        stageId: node.id,
-        stageLabel: node.label,
-        assetId,
-        fileName: safeFileName,
-        mimeType,
-        byteSize: fileBuffer.byteLength,
-        sha256,
-        uploadedAt: now,
-      });
-      await client.query(
-        `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
-         VALUES ('dossierAttachments', $1, $2::jsonb, CURRENT_TIMESTAMP)`,
-        [attachment.id, JSON.stringify(getDocumentPayload(attachment))],
-      );
+      let attachment: ReturnType<typeof buildPcnSupplementaryDossierAttachment> | ReturnType<typeof buildPcnSupplementaryDossierMetadata>;
+      let safeFileName = '';
+
+      if (!file) {
+        const id = `pcn-supplementary-item-${randomUUID()}`;
+        attachment = buildPcnSupplementaryDossierMetadata({
+          id,
+          dossierId: dossier.id,
+          fieldCode,
+          stageId: node.id,
+          stageLabel: node.label,
+          title,
+          description,
+          createdAt: now,
+        });
+        await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('dossierAttachments', $1, $2::jsonb, CURRENT_TIMESTAMP)`,
+          [attachment.id, JSON.stringify(getDocumentPayload(attachment))],
+        );
+      } else {
+        let itemId = supplementaryItemId;
+        let supersedesAttachmentId: string | undefined;
+        if (itemId) {
+          const itemResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'dossierAttachments'
+               AND data->>'dossierId' = $1 AND data->>'supplementaryStageId' = $2
+               AND (data->>'supplementaryItemId' = $3 OR document_id = $3)
+             ORDER BY updated_at DESC LIMIT 1 FOR UPDATE`,
+            [dossier.id, node.id, itemId],
+          );
+          const item = itemResult.rows[0] ? mapDocumentRow(itemResult.rows[0]) as PcnDossierAttachment : undefined;
+          if (!item) throw Object.assign(new Error('Không tìm thấy đầu mục phụ trợ PCN để thêm phiên bản.'), { statusCode: 404 });
+          const latestFile = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'dossierAttachments'
+               AND data->>'dossierId' = $1 AND data->>'supplementaryStageId' = $2
+               AND (data->>'supplementaryItemId' = $3 OR document_id = $3)
+               AND COALESCE(data->>'metadataOnly', 'false') <> 'true'
+             ORDER BY updated_at DESC LIMIT 1 FOR UPDATE`,
+            [dossier.id, node.id, itemId],
+          );
+          supersedesAttachmentId = latestFile.rows[0] ? String(latestFile.rows[0].document_id || '') : undefined;
+        } else {
+          itemId = `pcn-supplementary-item-${randomUUID()}`;
+        }
+
+        const fileBuffer = Buffer.from(await file.arrayBuffer());
+        const sha256 = createHash('sha256').update(fileBuffer).digest('hex');
+        const assetId = `pcn-file-${sha256.slice(0, 16)}-${randomUUID().slice(0, 8)}`;
+        safeFileName = sanitizePcnPathSegment(originalName);
+        const attachmentId = `pcn-attachment-supplementary-${assetId}`;
+        const bucketName = getPcnStorageBucket();
+        const objectPath = `pcnFiles/dossierAttachments/${sanitizePcnPathSegment(dossier.id)}/${sanitizePcnPathSegment(node.id)}/${assetId}-${sha256}-${safeFileName}`;
+        const mimeType = String(file.type || 'application/octet-stream').toLowerCase();
+        uploadedBucketName = bucketName;
+        uploadedObjectPath = objectPath;
+
+        const storage = getPcnStorageClient();
+        await storage.ensurePrivateBucket(bucketName, PCN_FILE_MAX_BYTES);
+        await storage.uploadObject({ bucketName, objectPath, body: fileBuffer, mimeType });
+        await client.query(
+          `INSERT INTO file_assets (id, bucket_name, object_path, source_collection, source_document_id, source_json_path, mime_type, byte_size, sha256)
+           VALUES ($1, $2, $3, 'dossierAttachments', $4, 'assetId', $5, $6, $7)`,
+          [assetId, bucketName, objectPath, attachmentId, mimeType, fileBuffer.byteLength, sha256],
+        );
+
+        attachment = buildPcnSupplementaryDossierAttachment({
+          dossierId: dossier.id,
+          fieldCode,
+          stageId: node.id,
+          stageLabel: node.label,
+          assetId,
+          fileName: safeFileName,
+          mimeType,
+          byteSize: fileBuffer.byteLength,
+          sha256,
+          uploadedAt: now,
+          title,
+          description,
+          supplementaryItemId: itemId,
+          supersedesAttachmentId,
+        });
+        await client.query(
+          `INSERT INTO app_documents (collection_name, document_id, data, updated_at)
+           VALUES ('dossierAttachments', $1, $2::jsonb, CURRENT_TIMESTAMP)`,
+          [attachment.id, JSON.stringify(getDocumentPayload(attachment))],
+        );
+      }
 
       const activityLog = buildActivityLog({
         action: 'UPDATED',
@@ -128,7 +189,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
         actorUsername: actor.username,
         actorName: actor.name || 'Người dùng PCN',
         actorRole: actor.systemRole || actor.role,
-        summary: `Tải tệp phụ trợ ${safeFileName.slice(0, 120)} vào bước ${node.label}`,
+        summary: file
+          ? `Tải phiên bản ${safeFileName.slice(0, 120)} vào đầu mục phụ trợ ${title || attachment.title || ''} của bước ${node.label}`
+          : `Tạo đầu mục phụ trợ ${title.slice(0, 120)} tại bước ${node.label}`,
         source: 'UI',
         groupId: dossier.id,
         createdAt: now,

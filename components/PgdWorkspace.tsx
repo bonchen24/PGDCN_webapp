@@ -1298,6 +1298,8 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
   const [workflowTemplateId, setWorkflowTemplateId] = useState('');
   const [mobileSection, setMobileSection] = useState<'work' | 'reader'>('work');
   const [selectedReaderDocId, setSelectedReaderDocId] = useState('');
+  const [draftingModalContext, setDraftingModalContext] = useState<{ templateKind: PgdDocumentTemplateKind; requirementCode: string } | null>(null);
+  const draftingModalRef = useRef<HTMLDivElement>(null);
   const [selectedStepId, setSelectedStepId] = useState<PgdDossierFlowStepId>(() => reconcilePgdDossierStepSelection({
     selectedStepId: initialStepId || getPgdDossierFlowStepIdForStatus(request.status),
     status: request.status,
@@ -1393,6 +1395,39 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
       if (dossierFetchSequence.current === fetchSequence) setDossierLoading(false);
     }
   }, [pgd.fetchDossierDocuments, request.id]);
+  const finishClosingDraftingModal = useCallback(async () => {
+    const requirementCode = draftingModalContext?.requirementCode;
+    setDraftingModalContext(null);
+    await loadDossierDocuments();
+    if (!requirementCode) return;
+    const latest = getCurrentPgdDossierDocuments(usePgdStore.getState().dossierDocuments)
+      .find((document) => document.requestId === request.id && document.requirementCode === requirementCode);
+    if (latest?.fileAssetId) {
+      setSelectedReaderDocId(latest.id);
+      setMobileSection('reader');
+    }
+  }, [draftingModalContext?.requirementCode, loadDossierDocuments, request.id]);
+  const closeDraftingModal = useCallback(() => {
+    if (typeof window !== 'undefined' && !window.confirm('Đóng phần soạn thảo? Nội dung chưa lưu có thể bị mất.')) return;
+    void finishClosingDraftingModal();
+  }, [finishClosingDraftingModal]);
+  useEffect(() => {
+    if (!draftingModalContext) return;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        void closeDraftingModal();
+      }
+    };
+    document.body.style.overflow = 'hidden';
+    draftingModalRef.current?.focus();
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [closeDraftingModal, draftingModalContext]);
   useEffect(() => {
     void loadDossierDocuments();
     return () => { dossierFetchSequence.current += 1; };
@@ -1718,7 +1753,7 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
             <div id="pgd-dossier-current-work" className="min-w-0">
               {dossierLoading && <p role="status" className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800">Đang tải trạng thái chứng từ hồ sơ…</p>}
               {dossierError && <div role="alert" className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border-2 border-amber-400 bg-amber-50 px-3 py-2.5 text-amber-950 shadow-sm"><p className="min-w-0 flex-1 text-xs font-bold leading-5">{dossierError}</p><button type="button" disabled={dossierLoading} aria-busy={dossierLoading} onClick={() => void loadDossierDocuments()} className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-500 bg-white px-3 text-xs font-black text-amber-900 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-70"><RefreshCw size={14} className={dossierLoading ? 'animate-spin' : ''} aria-hidden="true" />{dossierLoading ? 'Đang tải lại tài liệu…' : 'Tải lại tài liệu'}</button></div>}
-              <PgdDossierStepWorkPanel request={request} currentUser={currentUser} selectedStepId={selectedStepId} dossierRequirements={dossierRequirements} dossierDocuments={dossierDocuments} dossierLoadStatus={dossierLoading ? 'loading' : dossierError ? 'error' : 'loaded'} samples={samples} canMutate={canMutate} completeDisabled={!selectedStepIsCurrent || Boolean(nextDenial) || busy || !canMutate} isProcessing={busy} completeLabel={primaryActionLabel} onCompleteCurrent={completeCurrentStep} onOpenChecklist={() => setSelectedStepId('intake')} onOpenDrafting={(input) => onOpenDrafting?.(request, input, selectedStepId)} onUploadSupplementary={async (stageId, file) => { await pgd.saveDossierDocument(request.id, { supplementaryStageId: stageId, file }); }} onRequestException={requestException} exceptionBusy={busy} onSelectDocument={(docId) => setSelectedReaderDocId(docId)} />
+              <PgdDossierStepWorkPanel request={request} currentUser={currentUser} selectedStepId={selectedStepId} dossierRequirements={dossierRequirements} dossierDocuments={dossierDocuments} dossierLoadStatus={dossierLoading ? 'loading' : dossierError ? 'error' : 'loaded'} samples={samples} canMutate={canMutate} completeDisabled={!selectedStepIsCurrent || Boolean(nextDenial) || busy || !canMutate} isProcessing={busy} completeLabel={primaryActionLabel} onCompleteCurrent={completeCurrentStep} onOpenChecklist={() => setSelectedStepId('intake')} draftingTemplates={pgd.documentTemplates} onDraftInPlace={(input) => setDraftingModalContext(input)} onOpenDrafting={(input) => onOpenDrafting?.(request, input, selectedStepId)} onUploadSupplementary={async (input) => { const saved = await pgd.saveDossierDocument(request.id, { supplementaryStageId: input.stageId, title: input.title, note: input.description, ...(input.requirementCode ? { requirementCode: input.requirementCode } : {}), ...(input.file ? { file: input.file } : {}) }); await loadDossierDocuments(); if (saved.fileAssetId) setSelectedReaderDocId(saved.id); }} onRequestException={requestException} exceptionBusy={busy} onSelectDocument={(docId) => { setSelectedReaderDocId(docId); setMobileSection('reader'); }} />
             </div>
           </div>
 
@@ -1831,7 +1866,7 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
         <aside role="tabpanel" id="pgd-dossier-reader-region" aria-labelledby="pgd-dossier-mobile-tab-reader" tabIndex={0} aria-label="Đọc tài liệu hồ sơ PGD" className={'min-w-0 ' + (mobileSection === 'work' ? 'hidden lg:block' : 'block')}>
           <PgdDossierDocumentReader documents={dossierDocuments} selectedDocumentId={selectedReaderDocId} onSelectDocumentId={setSelectedReaderDocId} isLoading={dossierLoading} loadError={dossierError} onRetry={() => void loadDossierDocuments()} />
         </aside>
-      </div></div><footer data-testid="pgd-dossier-mobile-footer" className="mobile-safe-bottom flex shrink-0 flex-col items-stretch justify-between gap-2 border-t border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-500 sm:flex-row sm:items-center md:px-5"><span className="min-w-0 break-words">Lĩnh vực: <b className="font-mono text-blue-700">{PGD_DOMAIN}</b> · Người thao tác: {currentUser.username}</span><div className="flex w-full flex-wrap justify-start gap-2 sm:w-auto sm:justify-end"><button type="button" disabled={!showDeleteControl || busy || !canDelete} onClick={deleteDossier} title={deletionDenial || 'Xóa vĩnh viễn hồ sơ PGD'} className="mobile-touch-target min-h-11 rounded-lg border border-rose-200 px-3 text-[11px] font-black text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-8">Xóa hồ sơ</button><button type="button" onClick={onClose} className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-3 text-[11px] font-bold text-slate-600 hover:bg-slate-50 sm:min-h-8">Đóng</button></div></footer></div></div>;
+      </div></div><footer data-testid="pgd-dossier-mobile-footer" className="mobile-safe-bottom flex shrink-0 flex-col items-stretch justify-between gap-2 border-t border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-500 sm:flex-row sm:items-center md:px-5"><span className="min-w-0 break-words">Lĩnh vực: <b className="font-mono text-blue-700">{PGD_DOMAIN}</b> · Người thao tác: {currentUser.username}</span><div className="flex w-full flex-wrap justify-start gap-2 sm:w-auto sm:justify-end"><button type="button" disabled={!showDeleteControl || busy || !canDelete} onClick={deleteDossier} title={deletionDenial || 'Xóa vĩnh viễn hồ sơ PGD'} className="mobile-touch-target min-h-11 rounded-lg border border-rose-200 px-3 text-[11px] font-black text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-8">Xóa hồ sơ</button><button type="button" onClick={onClose} className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-3 text-[11px] font-bold text-slate-600 hover:bg-slate-50 sm:min-h-8">Đóng</button></div></footer>{draftingModalContext ? <div ref={draftingModalRef} role="dialog" aria-modal="true" aria-labelledby="pgd-in-place-drafting-title" tabIndex={-1} className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-0 sm:p-4" data-testid="pgd-in-place-drafting-modal"><div className="flex max-h-[100dvh] min-h-0 w-full max-w-[96rem] flex-col overflow-hidden bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl"><header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-2.5 sm:px-5"><div className="min-w-0"><h2 id="pgd-in-place-drafting-title" className="truncate text-sm font-black text-slate-900">Soạn tài liệu trong hồ sơ {request.requestCode}</h2><p className="mt-0.5 truncate text-[11px] text-slate-500">Mục {draftingModalContext.requirementCode} · giai đoạn {selectedStepId}</p></div><button type="button" onClick={closeDraftingModal} aria-label="Đóng soạn thảo" className="mobile-touch-target inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"><X size={16} aria-hidden="true" /></button></header><div className="mobile-scroll-y min-h-0 flex-1 overflow-y-auto"><PgdDraftingWorkspaceView templates={pgd.documentTemplates} documents={pgd.documents} canMutate={canMutate} initialRequestId={request.id} initialRequirementCode={draftingModalContext.requirementCode} initialTemplateKind={draftingModalContext.templateKind} initialReturnTo={buildPgdDossierReturnRoute(request.id, { step: selectedStepId })} onClose={() => void finishClosingDraftingModal()} /></div></div></div> : null}</div></div>;
 }
 
 export type PgdWorkspaceProps = {

@@ -5,9 +5,9 @@ import { Download, ExternalLink, FileText, RefreshCw } from 'lucide-react';
 
 import { getCurrentPgdDossierDocuments, type PgdDossierDocument } from '../utils/pgdDossier';
 import { getPgdDossierDocumentDownloadUrl } from '../utils/pgdApi';
-import { PGD_DOSSIER_FLOW_STEPS } from './PgdDossierFlow';
+import { PgdcnDocxPreview } from './PgdcnDocxPreview';
 
-type PgdDossierPreviewKind = 'PDF' | 'IMAGE' | 'UNSUPPORTED';
+type PgdDossierPreviewKind = 'PDF' | 'IMAGE' | 'DOCX' | 'UNSUPPORTED';
 
 const SAFE_IMAGE_MIME_TYPES = new Set(['image/avif', 'image/gif', 'image/jpeg', 'image/png', 'image/webp']);
 
@@ -16,12 +16,13 @@ export function getPgdDossierPreviewKind(mimeType?: string, fileName?: string): 
   const extension = String(fileName || '').trim().toLowerCase().split('.').pop();
 
   if (normalizedMimeType === 'application/pdf' || (!normalizedMimeType && extension === 'pdf')) return 'PDF';
+  if (normalizedMimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || (!normalizedMimeType && extension === 'docx')) return 'DOCX';
   if (SAFE_IMAGE_MIME_TYPES.has(normalizedMimeType)) return 'IMAGE';
   if (!normalizedMimeType && ['avif', 'gif', 'jpeg', 'jpg', 'png', 'webp'].includes(extension || '')) return 'IMAGE';
   return 'UNSUPPORTED';
 }
 
-type PreviewState = { documentId?: string; url?: string; error?: string };
+type PreviewState = { documentId?: string; url?: string; text?: string; error?: string };
 
 export default function PgdDossierDocumentReader({
   documents,
@@ -49,11 +50,12 @@ export default function PgdDossierDocumentReader({
   const selected = currentFiles.find((document) => document.id === selectedDocumentId) || currentFiles[0];
   const previewKind = selected ? getPgdDossierPreviewKind(selected.mimeType, selected.fileName) : undefined;
   const downloadUrl = selected ? getPgdDossierDocumentDownloadUrl(selected.id) : undefined;
+  const inlineUrl = selected ? getPgdDossierDocumentDownloadUrl(selected.id, { inline: true }) : undefined;
   const previewUrl = preview.documentId === selected?.id ? preview.url : undefined;
   const previewError = preview.documentId === selected?.id ? preview.error : undefined;
 
   useEffect(() => {
-    if (!selected || previewKind === 'UNSUPPORTED') {
+    if (!selected || previewKind === 'UNSUPPORTED' || previewKind === 'DOCX') {
       setPreview({ documentId: selected?.id });
       return;
     }
@@ -101,7 +103,7 @@ export default function PgdDossierDocumentReader({
         </div>
         {selected && downloadUrl ? (
           <div className="flex shrink-0 flex-wrap gap-1.5">
-            {previewUrl ? <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8">
+            {(previewUrl || previewKind === 'DOCX') ? <a href={previewKind === 'DOCX' ? inlineUrl : previewUrl} target="_blank" rel="noopener noreferrer" className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8">
               <ExternalLink size={14} aria-hidden="true" /> Mở bản xem
             </a> : null}
             <a href={downloadUrl} download={selected.fileName} className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-lg bg-blue-700 px-2.5 text-[11px] font-black text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8">
@@ -118,30 +120,7 @@ export default function PgdDossierDocumentReader({
         </div>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(10rem,0.34fr)_minmax(0,0.66fr)]">
-        <nav aria-label="Danh sách tài liệu hiện hành" className="min-w-0 border-b border-slate-200 lg:border-b-0 lg:border-r">
-          {currentFiles.length > 0 ? (
-            <ul className="max-h-44 overflow-y-auto p-1.5 lg:max-h-[68dvh]">
-              {currentFiles.map((document) => {
-                const isSelected = (selected?.id === document.id);
-                const supplementaryStageLabel = document.supplementaryStageId
-                  ? PGD_DOSSIER_FLOW_STEPS.find((step) => step.id === document.supplementaryStageId)?.label || document.supplementaryStageId
-                  : undefined;
-                return (
-                  <li key={document.id}>
-                    <button type="button" onClick={() => setSelectedDocumentId(document.id)} aria-pressed={isSelected} className={'mobile-touch-target min-h-11 w-full rounded-lg px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset ' + (isSelected ? 'bg-blue-50 text-blue-950' : 'text-slate-700 hover:bg-slate-50')}>
-                      <span className="block break-words text-[11px] font-bold leading-4">{document.title}</span>
-                      <span className="mt-0.5 block break-all text-[11px] text-slate-500">{document.fileName} · v{document.version}</span>
-                      {supplementaryStageLabel ? <span className="mt-1 inline-flex rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-blue-800">Tệp phụ trợ · {supplementaryStageLabel}</span> : null}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="px-3 py-4 text-xs text-slate-500">{isLoading ? 'Đang tải danh sách tài liệu…' : 'Chưa có tệp chứng từ trong hồ sơ.'}</p>
-          )}
-        </nav>
+      <div className="grid min-h-0 flex-1 grid-cols-1">
 
         <div className="min-h-[18rem] min-w-0 overflow-auto bg-slate-50 p-2.5">
           {!selected ? (
@@ -157,6 +136,8 @@ export default function PgdDossierDocumentReader({
               <p>{previewError}</p>
               {downloadUrl ? <a href={downloadUrl} download={selected.fileName} className="font-bold underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">Tải tệp xuống</a> : null}
             </div>
+          ) : previewKind === 'DOCX' ? (
+            <PgdcnDocxPreview url={downloadUrl!} fileName={selected.fileName} />
           ) : previewUrl ? (
             previewKind === 'PDF'
               ? <iframe title={'Xem trước ' + selected.fileName} src={previewUrl} className="h-[62dvh] min-h-[18rem] w-full rounded-md border border-slate-200 bg-white" />

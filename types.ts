@@ -674,6 +674,11 @@ export interface PcnDossierAttachment {
   sha256: string;
   importedAt: string;
   note?: string;
+  title?: string;
+  description?: string;
+  metadataOnly?: boolean;
+  supplementaryItemId?: string;
+  supersedesAttachmentId?: string;
 }
 
 export type PcnGeneratedDocumentKind = 'DOSSIER_COVER' | 'PROPOSAL_SUMMARY' | 'PROPOSAL_FORM' | 'ASSIGNMENT_FORM' | 'EVALUATION_PLAN' | 'FIELD_INSPECTION' | 'SAMPLE_TAKING' | 'SAMPLE_CODING' | 'EVALUATION_REPORT' | 'SAMPLE_HANDOVER' | 'SAMPLE_RETURN' | 'LAB_REQUEST';

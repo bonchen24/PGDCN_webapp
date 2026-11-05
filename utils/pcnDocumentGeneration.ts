@@ -235,7 +235,7 @@ export function buildPcnDossierDocumentContext(input: {
       };
     });
   const attachments = input.attachments
-    .filter((attachment) => !attachment.dossierId || attachment.dossierId === dossier.id)
+    .filter((attachment) => !attachment.metadataOnly && Boolean(attachment.assetId) && (!attachment.dossierId || attachment.dossierId === dossier.id))
     .sort((left, right) => left.sourceRelativePath.localeCompare(right.sourceRelativePath) || left.id.localeCompare(right.id))
     .map((attachment) => ({
       kind: attachment.kind,

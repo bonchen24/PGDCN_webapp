@@ -367,23 +367,64 @@ export function buildPcnSupplementaryDossierAttachment(input: {
   byteSize: number;
   sha256: string;
   uploadedAt: string;
+  title?: string;
+  description?: string;
+  supplementaryItemId?: string;
+  supersedesAttachmentId?: string;
 }): PcnDossierAttachment {
   const fileName = input.fileName.trim().slice(0, 255);
+  const id = `pcn-attachment-supplementary-${input.assetId}`;
   return {
-    id: `pcn-attachment-supplementary-${input.assetId}`,
+    id,
     dossierId: input.dossierId,
     fieldCode: input.fieldCode,
     kind: 'OTHER',
     supplementaryStageId: input.stageId,
+    supplementaryItemId: input.supplementaryItemId || id,
+    ...(input.supersedesAttachmentId ? { supersedesAttachmentId: input.supersedesAttachmentId } : {}),
     mappingStatus: 'MANUAL_MAPPED',
     mappingReason: `Tệp phụ trợ của bước ${input.stageLabel}.`,
     fileName,
+    ...(input.title ? { title: input.title.trim().slice(0, 255) } : {}),
+    ...(input.description ? { description: input.description.trim().slice(0, 2000) } : {}),
     sourceRelativePath: `PCN_SUPPLEMENTARY/${input.stageId}/${fileName}`,
     assetId: input.assetId,
     mimeType: input.mimeType,
     byteSize: input.byteSize,
     sha256: input.sha256,
     importedAt: input.uploadedAt,
+  };
+}
+
+export function buildPcnSupplementaryDossierMetadata(input: {
+  id: string;
+  dossierId: string;
+  fieldCode: PcnCertificationFieldCode;
+  stageId: string;
+  stageLabel: string;
+  title: string;
+  description?: string;
+  createdAt: string;
+}): PcnDossierAttachment {
+  return {
+    id: input.id,
+    dossierId: input.dossierId,
+    fieldCode: input.fieldCode,
+    kind: 'OTHER',
+    supplementaryStageId: input.stageId,
+    supplementaryItemId: input.id,
+    metadataOnly: true,
+    mappingStatus: 'MANUAL_MAPPED',
+    mappingReason: `Đầu mục phụ trợ của bước ${input.stageLabel}.`,
+    title: input.title.trim().slice(0, 255),
+    ...(input.description?.trim() ? { description: input.description.trim().slice(0, 2000) } : {}),
+    fileName: '',
+    sourceRelativePath: '',
+    assetId: '',
+    mimeType: '',
+    byteSize: 0,
+    sha256: '',
+    importedAt: input.createdAt,
   };
 }
 

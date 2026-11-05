@@ -1,15 +1,16 @@
 'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { CheckCircle2, ChevronRight, Download, Eye, Pencil, Upload } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Download, Eye, ExternalLink, FileText, Pencil, Upload } from 'lucide-react';
 
 import type { PcnUserAccount } from '../types';
 import type { PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
 import type { PgdDossierDocument, PgdDossierRequirement } from '../utils/pgdDossier';
 import { getCurrentPgdDossierDocuments, getPgdDossierRequirementForTemplate } from '../utils/pgdDossier';
+import { getPgdDocumentTemplateForRequirement } from '../utils/pgdDrafting';
 import { getPgdDossierDocumentDownloadUrl } from '../utils/pgdApi';
 import { getPgdcnNextAction } from '../utils/pgdcnDashboard';
-import type { PgdDocumentTemplateKind } from '../utils/pgdDocumentTemplates';
+import type { PgdDocumentTemplate, PgdDocumentTemplateKind } from '../utils/pgdDocumentTemplates';
 import type { PgdDossierFlowStepId, PgdDossierFlowStageId } from './PgdDossierFlow';
 import { canonicalizePgdStepId, PGD_DOSSIER_FLOW_STEPS } from './PgdDossierFlow';
 import PgdCaseEvidencePanel from './PgdCaseEvidencePanel';
@@ -42,7 +43,9 @@ type Props = {
   initialRequirementCode?: string;
   onOpenFullDossier?: () => void;
   onOpenDrafting?: (input: { templateKind: PgdDocumentTemplateKind; requirementCode: string }) => string | undefined;
-  onUploadSupplementary?: (stageId: PgdDossierFlowStageId, file: File) => Promise<void>;
+  onDraftInPlace?: (input: { templateKind: PgdDocumentTemplateKind; requirementCode: string }) => void;
+  draftingTemplates?: readonly PgdDocumentTemplate[];
+  onUploadSupplementary?: (input: { stageId: PgdDossierFlowStageId; title: string; description: string; file?: File; requirementCode?: string }) => Promise<void>;
   onRequestException?: (status: 'REJECTED' | 'ON_HOLD', reason: string) => void;
   exceptionBusy?: boolean;
   onSelectDocument?: (documentId: string) => void;
@@ -166,6 +169,8 @@ export default function PgdDossierStepWorkPanel({
   initialRequirementCode,
   onOpenFullDossier,
   onOpenDrafting,
+  onDraftInPlace,
+  draftingTemplates = [],
   onUploadSupplementary,
   onRequestException,
   exceptionBusy = false,
@@ -197,6 +202,7 @@ export default function PgdDossierStepWorkPanel({
   const [suppTitle, setSuppTitle] = useState('');
   const [suppDesc, setSuppDesc] = useState('');
   const [suppFile, setSuppFile] = useState<File | null>(null);
+  const [supplementaryRequirementCode, setSupplementaryRequirementCode] = useState<string>();
 
   const exceptionAllowed = Boolean(onRequestException && canMutate && !['SIGNED', 'RESULT_RETURNED', 'ARCHIVED', 'CANCELLED'].includes(request.status));
   
@@ -253,15 +259,30 @@ export default function PgdDossierStepWorkPanel({
     : nextAction.label;
 
   const continuationReasonId = `pgd-step-continuation-reasons-${selectedStepId}`;
-  const draftingHref = canMutate && templateKind && requirement && onOpenDrafting ? onOpenDrafting({ templateKind, requirementCode: requirement.code }) : undefined;
-  const uploadSupplementary = async (file: File | undefined) => {
-    if (!file || !onUploadSupplementary) return;
+  const hasMatchingDraftTemplate = Boolean(requirement && getPgdDocumentTemplateForRequirement(requirement, draftingTemplates, request.productGroup));
+  const canDraftInPlace = Boolean(canMutate && templateKind && requirement && hasMatchingDraftTemplate && onDraftInPlace);
+  const draftingHref = canMutate && templateKind && requirement && onOpenDrafting && !canDraftInPlace
+    ? onOpenDrafting({ templateKind, requirementCode: requirement.code })
+    : undefined;
+  const openDrafting = () => {
+    if (canDraftInPlace && templateKind && requirement) onDraftInPlace?.({ templateKind, requirementCode: requirement.code });
+  };
+  const uploadSupplementary = async (): Promise<boolean> => {
+    if (!onUploadSupplementary || !suppTitle.trim() || (supplementaryRequirementCode && !suppFile)) return false;
     setSupplementaryUploadBusy(true);
     setSupplementaryUploadError(null);
     try {
-      await onUploadSupplementary(canonicalStageId, file);
+      await onUploadSupplementary({
+        stageId: canonicalStageId,
+        title: suppTitle.trim(),
+        description: suppDesc.trim(),
+        ...(suppFile ? { file: suppFile } : {}),
+        ...(supplementaryRequirementCode ? { requirementCode: supplementaryRequirementCode } : {}),
+      });
+      return true;
     } catch (error) {
       setSupplementaryUploadError(error instanceof Error ? error.message : 'Không thể tải tệp phụ trợ.');
+      return false;
     } finally {
       setSupplementaryUploadBusy(false);
     }
@@ -275,17 +296,24 @@ export default function PgdDossierStepWorkPanel({
       <span className="text-xs font-semibold text-slate-500">{dossierLoadPending ? 'Đang tải trạng thái' : 'Chưa thể xác định'}</span>
     ) : document?.fileAssetId ? (
       <div className="flex items-center gap-1">
-        <a
-          href={getPgdDossierDocumentDownloadUrl(document.id)}
-          target="_blank"
-          rel="noreferrer"
-          download={document.fileName}
-          title="Xem tài liệu"
-          aria-label="Xem tài liệu"
+        <button
+          type="button"
+          title={`Xem ${document.title}`}
+          aria-label={`Xem ${document.title}`}
           onClick={() => onSelectDocument?.(document.id)}
           className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
         >
           <Eye size={14} aria-hidden="true" />
+        </button>
+        <a
+          href={getPgdDossierDocumentDownloadUrl(document.id, { inline: true })}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Mở ${document.title} trong tab mới`}
+          aria-label={`Mở ${document.title} trong tab mới`}
+          className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
+        >
+          <ExternalLink size={14} aria-hidden="true" />
         </a>
         <a
           href={getPgdDossierDocumentDownloadUrl(document.id)}
@@ -299,6 +327,10 @@ export default function PgdDossierStepWorkPanel({
       </div>
     ) : !document && !isWaived && !canMutate ? (
       <span className="text-xs font-semibold text-slate-500">Nhờ người có quyền bổ sung</span>
+    ) : !document && !isWaived && canDraftInPlace && requirement?.code === item.code ? (
+      <button type="button" onClick={openDrafting} title="Soạn thảo tài liệu trong hồ sơ này" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8">
+        <Pencil size={14} aria-hidden="true" />
+      </button>
     ) : !document && !isWaived && draftingHref && requirement?.code === item.code ? (
       <a href={draftingHref}
         title="Soạn thảo tài liệu"
@@ -483,7 +515,11 @@ export default function PgdDossierStepWorkPanel({
               {completionPending ? 'Đang xử lý…' : (completeLabel || 'Hoàn tất việc')}
             </button>
           ) : null}
-          {draftingHref ? (
+          {canDraftInPlace ? (
+            <button type="button" onClick={openDrafting} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-2.5 text-xs font-black text-white hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8">
+              Soạn thảo biểu mẫu
+            </button>
+          ) : draftingHref ? (
             <a href={draftingHref} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-2.5 text-xs font-black text-white hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8">
               Soạn thảo biểu mẫu
             </a>
@@ -527,7 +563,15 @@ export default function PgdDossierStepWorkPanel({
             {canMutate && onUploadSupplementary && !dossierStatusUnknown ? (
               <button
                 type="button"
-                onClick={() => setSuppModalOpen(true)}
+                data-testid="pgd-supplementary-trigger"
+                onClick={() => {
+                  setSupplementaryRequirementCode(undefined);
+                  setSuppTitle('');
+                  setSuppDesc('');
+                  setSuppFile(null);
+                  setSupplementaryUploadError(null);
+                  setSuppModalOpen(true);
+                }}
                 title={`Tải tệp phụ trợ cho giai đoạn ${meta.title}`}
                 aria-label={`Tải tệp phụ trợ cho giai đoạn ${meta.title}`}
                 className="mobile-touch-target dossier-action-compact inline-flex min-h-8 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-bold text-blue-800 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
@@ -540,38 +584,55 @@ export default function PgdDossierStepWorkPanel({
         </div>
         {supplementaryUploadError ? <p role="alert" className="mb-2 text-xs font-semibold text-rose-700">{supplementaryUploadError}</p> : null}
         {(() => {
-          const supplementaryDocs = dossierDocuments.filter((d) => d.supplementaryStageId === canonicalStageId);
+          const supplementaryDocs = getCurrentPgdDossierDocuments(dossierDocuments).filter((d) => d.supplementaryStageId === canonicalStageId);
           const supplementaryRows = supplementaryDocs.map((doc) => ({
             id: doc.id,
             step: meta.title,
-            title: doc.fileName || doc.title,
+            title: doc.title,
             required: false,
-            status: 'Đã có',
-            statusTone: 'success' as const,
-            detail: `Tệp phụ trợ · v${doc.version}`,
+            status: doc.fileAssetId ? 'Đã tải lên' : 'Chưa có tệp',
+            statusTone: doc.fileAssetId ? 'success' as const : 'neutral' as const,
+            detail: doc.fileAssetId ? `${doc.fileName} · v${doc.version}` : (doc.note || 'Đầu mục phụ trợ đã lưu; chưa có tệp.'),
             action: (
               <div className="flex items-center gap-1">
-                <a
-                  href={getPgdDossierDocumentDownloadUrl(doc.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                  download={doc.fileName}
-                  title="Xem tài liệu"
-                  aria-label="Xem tài liệu"
-                  onClick={() => onSelectDocument?.(doc.id)}
-                  className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
-                >
-                  <Eye size={14} aria-hidden="true" />
-                </a>
-                <a
-                  href={getPgdDossierDocumentDownloadUrl(doc.id)}
-                  download={doc.fileName}
-                  title="Tải xuống"
-                  aria-label="Tải xuống"
-                  className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
-                >
-                  <Download size={14} aria-hidden="true" />
-                </a>
+                {doc.fileAssetId ? <>
+                  <button
+                    type="button"
+                    onClick={() => onSelectDocument?.(doc.id)}
+                    title={`Xem ${doc.title}`}
+                    aria-label={`Xem ${doc.title}`}
+                    className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
+                  ><Eye size={14} aria-hidden="true" /></button>
+                  <a
+                    href={getPgdDossierDocumentDownloadUrl(doc.id, { inline: true })}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={`Mở ${doc.title} trong tab mới`}
+                    aria-label={`Mở ${doc.title} trong tab mới`}
+                    className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
+                  ><FileText size={14} aria-hidden="true" /></a>
+                  <a
+                    href={getPgdDossierDocumentDownloadUrl(doc.id)}
+                    download={doc.fileName}
+                    title={`Tải ${doc.title}`}
+                    aria-label={`Tải ${doc.title}`}
+                    className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
+                  ><Download size={14} aria-hidden="true" /></a>
+                </> : null}
+                {canMutate && onUploadSupplementary ? <button
+                  type="button"
+                  onClick={() => {
+                    setSupplementaryRequirementCode(doc.requirementCode);
+                    setSuppTitle(doc.title);
+                    setSuppDesc(doc.note || '');
+                    setSuppFile(null);
+                    setSupplementaryUploadError(null);
+                    setSuppModalOpen(true);
+                  }}
+                  title={doc.fileAssetId ? `Thêm phiên bản cho ${doc.title}` : `Tải tệp lên cho ${doc.title}`}
+                  aria-label={doc.fileAssetId ? `Thêm phiên bản ${doc.title}` : `Tải tệp cho ${doc.title}`}
+                  className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
+                ><Upload size={14} aria-hidden="true" /></button> : null}
               </div>
             ),
           }));
@@ -584,7 +645,7 @@ export default function PgdDossierStepWorkPanel({
               Thêm đầu mục tài liệu phụ trợ · {meta.title}
             </h3>
             <p className="mt-1 text-xs text-slate-500">
-              Nhập mô tả ngắn gọn và chọn tệp đính kèm để bổ sung vào giai đoạn.
+              {supplementaryRequirementCode ? 'Chọn tệp để thêm phiên bản cho đầu mục này.' : 'Nhập tiêu đề và mô tả. Có thể đính kèm tệp ngay hoặc tải lên sau.'}
             </p>
             <div className="mt-3 space-y-3">
               <div>
@@ -593,6 +654,8 @@ export default function PgdDossierStepWorkPanel({
                   type="text"
                   value={suppTitle}
                   onChange={(e) => setSuppTitle(e.target.value)}
+                  aria-label="Tên tài liệu phụ trợ"
+                  readOnly={Boolean(supplementaryRequirementCode)}
                   placeholder="Ví dụ: Bổ sung chứng từ giám định..."
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
@@ -603,14 +666,17 @@ export default function PgdDossierStepWorkPanel({
                   rows={2}
                   value={suppDesc}
                   onChange={(e) => setSuppDesc(e.target.value)}
+                  aria-label="Mô tả tài liệu phụ trợ"
+                  readOnly={Boolean(supplementaryRequirementCode)}
                   placeholder="Nhập ghi chú tóm tắt nội dung..."
                   className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700">Tệp tài liệu (tùy chọn)</label>
+                <label className="block text-xs font-bold text-slate-700">Tệp tài liệu {supplementaryRequirementCode ? '(bắt buộc)' : '(tùy chọn)'}</label>
                 <input
                   type="file"
+                  data-testid="pgd-supplementary-file"
                   accept=".pdf,.docx,.png,.jpg,.jpeg,.gif,.webp,.avif"
                   aria-label={`Tải tệp phụ trợ cho giai đoạn ${meta.title}`}
                   onChange={(e) => setSuppFile(e.target.files?.[0] || null)}
@@ -618,6 +684,7 @@ export default function PgdDossierStepWorkPanel({
                 />
               </div>
             </div>
+            {supplementaryUploadError ? <p role="alert" className="mt-3 text-xs font-semibold text-rose-700">{supplementaryUploadError}</p> : null}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
@@ -626,6 +693,8 @@ export default function PgdDossierStepWorkPanel({
                   setSuppTitle('');
                   setSuppDesc('');
                   setSuppFile(null);
+                  setSupplementaryRequirementCode(undefined);
+                  setSupplementaryUploadError(null);
                 }}
                 className="mobile-touch-target rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100"
               >
@@ -633,19 +702,28 @@ export default function PgdDossierStepWorkPanel({
               </button>
               <button
                 type="button"
+                data-testid="pgd-supplementary-submit"
                 disabled={supplementaryUploadBusy}
                 onClick={async () => {
-                  if (suppFile) {
-                    await uploadSupplementary(suppFile);
+                  if (!suppTitle.trim()) {
+                    setSupplementaryUploadError('Nhập tiêu đề tài liệu phụ trợ.');
+                    return;
                   }
+                  if (supplementaryRequirementCode && !suppFile) {
+                    setSupplementaryUploadError('Chọn tệp cần tải lên.');
+                    return;
+                  }
+                  const saved = await uploadSupplementary();
+                  if (!saved) return;
                   setSuppModalOpen(false);
                   setSuppTitle('');
                   setSuppDesc('');
                   setSuppFile(null);
+                  setSupplementaryRequirementCode(undefined);
                 }}
                 className="mobile-touch-target rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                {supplementaryUploadBusy ? 'Đang lưu…' : 'Xác nhận'}
+                {supplementaryUploadBusy ? 'Đang lưu…' : supplementaryRequirementCode ? 'Tải phiên bản' : 'Lưu đầu mục'}
               </button>
             </div>
           </div>

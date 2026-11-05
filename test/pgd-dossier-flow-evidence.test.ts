@@ -30,7 +30,8 @@ test('PGD flow counts only verified evidence as completed progress in 7 stages',
   });
 
   // 7 stages progress verification
-  assert.match(beforeLabResults, /Đang ở giai đoạn 5\/7/);
+  assert.equal((beforeLabResults.match(/role="tab"/g) ?? []).length, 7);
+  assert.match(beforeLabResults, /aria-current="step"/);
   assert.match(cardFor(beforeLabResults, 'review-assignment'), /Đã hoàn tất/);
   assert.match(cardFor(beforeLabResults, 'plan'), /Đã hoàn tất/);
   assert.match(cardFor(beforeLabResults, 'execution'), /Đã kiểm tra hiện trường/);

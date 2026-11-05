@@ -5,11 +5,11 @@ import test from 'node:test';
 import { buildPcnDossierInspection, getPcnDossierInspectionStatusLabel } from '../utils/pcnDossierInspection.ts';
 import { getPcnFilePreviewKind } from '../utils/pcnFilePreview.ts';
 
-test('classifies only safe PDF and raster image types for inline preview', () => {
+test('classifies safe PDF, raster image, and read-only DOCX previews', () => {
   assert.equal(getPcnFilePreviewKind('application/pdf', 'bien-ban.pdf'), 'PDF');
   assert.equal(getPcnFilePreviewKind('image/jpeg', 'anh-mau.jpg'), 'IMAGE');
   assert.equal(getPcnFilePreviewKind(undefined, 'bien-ban.pdf'), 'PDF');
-  assert.equal(getPcnFilePreviewKind('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'bien-ban.docx'), 'UNSUPPORTED');
+  assert.equal(getPcnFilePreviewKind('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'bien-ban.docx'), 'DOCX');
   assert.equal(getPcnFilePreviewKind('image/svg+xml', 'so-do.svg'), 'UNSUPPORTED');
 });
 

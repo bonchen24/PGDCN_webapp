@@ -34,6 +34,7 @@ type PgdDraftingWorkspaceViewProps = {
   initialTemplateKind?: PgdDocumentTemplateKind;
   initialTemplateId?: string;
   initialReturnTo?: string;
+  onClose?: () => void;
   onToast?: (message: string, type?: 'success' | 'error') => void;
 };
 
@@ -122,7 +123,7 @@ const PGD_WORKSPACE_STATE_LABELS: Record<DraftingState, string> = {
   ERROR: 'Có lỗi, cần thử lại',
 };
 
-export default function PgdDraftingWorkspaceView({ templates, documents, canMutate, onOpenSettings, initialDraftId, initialRequestId, initialRequirementCode, initialTemplateKind, initialTemplateId, initialReturnTo, onToast }: PgdDraftingWorkspaceViewProps) {
+export default function PgdDraftingWorkspaceView({ templates, documents, canMutate, onOpenSettings, initialDraftId, initialRequestId, initialRequirementCode, initialTemplateKind, initialTemplateId, initialReturnTo, onToast, onClose }: PgdDraftingWorkspaceViewProps) {
   const requests = usePgdStore((state) => state.requests.filter((request) => !request.deletedAt));
   const isLoaded = usePgdStore((state) => state.isLoaded);
   const dossierDocuments = usePgdStore((state) => state.dossierDocuments);
@@ -243,6 +244,10 @@ export default function PgdDraftingWorkspaceView({ templates, documents, canMuta
     if (typeof window === 'undefined') return;
     if (!confirmContextSwitch()) return;
     handleDraftDirtyChange(false);
+    if (onClose) {
+      onClose();
+      return;
+    }
     const target = sanitizeInternalReturnTo(initialReturnTo || routeReturnTo) || (request ? buildPgdDossierReturnRoute(request.id, { step: activeRequirementCode ? getPgdDossierStepForRequirement(activeRequirementCode) : undefined }) : '/pgdcn/pgd');
     window.location.replace(target);
   };

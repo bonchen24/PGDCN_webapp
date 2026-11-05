@@ -122,13 +122,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
   if (!requestId) {
     return jsonBadRequest('Thiếu mã hồ sơ PGD.');
   }
-  if (isSupplementary && !file) {
-    return jsonBadRequest('Cần chọn tệp phụ trợ PGD.');
+  if (isSupplementary && !file && !title) return jsonBadRequest('Cần có tiêu đề cho đầu mục phụ trợ PGD.');
+  if (isSupplementary && requirementCode && !requirementCode.startsWith(`PGD_SUPPLEMENTARY_${supplementaryStageId.toUpperCase().replace(/-/g, '_')}_`)) {
+    return jsonBadRequest('Đầu mục phụ trợ không thuộc giai đoạn PGD đã chọn.');
   }
   if (!isSupplementary && (!requirementCode || !title)) {
     return jsonBadRequest('Cần có requestId, requirementCode và tiêu đề chứng từ PGD.');
   }
-  if (isSupplementary && (!PGD_SUPPLEMENTARY_STAGE_STATIONS[supplementaryStageId] || !file || !allowedSupplementaryExtensions.test(file.name))) {
+  if (isSupplementary && (!PGD_SUPPLEMENTARY_STAGE_STATIONS[supplementaryStageId] || (file && !allowedSupplementaryExtensions.test(file.name)))) {
     return jsonBadRequest('Tệp phụ trợ PGD cần thuộc giai đoạn hợp lệ và dùng định dạng PDF, DOCX hoặc ảnh được hỗ trợ.');
   }
   if (isSupplementary && file && file.size <= 0) return jsonBadRequest('Tệp phụ trợ PGD không được để trống.');
@@ -155,9 +156,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         throw Object.assign(new Error('Mã yêu cầu checklist PGD không thuộc nhóm sản phẩm của hồ sơ.'), { statusCode: 400 });
       }
       const resolvedRequirementCode = isSupplementary
-        ? `PGD_SUPPLEMENTARY_${supplementaryStageId.toUpperCase().replace(/-/g, '_')}_${randomUUID()}`
+        ? requirementCode || `PGD_SUPPLEMENTARY_${supplementaryStageId.toUpperCase().replace(/-/g, '_')}_${randomUUID()}`
         : requirementCode;
-      const resolvedTitle = isSupplementary ? title || `Tệp phụ trợ · ${fileName}` : title;
       const requirementStageLabel = requirement && requirement.stageLabel;
       const effectiveRequired = requirement
         ? request.dossierChecklist?.find((item) => item.requirementCode === requirementCode)?.required ?? requirement.required
@@ -186,6 +186,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         [PGD_COLLECTIONS.dossierDocuments, request.id, resolvedRequirementCode],
       );
       const current = currentResult.rows[0] ? (mapDocumentRow(currentResult.rows[0]) as PgdDossierDocument) : undefined;
+      if (isSupplementary && requirementCode && (!current || current.supplementaryStageId !== supplementaryStageId)) {
+        throw Object.assign(new Error('Không tìm thấy đầu mục phụ trợ trong giai đoạn PGD đã chọn.'), { statusCode: 404 });
+      }
+      const resolvedTitle = isSupplementary ? title || current?.title || `Tệp phụ trợ · ${fileName}` : title;
       const version = (Number(current?.version) || 0) + 1;
       const documentId = `pgd-dossier-document-${randomUUID()}`;
       const now = new Date().toISOString();
@@ -298,7 +302,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         entityLabel: request.requestCode,
         requestCode: request.requestCode,
         summary: isSupplementary
-          ? `Tải lên tệp phụ trợ ${fileName} cho giai đoạn ${supplementaryStageId} của ${request.requestCode}`
+          ? file
+            ? `Tải lên tệp phụ trợ ${fileName} cho giai đoạn ${supplementaryStageId} của ${request.requestCode}`
+            : `Tạo đầu mục phụ trợ ${resolvedTitle} cho giai đoạn ${supplementaryStageId} của ${request.requestCode}`
           : [`Tải lên chứng từ ${fileName} cho mục ${requirement?.title || title} của ${request.requestCode}`, requirementStageLabel ? `Giai đoạn: ${requirementStageLabel}` : ''].filter(Boolean).join(' · '),
         idSuffix: `dossier-doc-${next.id}`,
       });
