@@ -59,10 +59,14 @@ function PcnDossierDocumentReader({
   dossierId,
   documents,
   attachments,
+  activeFileId,
+  onSelectFileId,
 }: {
   dossierId: string;
   documents: PcnDossierDocument[];
   attachments: PcnDossierAttachment[];
+  activeFileId?: string | null;
+  onSelectFileId?: (id: string) => void;
 }) {
   const files: PcnDossierReaderFile[] = [
     ...documents
@@ -94,58 +98,83 @@ function PcnDossierDocumentReader({
         sourceLabel: attachment.supplementaryStageId ? attachment.mappingReason || 'Tệp phụ trợ' : 'Tệp đính kèm',
       })),
   ];
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
-  const selectedFile = files.find((file) => file.id === selectedFileId) || files[0];
+  const [internalSelectedFileId, setInternalSelectedFileId] = useState<string | null>(null);
+  const effectiveFileId = activeFileId || internalSelectedFileId;
+  const selectedFile = (effectiveFileId
+    ? files.find((file) => file.id === effectiveFileId || file.assetId === effectiveFileId || file.id.includes(effectiveFileId))
+    : null) || files[0];
   const previewKind = selectedFile ? getPcnFilePreviewKind(selectedFile.mimeType, selectedFile.fileName) : undefined;
   const fileUrl = selectedFile ? getPcnFileUrl(selectedFile.assetId) : undefined;
 
+  const handleSelectFile = (id: string) => {
+    setInternalSelectedFileId(id);
+    onSelectFileId?.(id);
+  };
+
   return (
-    <section data-testid="pcn-dossier-document-reader" aria-labelledby="pcn-dossier-document-reader-title" className="flex min-h-[28rem] min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-3">
-      <header className="flex min-h-10 shrink-0 items-center justify-between gap-2 border-b border-slate-100 pb-2">
-        <h2 id="pcn-dossier-document-reader-title" className="text-sm font-black text-slate-900">Tài liệu hồ sơ</h2>
-        <span className="text-xs font-semibold text-slate-500">{files.length} tệp</span>
+    <section data-testid="pcn-dossier-document-reader" aria-labelledby="pcn-dossier-document-reader-title" className="flex min-h-[30rem] min-w-0 flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <header className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <FileText size={16} aria-hidden="true" className="shrink-0 text-emerald-700" />
+          <h2 id="pcn-dossier-document-reader-title" className="truncate text-xs font-black text-slate-900" title={selectedFile?.fileName || 'Tài liệu hồ sơ'}>
+            {selectedFile?.fileName || 'Tài liệu hồ sơ'}
+          </h2>
+          <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">{files.length} tệp</span>
+        </div>
+
+        {selectedFile && fileUrl && (
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+            {files.length > 1 && (
+              <select
+                aria-label="Chọn tệp để xem"
+                value={selectedFile.id}
+                onChange={(e) => handleSelectFile(e.target.value)}
+                className="max-w-[130px] truncate rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-700 outline-none focus:border-emerald-500"
+              >
+                {files.map((file) => (
+                  <option key={file.id} value={file.id}>
+                    {file.fileName}
+                  </option>
+                ))}
+              </select>
+            )}
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="mobile-touch-target inline-flex min-h-8 items-center rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-100">
+              Mở tab mới
+            </a>
+            <a href={getPcnFileUrl(selectedFile.assetId, { download: true })} download={selectedFile.fileName} className="mobile-touch-target inline-flex min-h-8 items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-800 hover:bg-emerald-100">
+              Tải xuống
+            </a>
+            {previewKind && previewKind !== 'UNSUPPORTED' && (
+              <PcnFilePreviewButton version={{ assetId: selectedFile.assetId, fileName: selectedFile.fileName, mimeType: selectedFile.mimeType, uploadedAt: selectedFile.uploadedAt }} />
+            )}
+          </div>
+        )}
       </header>
 
       {files.length === 0 ? (
-        <p className="flex flex-1 items-center justify-center py-8 text-sm text-slate-500">Chưa có tài liệu để xem.</p>
+        <div className="flex flex-1 flex-col items-center justify-center py-12 text-center text-xs text-slate-500">
+          <FileText size={24} className="mb-2 text-slate-300" aria-hidden="true" />
+          <p>Chưa có tài liệu để xem trong hồ sơ.</p>
+        </div>
+      ) : !selectedFile ? (
+        <div className="flex flex-1 items-center justify-center py-12 text-center text-xs text-slate-500">
+          Chọn tài liệu trong bảng bên trái để xem nhanh.
+        </div>
       ) : (
-        <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
-          <div className="max-h-36 shrink-0 space-y-1 overflow-y-auto" role="group" aria-label="Chọn tệp hồ sơ">
-            {files.map((file) => (
-              <button
-                key={file.id}
-                type="button"
-                aria-pressed={selectedFile?.id === file.id}
-                onClick={() => setSelectedFileId(file.id)}
-                className={`mobile-touch-target flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                  selectedFile?.id === file.id
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
-                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                <FileText size={15} aria-hidden="true" className="shrink-0 text-emerald-700" />
-                <span className="min-w-0 flex-1 truncate text-xs font-semibold" title={file.fileName}>{file.fileName}</span>
-                <span className="hidden shrink-0 text-[10px] text-slate-500 sm:inline">{file.sourceLabel}</span>
-              </button>
-            ))}
-          </div>
-
-          {selectedFile && fileUrl && previewKind ? (
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200">
-              <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-2.5 py-2">
-                <p className="min-w-0 flex-1 truncate text-xs font-bold text-slate-800" title={selectedFile.fileName}>{selectedFile.fileName}</p>
-                <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-                  <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="mobile-touch-target inline-flex min-h-10 items-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Mở tệp mới</a>
-                  <a href={getPcnFileUrl(selectedFile.assetId, { download: true })} download={selectedFile.fileName} className="mobile-touch-target inline-flex min-h-10 items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100">Tải xuống</a>
-                  {previewKind !== 'UNSUPPORTED' && <PcnFilePreviewButton version={{ assetId: selectedFile.assetId, fileName: selectedFile.fileName, mimeType: selectedFile.mimeType, uploadedAt: selectedFile.uploadedAt }} />}
-                </div>
-              </div>
-
-              <div className="min-h-[18rem] min-w-0 flex-1 overflow-auto bg-slate-100 p-2">
-                {previewKind === 'PDF' ? <iframe title={`Xem trước ${selectedFile.fileName}`} src={fileUrl} className="h-[62dvh] min-h-[18rem] w-full rounded-md border border-slate-200 bg-white" /> : null}
-                {previewKind === 'IMAGE' ? <div className="flex min-h-[18rem] items-center justify-center rounded-md bg-slate-900/5 p-2"><img src={fileUrl} alt={selectedFile.fileName} className="max-h-[62dvh] max-w-full object-contain" /></div> : null}
-                {previewKind === 'UNSUPPORTED' ? <div className="flex min-h-[18rem] flex-col items-center justify-center gap-2 px-4 text-center"><FileText size={28} aria-hidden="true" className="text-slate-400" /><p className="text-sm font-semibold text-slate-700">Định dạng này chưa hỗ trợ xem trực tiếp.</p><p className="text-xs text-slate-500">Mở tệp trong tab mới hoặc tải xuống để xem nội dung.</p></div> : null}
-              </div>
+        <div className="mt-2.5 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+          {previewKind === 'PDF' ? (
+            <iframe title={'Xem trước ' + selectedFile.fileName} src={fileUrl} className="h-[68dvh] min-h-[22rem] w-full rounded-md border-0 bg-white" />
+          ) : null}
+          {previewKind === 'IMAGE' ? (
+            <div className="flex min-h-[22rem] flex-1 items-center justify-center p-2">
+              <img src={fileUrl} alt={selectedFile.fileName} className="max-h-[68dvh] max-w-full object-contain" />
+            </div>
+          ) : null}
+          {previewKind === 'UNSUPPORTED' ? (
+            <div className="flex min-h-[22rem] flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
+              <FileText size={28} aria-hidden="true" className="text-slate-400" />
+              <p className="text-sm font-semibold text-slate-700">Định dạng này chưa hỗ trợ xem trực tiếp.</p>
+              <p className="text-xs text-slate-500">Mở tệp trong tab mới hoặc tải xuống để xem nội dung.</p>
             </div>
           ) : null}
         </div>
@@ -517,7 +546,8 @@ function PcnDossierEditPanel({ dossier, users, ownerOptions, evaluatorOptions, r
 }
 
 export function PcnDossierDetailView({ dossier, proposal, fields, templates, labRequests, results, approvalSteps, issuancePackages, activityLogs, documentRequirements, dossierDocuments, dossierAttachments, generatedDocuments, officialDocuments, signerDelegations, sampleLots, sampleItems = [], sampleRoutes, users, currentUser, standalone = false, workflowTasks = [], onStartWorkflowTask, onCompleteWorkflowTask, onReturnWorkflowTask, onUploadDocument, onRemoveCurrentDocument, onWaiveDocument, onClearDocumentWaiver, onUpdateStatus, onUpdateDossier, onDeleteDossier, canEditMilestones, onPreflight, onGenerateDocuments, onConfirmGenerated, onDownloadPackage, onClose, initialTab, initialNodeId, onCreateSampleLot, onUpdateSampleRoute, onSaveLabRequest, onUpdateLabRequest, onDispatchLabRequest, onReconcileLabRequest, onSaveHandover, onSaveResult, onAttachResultFile, onPrepareIssuance, onApproveStep, onIssue, onDeliver, onArchive, onWithdraw, onAttachIssuanceFile, onPreflightOfficialDocuments, onGenerateOfficialDocuments, onCreateSignerDelegation, onRevokeSignerDelegation, onOpenContextualAssistant }: { dossier: CertificationDossier; proposal?: CertificationProposal; fields: PcnCertificationField[]; templates: PcnTemplateDefinition[]; labRequests: OutboundLabRequest[]; results: ReturnedTestResult[]; approvalSteps: PcnApprovalStep[]; issuancePackages: IssuancePackage[]; activityLogs: ActivityLog[]; documentRequirements: PcnDocumentRequirement[]; dossierDocuments: PcnDossierDocument[]; dossierAttachments: PcnDossierAttachment[]; generatedDocuments: PcnGeneratedDocument[]; officialDocuments: PcnOfficialGeneratedDocument[]; signerDelegations: import('../types').PcnSignerDelegation[]; sampleLots: PcnSampleLot[]; sampleItems?: PcnSampleItem[]; standalone?: boolean; workflowTasks?: PcnDossierWorkflowTask[]; onStartWorkflowTask?: (taskId: string) => Promise<void>; onCompleteWorkflowTask?: (taskId: string) => Promise<void>; onReturnWorkflowTask?: (taskId: string, input: { targetNodeId: string; reason: string }) => Promise<void>; sampleRoutes: PcnSampleRoute[]; users: PcnUserAccount[]; currentUser: UserAccount; onUploadDocument: (requirementId: string, file: File) => Promise<void>; onRemoveCurrentDocument?: (requirementId: string) => Promise<void>; onWaiveDocument?: (requirementId: string, reason: string) => Promise<void>; onClearDocumentWaiver?: (requirementId: string) => Promise<void>; onUpdateStatus: (status: PcnDossierStatus, exceptionReason?: string) => Promise<void>; onUpdateDossier: (updates: PcnDossierUpdateInput) => Promise<void>; onDeleteDossier: (reason: string, confirmationCode: string) => Promise<void>; canEditMilestones: boolean; onPreflight: (kind: PcnGeneratedDocumentKind, sampleRouteId?: string, labRequestId?: string) => Promise<PcnDossierDocumentContext>; onGenerateDocuments: (kind: PcnGeneratedDocumentKind, formats: PcnGeneratedDocumentFormat[], sampleRouteId?: string, expectedContextHash?: string, labRequestId?: string) => Promise<PcnGeneratedDocument[]>; onConfirmGenerated?: (generated: PcnGeneratedDocument, requirement: PcnDocumentRequirement) => Promise<void>; onDownloadPackage: () => void | Promise<void>; onClose: () => void; initialTab?: PcnDossierDetailTab; initialNodeId?: string; onCreateSampleLot: (draft: PcnSampleLotDraft) => Promise<void>; onUpdateSampleRoute: (routeId: string, status: PcnSampleRoute['status'], update?: PcnSampleRouteUpdate) => Promise<void>; onSaveLabRequest: (request: OutboundLabRequest) => Promise<void>; onUpdateLabRequest: (requestId: string, status: OutboundLabRequest['status'], updates?: Partial<Pick<OutboundLabRequest, 'handoverAt' | 'receivedAt' | 'handoverDocumentId' | 'handoverDetails' | 'sampleIssue'>>) => Promise<void>; onDispatchLabRequest?: (requestId: string) => Promise<void>; onReconcileLabRequest?: (requestId: string) => Promise<void>; onSaveHandover?: (request: OutboundLabRequest, details: PcnSampleHandoverDetails) => Promise<void>; onSaveResult: (result: ReturnedTestResult) => Promise<void>; onAttachResultFile: (resultId: string, file: File) => Promise<void>; onPrepareIssuance: (dossier: CertificationDossier) => Promise<void>; onApproveStep: (stepId: string, decision: 'APPROVE' | 'RETURN', comment?: string) => Promise<void>; onIssue: (issuanceId: string, input: { issuanceNumber: string; signerUsername: string; issuedAt?: string }) => Promise<void>; onDeliver: (issuanceId: string, input: { recipient: string; deliveredAt?: string; note?: string }) => Promise<void>; onArchive: (issuanceId: string) => Promise<void>; onWithdraw: (issuanceId: string, reason: string) => Promise<void>; onAttachIssuanceFile: (issuanceId: string, file: File) => Promise<void>; onPreflightOfficialDocuments: (issuanceId: string, formats?: PcnGeneratedDocumentFormat[]) => Promise<PcnOfficialPreflightResponse>; onGenerateOfficialDocuments: (issuanceId: string, formats?: PcnGeneratedDocumentFormat[], expectedContextHash?: string) => Promise<PcnOfficialGeneratedDocument[]>; onCreateSignerDelegation: (input: PcnSignerDelegationInput) => Promise<void>; onRevokeSignerDelegation: (id: string) => Promise<void>; onOpenContextualAssistant?: (dossierId: string) => void; }) {
-  const [workspaceExpanded, setWorkspaceExpanded] = useState(Boolean(initialTab));
+  const [workspaceExpanded, setWorkspaceExpanded] = useState(false);
+  const [selectedReaderFileId, setSelectedReaderFileId] = useState<string | null>(null);
   const [activeTab, setActiveTabState] = useState<DetailTab>(normalizeDetailTab(initialTab || 'documents'));
   const setActiveTab = (nextTab: DetailTabSelection) => { setActiveTabState(normalizeDetailTab(nextTab)); setWorkspaceExpanded(true); };
   const [documentOutput, setDocumentOutput] = useState<{ kind: PcnGeneratedDocumentKind; sampleRouteId?: string; labRequestId?: string } | null>(null);
@@ -856,7 +886,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
 
   const attachmentContent = dossierAttachmentsForPackage.length === 0 && attachmentIds.length === 0 ? <EmptyTab text="Chưa có tệp liên kết từ hồ sơ, KQTN hoặc phát hành." /> : <div className="space-y-2">{dossierAttachmentsForPackage.map((attachment) => <div key={attachment.id} className="rounded-lg border border-slate-200 bg-white p-3 text-[11px]"><div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-wrap items-center gap-2"><span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700">{attachment.kind}</span>{attachment.requirementId && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[11px] text-slate-500">{attachment.requirementId}</span>}<span className="truncate font-bold text-slate-700">{attachment.fileName}</span></div><a href={getPcnFileUrl(attachment.assetId)} target="_blank" rel="noreferrer" className="shrink-0 font-bold text-indigo-600 underline underline-offset-2">Mở tệp</a></div></div>)}{attachmentIds.map((assetId) => <div key={assetId} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 text-[11px]"><span className="font-bold text-slate-700">Tệp lưu trữ liên kết</span><a href={getPcnFileUrl(assetId)} target="_blank" rel="noreferrer" className="font-mono text-indigo-600 underline underline-offset-2">{assetId} · Mở tệp</a></div>)}</div>;
   const operationalFormsSection = <details className="rounded-xl border border-emerald-200 bg-emerald-50/40" data-testid="pcn-operational-forms" data-disclosure="advanced"><summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-black text-slate-900"><span>Mở biểu mẫu nghiệp vụ</span><span className="text-[11px] font-bold text-emerald-700">{Object.keys(dossier.operationalForms || {}).length}/7 đã nhập</span></summary><div className="border-t border-emerald-100 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="text-xs font-black text-slate-900">Biểu mẫu theo bước</h3><p className="mt-1 text-[11px] leading-4 text-slate-600">Mỗi bước nhập dữ liệu ngay trong card hồ sơ. Lưu xong có thể sinh DOCX/PDF từ dữ liệu đã xác nhận; KQTN vẫn chỉ nhận bản scan và OCR từ phòng thử nghiệm.</p></div><span className="rounded-full border border-emerald-200 bg-white px-2 py-1 text-[11px] font-black text-emerald-700">{Object.keys(dossier.operationalForms || {}).length}/7 đã nhập</span></div><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{OPERATIONAL_FORM_ACTIONS.map(({ kind, documentKind }) => { const canProcessForm = canProcessPcnOperationalForm(dossier, kind); const formKey = getPcnOperationalFormKey(kind); const isSaved = Boolean(dossier.operationalForms?.[formKey]); return <article key={kind} className="rounded-lg border border-white bg-white p-2.5 shadow-sm"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="text-[11px] font-black leading-4 text-slate-700">{PCN_OPERATIONAL_FORM_LABELS[kind]}</p><p className={`mt-1 text-[11px] font-bold ${!canProcessForm ? 'text-slate-500' : isSaved ? 'text-emerald-700' : 'text-amber-700'}`}>{!canProcessForm ? 'Chưa đến bước hiện tại' : isSaved ? 'Đã lưu dữ liệu' : 'Chưa nhập dữ liệu'}</p></div><span className={`rounded-full px-1.5 py-0.5 text-[11px] font-black ${!canProcessForm ? 'bg-slate-100 text-slate-500' : isSaved ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{!canProcessForm ? 'KHÓA' : isSaved ? 'ĐẠT' : 'MỞ'}</span></div><div className="mt-2 flex flex-wrap gap-1.5"><button type="button" onClick={() => setOperationalFormOpen(kind)} disabled={!canEditDossierSteps || !canProcessForm} title={!canProcessForm ? 'Chưa đến bước xử lý của biểu mẫu này.' : undefined} className="mobile-touch-target min-h-11 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] font-black text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50">{isSaved ? 'Sửa biểu mẫu' : 'Nhập biểu mẫu'}</button>{documentKind && isSaved && (canProcessForm ? <button type="button" onClick={() => openDocumentOutput(documentKind)} className="mobile-touch-target min-h-11 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1.5 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100">Sinh DOCX/PDF</button> : <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-1.5 text-[11px] font-bold text-slate-500">Chờ bước tương ứng</span>)}</div></article>; })}</div></div></details>;
-  const documentWorkspaceTab = <div className="space-y-3">{operationalFormsSection}{documentTab}<details className="rounded-lg border border-slate-200 bg-white" data-testid="pcn-dossier-attachments"><summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 py-2 text-[11px] font-black text-slate-700"><span>Tệp liên kết trong bộ hồ sơ</span><span className="text-[11px] font-bold text-slate-400">{dossierAttachmentsForPackage.length + attachmentIds.length} tệp</span></summary><div className="border-t border-slate-100 p-2">{attachmentContent}</div></details></div>;
+  const documentWorkspaceTab = <div className="space-y-3"><details className="rounded-lg border border-slate-200 bg-white" data-testid="pcn-dossier-attachments"><summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 py-2 text-[11px] font-black text-slate-700"><span>Tệp liên kết trong bộ hồ sơ</span><span className="text-[11px] font-bold text-slate-400">{dossierAttachmentsForPackage.length + attachmentIds.length} tệp</span></summary><div className="border-t border-slate-100 p-2">{attachmentContent}</div></details></div>;
   const saveMilestones = async () => {
     if (isUpdating) return;
     if (!canEditDossierSteps) return;
@@ -1103,7 +1133,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
     </div>
 
     <div className={`min-w-0 border-l-0 lg:border-l lg:border-slate-200 lg:pl-4 ${mobileWorkspaceTab === 'main' ? 'hidden lg:block' : 'block'}`}>
-      <PcnDossierDocumentReader dossierId={dossier.id} documents={dossierDocuments} attachments={dossierAttachments} />
+      <PcnDossierDocumentReader dossierId={dossier.id} documents={dossierDocuments} attachments={dossierAttachments} activeFileId={selectedReaderFileId} onSelectFileId={setSelectedReaderFileId} />
     </div>
   </div>
     {auxiliaryModals}

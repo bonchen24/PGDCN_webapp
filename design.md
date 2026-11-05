@@ -1982,3 +1982,6 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
   - Thao tác tài liệu dùng icon gọn gàng (Xem `Eye`, Soạn thảo `Pencil`, Upload `Upload`, Mở tệp `FileText`, Tải xuống `Download`, Thao tác khác `MoreHorizontal`), đạt diện tích chạm chuẩn di động.
   - Cột phải chuyên biệt làm reader tài liệu và danh sách tệp; khi chưa chọn file hiển thị empty-state gọn gàng.
   - Gom Căn cứ pháp lý, Trợ lý AI và Lịch sử hoạt động vào một mục thu gọn "Thông tin hỗ trợ", mặc định đóng.
+  - Tích hợp tệp phụ trợ / tệp đính kèm vào thẳng bảng tài liệu và hồ sơ liên quan; nút tệp phụ trợ mở modal tạo đầu mục tài liệu (nhập tiêu đề, mô tả, tải tệp tùy chọn).
+  - Khung đọc tài liệu cột phải (Reader) đưa iframe/ảnh xem trước lên sát trên cùng, loại bỏ danh sách tệp thừa chiếm diện tích; chọn xem tệp từ bảng trái sẽ nạp ngay vào khung đọc.
+  - Loại bỏ các khối trùng lặp phía dưới (Biểu mẫu nghiệp vụ, Bảng kiểm trực quan 7 bước) để người dùng tập trung 100% vào thanh quy trình 7 bước và bảng tài liệu trọng tâm.

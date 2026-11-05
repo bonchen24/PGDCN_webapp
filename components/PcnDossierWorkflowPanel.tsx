@@ -14,6 +14,8 @@ export interface PcnDossierWorkflowPanelProps {
   dossier: CertificationDossier;
   requirements: PcnDocumentRequirement[];
   documents: PcnDossierDocument[];
+  attachments?: import('../types').PcnDossierAttachment[];
+  onSelectFile?: (file: { id: string; assetId: string; fileName: string; mimeType?: string }) => void;
   documentWaivers?: Record<string, PcnDossierDocumentWaiver | undefined>;
   results?: ReturnedTestResult[];
   approvalSteps?: PcnApprovalStep[];
@@ -42,7 +44,7 @@ export interface PcnDossierWorkflowPanelProps {
   onOpenBusiness?: (fact: PcnDossierNodeBusinessFact) => void;
 }
 
-export function PcnDossierWorkflowPanel({ dossier, requirements, documents, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], workflowTasks, users: _users = [], currentUser, canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onUploadSupplementary, onCreateFromForm, onOpenDrafting, onGenerateAndAttach, onConfirmDocument, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, initialNodeId }: PcnDossierWorkflowPanelProps) {
+export function PcnDossierWorkflowPanel({ dossier, requirements, documents, attachments = [], onSelectFile, documentWaivers, results = [], approvalSteps = [], sampleLots = [], sampleRoutes = [], labRequests = [], issuancePackages = [], workflowTasks, users: _users = [], currentUser, canEdit, onStartTask, onCompleteTask, onReturnTask, onOpenDocuments, onUploadDocument, onUploadSupplementary, onCreateFromForm, onOpenDrafting, onGenerateAndAttach, onConfirmDocument, onRemoveCurrent, onWaiveDocument, onClearDocumentWaiver, onOpenBusiness, initialNodeId }: PcnDossierWorkflowPanelProps) {
   const workflow = useMemo(() => getPcnWorkflowForDossier(dossier), [dossier]);
   const dossierTasks = useMemo(() => workflowTasks.filter((task) => task.dossierId === dossier.id), [dossier.id, workflowTasks]);
   const requiredRequirementIds = useMemo(() => {
@@ -126,6 +128,8 @@ export function PcnDossierWorkflowPanel({ dossier, requirements, documents, docu
               projection={selectedProjection}
               taskId={selectedTask?.id}
               documents={documents}
+              attachments={attachments}
+              onSelectFile={onSelectFile}
               currentUser={currentUser}
               canEdit={canEdit}
               onStartTask={onStartTask}

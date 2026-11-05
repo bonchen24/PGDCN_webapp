@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { CheckCircle2, Download, Eye, FileOutput, FileText, MoreHorizontal, Pencil, RotateCcw, Trash2, Upload } from 'lucide-react';
 
 import { ORGANIZATION_MANAGEMENT_ROLE_OPTIONS, PCN_DEPARTMENT_ROLE_OPTIONS, PROFESSIONAL_ROLE_OPTIONS } from '../types';
-import type { PcnDossierDocument, UserAccount } from '../types';
+import type { PcnDossierAttachment, PcnDossierDocument, UserAccount } from '../types';
 import type {
   PcnDossierNodeBusinessFact,
   PcnDossierNodeDocumentItem,
@@ -19,6 +19,8 @@ export interface PcnDossierNodeWorkPanelProps {
   panelId?: string;
   taskId?: string;
   documents?: readonly PcnDossierDocument[];
+  attachments?: readonly PcnDossierAttachment[];
+  onSelectFile?: (file: { id: string; assetId: string; fileName: string; mimeType?: string }) => void;
   currentUser?: UserAccount;
   canEdit?: boolean;
   onStartTask?: (taskId: string) => Promise<void>;
@@ -87,6 +89,8 @@ export function PcnDossierNodeWorkPanel({
   panelId,
   taskId,
   documents = [],
+  attachments = [],
+  onSelectFile,
   currentUser,
   canEdit = false,
   onStartTask,
@@ -112,6 +116,14 @@ export function PcnDossierNodeWorkPanel({
   const [returnTargetId, setReturnTargetId] = useState(returnTargets[0]?.id || '');
   const [returnReason, setReturnReason] = useState('');
   const [supplementaryUploadError, setSupplementaryUploadError] = useState<string | null>(null);
+  const [supplementaryModalOpen, setSupplementaryModalOpen] = useState(false);
+  const [suppTitle, setSuppTitle] = useState('');
+  const [suppDescription, setSuppDescription] = useState('');
+  const [suppFile, setSuppFile] = useState<File | null>(null);
+
+  const stageAttachments = useMemo(() => {
+    return attachments.filter((att) => !att.supplementaryStageId || att.supplementaryStageId === projection.nodeId);
+  }, [attachments, projection.nodeId]);
 
   const documentByRequirementId = useMemo(() => new Map(documents.map((document) => [document.requirementId, document])), [documents]);
   const orderedDocuments = useMemo(
@@ -332,7 +344,23 @@ export function PcnDossierNodeWorkPanel({
         <td className="border-b border-slate-100 px-3 py-2.5"><span className={`inline-flex min-h-7 items-center rounded-full border px-2 py-1 text-[9px] font-black ${statusClass}`}>{(DOCUMENT_STATUS_LABELS[item.status] || item.status)}</span></td>
         <td className="border-b border-slate-100 px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-1">
-            {['PRESENT', 'CONFIRMED'].includes(item.status) && version && item.actions.includes('VIEW') ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Xem tài liệu" aria-label="Xem tài liệu"><Eye size={14} aria-hidden="true" /></a> : null}
+            {['PRESENT', 'CONFIRMED'].includes(item.status) && version && item.actions.includes('VIEW') ? (
+              <a
+                className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                href={getPcnFileUrl(version.assetId)}
+                target="_blank"
+                rel="noreferrer"
+                title="Xem tài liệu"
+                aria-label="Xem tài liệu"
+                onClick={() => {
+                  if (onSelectFile && version) {
+                    onSelectFile({ id: `document:${item.requirementId}:${version.assetId}`, assetId: version.assetId, fileName: version.fileName || item.label, mimeType: version.mimeType });
+                  }
+                }}
+              >
+                <Eye size={14} aria-hidden="true" />
+              </a>
+            ) : null}
             {item.status !== 'PRESENT' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><Pencil size={14} aria-hidden="true" /></a> : null}
             {item.status !== 'PRESENT' && item.actions.includes('UPLOAD') && editable ? <label className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100" title="Bổ sung tệp" aria-label="Tải tài liệu"><Upload size={14} aria-hidden="true" /><input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
             {['PRESENT', 'CONFIRMED'].includes(item.status) && version ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Mở tệp" aria-label="Mở tệp"><FileText size={14} aria-hidden="true" /></a> : null}
@@ -512,6 +540,80 @@ export function PcnDossierNodeWorkPanel({
           </details>
         ) : null}
       </div>
+      {supplementaryModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="pcn-supp-modal-title">
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+            <h3 id="pcn-supp-modal-title" className="text-sm font-black text-slate-900">
+              Thêm đầu mục tài liệu phụ trợ · {projection.nodeLabel}
+            </h3>
+            <p className="mt-1 text-xs text-slate-500">
+              Nhập thông tin mô tả và có thể tải tệp đính kèm ngay hoặc tải sau từ bảng danh sách.
+            </p>
+            <div className="mt-3 space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700">Tên tài liệu / Tiêu đề *</label>
+                <input
+                  type="text"
+                  value={suppTitle}
+                  onChange={(e) => setSuppTitle(e.target.value)}
+                  placeholder="Ví dụ: Bổ sung chứng từ kiểm tra..."
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700">Mô tả ngắn gọn</label>
+                <textarea
+                  rows={2}
+                  value={suppDescription}
+                  onChange={(e) => setSuppDescription(e.target.value)}
+                  placeholder="Nhập ghi chú tóm tắt nội dung tài liệu..."
+                  className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700">Tệp tài liệu (tùy chọn)</label>
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.png,.jpg,.jpeg,.gif,.webp,.avif"
+                  aria-label={'Tải tệp phụ trợ cho bước ' + projection.nodeLabel}
+                  onChange={(e) => setSuppFile(e.target.files?.[0] || null)}
+                  className="mt-1 block w-full text-xs text-slate-600 file:mr-2 file:rounded-md file:border file:border-blue-200 file:bg-blue-50 file:px-2.5 file:py-1 file:text-xs file:font-bold file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSupplementaryModalOpen(false);
+                  setSuppTitle('');
+                  setSuppDescription('');
+                  setSuppFile(null);
+                }}
+                className="mobile-touch-target rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={busyKey === `supplementary:${projection.nodeId}`}
+                onClick={async () => {
+                  if (suppFile) {
+                    await handleSupplementaryUpload(suppFile);
+                  }
+                  setSupplementaryModalOpen(false);
+                  setSuppTitle('');
+                  setSuppDescription('');
+                  setSuppFile(null);
+                }}
+                className="mobile-touch-target rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {busyKey === `supplementary:${projection.nodeId}` ? 'Đang lưu…' : 'Xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </aside>
   );
 }
