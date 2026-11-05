@@ -91,9 +91,9 @@ export default function PgdDossierDocumentReader({
         </div>
         {selected && downloadUrl ? (
           <div className="flex shrink-0 flex-wrap gap-1.5">
-            <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
-              <ExternalLink size={14} aria-hidden="true" /> Mở tệp
-            </a>
+            {previewUrl ? <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+              <ExternalLink size={14} aria-hidden="true" /> Mở bản xem
+            </a> : null}
             <a href={downloadUrl} download={selected.fileName} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-700 px-2.5 text-[11px] font-black text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
               <Download size={14} aria-hidden="true" /> Tải xuống
             </a>
@@ -136,7 +136,7 @@ export default function PgdDossierDocumentReader({
             <div className="flex min-h-[18rem] flex-col items-center justify-center gap-2 px-4 text-center">
               <FileText size={28} aria-hidden="true" className="text-slate-400" />
               <p className="text-sm font-semibold text-slate-700">Định dạng này chưa hỗ trợ xem trực tiếp trong trình duyệt.</p>
-              <p className="text-xs text-slate-500">Dùng Mở tệp hoặc Tải xuống để xem nội dung.</p>
+              <p className="text-xs text-slate-500">Tải tệp xuống để mở bằng ứng dụng phù hợp.</p>
             </div>
           ) : previewError ? (
             <div role="alert" className="flex min-h-[18rem] flex-col items-center justify-center gap-2 text-center text-xs text-amber-900">
