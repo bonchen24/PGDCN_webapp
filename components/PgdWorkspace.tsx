@@ -105,6 +105,7 @@ import PgdDossierFlow, { getPgdDossierCurrentStepNumber, getPgdDossierFlowStepId
 import PgdDossierStepWorkPanel from './PgdDossierStepWorkPanel';
 import PgdSummaryRegisterView from './PgdSummaryRegisterView';
 import PgdDossierQueueView, { type PgdDossierQueueRow } from './PgdDossierQueueView';
+import PgdDossierAssignmentControl from './PgdDossierAssignmentControl';
 import PgdSampleOperationsView from './PgdSampleOperationsView';
 import { PgdcnPageHeader, PgdcnStatePanel, PgdcnStatusBadge } from './PgdcnUiPrimitives';
 import PgdDossierBusinessWorkspace from './PgdDossierBusinessWorkspace';
@@ -1018,15 +1019,19 @@ function registryDocumentNumber(request: PgdInspectionRequest, kind: PgdRegistry
   return request.registryMetadata?.documents?.find((document) => document.kind === kind)?.number || '—';
 }
 
-function PgdRegisterTable({
+export function PgdRegisterTable({
   requests,
   users,
   catalog,
+  currentUser,
+  onAssignOwner,
   onOpen,
 }: {
   requests: PgdInspectionRequest[];
   users: PcnUserAccount[];
   catalog: PgdCatalogItem[];
+  currentUser: PcnUserAccount;
+  onAssignOwner: (requestId: string, ownerUsername: string) => Promise<unknown>;
   onOpen: (id: string) => void;
 }) {
 
@@ -1114,7 +1119,18 @@ function PgdRegisterTable({
                     <div className="truncate" title={request.inspectionLocation}>{request.inspectionLocation}</div>
                   </td>
                   <td className="whitespace-nowrap px-2.5 py-2 font-mono text-[9px] text-blue-700">{request.method || '—'}</td>
-                  <td className="px-2.5 py-2 font-mono text-[9px] text-slate-600">{request.ownerUsername || 'Chưa gán'}</td>
+                  <td className="px-2.5 py-2">
+                    <PgdDossierAssignmentControl
+                      requestId={request.id}
+                      ownerUsername={request.ownerUsername}
+                      ownerDisplayName={getPgdUserDisplayName(request.ownerUsername, users)}
+                      users={users}
+                      currentUser={currentUser}
+                      onAssignOwner={onAssignOwner}
+                      disabled={Boolean(getPgdPostSignatureMutationDenial(request.status))}
+                      compact
+                    />
+                  </td>
                   <td className="px-2.5 py-2 text-slate-600">
                     <div>{registryDocumentNumber(request, 'CONTRACT')}</div>
                     <div className="text-[9px] text-slate-400">{registryDocumentNumber(request, 'INVOICE')}</div>
@@ -1661,6 +1677,23 @@ Chủ hồ sơ: {getPgdUserDisplayName(request.ownerUsername, pgd.users) || 'Ch�
           {pendingWorkflowCandidates.length > 0 && <button type="button" onClick={attachWorkflowTemplate} disabled={busy || !selectedPendingWorkflowTemplate || pendingWorkflowSelection.isAmbiguous} className="mobile-touch-target min-h-11 rounded-lg bg-amber-700 px-3 py-2 text-[11px] font-black text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Đang gắn mẫu…' : 'Gắn bộ hồ sơ mẫu'}</button>}
         </div>
       </section>}
+
+      <section data-testid="pgd-dossier-owner-assignment" aria-label="Phân công hồ sơ PGD" className="mb-3 flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-wide text-blue-700">Người phụ trách hồ sơ PGD</p>
+          <p className="mt-0.5 text-xs text-slate-600">Người được giao sẽ theo dõi hồ sơ xuyên suốt các bước xử lý.</p>
+        </div>
+        <PgdDossierAssignmentControl
+          requestId={request.id}
+          ownerUsername={request.ownerUsername}
+          users={pgd.users}
+          currentUser={currentUser}
+          onAssignOwner={pgd.assignOwner}
+          disabled={busy || Boolean(getPgdPostSignatureMutationDenial(request.status))}
+          unassignedLabel="Chưa giao người phụ trách · Đang chờ phân công."
+          compact
+        />
+      </section>
 
       {/* Horizontal Workflow Rail - Unhidden, compact top placement matching PCN */}
       <div className="mt-3">
@@ -2286,11 +2319,11 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
         </div>
       </div>
 
-      <PgdRegisterTable requests={sectionRequests} users={pgd.users} catalog={pgd.catalog} onOpen={openRequest} />
+      <PgdRegisterTable requests={sectionRequests} users={pgd.users} catalog={pgd.catalog} currentUser={currentUser} onAssignOwner={pgd.assignOwner} onOpen={openRequest} />
     </div>
   );
 
-  const operationProjection = <div className="min-w-0"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-3 md:px-5"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600">Quản lý PGD</p><h1 className="mt-1 text-lg font-black text-slate-900">Hồ sơ cần xử lý</h1><p className="mt-1 text-[11px] text-slate-600">Chọn Hàng đợi hồ sơ để xử lý theo từng việc hoặc Sổ dữ liệu để rà soát toàn bộ trường.</p></div><div className="flex items-center gap-2"><div className="flex min-h-11 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1" role="tablist" aria-label="Chế độ quản lý PGD"><button type="button" role="tab" aria-selected={viewMode === 'QUEUE'} onClick={() => setViewMode('QUEUE')} className={`mobile-touch-target min-h-11 rounded-md px-3 text-[11px] font-black ${viewMode === 'QUEUE' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-white'}`}>Hàng đợi hồ sơ</button><button type="button" role="tab" aria-selected={viewMode === 'DATA'} onClick={() => setViewMode('DATA')} className={`mobile-touch-target min-h-11 rounded-md px-3 text-[11px] font-black ${viewMode === 'DATA' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-white'}`}>Sổ dữ liệu</button></div>{canMutate && (<button type="button" onClick={openCreateRequest} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-black text-white shadow-sm hover:bg-blue-700 transition-colors cursor-pointer"><FilePlus2 size={14} /> Tạo PYC</button>)}</div></div>{viewMode === 'QUEUE' ? <PgdDossierQueueView rows={queueRows} onOpenDossier={openRequest} /> : <PgdSummaryRegisterView requests={pgd.requests} assignments={pgd.assignments} samples={pgd.samples} labRequests={pgd.labRequests} labResults={pgd.labResults} reports={pgd.reports} certificates={pgd.certificates} documents={pgd.documents} catalog={pgd.catalog} users={pgd.users} currentUsername={currentUser.username} canEdit={canMutate} onOpenRequest={openRequest} onUpdateRequest={pgd.updateRequest} onAssignOwner={pgd.assignOwner} />}</div>;
+  const operationProjection = <div className="min-w-0"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-3 md:px-5"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600">Quản lý PGD</p><h1 className="mt-1 text-lg font-black text-slate-900">Hồ sơ cần xử lý</h1><p className="mt-1 text-[11px] text-slate-600">Chọn Hàng đợi hồ sơ để xử lý theo từng việc hoặc Sổ dữ liệu để rà soát toàn bộ trường.</p></div><div className="flex items-center gap-2"><div className="flex min-h-11 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1" role="tablist" aria-label="Chế độ quản lý PGD"><button type="button" role="tab" aria-selected={viewMode === 'QUEUE'} onClick={() => setViewMode('QUEUE')} className={`mobile-touch-target min-h-11 rounded-md px-3 text-[11px] font-black ${viewMode === 'QUEUE' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-white'}`}>Hàng đợi hồ sơ</button><button type="button" role="tab" aria-selected={viewMode === 'DATA'} onClick={() => setViewMode('DATA')} className={`mobile-touch-target min-h-11 rounded-md px-3 text-[11px] font-black ${viewMode === 'DATA' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-white'}`}>Sổ dữ liệu</button></div>{canMutate && (<button type="button" onClick={openCreateRequest} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-black text-white shadow-sm hover:bg-blue-700 transition-colors cursor-pointer"><FilePlus2 size={14} /> Tạo PYC</button>)}</div></div>{viewMode === 'QUEUE' ? <PgdDossierQueueView rows={queueRows} onOpenDossier={openRequest} currentUser={currentUser} users={pgd.users} onAssignOwner={pgd.assignOwner} /> : <PgdSummaryRegisterView requests={pgd.requests} assignments={pgd.assignments} samples={pgd.samples} labRequests={pgd.labRequests} labResults={pgd.labResults} reports={pgd.reports} certificates={pgd.certificates} documents={pgd.documents} catalog={pgd.catalog} users={pgd.users} currentUsername={currentUser.username} currentUser={currentUser} canEdit={canMutate} onOpenRequest={openRequest} onUpdateRequest={pgd.updateRequest} onAssignOwner={pgd.assignOwner} />}</div>;
   const sampleRegister = <PgdSampleOperationsView requests={pgd.requests} samples={pgd.samples} labRequests={pgd.labRequests} labResults={pgd.labResults} onOpenRequest={openRequest} />;
   const projection = activeSection === 'templates'
     ? <PgdDraftingWorkspaceView templates={pgd.documentTemplates} documents={pgd.documents} canMutate={canMutate} initialRequestId={initialDraftRequestId || draftingRequestId} initialRequirementCode={initialDraftRequirementCode || draftingRequirementCode} initialTemplateKind={initialDraftTemplateKind || draftingTemplateKind} initialReturnTo={initialDraftReturnTo} onOpenSettings={isAdmin ? () => setDocxSettingsOpen(true) : undefined} />

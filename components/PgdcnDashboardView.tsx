@@ -6,17 +6,21 @@ import { getPgdcnNotificationActionLabel } from '../utils/pgdcnNotification';
 
 import { AlertTriangle, ArrowRight, Award, Bell, Bot, CalendarClock, CheckCircle2, ClipboardCheck, Eye, FileCheck2, FolderOpen, Inbox, Plus, Timer, type LucideIcon } from 'lucide-react';
 
-import type { AppNotification, CertificationDossier, CertificationProposal, DepartmentScope, PcnDossierWorkflowTask, UserAccount } from '../types';
+import type { AppNotification, CertificationDossier, CertificationProposal, DepartmentScope, PcnDossierWorkflowTask, PcnUserAccount, UserAccount } from '../types';
 import type { PgdInspectionRequest } from '../utils/pgdDomain';
+import { getPgdPostSignatureMutationDenial } from '../utils/pgdWorkflow';
 import { PgdcnStatusBadge } from './PgdcnUiPrimitives';
 import type { PgdcnRecentRecord } from '../utils/pgdcnRecent';
 import { getPgdcnDashboardProjection, getPgdcnMyWorkProjection, type DashboardPipelineTone, type PgdcnDashboardDomainSummary, type PgdcnDashboardUpcomingItem, type PgdcnMyWorkInput, type PgdcnMyWorkItem, type PgdcnMyWorkProjection, type PgdcnNextAction } from '../utils/pgdcnDashboard';
+import PgdDossierAssignmentControl, { canAssignPgdDossierOwner } from './PgdDossierAssignmentControl';
 
 type PgdcnDashboardViewProps = {
   scopes: readonly DepartmentScope[];
   pcnDossiers: readonly CertificationDossier[];
   pgdRequests: readonly PgdInspectionRequest[];
   currentUser?: UserAccount;
+  pgdUsers?: readonly PcnUserAccount[];
+  onAssignPgdOwner?: (requestId: string, ownerUsername: string) => Promise<unknown>;
   pcnProposals?: readonly CertificationProposal[];
   pcnWorkflowTasks?: readonly PcnDossierWorkflowTask[];
   pcnEvidenceActions?: Readonly<Record<string, PgdcnNextAction>>;
@@ -536,6 +540,51 @@ function AttentionQueue({ items, onOpenPcn, onOpenPgd }: Pick<PgdcnDashboardView
   );
 }
 
+function PgdManagerAssignmentQueue({
+  currentUser,
+  requests,
+  pgdUsers: users = [],
+  onOpenPgd,
+  onOpenPgdWorkspace,
+  onAssignPgdOwner: onAssignOwner,
+}: Pick<PgdcnDashboardViewProps, 'currentUser' | 'pgdUsers' | 'onOpenPgd' | 'onOpenPgdWorkspace' | 'onAssignPgdOwner'> & { requests: readonly PgdInspectionRequest[] }) {
+  if (!canAssignPgdDossierOwner(currentUser)) return null;
+  const inScopeRequests = requests.filter((request) => !request.deletedAt);
+  if (inScopeRequests.length === 0) return null;
+  const unassignedCount = inScopeRequests.filter((request) => !String(request.ownerUsername || '').trim()).length;
+
+  return (
+    <section data-testid="pgdcn-dashboard-owner-queue" aria-label="Phân công hồ sơ PGD" className="min-w-0 rounded-xl border border-blue-200 bg-white p-3 shadow-sm">
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="text-sm font-bold text-slate-900">Điều phối hồ sơ PGD</h2>
+          <p className="mt-0.5 text-xs text-slate-600">{inScopeRequests.length} hồ sơ trong phạm vi PGD · {unassignedCount} chưa giao. Danh sách không giới hạn số dòng.</p>
+        </div>
+        <button type="button" onClick={onOpenPgdWorkspace} className="mobile-touch-target min-h-11 rounded-lg border border-blue-200 px-3 text-xs font-semibold text-blue-700 hover:bg-blue-50">Mở workspace PGD</button>
+      </div>
+      <div className="mt-2 divide-y divide-slate-100">
+        {inScopeRequests.map((request) => (
+          <div key={request.id} data-testid={`pgd-owner-row-${request.id}`} className="grid min-w-0 gap-2 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(13rem,0.85fr)] sm:items-center">
+            <button type="button" onClick={() => onOpenPgd(request.id)} className="min-w-0 text-left">
+              <span className="block break-words text-xs font-bold text-slate-900">{request.requestCode}</span>
+              <span className="mt-0.5 block break-words text-[11px] text-slate-600">{request.customerSnapshot?.name || 'Chưa cập nhật'}{request.productName ? ` · ${request.productName}` : ''}</span>
+            </button>
+            <PgdDossierAssignmentControl
+              requestId={request.id}
+              ownerUsername={request.ownerUsername}
+              users={users}
+              currentUser={currentUser}
+              onAssignOwner={onAssignOwner}
+              disabled={Boolean(getPgdPostSignatureMutationDenial(request.status))}
+              compact
+            />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function DomainPipelineCard({ summary, onOpen }: { summary: PgdcnDashboardDomainSummary; onOpen: () => void }) {
   const config = DOMAIN_CONFIG[summary.domain];
   const Icon = config.icon;
@@ -626,7 +675,7 @@ function SharedNotifications({ notifications, onOpenNotifications, onSelectNotif
   );
 }
 
-export default function PgdcnDashboardView({ scopes, pcnDossiers, pcnEvidenceActions, pgdRequests, currentUser, pcnProposals, pcnWorkflowTasks, pgdAssignments, notifications, onOpenPcn, onOpenPgd, onOpenPcnWorkspace, onOpenPgdWorkspace, onOpenNotifications, onSelectNotification, recentRecords = [] }: PgdcnDashboardViewProps) {
+export default function PgdcnDashboardView({ scopes, pcnDossiers, pcnEvidenceActions, pgdRequests, currentUser, pgdUsers, onAssignPgdOwner, pcnProposals, pcnWorkflowTasks, pgdAssignments, notifications, onOpenPcn, onOpenPgd, onOpenPcnWorkspace, onOpenPgdWorkspace, onOpenNotifications, onSelectNotification, recentRecords = [] }: PgdcnDashboardViewProps) {
   const projection = getPgdcnDashboardProjection({ scopes, pcnDossiers, pgdRequests });
   const myWorkInput: PgdcnMyWorkInput | undefined = currentUser ? { scopes, currentUser, pcnDossiers, pcnProposals, pcnWorkflowTasks, pcnEvidenceActions, pgdRequests, pgdAssignments } : undefined;
   const projectedMyWork = myWorkInput ? getPgdcnMyWorkProjection(myWorkInput) : undefined;
@@ -648,6 +697,7 @@ export default function PgdcnDashboardView({ scopes, pcnDossiers, pcnEvidenceAct
         <Kpi label="Hồ sơ quá hạn" value={projection.kpis.overdue} icon={AlertTriangle} tone="bg-rose-50 text-rose-700" sublabel="Cần chú ý xử lý" />
       </div>
       {myWork ? <MyWorkSection projection={myWork} currentUser={currentUser} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} /> : null}
+      <PgdManagerAssignmentQueue currentUser={currentUser} requests={pgdRequests} pgdUsers={pgdUsers} onOpenPgd={onOpenPgd} onOpenPgdWorkspace={onOpenPgdWorkspace} onAssignPgdOwner={onAssignPgdOwner} />
       <div className={`grid min-w-0 gap-3 ${hasAttention ? 'lg:grid-cols-[minmax(0,1.35fr)_minmax(21rem,0.85fr)]' : ''}`}>{hasAttention && <AttentionQueue items={attentionItems} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} />}<DomainPipeline summaries={projection.domainSummaries} onOpenPcnWorkspace={onOpenPcnWorkspace} onOpenPgdWorkspace={onOpenPgdWorkspace} /></div>
       <RecentItemsSection recentRecords={recentRecords} pcnDossiers={pcnDossiers} pgdRequests={pgdRequests} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} />
       <div className="grid min-w-0 gap-4 lg:grid-cols-2"><UpcomingMilestones items={projection.upcoming} onOpenPcn={onOpenPcn} onOpenPgd={onOpenPgd} /><SharedNotifications notifications={notifications} onOpenNotifications={onOpenNotifications} onSelectNotification={onSelectNotification} /></div>

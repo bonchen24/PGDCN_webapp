@@ -18,6 +18,11 @@ export type DossierOwnerAssignmentPickerProps = {
   canAssign: boolean;
   disabled?: boolean;
   compact?: boolean;
+  unassignedLabel?: string;
+  assignLabel?: string;
+  transferLabel?: string;
+  confirmAssignLabel?: string;
+  confirmTransferLabel?: string;
   onAssign: (username: string) => Promise<void>;
 };
 
@@ -26,7 +31,13 @@ const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visibl
 
 export function DossierOwnerAssignmentPicker({
   options, ownerUsername = '', ownerDisplayName = '', canAssign,
-  disabled = false, compact = false, onAssign,
+  disabled = false, compact = false,
+  unassignedLabel = 'Chưa gán người thực hiện',
+  assignLabel = 'Phân công người thực hiện',
+  transferLabel = 'Chuyển người thực hiện',
+  confirmAssignLabel = 'Xác nhận phân công',
+  confirmTransferLabel = 'Xác nhận phân công',
+  onAssign,
 }: DossierOwnerAssignmentPickerProps) {
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -36,6 +47,8 @@ export function DossierOwnerAssignmentPicker({
   const [success, setSuccess] = useState('');
   const savingRef = useRef(false);
   const owner = ownerUsername.trim();
+  const actionLabel = owner ? transferLabel : assignLabel;
+  const confirmationLabel = owner ? confirmTransferLabel : confirmAssignLabel;
   const selected = options.find((option) => option.username === selectedUsername);
   const changed = Boolean(selected && normalizeUsername(selected.username) !== normalizeUsername(owner));
   const blocked = saving || disabled || !canAssign;
@@ -73,11 +86,11 @@ export function DossierOwnerAssignmentPicker({
       <Dialog.Root open={open} onOpenChange={changeOpen}>
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <span className={owner ? 'break-words font-semibold text-slate-700' : 'text-slate-500'}>
-            {owner ? (ownerDisplayName || owner) : 'Chưa gán người thực hiện'}
+            {owner ? (ownerDisplayName || owner) : unassignedLabel}
           </span>
           {canAssign && <Dialog.Trigger asChild>
             <button type="button" disabled={disabled || saving} className={`min-h-9 rounded-md px-2 py-1 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${focusClass} ${owner ? 'text-emerald-700 hover:bg-emerald-50' : 'border border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800'}`}>
-              {owner ? 'Chuyển người thực hiện' : 'Phân công người thực hiện'}
+              {actionLabel}
             </button>
           </Dialog.Trigger>}
         </div>
@@ -88,7 +101,7 @@ export function DossierOwnerAssignmentPicker({
             onEscapeKeyDown={(event) => { if (savingRef.current) event.preventDefault(); }}
             onPointerDownOutside={(event) => { if (savingRef.current) event.preventDefault(); }}
           >
-            <Dialog.Title className="text-sm font-bold text-slate-900">{owner ? 'Chuyển người thực hiện' : 'Phân công người thực hiện'}</Dialog.Title>
+            <Dialog.Title className="text-sm font-bold text-slate-900">{actionLabel}</Dialog.Title>
             <Dialog.Description className="mb-3 mt-1 text-xs text-slate-500">
               {owner ? `Hiện tại: ${ownerDisplayName || owner}. ` : ''}Chọn nhân viên rồi xác nhận để lưu phân công.
             </Dialog.Description>
@@ -115,7 +128,7 @@ export function DossierOwnerAssignmentPicker({
                   <button type="button" disabled={saving} className={`min-h-9 rounded-md border border-slate-200 px-3 text-xs font-semibold text-slate-600 disabled:opacity-50 ${focusClass}`}>Hủy</button>
                 </Dialog.Close>
                 <button type="submit" disabled={blocked || !changed} className={`min-h-9 rounded-md bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${focusClass}`}>
-                  {saving ? 'Đang lưu…' : 'Xác nhận phân công'}
+                  {saving ? 'Đang lưu…' : confirmationLabel}
                 </button>
               </div>
             </form>

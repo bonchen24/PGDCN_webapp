@@ -33,6 +33,9 @@ import { PgdcnPageHeader, PgdcnStatusBadge } from './PgdcnUiPrimitives';
 import { usePcnSessionStore } from '../utils/pcnSessionState';
 import { usePgdStore } from '../store-pgd';
 import { getPgdDossierPackageUrl } from '../utils/pgdApi';
+import { getPgdPostSignatureMutationDenial } from '../utils/pgdWorkflow';
+import type { PgdInspectionStatus } from '../utils/pgdDomain';
+import type { PcnUserAccount } from '../types';
 import {
   PgdcnDossierCardExpanded,
   PgdcnDossierQuickActions,
@@ -42,6 +45,7 @@ import {
   type DossierBlockerItem,
   type DossierBusinessBadge,
 } from './PgdcnDossierDeck';
+import PgdDossierAssignmentControl from './PgdDossierAssignmentControl';
 
 export interface PgdDossierQueueRow {
   requestId: string;
@@ -65,6 +69,9 @@ export interface PgdDossierQueueRow {
 export interface PgdDossierQueueViewProps {
   rows: PgdDossierQueueRow[];
   onOpenDossier: (requestId: string) => void;
+  currentUser?: PcnUserAccount | null;
+  users?: readonly PcnUserAccount[];
+  onAssignOwner?: (requestId: string, ownerUsername: string) => Promise<unknown>;
 }
 
 export const PGD_FILTER_CHIPS = [
@@ -301,8 +308,9 @@ function QueueMetric({
   );
 }
 
-export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQueueViewProps) {
-  const currentUser = usePcnSessionStore((state) => state.currentUser);
+export default function PgdDossierQueueView({ rows, onOpenDossier, currentUser: suppliedCurrentUser, users = [], onAssignOwner }: PgdDossierQueueViewProps) {
+  const sessionCurrentUser = usePcnSessionStore((state) => state.currentUser);
+  const currentUser = suppliedCurrentUser ?? sessionCurrentUser;
   const isManagerOrAdmin = Boolean(currentUser && (currentUser.systemRole === 'admin' || currentUser.role === 'admin' || currentUser.pgdRole === 'PGD_ADMIN' || currentUser.pgdRole === 'PGD_MANAGER'));
   const deleteRequest = usePgdStore((state) => state.deleteRequest);
   const [query, setQuery] = useState('');
@@ -873,11 +881,16 @@ export default function PgdDossierQueueView({ rows, onOpenDossier }: PgdDossierQ
 
                       {/* 6. Chủ hồ sơ */}
                       <td className="px-3 py-3 text-xs font-medium text-slate-700">
-                        {row.ownerDisplayName || row.ownerUsername ? (
-                          <span className="text-slate-800 font-semibold">{row.ownerDisplayName || row.ownerUsername}</span>
-                        ) : (
-                          <span className="text-slate-400 italic">Chưa phân công</span>
-                        )}
+                        <PgdDossierAssignmentControl
+                          requestId={row.requestId}
+                          ownerUsername={row.ownerUsername}
+                          ownerDisplayName={row.ownerDisplayName}
+                          users={users}
+                          currentUser={currentUser}
+                          onAssignOwner={onAssignOwner}
+                          disabled={Boolean(getPgdPostSignatureMutationDenial(row.status as PgdInspectionStatus))}
+                          compact
+                        />
                       </td>
 
                       {/* 7. Trạng thái hồ sơ */}

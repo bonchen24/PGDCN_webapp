@@ -1,7 +1,7 @@
 'use client';
 
 import { BookmarkPlus, Download, GripVertical, Play, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { mergeColumnConfig, shouldPersistColumnConfig } from '../utils/columnConfigPersistence';
 import { sortSummaryRows, summaryCellText, summaryRowsToCsv, toggleSummarySort, type SummaryGridColumn, type SummaryGridRow, type SummaryGridSortState } from '../utils/summaryRegister';
@@ -20,6 +20,7 @@ type Props = {
   filterControls?: React.ReactNode;
   onOpenRow: (rowId: string) => void;
   onCommitCell: (rowId: string, columnId: string, value: string) => Promise<void>;
+  renderCell?: (input: { row: SummaryGridRow; column: SummaryGridColumn; value: string }) => ReactNode | undefined;
   searchPlaceholder?: string;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -72,6 +73,7 @@ export default function PgdcnDossierSummaryGrid({
   filterControls,
   onOpenRow,
   onCommitCell,
+  renderCell,
   searchPlaceholder = 'Tìm mã hồ sơ, khách hàng, sản phẩm...',
   emptyTitle = 'Không có hồ sơ phù hợp',
   emptyDescription = 'Hãy điều chỉnh từ khóa hoặc bộ lọc để xem lại Sổ tổng hợp.',
@@ -400,18 +402,20 @@ export default function PgdcnDossierSummaryGrid({
                   const isEditing = editingCell?.rowId === row.id && editingCell.columnId === column.id;
                   const cellValue = summaryCellText(row.displayCells?.[column.id] ?? row.cells[column.id]);
                   const isPcnDossierCode = domain === 'PCN' && column.id === 'dossierCode' && Boolean(cellValue);
+                  const customCell = renderCell?.({ row, column, value: cellValue });
+                  const cellCanEdit = column.editable && isRowEditable(row.id) && customCell === undefined;
                   return <td
                         key={column.id}
-                        onClick={() => !isEditing && startEdit(row, column)}
+                        onClick={() => cellCanEdit && !isEditing && startEdit(row, column)}
                         onKeyDown={(event) => {
-                          if (event.target !== event.currentTarget || isEditing || (event.key !== 'Enter' && event.key !== ' ')) return;
+                          if (!cellCanEdit || event.target !== event.currentTarget || isEditing || (event.key !== 'Enter' && event.key !== ' ')) return;
                           event.preventDefault();
                           startEdit(row, column);
                         }}
-                        tabIndex={column.editable && isRowEditable(row.id) ? 0 : undefined}
-                        aria-label={column.editable && isRowEditable(row.id) ? `${column.label}, dòng ${rowIndex + 1}` : undefined}
-                        className={`max-w-[280px] border-r border-slate-200 px-2.5 py-4 md:py-1.5 align-top ${column.sticky || index === 0 ? 'sticky left-0 z-[1] bg-white border-r-2 border-slate-300' : ''} ${column.editable && isRowEditable(row.id) ? 'cursor-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500' : ''}`}>
-                    {isEditing ? renderEditor(row, column) : isPcnDossierCode ? <button type="button" onClick={(event) => { event.stopPropagation(); onOpenRow(row.id); }} aria-label={`Mở chi tiết hồ sơ ${cellValue}`} className="max-w-[260px] whitespace-pre-wrap break-words text-left font-mono font-black text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">{cellValue}</button> : <div title={cellValue} className={`${column.id === 'requestCode' || column.id === 'dossierCode' ? 'font-mono font-black text-slate-800' : 'font-medium text-slate-700'} max-w-[260px] whitespace-pre-wrap break-words`}>{cellValue || <span className="text-slate-300">—</span>}</div>}
+                        tabIndex={cellCanEdit ? 0 : undefined}
+                        aria-label={cellCanEdit ? `${column.label}, dòng ${rowIndex + 1}` : undefined}
+                        className={`max-w-[280px] border-r border-slate-200 px-2.5 py-4 md:py-1.5 align-top ${column.sticky || index === 0 ? 'sticky left-0 z-[1] bg-white border-r-2 border-slate-300' : ''} ${cellCanEdit ? 'cursor-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500' : ''}`}>
+                    {isEditing ? renderEditor(row, column) : customCell !== undefined ? customCell : isPcnDossierCode ? <button type="button" onClick={(event) => { event.stopPropagation(); onOpenRow(row.id); }} aria-label={`Mở chi tiết hồ sơ ${cellValue}`} className="max-w-[260px] whitespace-pre-wrap break-words text-left font-mono font-black text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">{cellValue}</button> : <div title={cellValue} className={`${column.id === 'requestCode' || column.id === 'dossierCode' ? 'font-mono font-black text-slate-800' : 'font-medium text-slate-700'} max-w-[260px] whitespace-pre-wrap break-words`}>{cellValue || <span className="text-slate-300">—</span>}</div>}
                   </td>;
                 })}
                 <td className={"sticky right-0 z-[1] bg-white border-l-2 border-slate-300 px-2.5 py-1.5 text-right " + (domain === "PCN" ? "group-hover:bg-emerald-50/40" : "group-hover:bg-blue-50/40")}><button type="button" onClick={() => onOpenRow(row.id)} className="mobile-touch-target min-h-11 whitespace-nowrap rounded-md border border-slate-200 px-2 py-1.5 text-[9px] font-black text-emerald-700 hover:border-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">Mở hồ sơ</button>{savingRowId === row.id && <div className="mt-1 text-[9px] text-amber-600">Đang lưu…</div>}</td>

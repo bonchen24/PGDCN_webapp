@@ -13,7 +13,7 @@ import { AppHeader } from '@/components/layout/app-header';
 import WorkspaceDashboard from '@/components/dashboard/workspace-dashboard';
 import { CommandPalette as WorkspaceCommandPalette } from '@/components/layout/command-palette';
 
-import type { AppNotification, DepartmentScope } from '../types';
+import type { AppNotification, DepartmentScope, PcnUserAccount } from '../types';
 import { getPcnSession, clearPcnSession } from '../utils/pcnAuthApi';
 import { usePcnSessionStore } from '../utils/pcnSessionState';
 import { usePcnStore } from '../store-pcn';
@@ -41,6 +41,7 @@ import type { PcnDossierDetailTab } from '../utils/pcnDossierNavigation';
 import type { PgdSection } from './PgdSidebar';
 import { getPgdDossierRequirements } from '../utils/pgdDossier';
 import { resolvePcnEvidenceNextAction } from '../utils/pcnBusinessWorkspace';
+import { isPgdSystemManager } from '../utils/pgdDomain';
 
 const PGD_TEMPLATE_REQUIREMENTS = Array.from(new Map(
   (['OTHER', 'STEEL_METAL', 'MACHINERY_LINE', 'COAL'] as const)
@@ -75,6 +76,10 @@ type PgdcnAppShellProps = {
 // Canonical PGD dossier entry: initialDomain === 'PGD' ? { domain: 'PGD', section: 'requests' }.
 
 const getScopes = (value: readonly DepartmentScope[] | undefined): DepartmentScope[] => Array.from(new Set((value || []).filter((scope): scope is DepartmentScope => scope === 'PCN' || scope === 'PGD')));
+
+export function canLoadPgdDataForUser(user?: PcnUserAccount | null): boolean {
+  return Boolean(user && (isPgdSystemManager(user) || user.departmentScopes?.includes('PGD')));
+}
 
 const getActiveContextLabel = (target: PgdcnNavigationTarget): string => {
   if (target.domain === 'department') {
@@ -216,8 +221,9 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
   }, [pgd.reset, pcn.reset, setCurrentUser]);
 
   const scopes = getScopes(currentUser?.departmentScopes);
+  const canAccessPgdData = canLoadPgdDataForUser(currentUser);
   const loadPgdData = useCallback(async (force = false) => {
-    if (!scopes.includes('PGD')) {
+    if (!canAccessPgdData) {
       setPgdDataLoadState('ready');
       return;
     }
@@ -228,7 +234,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
     } catch {
       setPgdDataLoadState('error');
     }
-  }, [pgd.load, scopes.join('|')]);
+  }, [canAccessPgdData, pgd.load]);
 
   useEffect(() => {
     if (!sessionChecked || !currentUser) return;
@@ -513,7 +519,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
   };
 
   const content = activeTarget.domain === 'department' && (activeTarget.section === 'department-dashboard' || activeTarget.section === 'my-work') ? (
-    <PgdcnDashboardView scopes={scopes} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pcnWorkflowTasks={pcn.workflowTasks} pgdRequests={pgd.requests} pgdAssignments={pgd.assignments} pcnEvidenceActions={pcnEvidenceActions} currentUser={currentUser} notifications={notifications} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} onOpenNotifications={handleOpenNotifications} onSelectNotification={handleDashboardNotificationSelect} recentRecords={recentRecords} />
+    <PgdcnDashboardView scopes={scopes} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pcnWorkflowTasks={pcn.workflowTasks} pgdRequests={pgd.requests} pgdAssignments={pgd.assignments} pgdUsers={pgd.users} onAssignPgdOwner={pgd.assignOwner} pcnEvidenceActions={pcnEvidenceActions} currentUser={currentUser} notifications={notifications} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} onOpenNotifications={handleOpenNotifications} onSelectNotification={handleDashboardNotificationSelect} recentRecords={recentRecords} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'customers' ? (
     <PgdcnCustomersView scopes={scopes} />
   ) : activeTarget.domain === 'department' && activeTarget.section === 'dossier-templates' ? (
@@ -580,7 +586,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
             onOpenCommand={() => setCommandOpen(true)}
             onRefreshData={() => {
               if (scopes.includes('PCN')) void pcn.load(true);
-              if (scopes.includes('PGD')) void pgd.load(true);
+              if (canAccessPgdData) void pgd.load(true);
               void refreshPgdcnNotifications();
               toast.success('Đã làm mới dữ liệu');
             }}
@@ -692,7 +698,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
                 type="button"
                 onClick={() => {
                   if (scopes.includes('PCN')) void pcn.load(true);
-                  if (scopes.includes('PGD')) void pgd.load(true);
+                  if (canAccessPgdData) void pgd.load(true);
                   void refreshPgdcnNotifications();
                   toast.success('Đã làm mới dữ liệu');
                 }}
@@ -726,7 +732,7 @@ export default function PgdcnAppShell({ initialDomain = 'department', initialDep
             </div>
           </header>
           <PgdcnSidebar currentUser={currentUser} activeTarget={activeTarget} collapsed={collapsed} mobileOpen={mobileOpen} onToggle={() => setCollapsed((value) => !value)} onNavigate={navigate} onCloseMobile={() => setMobileOpen(false)} onOpenPersonalSettings={() => setPersonalSettingsOpen(true)} onLogout={handleLogout} />
-          <PgdcnDashboardView scopes={scopes} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pcnWorkflowTasks={pcn.workflowTasks} pgdRequests={pgd.requests} pgdAssignments={pgd.assignments} pcnEvidenceActions={pcnEvidenceActions} currentUser={currentUser} notifications={notifications} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} onOpenNotifications={handleOpenNotifications} onSelectNotification={handleDashboardNotificationSelect} recentRecords={recentRecords} />
+          <PgdcnDashboardView scopes={scopes} pcnDossiers={pcn.dossiers} pcnProposals={pcn.proposals} pcnWorkflowTasks={pcn.workflowTasks} pgdRequests={pgd.requests} pgdAssignments={pgd.assignments} pgdUsers={pgd.users} onAssignPgdOwner={pgd.assignOwner} pcnEvidenceActions={pcnEvidenceActions} currentUser={currentUser} notifications={notifications} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} onOpenNotifications={handleOpenNotifications} onSelectNotification={handleDashboardNotificationSelect} recentRecords={recentRecords} />
         </div>
 
         <PgdcnCommandPalette open={false} scopes={scopes} records={commandRecords} onClose={() => setCommandOpen(false)} onNavigate={navigate} onOpenPcn={openPcnDossier} onOpenPgd={openPgdRequest} onOpenPcnWorkspace={openPcnWorkspace} onOpenPgdWorkspace={openPgdWorkspace} />

@@ -18,6 +18,8 @@ import type { PgdcnSavedFilterSnapshot } from '../utils/pgdcnSavedFilters';
 import type { SummaryGridColumn } from '../utils/summaryRegister';
 import PgdcnDossierSummaryGrid from './PgdcnDossierSummaryGrid';
 import { PgdcnPageHeader } from './PgdcnUiPrimitives';
+import { getPgdPostSignatureMutationDenial } from '../utils/pgdWorkflow';
+import PgdDossierAssignmentControl from './PgdDossierAssignmentControl';
 
 const PGD_PRODUCT_GROUP_LABELS: Record<PgdInspectionRequestInput['productGroup'], string> = {
   STEEL_METAL: 'Thép / kim loại',
@@ -38,6 +40,7 @@ type Props = {
   catalog: PgdCatalogItem[];
   users: PcnUserAccount[];
   currentUsername?: string | null;
+  currentUser?: PcnUserAccount | null;
   canEdit: boolean;
   onOpenRequest: (requestId: string) => void;
   onUpdateRequest: (requestId: string, patch: Partial<PgdInspectionRequestInput>) => Promise<PgdInspectionRequest>;
@@ -106,7 +109,7 @@ const columns: SummaryGridColumn[] = [
   { id: 'pricingBasis', label: 'Cơ sở báo giá', width: 140 },
   { id: 'pricingNote', label: 'Ghi chú báo giá', width: 200 },
   { id: 'targetDate', label: 'Hạn xử lý', width: 122, inputType: 'date', editable: true },
-  { id: 'ownerUsername', label: 'Chủ hồ sơ', width: 150, inputType: 'select', editable: true },
+  { id: 'ownerUsername', label: 'Chủ hồ sơ', width: 190 },
   { id: 'assignmentStatus', label: 'Phân công', width: 140 },
   { id: 'ownerAssignedAt', label: 'Ngày phân công', width: 145 },
   { id: 'sampleCount', label: 'Số mẫu', width: 80 },
@@ -156,12 +159,6 @@ const columns: SummaryGridColumn[] = [
   { id: 'updatedAt', label: 'Cập nhật cuối', width: 145 },
 ];
 
-function userOptions(users: PcnUserAccount[]) {
-  return users
-    .filter((user) => user.active && user.systemRole !== 'viewer' && user.role !== 'viewer' && (user.departmentScopes?.includes('PGD') || user.pgdRole))
-    .map((user) => ({ value: user.username, label: `${user.name || 'Người dùng hệ thống'} · ${user.username}` }));
-}
-
 export default function PgdSummaryRegisterView(props: Props) {
   const [group, setGroup] = useState<'ALL' | PgdInspectionRequestInput['productGroup']>('ALL');
   const [status, setStatus] = useState<'ALL' | PgdInspectionRequest['status']>('ALL');
@@ -180,8 +177,9 @@ export default function PgdSummaryRegisterView(props: Props) {
     documents: props.documents,
   }), [props.assignments, props.certificates, props.documents, props.labRequests, props.labResults, props.reports, props.requests, props.samples]);
   const ownerNames = useMemo(() => new Map(props.users.map((user) => [user.username, user.name || 'Người dùng hệ thống'])), [props.users]);
+  const requestsById = useMemo(() => new Map(props.requests.map((request) => [request.id, request])), [props.requests]);
   const rows = useMemo(() => rawRows.map((row) => ({ ...row, displayCells: { pgdGroupCode: row.cells.pgdGroupCode === 'QC20' ? PGD_GROUP_LABELS.QC20 : row.cells.pgdGroupCode, catalogItemId: getPgdCatalogItemLabel(row.cells.catalogItemId, props.catalog), ownerUsername: row.cells.ownerUsername ? ownerNames.get(String(row.cells.ownerUsername)) : undefined, sampledBy: row.cells.sampledBy ? String(row.cells.sampledBy).split('; ').map((username) => ownerNames.get(username) || username).join('; ') : undefined, completionPercent: row.cells.completionPercent === undefined ? undefined : String(row.cells.completionPercent)+'%', latestReportStatus: ({ DRAFT: 'Bản nháp', APPROVED: 'Đã duyệt', RETURNED: 'Trả lại' } as Record<string, string>)[String(row.cells.latestReportStatus)] || row.cells.latestReportStatus } })), [ownerNames, props.catalog, rawRows]);
-  const configuredColumns = useMemo(() => columns.map((column) => column.id === 'ownerUsername' ? { ...column, options: [{ value: '', label: 'Chưa phân công' }, ...userOptions(props.users)] } : column), [props.users]);
+  const configuredColumns = columns;
   const receivedYears = useMemo(() => getPgdSummaryReceivedAtYears(rows), [rows]);
   const filterRows = useMemo(() => (items: typeof rows) => filterPgdSummaryRegisterRows(items, { completion, receivedYear }).filter((row) => (group === 'ALL' || row.cells.productGroup === group) && (status === 'ALL' || row.cells.status === status) && (catalogItemId === 'ALL' || row.cells.catalogItemId === catalogItemId) && (ownerFilter === 'ALL' || (ownerFilter === 'ASSIGNED' ? Boolean(row.cells.ownerUsername) : !row.cells.ownerUsername))), [catalogItemId, completion, group, ownerFilter, receivedYear, status]);
 
@@ -191,12 +189,23 @@ export default function PgdSummaryRegisterView(props: Props) {
     const request = props.requests.find((item) => item.id === rowId);
     if (!request) throw new Error('Không tìm thấy hồ sơ PGD để cập nhật.');
     const update = getPgdSummaryCellUpdate(request, columnId, rawValue);
-    if (update.kind === 'owner') {
-      if (!update.ownerUsername) throw new Error('Sổ tổng hợp PGD yêu cầu chọn chủ hồ sơ cụ thể.');
-      await props.onAssignOwner(rowId, update.ownerUsername);
-      return;
-    }
+    if (update.kind === 'owner') throw new Error('Chủ hồ sơ phải được giao qua hộp xác nhận phân công.');
     await props.onUpdateRequest(rowId, update.patch as Partial<PgdInspectionRequestEditPatch>);
+  };
+
+  const renderCell = ({ row, column }: { row: { id: string }; column: SummaryGridColumn }) => {
+    if (column.id !== 'ownerUsername') return undefined;
+    const request = requestsById.get(row.id);
+    if (!request) return undefined;
+    return <PgdDossierAssignmentControl
+      requestId={request.id}
+      ownerUsername={request.ownerUsername}
+      users={props.users}
+      currentUser={props.currentUser}
+      onAssignOwner={props.onAssignOwner}
+      disabled={Boolean(getPgdPostSignatureMutationDenial(request.status))}
+      compact
+    />;
   };
 
   const filterControls = <>
@@ -208,5 +217,5 @@ export default function PgdSummaryRegisterView(props: Props) {
     <select aria-label="Lọc năm tiếp nhận Sổ tổng hợp PGD" value={receivedYear} onChange={(event) => setReceivedYear(event.target.value as PgdSummaryReceivedYearFilter)} className="pgdcn-toolbar-filter min-w-0 w-full min-h-11 sm:min-h-9 sm:h-9 sm:w-auto sm:min-w-[95px] rounded-lg border border-slate-200 bg-white px-3 py-2 sm:py-1 sm:px-2.5 text-xs font-medium text-slate-700 outline-none transition hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 cursor-pointer shadow-3xs"><option value="ALL">Tất cả năm tiếp nhận</option>{receivedYears.map((year) => <option key={year} value={year}>{year}</option>)}<option value="NO_DATE">Chưa có ngày tiếp nhận</option></select>
   </>;
 
-  return <div className="min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5"><PgdcnPageHeader eyebrow="Quản lý PGD" title="Sổ tổng hợp PGD" description="Mỗi dòng là một hồ sơ PGD, mỗi cột là một trường dữ liệu. Các ô được phép chỉnh sửa trực tiếp theo đúng ranh giới hồ sơ." /><div className="min-w-0 max-w-full"><p className="mb-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600 sm:hidden">Vuốt ngang để xem thêm cột. Cột đầu tiên và thao tác luôn được ghim.</p><PgdcnDossierSummaryGrid domain="PGD" columns={configuredColumns} rows={rows} currentUsername={props.currentUsername} canEdit={props.canEdit} filterRows={filterRows} filterControls={filterControls} onOpenRow={props.onOpenRequest} onCommitCell={commitCell} savedFilterState={savedFilterState} searchPlaceholder="Tìm mã PYC, số đăng ký, khách hàng, sản phẩm, chứng từ..." emptyTitle="Không có hồ sơ PGD phù hợp" emptyDescription="Hãy điều chỉnh từ khóa, nhóm sản phẩm hoặc trạng thái." /></div></div>;
+  return <div className="min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5"><PgdcnPageHeader eyebrow="Quản lý PGD" title="Sổ tổng hợp PGD" description="Mỗi dòng là một hồ sơ PGD, mỗi cột là một trường dữ liệu. Các ô được phép chỉnh sửa trực tiếp theo đúng ranh giới hồ sơ." /><div className="min-w-0 max-w-full"><p className="mb-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600 sm:hidden">Vuốt ngang để xem thêm cột. Cột đầu tiên và thao tác luôn được ghim.</p><PgdcnDossierSummaryGrid domain="PGD" columns={configuredColumns} rows={rows} currentUsername={props.currentUsername} canEdit={props.canEdit} filterRows={filterRows} filterControls={filterControls} onOpenRow={props.onOpenRequest} onCommitCell={commitCell} renderCell={renderCell} savedFilterState={savedFilterState} searchPlaceholder="Tìm mã PYC, số đăng ký, khách hàng, sản phẩm, chứng từ..." emptyTitle="Không có hồ sơ PGD phù hợp" emptyDescription="Hãy điều chỉnh từ khóa, nhóm sản phẩm hoặc trạng thái." /></div></div>;
 }
