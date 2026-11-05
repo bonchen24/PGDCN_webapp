@@ -310,7 +310,7 @@ export function PcnDossierFlow({ nodes, selectedNodeId, onSelectNode }: PcnDossi
           aria-labelledby={`pcn-dossier-stage-tab-${selectedStage.id}`}
           className="min-w-0"
         >
-          {selectedStage.nodes.length > 1 ? (
+          {selectedStage.id !== 'intake' && selectedStage.nodes.length > 1 ? (
             <div className="flex min-w-0 flex-wrap gap-1.5" role="group" aria-label={`Công việc thuộc giai đoạn ${selectedStage.label}`}>
               {selectedStage.nodes.map((node, index) => {
                 const isNodeSelected = selectedNode?.id === node.id;

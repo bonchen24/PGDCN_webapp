@@ -93,6 +93,10 @@ export interface PcnDossierNodeDocumentItem {
   currentVersionId?: string;
   actions: PcnDossierNodeDocumentAction[];
   waiverReason?: string;
+  sourceNodeId?: string;
+  sourceNodeLabel?: string;
+  sourceNodeEditable?: boolean;
+  sourceRequiresReworkOnMutation?: boolean;
 }
 
 export interface PcnDossierNodeWorkProjection {
@@ -118,6 +122,14 @@ export interface PcnDossierNodeWorkProjectionInput {
   documents?: readonly Pick<PcnDossierDocument, 'requirementId' | 'status' | 'lifecycleStatus' | 'currentVersionId'>[];
   documentWaivers?: Record<string, PcnDossierDocumentWaiver | undefined>;
   businessFacts?: readonly PcnDossierNodeBusinessFact[];
+}
+
+export interface PcnDossierStageWorkProjection {
+  documents: PcnDossierNodeDocumentItem[];
+  requiredMissingCount: number;
+  requiredPendingConfirmationCount: number;
+  blockingRequiredMissingCount: number;
+  blockingRequiredPendingConfirmationCount: number;
 }
 
 const ACTIVE_STATUSES = new Set<PcnWorkflowRuntimeNode['status']>(['READY', 'IN_PROGRESS', 'WAITING', 'RETURNED']);
@@ -261,4 +273,69 @@ export function buildPcnDossierNodeWorkProjection(input: PcnDossierNodeWorkProje
     isEditable: SELECTABLE_STATUSES.has(status),
     requiresReworkOnMutation: status === 'COMPLETED',
   };
+}
+
+/** Unions the document rows for one macro-stage while retaining each row's owning runtime node. */
+export function buildPcnDossierStageWorkProjection(input: {
+  nodes: readonly PcnWorkflowRuntimeNode[];
+  projections: Readonly<Record<string, PcnDossierNodeWorkProjection | undefined>>;
+  preferredNodeId?: string;
+}): PcnDossierStageWorkProjection | undefined {
+  const stageNodes = input.nodes.filter((node) => (
+    node.blockedReason !== 'CONDITION'
+    && node.status !== 'SKIPPED'
+    && node.status !== 'CANCELLED'
+    && Boolean(input.projections[node.id])
+  ));
+  if (stageNodes.length === 0) return undefined;
+
+  const documentByRequirementId = new Map<string, { item: PcnDossierNodeDocumentItem; score: number }>();
+  for (const node of stageNodes) {
+    const projection = input.projections[node.id];
+    if (!projection) continue;
+    const score = Number(node.isActive) * 4
+      + Number(node.id === input.preferredNodeId) * 2
+      + Number(projection.isEditable);
+    for (const item of projection.documents) {
+      const existing = documentByRequirementId.get(item.requirementId);
+      if (existing && existing.score >= score) continue;
+      documentByRequirementId.set(item.requirementId, {
+        score,
+        item: {
+          ...item,
+          sourceNodeId: node.id,
+          sourceNodeLabel: projection.nodeLabel,
+          sourceNodeEditable: projection.isEditable,
+          sourceRequiresReworkOnMutation: projection.requiresReworkOnMutation,
+        },
+      });
+    }
+  }
+
+  const documents = [...documentByRequirementId.values()].map(({ item }) => item);
+  const unresolved = (item: PcnDossierNodeDocumentItem) => item.required && !['PRESENT', 'CONFIRMED', 'WAIVED'].includes(item.status);
+  const isBlockingNode = (node: PcnWorkflowRuntimeNode) => node.isActive
+    && !['PREDECESSOR', 'CONDITION', 'JOIN_POLICY'].includes(node.blockedReason || '')
+    && (input.projections[node.id]?.unresolvedRequiredCount || 0) > 0;
+  const blockingNodeIds = new Set(stageNodes.filter(isBlockingNode).map((node) => node.id));
+  const unresolvedRequired = documents.filter(unresolved);
+  const blockingRequired = documents.filter((item) => unresolved(item) && blockingNodeIds.has(item.sourceNodeId || ''));
+
+  return {
+    documents,
+    requiredMissingCount: unresolvedRequired.filter((item) => item.status === 'MISSING').length,
+    requiredPendingConfirmationCount: unresolvedRequired.filter((item) => item.status === 'UPLOADED' || item.status === 'GENERATED').length,
+    blockingRequiredMissingCount: blockingRequired.filter((item) => item.status === 'MISSING').length,
+    blockingRequiredPendingConfirmationCount: blockingRequired.filter((item) => item.status === 'UPLOADED' || item.status === 'GENERATED').length,
+  };
+}
+
+export function getPcnDossierStageAssistantMessage(
+  stageLabel: string | undefined,
+  summary: Pick<PcnDossierStageWorkProjection, 'blockingRequiredMissingCount' | 'blockingRequiredPendingConfirmationCount'> | undefined,
+): string {
+  if (!stageLabel || !summary) return 'Chưa có bước hiện tại để kiểm tra tài liệu.';
+  if (summary.blockingRequiredMissingCount > 0) return `Thiếu tài liệu của bước đang chọn: ${summary.blockingRequiredMissingCount} mục.`;
+  if (summary.blockingRequiredPendingConfirmationCount > 0) return `Bước hiện tại có ${summary.blockingRequiredPendingConfirmationCount} tài liệu bắt buộc đang chờ xác nhận.`;
+  return 'Bước hiện tại chưa thiếu tài liệu bắt buộc.';
 }

@@ -1985,3 +1985,13 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
   - Tích hợp tệp phụ trợ / tệp đính kèm vào thẳng bảng tài liệu và hồ sơ liên quan; nút tệp phụ trợ mở modal tạo đầu mục tài liệu (nhập tiêu đề, mô tả, tải tệp tùy chọn).
   - Khung đọc tài liệu cột phải (Reader) đưa iframe/ảnh xem trước lên sát trên cùng, loại bỏ danh sách tệp thừa chiếm diện tích; chọn xem tệp từ bảng trái sẽ nạp ngay vào khung đọc.
   - Loại bỏ các khối trùng lặp phía dưới (Biểu mẫu nghiệp vụ, Bảng kiểm trực quan 7 bước) để người dùng tập trung 100% vào thanh quy trình 7 bước và bảng tài liệu trọng tâm.
+
+
+### 5A.44. Tài liệu theo giai đoạn PCN và số thiếu theo gate hiện tại — 2026-11-05
+
+- Khi một giai đoạn PCN có nhiều runtime node, bảng “Tài liệu và hồ sơ liên quan” hợp nhất các requirement áp dụng cho những node trong giai đoạn đó. Khử trùng theo `requirementId`, đồng thời giữ `sourceNodeId`, nhãn node, quyền sửa và quy tắc rà soát lại ở từng dòng để upload, soạn thảo và thao tác tiếp tục đi đúng ngữ cảnh workflow. Tiến độ hiển thị cạnh bảng đếm cùng tập dòng đã hợp nhất; điều kiện hoàn tất vẫn dùng gate của node đang xử lý.
+- Không tạo tab con “Đề nghị” / “Thương mại” trong giai đoạn tiếp nhận; cả hai node, mã runtime, callback, tác vụ, trạng thái và gate vẫn tồn tại. Loại khỏi bảng các node không áp dụng do điều kiện, đã bỏ qua hoặc đã hủy. Giai đoạn chỉ có một node giữ cách hiển thị hiện tại.
+- Bộ đếm của trợ lý hồ sơ lấy từ projection của giai đoạn đang chọn và các node runtime đang hoạt động tại gate đó. Mục bắt buộc `MISSING` là thiếu; `UPLOADED` / `GENERATED` đang chờ xác nhận; `PRESENT`, `CONFIRMED` và `WAIVED` đã xử lý; tài liệu tùy chọn và nhánh không thỏa điều kiện không làm tăng số thiếu bắt buộc. Khi không có giai đoạn hiện tại, không khẳng định có mục đang chặn.
+- Mọi số đếm lấy từ inspection toàn hồ sơ phải ghi rõ “toàn bộ hồ sơ”; không dùng số toàn hồ sơ để mô tả điều kiện hoàn tất bước đang chọn. Bản thân nội dung trợ lý không thay đổi stage gate hay điều kiện nghiệp vụ.
+- Nút CTA và nút thao tác icon trên desktop dùng chiều cao khoảng 32–36px, chữ tối thiểu 11–12px; trên mobile giữ vùng chạm tối thiểu 44px. Nút icon có nhãn truy cập theo đúng tài liệu, focus nhìn thấy, trạng thái disabled/loading rõ ràng. Menu phụ chỉ hiện khi có ít nhất một thao tác khả dụng. Khi tài liệu chưa có và có template hợp lệ, soạn thảo là hành động chính; upload là phương án dự phòng khi không có template.
+- Giữ nguyên API, schema, RBAC, mã workflow, gate, upload bản chính, tệp phụ trợ, gán chủ hồ sơ và reader riêng tư. Các thay đổi chỉ tổ chức projection và affordance của giao diện.
