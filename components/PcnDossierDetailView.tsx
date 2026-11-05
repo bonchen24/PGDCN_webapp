@@ -7,12 +7,12 @@ import { toast } from 'sonner';
 import type { ActivityLog, CertificationDossier, CertificationProposal, IssuancePackage, OutboundLabRequest, PcnApprovalStep, PcnCertificationField, PcnCertificationMethod, PcnDocumentRequirement, PcnDossierAttachment, PcnDossierDocument, PcnDossierStatus, PcnDossierWorkflowTask, PcnGeneratedDocument, PcnGeneratedDocumentFormat, PcnGeneratedDocumentKind, PcnOfficialGeneratedDocument, PcnOperationalFormKind, PcnSampleHandoverDetails, PcnSampleItem, PcnSampleLot, PcnSampleRoute, PcnTemplateDefinition, PcnUserAccount, ReturnedTestResult, UserAccount } from '../types';
 import { activityActionLabels, activityEntityLabels } from '../utils/activityLog';
 import { getPcnFileUrl } from '../utils/pcnFileApi';
+import { getPcnFilePreviewKind } from '../utils/pcnFilePreview';
 import { getPcnDossierCustomerSnapshot } from '../utils/pcnDossierPolicy';
 import { buildPcnDossierCompleteness, buildPcnDossierStationChecklist, getPcnDossierStationScore, getPcnPipelineStation, getPcnPipelineStationByKey, type PcnPipelineStationKey } from '../utils/pcnDossierPipeline';
 import { getPcnDossierStationGenerationKind, getPcnDossierStationTab, type PcnDossierDetailTab } from '../utils/pcnDossierNavigation';
 import { buildPcnNodeDraftingRoute } from '../utils/draftingNavigation';
 import { buildPcnDossierInspection, getPcnDossierInspectionStatusLabel } from '../utils/pcnDossierInspection';
-import { buildPcnDossierPackageSummary, type PcnDossierPackageSummary } from '../utils/pcnDossierPackage';
 import { getPcnDossierRequirementsWithCustom } from '../utils/pcnDossierDocuments';
 import { getPcnWorkflowResultOutcome } from '../utils/pcnWorkflowRuntime';
 import { getPcnActorDisplayName, getPcnUserDisplayName, PCN_NEUTRAL_USER_LABEL } from '../utils/pcnUserIdentity';
@@ -45,6 +45,114 @@ import type { PcnDossierNodeBusinessFact } from '../utils/pcnDossierNodeWork';
 import PcnCatalogCombobox, { type PcnCatalogOption } from './PcnCatalogCombobox';
 import PcnDossierAssignmentControl from './PcnDossierAssignmentControl';
 import PcnDossierBusinessWorkspace from './PcnDossierBusinessWorkspace';
+
+type PcnDossierReaderFile = {
+  id: string;
+  assetId: string;
+  fileName: string;
+  mimeType?: string;
+  uploadedAt: string;
+  sourceLabel: string;
+};
+
+function PcnDossierDocumentReader({
+  dossierId,
+  documents,
+  attachments,
+}: {
+  dossierId: string;
+  documents: PcnDossierDocument[];
+  attachments: PcnDossierAttachment[];
+}) {
+  const files: PcnDossierReaderFile[] = [
+    ...documents
+      .filter((document) => document.dossierId === dossierId)
+      .flatMap((document) => {
+        const versions = document.currentVersionId
+          ? [
+              ...document.versions.filter((version) => version.assetId === document.currentVersionId),
+              ...document.versions.filter((version) => version.assetId !== document.currentVersionId),
+            ]
+          : document.versions;
+        return versions.map((version) => ({
+          id: `document:${document.id}:${version.assetId}`,
+          assetId: version.assetId,
+          fileName: version.fileName || document.title || `Tài liệu ${document.requirementId}`,
+          mimeType: version.mimeType,
+          uploadedAt: version.uploadedAt,
+          sourceLabel: document.title || 'Tài liệu hồ sơ',
+        }));
+      }),
+    ...attachments
+      .filter((attachment) => attachment.dossierId === dossierId)
+      .map((attachment) => ({
+        id: `attachment:${attachment.id}`,
+        assetId: attachment.assetId,
+        fileName: attachment.fileName,
+        mimeType: attachment.mimeType,
+        uploadedAt: attachment.importedAt,
+        sourceLabel: 'Tệp đính kèm',
+      })),
+  ];
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const selectedFile = files.find((file) => file.id === selectedFileId) || files[0];
+  const previewKind = selectedFile ? getPcnFilePreviewKind(selectedFile.mimeType, selectedFile.fileName) : undefined;
+  const fileUrl = selectedFile ? getPcnFileUrl(selectedFile.assetId) : undefined;
+
+  return (
+    <section data-testid="pcn-dossier-document-reader" aria-labelledby="pcn-dossier-document-reader-title" className="flex min-h-[28rem] min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-3">
+      <header className="flex min-h-10 shrink-0 items-center justify-between gap-2 border-b border-slate-100 pb-2">
+        <h2 id="pcn-dossier-document-reader-title" className="text-sm font-black text-slate-900">Tài liệu hồ sơ</h2>
+        <span className="text-xs font-semibold text-slate-500">{files.length} tệp</span>
+      </header>
+
+      {files.length === 0 ? (
+        <p className="flex flex-1 items-center justify-center py-8 text-sm text-slate-500">Chưa có tài liệu để xem.</p>
+      ) : (
+        <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
+          <div className="max-h-36 shrink-0 space-y-1 overflow-y-auto" role="group" aria-label="Chọn tệp hồ sơ">
+            {files.map((file) => (
+              <button
+                key={file.id}
+                type="button"
+                aria-pressed={selectedFile?.id === file.id}
+                onClick={() => setSelectedFileId(file.id)}
+                className={`mobile-touch-target flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                  selectedFile?.id === file.id
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <FileText size={15} aria-hidden="true" className="shrink-0 text-emerald-700" />
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold" title={file.fileName}>{file.fileName}</span>
+                <span className="hidden shrink-0 text-[10px] text-slate-500 sm:inline">{file.sourceLabel}</span>
+              </button>
+            ))}
+          </div>
+
+          {selectedFile && fileUrl && previewKind ? (
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200">
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-2.5 py-2">
+                <p className="min-w-0 flex-1 truncate text-xs font-bold text-slate-800" title={selectedFile.fileName}>{selectedFile.fileName}</p>
+                <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                  <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="mobile-touch-target inline-flex min-h-10 items-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Mở tệp mới</a>
+                  <a href={getPcnFileUrl(selectedFile.assetId, { download: true })} download={selectedFile.fileName} className="mobile-touch-target inline-flex min-h-10 items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100">Tải xuống</a>
+                  {previewKind !== 'UNSUPPORTED' && <PcnFilePreviewButton version={{ assetId: selectedFile.assetId, fileName: selectedFile.fileName, mimeType: selectedFile.mimeType, uploadedAt: selectedFile.uploadedAt }} />}
+                </div>
+              </div>
+
+              <div className="min-h-[18rem] min-w-0 flex-1 overflow-auto bg-slate-100 p-2">
+                {previewKind === 'PDF' ? <iframe title={`Xem trước ${selectedFile.fileName}`} src={fileUrl} className="h-[62dvh] min-h-[18rem] w-full rounded-md border border-slate-200 bg-white" /> : null}
+                {previewKind === 'IMAGE' ? <div className="flex min-h-[18rem] items-center justify-center rounded-md bg-slate-900/5 p-2"><img src={fileUrl} alt={selectedFile.fileName} className="max-h-[62dvh] max-w-full object-contain" /></div> : null}
+                {previewKind === 'UNSUPPORTED' ? <div className="flex min-h-[18rem] flex-col items-center justify-center gap-2 px-4 text-center"><FileText size={28} aria-hidden="true" className="text-slate-400" /><p className="text-sm font-semibold text-slate-700">Định dạng này chưa hỗ trợ xem trực tiếp.</p><p className="text-xs text-slate-500">Mở tệp trong tab mới hoặc tải xuống để xem nội dung.</p></div> : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+    </section>
+  );
+}
 
 function pcnUserCatalogOption(user: PcnUserAccount, users: PcnUserAccount[]): PcnCatalogOption {
   return {
@@ -323,22 +431,6 @@ function DossierRegionSelector({ activeTab, missingRequiredCount, onChange }: { 
   return <div data-testid="pcn-dossier-mobile-region" className="sticky top-0 z-20 flex min-w-0 shrink-0 flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50/95 px-3 py-2 backdrop-blur sm:flex-nowrap"><label htmlFor="pcn-dossier-region" className="sr-only shrink-0 text-[11px] font-black uppercase tracking-wide text-slate-500 sm:not-sr-only">Khu vực hồ sơ</label><select id="pcn-dossier-region" aria-label="Khu vực hồ sơ" value={activeTab} onChange={(event) => onChange(event.target.value as DetailTab)} className="order-2 min-h-11 min-w-0 w-full flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] font-bold text-slate-700 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 sm:order-none sm:w-auto"><option value={activeTab}>{activeLabel}{activeTab === 'documents' && missingRequiredCount > 0 ? ` · ${missingRequiredCount} thiếu` : ''}</option>{selectableTabs.filter(({ key }) => key !== activeTab).map(({ key, label }) => <option key={key} value={key}>{label}{key === 'documents' && missingRequiredCount > 0 ? ` · ${missingRequiredCount} thiếu` : ''}</option>)}</select><button type="button" onClick={openDocumentCompletion} className="mobile-touch-target order-1 inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-black text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 sm:order-none sm:w-auto"><Upload size={13} /> Bổ sung tài liệu{missingRequiredCount > 0 ? ` · ${missingRequiredCount} thiếu` : null}</button><span className="hidden min-w-0 truncate text-[11px] text-slate-600 lg:inline">Dùng bản đồ quy trình phía trên để mở đúng bước tiếp theo.</span></div>;
 }
 
-function formatPackageBytes(value: number): string {
-  if (value < 1024) return `${value} B`;
-  const units = ['KB', 'MB', 'GB'];
-  let size = value;
-  let unitIndex = -1;
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex += 1;
-  }
-  return `${size.toFixed(size >= 10 ? 0 : 1)} ${units[unitIndex]}`;
-}
-
-function DossierPackageSummary({ summary }: { summary: PcnDossierPackageSummary }) {
-  return <details className="shrink-0 border-b border-slate-200 bg-white" data-testid="pcn-dossier-package-summary" data-disclosure="advanced"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[11px] font-black text-slate-700"><span className="inline-flex min-w-0 items-center gap-1.5"><PackageCheck size={14} className="shrink-0 text-emerald-600" /><span className="truncate">Danh sách bộ hồ sơ</span></span><span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-black text-slate-600">{summary.totalAssetCount} tệp</span></summary><div className="border-t border-slate-100 bg-slate-50/70 px-3 pb-3 pt-2"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] font-black text-slate-800">Tóm tắt thành phần</p><p className="text-[11px] text-slate-500">Dung lượng biết được: <b>{formatPackageBytes(summary.knownByteSize)}</b>{summary.unknownByteCount > 0 ? ` · ${summary.unknownByteCount} tệp chưa có thông tin dung lượng` : ''}</p></div><div className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">{summary.groups.map((group) => <div key={group.category} className="rounded-md border border-slate-200 bg-white px-2.5 py-2"><div className="flex items-center justify-between gap-2"><span className="min-w-0 truncate text-[11px] font-bold text-slate-600">{group.label}</span><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-black ${group.assetCount > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>{group.assetCount}</span></div><p className="mt-1 text-[11px] text-slate-600">{group.assetCount === 0 ? 'Chưa có tệp' : `${formatPackageBytes(group.knownByteSize)} đã biết${group.unknownByteCount > 0 ? ` · ${group.unknownByteCount} chưa rõ` : ''}`}</p></div>)}</div><p className="mt-2 text-[11px] leading-4 text-slate-500">Bảng này chỉ là bản tổng hợp từ dữ liệu hiện tại. Khi tải ZIP, hệ thống sẽ dựng lại danh sách và kiểm tra nguồn gốc, dung lượng và SHA-256 lần cuối.</p></div></details>;
-}
-
 type PcnDossierEditForm = {
   method: PcnCertificationMethod;
   ownerUsername: string;
@@ -516,14 +608,6 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
   const ownerAuthorityHint = canManageOwner
     ? 'Quản trị viên/Lãnh đạo có thể điều phối hoặc chuyển chủ hồ sơ trong phạm vi lĩnh vực.'
     : 'Nhân viên chỉ có thể tự nhận hồ sơ đang chưa có chủ; hồ sơ đã phân công là chỉ xem.';
-  const packageSummary = buildPcnDossierPackageSummary({
-    documents: dossierDocumentsForCompleteness,
-    attachments: dossierAttachmentsForPackage,
-    generatedDocuments: generatedDocuments.filter((document) => document.dossierId === dossier.id),
-    officialDocuments: officialDocuments.filter((document) => document.dossierId === dossier.id),
-    returnedResults: dossierResults,
-    issuancePackages: issuance ? [issuance] : [],
-  });
   const confirmGeneratedDocument = onConfirmGenerated || ((generated: PcnGeneratedDocument, requirement: PcnDocumentRequirement) => usePcnStore.getState().confirmGeneratedDocument(dossier.id, generated, requirement));
   const selectedHandoverRoute = handoverRouteId ? sampleRoutes.find((route) => route.id === handoverRouteId) : undefined;
   const selectedHandoverLot = selectedHandoverRoute ? sampleLots.find((lot) => lot.id === selectedHandoverRoute.sampleLotId && lot.dossierId === dossier.id) : undefined;
@@ -880,28 +964,30 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
 </header>{!workflowFirst && <DossierRegionSelector activeTab={activeTab} missingRequiredCount={missingRequiredCount} onChange={setActiveTab} />}<section aria-label="Nội dung hồ sơ PCN" className="mobile-scroll-y h-0 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pcn-dossier-focus-scroll p-3 md:p-4">
   {dossierOwnerAssignmentPanel}
   {/* Mobile Workspace Mode Switcher */}
-  <div className="flex lg:hidden items-center gap-1.5 mb-3 p-1 rounded-lg bg-slate-100 border border-slate-200">
+  <div role="group" aria-label="Chuyển chế độ xem hồ sơ" data-testid="pcn-dossier-mobile-switcher" className="mb-3 flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 p-1 lg:hidden">
     <button
       type="button"
       onClick={() => setMobileWorkspaceTab('main')}
-      className={`flex-1 py-1.5 px-3 rounded-md text-xs font-black transition ${
+      aria-pressed={mobileWorkspaceTab === 'main'}
+      className={`mobile-touch-target min-h-11 flex-1 rounded-md px-3 py-1.5 text-xs font-black transition ${
         mobileWorkspaceTab === 'main' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
       }`}
     >
-      Công việc & Checklist (Chính 65%)
+      Công việc
     </button>
     <button
       type="button"
       onClick={() => setMobileWorkspaceTab('auxiliary')}
-      className={`flex-1 py-1.5 px-3 rounded-md text-xs font-black transition ${
+      aria-pressed={mobileWorkspaceTab === 'auxiliary'}
+      className={`mobile-touch-target min-h-11 flex-1 rounded-md px-3 py-1.5 text-xs font-black transition ${
         mobileWorkspaceTab === 'auxiliary' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
       }`}
     >
-      Xem trước & Trợ lý (Phụ 35%)
+      Xem tài liệu
     </button>
   </div>
 
-  <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] xl:grid-cols-[68%_32%] gap-4">
+  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
     {/* Left Column (65-70%): Form inputs, step action panel (PcnDossierNodeWorkPanel), and document checklist table */}
     <div className={`min-w-0 flex flex-col gap-3 ${mobileWorkspaceTab === 'auxiliary' ? 'hidden lg:flex' : 'flex'}`}>
       {dossier.workflowSnapshot ? <PcnDossierWorkflowPanel
@@ -966,110 +1052,49 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
         </div>
       )}
 
+      <details data-testid="pcn-dossier-support" className="mt-3 rounded-xl border border-slate-200 bg-slate-50">
+        <summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-black text-slate-800">Thông tin hỗ trợ</summary>
+        <div className="space-y-3 border-t border-slate-200 p-3">
+          <section>
+            <h3 className="text-xs font-black text-slate-800">Căn cứ pháp lý & Quy chuẩn</h3>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-600">Lĩnh vực: <b className="font-mono">{dossier.fieldCodes?.join(', ') || 'QC4, QC9'}</b> · Phương thức: <b>{dossier.method || 'PT5'}</b>.</p>
+            <ul className="mt-1 list-inside list-disc space-y-1 text-[11px] text-slate-600">
+              <li>QCVN 04:2009/BKHCN & QCVN 09:2012/BKHCN</li>
+              <li>TCVN ISO/IEC 17065:2013 - Đánh giá sự phù hợp</li>
+              <li>Yêu cầu kiểm tra hiện trường, niêm phong mẫu và đối chiếu KQTN hợp lệ.</li>
+            </ul>
+          </section>
+          <section className="border-t border-slate-200 pt-3">
+            <h3 className="flex items-center gap-1.5 text-xs font-black text-slate-800"><Bot size={14} aria-hidden="true" className="text-indigo-600" /> Trợ lý hồ sơ</h3>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-600">{missingRequiredCount > 0 ? `Còn ${missingRequiredCount} tài liệu bắt buộc cần bổ sung trước khi hoàn tất bước.` : 'Hồ sơ đã đủ chứng từ đầu vào của bước hiện tại.'}</p>
+            {onOpenContextualAssistant ? <button type="button" onClick={() => onOpenContextualAssistant(dossier.id)} className="mobile-touch-target mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-md bg-indigo-600 px-3 text-xs font-bold text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"><Bot size={14} aria-hidden="true" /> Mở Trợ lý soát xét hồ sơ</button> : null}
+          </section>
+          <section className="border-t border-slate-200 pt-3">
+            <h3 className="flex items-center gap-1.5 text-xs font-black text-slate-800"><PackageCheck size={14} aria-hidden="true" className="text-slate-600" /> Lịch sử hoạt động</h3>
+            <div className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">
+              {activityLogs.filter((log) => !log.entityId || log.entityId === dossier.id || log.entityId === dossier.proposalId).slice(0, 6).map((log) => (
+                <div key={log.id} className="border-b border-slate-200 pb-1.5 text-[11px] last:border-0">
+                  <span className="font-bold text-slate-700">{activityActionLabels[log.action] || log.action}</span>
+                  <span className="ml-1 text-slate-400">· {formatDate(log.createdAt)}</span>
+                  <p className="truncate text-slate-500">{log.summary || log.actorUsername}</p>
+                </div>
+              ))}
+              {activityLogs.length === 0 ? <p className="text-[11px] italic text-slate-500">Chưa có nhật ký hoạt động gần đây.</p> : null}
+            </div>
+          </section>
+        </div>
+      </details>
       {/* Document checklist and tab content */}
       <div className="mt-2 border-t border-slate-200 pt-3">
         {!workflowFirst && tabContent}
       </div>
     </div>
 
-    {/* Right Column (30-35%): Document live preview, standards/legal guidelines, AI Assistant panel, activity history */}
-    <div className={`min-w-0 flex flex-col gap-3 border-l-0 lg:border-l lg:border-slate-200 lg:pl-4 ${mobileWorkspaceTab === 'main' ? 'hidden lg:flex' : 'flex'}`}>
-      {/* 1. Live preview & Package Summary */}
-      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <h3 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-            <Eye size={14} className="text-emerald-600" /> Xem trước & Hồ sơ
-          </h3>
-          <span className="text-[11px] font-bold text-slate-500">{packageSummary.totalAssetCount} tệp đính kèm</span>
-        </div>
-        <div className="mt-2">
-          <DossierPackageSummary summary={packageSummary} />
-          {dossierDocumentsForCompleteness.length > 0 && (
-            <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-col gap-1.5">
-              {dossierDocumentsForCompleteness.slice(0, 3).map((doc) => {
-                const latestVersion = doc.versions?.[doc.versions.length - 1];
-                if (!latestVersion) return null;
-                return (
-                  <a
-                    key={doc.id}
-                    href={getPcnFileUrl(latestVersion.assetId)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-200 rounded-md px-2.5 py-1.5 hover:bg-emerald-100 truncate max-w-full"
-                  >
-                    <FileText size={12} className="shrink-0" />
-                    <span className="truncate">{latestVersion.fileName || doc.title || 'Xem tệp đính kèm'}</span>
-                  </a>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* 2. Standards & Legal Guidelines */}
-      <section className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 shadow-xs">
-        <h3 className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-          <FileText size={14} className="text-emerald-700" /> Căn cứ pháp lý & Quy chuẩn
-        </h3>
-        <p className="mt-1 text-[11px] text-emerald-900 leading-relaxed">
-          Lĩnh vực: <b className="font-mono">{dossier.fieldCodes?.join(', ') || 'QC4, QC9'}</b> · Phương thức: <b>{dossier.method || 'PT5'}</b>.
-        </p>
-        <div className="mt-2 text-[11px] text-emerald-800 space-y-1">
-          <p>• QCVN 04:2009/BKHCN & QCVN 09:2012/BKHCN</p>
-          <p>• TCVN ISO/IEC 17065:2013 - Đánh giá sự phù hợp</p>
-          <p>• Yêu cầu kiểm tra hiện trường, niêm phong mẫu và đối chiếu KQTN hợp lệ.</p>
-        </div>
-      </section>
-
-      {/* 3. AI Assistant Panel */}
-      <section className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3 shadow-xs">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
-            <Bot size={14} className="text-indigo-600" /> Trợ lý AI TVCI
-          </h3>
-          <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">OCR & Soát xét</span>
-        </div>
-        <p className="mt-1.5 text-[11px] text-indigo-900 leading-relaxed">
-          {missingRequiredCount > 0
-            ? `Cảnh báo: Còn ${missingRequiredCount} tài liệu bắt buộc cần bổ sung trước khi hoàn tất bước.`
-            : 'Hồ sơ đã đầy đủ chứng từ đầu vào của bước. Sẵn sàng cho soát xét kỹ thuật.'}
-        </p>
-        {onOpenContextualAssistant && (
-          <button
-            type="button"
-            onClick={() => onOpenContextualAssistant(dossier.id)}
-            className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-black text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-          >
-            <Bot size={12} /> Mở Trợ lý soát xét hồ sơ
-          </button>
-        )}
-      </section>
-
-      {/* 4. Activity History & Audit */}
-      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-        <h3 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-          <PackageCheck size={14} className="text-slate-600" /> Lịch sử hoạt động
-        </h3>
-        <div className="mt-2 space-y-1.5 max-h-56 overflow-y-auto">
-          {activityLogs
-            .filter((log) => !log.entityId || log.entityId === dossier.id || log.entityId === dossier.proposalId)
-            .slice(0, 6)
-            .map((log) => (
-              <div key={log.id} className="text-[11px] border-b border-slate-100 pb-1.5 last:border-0">
-                <span className="font-bold text-slate-700">{activityActionLabels[log.action] || log.action}</span>
-                <span className="text-slate-400 ml-1">· {formatDate(log.createdAt)}</span>
-                <p className="text-slate-500 truncate">{log.summary || log.actorUsername}</p>
-              </div>
-            ))}
-          {activityLogs.length === 0 && (
-            <p className="text-[11px] text-slate-400 italic">Chưa có nhật ký hoạt động gần đây.</p>
-          )}
-        </div>
-      </section>
+    <div className={`min-w-0 border-l-0 lg:border-l lg:border-slate-200 lg:pl-4 ${mobileWorkspaceTab === 'main' ? 'hidden lg:block' : 'block'}`}>
+      <PcnDossierDocumentReader dossierId={dossier.id} documents={dossierDocuments} attachments={dossierAttachments} />
     </div>
   </div>
-  {auxiliaryModals}
+    {auxiliaryModals}
 </section>{!workflowFirst && <footer className="mobile-safe-bottom flex shrink-0 flex-col items-stretch justify-between gap-2 border-t border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:px-4">
 <span className="text-[11px] text-slate-600">Trạng thái tiếp theo</span>
 <div className="flex w-full min-w-0 flex-wrap justify-start gap-1.5 sm:w-auto sm:justify-end">{nextStatuses.length === 0 && !requiresIssuanceLifecycleAction && <span className="text-[11px] font-bold text-slate-500">Đã ở trạng thái cuối</span>}{nextStatuses.map((status) => <button key={status} disabled={isUpdating || Boolean(nextStatusDenials.get(status))} title={nextStatusDenials.get(status) || undefined} onClick={() => void changeStatus(status)} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">{getPcnDossierStatusLabel(status)}{nextStatusDenials.get(status) ? ' · Chưa đủ hồ sơ' : ''}</button>)}{requiresIssuanceLifecycleAction && <button type="button" onClick={() => setActiveTab('issuance')} className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[11px] font-black text-indigo-700 hover:bg-indigo-100">

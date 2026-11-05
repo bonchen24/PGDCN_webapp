@@ -105,11 +105,11 @@ Mỗi node là một **vùng thao tác và cổng bắt buộc**: người đư�
 
 #### 0.2.3. Flow native theo bước cho lưu trình hồ sơ PCN
 
-- Trang chi tiết hồ sơ **PCN** dùng flow native dẫn xuất từ `workflowSnapshot` và runtime projection của đúng hồ sơ; không render Archify reader hoặc danh sách trạm dọc làm bản đồ chính. Mỗi node active là một tab đánh số theo `sortOrder`, giữ stable node ID, loại node, nhãn, trạng thái, người phụ trách và requirement liên kết.
-- Rail flow hiển thị toàn chiều rộng theo chiều ngang. Tab có số thứ tự, nhãn loại (`FILE`, `ACTION`, `APPROVAL`, `DECISION`, `PARALLEL`, `END`), tên bước, tiến độ tài liệu và trạng thái bằng chữ. Node song song giữ thứ tự/cue nhánh và policy join từ snapshot, không được giả tạo một đường tuyến tính bằng vị trí hiển thị.
-- Chọn một tab chỉ mở vùng công việc của node đó: checklist tài liệu và business facts được chiếu từ `buildPcnDossierNodeWorkProjection`. Các hành động `Bắt đầu xử lý`, `Hoàn tất bước`, `Trả về`, upload, thay phiên bản, tạo/gắn tài liệu, `Tạo DOCX`, xem tài liệu và mở module nghiệp vụ tiếp tục đi qua callback, server boundary và RBAC hiện hành.
-- Type color và status color là hai token độc lập; mỗi tín hiệu màu phải đi cùng nhãn/icon, không dùng màu đơn độc. Node `LOCKED` giảm tương phản và không cho chọn; node active/completed được chọn. Không dùng animation trang trí, tôn trọng `prefers-reduced-motion`.
-- Mobile giữ cùng topology bằng `mobile-scroll-x` bên trong rail; panel công việc nằm dưới rail trong chuỗi `h-full`/`min-h-0` và cuộn dọc theo shell. Không tạo body-level horizontal overflow hoặc giao diện mobile thứ hai.
+- Trang chi tiết hồ sơ **PCN** dùng flow native dẫn xuất từ `workflowSnapshot` và runtime projection của đúng hồ sơ; không render Archify reader hoặc danh sách trạm dọc làm bản đồ chính. Bảy giai đoạn nghiệp vụ được chọn bằng các nút số nhỏ trong một thẻ **Bước xử lý**; nếu một giai đoạn có nhiều node thì chỉ hiện bộ chọn node của giai đoạn đó cùng panel công việc/checklist đang chọn.
+- Chọn giai đoạn hoặc node chỉ điều hướng vùng công việc, không tự đổi trạng thái hay ghi dữ liệu. Các hành động `Bắt đầu xử lý`, `Hoàn tất bước`, `Trả về`, upload, thay phiên bản, tạo/gắn tài liệu, `Tạo DOCX` và mở module nghiệp vụ tiếp tục đi qua callback, server boundary và RBAC hiện hành. Không lặp progress/context summary hoặc nhãn loại node trên rail.
+- Trên desktop, vùng công việc chiếm khoảng 60% và reader tài liệu chiếm khoảng 40%. Reader chọn file thật từ `dossierDocuments` và `dossierAttachments`; PDF/ảnh dùng URL tệp cùng origin đã xác thực để xem inline và phóng lớn. DOCX/định dạng chưa hỗ trợ chỉ có mở tab mới hoặc tải xuống, không gắn nhãn xem trước.
+- Mobile dùng chuyển chế độ **Công việc / Xem tài liệu**; mỗi chế độ chỉ hiện vùng tương ứng, không tạo body-level horizontal overflow. Trợ lý, lịch sử và hướng dẫn được thu gọn trong **Thông tin hỗ trợ**.
+- Nút giai đoạn giữ keyboard semantics, focus ring và touch target; không dùng animation trang trí, tôn trọng `prefers-reduced-motion`.
 - Query `node`/`tab` chỉ chọn điểm mở ban đầu; dashboard/queue chỉ là projection đọc nhanh. Không thay đổi schema, API, persistence, RBAC hay lifecycle trong đợt UI này.
 
 #### 0.2.4. Nguồn Đề nghị, soạn thảo theo Node và soát xét PCN
@@ -168,8 +168,8 @@ Mỗi node là một **vùng thao tác và cổng bắt buộc**: người đư�
   | **06** | `reporting-approval` | **Báo cáo & Phê duyệt** | Dự thảo Giấy chứng nhận (`certificate`), Dự thảo Quyết định (`decision`), Phê duyệt lãnh đạo (`approval`) | `APPROVAL` |
   | **07** | `issuance-archive` | **Phát hành & Lưu trữ** | Bàn giao khách hàng (`deliver`), Đóng lưu trữ hồ sơ (`archive`) | `END` |
 - **Cơ chế hiển thị 2 cấp (Two-tier Flow Navigation)**:
-  - Cấp 1 (Main Rail): Thanh 7 tab (`01 → 07`) hiển thị tiến độ vĩ mô của bộ hồ sơ ("Đang ở giai đoạn X/7 · Y/7 giai đoạn đã xong").
-  - Cấp 2 (Stage Sub-tasks Bar): Khi chọn một giai đoạn, hiển thị danh mục các công việc con (`nodes`) của giai đoạn đó. Người dùng click chọn công việc để mở panel thao tác chuyên biệt (`PcnDossierNodeWorkPanel`).
+  - Cấp 1: Bảy nút giai đoạn nhỏ đánh số `01–07` nằm trong thẻ “Bước xử lý”; không lặp thanh tiến độ hoặc mô tả ngữ cảnh trên rail.
+  - Cấp 2: Chỉ khi giai đoạn đang chọn có nhiều node mới hiện bộ chọn node gọn; panel `PcnDossierNodeWorkPanel` hiển thị thao tác và checklist của node đang chọn trong cùng thẻ.
   - Dữ liệu snapshot, requirement, document và transition của 15 node runtime được bảo toàn 100%, không bị xáo trộn hoặc làm mất tính tương thích.
 - **Loại bỏ 100% giao diện dạng Thẻ (Card Grid)**:
   - Toàn bộ các bề mặt quản lý hồ sơ gồm Sổ đăng ký Đề nghị PCN (`PcnWorkspace`), Hàng đợi PCN (`PcnDossierQueueView`), Sổ đăng ký PYC PGD (`PgdWorkspace`), Hàng đợi PGD (`PgdDossierQueueView`) đã loại bỏ triệt để chế độ xem Card grid và các nút toggle `Dạng thẻ / Dạng bảng`.
@@ -1961,6 +1961,7 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
   - Trong lúc tải, hiển thị trạng thái chờ có thể truy cập bằng assistive technology; khi tải lỗi, hiển thị cảnh báo và hành động thử lại, không diễn giải lỗi thành “không có hồ sơ”.
   - Thử lại bằng bàn phím và cảm ứng; không thay đổi quyền, dữ liệu, luồng nghiệp vụ hoặc trạng thái hồ sơ.
 - **Chi tiết hồ sơ PCN (D10)**:
+  - Bố cục chi tiết dùng một thẻ “Bước xử lý” với bảy nút giai đoạn nhỏ; reader 40% bên phải chỉ phục vụ chọn/xem/tải file. Mobile chuyển giữa “Công việc” và “Xem tài liệu”; nội dung hỗ trợ mặc định thu gọn.
   - Số tài liệu thiếu trong tóm tắt ngữ cảnh là số toàn hồ sơ; checklist trực quan tổng cũng hiển thị số toàn hồ sơ. Khi tab “Tài liệu hồ sơ” đã mở checklist tổng, ẩn chip số toàn hồ sơ thứ hai trong tóm tắt header; vẫn giữ badge định tính, CTA bổ sung có số lượng và checklist.
   - Số ở checklist/summary của bước hiện hành là số thuộc phạm vi bước, không thay thế số toàn hồ sơ và không được hợp nhất với số tổng.
 - **Form tạo người dùng PCN (D12)**:
