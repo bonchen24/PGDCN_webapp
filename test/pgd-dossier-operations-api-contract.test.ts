@@ -179,3 +179,45 @@ const routeIntake = {
     customsDocuments: [{ document: 'Tờ khai hải quan', number: 'HQ-001' }],
   },
 };
+test('custom PGD checklist confirmation verifies the current file provenance before satisfying the gate', () => {
+  const api = read('utils/pgdApi.ts');
+  const store = read('store-pgd.ts');
+  const confirmRoute = read('app/api/pgd/requests/[requestId]/dossier-documents/confirm/route.ts');
+  assert.match(api, /confirmPgdDossierDocument/);
+  assert.match(store, /confirmDossierDocument/);
+  assert.match(confirmRoute, /requirePgdCollectionMutation/);
+  assert.match(confirmRoute, /assertPgdRequestStationMutationAllowed/);
+  assert.match(confirmRoute, /requirement\.customDefinition/);
+  assert.match(confirmRoute, /ORDER BY COALESCE\(\(data->>'version'\)::int, 0\) DESC/);
+  assert.match(confirmRoute, /source_collection/);
+  assert.match(confirmRoute, /source_document_id/);
+  assert.match(confirmRoute, /source_json_path/);
+  assert.match(confirmRoute, /sha256/);
+  assert.match(confirmRoute, /'CONFIRMED'/);
+  assert.match(confirmRoute, /requirement\.stageLabel/);
+});
+
+test('custom PGD upload and generated attachment preserve stage context in the audit log', () => {
+  const uploadRoute = read('app/api/pgd/requests/[requestId]/dossier-documents/route.ts');
+  const attachRoute = read('app/api/pgd/requests/[requestId]/dossier-documents/attach-generated/route.ts');
+  const confirmRoute = read('app/api/pgd/requests/[requestId]/dossier-documents/confirm/route.ts');
+  for (const route of [uploadRoute, attachRoute, confirmRoute]) {
+    assert.match(route, /workflowSnapshot\?\.stages/);
+    assert.match(route, /getPgdDossierRequirementStationKeyForSnapshot/);
+  }
+  for (const route of [uploadRoute, attachRoute]) {
+    assert.match(route, /requirement\.stageLabel/);
+    assert.match(route, /writePgdActivity/);
+  }
+});
+
+test('final PGD lab review persists conditional checklist applicability in the request snapshot', () => {
+  const reviewRoute = read('app/api/pgd/lab-result-reviews/route.ts');
+  const api = read('utils/pgdApi.ts');
+  const store = read('store-pgd.ts');
+  assert.match(reviewRoute, /applyPgdDossierConditionalRequirements/);
+  assert.match(reviewRoute, /dossierChecklist/);
+  assert.match(reviewRoute, /getDocumentPayload\(nextRequest\)/);
+  assert.match(api, /request: payload\.request as PgdInspectionRequest/);
+  assert.match(store, /if \(result\.request\) mergeRequest/);
+});

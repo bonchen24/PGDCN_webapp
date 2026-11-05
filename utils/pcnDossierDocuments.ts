@@ -8,8 +8,10 @@ import type {
   PcnGeneratedDocumentKind,
   PcnDraftFormKind,
   PcnHistoricalFileKind,
+  CertificationDossier,
 } from '../types.ts';
 import { PCN_CERTIFICATION_FIELD_CODES } from './pcnWorkflow.ts';
+import { evaluatePcnWorkflowCondition, type PcnWorkflowConditionContext } from './pcnWorkflowRuntime.ts';
 
 const INTAKE = ['INTAKE'] as const;
 const LAB = ['LAB_ROUTING'] as const;
@@ -147,8 +149,71 @@ export function getPcnDocumentRequirements(
     .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id));
 }
 
+export function getPcnDossierRequirementsWithCustom(
+  dossier: Pick<CertificationDossier, 'fieldCodes' | 'workflowSnapshot'>,
+  requirements: PcnDocumentRequirement[] = DEFAULT_PCN_DOCUMENT_REQUIREMENTS,
+  conditionContext: Pick<PcnWorkflowConditionContext, 'resultOutcome'> = {},
+): PcnDocumentRequirement[] {
+  const fieldCode = dossier.fieldCodes[0];
+  if (!fieldCode) return getPcnDocumentRequirements(dossier.fieldCodes, requirements);
+  const custom = (dossier.workflowSnapshot?.requirementDefinitions || [])
+    .filter((definition) => definition.domain === 'PCN')
+    .map((definition, index): PcnDocumentRequirement => {
+      const workflowStage = dossier.workflowSnapshot?.stages?.find((stage) => stage.requirementIds?.includes(definition.id));
+      const stageId = workflowStage?.id;
+      const stageMap: Record<string, { stages: PcnDocumentRequirement['stages']; stationKeys: PcnDocumentRequirement['stationKeys'] }> = {
+        'intake-documents': { stages: ['INTAKE'], stationKeys: ['INTAKE', 'DOCUMENTS'] },
+        'scope-assignment': { stages: ['INTAKE'], stationKeys: ['ASSIGNMENT', 'EVALUATION'] },
+        'onsite-assessment': { stages: ['INTAKE'], stationKeys: ['EVALUATION'] },
+        'testing-evidence': { stages: ['LAB_ROUTING', 'TECHNICAL_REVIEW'], stationKeys: ['SAMPLING_LAB', 'RESULTS'] },
+        'corrective-action': { stages: ['TECHNICAL_REVIEW'], stationKeys: ['CORRECTION'] },
+        'review-approval': { stages: ['TECHNICAL_REVIEW', 'ISSUANCE'], stationKeys: ['TECHNICAL_REVIEW', 'APPROVAL'] },
+        'issuance-archive': { stages: ['ISSUANCE', 'DELIVERY', 'ARCHIVE'], stationKeys: ['ISSUANCE', 'DELIVERY_ARCHIVE'] },
+      };
+      const mapped = stageMap[stageId || 'intake-documents'] || stageMap['intake-documents'];
+      return {
+        id: definition.id,
+        fieldCode,
+        code: definition.code,
+        name: definition.name,
+        ...(definition.description ? { description: definition.description } : {}),
+        stages: mapped.stages,
+        stationKeys: mapped.stationKeys,
+        required: definition.level === 'REQUIRED'
+          || (definition.level === 'CONDITIONAL' && Boolean(definition.condition) && evaluatePcnWorkflowCondition(definition.condition, conditionContext)),
+        active: true,
+        sortOrder: 10000 + index,
+        requirementLevel: definition.level,
+        requirementSource: definition.source === 'DRAFT_FROM_DOCX_TEMPLATE' ? 'UPLOAD_EXTERNAL' : definition.source,
+        ...(definition.condition ? { condition: definition.condition } : {}),
+        ownerRole: definition.ownerRole,
+        multiplicity: 'SINGLE',
+        ...(workflowStage ? { workflowStageId: workflowStage.id, workflowStageLabel: workflowStage.label } : {}),
+      };
+    });
+  const customIds = new Set(custom.map((item) => item.id));
+  const standard = getPcnDocumentRequirements(dossier.fieldCodes, requirements).filter((item) => !customIds.has(item.id));
+  return [...standard, ...custom];
+}
+
 export function buildPcnDossierDocumentId(dossierId: string, requirementId: string): string {
   return `dossier-document-${dossierId}-${requirementId}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+/** Legacy PRESENT records remain accepted; custom files require an explicit confirmation. */
+export function isPcnDossierDocumentLifecycleAccepted(
+  document?: Pick<PcnDossierDocument, 'status' | 'lifecycleStatus'>,
+): boolean {
+  return document?.status === 'PRESENT'
+    && (document.lifecycleStatus === undefined || document.lifecycleStatus === 'CONFIRMED');
+}
+
+export function isPcnDossierDocumentCurrentAndConfirmed(
+  document?: Pick<PcnDossierDocument, 'status' | 'lifecycleStatus' | 'currentVersionId' | 'versions'>,
+): boolean {
+  return isPcnDossierDocumentLifecycleAccepted(document)
+    && Boolean(document?.currentVersionId)
+    && Boolean(document?.versions.some((version) => version.assetId === document.currentVersionId));
 }
 
 /** Only generated forms with an unambiguous checklist counterpart may be confirmed. */

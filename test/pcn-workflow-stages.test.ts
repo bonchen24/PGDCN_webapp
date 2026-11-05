@@ -68,6 +68,64 @@ test('an incomplete stage blocks the next stage and reports unresolved documents
   assert.equal(canAdvancePcnDossierStage({ dossier, nextStatus: 'AWAITING_SAMPLING', requirements, documents: [presentProposal] }), false);
 });
 
+test('custom conditional requirements block only when their result condition applies', () => {
+  const conditionalDossier: CertificationDossier = {
+    ...dossier,
+    workflowSnapshot: {
+      templateCode: 'CONDITIONAL-DOCS',
+      templateVersion: 1,
+      nodes: [],
+      transitions: [],
+      capturedAt: '2026-10-10T00:00:00.000Z',
+      capturedBy: 'admin',
+      requirementDefinitions: [{
+        domain: 'PCN',
+        id: 'conditional-proof',
+        code: 'CONDITIONAL_PROOF',
+        name: 'Conditional evidence after a failed result',
+        level: 'CONDITIONAL',
+        condition: 'RESULT_FAILED',
+        source: 'UPLOAD_EXTERNAL',
+        ownerRole: 'CUSTOMER',
+        multiplicity: 'SINGLE',
+      }],
+    },
+  };
+  const baseRequirements = requirements.filter((item) => item.id === 'QC4-PROPOSAL');
+
+  const inapplicable = buildPcnDossierStageGate({
+    dossier: conditionalDossier,
+    requirements: baseRequirements,
+    documents: [presentProposal],
+  });
+  assert.equal(inapplicable.complete, true);
+
+  const applicable = buildPcnDossierStageGate({
+    dossier: conditionalDossier,
+    requirements: baseRequirements,
+    documents: [presentProposal],
+    resultOutcome: 'FAIL',
+  });
+  assert.equal(applicable.complete, false);
+  assert.deepEqual(applicable.missingRequirementIds, ['conditional-proof']);
+
+  const satisfied = buildPcnDossierStageGate({
+    dossier: conditionalDossier,
+    requirements: baseRequirements,
+    documents: [presentProposal, {
+      id: 'conditional-proof-document',
+      dossierId: dossier.id,
+      requirementId: 'conditional-proof',
+      fieldCode: 'QC4',
+      currentVersionId: 'conditional-proof-asset',
+      versions: [{ assetId: 'conditional-proof-asset', fileName: 'proof.pdf', uploadedAt: '2026-10-10T00:00:00.000Z' }],
+      status: 'PRESENT',
+    }],
+    resultOutcome: 'FAIL',
+  });
+  assert.equal(satisfied.complete, true);
+});
+
 test('a skipped required document only resolves the gate with a non-empty reason', () => {
   const gate = buildPcnDossierStageGate({
     dossier,

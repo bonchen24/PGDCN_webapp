@@ -99,6 +99,32 @@ test('valid waiver resolves a required missing document while optional gaps do n
   assert.equal(projection.unresolvedRequiredCount, 0);
 });
 
+test('uploaded required documents remain pending in node progress until confirmed', () => {
+  const uploadedDocument = {
+    ...document('req-uploaded', 'PRESENT'),
+    lifecycleStatus: 'UPLOADED' as const,
+    currentVersionId: 'asset-uploaded',
+    versions: [{ assetId: 'asset-uploaded', fileName: 'evidence.pdf', uploadedAt: '2026-10-10T00:00:00.000Z' }],
+  };
+  const projection = buildPcnDossierNodeWorkProjection({
+    node: node({ requirementIds: ['req-uploaded'] }),
+    runtimeNode: runtimeNode({ requirementIds: ['req-uploaded'] }),
+    requirements: [requirement('req-uploaded', 'CUSTOM_EVIDENCE', true)],
+    documents: [uploadedDocument],
+  });
+  const markup = renderToStaticMarkup(createElement(PcnDossierNodeWorkPanel, {
+    projection,
+    documents: [uploadedDocument],
+    canEdit: true,
+    onConfirmDocument: async () => undefined,
+  }));
+
+  assert.equal(projection.unresolvedRequiredCount, 1);
+  assert.match(markup, /data-testid="pcn-required-progress"[^>]*>[\s\S]*?0\/1/);
+  assert.match(markup, /Đã tải lên · chờ xác nhận/);
+  assert.match(markup, /Xác nhận tài liệu/);
+});
+
 test('incomplete business evidence blocks continuation and gives the matching action suggestion', () => {
   const projection = buildPcnDossierNodeWorkProjection({
     node: node({ requirementIds: [] }),

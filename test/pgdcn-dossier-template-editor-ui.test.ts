@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import PgdcnDossierTemplateEditor from '../components/PgdcnDossierTemplateEditor.tsx';
+import { toPcnDossierTemplateEditorModel } from '../utils/pgdcnDossierTemplate.ts';
+import type { PcnWorkflowTemplate } from '../types.ts';
 
 const editor = readFileSync(new URL('../components/PgdcnDossierTemplateEditor.tsx', import.meta.url), 'utf8');
 const canvas = readFileSync(new URL('../components/PgdcnDossierTemplateCanvas.tsx', import.meta.url), 'utf8');
 const inspector = readFileSync(new URL('../components/PgdcnDossierTemplateInspector.tsx', import.meta.url), 'utf8');
+const stageBuilder = readFileSync(new URL('../components/PgdcnDossierTemplateStageBuilder.tsx', import.meta.url), 'utf8');
 
 test('visual editor exposes palette, lane/column canvas and draft actions', () => {
   assert.match(editor, /data-testid="pgdcn-dossier-template-editor"/);
@@ -20,6 +26,101 @@ test('visual editor exposes palette, lane/column canvas and draft actions', () =
   assert.match(canvas, /useDroppable/);
   assert.match(canvas, /lane/);
   assert.match(canvas, /column/);
+});
+
+test('document-stage builder is the default view and keeps the graph behind Advanced', () => {
+  const template: PcnWorkflowTemplate = {
+    id: 'stage-view-template',
+    code: 'PCN-STAGE-VIEW',
+    name: 'Mẫu kiểm tra nhóm giai đoạn',
+    appliesTo: { fieldCodes: ['QC4'] },
+    version: 1,
+    status: 'DRAFT',
+    nodes: [
+      { id: 'start', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận', requirementIds: [], active: true, sortOrder: 10 },
+      { id: 'end', kind: 'END', label: 'Lưu trữ', requirementIds: [], active: true, sortOrder: 20 },
+    ],
+    transitions: [{ id: 'start-end', fromNodeId: 'start', toNodeId: 'end', condition: 'ALWAYS' }],
+    createdAt: '2026-09-06T00:00:00.000Z',
+    createdBy: 'admin',
+    updatedAt: '2026-09-06T00:00:00.000Z',
+    updatedBy: 'admin',
+  };
+  const markup = renderToStaticMarkup(createElement(PgdcnDossierTemplateEditor, {
+    model: toPcnDossierTemplateEditorModel(template),
+    requirements: [],
+    onChange: () => undefined,
+    onSaveDraft: async () => undefined,
+    canMutate: true,
+  }));
+
+  assert.match(markup, /data-testid="pgdcn-dossier-template-stage-builder"/);
+  assert.match(markup, /Tiếp nhận yêu cầu &amp; tài liệu khách hàng/);
+  assert.match(markup, /Hành động khắc phục/);
+  assert.match(markup, /Phát hành, bàn giao &amp; lưu trữ/);
+  assert.match(markup, /Mở nâng cao/);
+  assert.match(markup, /Tạo yêu cầu mới/);
+  assert.doesNotMatch(markup, /data-testid="pgdcn-dossier-template-canvas"/);
+  assert.match(stageBuilder, /renameRequirement/);
+  assert.match(stageBuilder, /moveRequirement/);
+  assert.match(stageBuilder, /editingRequirementId/);
+  assert.match(stageBuilder, /updateRequirementDefinition/);
+  assert.match(stageBuilder, /setRequirementDraft\(createRequirementDraft\(props\.model\.domain\)\)/);
+  assert.match(stageBuilder, /Mô tả<textarea/);
+  assert.match(stageBuilder, /aria-label=\{`Chuyển .* lên`\}/);
+  assert.match(stageBuilder, /aria-label=\{`Chuyển .* xuống`\}/);
+  assert.match(stageBuilder, /Gỡ yêu cầu/);
+  assert.doesNotMatch(stageBuilder, /option value="MULTIPLE"/);
+  assert.match(stageBuilder, /chỉ PGD/i);
+  assert.match(stageBuilder, /Đổi sang một tệp hiện hành/);
+  assert.match(stageBuilder, /PCN chưa hỗ trợ sinh từ DOCX liên kết/);
+});
+
+test('legacy PCN custom settings remain visible and offer a migration path in an editable revision', () => {
+  const requirement = {
+    domain: 'PCN' as const,
+    id: 'pcn-custom-legacy-options',
+    code: 'LEGACY_OPTIONS',
+    name: 'Yêu cầu cũ',
+    level: 'REQUIRED' as const,
+    source: 'DRAFT_FROM_DOCX_TEMPLATE' as const,
+    linkedDocxTemplateId: 'old-docx-template',
+    ownerRole: 'CERTIFICATION_EXPERT' as const,
+    multiplicity: 'MULTIPLE' as const,
+  };
+  const template: PcnWorkflowTemplate = {
+    id: 'legacy-template',
+    code: 'PCN-LEGACY',
+    name: 'Mẫu cũ',
+    appliesTo: { fieldCodes: ['QC4'] },
+    version: 1,
+    status: 'DRAFT',
+    stages: [{ id: 'intake-documents', label: 'Tiếp nhận', sortOrder: 10, requirementIds: [requirement.id] }],
+    requirementDefinitions: [requirement],
+    nodes: [
+      { id: 'intake', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận', requirementIds: [requirement.id], active: true, sortOrder: 10, stageId: 'intake-documents' },
+      { id: 'end', kind: 'END', label: 'Kết thúc', requirementIds: [], active: true, sortOrder: 20, stageId: 'issuance-archive' },
+    ],
+    transitions: [{ id: 'intake-end', fromNodeId: 'intake', toNodeId: 'end', condition: 'ALWAYS' }],
+    createdAt: '2026-11-02T00:00:00.000Z',
+    createdBy: 'admin',
+    updatedAt: '2026-11-02T00:00:00.000Z',
+    updatedBy: 'admin',
+  };
+  const markup = renderToStaticMarkup(createElement(PgdcnDossierTemplateEditor, {
+    model: toPcnDossierTemplateEditorModel(template),
+    requirements: [],
+    docxTemplates: [{ id: 'old-docx-template', label: 'Mẫu cũ' }],
+    onChange: () => undefined,
+    onSaveDraft: async () => undefined,
+    canMutate: true,
+  }));
+
+  assert.match(markup, /Cấu hình cũ: runtime chỉ giữ một tệp hiện hành/);
+  assert.match(markup, /PCN chưa hỗ trợ sinh từ DOCX liên kết/);
+  assert.match(markup, /Đổi sang một tệp hiện hành/);
+  assert.match(markup, /Đổi sang tải tệp bên ngoài/);
+  assert.doesNotMatch(markup, /option value="MULTIPLE"/);
 });
 
 test('inspector provides searchable checklist references and visual node actions', () => {

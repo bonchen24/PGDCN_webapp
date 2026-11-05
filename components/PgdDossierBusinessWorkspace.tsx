@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { PcnUserAccount } from '../types';
-import { getPgdDossierRequirementForTemplate, getPgdDossierRequirements, type PgdDossierDocument } from '../utils/pgdDossier';
+import { getCurrentPgdDossierDocuments, getPgdDossierRequirementForTemplate, getPgdDossierRequirementsWithCustom, type PgdDossierDocument, type PgdDossierRequirement } from '../utils/pgdDossier';
 import type { PgdInspectionRequest } from '../utils/pgdDomain';
 import { normalizePgdFieldSession } from '../utils/pgdWorkflow';
 import { buildPgdBusinessBlockers, buildPgdBusinessTimeline, buildPgdSampleEvidence, resolvePgdEvidenceNextAction } from '../utils/pgdBusinessWorkspace';
@@ -20,15 +20,21 @@ const PGD_EVIDENCE_GROUP_LABELS: Record<string, string> = {
   ARCHIVE: 'Lưu trữ',
 };
 
-function buildPgdEvidenceGroups(requirements: Array<{ code: string; group: string; title: string; required: boolean; description?: string }>, checklist: Array<{ requirementCode: string; status: string }>, documents: Array<{ requirementCode: string; fileName: string; documentNumber?: string; documentDate?: string }>, onOpenCurrentWork: () => void): DossierEvidenceGroup[] {
+function buildPgdEvidenceGroups(requirements: PgdDossierRequirement[], checklist: Array<{ requirementCode: string; status: string; required?: boolean; waiverReason?: string }>, documents: Array<{ requirementCode: string; fileName: string; documentNumber?: string; documentDate?: string }>, onOpenCurrentWork: () => void): DossierEvidenceGroup[] {
   const groups = new Map<string, DossierEvidenceGroup>();
   for (const requirement of requirements) {
     const checklistItem = checklist.find((item) => item.requirementCode === requirement.code);
     const document = documents.find((item) => item.requirementCode === requirement.code);
-    const present = Boolean(document) || checklistItem?.status === 'PRESENT';
-    const waived = checklistItem?.status === 'WAIVED';
-    const state = waived ? 'Được miễn' : present ? 'Có bản hiện hành' : requirement.required ? 'Thiếu bắt buộc' : 'Chưa có';
-    const stateTone = waived || present ? 'success' as const : requirement.required ? 'danger' as const : 'neutral' as const;
+    const required = checklistItem?.required ?? requirement.required;
+    const present = requirement.customDefinition
+      ? checklistItem?.status === 'PRESENT' || checklistItem?.status === 'CONFIRMED'
+      : checklistItem
+        ? checklistItem.status === 'PRESENT' || checklistItem.status === 'CONFIRMED'
+        : Boolean(document);
+    const waived = checklistItem?.status === 'WAIVED' && Boolean(checklistItem.waiverReason?.trim());
+    const pending = checklistItem?.status === 'UPLOADED' || checklistItem?.status === 'GENERATED';
+    const state = waived ? 'Được miễn' : present ? 'Có bản đã xác nhận' : pending ? checklistItem?.status === 'GENERATED' ? 'Đã sinh · chờ xác nhận' : 'Chờ xác nhận' : required ? 'Thiếu bắt buộc' : requirement.requirementLevel === 'CONDITIONAL' ? 'Điều kiện chưa áp dụng' : 'Chưa có';
+    const stateTone = waived || present ? 'success' as const : pending ? 'warning' as const : required ? 'danger' as const : 'neutral' as const;
     const group = groups.get(requirement.group) || { id: requirement.group.toLowerCase(), title: PGD_EVIDENCE_GROUP_LABELS[requirement.group] || requirement.group, actionLabel: 'Mở việc hiện tại', onAction: onOpenCurrentWork, rows: [] };
     group.rows.push({
       id: requirement.code,
@@ -36,7 +42,7 @@ function buildPgdEvidenceGroups(requirements: Array<{ code: string; group: strin
       title: requirement.title,
       state,
       stateTone,
-      meta: requirement.required ? 'Bắt buộc' : 'Không bắt buộc',
+      meta: [required ? 'Bắt buộc' : requirement.requirementLevel === 'CONDITIONAL' ? 'Có điều kiện' : 'Không bắt buộc', requirement.stageLabel ? `Giai đoạn: ${requirement.stageLabel}` : ''].filter(Boolean).join(' · '),
       detail: document ? [document.fileName, document.documentNumber ? 'Số ' + document.documentNumber : '', document.documentDate ? 'Ngày ' + document.documentDate : ''].filter(Boolean).join(' · ') : requirement.description || 'Chưa có tài liệu hiện hành.',
     });
     groups.set(requirement.group, group);
@@ -53,8 +59,8 @@ export type PgdDossierBusinessWorkspaceProps = {
 
 export function PgdDossierBusinessWorkspace({ request, onOpenCurrentWork, onOpenDrafting }: PgdDossierBusinessWorkspaceProps) {
   const pgd = usePgdStore();
-  const requirements = getPgdDossierRequirements(request.productGroup);
-  const dossierDocuments = pgd.dossierDocuments.filter((document) => document.requestId === request.id);
+  const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || []);
+  const dossierDocuments = getCurrentPgdDossierDocuments(pgd.dossierDocuments.filter((document) => document.requestId === request.id));
   const samples = pgd.samples.filter((sample) => sample.requestId === request.id);
   const labRequests = pgd.labRequests.filter((labRequest) => labRequest.requestId === request.id);
   const labResults = pgd.labResults.filter((labResult) => labResult.requestId === request.id);
@@ -65,8 +71,14 @@ export function PgdDossierBusinessWorkspace({ request, onOpenCurrentWork, onOpen
   const certificate = pgd.certificates.find((item) => item.requestId === request.id);
   const labResultReview = pgd.labResultReviews.find((item) => item.requestId === request.id);
   const checklist = request.dossierChecklist || [];
-  const presentRequirementCodes = new Set([...checklist.filter((item) => item.status === 'PRESENT' || item.status === 'WAIVED').map((item) => item.requirementCode), ...dossierDocuments.map((document) => document.requirementCode)]);
-  const missingRequired = requirements.filter((requirement) => requirement.required && !presentRequirementCodes.has(requirement.code));
+  const presentRequirementCodes = new Set(checklist.filter((item) => item.status === 'PRESENT' || item.status === 'CONFIRMED' || (item.status === 'WAIVED' && Boolean(item.waiverReason?.trim()))).map((item) => item.requirementCode));
+  for (const document of dossierDocuments) {
+    if (!requirements.find((requirement) => requirement.code === document.requirementCode)?.customDefinition) presentRequirementCodes.add(document.requirementCode);
+  }
+  const missingRequired = requirements.filter((requirement) => {
+    const checklistItem = checklist.find((item) => item.requirementCode === requirement.code);
+    return (checklistItem?.required ?? requirement.required) && !presentRequirementCodes.has(requirement.code);
+  });
   const sampleEvidence = buildPgdSampleEvidence({ request, inspectionPlans: pgd.inspectionPlans, fieldInspections, samples, labRequests, labResults });
   const businessFacts = { request, inspectionPlans: pgd.inspectionPlans, assignments: pgd.assignments, fieldInspections, caseEvents: pgd.caseEvents, fieldActivityLogs: pgd.fieldActivityLogs, samples, labRequests, labResults, labResultReview, report, certificate, approvals: pgd.approvals, missingRequiredCount: missingRequired.length };
   const evidenceBlockers = buildPgdBusinessBlockers(businessFacts);
@@ -120,7 +132,7 @@ export function PgdDossierBusinessWorkspace({ request, onOpenCurrentWork, onOpen
     description="PYC, phân công, nhiều phiên hiện trường, mẫu, PTN, KQTN, báo cáo và chứng thư được nhìn như một bộ hồ sơ điện tử có sự kiện."
     nextAction={{ title: evidenceNextAction.label, reason: evidenceNextAction.reason, owner, missing: evidenceNextAction.source === 'EVIDENCE' ? evidenceNextAction.reason : 'Chưa ghi nhận thiếu hụt cứng', actionLabel: 'Mở việc cần làm', onAction: onOpenCurrentWork }}
     metrics={[
-      { id: 'pgd-documents', label: 'Tài liệu bắt buộc', value: presentRequirementCodes.size + '/' + requirements.filter((item) => item.required).length, tone: missingRequired.length > 0 ? 'warning' : 'success' },
+      { id: 'pgd-documents', label: 'Tài liệu bắt buộc', value: requirements.filter((requirement) => { const checklistItem = checklist.find((item) => item.requirementCode === requirement.code); return checklistItem?.required ?? requirement.required; }).length - missingRequired.length + '/' + requirements.filter((requirement) => { const checklistItem = checklist.find((item) => item.requirementCode === requirement.code); return checklistItem?.required ?? requirement.required; }).length, tone: missingRequired.length > 0 ? 'warning' : 'success' },
       { id: 'pgd-sessions', label: 'Phiên hiện trường', value: fieldInspections.length, tone: fieldInspections.some((item) => item.status === 'COMPLETED' || item.completed) ? 'success' : fieldInspections.length > 0 ? 'warning' : 'neutral' },
       { id: 'pgd-samples', label: 'Mẫu', value: samples.length, tone: samples.length > 0 ? 'info' : 'neutral' },
       { id: 'pgd-lab-results', label: 'KQTN', value: labResults.length, tone: labResults.length > 0 ? 'success' : 'neutral' },

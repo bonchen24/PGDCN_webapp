@@ -12,11 +12,16 @@ test('dossier detail exposes a compact context summary before secondary content'
   assert.match(detailSource, /missingRequiredCount > 0/);
 });
 
-test('workflow-first detail renders the 7-stage flow prominently at top without collapsed disclosure', () => {
+test('dossier checklist displays the template stage for custom requirements', () => {
+  assert.match(detailSource, /workflowStageLabel \? ` · Nhóm mẫu:/);
+});
+
+test('workflow-first detail keeps the current work ahead of the collapsed step flow', () => {
+  assert.match(workflowSource, /data-testid="pcn-current-step-summary"/);
+  assert.match(workflowSource, /Bước cần xử lý/);
   assert.match(workflowSource, /data-testid="pcn-workflow-map"/);
   assert.match(workflowSource, /PcnDossierFlow/);
-  assert.doesNotMatch(workflowSource, /data-testid="pcn-current-step-summary"/);
-  assert.doesNotMatch(workflowSource, /data-testid="pcn-workflow-map-disclosure"/);
+  assert.match(workflowSource, /data-testid="pcn-workflow-map-disclosure"/);
 });
 
 test('detail primary work region uses action-first language', () => {

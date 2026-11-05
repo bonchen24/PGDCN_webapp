@@ -5,9 +5,11 @@ import {
   confirmPgdDraftTitleDiscard,
   requirePgdDraftSaveContext,
 } from '../components/PgdDraftingWorkspaceView.tsx';
-import { getPgdDossierRequirements } from '../utils/pgdDossier.ts';
-import { getPgdDocumentTemplates } from '../utils/pgdDocumentTemplates.ts';
+import { getPgdDossierRequirements, getPgdDossierRequirementsWithCustom } from '../utils/pgdDossier.ts';
+import { getPgdDocumentTemplates, type PgdDocumentTemplate } from '../utils/pgdDocumentTemplates.ts';
+import type { DossierTemplateRequirementDefinition } from '../types.ts';
 import type { PgdGeneratedDocument, PgdInspectionRequest } from '../utils/pgdDomain.ts';
+import * as pgdDrafting from '../utils/pgdDrafting.ts';
 import {
   getPgdDocumentsForRequirement,
   getPgdDocumentRequirementCode,
@@ -70,6 +72,30 @@ test('PGD drafting resolver follows the selected requirement and its mapped temp
   assert.equal(resolved.activeRequirement?.code, 'FIELD_INSPECTION_MINUTES');
   assert.equal(resolved.selectedTemplate?.kind, 'FIELD_INSPECTION');
   assert.equal(resolved.invalidDeepContext, false);
+});
+
+test('PGD custom DOCX requirement resolves its linked template for the dossier checklist action', () => {
+  const templates = getPgdDocumentTemplates().filter((template) => template.active && template.productGroups.includes(request.productGroup));
+  const linkedTemplate = templates[0];
+  assert.ok(linkedTemplate);
+  const definition: DossierTemplateRequirementDefinition = {
+    domain: 'PGD',
+    id: 'pgd-custom-docx-link-01',
+    code: 'CUSTOM_DOCX_FORM',
+    name: 'Biểu mẫu DOCX riêng',
+    level: 'REQUIRED',
+    source: 'DRAFT_FROM_DOCX_TEMPLATE',
+    ownerRole: 'PGD_DOCUMENT_CLERK',
+    multiplicity: 'SINGLE',
+    linkedDocxTemplateId: linkedTemplate.id,
+  };
+  const requirement = getPgdDossierRequirementsWithCustom(request.productGroup, [definition]).find((item) => item.code === definition.id)!;
+  const selectTemplate = (pgdDrafting as unknown as {
+    getPgdDocumentTemplateForRequirement?: (item: typeof requirement, catalog: PgdDocumentTemplate[], productGroup: PgdInspectionRequest['productGroup']) => PgdDocumentTemplate | undefined;
+  }).getPgdDocumentTemplateForRequirement;
+  const selected = selectTemplate?.(requirement, templates, request.productGroup);
+
+  assert.equal(selected?.id, linkedTemplate.id);
 });
 
 test('PGD draft save context throws a specific validation error for each missing dependency', () => {

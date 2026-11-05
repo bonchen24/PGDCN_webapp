@@ -56,7 +56,7 @@ import { createPcnWorkflowRevision, createPcnWorkflowTemplate, fetchPcnWorkflowT
 import { completePcnWorkflowTask, returnPcnWorkflowTask, startPcnWorkflowTask } from './utils/pcnWorkflowTaskApi';
 import { updatePcnProposal, type PcnProposalUpdateInput } from './utils/pcnProposalApi';
 import { deletePcnDossier, updatePcnDossier, type PcnDossierUpdateInput } from './utils/pcnDossierApi';
-import { confirmPcnGeneratedDocumentIntoChecklist, generateAndAttachPcnDossierNodeDocument, removeCurrentPcnDossierDocument, uploadPcnDossierDocument, waivePcnDossierDocument } from './utils/pcnDossierDocumentApi';
+import { confirmPcnDossierDocument, confirmPcnGeneratedDocumentIntoChecklist, generateAndAttachPcnDossierNodeDocument, removeCurrentPcnDossierDocument, uploadPcnDossierDocument, waivePcnDossierDocument } from './utils/pcnDossierDocumentApi';
 import { generatePcnDossierDocuments, preflightPcnDossierDocuments } from './utils/pcnDocumentGenerationApi';
 import type { PcnDossierDocumentContext } from './utils/pcnDocumentGeneration';
 import { createPcnSampleLot as createPcnSampleLotApi, updatePcnSampleRoute as updatePcnSampleRouteApi } from './utils/pcnSampleApi';
@@ -64,7 +64,8 @@ import { createPcnLabRequest as createPcnLabRequestApi, dispatchPcnLabRequest, r
 import { retryPcnSampleRequestBundleDispatch, savePcnSampleRequestBundle, sendPcnSampleRequestBundle, type PcnSampleRequestBundleMutationResponse } from './utils/pcnSampleRequestBundleApi';
 import { createPcnSignerDelegation, fetchPcnSignerDelegations, issuePcnIssuance, revokePcnSignerDelegation, type PcnSignerDelegationInput } from './utils/pcnSignerDelegationApi';
 import { assertPcnSignerAuthorized } from './utils/pcnSignerAuthorization';
-import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, mergePcnDocumentRequirements } from './utils/pcnDossierDocuments';
+import { DEFAULT_PCN_DOCUMENT_REQUIREMENTS, getPcnDossierRequirementsWithCustom, mergePcnDocumentRequirements } from './utils/pcnDossierDocuments';
+import { getPcnWorkflowResultOutcome } from './utils/pcnWorkflowRuntime';
 import { createPcnUser, deletePcnUser as deletePcnUserApi, fetchPcnDepartmentRoles, fetchPcnUsers, resetPcnUserPassword, updatePcnUser, type PcnDepartmentRole, type PcnUserInput } from './utils/pcnUserApi';
 import { buildPcnQualityDocument } from './utils/pcnQualityDocuments';
 import { attachPcnQualityDocumentFile, createPcnQualityDocument, updatePcnQualityDocument } from './utils/pcnQualityDocumentApi';
@@ -128,6 +129,7 @@ interface PcnStoreState {
   completeWorkflowTask: (dossierId: string, taskId: string, expectedCycleNo?: number) => Promise<void>;
   returnWorkflowTask: (dossierId: string, taskId: string, input: { targetNodeId: string; reason: string }) => Promise<void>;
   uploadDossierDocument: (dossierId: string, requirementId: string, file: File) => Promise<void>;
+  confirmDossierDocument: (dossierId: string, requirementId: string) => Promise<void>;
   waiveDossierDocument: (dossierId: string, requirementId: string, reason: string) => Promise<void>;
   removeCurrentDossierDocument: (dossierId: string, requirementId: string) => Promise<void>;
   generateAndAttachDossierNodeDocument: (dossierId: string, nodeId: string, requirementId: string) => Promise<void>;
@@ -808,7 +810,8 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
     assertPcnStoreMutationAllowed();
     const dossier = get().dossiers.find((item) => item.id === dossierId);
     if (!dossier) throw new Error('Không tìm thấy hồ sơ chứng nhận');
-    const requirement = get().documentRequirements.find((item) => item.id === requirementId);
+    const resultOutcome = getPcnWorkflowResultOutcome(get().returnedResults.filter((result) => result.dossierId === dossierId));
+    const requirement = getPcnDossierRequirementsWithCustom(dossier, get().documentRequirements, { resultOutcome }).find((item) => item.id === requirementId);
     if (!requirement || !dossier.fieldCodes.includes(requirement.fieldCode)) throw new Error('Loại tài liệu không thuộc Lĩnh vực của hồ sơ');
     if (typeof File === 'undefined' || !(file instanceof File) || file.size <= 0) throw new Error('Tệp hồ sơ không hợp lệ');
     const currentUser = usePcnSessionStore.getState().currentUser;
@@ -824,6 +827,16 @@ export const usePcnStore = create<PcnStoreState>((set, get) => ({
       ...(result.dossier ? { dossiers: state.dossiers.map((item) => item.id === result.dossier?.id ? result.dossier! : item) } : {}),
       ...(result.workflowTasks?.length ? { workflowTasks: mergeManyById(state.workflowTasks, result.workflowTasks) } : {}),
       ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs] } : {}),
+    }));
+  },
+
+  confirmDossierDocument: async (dossierId, requirementId) => {
+    assertPcnStoreMutationAllowed();
+    const result = await confirmPcnDossierDocument({ dossierId, requirementId });
+    set((state) => ({
+      ...(result.document ? { dossierDocuments: [result.document, ...state.dossierDocuments.filter((item) => item.id !== result.document?.id)] } : {}),
+      ...(result.dossier ? { dossiers: state.dossiers.map((item) => item.id === result.dossier?.id ? result.dossier! : item) } : {}),
+      ...(result.activityLog ? { activityLogs: [result.activityLog, ...state.activityLogs.filter((item) => item.id !== result.activityLog?.id)] } : {}),
     }));
   },
 

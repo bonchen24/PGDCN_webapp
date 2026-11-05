@@ -470,6 +470,36 @@ export interface PcnWorkflowTemplateAppliesTo {
   dossierType?: string;
 }
 
+/** Display grouping used by the dossier-template builder; it never defines execution order. */
+export interface DossierTemplateStageDefinition {
+  id: string;
+  label: string;
+  description?: string;
+  sortOrder: number;
+  requirementIds?: string[];
+}
+
+export type DossierTemplateRequirementLevel = 'REQUIRED' | 'OPTIONAL' | 'CONDITIONAL';
+export type DossierTemplateRequirementSource = 'UPLOAD_EXTERNAL' | 'DRAFT_FROM_DOCX_TEMPLATE' | 'BUSINESS_MODULE_LINK';
+export type DossierTemplateRequirementCondition = 'RESULT_FAILED' | 'RESULT_PASSED';
+export type DossierTemplateRequirementMultiplicity = 'SINGLE' | 'MULTIPLE';
+
+/** Requirement policy stored with a template revision; it never contains dossier file bytes. */
+export interface DossierTemplateRequirementDefinition {
+  domain: 'PCN' | 'PGD';
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  level: DossierTemplateRequirementLevel;
+  source: DossierTemplateRequirementSource;
+  condition?: DossierTemplateRequirementCondition;
+  ownerRole: PcnDepartmentRoleCode | PgdDepartmentRoleCode | 'CUSTOMER';
+  multiplicity: DossierTemplateRequirementMultiplicity;
+  linkedDocxTemplateId?: string;
+  businessModuleKey?: string;
+}
+
 export interface PcnWorkflowNodeDefinition {
   id: string;
   kind: PcnWorkflowNodeKind;
@@ -487,6 +517,8 @@ export interface PcnWorkflowNodeDefinition {
   laneId?: string;
   /** One-based visual column in the template editor canvas. */
   column?: number;
+  /** Optional document-builder grouping; workflow transitions remain authoritative. */
+  stageId?: string;
 }
 
 export interface PcnWorkflowTransitionDefinition {
@@ -508,6 +540,9 @@ export interface PcnWorkflowTemplate {
   appliesTo: PcnWorkflowTemplateAppliesTo;
   version: number;
   status: PcnWorkflowTemplateStatus;
+  scope?: 'COMMON' | 'PERSONAL';
+  stages?: DossierTemplateStageDefinition[];
+  requirementDefinitions?: DossierTemplateRequirementDefinition[];
   nodes: PcnWorkflowNodeDefinition[];
   transitions: PcnWorkflowTransitionDefinition[];
   createdAt: string;
@@ -521,6 +556,8 @@ export interface PcnWorkflowTemplate {
 export interface PcnWorkflowSnapshot {
   templateCode: string;
   templateVersion: number;
+  stages?: DossierTemplateStageDefinition[];
+  requirementDefinitions?: DossierTemplateRequirementDefinition[];
   nodes: PcnWorkflowNodeDefinition[];
   transitions: PcnWorkflowTransitionDefinition[];
   capturedAt: string;
@@ -807,6 +844,13 @@ export interface PcnDocumentRequirement {
   required: boolean;
   active: boolean;
   sortOrder: number;
+  requirementLevel?: DossierTemplateRequirementLevel;
+  requirementSource?: DossierTemplateRequirementSource;
+  condition?: DossierTemplateRequirementCondition;
+  ownerRole?: string;
+  multiplicity?: DossierTemplateRequirementMultiplicity;
+  workflowStageId?: string;
+  workflowStageLabel?: string;
 }
 
 export interface PcnDossierDocumentVersion {
@@ -820,6 +864,8 @@ export interface PcnDossierDocumentVersion {
   note?: string;
 }
 
+export type PcnDossierDocumentLifecycleStatus = 'UPLOADED' | 'GENERATED' | 'CONFIRMED';
+
 export interface PcnDossierDocument {
   id: string;
   dossierId: string;
@@ -832,6 +878,8 @@ export interface PcnDossierDocument {
   currentVersionId?: string;
   versions: PcnDossierDocumentVersion[];
   status: 'MISSING' | 'PRESENT';
+  /** Custom-template lifecycle; absent on legacy checklist records. */
+  lifecycleStatus?: PcnDossierDocumentLifecycleStatus;
   createdAt?: string;
   updatedAt?: string;
 }

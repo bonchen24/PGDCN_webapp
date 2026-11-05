@@ -2,6 +2,7 @@
 
 import { useId, useMemo, useState } from 'react';
 import type { DossierTemplateDomain, DossierTemplateEditorNode, DossierTemplateEditorTransition } from '../utils/pgdcnDossierTemplate.ts';
+import type { DossierTemplateRequirementDefinition } from '../types.ts';
 
 const CONDITION_OPTIONS = [
   { value: 'ALWAYS', label: 'Luôn chuyển tiếp' },
@@ -79,6 +80,7 @@ export interface DossierTemplateRequirementOption {
   description?: string;
   group?: string;
   required: boolean;
+  definition?: DossierTemplateRequirementDefinition;
 }
 
 export interface PgdcnDossierTemplateInspectorProps {

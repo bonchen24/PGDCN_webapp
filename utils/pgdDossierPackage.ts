@@ -40,7 +40,7 @@ export interface PgdDossierPackageManifestEntry {
 }
 
 export type PgdDossierPackageChecklistEntry = Pick<PgdDossierChecklistItem,
-  'requirementCode' | 'group' | 'title' | 'required' | 'status' | 'currentDocumentId' | 'currentDocumentVersion' | 'waiverReason' | 'waivedByUsername' | 'waivedAt'>;
+  'requirementCode' | 'group' | 'title' | 'required' | 'status' | 'currentDocumentId' | 'currentDocumentVersion' | 'waiverReason' | 'waivedByUsername' | 'waivedAt' | 'stageId' | 'stageLabel'>;
 
 export interface PgdDossierPackageManifest {
   format: 'PGD_DOSSIER_PACKAGE_V1';
@@ -122,7 +122,9 @@ export function buildPgdDossierPackageManifest(input: {
     group: clean(item.group),
     title: clean(item.title),
     required: item.required === true,
-    status: ['MISSING', 'PRESENT', 'WAIVED'].includes(String(item.status)) ? item.status : 'MISSING',
+    ...(clean(item.stageId) ? { stageId: clean(item.stageId) } : {}),
+    ...(clean(item.stageLabel) ? { stageLabel: clean(item.stageLabel) } : {}),
+    status: ['MISSING', 'UPLOADED', 'GENERATED', 'CONFIRMED', 'PRESENT', 'WAIVED'].includes(String(item.status)) ? item.status : 'MISSING',
     ...(clean(item.currentDocumentId) ? { currentDocumentId: clean(item.currentDocumentId) } : {}),
     ...(Number.isInteger(item.currentDocumentVersion) && Number(item.currentDocumentVersion) > 0 ? { currentDocumentVersion: Number(item.currentDocumentVersion) } : {}),
     ...(clean(item.waiverReason) ? { waiverReason: clean(item.waiverReason) } : {}),
@@ -130,7 +132,7 @@ export function buildPgdDossierPackageManifest(input: {
     ...(clean(item.waivedAt) ? { waivedAt: clean(item.waivedAt) } : {}),
   }));
   const missingRequirementCodes = checklist
-    .filter((item) => item.required && item.status !== 'PRESENT' && item.status !== 'WAIVED')
+    .filter((item) => item.required && !['PRESENT', 'CONFIRMED', 'WAIVED'].includes(item.status))
     .map((item) => item.requirementCode);
 
   return {

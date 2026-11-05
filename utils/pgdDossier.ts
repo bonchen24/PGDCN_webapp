@@ -1,6 +1,7 @@
 import { PGD_COLLECTIONS, PGD_DOMAIN, type PgdDossierChecklistItem, type PgdProductGroup, type PgdSample, type PgdSampleDisposition, type PgdValidationIssue } from './pgdDomain.ts';
 import type { PgdDocumentTemplateKind } from './pgdDocumentTemplates.ts';
 import type { PgdOperationalStationKey } from './pgdWorkflow.ts';
+import type { DossierTemplateRequirementDefinition, DossierTemplateStageDefinition } from '../types.ts';
 
 // Intake sample snapshots retain sampleCode, description, quantity, unit, disposition, and sealNumber.
 
@@ -20,18 +21,87 @@ export interface PgdDossierRequirement {
   title: string;
   required: boolean;
   description?: string;
+  requirementLevel?: DossierTemplateRequirementDefinition['level'];
+  requirementSource?: DossierTemplateRequirementDefinition['source'];
+  condition?: DossierTemplateRequirementDefinition['condition'];
+  ownerRole?: string;
+  multiplicity?: DossierTemplateRequirementDefinition['multiplicity'];
+  stageId?: string;
+  stageLabel?: string;
+  customDefinition?: DossierTemplateRequirementDefinition;
 }
 
-export function buildPgdDossierChecklist(productGroup: PgdProductGroup, now = new Date().toISOString()): PgdDossierChecklistItem[] {
-  return getPgdDossierRequirements(productGroup).map((item) => ({
+export function getPgdDossierRequirementsWithCustom(
+  productGroup: PgdProductGroup,
+  customDefinitions: readonly DossierTemplateRequirementDefinition[] = [],
+  stages: readonly DossierTemplateStageDefinition[] = [],
+): PgdDossierRequirement[] {
+  const groupFor = (moduleKey: string | undefined): PgdDossierRequirementGroup => {
+    if (moduleKey === 'FIELD_INSPECTION' || moduleKey === 'FIELD_ASSESSMENT') return 'FIELD';
+    if (moduleKey === 'SAMPLE_HANDOVER') return 'LAB_SUBCONTRACTOR';
+    if (moduleKey === 'LAB_RESULT' || moduleKey === 'TESTING') return 'RESULT_ISSUANCE';
+    if (moduleKey === 'REPORT' || moduleKey === 'APPROVAL' || moduleKey === 'RESULT' || moduleKey === 'ISSUANCE') return 'RESULT_ISSUANCE';
+    if (moduleKey === 'DELIVERY_ARCHIVE') return 'ARCHIVE';
+    if (moduleKey === 'ASSIGNMENT') return 'REQUEST';
+    return 'REQUEST';
+  };
+  const custom = customDefinitions.filter((definition) => definition.domain === 'PGD').map((definition) => {
+    const stage = stages.find((item) => item.requirementIds?.includes(definition.id));
+    return {
+    domain: PGD_DOMAIN,
+    group: groupFor(definition.businessModuleKey),
+    code: definition.id,
+    title: definition.name,
+    required: definition.level === 'REQUIRED',
+    ...(definition.description ? { description: definition.description } : {}),
+    requirementLevel: definition.level,
+    requirementSource: definition.source,
+    ...(definition.condition ? { condition: definition.condition } : {}),
+    ownerRole: definition.ownerRole,
+    multiplicity: 'SINGLE' as const,
+    ...(stage ? { stageId: stage.id, stageLabel: stage.label } : {}),
+    customDefinition: definition,
+    };
+  });
+  return [...getPgdDossierRequirements(productGroup), ...custom];
+}
+
+export function buildPgdDossierChecklist(
+  productGroup: PgdProductGroup,
+  now = new Date().toISOString(),
+  customDefinitions: readonly DossierTemplateRequirementDefinition[] = [],
+  stages: readonly DossierTemplateStageDefinition[] = [],
+): PgdDossierChecklistItem[] {
+  return getPgdDossierRequirementsWithCustom(productGroup, customDefinitions, stages).map((item) => ({
     domain: PGD_DOMAIN,
     requirementCode: item.code,
     group: item.group,
     title: item.title,
     required: item.required,
+    ...(item.requirementLevel ? { requirementLevel: item.requirementLevel } : {}),
+    ...(item.requirementSource ? { requirementSource: item.requirementSource } : {}),
+    ...(item.condition ? { condition: item.condition } : {}),
+    ...(item.ownerRole ? { ownerRole: item.ownerRole } : {}),
+    ...(item.multiplicity ? { multiplicity: item.multiplicity } : {}),
+    ...(item.stageId ? { stageId: item.stageId } : {}),
+    ...(item.stageLabel ? { stageLabel: item.stageLabel } : {}),
     status: 'MISSING' as const,
     updatedAt: now,
   }));
+}
+
+export function applyPgdDossierConditionalRequirements(
+  checklist: readonly PgdDossierChecklistItem[] | undefined,
+  review: { status: 'DRAFT' | 'FINAL'; conformity: 'CONFORMING' | 'NON_CONFORMING' | 'NOT_REVIEWED' },
+  now = new Date().toISOString(),
+): PgdDossierChecklistItem[] {
+  return (checklist || []).map((item) => {
+    if (item.requirementLevel !== 'CONDITIONAL') return item;
+    const applicable = review.status === 'FINAL'
+      && ((item.condition === 'RESULT_FAILED' && review.conformity === 'NON_CONFORMING')
+        || (item.condition === 'RESULT_PASSED' && review.conformity === 'CONFORMING'));
+    return { ...item, required: applicable, updatedAt: now };
+  });
 }
 
 export function reconcilePgdDossierChecklist(
@@ -42,7 +112,15 @@ export function reconcilePgdDossierChecklist(
 ): PgdDossierChecklistItem[] {
   const existingByCode = new Map((existing || []).map((item) => [item.requirementCode, item]));
   const documentByCode = new Map(currentDocuments.map((document) => [document.requirementCode, document]));
-  return buildPgdDossierChecklist(productGroup, now).map((item) => {
+  const standardItems = buildPgdDossierChecklist(productGroup, now);
+  const dynamicItems = (existing || []).filter((item) => item.requirementCode.startsWith('pgd-custom-')).map((item) => {
+    const document = documentByCode.get(item.requirementCode);
+    if (document) return { ...item, status: item.status === 'UPLOADED' || item.status === 'GENERATED' || item.status === 'CONFIRMED' ? item.status : 'PRESENT' as const, currentDocumentId: document.id, currentDocumentVersion: document.version, updatedAt: now };
+    if (item.status === 'WAIVED' && item.waiverReason?.trim()) return { ...item, waiverReason: item.waiverReason.trim(), updatedAt: item.updatedAt || now };
+    if (item.status === 'GENERATED') return { ...item, updatedAt: item.updatedAt || now };
+    return { ...item, status: 'MISSING' as const, currentDocumentId: undefined, currentDocumentVersion: undefined, updatedAt: item.updatedAt || now };
+  });
+  return [...standardItems.map((item) => {
     const previous = existingByCode.get(item.requirementCode);
     const document = documentByCode.get(item.requirementCode);
     if (document) {
@@ -65,7 +143,7 @@ export function reconcilePgdDossierChecklist(
       };
     }
     return { ...item, updatedAt: previous?.updatedAt || now };
-  });
+  }), ...dynamicItems];
 }
 
 export function markPgdDossierChecklistPresent(
@@ -73,11 +151,15 @@ export function markPgdDossierChecklistPresent(
   existing: readonly PgdDossierChecklistItem[] | undefined,
   document: Pick<PgdDossierDocument, 'requirementCode' | 'id' | 'version'>,
   now = new Date().toISOString(),
+  status: 'PRESENT' | 'UPLOADED' | 'GENERATED' | 'CONFIRMED' = 'PRESENT',
 ): PgdDossierChecklistItem[] {
   const existingDocuments = (existing || [])
-    .filter((item) => item.status === 'PRESENT' && item.currentDocumentId && item.currentDocumentVersion)
+    .filter((item) => ['PRESENT', 'UPLOADED', 'GENERATED', 'CONFIRMED'].includes(item.status) && item.currentDocumentId && item.currentDocumentVersion)
     .map((item) => ({ requirementCode: item.requirementCode, id: item.currentDocumentId!, version: item.currentDocumentVersion! }));
-  return reconcilePgdDossierChecklist(productGroup, existing, [...existingDocuments, document], now);
+  const updatedExisting = (existing || []).map((item) => item.requirementCode === document.requirementCode
+    ? { ...item, status, currentDocumentId: document.id, currentDocumentVersion: document.version, updatedAt: now }
+    : item);
+  return reconcilePgdDossierChecklist(productGroup, updatedExisting, [...existingDocuments, document], now);
 }
 
 export interface PgdDossierDocument {
@@ -157,7 +239,13 @@ function requirement(code: string, group: PgdDossierRequirementGroup, title: str
   return { domain: PGD_DOMAIN, code, group, title, required, ...(description ? { description } : {}) };
 }
 
-export function getPgdDossierRequirementStationKey(requirementCode: string): PgdOperationalStationKey {
+export function getPgdDossierRequirementStationKey(requirementCode: string, businessModuleKey?: string): PgdOperationalStationKey {
+  if (businessModuleKey === 'PYC_REQUEST' || businessModuleKey === 'REQUEST') return 'INTAKE_CAPABILITY';
+  if (businessModuleKey === 'ASSIGNMENT') return 'INTAKE_CAPABILITY';
+  if (businessModuleKey === 'FIELD_INSPECTION' || businessModuleKey === 'FIELD_ASSESSMENT') return 'FIELD_SAMPLING';
+  if (businessModuleKey === 'SAMPLE_HANDOVER' || businessModuleKey === 'LAB_RESULT' || businessModuleKey === 'TESTING' || businessModuleKey === 'CORRECTIVE_ACTION') return 'LAB_RESULTS';
+  if (businessModuleKey === 'DELIVERY_ARCHIVE' || businessModuleKey === 'ISSUANCE') return 'REPORT_APPROVAL_RETURN';
+  if (businessModuleKey === 'REPORT' || businessModuleKey === 'APPROVAL' || businessModuleKey === 'RESULT') return 'REPORT_APPROVAL_RETURN';
   const code = clean(requirementCode).toUpperCase();
   if (['REQUEST_PYC', 'REQUEST_SUPPORTING', 'ASSIGNMENT_FORM', 'COMMERCIAL_CONTRACT', 'COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_OF_LADING', 'CUSTOMS_DECLARATION', 'CERTIFICATE_OF_ORIGIN'].includes(code)) {
     return 'INTAKE_CAPABILITY';
@@ -166,6 +254,42 @@ export function getPgdDossierRequirementStationKey(requirementCode: string): Pgd
   if (['FIELD_INSPECTION_MINUTES', 'FIELD_SAMPLE_TAKING', 'FIELD_ACTIVITY_LOG', 'MACHINERY_CONDITION_ASSESSMENT', 'MACHINERY_SYNCHRONIZATION_ASSESSMENT'].includes(code)) return 'FIELD_SAMPLING';
   if (['SAMPLE_HANDOVER_LAB', 'LAB_RESULT', 'LAB_RESULT_REVIEW'].includes(code)) return 'LAB_RESULTS';
   return 'REPORT_APPROVAL_RETURN';
+}
+
+export function getPgdDossierRequirementStageId(
+  requirementCode: string,
+  stages: readonly { id: string; requirementIds?: readonly string[] }[] = [],
+): string | undefined {
+  return stages.find((stage) => stage.requirementIds?.includes(requirementCode))?.id;
+}
+
+export function getPgdDossierRequirementStationKeyForSnapshot(
+  requirementCode: string,
+  businessModuleKey?: string,
+  stages: readonly { id: string; requirementIds?: readonly string[] }[] = [],
+): PgdOperationalStationKey {
+  const stageId = getPgdDossierRequirementStageId(requirementCode, stages);
+  if (businessModuleKey) return getPgdDossierRequirementStationKey(requirementCode, businessModuleKey);
+
+  const code = clean(requirementCode).toUpperCase();
+  const standardRequirementStation = getPgdDossierRequirementStationKey(code);
+  if (!code.startsWith('PGD-CUSTOM-') || !stageId) return standardRequirementStation;
+
+  switch (stageId) {
+    case 'intake-documents':
+    case 'scope-assignment':
+      return 'INTAKE_CAPABILITY';
+    case 'onsite-assessment':
+      return 'FIELD_SAMPLING';
+    case 'testing-evidence':
+    case 'corrective-action':
+      return 'LAB_RESULTS';
+    case 'review-approval':
+    case 'issuance-archive':
+      return 'REPORT_APPROVAL_RETURN';
+    default:
+      return standardRequirementStation;
+  }
 }
 
 export function getPgdDossierRequirements(productGroup: PgdProductGroup): PgdDossierRequirement[] {

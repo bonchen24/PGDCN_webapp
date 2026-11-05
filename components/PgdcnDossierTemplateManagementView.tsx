@@ -1,30 +1,15 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { 
-  FilePlus2, 
-  GitBranch, 
-  Search, 
-  ShieldAlert, 
-  CheckCircle2, 
-  Clock, 
-  Archive, 
-  Layers, 
-  ArrowRight, 
-  FileText, 
-  Sparkles, 
-  Copy, 
-  Eye, 
-  Edit3, 
-  Ban 
-} from 'lucide-react';
+import { FilePlus2, GitBranch, Search, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 
-import type { PcnDocumentRequirement, PcnUserAccount, PcnWorkflowTemplate } from '../types.ts';
+import type { PcnDocumentRequirement, PcnTemplateDefinition, PcnUserAccount, PcnWorkflowTemplate } from '../types.ts';
 import type { PgdDossierRequirement } from '../utils/pgdDossier.ts';
 import type { PgdWorkflowTemplate } from '../utils/pgdWorkflowTemplate.ts';
+import type { PgdDocumentTemplate } from '../utils/pgdDocumentTemplates.ts';
 import { isPcnSystemManager } from '../utils/pcnRbac.ts';
-import { fromPcnDossierTemplateEditorModel, fromPgdDossierTemplateEditorModel, toPcnDossierTemplateEditorModel, toPgdDossierTemplateEditorModel, type DossierTemplateDomain, type DossierTemplateEditorModel } from '../utils/pgdcnDossierTemplate.ts';
+import { DEFAULT_DOSSIER_TEMPLATE_STAGES, fromPcnDossierTemplateEditorModel, fromPgdDossierTemplateEditorModel, toPcnDossierTemplateEditorModel, toPgdDossierTemplateEditorModel, type DossierTemplateDomain, type DossierTemplateEditorModel } from '../utils/pgdcnDossierTemplate.ts';
 import PgdcnDossierTemplateEditor from './PgdcnDossierTemplateEditor.tsx';
 import PgdcnDossierTemplatePreview from './PgdcnDossierTemplatePreview.tsx';
 import type { DossierTemplateRequirementOption } from './PgdcnDossierTemplateInspector.tsx';
@@ -36,8 +21,10 @@ export interface PgdcnDossierTemplateManagementViewProps {
   currentUser: PcnUserAccount;
   pcnTemplates: PcnWorkflowTemplate[];
   pcnRequirements: PcnDocumentRequirement[];
+  pcnDocxTemplates?: PcnTemplateDefinition[];
   pgdTemplates: PgdWorkflowTemplate[];
   pgdRequirements: PgdDossierRequirement[];
+  pgdDocxTemplates?: PgdDocumentTemplate[];
   onCreatePcnWorkflowTemplate: (template: PcnWorkflowTemplate) => Promise<PcnWorkflowTemplate>;
   onUpdatePcnWorkflowTemplate: (templateId: string, template: PcnWorkflowTemplate, expectedUpdatedAt?: string) => Promise<PcnWorkflowTemplate>;
   onCreatePcnWorkflowRevision: (templateId: string, template: PcnWorkflowTemplate) => Promise<PcnWorkflowTemplate>;
@@ -56,27 +43,27 @@ function canManagePgd(currentUser: PcnUserAccount): boolean {
     || isPcnSystemManager(currentUser);
 }
 
+function canProposePcn(currentUser: PcnUserAccount): boolean {
+  return currentUser.active !== false
+    && currentUser.role !== 'viewer'
+    && currentUser.systemRole !== 'viewer'
+    && (currentUser.departmentScopes || []).includes('PCN');
+}
+
+function canProposePgd(currentUser: PcnUserAccount): boolean {
+  return currentUser.active !== false
+    && currentUser.role !== 'viewer'
+    && currentUser.systemRole !== 'viewer'
+    && String(currentUser.pgdRole || '').trim().toUpperCase() !== 'PGD_VIEWER'
+    && (currentUser.departmentScopes || []).includes('PGD');
+}
+
 function statusLabel(status: Exclude<TemplateStatus, 'ALL'>): string {
   return status === 'PUBLISHED' ? 'Đang áp dụng' : status === 'RETIRED' ? 'Đã ngừng' : 'Bản nháp';
 }
 
-function statusBadge(status: Exclude<TemplateStatus, 'ALL'>) {
-  if (status === 'PUBLISHED') {
-    return {
-      wrap: 'border-emerald-200/80 bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800 shadow-sm shadow-emerald-500/10',
-      dot: 'bg-emerald-500 ring-2 ring-emerald-300/50',
-    };
-  }
-  if (status === 'RETIRED') {
-    return {
-      wrap: 'border-slate-200 bg-slate-100 text-slate-600',
-      dot: 'bg-slate-400',
-    };
-  }
-  return {
-    wrap: 'border-amber-200/80 bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-800 shadow-sm shadow-amber-500/10',
-    dot: 'bg-amber-500 ring-2 ring-amber-300/50',
-  };
+function statusClass(status: Exclude<TemplateStatus, 'ALL'>): string {
+  return status === 'PUBLISHED' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : status === 'RETIRED' ? 'border-slate-200 bg-slate-100 text-slate-500' : 'border-amber-200 bg-amber-50 text-amber-700';
 }
 
 const PCN_SCOPE_LABELS: Record<string, string> = { QC4: 'QC4 · Hợp quy', QC9: 'QC9 · Hợp chuẩn' };
@@ -95,29 +82,6 @@ function applicationScopeLabels(template: PcnWorkflowTemplate | PgdWorkflowTempl
   ];
 }
 
-function getCardTheme(template: PcnWorkflowTemplate | PgdWorkflowTemplate) {
-  const code = (template.code || '').toUpperCase();
-  if (code.includes('QC4')) {
-    return {
-      accentTop: 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500',
-      tagBg: 'border-blue-200 bg-blue-50/80 text-blue-700',
-      borderHover: 'hover:border-blue-400 hover:shadow-blue-500/10',
-    };
-  }
-  if (code.includes('QC9')) {
-    return {
-      accentTop: 'bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-500',
-      tagBg: 'border-purple-200 bg-purple-50/80 text-purple-700',
-      borderHover: 'hover:border-purple-400 hover:shadow-purple-500/10',
-    };
-  }
-  return {
-    accentTop: 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600',
-    tagBg: 'border-emerald-200 bg-emerald-50/80 text-emerald-700',
-    borderHover: 'hover:border-emerald-400 hover:shadow-emerald-500/10',
-  };
-}
-
 function blankModel(domain: DossierTemplateDomain): DossierTemplateEditorModel {
   const suffix = Date.now().toString(36);
   return {
@@ -129,9 +93,10 @@ function blankModel(domain: DossierTemplateDomain): DossierTemplateEditorModel {
     version: 1,
     status: 'DRAFT',
     appliesTo: domain === 'PCN' ? { fieldCodes: ['QC4'] } : { productGroups: ['OTHER'], methodCodes: ['METHOD_7'] },
+    stages: DEFAULT_DOSSIER_TEMPLATE_STAGES.map((stage) => ({ ...stage, requirementIds: [] })),
     nodes: [
-      { id: 'start', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận', active: true, laneId: 'intake', column: 1, sortOrder: 10, requirementRefs: [] },
-      { id: 'end', kind: 'END', label: 'Kết thúc', active: true, laneId: 'archive', column: 6, sortOrder: 20, requirementRefs: [] },
+      { id: 'start', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận', active: true, laneId: 'intake', column: 1, sortOrder: 10, stageId: 'intake-documents', requirementRefs: [] },
+      { id: 'end', kind: 'END', label: 'Kết thúc', active: true, laneId: 'archive', column: 6, sortOrder: 20, stageId: 'issuance-archive', requirementRefs: [] },
     ],
     transitions: [{ id: 'edge-start-end', fromNodeId: 'start', toNodeId: 'end', condition: 'ALWAYS' }],
   };
@@ -143,8 +108,10 @@ function clone<T>(value: T): T {
 
 export default function PgdcnDossierTemplateManagementView(props: PgdcnDossierTemplateManagementViewProps) {
   const scopes = props.currentUser.departmentScopes || [];
-  const canPcn = scopes.includes('PCN') && isPcnSystemManager(props.currentUser);
-  const canPgd = scopes.includes('PGD') && canManagePgd(props.currentUser);
+  const canManagePcn = scopes.includes('PCN') && isPcnSystemManager(props.currentUser);
+  const canManagePgdDomain = scopes.includes('PGD') && canManagePgd(props.currentUser);
+  const canPcn = canManagePcn || canProposePcn(props.currentUser);
+  const canPgd = canManagePgdDomain || canProposePgd(props.currentUser);
   const [domain, setDomain] = useState<DossierTemplateDomain>(canPcn ? 'PCN' : 'PGD');
   const [status, setStatus] = useState<TemplateStatus>('ALL');
   const [query, setQuery] = useState('');
@@ -155,21 +122,40 @@ export default function PgdcnDossierTemplateManagementView(props: PgdcnDossierTe
   const [saveError, setSaveError] = useState('');
   const [editorDirty, setEditorDirty] = useState(false);
   const [activePreview, setActivePreview] = useState<DossierTemplateEditorModel>();
+  const activeCanManage = domain === 'PCN' ? canManagePcn : canManagePgdDomain;
+  const activeCanPropose = domain === 'PCN' ? canProposePcn(props.currentUser) : canProposePgd(props.currentUser);
+  const canSaveEditor = activeCanPropose && (editorMode === 'new'
+    || (activeCanManage && sourceTemplate?.scope !== 'PERSONAL')
+    || (editorMode === 'draft' && sourceTemplate?.scope === 'PERSONAL' && sourceTemplate.createdBy === props.currentUser.username && sourceTemplate.status === 'DRAFT'));
 
-  const pcnOptions: DossierTemplateRequirementOption[] = useMemo(() => props.pcnRequirements.map((requirement) => ({ id: requirement.id, label: requirement.name, description: requirement.description, group: requirement.fieldCode, required: requirement.required })), [props.pcnRequirements]);
-  const pgdOptions: DossierTemplateRequirementOption[] = useMemo(() => props.pgdRequirements.map((requirement) => ({ id: requirement.code, label: requirement.title, description: requirement.description, group: requirement.group, required: requirement.required })), [props.pgdRequirements]);
+  const pcnOptions: DossierTemplateRequirementOption[] = useMemo(() => {
+    const options = new Map<string, DossierTemplateRequirementOption>(props.pcnRequirements.map((requirement) => [requirement.id, { id: requirement.id, label: requirement.name, description: requirement.description, group: requirement.fieldCode, required: requirement.required }]));
+    for (const template of props.pcnTemplates) for (const definition of template.requirementDefinitions || []) options.set(definition.id, { id: definition.id, label: definition.name, description: definition.description || definition.code, group: `${template.code} · ${definition.code}`, required: definition.level === 'REQUIRED', definition });
+    return [...options.values()];
+  }, [props.pcnRequirements, props.pcnTemplates]);
+  const pgdOptions: DossierTemplateRequirementOption[] = useMemo(() => {
+    const options = new Map<string, DossierTemplateRequirementOption>(props.pgdRequirements.map((requirement) => [requirement.code, { id: requirement.code, label: requirement.title, description: requirement.description, group: requirement.group, required: requirement.required }]));
+    for (const template of props.pgdTemplates) for (const definition of template.requirementDefinitions || []) options.set(definition.id, { id: definition.id, label: definition.name, description: definition.description || definition.code, group: `${template.code} · ${definition.code}`, required: definition.level === 'REQUIRED', definition });
+    return [...options.values()];
+  }, [props.pgdRequirements, props.pgdTemplates]);
+  const pcnDocxOptions = useMemo(() => (props.pcnDocxTemplates || []).filter((template) => template.status === 'APPROVED').map((template) => ({ id: template.id, label: template.displayName })), [props.pcnDocxTemplates]);
+  const pgdDocxOptions = useMemo(() => (props.pgdDocxTemplates || []).filter((template) => template.active).map((template) => ({ id: template.id, label: template.name })), [props.pgdDocxTemplates]);
   const templates = domain === 'PCN' ? props.pcnTemplates : props.pgdTemplates;
-
-  const counts = useMemo(() => {
-    return {
-      all: templates.length,
-      published: templates.filter(t => t.status === 'PUBLISHED').length,
-      draft: templates.filter(t => t.status === 'DRAFT').length,
-      retired: templates.filter(t => t.status === 'RETIRED').length,
-    };
-  }, [templates]);
-
-  const visibleTemplates = useMemo(() => templates.filter((template) => (status === 'ALL' || template.status === status) && (!query.trim() || `${template.code} ${template.name} ${template.description || ''}`.toLocaleLowerCase('vi-VN').includes(query.trim().toLocaleLowerCase('vi-VN')))), [query, status, templates]);
+  const accessibleTemplates = useMemo(() => templates.filter((template) => activeCanManage
+    || (template.scope === 'PERSONAL'
+      ? template.status === 'DRAFT' && template.createdBy === props.currentUser.username
+      : template.status === 'PUBLISHED')),
+  [activeCanManage, props.currentUser.username, templates]);
+  const counts = useMemo(() => ({
+    all: accessibleTemplates.length,
+    published: accessibleTemplates.filter((template) => template.status === 'PUBLISHED').length,
+    draft: accessibleTemplates.filter((template) => template.status === 'DRAFT').length,
+    retired: accessibleTemplates.filter((template) => template.status === 'RETIRED').length,
+  }), [accessibleTemplates]);
+  const visibleTemplates = useMemo(() => accessibleTemplates.filter((template) =>
+    (status === 'ALL' || template.status === status)
+      && (!query.trim() || `${template.code} ${template.name} ${template.description || ''}`.toLocaleLowerCase('vi-VN').includes(query.trim().toLocaleLowerCase('vi-VN')))),
+  [accessibleTemplates, query, status]);
 
   const closeEditor = () => {
     if (editorDirty && editorMode !== 'view' && !window.confirm('Thay đổi chưa lưu sẽ bị mất. Bạn có muốn rời trình chỉnh sửa không?')) return false;
@@ -187,27 +173,6 @@ export default function PgdcnDossierTemplateManagementView(props: PgdcnDossierTe
     setActivePreview(model);
   };
 
-  const cloneTemplate = (template: PcnWorkflowTemplate | PgdWorkflowTemplate) => {
-    if (!closeEditor()) return;
-    setActivePreview(undefined);
-    const isPcn = domain === 'PCN';
-    const baseModel = isPcn ? toPcnDossierTemplateEditorModel(template as PcnWorkflowTemplate, props.pcnRequirements) : toPgdDossierTemplateEditorModel(template as PgdWorkflowTemplate, props.pgdRequirements);
-    const now = Date.now().toString(36).slice(-4).toUpperCase();
-    const clonedModel: DossierTemplateEditorModel = {
-      ...clone(baseModel),
-      id: `${baseModel.id}-copy-${now.toLowerCase()}`,
-      code: `${baseModel.code}_${now}`,
-      name: `(Bản sao) ${baseModel.name}`,
-      version: 1,
-      status: 'DRAFT',
-    };
-    setEditorModel(clonedModel);
-    setSourceTemplate(undefined);
-    setEditorMode('new');
-    setSaveError('');
-    setEditorDirty(true);
-  };
-
   const openTemplate = (template: PcnWorkflowTemplate | PgdWorkflowTemplate) => {
     if (!closeEditor()) return;
     setActivePreview(undefined);
@@ -215,12 +180,14 @@ export default function PgdcnDossierTemplateManagementView(props: PgdcnDossierTe
     const model = isPcn ? toPcnDossierTemplateEditorModel(template as PcnWorkflowTemplate, props.pcnRequirements) : toPgdDossierTemplateEditorModel(template as PgdWorkflowTemplate, props.pgdRequirements);
     setEditorModel(model);
     setSourceTemplate(clone(template));
-    setEditorMode(template.status === 'DRAFT' ? 'draft' : template.status === 'PUBLISHED' ? 'revision' : 'view');
+    const personalProposalOwnedBySomeoneElse = template.scope === 'PERSONAL' && template.createdBy !== props.currentUser.username;
+    setEditorMode(personalProposalOwnedBySomeoneElse ? 'view' : template.status === 'DRAFT' ? 'draft' : template.status === 'PUBLISHED' ? 'revision' : 'view');
     setSaveError('');
     setEditorDirty(false);
   };
 
   const createNew = () => {
+    if (!activeCanPropose) return;
     if (!closeEditor()) return;
     setActivePreview(undefined);
     setEditorModel(blankModel(domain));
@@ -230,7 +197,25 @@ export default function PgdcnDossierTemplateManagementView(props: PgdcnDossierTe
     setEditorDirty(false);
   };
 
+  const cloneTemplate = (template: PcnWorkflowTemplate | PgdWorkflowTemplate) => {
+    if (!closeEditor()) return;
+    setActivePreview(undefined);
+    const model = domain === 'PCN'
+      ? toPcnDossierTemplateEditorModel(template as PcnWorkflowTemplate, props.pcnRequirements)
+      : toPgdDossierTemplateEditorModel(template as PgdWorkflowTemplate, props.pgdRequirements);
+    const suffix = Date.now().toString(36);
+    setEditorModel({ ...model, id: `${domain.toLowerCase()}-workflow-${suffix}`, code: `${domain}-${suffix.toUpperCase()}`, name: `${model.name} (bản sao)`, version: 1, status: 'DRAFT', updatedAt: undefined });
+    setSourceTemplate(undefined);
+    setEditorMode('new');
+    setSaveError('');
+    setEditorDirty(false);
+  };
+
   const save = async (model: DossierTemplateEditorModel) => {
+    if (!canSaveEditor) {
+      setSaveError('Chỉ có thể lưu bộ hồ sơ mới hoặc bản nháp cá nhân do bạn tạo.');
+      return;
+    }
     setSaving(true);
     setSaveError('');
     try {
@@ -247,7 +232,7 @@ export default function PgdcnDossierTemplateManagementView(props: PgdcnDossierTe
         else if (editorMode === 'revision') await props.onCreatePgdWorkflowRevision((sourceTemplate as PgdWorkflowTemplate).id, template);
         else await props.onUpdatePgdWorkflowTemplate(template.id, template, sourceTemplate && 'updatedAt' in sourceTemplate ? sourceTemplate.updatedAt : undefined);
       }
-      toast.success(editorMode === 'revision' ? 'Đã tạo bản nháp phiên bản mới.' : 'Đã lưu bộ hồ sơ mẫu.');
+      toast.success(editorMode === 'revision' ? 'Đã tạo bản nháp phiên bản mới.' : !activeCanManage ? 'Đã lưu đề xuất riêng của bạn.' : 'Đã lưu bộ hồ sơ mẫu.');
       setEditorModel(undefined);
       setSourceTemplate(undefined);
       setEditorDirty(false);
@@ -278,381 +263,69 @@ export default function PgdcnDossierTemplateManagementView(props: PgdcnDossierTe
     } catch (error: any) { toast.error(error?.message || 'Không thể ngừng bộ hồ sơ mẫu.'); }
   };
 
-  if (!canPcn && !canPgd) return <section data-testid="pgdcn-dossier-template-denied" className="m-3 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-semibold text-rose-700 md:m-5"><div className="flex items-center gap-2"><ShieldAlert size={18} /> Tài khoản hiện tại không có quyền quản trị bộ hồ sơ mẫu.</div><p className="mt-2 text-xs font-normal">Cần vai trò Quản trị viên/Quản lý và phạm vi PCN hoặc PGD tương ứng.</p></section>;
+  if (!canPcn && !canPgd) return <section data-testid="pgdcn-dossier-template-denied" className="m-3 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-semibold text-rose-700 md:m-5"><div className="flex items-center gap-2"><ShieldAlert size={18} /> Tài khoản hiện tại không có quyền xem hoặc đề xuất bộ hồ sơ mẫu.</div><p className="mt-2 text-xs font-normal">Cần tài khoản đang hoạt động và phạm vi PCN hoặc PGD tương ứng.</p></section>;
 
-  const activeCanMutate = domain === 'PCN' ? canPcn : canPgd;
-
-  return (
-    <div data-testid="pgdcn-dossier-template-management" className="min-w-0 space-y-5 bg-slate-50/50 p-3 md:p-6">
-      {/* Top Banner / Hero Header */}
-      <header className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50 to-blue-50/40 p-5 shadow-sm md:p-6">
-        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-blue-100/50 blur-3xl pointer-events-none" />
-        <div className="absolute right-40 -bottom-10 h-32 w-32 rounded-full bg-emerald-100/40 blur-2xl pointer-events-none" />
-        
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-slate-900 via-indigo-950 to-blue-900 text-white shadow-md shadow-slate-900/10">
-              <GitBranch size={22} className="text-cyan-300" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-md bg-blue-100/80 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-blue-700">
-                  <Sparkles size={11} /> PGDCN • Quản trị vận hành
-                </span>
-              </div>
-              <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
-                Hồ sơ mẫu
-              </h1>
-              <p className="mt-1 max-w-3xl text-xs text-slate-500 md:text-sm leading-relaxed">
-                Tập hợp các bộ hồ sơ mẫu, lưu trình và loại tài liệu cần có ở từng nút. Tệp thật chỉ được tải lên khi hồ sơ chạy.
-              </p>
-            </div>
-          </div>
-          
-          <button 
-            type="button" 
-            className="min-h-11 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/20 transition hover:from-blue-700 hover:to-indigo-700 active:scale-95 md:text-sm" 
-            onClick={createNew}
-          >
-            <FilePlus2 size={17} /> Tạo bộ hồ sơ mới
-          </button>
-        </div>
-
-        {/* Domain Tabs */}
-        <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-slate-200/60 pt-4" role="tablist" aria-label="Chọn lĩnh vực hồ sơ mẫu">
-          <button 
-            type="button" 
-            role="tab" 
-            aria-selected={domain === 'PCN'} 
-            disabled={!canPcn} 
-            onClick={() => { if (domain !== 'PCN' && !closeEditor()) return; setActivePreview(undefined); setDomain('PCN'); }} 
-            className={`min-h-11 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs md:text-sm font-bold transition ${
-              domain === 'PCN' 
-                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20' 
-                : 'border border-slate-200 bg-white/80 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            } disabled:cursor-not-allowed disabled:opacity-40`}
-          >
-            <span>PCN · Chứng nhận</span>
-            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-black ${domain === 'PCN' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
-              {props.pcnTemplates.length}
-            </span>
-          </button>
-          
-          <button 
-            type="button" 
-            role="tab" 
-            aria-selected={domain === 'PGD'} 
-            disabled={!canPgd} 
-            onClick={() => { if (domain !== 'PGD' && !closeEditor()) return; setActivePreview(undefined); setDomain('PGD'); }} 
-            className={`min-h-11 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs md:text-sm font-bold transition ${
-              domain === 'PGD' 
-                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md shadow-blue-600/20' 
-                : 'border border-slate-200 bg-white/80 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            } disabled:cursor-not-allowed disabled:opacity-40`}
-          >
-            <span>PGD · Giám định</span>
-            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-black ${domain === 'PGD' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
-              {props.pgdTemplates.length}
-            </span>
-          </button>
-        </div>
-      </header>
-
-      {/* Overview Stat Badges */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div 
-          onClick={() => setStatus('ALL')}
-          className={`cursor-pointer rounded-2xl border p-3.5 transition hover:shadow-md ${
-            status === 'ALL' 
-              ? 'border-indigo-400 bg-indigo-50/60 ring-2 ring-indigo-300/40' 
-              : 'border-slate-200/90 bg-white'
-          }`}
-        >
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Tất cả</span>
-            <Layers size={16} className="text-indigo-600" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-slate-900">{counts.all}</span>
-            <span className="text-[11px] text-slate-400 font-medium">bộ mẫu</span>
+  return <div data-testid="pgdcn-dossier-template-management" className="min-w-0 space-y-4 bg-slate-50/60 p-3 md:p-5">
+    <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white"><GitBranch size={19} /></span>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">PGDCN · Mẫu quy trình và tài liệu</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900">Hồ sơ mẫu</h1>
+            <p className="mt-1 max-w-3xl text-sm text-slate-500">Tạo checklist tài liệu theo giai đoạn. Tệp thật chỉ được tải lên khi hồ sơ chạy.</p>
+            {!activeCanManage && <p className="mt-1 text-xs text-indigo-700">Đề xuất của bạn được lưu riêng; quản lý có thể nhân bản thành mẫu dùng chung.</p>}
           </div>
         </div>
-
-        <div 
-          onClick={() => setStatus('PUBLISHED')}
-          className={`cursor-pointer rounded-2xl border p-3.5 transition hover:shadow-md ${
-            status === 'PUBLISHED' 
-              ? 'border-emerald-400 bg-emerald-50/60 ring-2 ring-emerald-300/40' 
-              : 'border-slate-200/90 bg-white'
-          }`}
-        >
-          <div className="flex items-center justify-between text-emerald-600">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Đang áp dụng</span>
-            <CheckCircle2 size={16} className="text-emerald-600" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-emerald-700">{counts.published}</span>
-            <span className="text-[11px] text-emerald-600/70 font-medium">đang chạy</span>
-          </div>
-        </div>
-
-        <div 
-          onClick={() => setStatus('DRAFT')}
-          className={`cursor-pointer rounded-2xl border p-3.5 transition hover:shadow-md ${
-            status === 'DRAFT' 
-              ? 'border-amber-400 bg-amber-50/60 ring-2 ring-amber-300/40' 
-              : 'border-slate-200/90 bg-white'
-          }`}
-        >
-          <div className="flex items-center justify-between text-amber-600">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Bản nháp</span>
-            <Clock size={16} className="text-amber-600" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-amber-700">{counts.draft}</span>
-            <span className="text-[11px] text-amber-600/70 font-medium">đang chỉnh</span>
-          </div>
-        </div>
-
-        <div 
-          onClick={() => setStatus('RETIRED')}
-          className={`cursor-pointer rounded-2xl border p-3.5 transition hover:shadow-md ${
-            status === 'RETIRED' 
-              ? 'border-slate-400 bg-slate-100 ring-2 ring-slate-300/40' 
-              : 'border-slate-200/90 bg-white'
-          }`}
-        >
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Đã ngừng</span>
-            <Archive size={16} className="text-slate-500" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-slate-700">{counts.retired}</span>
-            <span className="text-[11px] text-slate-400 font-medium">lưu trữ</span>
-          </div>
-        </div>
+        <button type="button" className="min-h-11 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white" onClick={createNew}>
+          <FilePlus2 size={16} /> {activeCanManage ? 'Tạo bộ hồ sơ mới' : 'Tạo đề xuất riêng'}
+        </button>
       </div>
-
-      {/* Main Content: Filter & Cards */}
-      <section className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm md:p-5">
-        <div className="pgdcn-toolbar-nowrap flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs" data-testid="pgdcn-dossier-template-filters">
-          <div className="pgdcn-toolbar-search relative min-w-[220px] sm:min-w-[260px] max-w-sm flex-1 shrink-0">
-            <label htmlFor="pgdcn-template-search" className="sr-only">Tìm kiếm bộ hồ sơ mẫu</label>
-            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input 
-              id="pgdcn-template-search"
-              aria-label="Tìm kiếm bộ hồ sơ mẫu" 
-              placeholder="Nhập mã, tên hoặc từ khóa tìm kiếm..." 
-              value={query} 
-              onChange={(event) => setQuery(event.target.value)} 
-              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100" 
-            />
-          </div>
-          <div className="pgdcn-toolbar-filter shrink-0">
-            <select 
-              aria-label="Lọc trạng thái bộ hồ sơ mẫu" 
-              value={status} 
-              onChange={(event) => setStatus(event.target.value as TemplateStatus)} 
-              className="h-9 min-w-[140px] rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none transition hover:border-slate-300 focus:border-indigo-500 shadow-3xs cursor-pointer"
-            >
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="DRAFT">Bản nháp</option>
-              <option value="PUBLISHED">Đang áp dụng</option>
-              <option value="RETIRED">Đã ngừng</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Template Cards Grid */}
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          {visibleTemplates.map((template) => {
-            const theme = getCardTheme(template);
-            const badge = statusBadge(template.status);
-            const reqCount = new Set(template.nodes.flatMap((node) => 'requirementIds' in node ? node.requirementIds : node.requirementCodes)).size;
-            
-            return (
-              <article 
-                key={template.id} 
-                data-testid={`pgdcn-dossier-template-card-${template.id}`} 
-                className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all duration-200 ${theme.borderHover} hover:shadow-lg`}
-              >
-                {/* Top Vibrant Color Strip */}
-                <div className={`absolute left-0 top-0 h-1.5 w-full ${theme.accentTop}`} />
-
-                <div>
-                  {/* Header Row: Status badge & Code info */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${badge.wrap}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} />
-                      <span>{statusLabel(template.status)}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700">
-                        {template.code}
-                      </span>
-                      <span className="rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 border border-slate-200/60">
-                        phiên bản {template.version}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Title & Description */}
-                  <h2 className="mt-3 text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">
-                    {template.name}
-                  </h2>
-                  <p className="mt-1 text-xs text-slate-500 leading-relaxed line-clamp-2 min-h-[2rem]">
-                    {template.description || 'Chưa có thông tin mô tả chi tiết cho bộ hồ sơ mẫu này.'}
-                  </p>
-
-                  {/* Scope Tags */}
-                  <div className="mt-3.5 pt-3 border-t border-slate-100">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Phạm vi áp dụng
-                    </p>
-                    <div 
-                      data-testid={`pgdcn-dossier-template-scope-${template.id}`} 
-                      className="mt-1.5 flex flex-wrap gap-1.5"
-                    >
-                      {applicationScopeLabels(template).map((label) => (
-                        <span 
-                          key={label} 
-                          className={`inline-flex items-center rounded-lg border px-2.5 py-0.5 text-[11px] font-semibold transition ${theme.tagBg}`}
-                        >
-                          {label}
-                        </span>
-                      ))}
-                      {applicationScopeLabels(template).length === 0 && (
-                        <span className="text-xs text-slate-400 italic">Chưa chọn phạm vi</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Workflow Metrics Badges */}
-                  <div className="mt-3.5 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-2.5 text-xs font-semibold text-slate-600 border border-slate-100">
-                    <span className="inline-flex items-center gap-1 text-blue-700 bg-blue-50/80 px-2 py-0.5 rounded-md border border-blue-200/60">
-                      <Layers size={13} /> {template.nodes.length} nút
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-indigo-700 bg-indigo-50/80 px-2 py-0.5 rounded-md border border-indigo-200/60">
-                      <ArrowRight size={13} /> {template.transitions.length} chuyển tiếp
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-purple-700 bg-purple-50/80 px-2 py-0.5 rounded-md border border-purple-200/60">
-                      <FileText size={13} /> {reqCount} loại tài liệu
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bottom Action Buttons */}
-                <div className="mt-4 flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100">
-                  <button 
-                    type="button" 
-                    className="min-h-11 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 active:scale-95 transition" 
-                    onClick={() => previewTemplate(template)}
-                  >Xem trước</button>
-
-                  <button 
-                    type="button" 
-                    className="min-h-11 inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/70 px-3.5 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 active:scale-95 transition" 
-                    onClick={() => openTemplate(template)}
-                  >
-                    <Edit3 size={14} /> {template.status === 'PUBLISHED' ? 'Tạo phiên bản mới' : template.status === 'DRAFT' ? 'Mở chỉnh sửa' : 'Xem chi tiết'}
-                  </button>
-
-                  <button 
-                    type="button" 
-                    className="min-h-11 inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50/70 px-3.5 text-xs font-bold text-purple-700 shadow-2xs hover:bg-purple-100 active:scale-95 transition" 
-                    onClick={() => cloneTemplate(template)}
-                  >
-                    <Copy size={14} /> Nhân bản
-                  </button>
-
-                  {template.status === 'DRAFT' && (
-                    <button 
-                      type="button" 
-                      className="min-h-11 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 text-xs font-bold text-white shadow-sm hover:from-emerald-700 hover:to-teal-700 active:scale-95 transition" 
-                      onClick={() => void publish(template)}
-                    >
-                      <CheckCircle2 size={14} /> Công bố
-                    </button>
-                  )}
-
-                  {template.status === 'PUBLISHED' && (
-                    <button 
-                      type="button" 
-                      className="min-h-11 inline-flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50/80 px-3 text-xs font-bold text-orange-700 hover:bg-orange-100 active:scale-95 transition" 
-                      onClick={() => void retire(template)}
-                    >
-                      <Ban size={14} /> Ngừng áp dụng
-                    </button>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-
-          {visibleTemplates.length === 0 && (
-            <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-10 text-center lg:col-span-2">
-              <Search size={32} className="text-slate-300 mb-2" />
-              <p className="text-sm font-bold text-slate-700">Chưa có bộ hồ sơ mẫu phù hợp bộ lọc</p>
-              <p className="mt-1 text-xs text-slate-400">Hãy thử xóa từ khóa tìm kiếm hoặc chọn tất cả trạng thái.</p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Preview Surface */}
-      {activePreview && (
-        <section data-testid="pgdcn-dossier-template-preview-surface" className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm md:p-6">
-          <PgdcnDossierTemplatePreview 
-            model={activePreview} 
-            requirements={domain === 'PCN' ? pcnOptions : pgdOptions} 
-            onClose={() => setActivePreview(undefined)} 
-          />
-        </section>
-      )}
-
-      {/* Editor Surface */}
-      {editorModel && (
-        <section data-testid="pgdcn-dossier-template-editor-surface" className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm md:p-6">
-          <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-bold text-blue-600">
-                  {editorMode === 'revision' ? 'Bản nháp phiên bản mới' : editorMode === 'new' ? 'Bộ hồ sơ mới' : editorMode === 'view' ? 'Xem bộ hồ sơ' : 'Chỉnh sửa bản nháp'}
-                </p>
-                {editorDirty && editorMode !== 'view' && (
-                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                    Có thay đổi chưa lưu
-                  </span>
-                )}
+      <div className="mt-5 flex flex-wrap gap-2" role="tablist" aria-label="Chọn lĩnh vực hồ sơ mẫu">
+        <button type="button" role="tab" aria-selected={domain === 'PCN'} disabled={!canPcn} onClick={() => { if (domain !== 'PCN' && !closeEditor()) return; setActivePreview(undefined); setDomain('PCN'); }} className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${domain === 'PCN' ? 'bg-emerald-600 text-white' : 'border border-slate-200 text-slate-600'} disabled:cursor-not-allowed disabled:opacity-40`}>PCN · Chứng nhận</button>
+        <button type="button" role="tab" aria-selected={domain === 'PGD'} disabled={!canPgd} onClick={() => { if (domain !== 'PGD' && !closeEditor()) return; setActivePreview(undefined); setDomain('PGD'); }} className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${domain === 'PGD' ? 'bg-blue-600 text-white' : 'border border-slate-200 text-slate-600'} disabled:cursor-not-allowed disabled:opacity-40`}>PGD · Giám định</button>
+      </div>
+    </header>
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="pgdcn-toolbar-nowrap" data-testid="pgdcn-dossier-template-filters">
+        <label className="pgdcn-toolbar-search block"><span className="mb-1 block text-[10px] font-black text-slate-600">Tìm kiếm bộ hồ sơ mẫu</span><div className="relative"><Search size={16} className="absolute left-3 top-3.5 text-slate-400" /><input aria-label="Tìm kiếm bộ hồ sơ mẫu" value={query} onChange={(event) => setQuery(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 pl-10 pr-3 text-sm" /></div></label>
+        <label className="pgdcn-toolbar-filter block"><span className="mb-1 block text-[10px] font-black text-slate-600">Trạng thái</span><select aria-label="Lọc trạng thái bộ hồ sơ mẫu" value={status} onChange={(event) => setStatus(event.target.value as TemplateStatus)} className="min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm"><option value="ALL">Tất cả trạng thái</option><option value="DRAFT">Bản nháp</option><option value="PUBLISHED">Đang áp dụng</option><option value="RETIRED">Đã ngừng</option></select></label>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Thống kê bộ hồ sơ mẫu" data-testid="pgdcn-dossier-template-counts">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><p className="text-[10px] font-semibold text-slate-500">Tất cả</p><p className="text-lg font-black text-slate-900">{counts.all}</p></div>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"><p className="text-[10px] font-semibold text-emerald-700">Đang áp dụng</p><p className="text-lg font-black text-emerald-900">{counts.published}</p></div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"><p className="text-[10px] font-semibold text-amber-700">Bản nháp</p><p className="text-lg font-black text-amber-900">{counts.draft}</p></div>
+        <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2"><p className="text-[10px] font-semibold text-slate-600">Đã ngừng</p><p className="text-lg font-black text-slate-800">{counts.retired}</p></div>
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        {visibleTemplates.map((template) => {
+          const isPersonalDraft = template.scope === 'PERSONAL' && template.status === 'DRAFT' && template.createdBy === props.currentUser.username;
+          const cloneInsteadOfOpen = !activeCanManage && template.status === 'PUBLISHED';
+          const primaryLabel = cloneInsteadOfOpen ? 'Nhân bản để đề xuất' : isPersonalDraft && !activeCanManage ? 'Mở đề xuất riêng' : template.status === 'PUBLISHED' ? 'Tạo phiên bản mới' : template.status === 'DRAFT' ? 'Mở chỉnh sửa' : 'Xem chi tiết';
+          return <article key={template.id} data-testid={`pgdcn-dossier-template-card-${template.id}`} className="rounded-xl border border-slate-200 p-4">
+            <div className="flex items-start gap-3">
+              <div className={`mt-0.5 rounded-full border px-2 py-1 text-[10px] font-bold ${statusClass(template.status)}`}>{statusLabel(template.status)}</div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs font-semibold text-slate-500">{template.code}</span><span className="text-xs text-slate-400">phiên bản {template.version}</span>{template.scope === 'PERSONAL' && <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-1 text-[10px] font-semibold text-violet-700">Đề xuất riêng{activeCanManage && template.createdBy ? ` · ${template.createdBy}` : ''}</span>}</div>
+                <h2 className="mt-1 truncate text-sm font-semibold text-slate-800">{template.name}</h2>
+                <p className="mt-1 line-clamp-2 text-xs text-slate-500">{template.description || 'Chưa có mô tả.'}</p>
+                <div className="mt-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Phạm vi áp dụng</p><div data-testid={`pgdcn-dossier-template-scope-${template.id}`} className="mt-1 flex flex-wrap gap-1.5">{applicationScopeLabels(template).map((label) => <span key={label} className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-semibold text-indigo-700">{label}</span>)}{applicationScopeLabels(template).length === 0 && <span className="text-[10px] text-slate-400">Chưa chọn phạm vi</span>}</div></div>
+                <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500"><span>{template.nodes.length} nút</span><span>· {template.transitions.length} chuyển tiếp</span><span>· {new Set(template.nodes.flatMap((node) => 'requirementIds' in node ? node.requirementIds : node.requirementCodes)).size} loại tài liệu</span></div>
               </div>
-              <p className="mt-1 text-xs text-slate-500">
-                {editorMode === 'revision' 
-                  ? 'Bản đã công bố giữ nguyên; thay đổi sẽ tạo phiên bản mới.' 
-                  : editorMode === 'view' 
-                  ? 'Bộ hồ sơ đã ngừng áp dụng và không thể chỉnh sửa.' 
-                  : 'Cấu hình nút và loại tài liệu bằng giao diện trực quan.'}
-              </p>
             </div>
-            <button 
-              type="button" 
-              className="min-h-11 rounded-xl px-4 text-xs md:text-sm font-bold text-slate-500 hover:bg-slate-100 transition" 
-              onClick={closeEditor}
-            >
-              Đóng
-            </button>
-          </div>
-          <PgdcnDossierTemplateEditor 
-            model={editorModel} 
-            requirements={domain === 'PCN' ? pcnOptions : pgdOptions} 
-            onChange={(model) => { setEditorModel(model); setEditorDirty(true); }} 
-            onSaveDraft={save} 
-            canMutate={activeCanMutate && editorMode !== 'view'} 
-            saving={saving} 
-            saveError={saveError} 
-          />
-        </section>
-      )}
-    </div>
-  );
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" className="min-h-11 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700" onClick={() => previewTemplate(template)}>Xem trước</button>
+              <button type="button" className="min-h-11 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700" onClick={() => cloneInsteadOfOpen ? cloneTemplate(template) : openTemplate(template)}>{primaryLabel}</button>
+              {activeCanManage && <button type="button" className="min-h-11 rounded-lg border border-indigo-200 px-3 text-xs font-semibold text-indigo-700" onClick={() => cloneTemplate(template)}>Nhân bản</button>}
+              {activeCanManage && template.status === 'DRAFT' && template.scope !== 'PERSONAL' && <button type="button" className="min-h-11 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white" onClick={() => void publish(template)}>Công bố</button>}
+              {activeCanManage && template.status === 'PUBLISHED' && template.scope !== 'PERSONAL' && <button type="button" className="min-h-11 rounded-lg border border-orange-200 bg-orange-50 px-3 text-xs font-semibold text-orange-700" onClick={() => void retire(template)}>Ngừng áp dụng</button>}
+            </div>
+          </article>;
+        })}
+        {visibleTemplates.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 lg:col-span-2">Chưa có bộ hồ sơ mẫu phù hợp bộ lọc.</div>}
+      </div>
+    </section>
+    {activePreview && <section data-testid="pgdcn-dossier-template-preview-surface" className="rounded-2xl border border-slate-200 bg-white p-3 md:p-5"><PgdcnDossierTemplatePreview model={activePreview} requirements={domain === 'PCN' ? pcnOptions : pgdOptions} onClose={() => setActivePreview(undefined)} /></section>}
+    {editorModel && <section data-testid="pgdcn-dossier-template-editor-surface" className="rounded-2xl border border-slate-200 bg-white p-3 md:p-5"><div className="mb-4 flex items-center justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-semibold text-blue-600">{editorMode === 'revision' ? 'Bản nháp phiên bản mới' : editorMode === 'new' ? (activeCanManage ? 'Bộ hồ sơ mới' : 'Đề xuất riêng mới') : editorMode === 'view' ? 'Xem bộ hồ sơ' : (sourceTemplate?.scope === 'PERSONAL' ? 'Đề xuất riêng' : 'Chỉnh sửa bản nháp')}</p>{editorDirty && editorMode !== 'view' && <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-700">Có thay đổi chưa lưu</span>}</div><p className="mt-1 text-xs text-slate-500">{editorMode === 'revision' ? 'Bản đã công bố giữ nguyên; thay đổi sẽ tạo phiên bản mới.' : editorMode === 'view' ? 'Bộ hồ sơ đã ngừng áp dụng và không thể chỉnh sửa.' : !activeCanManage ? 'Bản nháp riêng chỉ bạn chỉnh sửa; quản lý sẽ nhân bản nếu chọn dùng chung.' : 'Định nghĩa tài liệu và nhóm theo giai đoạn; lưu trình nâng cao vẫn được giữ nguyên.'}</p></div><button type="button" className="min-h-11 rounded-lg px-3 text-sm text-slate-500 hover:bg-slate-100" onClick={closeEditor}>Đóng</button></div><PgdcnDossierTemplateEditor model={editorModel} requirements={domain === 'PCN' ? pcnOptions : pgdOptions} docxTemplates={domain === 'PCN' ? pcnDocxOptions : pgdDocxOptions} onChange={(model) => { setEditorModel(model); setEditorDirty(true); }} onSaveDraft={save} canMutate={canSaveEditor && editorMode !== 'view'} saving={saving} saveError={saveError} /></section>}
+  </div>;
 }

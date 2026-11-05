@@ -7,12 +7,14 @@ import { buildActivityLog, validateActivityLogPayload } from '@/lib/server/activ
 import { getDocumentPayload } from '@/lib/server/collections';
 import { isPcnSystemManager } from '@/utils/pcnRbac';
 import { buildActivityLog as buildActivityLogBase } from '@/utils/activityLog';
+import { validateDossierTemplateRequirementDefinitions } from '@/utils/pgdcnDossierTemplate';
 
 export const PGD_COLLECTIONS = {
   workflowTemplates: 'pgdWorkflowTemplates',
   requests: 'pgdInspectionRequests',
   assignments: 'pgdInspectionAssignments',
   documents: 'pgdDocuments',
+  documentTemplates: 'pgdDocumentTemplates',
   dossierDocuments: 'pgdDossierDocuments',
   activityLogs: 'pgdActivityLogs',
   drafts: 'pgdDrafts',
@@ -33,6 +35,16 @@ export function isPgdWorkflowManager(actor: PcnUserAccount | null): boolean {
     isPcnSystemManager(actor) ||
     ['PGD_ADMIN', 'PGD_MANAGER'].includes(String((actor as any).pgdRole || '').trim().toUpperCase())
   );
+}
+
+export function canProposePcnWorkflow(actor: PcnUserAccount | null): boolean {
+  if (!actor || isPcnWorkflowManager(actor) || actor.active === false || actor.role === 'viewer' || actor.systemRole === 'viewer') return false;
+  return (actor.departmentScopes || []).includes('PCN');
+}
+
+export function canProposePgdWorkflow(actor: PcnUserAccount | null): boolean {
+  if (!actor || isPgdWorkflowManager(actor) || actor.active === false || actor.role === 'viewer' || actor.systemRole === 'viewer') return false;
+  return (actor.departmentScopes || []).includes('PGD') && String((actor as any).pgdRole || '').trim().toUpperCase() !== 'PGD_VIEWER';
 }
 
 export const buildPcnWorkflowTemplateRecord = (
@@ -80,6 +92,9 @@ export const buildPcnWorkflowTemplateRecord = (
     },
     version: Number(source.version || base?.version || 1),
     status: source.status === 'PUBLISHED' || source.status === 'RETIRED' ? source.status : 'DRAFT',
+    scope: base?.scope || (source.scope === 'PERSONAL' ? 'PERSONAL' : 'COMMON'),
+    ...(Array.isArray(source.stages) || base?.stages ? { stages: Array.isArray(source.stages) ? source.stages : base?.stages } : {}),
+    ...(Array.isArray(source.requirementDefinitions) || base?.requirementDefinitions ? { requirementDefinitions: Array.isArray(source.requirementDefinitions) ? source.requirementDefinitions : base?.requirementDefinitions } : {}),
     nodes: Array.isArray(source.nodes) ? source.nodes : base?.nodes || [],
     transitions: Array.isArray(source.transitions) ? source.transitions : base?.transitions || [],
     createdAt: base?.createdAt || now,
@@ -95,14 +110,26 @@ export const assertPcnWorkflowRequirementReferences = async (
   client: PoolClient | any,
   template: PcnWorkflowTemplate
 ): Promise<void> => {
-  const requirementIds = Array.from(
+  const definitionValidation = validateDossierTemplateRequirementDefinitions(template.requirementDefinitions, 'PCN');
+  if (!definitionValidation.valid) throw Object.assign(new Error(definitionValidation.errors.join(' ')), { statusCode: 400 });
+  const customIds = new Set((template.requirementDefinitions || []).map((definition) => definition.id));
+  const allRequirementIds = Array.from(
     new Set(
-      template.nodes
-        .flatMap((node) => node.requirementIds || [])
+      [...template.nodes.flatMap((node) => node.requirementIds || []), ...(template.stages || []).flatMap((stage) => stage.requirementIds || [])]
         .map((id) => String(id).trim())
         .filter(Boolean)
     )
   );
+  const invalidCustom = allRequirementIds.filter((id) => (id.startsWith('pcn-custom-') && !customIds.has(id)) || id.startsWith('pgd-custom-'));
+  if (invalidCustom.length) throw Object.assign(new Error(`Template PCN tham chiếu requirement custom không tồn tại hoặc sai domain: ${invalidCustom.join(', ')}.`), { statusCode: 400 });
+  const customDocxIds = (template.requirementDefinitions || []).filter((definition) => definition.source === 'DRAFT_FROM_DOCX_TEMPLATE').map((definition) => definition.linkedDocxTemplateId!);
+  if (customDocxIds.length) {
+    const linkedTemplates = await client.query(`SELECT document_id FROM app_documents WHERE collection_name = 'pcnTemplates' AND document_id = ANY($1::text[]) AND data->>'status' = 'APPROVED'`, [customDocxIds]);
+    const availableTemplates = new Set(linkedTemplates.rows.map((row: any) => String(row.document_id)));
+    const missingTemplates = customDocxIds.filter((id) => !availableTemplates.has(id));
+    if (missingTemplates.length) throw Object.assign(new Error(`Requirement PCN liên kết mẫu DOCX không tồn tại hoặc chưa duyệt: ${missingTemplates.join(', ')}.`), { statusCode: 400 });
+  }
+  const requirementIds = allRequirementIds.filter((id) => !customIds.has(id));
   if (requirementIds.length === 0) return;
   const result = await client.query(
     `SELECT document_id FROM app_documents
@@ -201,6 +228,9 @@ export const buildPgdWorkflowTemplateRecord = (
     },
     version: Number(source.version || base?.version || 1),
     status: source.status === 'PUBLISHED' || source.status === 'RETIRED' ? source.status : 'DRAFT',
+    scope: base?.scope || (source.scope === 'PERSONAL' ? 'PERSONAL' : 'COMMON'),
+    ...(Array.isArray(source.stages) || base?.stages ? { stages: Array.isArray(source.stages) ? source.stages : base?.stages } : {}),
+    ...(Array.isArray(source.requirementDefinitions) || base?.requirementDefinitions ? { requirementDefinitions: Array.isArray(source.requirementDefinitions) ? source.requirementDefinitions : base?.requirementDefinitions } : {}),
     nodes: sourceNodes.map((node: any, index: number) => ({
       ...node,
       id: String(node?.id || `node-${index + 1}`).trim(),
@@ -216,6 +246,7 @@ export const buildPgdWorkflowTemplateRecord = (
       sortOrder: Number(node?.sortOrder ?? (index + 1) * 10),
       ...(node?.laneId ? { laneId: String(node.laneId).trim() } : {}),
       ...(node?.column !== undefined ? { column: Number(node.column) } : {}),
+      ...(node?.stageId ? { stageId: String(node.stageId).trim() } : {}),
     })),
     transitions: sourceTransitions.map((transition: any, index: number) => ({
       ...transition,
@@ -233,22 +264,31 @@ export const buildPgdWorkflowTemplateRecord = (
 };
 
 export const assertPgdWorkflowRequirementReferences = async (
-  _client: PoolClient | any,
+  client: PoolClient | any,
   template: PgdWorkflowTemplate
 ): Promise<void> => {
+  const definitionValidation = validateDossierTemplateRequirementDefinitions(template.requirementDefinitions, 'PGD');
+  if (!definitionValidation.valid) throw Object.assign(new Error(definitionValidation.errors.join(' ')), { statusCode: 400 });
+  const customIds = new Set((template.requirementDefinitions || []).map((definition) => definition.id));
+  const allRequirementCodes = Array.from(new Set([
+    ...template.nodes.flatMap((node) => node.requirementCodes || []),
+    ...(template.stages || []).flatMap((stage) => stage.requirementIds || []),
+  ].map((code) => String(code).trim()).filter(Boolean)));
+  const invalidCustom = allRequirementCodes.filter((code) => (code.startsWith('pgd-custom-') && !customIds.has(code)) || code.startsWith('pcn-custom-'));
+  if (invalidCustom.length) throw Object.assign(new Error(`Template PGD tham chiếu requirement custom không tồn tại hoặc sai domain: ${invalidCustom.join(', ')}.`), { statusCode: 400 });
+  const customDocxIds = (template.requirementDefinitions || []).filter((definition) => definition.source === 'DRAFT_FROM_DOCX_TEMPLATE').map((definition) => definition.linkedDocxTemplateId!);
+  if (customDocxIds.length) {
+    const linkedTemplates = await client.query(`SELECT document_id FROM app_documents WHERE collection_name = $1 AND document_id = ANY($2::text[]) AND data->>'domain' = 'pgd' AND COALESCE(data->>'active', 'true') = 'true'`, [PGD_COLLECTIONS.documentTemplates, customDocxIds]);
+    const availableTemplates = new Set(linkedTemplates.rows.map((row: any) => String(row.document_id)));
+    const missingTemplates = customDocxIds.filter((id) => !availableTemplates.has(id));
+    if (missingTemplates.length) throw Object.assign(new Error(`Requirement PGD liên kết mẫu DOCX không tồn tại hoặc đã tắt: ${missingTemplates.join(', ')}.`), { statusCode: 400 });
+  }
   const available = new Set(
     ['STEEL_METAL', 'MACHINERY_LINE', 'COAL', 'OTHER'].flatMap((productGroup) =>
       getPgdDossierRequirements(productGroup as any).map((requirement) => requirement.code)
     )
   );
-  const requirementCodes = Array.from(
-    new Set(
-      template.nodes
-        .flatMap((node) => node.requirementCodes || [])
-        .map((code) => String(code).trim())
-        .filter(Boolean)
-    )
-  );
+  const requirementCodes = allRequirementCodes.filter((code) => !customIds.has(code));
   const missing = requirementCodes.filter((code) => !available.has(code));
   if (missing.length > 0) {
     throw Object.assign(

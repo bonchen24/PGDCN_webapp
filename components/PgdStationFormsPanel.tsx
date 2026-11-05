@@ -29,7 +29,7 @@ import {
   type PgdLabReviewCompleteness,
   type PgdLabReviewConformity,
 } from '../utils/pgdArtifacts';
-import { getPgdDossierRequirements } from '../utils/pgdDossier';
+import { getPgdDossierRequirementsWithCustom } from '../utils/pgdDossier';
 import PgdCaseEvidencePanel from './PgdCaseEvidencePanel';
 import PgdDossierOperationsPanel from './PgdDossierOperationsPanel';
 import PgdSourceFormsPanel from './PgdSourceFormsPanel';
@@ -109,7 +109,7 @@ function canManagePgd(user: PcnUserAccount): boolean {
 
 function useDossierEvidence(request: PgdInspectionRequest) {
   const pgd = usePgdStore();
-  const requirements = useMemo(() => getPgdDossierRequirements(request.productGroup), [request.productGroup]);
+  const requirements = useMemo(() => getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || []), [request]);
   const documents = pgd.dossierDocuments.filter((item) => item.requestId === request.id);
   useEffect(() => { void pgd.fetchDossierDocuments(request.id).catch(() => undefined); }, [pgd.fetchDossierDocuments, request.id]);
   return { pgd, requirements, documents };

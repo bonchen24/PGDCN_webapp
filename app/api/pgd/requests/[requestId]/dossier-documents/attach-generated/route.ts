@@ -8,8 +8,8 @@ import { PGD_COLLECTIONS, PgdGeneratedDocument, PgdInspectionRequest } from '@/u
 import {
   buildPgdDossierDocument,
   getPgdDossierRequirementForTemplate,
-  getPgdDossierRequirements,
-  getPgdDossierRequirementStationKey,
+  getPgdDossierRequirementsWithCustom,
+  getPgdDossierRequirementStationKeyForSnapshot,
   markPgdDossierChecklistPresent,
   PgdDossierDocument,
 } from '@/utils/pgdDossier';
@@ -49,10 +49,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD.'), { statusCode: 404 });
       const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
       assertPgdRequestEvidenceMutationAllowed(request);
-      const requirements = getPgdDossierRequirements(request.productGroup);
+      const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || []);
       const requirement = requirements.find((item) => item.code === requirementCode);
       if (!requirement) throw Object.assign(new Error('Checklist đích không thuộc nhóm sản phẩm của hồ sơ PGD.'), { statusCode: 400 });
-      assertPgdRequestStationMutationAllowed(request, getPgdDossierRequirementStationKey(requirement.code));
+      const effectiveRequired = request.dossierChecklist?.find((item) => item.requirementCode === requirementCode)?.required ?? requirement.required;
+      assertPgdRequestStationMutationAllowed(request, getPgdDossierRequirementStationKeyForSnapshot(requirement.code, requirement.customDefinition?.businessModuleKey, request.workflowSnapshot?.stages));
 
       const generatedResult = await client.query(
         `SELECT document_id, data FROM app_documents
@@ -64,8 +65,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       const generated = mapDocumentRow(generatedResult.rows[0]) as PgdGeneratedDocument;
       if (generated.requestId !== request.id) throw Object.assign(new Error('Tài liệu sinh không thuộc hồ sơ PGD đang mở.'), { statusCode: 409 });
       const mappedRequirement = getPgdDossierRequirementForTemplate(generated.kind as PgdDocumentTemplateKind, request.productGroup);
-      if (!mappedRequirement || mappedRequirement.code !== requirementCode) {
+      const customDocxMatch = requirement.customDefinition?.source === 'DRAFT_FROM_DOCX_TEMPLATE'
+        && requirement.customDefinition.linkedDocxTemplateId === generated.templateId;
+      if ((!requirement.customDefinition && (!mappedRequirement || mappedRequirement.code !== requirementCode)) || (requirement.customDefinition && !customDocxMatch)) {
         throw Object.assign(new Error('Tài liệu sinh không khớp với mục checklist đã chọn.'), { statusCode: 400 });
+      }
+      if (requirement.customDefinition && effectiveRequired && !generated.fileAssetId) {
+        throw Object.assign(new Error('Yêu cầu custom bắt buộc cần bản sinh có tệp private trước khi xác nhận.'), { statusCode: 400 });
       }
 
       if (generated.fileAssetId) {
@@ -131,6 +137,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
           version: next.version,
         },
         now,
+        requirement.customDefinition ? 'GENERATED' : 'PRESENT',
       );
 
       const nextRequest: PgdInspectionRequest = {
@@ -150,14 +157,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         entityId: request.id,
         entityLabel: request.requestCode,
         requestCode: request.requestCode,
-        summary: `Đưa biểu mẫu ${generated.fileName} vào checklist ${requirementCode} của ${request.requestCode}`,
+        summary: [`Đưa biểu mẫu ${generated.fileName} vào checklist ${requirementCode} của ${request.requestCode}`, requirement.stageLabel ? `Giai đoạn: ${requirement.stageLabel}` : ''].filter(Boolean).join(' · '),
         idSuffix: `attach-generated-${generated.id}-${requirementCode}`,
       });
 
-      return next;
+      return { dossierDocument: next, request: nextRequest };
     });
 
-    return jsonCreated({ dossierDocument: result });
+    return jsonCreated(result);
   } catch (error: any) {
     const status = Number(error?.statusCode) || 400;
     if (status === 404) return jsonNotFound(error.message);

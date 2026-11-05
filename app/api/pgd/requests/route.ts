@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
       const workflowTemplates = workflowTemplateResult.rows.map((row: any) => mapDocumentRow(row) as PgdWorkflowTemplate);
       const workflowCandidates = matchPgdPublishedWorkflowTemplates(workflowTemplates, {
         productGroups: [createdRequest.productGroup],
-        methodCode: createdRequest.method || undefined,
+        methodCode: String(createdRequest.assessmentMethod || createdRequest.method || '').trim().toUpperCase() || undefined,
       });
       const workflowResolution = resolveWorkflowTemplateForCreate(workflowCandidates, workflowTemplateSelection);
       if (workflowResolution.status === 'invalid-selection') {
@@ -111,6 +111,9 @@ export async function POST(req: NextRequest) {
         throw Object.assign(new Error('Có nhiều bộ hồ sơ mẫu phù hợp. Vui lòng chọn một mẫu trước khi tạo PYC.'), { statusCode: 409 });
       }
       const selectedWorkflowTemplate = workflowResolution.status === 'resolved' ? workflowResolution.template : undefined;
+      const workflowSnapshot = selectedWorkflowTemplate
+        ? snapshotPgdWorkflowTemplate(selectedWorkflowTemplate, { capturedAt: now, capturedBy: actor.username || 'SYSTEM' })
+        : undefined;
 
       const samples = sampleDrafts.map((draft) =>
         createPgdSampleFromIntakeDraft(createdRequest.id, draft, actor.username, now),
@@ -119,15 +122,12 @@ export async function POST(req: NextRequest) {
       const request = {
         ...createdRequest,
         sampleIds: samples.map((sample) => sample.id),
-        dossierChecklist: buildPgdDossierChecklist(createdRequest.productGroup, now),
-        ...(selectedWorkflowTemplate ? {
+        ...(selectedWorkflowTemplate && workflowSnapshot ? {
           workflowTemplateId: selectedWorkflowTemplate.id,
           workflowTemplateVersion: selectedWorkflowTemplate.version,
-          workflowSnapshot: snapshotPgdWorkflowTemplate(selectedWorkflowTemplate, {
-            capturedAt: now,
-            capturedBy: actor.username || 'SYSTEM',
-          }),
+          workflowSnapshot,
         } : { workflowTemplatePending: true }),
+        dossierChecklist: buildPgdDossierChecklist(createdRequest.productGroup, now, workflowSnapshot?.requirementDefinitions || [], workflowSnapshot?.stages || []),
       };
 
       const duplicateCode = await client.query(

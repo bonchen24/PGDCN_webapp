@@ -9,7 +9,7 @@ import {
   PcnDossierDocument,
   PcnUserAccount,
 } from '@/types';
-import { buildPcnDossierDocumentId } from '@/utils/pcnDossierDocuments';
+import { buildPcnDossierDocumentId, getPcnDossierRequirementsWithCustom } from '@/utils/pcnDossierDocuments';
 import { isPcnDossierPostApprovalLocked } from '@/utils/pcnDossierStepAccess';
 import { canProcessPcnDossierRequirement } from '@/utils/pcnDossierStageGate';
 import { buildActivityLog, diffActivityFields, validateActivityLogPayload } from '@/utils/activityLog';
@@ -58,7 +58,9 @@ export async function POST(
          LIMIT 1`,
         [requirementId],
       );
-      const requirement = requirementResult.rows[0] ? mapDocumentRow(requirementResult.rows[0]) as PcnDocumentRequirement : undefined;
+      const requirement = requirementResult.rows[0]
+        ? mapDocumentRow(requirementResult.rows[0]) as PcnDocumentRequirement
+        : getPcnDossierRequirementsWithCustom(dossier).find((item) => item.id === requirementId);
       const fieldCodes = Array.isArray(dossier.fieldCodes) ? dossier.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()) : [];
       if (!requirement || requirement.active !== true || !fieldCodes.includes(String(requirement.fieldCode || '').trim().toUpperCase())) {
         throw Object.assign(new Error('Loại tài liệu không thuộc Lĩnh vực của hồ sơ PCN.'), { statusCode: 404 });
@@ -107,7 +109,7 @@ export async function POST(
         actorUsername: actor.username,
         actorName: actor.name || 'Người dùng PCN',
         actorRole: actor.systemRole || actor.role,
-        summary: `Đánh dấu bỏ qua tài liệu ${requirement.name} và ghi lý do`,
+        summary: `Đánh dấu bỏ qua tài liệu ${requirement.name} và ghi lý do${requirement.workflowStageLabel ? ` · giai đoạn ${requirement.workflowStageLabel}` : ''}`,
         source: 'UI',
         groupId: dossierId,
         changes: diffActivityFields(dossier, nextDossier, ['documentWaivers', 'updatedAt']),

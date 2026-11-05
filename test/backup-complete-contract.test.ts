@@ -7,7 +7,8 @@ import fs from 'node:fs';
 import test from 'node:test';
 import { buildStorageBackupManifest } from '../utils/backupManager';
 
-const reminder = fs.readFileSync(new URL('../components/AdminBackupReminder.tsx', import.meta.url), 'utf8');
+const panel = fs.readFileSync(new URL('../components/BackupRestoreAdminPanel.tsx', import.meta.url), 'utf8');
+const settingsView = fs.readFileSync(new URL('../components/PgdcnSystemSettingsView.tsx', import.meta.url), 'utf8');
 const manager = fs.readFileSync(new URL('../utils/backupManager.ts', import.meta.url), 'utf8');
 
 test('maps every file asset to a stable archive entry', () => {
@@ -32,9 +33,14 @@ test('maps every file asset to a stable archive entry', () => {
   );
 });
 
-test('Admin reminder uses the complete server backup action', () => {
-  assert.match(reminder, /triggerServerBackup/);
-  assert.match(reminder, /Sao lưu đầy đủ/);
+test('Backup panel uses complete server backup action and CTA', () => {
+  assert.match(panel, /triggerServerBackup/);
+  assert.match(panel, /Tạo bản sao lưu ngay/);
+});
+
+test('Backup panel is gated by Admin role in UI and settings view', () => {
+  assert.match(panel, /if \(!isAdmin\) \{\s*return null;\s*\}/);
+  assert.match(settingsView, /\{isAdmin && \(\s*<section aria-labelledby="system-backup-heading"/);
 });
 
 test('server backup archives file metadata and objects', () => {

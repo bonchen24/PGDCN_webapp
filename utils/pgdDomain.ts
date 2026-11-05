@@ -688,7 +688,7 @@ export interface PgdDraftWorkspace {
   updatedByUsername?: string;
 }
 
-export type PgdDossierChecklistStatus = 'MISSING' | 'PRESENT' | 'WAIVED';
+export type PgdDossierChecklistStatus = 'MISSING' | 'UPLOADED' | 'GENERATED' | 'CONFIRMED' | 'PRESENT' | 'WAIVED';
 
 export interface PgdDossierChecklistItem {
   domain: typeof PGD_DOMAIN;
@@ -697,6 +697,13 @@ export interface PgdDossierChecklistItem {
   title: string;
   required: boolean;
   status: PgdDossierChecklistStatus;
+  requirementLevel?: 'REQUIRED' | 'OPTIONAL' | 'CONDITIONAL';
+  requirementSource?: 'UPLOAD_EXTERNAL' | 'DRAFT_FROM_DOCX_TEMPLATE' | 'BUSINESS_MODULE_LINK';
+  condition?: 'RESULT_FAILED' | 'RESULT_PASSED';
+  ownerRole?: string;
+  multiplicity?: 'SINGLE' | 'MULTIPLE';
+  stageId?: string;
+  stageLabel?: string;
   currentDocumentId?: string;
   currentDocumentVersion?: number;
   waiverReason?: string;

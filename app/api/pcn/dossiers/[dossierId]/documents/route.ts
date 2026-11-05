@@ -14,6 +14,7 @@ import {
 import {
   buildPcnDossierDocumentId,
   buildPcnUploadedDossierAttachment,
+  getPcnDossierRequirementsWithCustom,
 } from '@/utils/pcnDossierDocuments';
 import { isPcnDossierPostApprovalLocked } from '@/utils/pcnDossierStepAccess';
 import { canProcessPcnDossierRequirement, getPcnRequirementReopenStatus, getPcnRequirementWorkflowStageIndex } from '@/utils/pcnDossierStageGate';
@@ -98,10 +99,13 @@ export async function POST(
          LIMIT 1`,
         [requirementId],
       );
-      const requirementDefinition = requirement.rows[0] ? mapDocumentRow(requirement.rows[0]) as PcnDocumentRequirement : undefined;
+      const requirementDefinition = requirement.rows[0]
+        ? mapDocumentRow(requirement.rows[0]) as PcnDocumentRequirement
+        : getPcnDossierRequirementsWithCustom(dossier).find((item) => item.id === requirementId);
+      const isCustomRequirement = Boolean(dossier.workflowSnapshot?.requirementDefinitions?.some((item) => item.domain === 'PCN' && item.id === requirementId));
       const requirementData: Partial<PcnDocumentRequirement> = requirementDefinition || {};
       const requirementFieldCode = String(requirementData.fieldCode || '').trim().toUpperCase();
-      if (requirement.rows.length === 0 || requirementData.active === false || !requirementFieldCode || !dossierFieldCodes.includes(requirementFieldCode)) {
+      if ((!requirement.rows.length && !dossier.workflowSnapshot?.requirementDefinitions?.some((item) => item.id === requirementId)) || requirementData.active === false || !requirementFieldCode || !dossierFieldCodes.includes(requirementFieldCode)) {
         throw new Error('Loại tài liệu không thuộc Lĩnh vực của hồ sơ PCN.');
       }
       if (!canProcessPcnDossierRequirement(dossier, requirementDefinition!)) {
@@ -172,6 +176,7 @@ export async function POST(
           currentVersionId: assetId,
           versions: [...previousVersions, version],
           status: 'PRESENT',
+          ...(isCustomRequirement ? { lifecycleStatus: 'UPLOADED' as const } : {}),
           createdAt: previous.createdAt || now,
           updatedAt: now,
         };
@@ -276,7 +281,7 @@ export async function POST(
             ? `Tải phiên tài liệu ${fileName.slice(0, 120)} và mở lại node ${workflowRework.reopenedNodeId} theo vòng xử lý mới`
           : hasVersion
             ? `Bổ sung provenance cho phiên tài liệu ${fileName.slice(0, 120)} trong hồ sơ`
-            : `Tải phiên tài liệu ${fileName.slice(0, 120)} vào hồ sơ`,
+            : `Tải phiên tài liệu ${fileName.slice(0, 120)} vào hồ sơ${requirementDefinition.workflowStageLabel ? ` · giai đoạn ${requirementDefinition.workflowStageLabel}` : ''}`,
         source: 'UI',
         groupId: dossier.id,
         changes: diffActivityFields(dossier, nextDossier, ['updatedAt']),

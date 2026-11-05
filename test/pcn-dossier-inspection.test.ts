@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import { buildPcnDossierInspection } from '../utils/pcnDossierInspection.ts';
+import { buildPcnDossierInspection, getPcnDossierInspectionStatusLabel } from '../utils/pcnDossierInspection.ts';
 import { getPcnFilePreviewKind } from '../utils/pcnFilePreview.ts';
 
 test('classifies only safe PDF and raster image types for inline preview', () => {
@@ -72,6 +72,42 @@ test('exact station routing keeps operational forms out of the broad intake grou
   ]);
 });
 
+test('checklist counts confirmed current files as present and labels pending lifecycle states', () => {
+  const requirementCodes = ['UPLOADED', 'GENERATED', 'CONFIRMED', 'MISSING'];
+  const requirements = requirementCodes.map((code, index) => ({
+    id: `QC4-${code}`,
+    fieldCode: 'QC4' as const,
+    code,
+    name: code,
+    stages: ['INTAKE'] as ['INTAKE'],
+    required: true,
+    active: true,
+    sortOrder: index + 1,
+  }));
+  const documents = (['UPLOADED', 'GENERATED', 'CONFIRMED'] as const).map((lifecycleStatus) => ({
+    id: `doc-${lifecycleStatus}`,
+    dossierId: 'DOSSIER-3',
+    requirementId: `QC4-${lifecycleStatus}`,
+    fieldCode: 'QC4' as const,
+    status: 'PRESENT' as const,
+    lifecycleStatus,
+    currentVersionId: `asset-${lifecycleStatus}`,
+    versions: [{ assetId: `asset-${lifecycleStatus}`, fileName: `${lifecycleStatus}.pdf`, uploadedAt: '2026-10-10T00:00:00.000Z' }],
+  }));
+  const inspection = buildPcnDossierInspection({ dossierId: 'DOSSIER-3', fieldCodes: ['QC4'], requirements, documents });
+
+  assert.deepEqual(inspection.stages[0]?.items.map((item) => item.status), ['UPLOADED', 'GENERATED', 'CONFIRMED', 'MISSING']);
+  assert.equal(inspection.summary.present, 1);
+  assert.equal(inspection.summary.missing, 3);
+  assert.equal(inspection.summary.requiredPresent, 1);
+  assert.equal(inspection.summary.requiredMissing, 3);
+  assert.equal(inspection.stages[0]?.present, 1);
+  assert.equal(inspection.stations[0]?.present, 1);
+  assert.equal(getPcnDossierInspectionStatusLabel('UPLOADED'), 'Đã tải lên · chờ xác nhận');
+  assert.equal(getPcnDossierInspectionStatusLabel('GENERATED'), 'Đã sinh · chờ xác nhận');
+  assert.equal(getPcnDossierInspectionStatusLabel('CONFIRMED'), 'Đã xác nhận');
+});
+
 test('visual checklist is exposed in dossier detail without replacing the upload boundary', () => {
   const detailView = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
   const previewView = fs.readFileSync(new URL('../components/PcnDossierFilePreview.tsx', import.meta.url), 'utf8');
@@ -96,6 +132,6 @@ test('visual checklist is exposed in dossier detail without replacing the upload
   assert.match(detailView, /requiredMissing/);
   assert.doesNotMatch(detailView, /document\?\.status !== 'PRESENT'/);
   assert.doesNotMatch(detailView, /versions\.find\(\(version\) => version\.assetId === document\?\.currentVersionId\) \|\| versions\[versions\.length - 1\]/);
-  assert.match(detailView, /getPcnDocumentRequirements/);
+  assert.match(detailView, /getPcnDossierRequirementsWithCustom/);
   assert.doesNotMatch(detailView, /documentRequirements\.filter\(\(item\) => dossier\.fieldCodes\.includes\(item\.fieldCode\)\)/);
 });

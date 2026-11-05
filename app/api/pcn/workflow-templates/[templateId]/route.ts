@@ -6,6 +6,7 @@ import { getDocumentPayload, mapDocumentRow } from '@/lib/server/collections';
 import {
   assertPcnWorkflowRequirementReferences,
   buildPcnWorkflowTemplateRecord,
+  canProposePcnWorkflow,
   isPcnWorkflowManager,
   isSafePcnSampleKey,
   writePcnWorkflowActivity,
@@ -23,9 +24,8 @@ export async function PUT(
   if (!actor) {
     return jsonUnauthorized('Phiên PCN không hợp lệ hoặc đã hết hạn.');
   }
-  if (!isPcnWorkflowManager(actor)) {
-    return jsonForbidden('Chỉ Admin hoặc Quản lý PCN được thay đổi bộ hồ sơ mẫu.');
-  }
+  const manager = isPcnWorkflowManager(actor);
+  if (!manager && !canProposePcnWorkflow(actor)) return jsonForbidden('Tài khoản chưa được cấp quyền PCN để gửi đề xuất mẫu.');
 
   const resolvedParams = await Promise.resolve(context.params);
   const templateId = String(resolvedParams.templateId || '').trim();
@@ -53,6 +53,10 @@ export async function PUT(
         throw Object.assign(new Error('Không tìm thấy template workflow.'), { statusCode: 404 });
       }
       const existing = mapDocumentRow(existingResult.rows[0]) as PcnWorkflowTemplate;
+      if ((existing.scope === 'PERSONAL' && existing.createdBy !== actor.username)
+        || (!manager && existing.scope !== 'PERSONAL')) {
+        throw Object.assign(new Error('Chỉ người tạo mới được sửa đề xuất riêng của mình.'), { statusCode: 403 });
+      }
       if (existing.status !== 'DRAFT') {
         throw Object.assign(
           new Error('Template PUBLISHED/RETIRED bất biến; hãy tạo revision mới.'),
@@ -71,7 +75,7 @@ export async function PUT(
       next.version = existing.version;
       next.status = 'DRAFT';
 
-      const validation = validatePcnWorkflowTemplate(next);
+      const validation = validatePcnWorkflowTemplate(next, { allowIncompleteDraft: true });
       if (!validation.valid) {
         throw Object.assign(new Error(validation.errors.join(' ')), { statusCode: 400 });
       }

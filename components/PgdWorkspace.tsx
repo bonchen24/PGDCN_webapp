@@ -85,7 +85,7 @@ import {
   validatePgdResultValues,
   type PgdOperationalStationKey,
 } from '../utils/pgdWorkflow';
-import { getCurrentPgdDossierDocuments, getPgdDossierRequirements } from '../utils/pgdDossier';
+import { getCurrentPgdDossierDocuments, getPgdDossierRequirementsWithCustom } from '../utils/pgdDossier';
 import type { PgdDocumentTemplateKind } from '../utils/pgdDocumentTemplates';
 import type { PgdWorkflowTemplate } from '../utils/pgdWorkflowTemplate';
 import { matchPgdPublishedWorkflowTemplates, resolveTemplateSelectionState } from '../utils/pgdcnIntakeTemplateMatching';
@@ -393,12 +393,20 @@ function PgdIntakeForm({
   })), [workflowCandidates]);
   const templateRequirementRows = useMemo(() => {
     if (!recommendedWorkflowTemplate) return undefined;
-    const requirements = getPgdDossierRequirements(form.productGroup);
-    const ids = [...new Set(recommendedWorkflowTemplate.nodes.flatMap((node) => node.requirementCodes))];
+    const requirements = getPgdDossierRequirementsWithCustom(
+      form.productGroup,
+      recommendedWorkflowTemplate.requirementDefinitions || [],
+      recommendedWorkflowTemplate.stages || [],
+    );
+    const ids = [...new Set([
+      ...recommendedWorkflowTemplate.nodes.flatMap((node) => node.requirementCodes),
+      ...(recommendedWorkflowTemplate.stages || []).flatMap((stage) => stage.requirementIds || []),
+    ])];
     const rows = ids.map((id) => ({ id, definition: requirements.find((requirement) => requirement.code === id) }));
     return {
-      required: rows.filter((row) => row.definition?.required),
-      optional: rows.filter((row) => row.definition && !row.definition.required),
+      required: rows.filter((row) => row.definition?.requirementLevel === 'REQUIRED' || (row.definition?.requirementLevel === undefined && row.definition?.required)),
+      optional: rows.filter((row) => row.definition?.requirementLevel === 'OPTIONAL' || (row.definition?.requirementLevel === undefined && row.definition && !row.definition.required)),
+      conditional: rows.filter((row) => row.definition?.requirementLevel === 'CONDITIONAL'),
       unknown: rows.filter((row) => !row.definition),
     };
   }, [form.productGroup, recommendedWorkflowTemplate]);
@@ -620,6 +628,7 @@ function PgdIntakeForm({
             {templateRequirementRows && <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <div><b>Bắt buộc</b><p className="mt-0.5 leading-4">{templateRequirementRows.required.map((row) => row.definition?.title || row.id).join(' · ') || 'Không có mục bắt buộc trong catalog.'}</p></div>
               <div><b>Tùy chọn</b><p className="mt-0.5 leading-4">{templateRequirementRows.optional.map((row) => row.definition?.title || row.id).join(' · ') || 'Không có mục tùy chọn trong catalog.'}</p></div>
+              {templateRequirementRows.conditional.length > 0 && <div><b>Áp dụng theo điều kiện</b><p className="mt-0.5 leading-4">{templateRequirementRows.conditional.map((row) => row.definition?.title || row.id).join(' · ')}</p></div>}
               {templateRequirementRows.unknown.length > 0 && <div className="sm:col-span-2"><b>Mã tài liệu chưa có nhãn trong catalog</b><p className="mt-0.5 leading-4">{templateRequirementRows.unknown.map((row) => row.id).join(' · ')}</p></div>}
             </div>}
           </div>}
@@ -1440,14 +1449,18 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
   const reportIssues = useMemo(() => template ? validatePgdResultValues(template, reportValues) : [], [template, reportValues]);
   const missingRequiredCount = useMemo(() => {
     if (!dossierLoading && !dossierError && dossierRequirements.length > 0) {
-      const requiredReqs = dossierRequirements.filter((r) => r.required !== false);
+      const checklist = request.dossierChecklist || [];
+      const requiredReqs = dossierRequirements.filter((requirement) => {
+        const item = checklist.find((candidate) => candidate.requirementCode === requirement.code);
+        return item?.required ?? requirement.required !== false;
+      });
       if (requiredReqs.length === 0) return 0;
       const currentDocuments = getCurrentPgdDossierDocuments(dossierDocuments);
-      const checklist = request.dossierChecklist || [];
-      const presentCount = requiredReqs.filter((r) =>
-        currentDocuments.some((d) => d.requirementCode === r.code) ||
-        checklist.some((item) => item.requirementCode === r.code && item.status === 'WAIVED' && Boolean(item.waiverReason?.trim()))
-      ).length;
+      const presentCount = requiredReqs.filter((r) => {
+        const item = checklist.find((candidate) => candidate.requirementCode === r.code);
+        if (item) return item.status === 'PRESENT' || item.status === 'CONFIRMED' || (item.status === 'WAIVED' && Boolean(item.waiverReason?.trim()));
+        return currentDocuments.some((document) => document.requirementCode === r.code);
+      }).length;
       return Math.max(0, requiredReqs.length - presentCount);
     }
     return null;
@@ -1917,9 +1930,16 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
   }, [pgd.requests, query]);
 
   const queueRows = useMemo<PgdDossierQueueRow[]>(() => visibleRequests.map((request) => {
-    const requirements = getPgdDossierRequirements(request.productGroup).filter((requirement) => requirement.required);
     const checklist = request.dossierChecklist || [];
-    const requiredDocumentPresent = requirements.filter((requirement) => checklist.some((item) => item.requirementCode === requirement.code && (item.status === 'PRESENT' || item.status === 'WAIVED'))).length;
+    const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || []).filter((requirement) => {
+      const item = checklist.find((candidate) => candidate.requirementCode === requirement.code);
+      return item?.required ?? requirement.required;
+    });
+    const requiredDocumentPresent = requirements.filter((requirement) => {
+      const item = checklist.find((candidate) => candidate.requirementCode === requirement.code);
+      if (item) return item.status === 'PRESENT' || item.status === 'CONFIRMED' || (item.status === 'WAIVED' && Boolean(item.waiverReason?.trim()));
+      return pgd.dossierDocuments.some((document) => document.requestId === request.id && document.requirementCode === requirement.code);
+    }).length;
     const currentStepId = getPgdDossierFlowStepIdForStatus(request.status);
     const currentStep = PGD_DOSSIER_FLOW_STEPS.find((step) => step.id === currentStepId) || PGD_DOSSIER_FLOW_STEPS[0];
     return {
@@ -1939,7 +1959,7 @@ export default function PgdWorkspace({ embedded = false, initialSection = 'dashb
       productGroup: PGD_PRODUCT_GROUP_LABELS[request.productGroup],
       catalogLabel: getPgdCatalogItemLabel(request.catalogItemId, pgd.catalog),
     };
-  }), [pgd.catalog, pgd.users, visibleRequests]);
+  }), [pgd.catalog, pgd.dossierDocuments, pgd.users, visibleRequests]);
 
   const pgdCounts = useMemo(() => {
     const total = pgd.requests.length;

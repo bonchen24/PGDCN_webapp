@@ -3,10 +3,12 @@ import type {
   PcnWorkflowCondition,
   PcnWorkflowNodeDefinition,
   PcnWorkflowSnapshot,
+  DossierTemplateStageDefinition,
   PcnWorkflowTemplate,
   PcnWorkflowTransitionDefinition,
 } from '../types.ts';
 import { PCN_PIPELINE_STATIONS } from './pcnDossierPipeline.ts';
+import { validateDossierTemplateRequirementDefinitions } from './pgdcnDossierTemplate.ts';
 
 export const PCN_WORKFLOW_CONDITIONS = {
   ALWAYS: 'ALWAYS',
@@ -26,6 +28,31 @@ export interface PcnWorkflowValidationResult {
   errors: string[];
 }
 
+function getStageRequirementBindingError(stage: DossierTemplateStageDefinition, requirementId: string): string {
+  return `Giai đoạn ${stage.label || stage.id} có yêu cầu ${requirementId} nhưng chưa có node tài liệu hoặc phê duyệt đang hoạt động cùng giai đoạn.`;
+}
+
+function bindStageRequirementsToPcnNodes(template: PcnWorkflowTemplate): PcnWorkflowNodeDefinition[] {
+  const nodes = template.nodes.map((node) => ({ ...node, requirementIds: [...(node.requirementIds || [])] }));
+  const existingRequirementIds = new Set(nodes.flatMap((node) => node.requirementIds));
+
+  for (const stage of template.stages || []) {
+    for (const requirementId of stage.requirementIds || []) {
+      if (existingRequirementIds.has(requirementId)) continue;
+      const target = nodes
+        .filter((node) => node.active !== false
+          && node.stageId === stage.id
+          && (node.kind === 'DOCUMENT_TASK' || node.kind === 'APPROVAL_TASK'))
+        .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id))[0];
+      if (!target) throw new Error(getStageRequirementBindingError(stage, requirementId));
+      target.requirementIds = [...new Set([...target.requirementIds, requirementId])];
+      existingRequirementIds.add(requirementId);
+    }
+  }
+
+  return nodes;
+}
+
 function normalized(value: unknown): string {
   return String(value || '').trim();
 }
@@ -34,7 +61,7 @@ function uniqueIds(values: readonly string[]): boolean {
   return new Set(values.map(normalized).filter(Boolean)).size === values.filter((value) => normalized(value)).length;
 }
 
-export function validatePcnWorkflowTemplate(template: PcnWorkflowTemplate): PcnWorkflowValidationResult {
+export function validatePcnWorkflowTemplate(template: PcnWorkflowTemplate, options: { allowIncompleteDraft?: boolean; allowLegacyDefinitions?: boolean } = {}): PcnWorkflowValidationResult {
   const errors: string[] = [];
   if (!normalized(template?.id)) errors.push('Template phải có id.');
   if (!normalized(template?.code)) errors.push('Template phải có mã.');
@@ -43,6 +70,30 @@ export function validatePcnWorkflowTemplate(template: PcnWorkflowTemplate): PcnW
   if (!['DRAFT', 'PUBLISHED', 'RETIRED'].includes(template?.status)) errors.push('Trạng thái template không hợp lệ.');
   if (!Array.isArray(template?.nodes) || template.nodes.length === 0) errors.push('Template phải có ít nhất một node.');
   if (!Array.isArray(template?.transitions)) errors.push('Template phải có danh sách transition.');
+  const requirementValidation = validateDossierTemplateRequirementDefinitions(template?.requirementDefinitions, 'PCN', options.allowLegacyDefinitions ? { allowLegacyMultiple: true, allowLegacyPcnDocx: true } : {});
+  errors.push(...requirementValidation.errors);
+  if (template?.stages !== undefined) {
+    if (!Array.isArray(template.stages) || template.stages.some((stage) => !normalized(stage.id) || !normalized(stage.label) || !Number.isInteger(stage.sortOrder) || stage.sortOrder < 0)) errors.push('Danh sách giai đoạn PCN không hợp lệ.');
+    else if (new Set(template.stages.map((stage) => stage.id)).size !== template.stages.length) errors.push('Mã giai đoạn PCN không được trùng.');
+    for (const stage of Array.isArray(template.stages) ? template.stages : []) {
+      const requirementIds = stage.requirementIds;
+      if (requirementIds !== undefined && (!Array.isArray(requirementIds) || !uniqueIds(requirementIds))) {
+        errors.push(`Giai đoạn ${normalized(stage.id) || '(không tên)'} có requirementIds trùng hoặc không hợp lệ.`);
+        continue;
+      }
+      for (const requirementId of requirementIds || []) {
+        if (requirementId.startsWith('pgd-custom-')) errors.push(`Giai đoạn ${normalized(stage.id)} không được tham chiếu requirement PGD.`);
+        if (requirementId.startsWith('pcn-custom-') && !(template.requirementDefinitions || []).some((definition) => definition.id === requirementId && definition.domain === 'PCN')) {
+          errors.push(`Giai đoạn ${normalized(stage.id)} tham chiếu requirement custom PCN không tồn tại.`);
+        }
+        const alreadyBound = (template.nodes || []).some((node) => node.requirementIds?.includes(requirementId));
+        const hasMatchingWorkNode = (template.nodes || []).some((node) => node.active !== false
+          && node.stageId === stage.id
+          && (node.kind === 'DOCUMENT_TASK' || node.kind === 'APPROVAL_TASK'));
+        if (!options.allowIncompleteDraft && !alreadyBound && !hasMatchingWorkNode) errors.push(getStageRequirementBindingError(stage, requirementId));
+      }
+    }
+  }
 
   const nodes = Array.isArray(template?.nodes) ? template.nodes : [];
   const transitions = Array.isArray(template?.transitions) ? template.transitions : [];
@@ -55,6 +106,10 @@ export function validatePcnWorkflowTemplate(template: PcnWorkflowTemplate): PcnW
     if (!normalized(node.label)) errors.push(`Node ${id || '(không tên)'} phải có nhãn.`);
     if (!['DOCUMENT_TASK', 'APPROVAL_TASK', 'DECISION', 'PARALLEL_SPLIT', 'PARALLEL_JOIN', 'END'].includes(node.kind)) errors.push(`Node ${id || '(không tên)'} có kind không hợp lệ.`);
     if (!Array.isArray(node.requirementIds) || !uniqueIds(node.requirementIds)) errors.push(`Node ${id || '(không tên)'} có requirementIds trùng hoặc không hợp lệ.`);
+    for (const requirementId of node.requirementIds || []) {
+      if (String(requirementId).startsWith('pcn-custom-') && !(template.requirementDefinitions || []).some((definition) => definition.id === requirementId)) errors.push(`Node ${id || '(không tên)'} tham chiếu requirement custom PCN không tồn tại.`);
+      if (String(requirementId).startsWith('pgd-custom-')) errors.push(`Node ${id || '(không tên)'} không được tham chiếu requirement PGD.`);
+    }
     if (!Number.isInteger(node.sortOrder) || node.sortOrder < 0) errors.push(`Node ${id || '(không tên)'} có sortOrder không hợp lệ.`);
     if (node.slaDays !== undefined && (!Number.isInteger(node.slaDays) || node.slaDays < 0)) errors.push(`Node ${id || '(không tên)'} có SLA không hợp lệ.`);
     if (node.kind === 'PARALLEL_JOIN') {
@@ -100,22 +155,24 @@ export function validatePcnWorkflowTemplate(template: PcnWorkflowTemplate): PcnW
     incoming.set(normalized(transition.toNodeId), (incoming.get(normalized(transition.toNodeId)) || 0) + 1);
     outgoing.set(normalized(transition.fromNodeId), (outgoing.get(normalized(transition.fromNodeId)) || 0) + 1);
   }
-  if (activeNodes.length > 0 && !activeNodes.some((node) => !incoming.has(node.id))) errors.push('Template phải có node bắt đầu.');
-  if (activeNodes.length > 0 && !activeNodes.some((node) => node.kind === 'END')) errors.push('Template phải có ít nhất một node END.');
-  for (const node of activeNodes) {
-    if (node.kind === 'PARALLEL_SPLIT' && (outgoing.get(node.id) || 0) < 2) errors.push(`Node split ${node.id} phải có ít nhất hai nhánh.`);
-    if (node.kind === 'PARALLEL_JOIN' && (incoming.get(node.id) || 0) < 2) errors.push(`Node join ${node.id} phải nhận ít nhất hai nhánh.`);
+  if (!options.allowIncompleteDraft) {
+    if (activeNodes.length > 0 && !activeNodes.some((node) => !incoming.has(node.id))) errors.push('Template phải có node bắt đầu.');
+    if (activeNodes.length > 0 && !activeNodes.some((node) => node.kind === 'END')) errors.push('Template phải có ít nhất một node END.');
+    for (const node of activeNodes) {
+      if (node.kind === 'PARALLEL_SPLIT' && (outgoing.get(node.id) || 0) < 2) errors.push(`Node split ${node.id} phải có ít nhất hai nhánh.`);
+      if (node.kind === 'PARALLEL_JOIN' && (incoming.get(node.id) || 0) < 2) errors.push(`Node join ${node.id} phải nhận ít nhất hai nhánh.`);
+    }
   }
   return { valid: errors.length === 0, errors };
 }
 
 function templateMatches(template: PcnWorkflowTemplate, dossier: Pick<CertificationDossier, 'fieldCodes' | 'method'> & { dossierType?: string }): boolean {
-  if (template.status !== 'PUBLISHED') return false;
+  if (template.status !== 'PUBLISHED' || template.scope === 'PERSONAL') return false;
   const fieldCodes = template.appliesTo?.fieldCodes || [];
   if (fieldCodes.length > 0 && !dossier.fieldCodes.every((code) => fieldCodes.includes(code))) return false;
   if (template.appliesTo?.methods?.length && !template.appliesTo.methods.includes(dossier.method)) return false;
   if (template.appliesTo?.dossierType && template.appliesTo.dossierType !== dossier.dossierType) return false;
-  return validatePcnWorkflowTemplate(template).valid;
+  return validatePcnWorkflowTemplate(template, { allowLegacyDefinitions: true }).valid;
 }
 
 function templateSpecificity(template: PcnWorkflowTemplate, dossier: Pick<CertificationDossier, 'fieldCodes' | 'method'> & { dossierType?: string }): number {
@@ -142,13 +199,16 @@ export function snapshotPcnWorkflowTemplate(
   template: PcnWorkflowTemplate,
   metadata: { capturedAt: string; capturedBy: string },
 ): PcnWorkflowSnapshot {
-  if (template.status !== 'PUBLISHED') throw new Error('Chỉ template PUBLISHED mới được snapshot vào hồ sơ.');
-  const validation = validatePcnWorkflowTemplate(template);
+  if (template.status !== 'PUBLISHED' || template.scope === 'PERSONAL') throw new Error('Chỉ template PUBLISHED dùng chung mới được snapshot vào hồ sơ.');
+  const validation = validatePcnWorkflowTemplate(template, { allowLegacyDefinitions: true });
   if (!validation.valid) throw new Error(`Template không hợp lệ: ${validation.errors.join(' ')}`);
+  const nodes = bindStageRequirementsToPcnNodes(template);
   return JSON.parse(JSON.stringify({
     templateCode: template.code,
     templateVersion: template.version,
-    nodes: template.nodes,
+    ...(template.stages ? { stages: template.stages } : {}),
+    ...(template.requirementDefinitions ? { requirementDefinitions: template.requirementDefinitions } : {}),
+    nodes,
     transitions: template.transitions,
     capturedAt: metadata.capturedAt,
     capturedBy: metadata.capturedBy,

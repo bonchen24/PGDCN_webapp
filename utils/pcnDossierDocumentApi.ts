@@ -39,6 +39,16 @@ export function removeCurrentPcnDossierDocument(input: { dossierId: string; requ
   return mutateDossierDocumentBoundary({ ...input, action: 'remove-current' });
 }
 
+export async function confirmPcnDossierDocument(input: { dossierId: string; requirementId: string }): Promise<PcnDossierDocumentMutationResponse> {
+  const response = await fetch(`/api/pcn/dossiers/${encodeURIComponent(input.dossierId)}/documents/${encodeURIComponent(input.requirementId)}/confirm`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  return parseResponse(response) as Promise<PcnDossierDocumentMutationResponse>;
+}
+
 export async function generateAndAttachPcnDossierNodeDocument(input: {
   dossierId: string;
   nodeId: string;

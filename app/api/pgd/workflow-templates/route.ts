@@ -7,6 +7,7 @@ import {
   PGD_COLLECTIONS,
   assertPgdWorkflowRequirementReferences,
   buildPgdWorkflowTemplateRecord,
+  canProposePgdWorkflow,
   isPgdWorkflowManager,
   isSafePcnSampleKey,
   writePgdActivity,
@@ -23,12 +24,15 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await pool.query(
-      `SELECT document_id, data FROM app_documents
-       WHERE collection_name = $1 AND data->>'domain' = 'pgd'
-       ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`,
-      [PGD_COLLECTIONS.workflowTemplates]
-    );
+    if (!isPgdWorkflowManager(actor) && !canProposePgdWorkflow(actor)) return jsonForbidden('Tài khoản chưa được cấp quyền PGD để gửi đề xuất mẫu.');
+    const manager = isPgdWorkflowManager(actor);
+    const result = await pool.query(manager
+      ? `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd' ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`
+      : `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd'
+          AND ((COALESCE(data->>'scope', 'COMMON') = 'COMMON' AND data->>'status' = 'PUBLISHED')
+            OR (data->>'scope' = 'PERSONAL' AND data->>'status' = 'DRAFT' AND data->>'createdBy' = $2))
+          ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`,
+      manager ? [PGD_COLLECTIONS.workflowTemplates] : [PGD_COLLECTIONS.workflowTemplates, actor.username]);
     return jsonOk({ items: result.rows.map(mapDocumentRow) });
   } catch (error: any) {
     return jsonServerError(error?.message || String(error));
@@ -40,9 +44,8 @@ export async function POST(req: NextRequest) {
   if (!actor) {
     return jsonUnauthorized('Phiên PGD không hợp lệ hoặc đã hết hạn.');
   }
-  if (!isPgdWorkflowManager(actor)) {
-    return jsonForbidden('Chỉ Admin hoặc Quản lý PGD được thay đổi bộ hồ sơ mẫu.');
-  }
+  const manager = isPgdWorkflowManager(actor);
+  if (!manager && !canProposePgdWorkflow(actor)) return jsonForbidden('Tài khoản chưa được cấp quyền PGD để gửi đề xuất mẫu.');
 
   let body: any;
   try {
@@ -53,11 +56,12 @@ export async function POST(req: NextRequest) {
 
   const now = new Date().toISOString();
   const template = buildPgdWorkflowTemplateRecord(body?.template, actor, now);
+  template.scope = manager ? 'COMMON' : 'PERSONAL';
   if (!isSafePcnSampleKey(template.id) || !template.code || !template.name || template.status !== 'DRAFT') {
     return jsonError('Template workflow PGD mới phải có id, mã, tên và bắt đầu ở trạng thái DRAFT.', 400);
   }
 
-  const validation = validatePgdWorkflowTemplate(template);
+  const validation = validatePgdWorkflowTemplate(template, { allowIncompleteDraft: true });
   if (!validation.valid) {
     return jsonError(validation.errors.join(' '), 400, { issues: validation.errors });
   }

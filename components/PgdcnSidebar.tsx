@@ -80,6 +80,12 @@ export default function PgdcnSidebar({
   const canManageSettings = canViewSystemSettings(currentUser);
   const canManageDossierTemplates = scopes.some((scope) => scope === 'PCN' || scope === 'PGD')
     && (isPcnSystemManager(currentUser) || ['PGD_ADMIN', 'PGD_MANAGER'].includes(String(currentUser.pgdRole || '').toUpperCase()));
+  const canProposeDossierTemplates = currentUser.active !== false
+    && currentUser.role !== 'viewer'
+    && currentUser.systemRole !== 'viewer'
+    && ((hasPcn)
+      || (hasPgd && String(currentUser.pgdRole || '').trim().toUpperCase() !== 'PGD_VIEWER'));
+  const canAccessDossierTemplates = canManageDossierTemplates || canProposeDossierTemplates;
   const managementLabel = ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.find((role) => role.code === currentUser.managementRoleCode)?.name || 'Chưa phân công chức danh';
   const professionalLabel = (currentUser.professionalRoleCodes || []).map((code) => PROFESSIONAL_ROLE_OPTIONS.find((role) => role.code === code)?.name || code).join(', ');
 
@@ -237,7 +243,7 @@ export default function PgdcnSidebar({
         <section className="space-y-0.5" aria-label="Tài liệu">
           {expanded && <p className="mb-1 px-2 pt-1 text-[11px] font-semibold text-slate-400">Tài liệu</p>}
           {renderSharedButton('Soạn thảo văn bản', FileEdit, { domain: 'department', section: 'document-drafting' })}
-          {canManageDossierTemplates && renderSharedButton('Hồ sơ mẫu', GitBranch, { domain: 'department', section: 'dossier-templates' })}
+          {canAccessDossierTemplates && renderSharedButton('Hồ sơ mẫu', GitBranch, { domain: 'department', section: 'dossier-templates' })}
         </section>
 
         {/* Nhóm 4: Quản trị */}

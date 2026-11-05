@@ -3,7 +3,7 @@
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy } from '../utils/formatter';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Download, FileBadge2, FlaskConical, Trash2 } from 'lucide-react';
+import { CheckCircle2, Download, FileBadge2, FlaskConical, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { usePgdStore } from '../store-pgd';
@@ -136,6 +136,7 @@ export default ({
   loadError,
 }: PgdCaseEvidencePanelProps) => {
   const saveDossierDocument = usePgdStore((state) => state.saveDossierDocument);
+  const confirmDossierDocument = usePgdStore((state) => state.confirmDossierDocument);
   const destroyPgdSample = usePgdStore((state) => state.destroySample);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const documentFormRef = useRef<HTMLFormElement>(null);
@@ -150,6 +151,7 @@ export default ({
   const requestIdRef = useRef(request.id);
   requestIdRef.current = request.id;
   const [busy, setBusy] = useState(false);
+  const [confirmingCode, setConfirmingCode] = useState('');
   const [formResetVersion, setFormResetVersion] = useState(0);
   const register = useMemo(() => buildPgdSampleRegister(samples), [samples]);
   const requirementAccess = useMemo(() => new Map(requirements.map((requirement) => [
@@ -157,6 +159,9 @@ export default ({
     getPgdOperationalStepAccess({ status: request.status, targetStationKey: getPgdDossierRequirementStationKey(requirement.code) }),
   ] as const)), [request.status, requirements]);
   const selectedRequirementAccess = requirementAccess.get(form.requirementCode);
+  const selectedRequirement = requirements.find((requirement) => requirement.code === form.requirementCode);
+  const selectedChecklistItem = request.dossierChecklist?.find((item) => item.requirementCode === form.requirementCode);
+  const selectedRequirementRequired = selectedChecklistItem?.required ?? selectedRequirement?.required;
   const requestFormIsCurrent = formRequestIdRef.current === request.id;
   const sampleAccess = useMemo(() => getPgdOperationalStepAccess({ status: request.status, targetStationKey: 'FIELD_SAMPLING' }), [request.status]);
   const groupedRequirements = useMemo(() => {
@@ -278,6 +283,18 @@ export default ({
     }
   };
 
+  const confirmDocument = async (requirementCode: string) => {
+    setConfirmingCode(requirementCode);
+    try {
+      await confirmDossierDocument(request.id, requirementCode);
+      toast.success('Đã xác nhận tệp hiện hành cho mục checklist.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể xác nhận tệp hiện hành.');
+    } finally {
+      setConfirmingCode('');
+    }
+  };
+
   return (
     <section className="min-w-0 space-y-3 [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 [&_*:focus-visible]:ring-blue-500">
       <PgdDossierOperationsPanel request={request} requirements={requirements} dossierDocuments={dossierDocuments} canMutate={canMutate} editable={editable} />
@@ -305,18 +322,38 @@ export default ({
                 {items.map((requirement) => {
                   const documents = documentsByRequirement.get(requirement.code) || [];
                   const current = documents[0];
+                  const checklistItem = request.dossierChecklist?.find((item) => item.requirementCode === requirement.code);
+                  const customRequirement = Boolean(requirement.customDefinition);
+                  const requirementRequired = checklistItem?.required ?? requirement.required;
+                  const status = customRequirement
+                    ? (current?.fileAssetId ? checklistItem?.status || 'UPLOADED' : checklistItem?.status === 'WAIVED' ? 'WAIVED' : 'MISSING')
+                    : current ? 'PRESENT' : 'MISSING';
+                  const statusLabel = status === 'CONFIRMED' ? 'Đã xác nhận'
+                    : status === 'GENERATED' ? 'Đã sinh · chờ xác nhận'
+                      : status === 'UPLOADED' ? 'Chờ xác nhận'
+                        : status === 'WAIVED' ? 'Đã miễn trừ'
+                          : status === 'PRESENT' ? 'Đã có' : 'Thiếu';
+                  const statusClass = ['PRESENT', 'CONFIRMED', 'WAIVED'].includes(status)
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : ['UPLOADED', 'GENERATED'].includes(status)
+                      ? 'border-sky-200 bg-sky-50 text-sky-700'
+                      : 'border-amber-200 bg-amber-50 text-amber-700';
+                  const canConfirm = customRequirement && Boolean(current?.fileAssetId)
+                    && ['UPLOADED', 'GENERATED'].includes(status)
+                    && Boolean(requirementAccess.get(requirement.code)?.editable)
+                    && canMutate && editable;
                   return (
                     <article key={requirement.code} className="rounded-lg border border-slate-200 bg-white p-2.5">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="text-[11px] font-black text-slate-800">{requirement.title}</span>
-                            <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-black ${requirement.required ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-500'}`}>{requirement.required ? 'Bắt buộc' : 'Tùy chọn'}</span>
-                            <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black ${current ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>{current ? 'Đã có' : 'Thiếu'}</span>
+                            <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-black ${requirementRequired ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-500'}`}>{requirementRequired ? 'Bắt buộc' : requirement.requirementLevel === 'CONDITIONAL' ? 'Điều kiện chưa áp dụng' : 'Tùy chọn'}</span>
+                            <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black ${statusClass}`}>{statusLabel}</span>
                           </div>
                           {requirement.description ? <p className="mt-1 text-[11px] text-slate-600">{requirement.description}</p> : null}
                         </div>
-                        <span className="font-mono text-[9px] text-slate-400">{requirement.code}</span>
+                        <span className="font-mono text-[9px] text-slate-400">{requirement.customDefinition?.code || requirement.code}</span>
                       </div>
                       {current ? (
                         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-100 bg-emerald-50/60 px-2 py-1.5 text-[9px] text-slate-600">
@@ -332,17 +369,20 @@ export default ({
                             {current.note ? <div className="mt-0.5 text-slate-500">{current.note}</div> : null}
                           </div>
                           {current.fileAssetId ? (
-                            <a
-                              href={getPgdDossierDocumentDownloadUrl(current.id)}
-                              download={current.fileName}
-                              target="_blank"
-                              rel="noreferrer"
-                              title={`Tải ${current.fileName}`}
-                              className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2 text-[11px] font-black text-emerald-700 hover:bg-emerald-50"
-                            >
-                              <Download size={12} />
-                              Tải tệp
-                            </a>
+                            <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                              {canConfirm ? <button type="button" onClick={() => void confirmDocument(requirement.code)} disabled={Boolean(confirmingCode)} aria-busy={confirmingCode === requirement.code} className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-lg border border-blue-200 bg-white px-2 text-[11px] font-black text-blue-700 hover:bg-blue-50 disabled:opacity-50">{confirmingCode === requirement.code ? 'Đang xác nhận…' : <><CheckCircle2 size={12} />Xác nhận tệp</>}</button> : null}
+                              <a
+                                href={getPgdDossierDocumentDownloadUrl(current.id)}
+                                download={current.fileName}
+                                target="_blank"
+                                rel="noreferrer"
+                                title={`Tải ${current.fileName}`}
+                                className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2 text-[11px] font-black text-emerald-700 hover:bg-emerald-50"
+                              >
+                                <Download size={12} />
+                                Tải tệp
+                              </a>
+                            </div>
                           ) : (
                             <span className="text-[9px] font-bold text-slate-400">Chỉ có thông tin tệp</span>
                           )}
@@ -424,12 +464,13 @@ export default ({
               />
             </label>
             <label className="block md:col-span-2">
-              <span className="mb-1 block text-[11px] font-black text-slate-500">Tệp đính kèm tùy chọn</span>
+              <span className="mb-1 block text-[11px] font-black text-slate-500">Tệp đính kèm{selectedRequirement?.customDefinition && selectedRequirementRequired ? <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span> : ' tùy chọn'}</span>
               <input
                 type="file"
                 aria-label="Tải tệp chứng từ PGD"
                 onChange={(event) => updateForm('file', event.target.files?.[0] || null)}
                 ref={fileInputRef}
+                required={Boolean(selectedRequirement?.customDefinition && selectedRequirementRequired)}
                 disabled={!canMutate || !editable || busy || !requestFormIsCurrent || !selectedRequirementAccess?.editable}
                 className="block mobile-touch-target min-h-11 w-full rounded-lg border border-dashed border-slate-300 bg-white px-2 py-2 text-[11px] text-slate-500"
               />

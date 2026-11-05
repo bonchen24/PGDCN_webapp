@@ -21,12 +21,14 @@ import {
   applyPcnWorkflowReturn,
   buildPcnWorkflowConditionContext,
   getPcnDossierStatusAfterWorkflowTaskComplete,
+  getPcnWorkflowResultOutcome,
   projectPcnWorkflowRuntime,
 } from '@/utils/pcnWorkflowRuntime';
 import {
   buildPcnDossierNodeBusinessFacts,
   buildPcnDossierNodeWorkProjection,
 } from '@/utils/pcnDossierNodeWork';
+import { getPcnDossierRequirementsWithCustom } from '@/utils/pcnDossierDocuments';
 import { isPcnDossierTransitionAllowed } from '@/utils/pcnWorkflow';
 
 export async function executePcnWorkflowTaskMutation(
@@ -130,7 +132,10 @@ export async function executePcnWorkflowTaskMutation(
     const dossierResults = resultsResult.rows.map((row: any) => mapDocumentRow(row) as ReturnedTestResult);
     const dossierApprovalSteps = approvalStepsResult.rows.map((row: any) => mapDocumentRow(row) as PcnApprovalStep);
     const currentTasks = currentTasksResult.rows.map((row: any) => mapDocumentRow(row) as PcnDossierWorkflowTask);
-    const requirementDefinitions = requirementDefinitionsResult.rows.map((row: any) => mapDocumentRow(row) as PcnDocumentRequirement);
+    const configuredRequirements = requirementDefinitionsResult.rows.map((row: any) => mapDocumentRow(row) as PcnDocumentRequirement);
+    const requirementDefinitions = getPcnDossierRequirementsWithCustom(dossier, configuredRequirements, {
+      resultOutcome: getPcnWorkflowResultOutcome(dossierResults),
+    });
     const requirementRequiredById = new Map<string, boolean>();
     for (const requirement of requirementDefinitions) {
       requirementRequiredById.set(
