@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { CheckCircle2, ChevronRight, Eye, Pencil, Upload } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Download, Eye, Pencil, Upload } from 'lucide-react';
 
 import type { PcnUserAccount } from '../types';
 import type { PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
@@ -268,22 +268,32 @@ export default function PgdDossierStepWorkPanel({
     const action = dossierStatusUnknown ? (
       <span className="text-xs font-semibold text-slate-500">{dossierLoadPending ? 'Đang tải trạng thái' : 'Chưa thể xác định'}</span>
     ) : document?.fileAssetId ? (
-      <a
-        href={getPgdDossierDocumentDownloadUrl(document.id)}
-        target="_blank"
-        rel="noreferrer"
-        download={document.fileName}
-        title="Xem tài liệu"
-        aria-label="Xem tài liệu"
-        className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-      >
-        <Eye size={14} aria-hidden="true" />
-      </a>
+      <div className="flex items-center gap-1">
+        <a
+          href={getPgdDossierDocumentDownloadUrl(document.id)}
+          target="_blank"
+          rel="noreferrer"
+          download={document.fileName}
+          title="Xem tài liệu"
+          aria-label="Xem tài liệu"
+          className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        >
+          <Eye size={14} aria-hidden="true" />
+        </a>
+        <a
+          href={getPgdDossierDocumentDownloadUrl(document.id)}
+          download={document.fileName}
+          title="Tải xuống"
+          aria-label="Tải xuống"
+          className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        >
+          <Download size={14} aria-hidden="true" />
+        </a>
+      </div>
     ) : !document && !isWaived && !canMutate ? (
       <span className="text-xs font-semibold text-slate-500">Nhờ người có quyền bổ sung</span>
     ) : !document && !isWaived && draftingHref && requirement?.code === item.code ? (
-      <a
-        href={draftingHref}
+      <a href={draftingHref}
         title="Soạn thảo tài liệu"
         aria-label="Soạn thảo tài liệu"
         className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
@@ -438,28 +448,36 @@ export default function PgdDossierStepWorkPanel({
       role="tabpanel"
       aria-labelledby={`pgd-dossier-step-tab-${selectedStepId}`}
       data-testid="pgd-dossier-step-work-panel"
-      className="min-w-0 space-y-3"
+      className="min-w-0 space-y-2.5"
     >
-      <header className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-blue-200 bg-white p-3 shadow-sm">
+      <header className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-200 bg-white px-3 py-2 sm:px-4 shadow-xs">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-black text-white">0{meta.number}</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-xs font-black text-white">0{meta.number}</span>
             <span data-testid="pgd-step-position" className="text-xs font-black uppercase tracking-[0.12em] text-blue-700">
               Giai đoạn {meta.number}/{STAGE_COUNT} · Giai đoạn đang chọn
             </span>
+            <h3 className="text-sm font-black text-slate-900">{meta.title}</h3>
           </div>
-          <h3 className="mt-2 text-base font-black text-slate-900">{meta.title}</h3>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">{meta.description}</p>
-          <p data-testid="pgd-step-next-action" className="mt-2 break-words text-xs font-bold leading-5 text-blue-800">
+          <p data-testid="pgd-step-next-action" className="mt-1 break-words text-xs font-bold leading-5 text-blue-800">
             Việc bạn cần làm: {permissionAwareNextAction}
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          {draftingHref ? (
-            <a
-              href={draftingHref}
-              className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-3 text-xs font-black text-white hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          {onCompleteCurrent ? (
+            <button
+              type="button"
+              onClick={onCompleteCurrent}
+              disabled={completionUnavailable}
+              aria-busy={completionPending ? 'true' : undefined}
+              aria-describedby={continuationReason ? continuationReasonId : undefined}
+              className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
+              {completionPending ? 'Đang xử lý…' : (completeLabel || 'Hoàn tất việc')}
+            </button>
+          ) : null}
+          {draftingHref ? (
+            <a href={draftingHref} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-3 text-xs font-black text-white hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
               Soạn thảo biểu mẫu
             </a>
           ) : null}
@@ -467,7 +485,7 @@ export default function PgdDossierStepWorkPanel({
             <button
               type="button"
               onClick={() => onOpenChecklist()}
-              className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-black text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="mobile-touch-target dossier-action-compact inline-flex min-h-8 items-center rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-xs font-black text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
               Xem danh sách tài liệu
             </button>
@@ -476,7 +494,7 @@ export default function PgdDossierStepWorkPanel({
             <button
               type="button"
               onClick={onOpenFullDossier}
-              className="mobile-touch-target mobile-touch-target inline-flex min-h-11 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 hover:border-blue-300 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="mobile-touch-target dossier-action-compact inline-flex min-h-8 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-black text-slate-700 hover:border-blue-300 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
               Mở hồ sơ đầy đủ
             </button>
@@ -485,35 +503,43 @@ export default function PgdDossierStepWorkPanel({
       </header>
 
       {/* Bảng công việc chi tiết của giai đoạn (Stage Tasks Breakdown) */}
-      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm" aria-label="Các công việc thuộc giai đoạn này">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-xs font-black text-slate-900">Danh mục công việc trong giai đoạn ({stageTasks.length} việc)</h4>
-          <span className="text-[11px] font-bold text-slate-500">Mô hình 7 giai đoạn Superneat</span>
-        </div>
-        <div className="divide-y divide-slate-100 rounded-lg border border-slate-100">
+      {stageTasks.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 py-1.5 text-[11px]" aria-label="Các công việc thuộc giai đoạn này">
+          <span className="font-bold text-slate-700 mr-1">Công việc ({stageTasks.length}):</span>
           {stageTasks.map((task, idx) => (
-            <div key={task.id} className="flex items-center justify-between p-2.5 hover:bg-slate-50/60 transition-colors">
-              <div className="min-w-0 pr-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono font-bold text-slate-400">{meta.number}.{idx + 1}</span>
-                  <span className="text-xs font-bold text-slate-800">{task.title}</span>
-                  {task.required && (
-                    <span className="rounded bg-rose-50 border border-rose-200 px-1.5 py-0.2 text-[9px] font-bold text-rose-700">Bắt buộc</span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5">{task.description}</p>
-              </div>
-              <div className="shrink-0 flex items-center gap-1.5">
-                <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                  {task.type === 'FILE' ? 'Tài liệu' : task.type === 'APPROVAL' ? 'Phê duyệt' : task.type === 'ACTION' ? 'Thao tác' : 'Kết thúc'}
-                </span>
-              </div>
-            </div>
+            <span key={task.id} className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 border border-slate-200 text-slate-700 text-[10px] font-medium shadow-2xs">
+              <span className="font-mono font-bold text-slate-400">{meta.number}.{idx + 1}</span>
+              <span className="font-semibold text-slate-800">{task.title}</span>
+              {task.required && <span className="text-[9px] text-rose-600 font-bold" title="Bắt buộc">*</span>}
+            </span>
           ))}
         </div>
+      )}
+
+      {/* Trọng tâm: Bảng tài liệu cần hoàn thiện trong giai đoạn */}
+      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs" aria-label="Danh sách tài liệu cần hoàn thiện PGD">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-xs font-black text-slate-900">Tài liệu cần hoàn thiện trong giai đoạn</h3>
+            <p className="text-[11px] text-slate-500">Mỗi dòng cho biết tài liệu đã có chưa và việc cần làm tiếp theo.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-600">{stepRequirements.length} mục ở giai đoạn này</span>
+            {canMutate && onUploadSupplementary && !dossierStatusUnknown ? (
+              <label title={`Tải tệp phụ trợ cho giai đoạn ${meta.title}`} aria-label={`Tải tệp phụ trợ cho giai đoạn ${meta.title}`} className="mobile-touch-target inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-xs font-bold text-blue-800 hover:bg-blue-100 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
+                <Upload size={14} aria-hidden="true" />
+                <span>Tệp phụ trợ</span>
+                <input type="file" className="sr-only" accept=".pdf,.docx,.png,.jpg,.jpeg,.gif,.webp,.avif" disabled={supplementaryUploadBusy} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; void uploadSupplementary(file); }} />
+              </label>
+            ) : null}
+          </div>
+        </div>
+        {supplementaryUploadError ? <p role="alert" className="mb-2 text-xs font-semibold text-rose-700">{supplementaryUploadError}</p> : null}
+        <PgdcnDossierDocumentActionTable testId="pgd-dossier-document-action-table" rows={documentActionRows} />
       </section>
 
-      <section className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-xs" aria-label="Soát xét tài liệu bắt buộc ở giai đoạn PGD hiện tại">
+      {/* Soát xét giai đoạn */}
+      <section className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-2.5 text-xs" aria-label="Soát xét tài liệu bắt buộc ở giai đoạn PGD hiện tại">
         <div className="min-w-0 break-words">
           <span className="mr-2 text-xs font-black uppercase tracking-wide text-blue-700">Soát xét giai đoạn</span>
           <strong aria-live="polite" className="break-words text-slate-800">
@@ -538,11 +564,12 @@ export default function PgdDossierStepWorkPanel({
         </details>
       </section>
 
+      {/* Hướng dẫn tiếp tục giai đoạn */}
       <section
         data-testid="pgd-step-continuation-guidance"
         aria-label="Hướng dẫn tiếp tục giai đoạn PGD"
         aria-live="polite"
-        className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+        className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-2xs sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
       >
         <div className="min-w-0 break-words">
           <h4 className="text-xs font-black text-slate-900">Điều kiện và việc tiếp theo</h4>
@@ -569,7 +596,7 @@ export default function PgdDossierStepWorkPanel({
             id={continuationReasonId}
             tabIndex={-1}
             aria-label="Lý do chưa thể tiếp tục"
-            className="min-w-0 break-words rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs leading-5 text-amber-950"
+            className="min-w-0 break-words rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs leading-5 text-amber-950"
           >
             <p>
               <strong>Chưa thể tiếp tục:</strong> {continuationReason}
@@ -588,33 +615,12 @@ export default function PgdDossierStepWorkPanel({
         )}
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm" aria-label="Danh sách tài liệu cần hoàn thiện PGD">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 className="text-xs font-black text-slate-900">Tài liệu cần hoàn thiện trong giai đoạn</h3>
-            <p className="mt-1 text-xs leading-5 text-slate-600">Mỗi dòng cho biết tài liệu đã có chưa và việc cần làm tiếp theo.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-slate-600">{stepRequirements.length} mục ở giai đoạn này</span>
-            {canMutate && onUploadSupplementary && !dossierStatusUnknown ? (
-              <label title={`Tải tệp phụ trợ cho giai đoạn ${meta.title}`} aria-label={`Tải tệp phụ trợ cho giai đoạn ${meta.title}`} className="mobile-touch-target inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-xs font-bold text-blue-800 hover:bg-blue-100 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
-                <Upload size={14} aria-hidden="true" />
-                <span>Tệp phụ trợ</span>
-                <input type="file" className="sr-only" accept=".pdf,.docx,.png,.jpg,.jpeg,.gif,.webp,.avif" disabled={supplementaryUploadBusy} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; void uploadSupplementary(file); }} />
-              </label>
-            ) : null}
-          </div>
-        </div>
-        {supplementaryUploadError ? <p role="alert" className="mb-2 text-xs font-semibold text-rose-700">{supplementaryUploadError}</p> : null}
-        <PgdcnDossierDocumentActionTable testId="pgd-dossier-document-action-table" rows={documentActionRows} />
-      </section>
-
       {exceptionAllowed ? (
         <details className="rounded-xl border border-rose-100 bg-rose-50/50" data-testid="pgd-dossier-exception-review" data-disclosure="advanced" aria-label="Xử lý ngoại lệ hồ sơ PGD">
-          <summary className="mobile-touch-target cursor-pointer list-none px-3 py-2.5 text-xs font-black text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2">
+          <summary className="mobile-touch-target cursor-pointer list-none px-3 py-2 text-xs font-black text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2">
             Xử lý ngoại lệ <span className="ml-1 font-normal text-rose-900/70">(chỉ mở khi cần trả bổ sung hoặc tạm dừng)</span>
           </summary>
-          <div className="border-t border-rose-100 p-3">
+          <div className="border-t border-rose-100 p-2.5">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <p className="text-xs leading-5 text-rose-900/90">Bắt buộc ghi lý do để người tiếp theo tiếp tục đúng ngữ cảnh.</p>
               <div className="flex flex-wrap gap-1.5">
@@ -638,73 +644,58 @@ export default function PgdDossierStepWorkPanel({
                   disabled={exceptionBusy}
                   className="mobile-touch-target min-h-11 rounded-lg border border-amber-200 bg-white px-2.5 text-xs font-black text-amber-800 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-50"
                 >
-                  Tạm dừng
+                  Tạm dừng hồ sơ
                 </button>
               </div>
             </div>
-            {exceptionFormOpen && (
-              <div className="mt-2 rounded-lg border border-rose-200 bg-white p-2.5">
-                <div className="text-xs font-black text-slate-800">{exceptionStatus === 'REJECTED' ? 'Trả bổ sung hồ sơ' : 'Tạm dừng hồ sơ'}</div>
-                <label className="mt-2 block" htmlFor="pgd-exception-reason">
-                  <span className="text-xs font-black text-slate-700">
-                    Lý do<span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>
-                  </span>
-                  <textarea
-                    id="pgd-exception-reason"
-                    required
-                    aria-required="true"
-                    value={exceptionReason}
-                    onChange={(event) => setExceptionReason(event.target.value)}
-                    rows={2}
-                    className="mobile-touch-target mt-1 min-h-11 w-full rounded-lg border border-rose-200 px-2.5 py-2 text-xs outline-none focus:border-rose-400 focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
-                  />
+
+            {exceptionFormOpen ? (
+              <div className="mt-3 rounded-lg border border-rose-200 bg-white p-2.5">
+                <label htmlFor="pgd-exception-reason" className="block text-xs font-bold text-slate-800">
+                  Lý do {exceptionStatus === 'REJECTED' ? 'trả bổ sung' : 'tạm dừng'} *
                 </label>
-                <div className="mt-2 flex flex-wrap justify-end gap-1.5">
+                <textarea
+                  id="pgd-exception-reason"
+                  rows={2}
+                  value={exceptionReason}
+                  onChange={(event) => setExceptionReason(event.target.value)}
+                  placeholder="Nhập lý do cụ thể..."
+                  className="mobile-touch-target mt-1 min-h-11 w-full rounded-md border border-slate-200 p-2 text-xs outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-200"
+                />
+                <div className="mt-2 flex justify-end gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setExceptionFormOpen(false)}
-                    disabled={exceptionBusy}
-                    className="mobile-touch-target min-h-11 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    onClick={() => {
+                      setExceptionFormOpen(false);
+                      setExceptionReason('');
+                    }}
+                    className="mobile-touch-target min-h-11 rounded-md px-3 text-xs font-semibold text-slate-600 hover:bg-slate-100"
                   >
                     Hủy
                   </button>
                   <button
                     type="button"
+                    disabled={!exceptionReason.trim() || exceptionBusy}
                     onClick={submitException}
-                    disabled={exceptionBusy || !exceptionReason.trim()}
-                    className="mobile-touch-target min-h-11 rounded-lg bg-rose-600 px-3 text-xs font-black text-white hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:opacity-50"
+                    className="mobile-touch-target min-h-11 rounded-lg bg-rose-600 px-3 text-xs font-black text-white hover:bg-rose-700 disabled:opacity-50"
                   >
-                    {exceptionBusy ? 'Đang ghi nhận...' : 'Xác nhận nhánh ngoại lệ'}
+                    {exceptionBusy ? 'Đang lưu…' : 'Xác nhận'}
                   </button>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </details>
       ) : null}
 
-      <details className="rounded-xl border border-slate-200 bg-slate-50" data-testid="pgd-dossier-advanced-workflow" data-disclosure="advanced" open>
-        <summary className="mobile-touch-target cursor-pointer list-none px-3 py-2.5 text-xs font-black text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+      <details className="rounded-xl border border-slate-200 bg-slate-50" data-testid="pgd-dossier-advanced-workflow" data-disclosure="advanced" open={false}>
+        <summary className="mobile-touch-target cursor-pointer list-none px-3 py-2 text-xs font-black text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
           Biểu mẫu nghiệp vụ của giai đoạn ({meta.title})
         </summary>
-        <div className="border-t border-slate-200 p-3">{renderStageForms()}</div>
+        <div className="border-t border-slate-200 p-3">
+          {renderStageForms()}
+        </div>
       </details>
-
-      <footer className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-        <p className="text-xs leading-5 text-slate-600">
-          {completionUnavailable ? 'Xem lý do và hướng xử lý ở trên trước khi tiếp tục.' : 'Chỉ hoàn tất khi các điều kiện của giai đoạn và dữ liệu bắt buộc đã đủ.'}
-        </p>
-        <button
-          type="button"
-          onClick={onCompleteCurrent}
-          disabled={completionUnavailable}
-          aria-busy={completionPending ? 'true' : undefined}
-          aria-describedby={completionUnavailable ? continuationReasonId : undefined}
-          className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {completionPending ? 'Đang xử lý...' : completeLabel || (canonicalStageId === 'intake' ? 'Bắt đầu xử lý' : 'Hoàn tất giai đoạn')}
-        </button>
-      </footer>
     </section>
   );
 }

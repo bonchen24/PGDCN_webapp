@@ -1974,3 +1974,11 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 - **Bảo toàn Kiến trúc Nghiệp vụ & RBAC**:
   - Giữ nguyên vẹn toàn bộ cấu trúc routing của PCN và PGD, logic luồng chuyển bước (workflow state machine), dữ liệu hồ sơ, hợp đồng API và phân quyền người dùng (Admin, Staff, Viewer).
   - Mọi thay đổi trong đợt density pass chỉ tập trung vào tầng trình diễn (projection/UI density/layout/affordance).
+
+- **Tối ưu UI/UX Chi tiết hồ sơ Superneat & Document-First (PCN & PGD)**:
+  - Header thu gọn tối đa chiều cao (`py-2`), gom mã hồ sơ, tên khách hàng/hàng hóa, trạng thái, người phụ trách và CTA trên hàng tinh gọn, giữ nguyên data-testid và không cắt chữ.
+  - Card Bước xử lý 7 nút nhỏ (01–07) trên một hàng; danh sách công việc con hiển thị dạng micro-badges; loại bỏ hoàn toàn các khối mô tả trùng lặp.
+  - Bảng tài liệu và hồ sơ liên quan (`PgdcnDossierDocumentActionTable`) đưa lên ngay dưới header bước xử lý, chiếm phần lớn diện tích cột trái: ưu tiên 3 cột Tên tài liệu – Trạng thái – Thao tác, hỗ trợ bàn phím, cuộn nội bộ mượt mà không cuộn trang.
+  - Thao tác tài liệu dùng icon gọn gàng (Xem `Eye`, Soạn thảo `Pencil`, Upload `Upload`, Mở tệp `FileText`, Tải xuống `Download`, Thao tác khác `MoreHorizontal`), đạt diện tích chạm chuẩn di động.
+  - Cột phải chuyên biệt làm reader tài liệu và danh sách tệp; khi chưa chọn file hiển thị empty-state gọn gàng.
+  - Gom Căn cứ pháp lý, Trợ lý AI và Lịch sử hoạt động vào một mục thu gọn "Thông tin hỗ trợ", mặc định đóng.

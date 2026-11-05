@@ -403,10 +403,21 @@ function DossierWorkflowSummary({ projection, selectedNodeKey, completeness, own
   </section>;
 }
 
-function DossierOwnerPanel({ dossier, users, currentUser, canEdit, authorityHint, onAssign }: { dossier: CertificationDossier; users: PcnUserAccount[]; currentUser: UserAccount; canEdit: boolean; authorityHint: string; onAssign: (username: string) => Promise<void> }) {
+function DossierOwnerPanel({ dossier, users, currentUser, canEdit, authorityHint: _authorityHint, onAssign }: { dossier: CertificationDossier; users: PcnUserAccount[]; currentUser: UserAccount; canEdit: boolean; authorityHint: string; onAssign: (username: string) => Promise<void> }) {
   const manager = isPcnDossierAssignmentManager(currentUser);
-  const assigned = Boolean(dossier.ownerUsername?.trim());
-  return <section data-testid="pcn-dossier-owner-assignment" className="min-w-0 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3"><div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><h3 className="break-words text-xs font-black text-emerald-900">{assigned ? 'Người phụ trách hồ sơ' : 'Chưa giao người phụ trách'}</h3><p className="mt-1 text-[11px] leading-4 text-emerald-800">{assigned ? 'Người được giao phụ trách hồ sơ PCN.' : 'Hồ sơ đang chờ phân công. Nhân viên có thể tự nhận khi chính sách và lĩnh vực cho phép.'}</p><p className="mt-1 text-[11px] leading-4 text-emerald-700">{authorityHint}</p></div>{!canEdit && <span className="shrink-0 self-start rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-500">Chỉ xem</span>}</div><div className="mt-2 min-w-0"><PcnDossierAssignmentControl dossier={dossier} users={users} currentUser={currentUser} onAssign={canEdit && manager ? onAssign : undefined} onClaim={canEdit && !manager ? () => onAssign(currentUser.username) : undefined} compact /></div></section>;
+  return (
+    <section data-testid="pcn-dossier-owner-assignment" aria-label="Phân công hồ sơ PCN" className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5">
+      <p className="text-[11px] font-black text-slate-800">Chủ hồ sơ</p>
+      <PcnDossierAssignmentControl
+        dossier={dossier}
+        users={users}
+        currentUser={currentUser}
+        onAssign={canEdit && manager ? onAssign : undefined}
+        onClaim={canEdit && !manager ? () => onAssign(currentUser.username) : undefined}
+        compact
+      />
+    </section>
+  );
 }
 
 function DossierRegionSelector({ activeTab, missingRequiredCount, onChange }: { activeTab: DetailTab; missingRequiredCount: number; onChange: (tab: DetailTab) => void }) {
@@ -942,23 +953,24 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
 
   return <div data-testid="pcn-dossier-focus-shell" aria-label="Không gian làm việc hồ sơ" className={`[&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 [&_*:focus-visible]:ring-emerald-600 ${standalone ? 'flex h-full min-h-0 w-full flex-1 items-stretch justify-center bg-white' : 'fixed inset-0 z-[70] flex items-stretch justify-center bg-white'}`} role={standalone ? undefined : 'dialog'} aria-modal={standalone ? undefined : true} aria-labelledby={standalone ? undefined : 'pcn-dossier-detail-title'}>
 <div className={standalone ? 'flex h-full min-h-0 w-full flex-col overflow-hidden bg-white' : 'flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden max-h-[100dvh] bg-white shadow-2xl'}>
-<header data-testid="pcn-dossier-mobile-header" className="flex min-w-0 shrink-0 flex-col gap-3 border-b border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-start sm:justify-between sm:px-4" aria-label="Nhận diện hồ sơ PCN">
+<header data-testid="pcn-dossier-mobile-header" className="flex min-w-0 shrink-0 flex-col gap-2 border-b border-slate-200 bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4" aria-label="Nhận diện hồ sơ PCN">
 <div className="min-w-0 flex-1">
 <div className="flex flex-wrap items-center gap-2">
-<span className="font-mono text-sm font-black text-slate-900">{dossier.dossierCode}</span>
-<span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-700">{getPcnDossierStatusLabel(dossier.status)}</span>{missingRequiredCount > 0 && <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">Thiếu tài liệu</span>}</div>
-<h2 id="pcn-dossier-detail-title" className="mt-1 break-words text-base font-black text-slate-800">{proposal?.productName || 'Hồ sơ chứng nhận'} · {customerSnapshot?.name || 'Chưa gắn khách hàng'}</h2>
-<p className="mt-1 text-[11px] text-slate-500">Mã hồ sơ {dossier.dossierCode} · {proposal?.proposalCode || 'Chưa có mã Đề nghị'}</p>
-<div data-testid="pcn-dossier-context-summary" className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-600" aria-label="Tóm tắt ngữ cảnh hồ sơ">
-<span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-800">Bước hiện tại: {currentStation.title}</span>
-{activeTab !== 'documents' && <span className={`rounded-full border px-2 py-1 ${missingRequiredCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>{missingRequiredCount > 0 ? `Còn ${missingRequiredCount} tài liệu bắt buộc` : 'Đủ tài liệu bắt buộc'}</span>}
-<span className="max-w-full truncate rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">Chủ hồ sơ: {ownerLabel}</span>
+<span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{dossier.dossierCode}</span>
+<h2 id="pcn-dossier-detail-title" className="break-words text-sm font-black text-slate-800">{proposal?.productName || 'Hồ sơ chứng nhận'} · {customerSnapshot?.name || 'Chưa gắn khách hàng'}</h2>
+<span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">{getPcnDossierStatusLabel(dossier.status)}</span>
+{missingRequiredCount > 0 && <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700">Thiếu tài liệu</span>}
+</div>
+<div data-testid="pcn-dossier-context-summary" className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] font-medium text-slate-600" aria-label="Tóm tắt ngữ cảnh hồ sơ">
+<span><span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Bước hiện tại:</span> <strong className="text-slate-700">{currentStation.title}</strong></span>
+{activeTab !== 'documents' && <span className={missingRequiredCount > 0 ? 'text-amber-700 font-bold' : 'text-emerald-700 font-bold'}>{missingRequiredCount > 0 ? ('Còn ' + missingRequiredCount + ' tài liệu bắt buộc') : 'Đủ tài liệu bắt buộc'}</span>}
+<span><span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Chủ hồ sơ:</span> <strong className="text-slate-700">{ownerLabel}</strong></span>
 </div>
 </div>
-<div data-testid="pcn-dossier-mobile-actions" aria-label="Thao tác hồ sơ PCN" className="flex w-full min-w-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto">{dossierActionGroup}{onOpenContextualAssistant ? <button type="button" onClick={() => onOpenContextualAssistant(dossier.id)} title="Mở trợ lý theo đúng hồ sơ PCN đang xem" aria-label={'Mở Trợ lý hồ sơ cho ' + dossier.dossierCode} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-black text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><Bot size={14} aria-hidden="true" /> Trợ lý hồ sơ</button> : null}<button type="button" onClick={() => void onDownloadPackage()} title="Tải bộ hồ sơ PCN" className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
-<Download size={14} /> Tải bộ hồ sơ</button>
-<button type="button" onClick={onClose} aria-label="Đóng hồ sơ" className="mobile-touch-target inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
-<X size={18} />
+<div data-testid="pcn-dossier-mobile-actions" aria-label="Thao tác hồ sơ PCN" className="flex w-full min-w-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto">{dossierActionGroup}{onOpenContextualAssistant ? <button type="button" onClick={() => onOpenContextualAssistant(dossier.id)} title="Mở trợ lý theo đúng hồ sơ PCN đang xem" aria-label={'Mở Trợ lý hồ sơ cho ' + dossier.dossierCode} className="mobile-touch-target dossier-action-compact inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><Bot size={13} aria-hidden="true" /> Trợ lý hồ sơ</button> : null}<button type="button" onClick={() => void onDownloadPackage()} title="Tải bộ hồ sơ PCN" className="mobile-touch-target dossier-action-compact inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+<Download size={13} /> Tải bộ hồ sơ</button>
+<button type="button" onClick={onClose} aria-label="Đóng hồ sơ" className="mobile-touch-target inline-flex min-h-8 min-w-8 items-center justify-center rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+<X size={16} />
 </button>
 </div>
 </header>{!workflowFirst && <DossierRegionSelector activeTab={activeTab} missingRequiredCount={missingRequiredCount} onChange={setActiveTab} />}<section aria-label="Nội dung hồ sơ PCN" className="mobile-scroll-y h-0 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pcn-dossier-focus-scroll p-3 md:p-4">
@@ -1053,7 +1065,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
       )}
 
       <details data-testid="pcn-dossier-support" className="mt-3 rounded-xl border border-slate-200 bg-slate-50">
-        <summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-black text-slate-800">Thông tin hỗ trợ</summary>
+        <summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs font-black text-slate-800"><span>Thông tin hỗ trợ (Căn cứ pháp lý, AI, Lịch sử)</span></summary>
         <div className="space-y-3 border-t border-slate-200 p-3">
           <section>
             <h3 className="text-xs font-black text-slate-800">Căn cứ pháp lý & Quy chuẩn</h3>

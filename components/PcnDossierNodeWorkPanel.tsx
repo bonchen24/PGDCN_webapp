@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { CheckCircle2, Eye, FileOutput, FileText, MoreHorizontal, Pencil, RotateCcw, Trash2, Upload } from 'lucide-react';
+import { CheckCircle2, Download, Eye, FileOutput, FileText, MoreHorizontal, Pencil, RotateCcw, Trash2, Upload } from 'lucide-react';
 
 import { ORGANIZATION_MANAGEMENT_ROLE_OPTIONS, PCN_DEPARTMENT_ROLE_OPTIONS, PROFESSIONAL_ROLE_OPTIONS } from '../types';
 import type { PcnDossierDocument, UserAccount } from '../types';
@@ -336,6 +336,7 @@ export function PcnDossierNodeWorkPanel({
             {item.status !== 'PRESENT' && item.actions.includes('CREATE_FROM_FORM') && draftingHref ? <a href={draftingHref} title="Soạn thảo tài liệu" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"><Pencil size={14} aria-hidden="true" /></a> : null}
             {item.status !== 'PRESENT' && item.actions.includes('UPLOAD') && editable ? <label className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100" title="Bổ sung tệp" aria-label="Tải tài liệu"><Upload size={14} aria-hidden="true" /><input id={inputId} className="sr-only" type="file" onChange={(event) => handleUpload(item, event.target.files?.[0])} disabled={busyKey === `upload:${item.requirementId}`} /></label> : null}
             {['PRESENT', 'CONFIRMED'].includes(item.status) && version ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" title="Mở tệp" aria-label="Mở tệp"><FileText size={14} aria-hidden="true" /></a> : null}
+            {['PRESENT', 'CONFIRMED'].includes(item.status) && version ? <a className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" href={getPcnFileUrl(version.assetId, { download: true })} download={version.fileName} title="Tải xuống" aria-label="Tải xuống"><Download size={14} aria-hidden="true" /></a> : null}
             {(item.actions.includes('CONFIRM') || item.actions.includes('REPLACE') || item.actions.includes('REMOVE_CURRENT') || item.actions.includes('CREATE_FROM_FORM') || item.actions.includes('CLEAR_WAIVER') || item.actions.includes('WAIVE')) ? <details className="relative">
               <summary className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 cursor-pointer list-none items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50" title="Thao tác khác" aria-label="Thao tác khác"><MoreHorizontal size={14} aria-hidden="true" /></summary>
               <div className="absolute right-0 z-10 mt-1 flex min-w-48 flex-col gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
@@ -354,13 +355,12 @@ export function PcnDossierNodeWorkPanel({
   }
 
   return (
-    <aside id={panelId} role="tabpanel" className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200 bg-white shadow-xs [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 [&_*:focus-visible]:ring-blue-500" data-testid="pcn-node-work-panel" aria-label={`Công việc bước ${projection.nodeLabel}`}>
-      {/* Header gọn gàng của bước đang chọn */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white p-3.5">
-        <div className="min-w-0 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-black uppercase tracking-wider text-emerald-600">Bước đang chọn:</span>
-          <h2 className="text-base font-black text-slate-950 truncate">{projection.nodeLabel}</h2>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+    <aside id={panelId} role="tabpanel" className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200 bg-white shadow-xs [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-blue-500 [&_*:focus-visible]:ring-offset-2" data-testid="pcn-node-work-panel">
+      {/* Header gọn gàng của bước */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2.5 sm:px-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <h3 className="break-words text-sm font-black text-slate-900">{projection.nodeLabel}</h3>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600">
             {STATUS_LABELS[projection.status]} · Vòng {projection.cycleNo}
           </span>
           <div className="flex flex-wrap items-center gap-1.5 ml-1" aria-label="Tiến độ tài liệu trong bước" data-testid="pcn-node-progress">
@@ -380,22 +380,22 @@ export function PcnDossierNodeWorkPanel({
         {/* Thao tác chính của bước đặt ngay trên header */}
         <div className="flex shrink-0 items-center gap-2">
           {canStart ? (
-            <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50" disabled={busyKey === 'start'} onClick={() => void run('start', () => onStartTask!(taskId!))}>
+            <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-800 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50" disabled={busyKey === 'start'} onClick={() => void run('start', () => onStartTask!(taskId!))}>
               {busyKey === 'start' ? 'Đang bắt đầu…' : 'Bắt đầu xử lý'}
             </button>
           ) : null}
           {canReturn ? (
-            <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50" disabled={busyKey === 'return'} onClick={() => setShowReturnForm((current) => !current)}>
+            <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50" disabled={busyKey === 'return'} onClick={() => setShowReturnForm((current) => !current)}>
               {busyKey === 'return' ? 'Đang trả về…' : 'Trả về'}
             </button>
           ) : null}
           {canOfferContinue ? (
-            <button type="button" title={canContinue ? 'Tiếp tục sang bước kế tiếp' : completionReasonsForDisplay.join(' ')} aria-label="Hoàn tất bước, tiếp tục sang bước kế tiếp" aria-describedby={!canContinue ? completionBlockersId : undefined} className="mobile-touch-target min-h-11 rounded-md bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 shadow-xs" disabled={!canContinue || busyKey === 'continue'} onClick={() => void run('continue', () => onCompleteTask!(taskId!, projection.cycleNo))}>
+            <button type="button" title={canContinue ? 'Tiếp tục sang bước kế tiếp' : completionReasonsForDisplay.join(' ')} aria-label="Hoàn tất bước, tiếp tục sang bước kế tiếp" aria-describedby={!canContinue ? completionBlockersId : undefined} className="mobile-touch-target min-h-11 rounded-md bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 shadow-xs" disabled={!canContinue || busyKey === 'continue'} onClick={() => void run('continue', () => onCompleteTask!(taskId!, projection.cycleNo))}>
               {busyKey === 'continue' ? 'Đang hoàn tất…' : 'Hoàn tất bước'}
             </button>
           ) : null}
           {!canContinue && canOfferContinue ? (
-            <a href={`#${completionBlockersId}`} className="mobile-touch-target inline-flex min-h-11 items-center rounded-md px-2 py-1 text-xs font-semibold text-amber-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2">
+            <a href={'#' + completionBlockersId} className="mobile-touch-target inline-flex min-h-11 items-center rounded-md px-2 py-1 text-xs font-semibold text-amber-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2">
               Xem lý do chưa thể hoàn tất
             </a>
           ) : null}
@@ -407,55 +407,22 @@ export function PcnDossierNodeWorkPanel({
         </div>
       </div>
 
-      {projection.blockedReason || projection.suggestions.length > 0 ? (
-        <details className="border-b border-amber-200 bg-amber-50/70" data-testid="pcn-node-suggestions">
-          <summary className="mobile-touch-target cursor-pointer list-none px-4 py-2 text-xs font-semibold text-amber-900">Gợi ý xử lý <span className="ml-1 font-normal text-amber-900/70">(mở khi cần)</span></summary>
-          <ul className="space-y-1 border-t border-amber-100 px-4 py-2.5 text-xs text-amber-900">
-            {projection.blockedReason ? <li>{projection.blockedReason}</li> : null}
-            {projection.suggestions.map((suggestion) => <li key={suggestion}>• {suggestion}</li>)}
-          </ul>
-        </details>
-      ) : null}
-
-      {/* Dải thông tin bổ trợ tinh gọn */}
-      <section data-testid="pcn-dossier-review-summary" className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-100 bg-slate-50/70 px-4 py-2 text-[11px] text-slate-600" aria-label="Soát xét hồ sơ PCN">
-        <div><span className="mr-1.5 font-bold uppercase tracking-wider text-slate-400">Soát xét:</span><strong className="text-slate-700">{projection.unresolvedRequiredCount ? `Còn ${projection.unresolvedRequiredCount} mục bắt buộc chưa được xử lý` : 'Không thiếu mục bắt buộc'}</strong></div>
-        <div role="group" aria-label="Vai trò và thao tác trong phiên hiện tại">
-          <span className="mr-1.5 font-bold uppercase tracking-wider text-slate-400">Vai trò hiện tại:</span>
-          <strong className="text-slate-700" data-testid="pcn-node-current-role">{currentRole}</strong>
-        </div>
-        <div>
-          <span className="mr-1.5 font-bold uppercase tracking-wider text-slate-400">Thao tác tiếp theo:</span>
-          <strong className="text-slate-700" data-testid="pcn-node-next-action">{nextActionSummary}</strong>
-        </div>
-      </section>
-
-      {!projection.canContinue && (completionBlockReasons.length > 0 || canOfferContinue) ? (
-        <section id={completionBlockersId} tabIndex={-1} className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" data-testid="pcn-node-completion-blockers" aria-label="Lý do chưa thể hoàn tất bước">
-          <h3 className="font-semibold text-xs">Chưa thể hoàn tất bước</h3>
-          {projection.unresolvedRequiredCount > 0 ? <p className="mt-1 text-xs">Còn {projection.unresolvedRequiredCount} mục bắt buộc chưa được xử lý.</p> : null}
-          <ul className="mt-1 list-disc space-y-1 pl-5 text-xs">
-            {completionReasonsForDisplay.map((reason, index) => <li key={`${index}:${reason}`}>{reason}</li>)}
-          </ul>
-        </section>
-      ) : null}
-
-      <div className="min-h-0 space-y-4 p-4">
+      <div className="min-h-0 space-y-3 p-3 sm:p-4">
         {/* Phần trọng tâm: Bảng tài liệu cần thiết của bước đang chọn */}
         <section>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-2.5">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Tài liệu và hồ sơ liên quan</h3>
-              <p className="text-xs text-slate-500">Danh sách tài liệu cần thiết của bước này.</p>
+              <h3 className="text-xs font-black text-slate-900">Tài liệu và hồ sơ liên quan</h3>
+              <p className="text-[11px] text-slate-500">Danh sách tài liệu cần thiết của bước này.</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-slate-500">{projection.documents.length} mục</span>
-              {canEditNode && onUploadSupplementary ? <label title={`Tải tệp phụ trợ cho bước ${projection.nodeLabel}`} aria-label={`Tải tệp phụ trợ cho bước ${projection.nodeLabel}`} className="mobile-touch-target inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-xs font-bold text-blue-800 hover:bg-blue-100 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2"><Upload size={14} aria-hidden="true" /><span>Tệp phụ trợ</span><input type="file" className="sr-only" accept=".pdf,.docx,.png,.jpg,.jpeg,.gif,.webp,.avif" disabled={busyKey === `supplementary:${projection.nodeId}`} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; handleSupplementaryUpload(file); }} /></label> : null}
+              {canEditNode && onUploadSupplementary ? <label title={'Tải tệp phụ trợ cho bước ' + projection.nodeLabel} aria-label={'Tải tệp phụ trợ cho bước ' + projection.nodeLabel} className="mobile-touch-target inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-xs font-bold text-blue-800 hover:bg-blue-100 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2"><Upload size={14} aria-hidden="true" /><span>Tệp phụ trợ</span><input type="file" className="sr-only" accept=".pdf,.docx,.png,.jpg,.jpeg,.gif,.webp,.avif" disabled={busyKey === ('supplementary:' + projection.nodeId)} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; handleSupplementaryUpload(file); }} /></label> : null}
               {onOpenDocuments ? <button type="button" className="mobile-touch-target dossier-action-compact min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" onClick={onOpenDocuments}>Mở toàn bộ tài liệu</button> : null}
             </div>
           </div>
           {supplementaryUploadError ? <p role="alert" className="mb-2 text-xs font-semibold text-rose-700">{supplementaryUploadError}</p> : null}
-          <div className="mt-3">
+          <div>
             <PgdcnDossierDocumentActionTable
               testId="pcn-dossier-document-action-table"
               rows={orderedDocuments.map((item) => ({
@@ -494,18 +461,55 @@ export function PcnDossierNodeWorkPanel({
         {showReturnForm && canReturn ? (
           <div className="rounded-lg border border-rose-200 bg-rose-50 p-3" data-testid="pcn-node-return-form">
             <p className="text-sm font-semibold text-rose-950">Trả hồ sơ về bước cần xử lý</p>
-            <label className="mt-3 block text-xs font-semibold text-rose-950" htmlFor={`pcn-return-target-${projection.nodeId}`}>Bước nhận lại</label>
-            <select id={`pcn-return-target-${projection.nodeId}`} className="mt-1 min-h-11 w-full rounded-md border border-rose-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500" value={returnTargetId} onChange={(event) => setReturnTargetId(event.target.value)}>
+            <label className="mt-3 block text-xs font-semibold text-rose-950" htmlFor={'pcn-return-target-' + projection.nodeId}>Bước nhận lại</label>
+            <select id={'pcn-return-target-' + projection.nodeId} className="mt-1 min-h-11 w-full rounded-md border border-rose-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500" value={returnTargetId} onChange={(event) => setReturnTargetId(event.target.value)}>
               <option value="">Chọn bước nhận lại</option>
               {returnTargets.map((target) => <option key={target.id} value={target.id}>{target.label}</option>)}
             </select>
-            <label className="mt-3 block text-xs font-semibold text-rose-950" htmlFor={`pcn-return-reason-${projection.nodeId}`}>Lý do trả lại</label>
-            <textarea id={`pcn-return-reason-${projection.nodeId}`} className="mt-1 min-h-20 w-full rounded-md border border-rose-200 bg-white p-2 text-sm text-slate-900 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} />
-            <div className="mt-3 flex flex-wrap justify-end gap-2">
-              <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowReturnForm(false)}>Hủy</button>
-              <button type="button" className="mobile-touch-target min-h-11 rounded-md bg-rose-700 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-50" disabled={!returnTargetId || !returnReason.trim() || busyKey === 'return'} onClick={() => void run('return', async () => { await onReturnTask!(taskId!, { targetNodeId: returnTargetId, reason: returnReason.trim() }); setShowReturnForm(false); setReturnReason(''); })}>Xác nhận trả về</button>
+            <label className="mt-3 block text-xs font-semibold text-rose-950" htmlFor={'pcn-return-reason-' + projection.nodeId}>Lý do trả lại</label>
+            <textarea id={'pcn-return-reason-' + projection.nodeId} className="mt-1 min-h-20 w-full rounded-md border border-rose-200 bg-white p-2 text-sm text-slate-900 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} />
+            <div className="mt-3 flex gap-2">
+              <button type="button" className="mobile-touch-target min-h-11 rounded-md bg-rose-600 px-3 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50" disabled={!returnTargetId || !returnReason.trim() || busyKey === 'return'} onClick={() => void run('return', async () => { await onReturnTask!(taskId!, { targetNodeId: returnTargetId, reason: returnReason.trim() }); setShowReturnForm(false); setReturnReason(''); })}>
+                {busyKey === 'return' ? 'Đang trả về…' : 'Xác nhận trả về'}
+              </button>
+              <button type="button" className="mobile-touch-target min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50" onClick={() => setShowReturnForm(false)}>
+                Hủy
+              </button>
             </div>
           </div>
+        ) : null}
+
+        {/* Dải thông tin bổ trợ tinh gọn */}
+        <section data-testid="pcn-dossier-review-summary" className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-1.5 text-[11px] text-slate-600" aria-label="Soát xét hồ sơ PCN">
+          <div><span className="mr-1.5 font-bold uppercase tracking-wider text-slate-400">Soát xét:</span><strong className="text-slate-700">{projection.unresolvedRequiredCount ? ('Còn ' + projection.unresolvedRequiredCount + ' mục bắt buộc chưa được xử lý') : 'Không thiếu mục bắt buộc'}</strong></div>
+          <div role="group" aria-label="Vai trò và thao tác trong phiên hiện tại">
+            <span className="mr-1.5 font-bold uppercase tracking-wider text-slate-400">Vai trò hiện tại:</span>
+            <strong className="text-slate-700" data-testid="pcn-node-current-role">{currentRole}</strong>
+          </div>
+          <div>
+            <span className="mr-1.5 font-bold uppercase tracking-wider text-slate-400">Thao tác tiếp theo:</span>
+            <strong className="text-slate-700" data-testid="pcn-node-next-action">{nextActionSummary}</strong>
+          </div>
+        </section>
+
+        {!projection.canContinue && (completionBlockReasons.length > 0 || canOfferContinue) ? (
+          <section id={completionBlockersId} tabIndex={-1} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950" data-testid="pcn-node-completion-blockers" aria-label="Lý do chưa thể hoàn tất bước">
+            <h3 className="font-semibold text-xs">Chưa thể hoàn tất bước</h3>
+            {projection.unresolvedRequiredCount > 0 ? <p className="mt-1 text-xs">Còn {projection.unresolvedRequiredCount} mục bắt buộc chưa được xử lý.</p> : null}
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-xs">
+              {completionReasonsForDisplay.map((reason, index) => <li key={index + ':' + reason}>{reason}</li>)}
+            </ul>
+          </section>
+        ) : null}
+
+        {projection.blockedReason || projection.suggestions.length > 0 ? (
+          <details className="rounded-lg border border-amber-200 bg-amber-50/70" data-testid="pcn-node-suggestions">
+            <summary className="mobile-touch-target cursor-pointer list-none px-3 py-1.5 text-xs font-semibold text-amber-900">Gợi ý xử lý <span className="ml-1 font-normal text-amber-900/70">(mở khi cần)</span></summary>
+            <ul className="space-y-1 border-t border-amber-100 px-3 py-2 text-xs text-amber-900">
+              {projection.blockedReason ? <li>{projection.blockedReason}</li> : null}
+              {projection.suggestions.map((suggestion) => <li key={suggestion}>• {suggestion}</li>)}
+            </ul>
+          </details>
         ) : null}
       </div>
     </aside>
