@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import test from 'node:test';
 
@@ -14,6 +15,28 @@ import {
 } from '../scripts/qa-dossier-harness.mjs';
 
 const fingerprintHtml = `<!doctype html><html lang="vi"><head><title>Phòng Giám định - Chứng nhận - TVCI</title><script src="/_next/static/chunks/app.js"></script></head><body><div id="root"></div></body></html>`;
+
+test('QA login selectors match the actual PGDCN username and password inputs', () => {
+  const loginPage = readFileSync(new URL('../app/(auth)/login/page.tsx', import.meta.url), 'utf8');
+  const qaScript = readFileSync(new URL('../scripts/qa-dossier.mjs', import.meta.url), 'utf8');
+
+  assert.match(loginPage, /id="login-username"/);
+  assert.match(loginPage, /id="login-password"/);
+  assert.match(loginPage, /htmlFor="login-username"[\s\S]*?Tên đăng nhập/);
+  assert.match(loginPage, /htmlFor="login-password"[\s\S]*?Mật khẩu/);
+  assert.equal(/#pcn-username|#pcn-password/.test(qaScript), false, 'QA automation must not use stale login selectors');
+  assert.equal(/getByLabel\('Tên đăng nhập', \{ exact: true \}\)/.test(qaScript), true);
+  assert.equal(/getByLabel\('Mật khẩu', \{ exact: true \}\)/.test(qaScript), true);
+  assert.equal(/locator\('#login-username'\)/.test(qaScript), true);
+  assert.equal(/locator\('#login-password'\)/.test(qaScript), true);
+
+  const loginResponseHandling = qaScript.slice(qaScript.indexOf('const response = await loginResponse'), qaScript.indexOf('function redactSecrets'));
+  assert.equal(qaScript.includes("&& response.request().method() === 'POST'"), true);
+  assert.equal(/if \(!response\.ok\(\)\)[\s\S]*?await page\.goto\(new URL\('\/'/.test(loginResponseHandling), true);
+  const loginFailureMessage = qaScript.match(/throw new Error\(`Đăng nhập UI QA trả HTTP[^`]*`/);
+  assert.ok(loginFailureMessage);
+  assert.doesNotMatch(loginFailureMessage[0], /scope/i);
+});
 
 test('defaults to the known local dev port and respects an explicit base URL', () => {
   assert.equal(selectBaseUrl({}), 'http://127.0.0.1:1357');

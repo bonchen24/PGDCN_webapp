@@ -108,8 +108,20 @@ function sessionFromPage(page) {
 async function signInThroughUi(page, baseUrl, credentials) {
   const loginUrl = new URL('/login', `${baseUrl}/`).toString();
   await page.goto(loginUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
-  await page.locator('#pcn-username').fill(credentials.username);
-  await page.locator('#pcn-password').fill(credentials.password);
+
+  const usernameField = page.getByLabel('Tên đăng nhập', { exact: true });
+  if (await usernameField.count()) {
+    await usernameField.fill(credentials.username);
+  } else {
+    await page.locator('#login-username').fill(credentials.username);
+  }
+
+  const passwordField = page.getByLabel('Mật khẩu', { exact: true });
+  if (await passwordField.count()) {
+    await passwordField.fill(credentials.password);
+  } else {
+    await page.locator('#login-password').fill(credentials.password);
+  }
 
   const loginResponse = page.waitForResponse((response) => (
     response.url() === new URL('/api/auth/pcn-session', `${baseUrl}/`).toString()
@@ -118,7 +130,7 @@ async function signInThroughUi(page, baseUrl, credentials) {
   await page.getByRole('button', { name: /Đăng nhập/i }).click();
   const response = await loginResponse;
   if (!response.ok()) {
-    throw new Error(`Đăng nhập UI QA trả HTTP ${response.status()}; kiểm tra tài khoản QA và scope được cấp.`);
+    throw new Error(`Đăng nhập UI QA trả HTTP ${response.status()}; xác thực không thành công.`);
   }
 
   await page.goto(new URL('/', `${baseUrl}/`).toString(), { waitUntil: 'domcontentloaded', timeout: 20000 });
@@ -197,7 +209,7 @@ async function assertDossierPageIsAuthenticated(page, baseUrl, department) {
     throw new Error(`Trang hồ sơ ${department} bị chuyển khỏi origin QA ${expectedOrigin} sang ${currentUrl.origin}.`);
   }
   const isLoginRoute = currentUrl.pathname.replace(/\/$/, '').endsWith('/login');
-  const loginFormVisible = await page.locator('#pcn-username').isVisible().catch(() => false);
+  const loginFormVisible = await page.locator('#login-username').isVisible().catch(() => false);
   if (isLoginRoute || loginFormVisible) {
     throw new Error(`Bị chuyển về màn hình đăng nhập khi mở hồ sơ ${department}; phiên QA đã hết hạn hoặc thiếu scope.`);
   }

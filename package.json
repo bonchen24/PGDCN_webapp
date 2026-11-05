@@ -17,7 +17,7 @@
     "test:all": "node --require ./scripts/native-dev-preload.cjs ./node_modules/tsx/dist/cli.mjs --test",
     "qa:dossier": "node ./scripts/qa-dossier.mjs",
     "qa:dossier:mock": "node --test --test-concurrency=1 ./test/pcn-d10-detail-scope.playwright.test.mjs ./test/pgd-dossier-detail-density.playwright.test.mjs ./test/pcn-pgd-dossier-wheel-scroll.playwright.test.mjs",
-    "test:qa:dossier-harness": "node --test ./test/qa-dossier-harness.test.mjs",
+    "test:qa:dossier-harness": "node --test --test-concurrency=1 ./test/qa-dossier-harness.test.mjs ./test/qa-dossier-auth.playwright.test.mjs",
     "migrate:json": "tsx scripts/importBackupToPostgres.ts",
     "migrate:pcn-customers": "node ./scripts/run-pcn-tsx.cjs scripts/migratePcnCustomers.ts",
     "import:pcn-template": "node ./scripts/run-pcn-tsx.cjs scripts/importPcnTemplate.ts",

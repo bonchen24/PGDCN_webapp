@@ -25,7 +25,7 @@ npm run dev
 
 ## Phiên đăng nhập thật
 
-Dùng một trong hai chế độ sau.
+Dùng một trong hai chế độ sau. Tài khoản QA đã xác nhận là `luongxuanhung`; script chỉ nhận credential từ environment của tiến trình hoặc storage state được cung cấp an toàn trên máy host.
 
 **Storage state Playwright đáng tin cậy:** chỉ định file đã được tạo bằng quy trình đăng nhập được tin cậy. File phải nằm ngoài repo và không được commit. Harness chỉ đọc file, không tạo hoặc ghi lại cookie:
 
@@ -37,7 +37,7 @@ npm run qa:dossier
 **Đăng nhập qua UI thật:** cung cấp tài khoản QA qua environment của tiến trình. Có thể nhập mật khẩu ẩn trong PowerShell như sau:
 
 ```powershell
-$env:PGDCN_QA_USERNAME = Read-Host 'Tài khoản QA'
+$env:PGDCN_QA_USERNAME = 'luongxuanhung'
 $qaPassword = Read-Host 'Mật khẩu QA' -AsSecureString
 $env:PGDCN_QA_PASSWORD = [System.Net.NetworkCredential]::new('', $qaPassword).Password
 Remove-Variable qaPassword
@@ -45,7 +45,15 @@ npm run qa:dossier
 Remove-Item Env:PGDCN_QA_USERNAME, Env:PGDCN_QA_PASSWORD -ErrorAction SilentlyContinue
 ```
 
-Lệnh nhập mật khẩu không ghi giá trị vào command history. Harness điền `#pcn-username` và `#pcn-password`, bấm nút đăng nhập, rồi xác nhận phiên, role và scope qua endpoint thật. Mật khẩu không được in ra, ghi vào file hoặc lưu thành storage state. Nếu không có phiên hoặc credential hợp lệ, lệnh báo `Cần phiên đăng nhập QA hợp lệ...` và không mở browser.
+Lệnh nhập mật khẩu không ghi giá trị vào command history. Harness mở `/login`, điền theo nhãn chính xác `Tên đăng nhập` và `Mật khẩu` (fallback lần lượt là `#login-username` và `#login-password`), rồi chờ đúng callback `POST /api/auth/pcn-session`. Checkbox `Lưu mật khẩu` không được dùng làm locator cho password. Sau POST thành công, script mở `/` và xác minh `GET /api/auth/pcn-session`, role cùng scope PCN/PGD; thiếu scope được báo riêng với lỗi đăng nhập. Mật khẩu không được in ra, ghi vào file, chụp screenshot ở màn hình đăng nhập hoặc lưu thành storage state.
+
+Khi không có credential thật, chạy kiểm tra hồi quy form bằng Playwright:
+
+```powershell
+npm run test:qa:dossier-harness
+```
+
+Bài mock dùng DOM login có nhãn và checkbox như form thật, xác nhận browser gửi POST đến callback, rồi nhận HTTP 401 để chứng minh lỗi được phát hiện và không chuyển tiếp sau đăng nhập thất bại. Đây chỉ là kiểm tra selector/callback, không xác thực thành công và không thay thế `npm run qa:dossier`. QA REAL AUTH chỉ chạy khi có cặp `PGDCN_QA_USERNAME`/`PGDCN_QA_PASSWORD` hoặc storage state đáng tin cậy.
 
 ## Screenshot và bài test mock
 
