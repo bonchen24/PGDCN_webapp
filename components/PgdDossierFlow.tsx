@@ -1,22 +1,6 @@
 'use client';
 
-import {
-  AlertTriangle,
-  CheckCircle2,
-  ChevronRight,
-  CircleDot,
-  ClipboardCheck,
-  Clock3,
-  FileText,
-  Flag,
-  LockKeyhole,
-  PlayCircle,
-  RotateCcw,
-  ShieldCheck,
-  XCircle,
-  type LucideIcon,
-} from 'lucide-react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 
 import type { PgdInspectionStatus, PgdTransitionContext } from '../utils/pgdDomain';
 import { getPgdStatusLabel } from '../utils/pgdDomain';
@@ -88,7 +72,6 @@ export type FlowStep = {
 
 type StatusMeta = {
   label: string;
-  icon: LucideIcon;
   className: string;
 };
 
@@ -278,20 +261,13 @@ export function canonicalizePgdStepId(stepId: PgdDossierFlowStepId | string): Pg
   return PGD_LEGACY_STEP_TO_STAGE[stepId];
 }
 
-const TYPE_META: Record<FlowType, { label: string; icon: LucideIcon; className: string }> = {
-  FILE: { label: 'Tài liệu', icon: FileText, className: 'border-indigo-200 bg-indigo-50 text-indigo-700' },
-  ACTION: { label: 'Thao tác', icon: ClipboardCheck, className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-  APPROVAL: { label: 'Phê duyệt', icon: ShieldCheck, className: 'border-violet-200 bg-violet-50 text-violet-700' },
-  END: { label: 'Kết thúc', icon: Flag, className: 'border-slate-200 bg-slate-100 text-slate-700' },
-};
-
 const STATUS_META: Record<PgdDossierFlowStepStatus, StatusMeta> = {
-  LOCKED: { label: 'Chưa mở', icon: LockKeyhole, className: 'text-slate-400' },
-  READY: { label: 'Sẵn sàng', icon: CircleDot, className: 'text-blue-700' },
-  IN_PROGRESS: { label: 'Đang xử lý', icon: PlayCircle, className: 'text-blue-700' },
-  WAITING: { label: 'Đang chờ', icon: Clock3, className: 'text-amber-700' },
-  RETURNED: { label: 'Cần xử lý lại', icon: RotateCcw, className: 'text-rose-700' },
-  COMPLETED: { label: 'Đã hoàn tất', icon: CheckCircle2, className: 'text-emerald-700' },
+  LOCKED: { label: 'Chưa mở', className: 'text-slate-400' },
+  READY: { label: 'Sẵn sàng', className: 'text-blue-700' },
+  IN_PROGRESS: { label: 'Đang xử lý', className: 'text-blue-700' },
+  WAITING: { label: 'Đang chờ', className: 'text-amber-700' },
+  RETURNED: { label: 'Cần xử lý lại', className: 'text-rose-700' },
+  COMPLETED: { label: 'Đã hoàn tất', className: 'text-emerald-700' },
 };
 
 /**
@@ -408,6 +384,18 @@ export function getPgdDossierFlowStepIdForStatus(status: PgdInspectionStatus): P
   return step?.id || 'intake';
 }
 
+export function PgdDossierStageGate({
+  selectedStepId,
+  stageId,
+  children,
+}: {
+  selectedStepId: PgdDossierFlowStepId;
+  stageId: PgdDossierFlowStageId;
+  children?: ReactNode;
+}) {
+  return canonicalizePgdStepId(selectedStepId) === stageId ? <>{children}</> : null;
+}
+
 export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep }: PgdDossierFlowProps) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -473,110 +461,72 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
   };
 
   return (
-    <section className="min-w-0 space-y-3" data-testid="pgd-dossier-native-flow" aria-label="Tiến trình hồ sơ PGD">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600">PGD · Tiến trình 7 giai đoạn</p>
-          <h2 className="mt-1 text-base font-black text-slate-950">Quy trình hồ sơ giám định chuẩn hóa (7 giai đoạn)</h2>
-        </div>
-        <p className="text-xs text-slate-600" aria-live="polite">
-          Đang ở giai đoạn {currentNumber}/{PGD_DOSSIER_FLOW_STEPS.length} · {resolvedSteps}/{PGD_DOSSIER_FLOW_STEPS.length} giai đoạn hoàn tất · {getPgdStatusLabel(status)}
+    <section className="min-w-0 space-y-2" data-testid="pgd-dossier-native-flow" aria-label="Bước xử lý">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-black text-slate-900">Bước xử lý</h3>
+        <p className="text-[11px] text-slate-600" aria-live="polite">
+          Giai đoạn {currentNumber}/7 · {getPgdStatusLabel(status)}
         </p>
       </div>
 
-      <div className="h-1.5 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
-        <div
-          className="h-full rounded-full bg-blue-600 transition-[width] duration-200"
-          style={{ width: `${Math.round((resolvedSteps / PGD_DOSSIER_FLOW_STEPS.length) * 100)}%` }}
-        />
+      <div className="h-1 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+        <div className="h-full rounded-full bg-blue-600 transition-[width] duration-200" style={{ width: Math.round((resolvedSteps / PGD_DOSSIER_FLOW_STEPS.length) * 100) + '%' }} />
       </div>
 
-      <div ref={scrollContainerRef} className="mobile-scroll-x min-w-0 overflow-x-auto scroll-smooth touch-pan-x pb-1" data-testid="pgd-dossier-flow-scroll">
-        <div className="flex min-w-max items-stretch gap-2" role="tablist" aria-label="Các giai đoạn xử lý hồ sơ PGD">
+      <div ref={scrollContainerRef} className="mobile-scroll-x min-w-0 overflow-x-auto touch-pan-x pb-1" data-testid="pgd-dossier-flow-scroll">
+        <div className="flex min-w-max items-stretch gap-1.5 md:grid md:w-full md:min-w-0 md:grid-cols-7" role="tablist" aria-label="Các giai đoạn xử lý hồ sơ PGD">
           {PGD_DOSSIER_FLOW_STEPS.map((step, index) => {
             const stepStatus = currentStatusForStep(index + 1, status, evidence);
             const statusMeta = STATUS_META[stepStatus];
             const displayedStatusLabel = stepStatusLabel(index + 1, stepStatus, status);
-            const typeMeta = TYPE_META[step.type];
-            const TypeIcon = typeMeta.icon;
-            const StatusIcon = statusMeta.icon;
-            const disabled = stepStatus === 'LOCKED';
             const selected = selectedStep?.id === step.id;
-            
-            // Build task summary badge for compact viewing
-            const completedTasks = step.tasks.filter((t) => hasStepCompletionEvidence(step, evidence, status)).length;
-            const totalTasks = step.tasks.length;
-            
+            const disabled = index + 1 > currentNumber;
+            const stepClassName = disabled
+              ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 opacity-70'
+              : selected
+                ? 'border-blue-500 bg-blue-50 text-blue-950 shadow-sm'
+                : stepStatus === 'COMPLETED'
+                  ? 'border-emerald-200 bg-emerald-50/70 text-emerald-900 hover:bg-emerald-50'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/30';
+            const numberClassName = selected
+              ? 'bg-blue-600 text-white'
+              : stepStatus === 'COMPLETED'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-slate-100 text-slate-600';
             return (
-              <div className="flex items-center gap-2" key={step.id}>
-                <button
-                  ref={(element) => { tabRefs.current[index] = element; }}
-                  id={`pgd-dossier-step-tab-${step.id}`}
-                  type="button"
-                  role="tab"
-                  tabIndex={selected ? 0 : -1}
-                  aria-selected={selected}
-                  aria-current={index + 1 === currentNumber && stepStatus !== 'COMPLETED' ? 'step' : undefined}
-                  aria-controls={`pgd-dossier-step-panel-${step.id}`}
-                  aria-describedby={`pgd-step-status-${step.id}`}
-                  aria-posinset={index + 1}
-                  aria-setsize={PGD_DOSSIER_FLOW_STEPS.length}
-                  disabled={disabled}
-                  title={disabled ? `${step.label} · Chưa đến giai đoạn` : step.description}
-                  onClick={() => onSelectStep(step.id)}
-                  onKeyDown={(event) => handleKeyDown(event, index)}
-                  className={`mobile-touch-target group flex min-w-[11rem] sm:min-w-[13.5rem] items-center gap-2.5 rounded-lg border px-3 py-2 text-left shadow-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
-                    disabled
-                      ? 'cursor-not-allowed border-slate-200 bg-slate-100/80 text-slate-400 opacity-70'
-                      : selected
-                      ? 'border-blue-500 bg-blue-50/90 text-blue-950 font-black shadow-md ring-2 ring-blue-500 ring-offset-1'
-                      : stepStatus === 'COMPLETED'
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                      : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30 text-slate-700'
-                  }`}
-                >
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${
-                      selected
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : stepStatus === 'COMPLETED'
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-white text-slate-700 ring-1 ring-current/20'
-                    }`}
-                  >
-                    0{index + 1}
+              <button
+                ref={(element) => { tabRefs.current[index] = element; }}
+                id={'pgd-dossier-step-tab-' + step.id}
+                key={step.id}
+                type="button"
+                role="tab"
+                tabIndex={selected ? 0 : -1}
+                aria-selected={selected}
+                aria-current={index + 1 === currentNumber && stepStatus !== 'COMPLETED' ? 'step' : undefined}
+                aria-controls={'pgd-dossier-step-panel-' + step.id}
+                aria-describedby={'pgd-step-status-' + step.id}
+                aria-posinset={index + 1}
+                aria-setsize={PGD_DOSSIER_FLOW_STEPS.length}
+                aria-label={step.label + ' · ' + displayedStatusLabel}
+                disabled={disabled}
+                title={disabled ? step.label + ' · Chưa đến giai đoạn' : step.description}
+                onClick={() => onSelectStep(step.id)}
+                onKeyDown={(event) => handleKeyDown(event, index)}
+                className={'mobile-touch-target group flex min-h-14 min-w-[6rem] items-start gap-1.5 rounded-lg border px-2 py-1.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 md:min-w-0 ' + stepClassName}
+              >
+                <span className={'flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[9px] font-black ' + numberClassName}>
+                  0{index + 1}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block line-clamp-2 break-words text-[9px] font-black leading-3">{step.label}</span>
+                  <span id={'pgd-step-status-' + step.id} className={'mt-0.5 block truncate text-[8px] font-semibold ' + statusMeta.className}>
+                    {displayedStatusLabel}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`truncate text-xs ${selected ? 'font-black text-blue-950' : 'font-bold text-slate-900'}`}>{step.label}</span>
-                      <span className={`inline-flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.2 text-[9px] font-bold ${typeMeta.className}`}><TypeIcon size={10} aria-hidden="true" />{typeMeta.label}</span>
-                    </div>
-                    <div className="mt-0.5 flex items-center justify-between gap-1 text-[10px]">
-                      <span className="truncate text-slate-500">{stepProgress(step, evidence, status)}</span>
-                      <span id={`pgd-step-status-${step.id}`} className={`inline-flex shrink-0 items-center gap-0.5 font-medium ${statusMeta.className}`}><StatusIcon size={11} aria-hidden="true" />{displayedStatusLabel}</span>
-                    </div>
-                  </div>
-                </button>
-                {index < PGD_DOSSIER_FLOW_STEPS.length - 1 ? <ChevronRight className="shrink-0 text-slate-300" size={18} aria-hidden="true" /> : null}
-              </div>
+                </span>
+              </button>
             );
           })}
         </div>
-      </div>
-      <p className="px-1 text-[11px] text-slate-500 md:hidden">Vuốt ngang để xem đủ 7 giai đoạn quy trình</p>
-
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600" aria-label="Chú giải loại việc">
-        {(Object.keys(TYPE_META) as FlowType[]).map((type) => {
-          const meta = TYPE_META[type];
-          const Icon = meta.icon;
-          return <span key={type} className="inline-flex items-center gap-1.5"><span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-semibold ${meta.className}`}><Icon size={12} aria-hidden="true" />{meta.label}</span></span>;
-        })}
-      </div>
-
-      <div className="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 text-sm text-slate-700" data-testid="pgd-dossier-flow-context">
-        <span className="font-semibold text-slate-950">Giai đoạn {selectedIndex + 1}: {selectedStep.label}</span>
-        <span className="ml-2 text-slate-600">· {selectedStep.description}</span>
-        {currentNumber < selectedIndex + 1 ? <span className="ml-2 text-amber-800">· Giai đoạn này đang bị khóa theo quy trình</span> : null}
       </div>
     </section>
   );

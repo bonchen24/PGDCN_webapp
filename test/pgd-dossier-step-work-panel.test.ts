@@ -69,13 +69,14 @@ test('step summary counts only required items for the selected step', () => {
     canMutate: false,
   }));
 
-  assert.match(markup, /Soát xét bước này[\s\S]*?1 đã có · 1 được miễn · 2 còn thiếu/);
+  assert.match(markup, /Soát xét giai đoạn[\s\S]*?1 đã có · 1 được miễn · 2 còn thiếu/);
   assert.match(markup, /min-w-0 break-words/);
   // Before: requiring a bare <tbody> skipped the rendered body because it has a class attribute.
   const tableBody = markup.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/)?.[1] || '';
   assert.match(markup, /<th\b(?=[^>]*scope="col")[^>]*>Trạng thái<\/th>/);
   const tableRows = Array.from(tableBody.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g), (match) => match[1]);
-  const rowStatuses = tableRows.map((row) => {
+  const requiredRows = tableRows.filter((row) => allRequiredRequirements.some((requirement) => row.includes(requirement.title)));
+  const rowStatuses = requiredRows.map((row) => {
     const rowCells = Array.from(row.matchAll(/<(?:td|th)\b[^>]*>([\s\S]*?)<\/(?:td|th)>/g), (match) => match[1]);
     const statusCell = rowCells[2] || '';
     // Missing-item action cells repeat their label; read only the status column.
@@ -321,7 +322,7 @@ test('dossier load state keeps step summary and completion action factual', () =
   assert.match(errorMarkup, /<button(?=[^>]*disabled="")[^>]*>Hoàn tất việc<\/button>/);
   assert.doesNotMatch(errorMarkup, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc/);
   assert.match(loadedEmptyMarkup, /0 đã có · 0 được miễn · 2 còn thiếu/);
-  assert.match(loadedEmptyMarkup, /Còn thiếu 2 tài liệu bắt buộc ở bước này/);
+  assert.match(loadedEmptyMarkup, /Còn thiếu 2 tài liệu bắt buộc ở giai đoạn này/);
   assert.match(loadedCompleteMarkup, /2 đã có · 0 được miễn · 0 còn thiếu/);
-  assert.match(loadedCompleteMarkup, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc ở bước này/);
+  assert.match(loadedCompleteMarkup, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc ở giai đoạn này/);
 });
