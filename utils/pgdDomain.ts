@@ -743,8 +743,8 @@ export interface PgdInspectionRequestInput {
   registryMetadata?: PgdRequestRegistryMetadata;
   targetDate?: string;
   note?: string;
-  /** Người phụ trách xuyên suốt hồ sơ; server luôn chuẩn hóa theo actor khi tạo PYC. */
-  ownerUsername?: string;
+  /** Chủ hồ sơ; hồ sơ mới để null cho đến khi được phân công tường minh. */
+  ownerUsername?: string | null;
   ownerAssignedAt?: string;
   dossierChecklist?: PgdDossierChecklistItem[];
   /** Immutable workflow template reference/snapshot for newly linked records; absent on legacy requests. */
@@ -1451,7 +1451,7 @@ export function createPgdInspectionRequest(input: PgdInspectionRequestInput, now
   return {
     ...clone(input),
     requestCode: String(input.requestCode).trim(),
-    ownerUsername: '',
+    ownerUsername: null,
     ownerAssignedAt: undefined,
     domain: PGD_DOMAIN,
     ...(pgdGroupCode ? { pgdGroupCode } : {}),

@@ -41,7 +41,7 @@ export function getPgdOwnerAssignmentCandidates(users: readonly PcnUserAccount[]
 
 export type PgdDossierAssignmentControlProps = {
   requestId: string;
-  ownerUsername?: string;
+  ownerUsername?: string | null;
   ownerDisplayName?: string;
   users: readonly PcnUserAccount[];
   currentUser?: PgdMutationUser | null;

@@ -27,14 +27,16 @@
 
 - Ruling: The PGD manager assignment action remains disabled when the existing dossier status policy locks owner changes — this keeps list/detail affordances aligned with current server and detail-panel policy; cost if wrong: managers may need to reassign a late-stage dossier through the existing leadership workflow.
 - Ruling: The shared picker owns presentation and confirmation only; each domain wrapper supplies permitted employees and the existing mutation — this prevents generic data access and duplicate writes; cost if wrong: a future domain with different selection policy needs another wrapper.
+
+- Ruling: The PGD manager dashboard currently renders all in-scope requests so managers can reach every unassigned dossier without inheriting the six-row personal-work preview cap; cost: a very large PGD dataset can make the dashboard DOM heavy, at which point pagination or virtualization should preserve access to every row.
 - Ruling: PGD's owner column uses a minimal optional `PgdcnDossierSummaryGrid.renderCell` hook and optional labels on `DossierOwnerAssignmentPicker`; grid callers without a renderer keep their existing editor and sorting behavior, and PGD owner changes stay behind the picker confirmation; cost if wrong: shared grid interactions or PCN copy could regress.
 
 ### Task log
 
 - Task 1: complete (commits `0a85177..a0d5974`, review clean). Evidence: 27/27 focused, 1224 pass/8 skip in `npm test`, typecheck exit 0. Review finding: none. Broader PGD selection had 19 untouched UI contract failures; recheck affected contracts in UI tasks.
 - Task 2: complete (commits `a0d5974..d51d0d1`, review clean after resolving P2 PCN search metadata regression). Evidence: focused browser+PCN suite 11/11, typecheck exit 0, diff check clean. Review finding: restored position/department role/system role search metadata in the neutral picker adapter; follow-up review PASS.
-- Task 3: complete (commit `f721343`, `feat(pgd): add dossier owner assignment surfaces`). Evidence: 20/20 focused picker/surface/register tests, typecheck exit 0, diff check clean. Review pending.
-- Task 4: pending.
-- Task 5: pending.
-- Task 6: pending.
-- Task 7: pending.
+- Task 3: complete (commit `d5bc142`, `feat(pgd): add dossier owner assignment surfaces`, review PASS). Evidence: 20/20 focused picker/surface/register tests, typecheck exit 0, diff check clean. Review finding: none blocking; reviewer recommended considering pagination/virtualization if PGD volume grows and noted current detail-order assertion is source-level; full-page QA remains in Task 7.
+- Task 4: complete (commit `9099c68`, review PASS). Evidence: focused PGD assignment/detail/flow 14/14; `npm test` 1224 pass/8 skip; typecheck and diff check clean. Review finding: none; removed the late duplicate owner editor and current-user owner fallback while retaining the post-signature lock message.
+- Task 5: complete. Evidence: PCN board/queue/register focused tests passed; manager picker, owner display, scoped active-user filtering, and independent evaluator/reviewer editing are covered. Review caught and fixed a PCN route authorization bypass: a viewer with stale leadership metadata could bypass a denial; regression now proves 403 and no audit/dossier writes. Shared route test DB helper now applies system-user filters only when parameters are present.
+- Task 6: complete. Evidence: detail owner panel is before the workflow rail, uses the same assignment control, and retains staff self-claim only for eligible non-viewers. Focused surface/detail/assignment suite passed 20/20.
+- Task 7: implementation and automated verification complete; browser role-state QA unverified because `/api/auth/pcn-session` returned 401 on the local session. Detector ran once and reported eight warnings only on unchanged style lines. Final full suite: 1230 passed, 0 failed, 8 skipped (1238 total); `npm run typecheck` exit 0. A regression asserts PGD `ownerUsername: null` survives creation response, store merge, and summary row projection.

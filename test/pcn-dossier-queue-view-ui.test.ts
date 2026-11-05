@@ -142,17 +142,17 @@ test('PCN queue owner cell uses the confirmed PCN assignment control for manager
 
   const unassigned = renderFor(manager);
   assert.match(unassigned, /data-testid="pcn-dossier-assignment-control"/);
-  assert.match(unassigned, /Phân công người thực hiện/);
-  assert.match(unassigned, /Chưa gán người thực hiện/);
+  assert.match(unassigned, /Giao hồ sơ/);
+  assert.match(unassigned, /Chưa phân công/);
 
   const assigned = renderFor(manager, 'pcn-staff');
   assert.match(assigned, /Nhân viên PCN/);
-  assert.match(assigned, /Chuyển người thực hiện/);
+  assert.match(assigned, /Đổi người/);
 
   for (const currentUser of [staff, viewer]) {
     const markup = renderFor(currentUser, '');
-    assert.doesNotMatch(markup, /Phân công người thực hiện|Chuyển người thực hiện/);
-    assert.match(markup, /Chưa gán người thực hiện/);
+    assert.doesNotMatch(markup, /Giao hồ sơ|Đổi người/);
+    assert.match(markup, /Chưa phân công/);
   }
 });
 

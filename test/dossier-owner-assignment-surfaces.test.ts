@@ -85,6 +85,30 @@ test('staff, PGD viewers, and out-of-scope PGD managers do not get owner actions
   }
 });
 
+test('PCN viewer with leadership metadata remains read-only on dossier assignment surfaces', async () => {
+  const Control = (await import('../components/PcnDossierAssignmentControl.tsx')).default;
+  const viewerLeader = {
+    username: 'viewer-leader', role: 'viewer', systemRole: 'viewer',
+    managementRoleCode: 'DEPARTMENT_HEAD', departmentRoleCode: 'LEADERSHIP',
+  };
+  const markup = renderToStaticMarkup(createElement(Control, {
+    dossier: { id: 'pcn-dossier-1', dossierCode: 'PCN-001', fieldCodes: ['PCN_FIELD'], ownerUsername: '' },
+    users: [{ username: 'pcn-staff', name: 'Nhân viên PCN', role: 'staff', systemRole: 'staff', active: true, departmentScopes: ['PCN'], fieldCodes: ['PCN_FIELD'] }],
+    currentUser: viewerLeader,
+    onAssign: async () => undefined,
+  } as any));
+  assert.doesNotMatch(markup, />Giao hồ sơ</);
+  assert.doesNotMatch(markup, />Đổi người</);
+
+  const viewerClaimMarkup = renderToStaticMarkup(createElement(Control, {
+    dossier: { id: 'pcn-dossier-1', dossierCode: 'PCN-001', fieldCodes: ['PCN_FIELD'], ownerUsername: '' },
+    users: [{ username: 'pcn-staff', name: 'Nhân viên PCN', role: 'staff', systemRole: 'staff', active: true, departmentScopes: ['PCN'], fieldCodes: ['PCN_FIELD'] }],
+    currentUser: viewerLeader,
+    onClaim: async () => undefined,
+  } as any));
+  assert.doesNotMatch(viewerClaimMarkup, /Nhận hồ sơ/);
+});
+
 test('assignment control does not offer an action when the owner mutation callback is unavailable', async () => {
   const Control: any = await loadAssignmentControl();
   const markup = renderToStaticMarkup(createElement(Control, {
@@ -234,11 +258,11 @@ test('PCN pipeline board and work queue keep manager assignment and staff self-c
   const staffMarkup = renderSurfaces(pcnStaff);
   for (const markup of [managerMarkup.board, managerMarkup.queue]) {
     assert.match(markup, /data-testid="pcn-dossier-assignment-control"/);
-    assert.match(markup, /Phân công người thực hiện/);
+    assert.match(markup, /Giao hồ sơ/);
   }
   for (const markup of [staffMarkup.board, staffMarkup.queue]) {
     assert.match(markup, /Nhận hồ sơ/);
-    assert.doesNotMatch(markup, /Phân công người thực hiện|Chuyển người thực hiện/);
+    assert.doesNotMatch(markup, /Giao hồ sơ|Đổi người/);
   }
 });
 
@@ -290,13 +314,13 @@ test('PCN workspace register uses the confirmed owner control and keeps staff an
   } as any));
 
   const unassigned = render(pcnManager);
-  assert.match(unassigned, /Phân công người thực hiện/);
-  assert.match(unassigned, /Chưa gán người thực hiện/);
+  assert.match(unassigned, /Giao hồ sơ/);
+  assert.match(unassigned, /Chưa phân công/);
   const assigned = render(pcnManager, 'pcn-staff');
   assert.match(assigned, /Nhân viên PCN/);
-  assert.match(assigned, /Chuyển người thực hiện/);
+  assert.match(assigned, /Đổi người/);
   for (const currentUser of [pcnStaff, pcnViewer]) {
-    assert.doesNotMatch(render(currentUser), /Phân công người thực hiện|Chuyển người thực hiện/);
+    assert.doesNotMatch(render(currentUser), /Giao hồ sơ|Đổi người/);
   }
 });
 

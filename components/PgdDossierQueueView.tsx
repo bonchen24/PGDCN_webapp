@@ -60,7 +60,7 @@ export interface PgdDossierQueueRow {
   requiredDocumentPresent: number;
   requiredDocumentTotal: number;
   missingRequiredCount: number;
-  ownerUsername?: string;
+  ownerUsername?: string | null;
   ownerDisplayName?: string;
   productGroup: string;
   catalogLabel: string;

@@ -7,8 +7,8 @@ import {
   getPcnAssignableDossierUsers,
   getPcnDossierAssignmentDenial,
   getPcnOwnerAssignmentAuthorityDenial,
+  isPcnDossierAssignmentManager,
 } from '../utils/pcnDossierAssignment';
-import { isPcnSystemManager } from '../utils/pcnRbac';
 import { getPcnUserDisplayName } from '../utils/pcnUserIdentity';
 import DossierOwnerAssignmentPicker from './DossierOwnerAssignmentPicker';
 
@@ -35,7 +35,9 @@ export function PcnDossierAssignmentControl({
 }: PcnDossierAssignmentControlProps) {
   const [saving, setSaving] = useState(false);
   const ownerUsername = String(dossier.ownerUsername || '').trim();
-  const canManageAssignment = isPcnSystemManager(currentUser) && Boolean(onAssign);
+  const canManageAssignment = isPcnDossierAssignmentManager(currentUser) && Boolean(onAssign);
+  const isViewer = [currentUser?.systemRole, currentUser?.role]
+    .some((role) => String(role || '').trim().toLowerCase() === 'viewer');
   const assignableUsers = getPcnAssignableDossierUsers(dossier.fieldCodes, users);
   const assignmentOptions = assignableUsers.map((user) => ({
     username: user.username,
@@ -101,6 +103,11 @@ export function PcnDossierAssignmentControl({
           ownerDisplayName={getPcnUserDisplayName(ownerUsername, users)}
           canAssign={canManageAssignment}
           compact={compact}
+          unassignedLabel="Chưa phân công"
+          assignLabel="Giao hồ sơ"
+          transferLabel="Đổi người"
+          confirmAssignLabel="Xác nhận giao hồ sơ"
+          confirmTransferLabel="Xác nhận đổi người"
           onAssign={saveAssignment}
           options={assignmentOptions}
           disabled={disabled || saving}
@@ -114,9 +121,9 @@ export function PcnDossierAssignmentControl({
     <div data-testid="pcn-dossier-assignment-control" className={compact ? 'min-w-0 flex-1' : 'mt-3'}>
       <div className="flex flex-wrap items-center gap-1.5">
         <span className={`inline-flex min-h-8 items-center rounded-full border px-2 py-1 text-[10px] font-black ${ownerUsername ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`} title={ownerUsername ? 'Chỉ người được gắn tên hoặc Quản trị viên/Quản lý được thao tác hồ sơ.' : 'Hồ sơ đang chờ nhân viên trong phòng tự nhận hoặc được Quản trị viên/Quản lý phân công.'}>
-          {ownerUsername ? `Người thực hiện: ${getPcnUserDisplayName(ownerUsername, users)}` : 'Chưa gán người thực hiện'}
+          {ownerUsername ? `Người thực hiện: ${getPcnUserDisplayName(ownerUsername, users)}` : 'Chưa phân công'}
         </span>
-        {!ownerUsername && onClaim && (
+        {!ownerUsername && onClaim && currentUser && !isViewer && (
           <button
             type="button"
             onClick={() => { void claim().catch(() => undefined); }}

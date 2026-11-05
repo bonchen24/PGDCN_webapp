@@ -8,11 +8,16 @@ const read = (fileName: string) => fs.readFileSync(path.resolve('components', fi
 test('assignment control exposes manager assignment and staff self-claim states', () => {
   const source = read('PcnDossierAssignmentControl.tsx');
 
-  assert.match(source, /Chưa gán người thực hiện/);
+  assert.match(source, /Chưa phân công/);
   assert.match(source, /Nhận hồ sơ/);
   assert.match(source, /getPcnAssignableDossierUsers/);
-  assert.match(source, /isPcnSystemManager/);
+  assert.match(source, /isPcnDossierAssignmentManager/);
   assert.match(source, /DossierOwnerAssignmentPicker/);
+  assert.match(source, /unassignedLabel="Chưa phân công"/);
+  assert.match(source, /assignLabel="Giao hồ sơ"/);
+  assert.match(source, /transferLabel="Đổi người"/);
+  assert.match(source, /confirmAssignLabel="Xác nhận giao hồ sơ"/);
+  assert.match(source, /confirmTransferLabel="Xác nhận đổi người"/);
   assert.match(source, /canAssign=\{canManageAssignment\}/);
   assert.doesNotMatch(source, /<PcnCatalogCombobox/);
   assert.match(source, /searchText: \[user\.username, user\.name, user\.position, user\.departmentRoleCode, user\.systemRole\]/);

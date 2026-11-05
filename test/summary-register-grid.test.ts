@@ -437,8 +437,8 @@ test('PCN summary register renders owner assignment separately while evaluator a
     return rowCells.eq(index);
   };
   const ownerCell = cellFor('Chủ hồ sơ');
-  assert.match(ownerCell.text(), /Chưa gán người thực hiện/);
-  assert.match(ownerCell.text(), /Phân công người thực hiện/);
+  assert.match(ownerCell.text(), /Chưa phân công/);
+  assert.match(ownerCell.text(), /Giao hồ sơ/);
   assert.equal(ownerCell.attr('tabindex'), undefined, 'owner is not opened as the generic inline editor');
   assert.equal(cellFor('Đánh giá viên').attr('tabindex'), '0', 'evaluator remains independently editable');
   assert.equal(cellFor('Người soát xét').attr('tabindex'), '0', 'reviewer remains independently editable');

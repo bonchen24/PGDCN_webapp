@@ -3,7 +3,7 @@
 // Description: Browser-safe policy for assigning PCN dossier operators
 
 import type { OrganizationManagementRoleCode } from '../types.ts';
-import { isOrganizationLeader } from './pcnRbac.ts';
+import { isOrganizationLeader, isPcnSystemManager, type PcnClientUserRole } from './pcnRbac.ts';
 
 export interface PcnDossierAssignmentUser {
   username: string;
@@ -30,6 +30,13 @@ export interface PcnOwnerAssignmentAuthorityInput {
   actorSystemRole?: string;
   actorManagementRoleCode?: OrganizationManagementRoleCode;
   actorDepartmentRoleCode?: string;
+}
+
+/** Viewer accounts stay read-only even if stale leadership metadata is present. */
+export function isPcnDossierAssignmentManager(user: PcnClientUserRole | null | undefined): boolean {
+  if (!user) return false;
+  const roles = [user.systemRole, user.role].map((role) => String(role || '').trim().toLowerCase());
+  return !roles.includes('viewer') && isPcnSystemManager(user);
 }
 
 function normalizeUsername(value: unknown): string {

@@ -774,7 +774,7 @@ function PgdRequestEditPanel({ request, onClose }: { request: PgdInspectionReque
   </div>;
 }
 
-function getPgdUserDisplayName(username: string | undefined, users: PcnUserAccount[]): string {
+function getPgdUserDisplayName(username: string | null | undefined, users: PcnUserAccount[]): string {
   const normalized = String(username || '').trim().toLowerCase();
   if (!normalized) return 'Chưa phân công';
   return users.find((user) => user.username.trim().toLowerCase() === normalized)?.name || username || 'Chưa phân công';

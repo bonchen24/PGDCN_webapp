@@ -54,10 +54,35 @@ function request(): PgdInspectionRequest {
 
 test('PGD creation ignores supplied owner snapshots until explicit assignment', () => {
   const created = createPgdInspectionRequest({ ...intake, ownerUsername: 'creator', ownerAssignedAt: '2026-09-03T01:00:00.000Z' });
-  assert.equal(created.ownerUsername, '');
+  assert.equal(created.ownerUsername, null);
   assert.equal(created.ownerAssignedAt, undefined);
   assert.equal(created.id, intake.id);
   assert.equal(created.status, 'DRAFT');
+});
+
+test('PGD summary owner cell preserves an explicit null owner instead of claiming the creator', async () => {
+  const { buildPgdSummaryRegisterRows } = await import('../utils/pgdSummaryRegister.ts');
+  const created = request();
+  const rows = buildPgdSummaryRegisterRows({
+    requests: [{ ...created, ownerUsername: null }],
+    assignments: [], samples: [], labRequests: [], labResults: [], reports: [], certificates: [],
+  });
+  assert.equal(rows[0].cells.ownerUsername, null);
+});
+
+test('PGD store keeps an explicit null owner from the create response', async () => {
+  const { usePgdStore } = await import('../store-pgd.ts');
+  const originalFetch = globalThis.fetch;
+  const created = { ...request(), ownerUsername: null };
+  globalThis.fetch = (async () => Response.json({ request: created, samples: [] })) as typeof fetch;
+  usePgdStore.getState().reset();
+  try {
+    await usePgdStore.getState().createRequest(intake as any);
+    assert.equal(usePgdStore.getState().requests[0]?.ownerUsername, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+    usePgdStore.getState().reset();
+  }
 });
 
 test('PGD request has an explicit dossier owner and manager reassignment keeps an audit timestamp', () => {

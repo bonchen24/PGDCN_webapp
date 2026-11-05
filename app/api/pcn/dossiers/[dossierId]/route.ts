@@ -305,7 +305,7 @@ export async function POST(
               actorManagementRoleCode: actor.managementRoleCode,
               actorDepartmentRoleCode: actor.departmentRoleCode,
             });
-            if (authorityDenial && !isPcnSystemManager(actor)) {
+            if (authorityDenial) {
               throw Object.assign(new Error(authorityDenial), { statusCode: 403 });
             }
           }

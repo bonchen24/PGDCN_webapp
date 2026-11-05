@@ -32,7 +32,7 @@ export function installDocumentDatabase(t: TestContext) {
     const collection = literalCollection || params[0];
     if (/^SELECT /.test(normalized)) {
       let rows = [...current().entries()].filter(([id]) => id.startsWith(`${collection}:`)).map(([, doc]) => doc);
-      if (collection === 'systemUsers') rows = rows.filter((doc) => doc.document_id === params[0] || doc.data.username === params[0]);
+      if (collection === 'systemUsers' && params.length > 0) rows = rows.filter((doc) => doc.document_id === params[0] || doc.data.username === params[0]);
       else if (/document_id = \$/.test(normalized)) rows = rows.filter((doc) => doc.document_id === params[literalCollection ? 0 : 1]);
       if (normalized.includes("data->>'domain' = 'pgd'")) rows = rows.filter((doc) => doc.data.domain === 'pgd');
       if (normalized.includes("data->>'status' = 'PUBLISHED'")) rows = rows.filter((doc) => doc.data.status === 'PUBLISHED');

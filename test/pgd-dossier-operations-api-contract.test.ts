@@ -23,7 +23,7 @@ test('PGD POST leaves a new request unassigned despite creator and supplied owne
   const response = await create();
   assert.equal(response.status, 201);
   const { request } = await response.json();
-  assert.equal(request.ownerUsername, '');
+  assert.equal(request.ownerUsername, null);
   assert.equal(request.ownerAssignedAt, undefined);
   assert.equal(request.id, routeIntake.id);
   assert.equal(request.domain, 'pgd');
@@ -32,6 +32,7 @@ test('PGD POST leaves a new request unassigned despite creator and supplied owne
   assert.deepEqual((await (await create()).json()).request, request);
   assert.equal(db.list(PGD_COLLECTIONS.requests).length, 1);
   assert.equal(db.list(PGD_COLLECTIONS.activityLogs).length, 1);
+  assert.equal(db.list(PGD_COLLECTIONS.requests)[0].data.ownerUsername, null);
 });
 
 test('PGD owner PUT rejects staff, viewers and non-PGD managers before opening a transaction', async (t) => {

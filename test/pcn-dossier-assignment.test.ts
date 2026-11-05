@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { getPcnAssignableDossierUsers, getPcnDossierAssignmentDenial, getPcnDossierOperatorDenial, getPcnOwnerAssignmentAuthorityDenial } from '../utils/pcnDossierAssignment.ts';
+import { getPcnAssignableDossierUsers, getPcnDossierAssignmentDenial, getPcnDossierOperatorDenial, getPcnOwnerAssignmentAuthorityDenial, isPcnDossierAssignmentManager } from '../utils/pcnDossierAssignment.ts';
 
 const users = [
   { username: 'evaluator-qc4', active: true, systemRole: 'staff', fieldCodes: ['QC4'] },
@@ -86,6 +86,17 @@ test('owner transfer authority belongs to Admin or Leadership while staff may se
     actorSystemRole: 'staff',
     actorDepartmentRoleCode: 'CERTIFICATION_EXPERT',
   }) || '', /Admin hoặc Lãnh đạo|chủ hồ sơ/i);
+});
+
+test('viewer role always hides manager assignment even when leadership metadata is present', () => {
+  assert.equal(isPcnDossierAssignmentManager({
+    role: 'viewer',
+    systemRole: 'viewer',
+    managementRoleCode: 'DEPARTMENT_HEAD',
+    departmentRoleCode: 'LEADERSHIP',
+  }), false);
+  assert.equal(isPcnDossierAssignmentManager({ role: 'staff', systemRole: 'staff', managementRoleCode: 'DEPARTMENT_HEAD' }), true);
+  assert.equal(isPcnDossierAssignmentManager({ role: 'admin', systemRole: 'admin' }), true);
 });
 
 test('filters assignment choices to active PCN users with dossier field overlap', () => {

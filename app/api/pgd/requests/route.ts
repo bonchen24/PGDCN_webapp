@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         {
           ...requestInput,
           requestCode,
-          ownerUsername: '',
+          ownerUsername: null,
           ownerAssignedAt: undefined,
         },
         now,
