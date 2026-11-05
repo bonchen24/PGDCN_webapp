@@ -6,7 +6,7 @@ import test from 'node:test';
 import { chromium } from 'playwright';
 
 const rawBaseUrl = process.env.PGDCN_UX_BASE_URL;
-const artifactRoot = resolve('docs/ux-audit/artifacts/density/next-batch/d09');
+const artifactRoot = resolve(process.env.PGDCN_DENSITY_ARTIFACT_ROOT || 'docs/ux-audit/artifacts/density/next-batch', 'd09');
 
 const ROLES = [
   { id: 'admin', role: 'admin', systemRole: 'admin', pgdRole: 'PGD_LEAD' },
@@ -190,10 +190,13 @@ async function saveScreenshot(page, phase, role, viewport, suffix = '') {
 async function collectDetailMetrics(page, role, viewport, pageErrors) {
   const metrics = await page.evaluate(({ roleId, screen }) => {
     const detail = document.querySelector('[data-testid="pgd-dossier-focus-shell"]');
-    const priority = detail?.querySelector('[data-testid="pgd-dossier-priority-action"]') || null;
-    const priorityCta = detail?.querySelector('[data-testid="pgd-dossier-priority-cta"]') || null;
-    const stepDetails = detail?.querySelector('[data-testid="pgd-dossier-step-work-disclosure"]') || null;
-    const stepPanel = detail?.querySelector('[data-testid="pgd-dossier-step-work-panel"]') || null;
+    const workCard = detail?.querySelector('[data-testid="pgd-dossier-step-work-panel"][aria-label="Bước xử lý hồ sơ PGD"]') || null;
+    const selectedStepPanel = detail?.querySelector('[data-testid="pgd-dossier-selected-step-panel"]') || null;
+    const flow = workCard?.querySelector('[role="tablist"][aria-label="Các giai đoạn xử lý hồ sơ PGD"]') || null;
+    const stageTabs = Array.from(flow?.querySelectorAll('[role="tab"]') || []);
+    const relatedDocuments = selectedStepPanel?.querySelector('[aria-label="Danh sách tài liệu cần hoàn thiện PGD"]') || null;
+    const reader = detail?.querySelector('[data-testid="pgd-dossier-document-reader"]') || null;
+    const mobileTabList = detail?.querySelector('[role="tablist"][aria-label="Chuyển vùng hồ sơ PGD"]') || null;
     const rect = (element) => {
       if (!element) return null;
       const bounds = element.getBoundingClientRect();
@@ -215,21 +218,30 @@ async function collectDetailMetrics(page, role, viewport, pageErrors) {
     const visibleTables = allTables.filter(visible);
     const doc = document.documentElement;
     const body = document.body;
-    const title = priority?.querySelector('h2');
+    const workBounds = workCard?.getBoundingClientRect();
+    const readerBounds = reader?.parentElement?.getBoundingClientRect();
     return {
       role: roleId,
       width: screen.width,
       height: screen.height,
-      currentStepHeading: title?.textContent?.trim() || null,
-      priorityVisible: visible(priority),
-      priorityBounds: rect(priority),
-      primaryCtaVisible: visible(priorityCta),
-      primaryCtaBounds: rect(priorityCta),
-      primaryCtaDisabled: priorityCta ? priorityCta.hasAttribute('disabled') : null,
-      stepDetailsOpen: stepDetails?.hasAttribute('open') ?? null,
-      stepDetailsHeight: rect(stepDetails)?.height ?? null,
-      stepPanelVisible: visible(stepPanel),
-      stepPanelHeight: visible(stepPanel) ? rect(stepPanel)?.height ?? null : 0,
+      workCardCount: detail?.querySelectorAll('[data-testid="pgd-dossier-step-work-panel"]').length ?? 0,
+      workCardVisible: visible(workCard),
+      workCardBounds: rect(workCard),
+      selectedStepPanelCount: detail?.querySelectorAll('[data-testid="pgd-dossier-selected-step-panel"]').length ?? 0,
+      selectedStepPanelVisible: visible(selectedStepPanel),
+      flowStageCount: stageTabs.length,
+      flowStageNumbers: stageTabs.map((tab) => tab.querySelector('span')?.textContent?.trim() || ''),
+      selectedFlowStageCount: stageTabs.filter((tab) => tab.getAttribute('aria-selected') === 'true').length,
+      relatedDocumentsVisible: visible(relatedDocuments),
+      relatedDocumentsHeading: relatedDocuments?.querySelector('h3')?.textContent?.trim() || null,
+      relatedDocumentsTableCount: relatedDocuments?.querySelectorAll('table').length ?? 0,
+      readerCount: detail?.querySelectorAll('[data-testid="pgd-dossier-document-reader"]').length ?? 0,
+      readerVisible: visible(reader),
+      readerIsRightColumn: reader?.parentElement?.tagName === 'ASIDE',
+      readerBounds: rect(reader?.parentElement || null),
+      workToReaderRatio: workBounds && readerBounds ? workBounds.width / (workBounds.width + readerBounds.width) : null,
+      mobileTabCount: mobileTabList?.querySelectorAll('[role="tab"]').length ?? 0,
+      mobileReaderTabHeight: rect(mobileTabList?.querySelector('#pgd-dossier-mobile-tab-reader'))?.height ?? null,
       buttonsDom: allButtons.length,
       buttonsVisible: visibleButtons.length,
       fieldsDom: allFields.length,
@@ -239,6 +251,8 @@ async function collectDetailMetrics(page, role, viewport, pageErrors) {
       workflowDisclosureCount: detail?.querySelectorAll('details').length ?? 0,
       openDisclosureCount: detail?.querySelectorAll('details[open]').length ?? 0,
       documentOverflow: Math.max(doc.scrollWidth, body.scrollWidth) > window.innerWidth,
+      documentScrollWidth: doc.scrollWidth,
+      bodyScrollWidth: body.scrollWidth,
       pageScrollerHeight: detail?.querySelector('[data-testid="pgd-dossier-scroll-area"]')?.scrollHeight ?? null,
       pageScrollerTop: detail?.querySelector('[data-testid="pgd-dossier-scroll-area"]')?.scrollTop ?? null,
     };
@@ -247,7 +261,7 @@ async function collectDetailMetrics(page, role, viewport, pageErrors) {
   return metrics;
 }
 
-test('D09 PGD detail leads with the current step and gated next action for all roles and target widths', {
+test('D09 PGD detail has one seven-stage work card, a related-documents table, and a private reader', {
   skip: !rawBaseUrl ? 'PGDCN_UX_BASE_URL is unset; test is opt-in' : false,
 }, async () => {
   const base = new URL(rawBaseUrl || 'http://127.0.0.1:2367');
@@ -288,22 +302,25 @@ test('D09 PGD detail leads with the current step and gated next action for all r
     assert.deepEqual(audit.apiMutations, [], `Expected zero API mutations: ${JSON.stringify(audit.apiMutations)}`);
     assert.deepEqual(audit.externalRequests, [], `Expected zero external requests: ${JSON.stringify(audit.externalRequests)}`);
     assert.ok(audit.screens.every((item) => item.pageErrors.length === 0), `Expected no page errors: ${JSON.stringify(audit.screens)}`);
-    assert.ok(audit.screens.every((item) => !item.documentOverflow), `Expected no document horizontal overflow: ${JSON.stringify(audit.screens)}`);
-    assert.ok(audit.screens.every((item) => item.priorityVisible && item.primaryCtaVisible), `Expected current step and primary action to be visible for every role and viewport: ${JSON.stringify(audit.screens)}`);
-    assert.ok(audit.screens.filter((item) => item.width <= 430).every((item) => item.priorityBounds.top < 360 && item.primaryCtaBounds.height >= 44), `Expected the current step and a 44px primary action near the top on mobile: ${JSON.stringify(audit.screens)}`);
-    assert.ok(audit.screens.filter((item) => item.role === 'viewer').every((item) => item.primaryCtaDisabled), `Expected Viewer to retain a visible but disabled primary action: ${JSON.stringify(audit.screens)}`);
+    assert.ok(audit.screens.filter((item) => item.width >= 390).every((item) => !item.documentOverflow), `Expected no document horizontal overflow at 390px and wider: ${JSON.stringify(audit.screens)}`);
+    assert.ok(audit.screens.every((item) => item.workCardVisible && item.workCardCount === 1), 'Expected exactly one visible Bước xử lý card');
+    assert.ok(audit.screens.every((item) => item.selectedStepPanelVisible && item.selectedStepPanelCount === 1), 'Expected one selected-step panel inside the work card');
+    assert.ok(audit.screens.every((item) => item.flowStageCount === 7 && item.flowStageNumbers.join(',') === '01,02,03,04,05,06,07' && item.selectedFlowStageCount === 1), 'Expected exactly seven numbered 01–07 stages');
+    assert.ok(audit.screens.every((item) => item.relatedDocumentsVisible && item.relatedDocumentsHeading === 'Tài liệu và hồ sơ liên quan' && item.relatedDocumentsTableCount === 1), 'Expected one prominent related-documents table below the selected stage');
+    assert.ok(audit.screens.every((item) => item.readerCount === 1 && item.readerIsRightColumn), 'Expected the right column to contain one private document reader');
+    assert.ok(audit.screens.filter((item) => item.width <= 430).every((item) => item.mobileTabCount === 2 && item.mobileReaderTabHeight >= 44), 'Expected 44px Work/Reader tabs on mobile');
+    assert.ok(audit.screens.filter((item) => item.width >= 1024).every((item) => item.workToReaderRatio >= 0.58 && item.workToReaderRatio <= 0.62), 'Expected a roughly 60/40 work-to-reader layout on desktop');
   } finally {
     await browser.close();
   }
 });
 
-test('D09 disclosures keep checklist evidence available and keyboard navigation can return to the current step', {
+test('D09 keyboard navigation preserves the selected stage and mobile Work/Reader tabs', {
   skip: !rawBaseUrl ? 'PGDCN_UX_BASE_URL is unset; test is opt-in' : false,
 }, async () => {
   const base = new URL(rawBaseUrl || 'http://127.0.0.1:2367');
   const audit = { apiMutations: [], externalRequests: [] };
   const browser = await chromium.launch({ headless: true });
-  const expandedMetrics = [];
   try {
     for (const role of ROLES) {
       const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -311,56 +328,35 @@ test('D09 disclosures keep checklist evidence available and keyboard navigation 
       page.on('pageerror', (error) => pageErrors.push(error.message));
       await openD09Detail(page, base, role, audit);
 
-      const priority = page.getByTestId('pgd-dossier-priority-action');
-      assert.equal(await priority.count(), 1, `${role.id}: the current-step priority panel is present`);
-      await priority.waitFor({ state: 'visible', timeout: 5000 });
-      const priorityCta = page.getByTestId('pgd-dossier-priority-cta');
-      assert.equal(await priorityCta.isVisible(), true, `${role.id}: the primary action stays visible`);
-      if (role.id === 'viewer') assert.equal(await priorityCta.isDisabled(), true, 'viewer: the primary action stays read-only');
-      const priorityGuidance = page.locator('#pgd-dossier-priority-guidance');
-      if (role.id === 'viewer') {
-        await priorityGuidance.getByText(/Chỉ xem hồ sơ/).waitFor({ state: 'visible' });
-      } else {
-        assert.equal(await priorityGuidance.getByText(/Chỉ xem hồ sơ/).count(), 0, `${role.id}: authorized role is not labeled read-only`);
-      }
-
-      const workDetails = page.getByTestId('pgd-dossier-step-work-disclosure');
-      assert.equal(await workDetails.count(), 1, `${role.id}: the current-step checklist disclosure is present`);
-      const workSummary = workDetails.locator(':scope > summary');
-      await workSummary.focus();
-      await page.keyboard.press('Enter');
-      assert.equal(await workDetails.evaluate((element) => element.open), true, `${role.id}: keyboard opens the current-step checklist disclosure`);
-      await page.getByRole('heading', { name: 'Tài liệu cần hoàn thiện' }).waitFor({ state: 'visible' });
-      await page.getByText(/Soát xét bước này/).waitFor({ state: 'visible' });
-
-      const businessDetails = page.getByTestId('pgd-dossier-business-disclosure');
-      await businessDetails.locator(':scope > summary').click();
-      assert.equal(await businessDetails.evaluate((element) => element.open), true, `${role.id}: the dossier, samples, and history disclosure opens`);
-      await page.getByText(/Event Timeline \/ Work Log/).waitFor({ state: 'visible' });
-      const sampleTracker = businessDetails.getByTestId('dossier-sample-tracker');
-      await sampleTracker.locator(':scope > summary').click();
-      await page.getByText(/Chưa có mẫu entity/).waitFor({ state: 'visible' });
-      const eventTimeline = businessDetails.getByTestId('dossier-event-timeline');
-      await eventTimeline.locator(':scope > summary').click();
-      await page.getByText(/Chưa có sự kiện nghiệp vụ/).waitFor({ state: 'visible' });
-
-      const workflowDetails = page.getByTestId('pgd-dossier-workflow-disclosure');
-      await workflowDetails.locator(':scope > summary').click();
-      const flow = page.getByRole('tablist', { name: 'Các việc xử lý hồ sơ PGD' });
-      const currentTab = flow.getByRole('tab', { name: /Tiếp nhận KQTN/ });
-      const intakeTab = flow.getByRole('tab', { name: /Giao mẫu \/ lập PYC PTN/ });
-      assert.equal(await currentTab.getAttribute('aria-selected'), 'true', `${role.id}: the fixture remains at the current workflow step`);
-      await currentTab.focus();
+      const workCard = page.getByTestId('pgd-dossier-step-work-panel');
+      assert.equal(await workCard.count(), 1, role.id + ': one Bước xử lý card owns the stage navigation');
+      const flow = workCard.getByRole('tablist', { name: 'Các giai đoạn xử lý hồ sơ PGD' });
+      const stageTabs = flow.getByRole('tab');
+      assert.equal(await stageTabs.count(), 7, role.id + ': all seven stages remain available for review');
+      const selectedBefore = await stageTabs.evaluateAll((tabs) => tabs.findIndex((tab) => tab.getAttribute('aria-selected') === 'true'));
+      assert.ok(selectedBefore > 0, role.id + ': the fixture exposes an earlier stage for keyboard navigation');
+      await stageTabs.nth(selectedBefore).focus();
       await page.keyboard.press('ArrowLeft');
-      assert.equal(await intakeTab.getAttribute('aria-selected'), 'true', `${role.id}: keyboard can inspect the prior step`);
+      const selectedAfterLeft = await stageTabs.evaluateAll((tabs) => tabs.findIndex((tab) => tab.getAttribute('aria-selected') === 'true'));
+      assert.equal(selectedAfterLeft, selectedBefore - 1, role.id + ': keyboard can inspect the prior stage');
       await page.keyboard.press('ArrowRight');
-      assert.equal(await currentTab.getAttribute('aria-selected'), 'true', `${role.id}: keyboard can return to the current step`);
-      assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('role') === 'tab'), true, `${role.id}: workflow keyboard focus remains on a tab`);
-      assert.equal(await priorityCta.isVisible(), true, `${role.id}: the current action remains visible after returning to its step`);
-      assert.equal(await page.getByTestId('pgd-dossier-step-work-state').textContent(), 'Đang mở');
-      assert.equal(await page.getByTestId('pgd-dossier-business-state').textContent(), 'Đang mở');
-      assert.equal(await page.getByTestId('pgd-dossier-workflow-state').textContent(), 'Đang mở · chọn bước để xem lại');
-      assert.deepEqual(pageErrors, [], `${role.id}: no browser runtime errors`);
+      const selectedAfterRight = await stageTabs.evaluateAll((tabs) => tabs.findIndex((tab) => tab.getAttribute('aria-selected') === 'true'));
+      assert.equal(selectedAfterRight, selectedBefore, role.id + ': keyboard can return to the selected stage');
+      assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('role') === 'tab'), true, role.id + ': workflow keyboard focus remains on a tab');
+      assert.equal(await page.getByTestId('pgd-dossier-selected-step-panel').isVisible(), true, role.id + ': selected-step work remains visible after keyboard navigation');
+
+      const uploadButtonCount = await page.getByRole('button', { name: /Tải tệp phụ trợ cho giai đoạn/ }).count();
+      assert.equal(uploadButtonCount > 0, role.id !== 'viewer', role.id + ': supplementary upload follows the role permission');
+
+      const mobileReaderTab = page.locator('#pgd-dossier-mobile-tab-reader');
+      assert.equal(await mobileReaderTab.getAttribute('aria-selected'), 'false', role.id + ': work starts selected on mobile');
+      await mobileReaderTab.click();
+      assert.equal(await mobileReaderTab.getAttribute('aria-selected'), 'true', role.id + ': mobile Reader tab becomes selected');
+      await page.getByTestId('pgd-dossier-document-reader').waitFor({ state: 'visible' });
+      assert.equal(await page.locator('#pgd-dossier-work-region').isVisible(), false, role.id + ': mobile Reader view hides the work region');
+      await page.locator('#pgd-dossier-mobile-tab-work').click();
+      assert.equal(await page.locator('#pgd-dossier-work-region').isVisible(), true, role.id + ': mobile Work tab returns to the stage card');
+      assert.deepEqual(pageErrors, [], role.id + ': no browser runtime errors');
 
       if (role.id === 'admin') {
         await page.evaluate(() => {
@@ -371,21 +367,14 @@ test('D09 disclosures keep checklist evidence available and keyboard navigation 
           window.scrollTo(0, 0);
         });
         await page.waitForTimeout(80);
-        await saveScreenshot(page, process.env.PGDCN_DENSITY_PHASE, role.id, { width: 390, height: 844 }, 'panels-open');
-        expandedMetrics.push(await collectDetailMetrics(page, role, { width: 390, height: 844 }, pageErrors));
+        await saveScreenshot(page, process.env.PGDCN_DENSITY_PHASE, role.id, { width: 390, height: 844 }, 'reader-work');
+        await collectDetailMetrics(page, role, { width: 390, height: 844 }, pageErrors);
       }
       await page.close();
     }
 
-    if (expandedMetrics.length) {
-      const phase = process.env.PGDCN_DENSITY_PHASE;
-      const directory = resolve(artifactRoot, phase);
-      await mkdir(directory, { recursive: true });
-      await writeFile(resolve(directory, 'panels-open-metrics.json'), `${JSON.stringify(expandedMetrics, null, 2)}\n`, 'utf8');
-    }
-
-    assert.deepEqual(audit.apiMutations, [], `Expected zero API mutations: ${JSON.stringify(audit.apiMutations)}`);
-    assert.deepEqual(audit.externalRequests, [], `Expected zero external requests: ${JSON.stringify(audit.externalRequests)}`);
+    assert.deepEqual(audit.apiMutations, [], 'Expected zero API mutations: ' + JSON.stringify(audit.apiMutations));
+    assert.deepEqual(audit.externalRequests, [], 'Expected zero external requests: ' + JSON.stringify(audit.externalRequests));
   } finally {
     await browser.close();
   }
@@ -403,9 +392,9 @@ test('D09 loading and evidence errors remain visible while the next action stays
     await openD09Detail(loadingPage, base, role, audit, 'loading');
     const loadingStatus = loadingPage.getByRole('status').filter({ hasText: 'Đang tải trạng thái chứng từ hồ sơ' });
     await loadingStatus.waitFor({ state: 'visible', timeout: 5000 });
-    const loadingCta = loadingPage.getByTestId('pgd-dossier-priority-cta');
-    assert.equal(await loadingCta.count(), 1, 'The primary action stays visible while evidence is loading');
-    assert.equal(await loadingCta.isDisabled(), true);
+    const loadingStep = loadingPage.getByTestId('pgd-dossier-selected-step-panel');
+    assert.equal(await loadingStep.count(), 1, 'The current stage stays visible while evidence is loading');
+    assert.equal(await loadingStep.locator('header button').first().isDisabled(), true, 'The current-stage action remains gated while evidence is loading');
     await saveScreenshot(loadingPage, process.env.PGDCN_DENSITY_PHASE, role.id, { width: 390, height: 844 }, 'loading');
     await loadingStatus.waitFor({ state: 'hidden', timeout: 5000 });
     await loadingPage.close();
@@ -414,9 +403,9 @@ test('D09 loading and evidence errors remain visible while the next action stays
     await openD09Detail(errorPage, base, role, audit, 'error');
     const loadError = errorPage.getByRole('alert').filter({ hasText: 'Không thể tải trạng thái chứng từ' });
     await loadError.waitFor({ state: 'visible', timeout: 5000 });
-    const errorCta = errorPage.getByTestId('pgd-dossier-priority-cta');
-    assert.equal(await errorCta.count(), 1, 'The primary action stays visible while evidence is unavailable');
-    assert.equal(await errorCta.isDisabled(), true);
+    const errorStep = errorPage.getByTestId('pgd-dossier-selected-step-panel');
+    assert.equal(await errorStep.count(), 1, 'The current stage stays visible while evidence is unavailable');
+    assert.equal(await errorStep.locator('header button').first().isDisabled(), true, 'The current-stage action stays gated while evidence is unavailable');
     assert.equal(await errorPage.getByRole('button', { name: 'Tải lại tài liệu' }).isVisible(), true);
     await saveScreenshot(errorPage, process.env.PGDCN_DENSITY_PHASE, role.id, { width: 390, height: 844 }, 'error');
     await errorPage.close();

@@ -1704,12 +1704,12 @@ function PgdRequestDetail({ request, currentUser, onClose, onOpenDrafting, onOpe
             mobileSection === 'reader' ? 'bg-white text-blue-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Tài liệu
+          Xem tài liệu
         </button>
       </div>
 
       {/* Detail Workspace 60/40 Desktop Split */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[65%_35%] lg:gap-4">
+      <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-4">
         <section role="tabpanel" id="pgd-dossier-work-region" aria-labelledby="pgd-dossier-mobile-tab-work" tabIndex={0} aria-label="Công việc hồ sơ PGD" className={`min-w-0 flex flex-col gap-3 ${mobileSection === 'reader' ? 'hidden lg:flex' : 'flex'}`}>
 
           <div data-testid="pgd-dossier-step-work-panel" aria-label="Bước xử lý hồ sơ PGD" className="rounded-xl border border-slate-200 bg-white p-3 md:p-4 shadow-sm">

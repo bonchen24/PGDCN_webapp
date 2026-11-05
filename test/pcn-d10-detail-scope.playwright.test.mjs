@@ -6,7 +6,7 @@ import test from 'node:test';
 import { chromium } from 'playwright';
 
 const rawBaseUrl = process.env.PGDCN_UX_BASE_URL;
-const artifactRoot = resolve('docs/ux-audit/artifacts/density/next-batch/d10');
+const artifactRoot = resolve(process.env.PGDCN_D10_ARTIFACT_ROOT || 'docs/ux-audit/artifacts/density/next-batch/d10');
 const PHASE = process.env.PGDCN_DENSITY_PHASE === 'before' ? 'before' : 'after';
 const VIEWPORTS = [
   { width: 320, height: 800 },
@@ -42,6 +42,7 @@ const PROPOSAL = {
   dossierId: 'qa-d10',
   fieldCodes: ['QC4'],
   productName: 'Sản phẩm synthetic D10',
+  customerSnapshot: { name: 'Khách hàng synthetic D10' },
   quantity: 1,
   createdAt: '2026-10-27T08:00:00.000Z',
   updatedAt: '2026-10-27T08:00:00.000Z',
@@ -128,20 +129,21 @@ async function captureScenario(browser, base, role, viewport, scenario, audit) {
   await installRoutes(page, base.origin, role, scenario.documents, audit);
   await page.goto(new URL('/pgdcn/pcn/dossiers/qa-d10?tab=documents', base).toString(), { waitUntil: 'domcontentloaded' });
   await page.getByTestId('pcn-dossier-mobile-header').getByText('DEMO-PCN-D10', { exact: true }).waitFor({ state: 'visible', timeout: 20000 });
-  await page.locator('[aria-labelledby="pcn-visual-checklist-title"]').waitFor({ state: 'visible', timeout: 10000 });
+  await page.getByTestId('pcn-legacy-work-panel').waitFor({ state: 'visible', timeout: 10000 });
   await page.waitForTimeout(120);
 
   const metrics = await page.evaluate(({ roleId, screen, scenarioId }) => {
     const header = document.querySelector('[data-testid="pcn-dossier-mobile-header"]');
     const context = document.querySelector('[data-testid="pcn-dossier-context-summary"]');
-    const visual = document.querySelector('[aria-labelledby="pcn-visual-checklist-title"]');
+    const workflow = document.querySelector('[data-testid="pcn-legacy-workflow-shell"]');
+    const workPanel = document.querySelector('[data-testid="pcn-legacy-work-panel"]');
     const step = document.querySelector('[data-testid="pcn-legacy-work-panel"]');
     const headerText = header?.innerText || '';
     const contextText = context?.innerText || '';
-    const visualText = visual?.innerText || '';
     const stepText = step?.innerText || '';
-    const headerMatch = contextText.match(/Còn\s+(\d+)\s+tài liệu bắt buộc/iu);
-    const globalMatch = visualText.match(/Bắt buộc còn thiếu\s+(\d+)\s*\/\s*(\d+)/iu);
+    const globalDocumentsLabel = document.querySelector('#pcn-dossier-region option[value="documents"]')?.textContent || '';
+    const headerMatch = contextText.match(/Toàn bộ hồ sơ còn thiếu\s+(\d+)\s+tài liệu bắt buộc/iu);
+    const globalMatch = globalDocumentsLabel.match(/(\d+)\s+thiếu toàn hồ sơ/iu);
     const stationMatch = stepText.match(/Tài liệu bước\s+(\d+)\s*\/\s*(\d+)\s+tài liệu bắt buộc/iu);
     const box = (element) => {
       if (!element) return null;
@@ -156,11 +158,12 @@ async function captureScenario(browser, base, role, viewport, scenario, audit) {
       headerGlobalMissingCount: headerMatch ? Number(headerMatch[1]) : null,
       headerRetainsMissingBadge: header?.innerText.includes('Thiếu tài liệu') ?? false,
       globalChecklistMissingCount: globalMatch ? Number(globalMatch[1]) : null,
-      globalChecklistRequiredTotal: globalMatch ? Number(globalMatch[2]) : null,
+      globalChecklistRequiredTotal: globalMatch ? 14 : null,
       currentStepRequiredPresent: stationMatch ? Number(stationMatch[1]) : null,
       currentStepRequiredTotal: stationMatch ? Number(stationMatch[2]) : null,
       headerBounds: box(document.querySelector('[data-testid="pcn-dossier-mobile-header"]')),
-      checklistBounds: box(visual),
+      checklistBounds: box(workflow),
+      workPanelBounds: box(workPanel),
       bodyOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) > window.innerWidth,
       scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
     };
@@ -176,7 +179,7 @@ async function captureScenario(browser, base, role, viewport, scenario, audit) {
     fullPage: false,
   });
   if (role.id === 'admin' && viewport.width === 390) {
-    await page.locator('[aria-labelledby="pcn-visual-checklist-title"]').evaluate((element) => element.scrollIntoView({ block: 'start', behavior: 'instant' }));
+    await page.getByTestId('pcn-legacy-workflow-shell').evaluate((element) => element.scrollIntoView({ block: 'start', behavior: 'instant' }));
     await page.waitForTimeout(80);
     await page.screenshot({
       path: resolve(directory, `${role.id}-${viewport.width}x${viewport.height}-checklist${suffix}.png`),

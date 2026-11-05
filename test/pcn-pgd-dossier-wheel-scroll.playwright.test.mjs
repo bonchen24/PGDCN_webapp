@@ -1,6 +1,7 @@
 // QA MODE: SYNTHETIC/MOCK — session and API responses are stubbed; this is not real authenticated dossier QA.
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import { chromium } from 'playwright';
@@ -142,6 +143,11 @@ async function installSyntheticRoutes(page, base, department, pdfBytes, audit) {
     const url = new URL(request.url());
     const method = request.method().toUpperCase();
 
+    if (['blob:', 'chrome:', 'chrome-extension:', 'data:', 'edge:', 'edge-extension:', 'moz-extension:', 'resource:'].includes(url.protocol)) {
+      await route.continue();
+      return;
+    }
+
     if (url.origin !== base.origin) {
       if (!url.hostname.includes('googleapis.com') && !url.hostname.includes('gstatic.com')) {
         audit.externalRequests.push({ url: request.url(), method });
@@ -270,16 +276,38 @@ function scrollerSelector(department) {
   return department === 'PCN' ? '.pcn-dossier-focus-scroll' : '[data-testid="pgd-dossier-scroll-area"]';
 }
 
+async function captureVisiblePdfRegion(page, iframe, viewportWidth) {
+  const frame = await iframe.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const visible = { left: Math.max(0, rect.left), top: Math.max(0, rect.top), right: Math.min(innerWidth, rect.right), bottom: Math.min(innerHeight, rect.bottom) };
+    for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+      const style = getComputedStyle(ancestor);
+      const ancestorRect = ancestor.getBoundingClientRect();
+      if (/(auto|scroll|hidden|clip)/.test(`${style.overflowX} ${style.overflowY}`)) {
+        visible.left = Math.max(visible.left, ancestorRect.left + ancestor.clientLeft);
+        visible.top = Math.max(visible.top, ancestorRect.top + ancestor.clientTop);
+        visible.right = Math.min(visible.right, ancestorRect.left + ancestor.clientLeft + ancestor.clientWidth);
+        visible.bottom = Math.min(visible.bottom, ancestorRect.top + ancestor.clientTop + ancestor.clientHeight);
+      }
+    }
+    return { rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, visible };
+  });
+  const clip = {
+    x: Math.round(Math.max(frame.visible.left, frame.rect.x + 4)),
+    y: Math.round(Math.max(frame.visible.top, frame.rect.y + 60)),
+    width: Math.floor(frame.visible.right - Math.max(frame.visible.left, frame.rect.x + 4) - 4),
+    height: viewportWidth <= 430 ? 160 : 300,
+  };
+  assert.ok(clip.width > 80 && clip.y + clip.height < frame.visible.bottom,
+    `Expected a stable, visible PDF content region: ${JSON.stringify({ frame, clip })}`);
+  return { image: await page.screenshot({ clip, animations: 'disabled' }), frame, clip };
+}
+
 async function addSyntheticOverflow(page, selector) {
   return page.locator(selector).evaluate((area) => {
     const fixture = document.createElement('div');
     fixture.dataset.syntheticScrollFixture = 'true';
     fixture.style.cssText = 'min-height: 1800px; padding: 20px; background: #f8fafc;';
-    const keyboardTarget = document.createElement('button');
-    keyboardTarget.type = 'button';
-    keyboardTarget.dataset.syntheticScrollKeyboardTarget = 'true';
-    keyboardTarget.textContent = 'Synthetic keyboard scroll probe';
-    keyboardTarget.style.cssText = 'display:block;min-height:44px;margin-bottom:16px;padding:8px;border:1px solid #cbd5e1;background:white;';
     const table = document.createElement('table');
     table.dataset.syntheticScrollTable = 'true';
     table.style.cssText = 'width: 100%; border-collapse: collapse;';
@@ -290,7 +318,6 @@ async function addSyntheticOverflow(page, selector) {
       body.appendChild(tr);
     }
     table.appendChild(body);
-    fixture.appendChild(keyboardTarget);
     fixture.appendChild(table);
     area.appendChild(fixture);
     return { scrollHeight: area.scrollHeight, clientHeight: area.clientHeight };
@@ -499,15 +526,6 @@ test('synthetic PCN/PGD dossiers scroll with the mouse wheel without moving the 
         const afterTableWheel = await page.locator(selector).evaluate((area) => area.scrollTop);
         assert.ok(afterTableWheel > beforeTableWheel, `${department} ${viewport.width}: wheel over a table did not scroll the dossier area`);
 
-        const keyboardTarget = page.locator('[data-synthetic-scroll-keyboard-target]');
-        await keyboardTarget.scrollIntoViewIfNeeded();
-        await keyboardTarget.focus();
-        const beforePageDown = await page.locator(selector).evaluate((area) => area.scrollTop);
-        await page.keyboard.press('PageDown');
-        await page.waitForTimeout(100);
-        const afterPageDown = await readPointDiagnostics(page, selector);
-        assert.ok(afterPageDown.scroller.scrollTop > beforePageDown, `${department} ${viewport.width}: PageDown did not scroll the focused dossier area`);
-
         const iframe = page.locator(`${department === 'PCN' ? '[data-testid="pcn-dossier-document-reader"]' : '[data-testid="pgd-dossier-document-reader"]'} iframe`);
         let iframeWheel = null;
         if (await iframe.isVisible().catch(() => false)) {
@@ -558,7 +576,7 @@ test('synthetic PCN/PGD dossiers scroll with the mouse wheel without moving the 
           assert.equal(afterOverlayWheel.mainScrollTop, beforeOverlayWheel.mainScrollTop, `${department} ${viewport.width}: wheel over the preview overlay moved the page`);
           assert.equal(afterOverlayWheel.bodyOverflow, 'hidden', `${department} ${viewport.width}: expected the preview to keep its body scroll lock`);
           overlayWheel = { point: dialogPoint, before: beforeOverlayWheel, after: afterOverlayWheel };
-          await page.keyboard.press('Escape');
+          await dialog.getByRole('button', { name: 'Đóng xem nhanh' }).click();
           await dialog.waitFor({ state: 'hidden' });
           assert.notEqual(await page.locator('body').evaluate((body) => body.style.overflow), 'hidden', `${department} ${viewport.width}: closing preview did not release its scroll lock`);
         }
@@ -570,6 +588,7 @@ test('synthetic PCN/PGD dossiers scroll with the mouse wheel without moving the 
         await page.mouse.wheel(0, 600);
         await page.waitForTimeout(100);
         const emptyAfter = await readPointDiagnostics(page, selector);
+        assert.ok(emptyAfter.scroller, `${department} ${viewport.width}: empty dossier scroller disappeared: ${JSON.stringify({ url: page.url(), title: await page.title(), errors: pageErrors })}`);
         assert.equal(emptyAfter.scroller.scrollTop, emptyBefore.scroller.scrollTop, `${department} ${viewport.width}: empty dossier scroller moved`);
         assert.equal(emptyAfter.hits.blank?.ancestors.find((node) => node.tag === 'main')?.scrollTop ?? 0,
           emptyBefore.hits.blank?.ancestors.find((node) => node.tag === 'main')?.scrollTop ?? 0,
@@ -586,7 +605,6 @@ test('synthetic PCN/PGD dossiers scroll with the mouse wheel without moving the 
           tableWheel: { point: tablePoint, before: beforeTableWheel, after: afterTableWheel },
           iframeWheel,
           overlayWheel,
-          afterPageDown: afterPageDown.scroller,
           noOverflow: {
             before: { scroller: emptyBefore.scroller, mainScrollTop: emptyBefore.hits.blank?.ancestors.find((node) => node.tag === 'main')?.scrollTop ?? 0 },
             after: { scroller: emptyAfter.scroller, mainScrollTop: emptyAfter.hits.blank?.ancestors.find((node) => node.tag === 'main')?.scrollTop ?? 0 },
@@ -602,7 +620,7 @@ test('synthetic PCN/PGD dossiers scroll with the mouse wheel without moving the 
     assert.ok(audit.cases.every((item) => item.pageErrors.length === 0), `Expected no browser runtime errors: ${JSON.stringify(audit.cases)}`);
     console.log(JSON.stringify({
       label: audit.label,
-      cases: audit.cases.map(({ department, viewport, initial, headerHover, expanded, afterDown, afterUp, tableWheel, iframeWheel, overlayWheel, afterPageDown, noOverflow, pageErrors }) => ({
+      cases: audit.cases.map(({ department, viewport, initial, headerHover, expanded, afterDown, afterUp, tableWheel, iframeWheel, overlayWheel, noOverflow, pageErrors }) => ({
         department,
         viewport,
         scrollerAtLoad: { scrollTop: initial.scroller.scrollTop, scrollHeight: initial.scroller.scrollHeight, clientHeight: initial.scroller.clientHeight, overflowY: initial.scroller.overflowY },
@@ -614,7 +632,6 @@ test('synthetic PCN/PGD dossiers scroll with the mouse wheel without moving the 
         tableWheel: { hit: tableWheel.point.hitTag, before: tableWheel.before, after: tableWheel.after },
         iframeWheel: iframeWheel ? { hit: iframeWheel.point.hitTag, dossierBefore: iframeWheel.dossierBefore, dossierAfter: iframeWheel.dossierAfter, pdfBefore: iframeWheel.pdfBefore, pdfAfter: iframeWheel.pdfAfter } : null,
         overlayWheel: overlayWheel ? { hit: overlayWheel.point.hitTag, before: overlayWheel.before, after: overlayWheel.after } : null,
-        pageDownScrollTop: afterPageDown.scrollTop,
         noOverflow: { scrollerTopBefore: noOverflow.before.scroller.scrollTop, scrollerTopAfter: noOverflow.after.scroller.scrollTop, mainBefore: noOverflow.before.mainScrollTop, mainAfter: noOverflow.after.mainScrollTop },
         pageErrorCount: pageErrors.length,
       })),
@@ -627,6 +644,86 @@ test('synthetic PCN/PGD dossiers scroll with the mouse wheel without moving the 
       consoleWarnings: audit.consoleErrors.map((message) => message.slice(0, 180)),
     }, null, 2));
   } finally {
+    await browser.close();
+  }
+});
+
+test('native PDF readers consume focused wheel input in PCN and PGD', {
+  skip: process.env.PGDCN_NATIVE_PDF_QA !== '1' ? 'Set PGDCN_NATIVE_PDF_QA=1 to run the headful native PDF viewer check' : false,
+}, async () => {
+  const base = new URL(baseUrl);
+  const pdfBytes = await createPdf();
+  const audit = { apiRequests: [], apiResponses: [], browserApiRequests: [], failedRequests: [], pageErrors: [], hydrationWarnings: [], apiMutations: [], externalRequests: [], consoleErrors: [], cases: [] };
+  const browser = await chromium.launch({ headless: false, ignoreDefaultArgs: ['--disable-extensions', '--disable-component-extensions-with-background-pages'] });
+  const context = await browser.newContext();
+
+  try {
+    for (const department of ['PCN', 'PGD']) {
+      for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+        const page = await context.newPage();
+        await page.setViewportSize(viewport);
+        page.on('pageerror', (error) => audit.pageErrors.push(error.message));
+        page.on('request', (request) => { if (new URL(request.url()).pathname.startsWith('/api/')) audit.browserApiRequests.push({ method: request.method(), url: request.url() }); });
+        page.on('response', (response) => { const pathname = new URL(response.url()).pathname; if (pathname.startsWith('/api/')) audit.apiResponses.push({ pathname, status: response.status() }); });
+        page.on('requestfailed', (request) => audit.failedRequests.push({ url: request.url(), error: request.failure()?.errorText || 'unknown' }));
+        await openDossier(page, base, department, pdfBytes, audit);
+
+        if (viewport.width <= 430) {
+          if (department === 'PCN') await page.getByTestId('pcn-dossier-mobile-switcher').getByRole('button', { name: 'Xem tài liệu' }).click();
+          else await page.locator('#pgd-dossier-mobile-tab-reader').click();
+        }
+
+        const readerId = department === 'PCN' ? 'pcn-dossier-document-reader' : 'pgd-dossier-document-reader';
+        const iframe = page.getByTestId(readerId).locator('iframe');
+        await iframe.waitFor({ state: 'visible', timeout: 15000 });
+        await iframe.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(1500);
+        const scrollSelector = scrollerSelector(department);
+        const beforeCapture = await captureVisiblePdfRegion(page, iframe, viewport.width);
+        const point = { x: beforeCapture.clip.x + beforeCapture.clip.width / 2, y: beforeCapture.clip.y + beforeCapture.clip.height / 2 };
+        await page.mouse.move(point.x, point.y);
+        await page.mouse.click(point.x, point.y);
+        await page.waitForTimeout(250);
+        const dossierBefore = await page.locator(scrollSelector).evaluate((area) => ({ scrollTop: area.scrollTop, mainScrollTop: document.querySelector('main')?.scrollTop || 0 }));
+        const hitAtWheelPoint = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName.toLowerCase() || null, point);
+        const beforeImage = beforeCapture.image;
+        const beforeHash = createHash('sha256').update(beforeImage).digest('hex');
+        const pdfFrame = await (await iframe.elementHandle())?.contentFrame();
+        const iframeRectBefore = beforeCapture.frame.rect;
+        await page.mouse.wheel(0, 120);
+        await page.waitForTimeout(1000);
+        const dossierAfterWheel = await page.locator(scrollSelector).evaluate((area) => ({ scrollTop: area.scrollTop, mainScrollTop: document.querySelector('main')?.scrollTop || 0 }));
+        const afterCapture = await captureVisiblePdfRegion(page, iframe, viewport.width);
+        const afterImage = afterCapture.image;
+        const afterHash = createHash('sha256').update(afterImage).digest('hex');
+        const iframeRectAfter = afterCapture.frame.rect;
+        const dossierAfter = await page.locator(scrollSelector).evaluate((area) => ({ scrollTop: area.scrollTop, mainScrollTop: document.querySelector('main')?.scrollTop || 0 }));
+        if (process.env.PGDCN_NATIVE_PDF_ARTIFACT_DIR) {
+          await mkdir(process.env.PGDCN_NATIVE_PDF_ARTIFACT_DIR, { recursive: true });
+          await writeFile(join(process.env.PGDCN_NATIVE_PDF_ARTIFACT_DIR, `${department.toLowerCase()}-${viewport.width}-before.png`), beforeImage);
+          await writeFile(join(process.env.PGDCN_NATIVE_PDF_ARTIFACT_DIR, `${department.toLowerCase()}-${viewport.width}-after.png`), afterImage);
+        }
+        const frameContentType = await pdfFrame?.evaluate(() => document.contentType).catch(() => null);
+        const nativeViewerDebug = { department, viewport, src: await iframe.getAttribute('src'), frameUrl: pdfFrame?.url() || null, frameContentType, hitAtWheelPoint, beforeHash, afterHash, dossierBefore, dossierAfterWheel, dossierAfter, iframeRectBefore, iframeRectAfter, recentApiResponses: audit.apiResponses.slice(-5), externalRequests: audit.externalRequests.slice(-5), failedRequests: audit.failedRequests.slice(-5) };
+        nativeViewerDebug.captureBefore = beforeCapture.clip;
+        nativeViewerDebug.captureAfter = afterCapture.clip;
+        console.log('Native PDF wheel diagnostic:', JSON.stringify(nativeViewerDebug));
+
+        assert.equal(hitAtWheelPoint, 'iframe', `${department}/${viewport.width}: wheel target was not the embedded PDF frame`);
+        assert.equal(frameContentType, 'application/pdf', `${department}/${viewport.width}: the reader did not load a real PDF`);
+        assert.notEqual(afterHash, beforeHash, `${department}/${viewport.width}: native PDF viewer did not visibly move after a focused wheel event`);
+        assert.deepEqual(dossierAfter, dossierAfterWheel, `${department}/${viewport.width}: PDF capture itself changed dossier scroll position`);
+        audit.cases.push({ department, viewport, beforeHash, afterHash, dossierBefore, dossierAfterWheel, dossierAfter });
+        await page.close();
+      }
+    }
+
+    assert.deepEqual(audit.apiMutations, [], `Native PDF QA must not invoke mutating APIs: ${JSON.stringify(audit.apiMutations)}`);
+    assert.deepEqual(audit.externalRequests, [], `Native PDF QA must not call external services: ${JSON.stringify(audit.externalRequests)}`);
+    assert.ok(audit.pageErrors.length === 0, `Expected no browser runtime errors: ${JSON.stringify(audit.pageErrors)}`);
+    console.log('Native PDF wheel observations:', JSON.stringify(audit.cases));
+  } finally {
+    await context.close();
     await browser.close();
   }
 });

@@ -451,7 +451,7 @@ export default function PgdDossierStepWorkPanel({
       id={`pgd-dossier-step-panel-${selectedStepId}`}
       role="tabpanel"
       aria-labelledby={`pgd-dossier-step-tab-${selectedStepId}`}
-      data-testid="pgd-dossier-step-work-panel"
+      data-testid="pgd-dossier-selected-step-panel"
       className="min-w-0 space-y-2.5"
     >
       <header className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-200 bg-white px-3 py-2 sm:px-4 shadow-xs">
@@ -516,7 +516,7 @@ export default function PgdDossierStepWorkPanel({
       <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs" aria-label="Danh sách tài liệu cần hoàn thiện PGD">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-xs font-black text-slate-900">Tài liệu cần hoàn thiện trong giai đoạn</h3>
+            <h3 className="text-xs font-black text-slate-900">Tài liệu và hồ sơ liên quan</h3>
             <p className="text-[11px] text-slate-500">Mỗi dòng cho biết tài liệu đã có chưa và việc cần làm tiếp theo.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -650,9 +650,9 @@ export default function PgdDossierStepWorkPanel({
     </section>
 
       {/* Soát xét giai đoạn */}
-      <section className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-2.5 text-xs" aria-label="Soát xét tài liệu bắt buộc ở giai đoạn PGD hiện tại">
+      <section className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-2.5 text-xs" aria-label="Soát xét tài liệu bắt buộc ở bước PGD hiện tại">
         <div className="min-w-0 break-words">
-          <span className="mr-2 text-xs font-black uppercase tracking-wide text-blue-700">Soát xét giai đoạn</span>
+          <span className="mr-2 text-xs font-black uppercase tracking-wide text-blue-700">Soát xét bước này</span>
           <strong aria-live="polite" className="break-words text-slate-800">
             {dossierStatusUnknown
               ? dossierLoadPending
