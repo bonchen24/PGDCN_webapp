@@ -1,0 +1,17 @@
+﻿.worktrees/
+.release-*
+.candidate-*
+.qa-*
+.staging-*
+scratch/
+test-results/
+graphify-out/
+dist/
+build/
+.next/
+.tmp*
+tmp/
+backups/
+external/
+%SystemDrive%/
+proofs/
