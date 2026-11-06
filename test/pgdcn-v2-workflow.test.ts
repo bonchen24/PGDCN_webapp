@@ -1020,8 +1020,3 @@ test('v2 B7 issuance route handles DELIVER and ARCHIVE with RBAC checks and safe
   assert.equal(archiveBody.request.status, 'ARCHIVED');
   assert.equal(archiveBody.certificate.archivistUsername, 'archivist-user');
 });
-
-
-
-
-\n

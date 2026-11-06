@@ -35,5 +35,3 @@ export function validatePgdIssuanceAction(
   if (request.status !== 'RESULT_RETURNED' || certificate.status !== 'SIGNED' || !certificate.deliveredAt || !certificate.deliveredTo) return 'Chỉ lưu trữ sau khi đã ghi nhận bàn giao kết quả.';
   return null;
 }
-
-\n
