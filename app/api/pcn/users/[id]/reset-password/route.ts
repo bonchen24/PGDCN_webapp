@@ -4,7 +4,8 @@
 
 import { NextRequest } from 'next/server';
 import { getSessionUser } from '../../../../../../lib/server/auth.ts';
-import { canManageSystemUsers } from '../../../../../../utils/systemSettingsPolicy.ts';
+import { canManageSystemUser, canManageSystemUsers } from '../../../../../../utils/systemSettingsPolicy.ts';
+import { sanitizePcnUserRow } from '../../../../../../lib/server/users.ts';
 import { withPgTransaction } from '../../../../../../lib/server/db.ts';
 import {
   jsonOk,
@@ -44,6 +45,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       }
 
       const existing = existingResult.rows[0].data || {};
+      const existingUser = sanitizePcnUserRow({ document_id: existingResult.rows[0].document_id, data: existing });
+      if (!canManageSystemUser(actor, existingUser)) {
+        throw Object.assign(new Error('Bạn không có quyền quản lý tài khoản này trong scope hiện tại.'), { statusCode: 403 });
+      }
       const next = { ...existing, password, 'Mật khẩu': password, updatedAt: new Date().toISOString() };
 
       await client.query(
@@ -57,6 +62,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
   } catch (error: any) {
     if (error?.statusCode === 404 || error?.message === 'NOT_FOUND') {
       return jsonNotFound('Không tìm thấy nhân sự PCN.');
+    }
+    if (error?.statusCode === 403) {
+      return jsonForbidden(error.message);
     }
     return jsonServerError(error, 'Không thể reset mật khẩu nhân sự PCN.');
   }

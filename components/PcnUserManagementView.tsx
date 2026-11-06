@@ -17,7 +17,7 @@ import type {
 } from '../types';
 import { ORGANIZATION_MANAGEMENT_ROLE_OPTIONS, PROFESSIONAL_ROLE_OPTIONS, PCN_DEPARTMENT_ROLE_OPTIONS } from '../types';
 import type { PcnDepartmentRole, PcnUserInput } from '../utils/pcnUserApi';
-import { canManageSystemUsers } from '../utils/systemSettingsPolicy';
+import { canManageSystemUser, canManageSystemUsers, isSystemSettingsAdmin } from '../utils/systemSettingsPolicy';
 
 const SYSTEM_ROLE_LABELS: Record<PcnSystemRole, string> = {
   admin: 'Quản trị viên hệ thống',
@@ -157,6 +157,7 @@ export function PcnUserManagementView({
   const [currentPage, setCurrentPage] = useState(1);
 
   const editable = canManageSystemUsers(currentUser);
+  const isAdmin = isSystemSettingsAdmin(currentUser);
   const visibleUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase('vi-VN');
     return users.filter((user) => {
@@ -412,8 +413,8 @@ export function PcnUserManagementView({
             </summary>
             <div className="space-y-2 border-t border-slate-200 p-3">
               <div className="grid gap-2 md:grid-cols-3">
-                <FormField label="Vai trò hệ thống"><select className={inputClass} value={form.systemRole} onChange={(event) => setForm({ ...form, systemRole: event.target.value as PcnSystemRole })}>{Object.entries(SYSTEM_ROLE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></FormField>
-                <FormField label="Chức danh quản lý"><select className={inputClass} value={form.managementRoleCode} onChange={(event) => setForm({ ...form, managementRoleCode: event.target.value as OrganizationManagementRoleCode })}>{ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.map((role) => <option key={role.code} value={role.code}>{role.name}</option>)}</select></FormField>
+                <FormField label="Vai trò hệ thống"><select className={inputClass} value={form.systemRole} onChange={(event) => setForm({ ...form, systemRole: event.target.value as PcnSystemRole })}>{Object.entries(SYSTEM_ROLE_LABELS).filter(([code]) => isAdmin || code !== 'admin').map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></FormField>
+                <FormField label="Chức danh quản lý"><select className={inputClass} value={form.managementRoleCode} onChange={(event) => setForm({ ...form, managementRoleCode: event.target.value as OrganizationManagementRoleCode })}>{ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.filter((role) => isAdmin || role.code === 'NONE').map((role) => <option key={role.code} value={role.code}>{role.name}</option>)}</select></FormField>
                 <label className="mobile-touch-target flex min-h-11 items-center gap-2 text-[11px] font-bold text-slate-600"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} />Tài khoản đang hoạt động</label>
               </div>
               <div className="rounded-lg border border-violet-100 bg-violet-50/50 p-2.5">
@@ -494,11 +495,11 @@ export function PcnUserManagementView({
           </label>
           <select className={`${inputClass} sm:w-44`} value={systemRoleFilter} onChange={(event) => setSystemRoleFilter(event.target.value as 'ALL' | PcnSystemRole)}>
             <option value="ALL">Tất cả vai trò hệ thống</option>
-            {Object.entries(SYSTEM_ROLE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+                      {Object.entries(SYSTEM_ROLE_LABELS).filter(([code]) => isAdmin || code !== 'admin').map(([code, label]) => <option key={code} value={code}>{label}</option>)}
           </select>
           <select className={`${inputClass} sm:w-52`} value={managementRoleFilter} onChange={(event) => setManagementRoleFilter(event.target.value as 'ALL' | OrganizationManagementRoleCode)}>
             <option value="ALL">Tất cả chức danh quản lý</option>
-            {ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.map((role) => <option key={role.code} value={role.code}>{role.name}</option>)}
+                      {ORGANIZATION_MANAGEMENT_ROLE_OPTIONS.filter((role) => isAdmin || role.code === 'NONE').map((role) => <option key={role.code} value={role.code}>{role.name}</option>)}
           </select>
         </div>
         {embedded && editable && (
@@ -526,7 +527,111 @@ export function PcnUserManagementView({
         {visibleUsers.length === 0 ? (
           <div className="p-8 text-center text-[11px] text-slate-400">Không có nhân sự phù hợp bộ lọc.</div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div data-testid="user-directory-cards" className="space-y-2 p-3 lg:hidden">
+            {paginatedUsers.map((user) => {
+              const mRole = managementRoleName(user.managementRoleCode);
+              const pRoles = professionalRoleNames(user.professionalRoleCodes);
+              const mayManageUser = editable && canManageSystemUser(currentUser, user);
+              return (
+                <article
+                  key={user.username}
+                  data-testid={`mobile-user-card-${user.username}`}
+                  aria-label={`Tài khoản ${user.name}`}
+                  className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+                >
+                  <div className="flex min-w-0 items-start gap-2.5">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-800">
+                      {getUserInitials(user.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="break-words text-xs font-black text-slate-900">{user.name}</h3>
+                      <p className="break-all font-mono text-[10px] text-slate-400">@{user.username}</p>
+                      {(user.phone || user.email) && (
+                        <p className="mt-1 break-words text-[10px] text-slate-500">
+                          {[user.phone, user.email].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                    </div>
+                    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-bold ${user.active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${user.active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                      {user.active ? 'Đang hoạt động' : 'Đã khóa'}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <UserBadge role={user.systemRole} />
+                    {mRole && (
+                      <span className="inline-flex max-w-full break-words rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-1 text-[9px] font-bold text-indigo-700">
+                        {mRole}
+                      </span>
+                    )}
+                    {user.position && <span className="break-words text-[10px] text-slate-500">{user.position}</span>}
+                  </div>
+
+                  <dl className="mt-3 grid grid-cols-1 gap-2 border-t border-slate-100 pt-3 text-[10px] sm:grid-cols-2">
+                    <div className="min-w-0">
+                      <dt className="font-bold uppercase tracking-wide text-slate-400">Phạm vi</dt>
+                      <dd className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex max-w-full break-words rounded bg-slate-100 px-1.5 py-1 font-bold text-slate-700">
+                          {user.departmentScopes?.join(' + ') || 'PCN'}
+                        </span>
+                        {user.pgdRole && (
+                          <span className="inline-flex max-w-full break-words rounded border border-blue-200 bg-blue-50 px-1.5 py-1 font-bold text-blue-700">
+                            {PGD_ROLE_LABELS[user.pgdRole]}
+                          </span>
+                        )}
+                      </dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="font-bold uppercase tracking-wide text-slate-400">Chuyên môn</dt>
+                      <dd className="mt-1 break-words text-slate-600">
+                        {pRoles || user.fieldCodes.join(', ') || '—'}
+                        {pRoles && user.fieldCodes.length > 0 && <span className="text-slate-400"> · {user.fieldCodes.join(', ')}</span>}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {mayManageUser && (
+                    <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(user)}
+                        disabled={saving || resettingUsername !== undefined || deletingUsername !== undefined}
+                        className="mobile-touch-target inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-600 hover:border-emerald-300 disabled:opacity-50 transition-colors"
+                      >
+                        <Pencil size={12} /> Sửa
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setResetPasswordUser(user);
+                          setNewPassword('');
+                        }}
+                        disabled={resettingUsername !== undefined || saving || deletingUsername !== undefined}
+                        aria-busy={resettingUsername === user.username}
+                        className="mobile-touch-target inline-flex min-h-11 min-w-full flex-1 items-center justify-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-bold text-amber-700 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-50 transition-colors sm:min-w-0"
+                      >
+                        <KeyRound size={12} /> Đặt lại mật khẩu
+                      </button>
+                      {user.username !== currentUser?.username && (
+                        <button
+                          type="button"
+                          onClick={() => openDeleteConfirmation(user)}
+                          disabled={deletingUsername !== undefined || saving || resettingUsername !== undefined}
+                          aria-busy={deletingUsername === user.username}
+                          className="mobile-touch-target inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-wait disabled:opacity-50 transition-colors"
+                        >
+                          <Trash2 size={12} /> Xóa
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+          <div data-testid="user-directory-table" className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[720px] text-left text-[11px]">
               <thead className="border-b border-slate-200 bg-slate-50/75 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 <tr>
@@ -620,7 +725,7 @@ export function PcnUserManagementView({
                       </td>
 
                       {/* Cột 5: Thao tác */}
-                      {editable && (
+                      {editable && canManageSystemUser(currentUser, user) && (
                         <td className="px-3.5 py-3 align-middle text-right whitespace-nowrap">
                           <div className="inline-flex items-center justify-end gap-1.5">
                             <button
@@ -660,6 +765,7 @@ export function PcnUserManagementView({
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {/* Thanh phân trang Pagination */}

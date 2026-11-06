@@ -4,7 +4,7 @@
 
 import { NextRequest } from 'next/server';
 import { getSessionUser } from '../../../../../lib/server/auth.ts';
-import { canManageSystemUsers } from '../../../../../utils/systemSettingsPolicy.ts';
+import { canManageSystemUser, canManageSystemUsers, canSetSystemUserRole } from '../../../../../utils/systemSettingsPolicy.ts';
 import {
   validatePcnUserInput,
   sanitizePcnUserRow,
@@ -49,9 +49,16 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       }
 
       const existing = existingResult.rows[0].data || {};
+      const existingUser = sanitizePcnUserRow({ document_id: existingResult.rows[0].document_id, data: existing });
+      if (!canManageSystemUser(actor, existingUser)) {
+        throw Object.assign(new Error('Bạn không có quyền quản lý tài khoản này trong scope hiện tại.'), { statusCode: 403 });
+      }
       const validation = validatePcnUserInput(body || {}, existing);
       if (validation.error || !validation.data) {
         throw Object.assign(new Error(validation.error || 'Dữ liệu nhân sự PCN không hợp lệ.'), { statusCode: 400 });
+      }
+      if (!canSetSystemUserRole(actor, validation.data)) {
+        throw Object.assign(new Error('Chỉ Admin mới được gán vai trò Admin hoặc chức danh lãnh đạo.'), { statusCode: 403 });
       }
 
       const next = { ...validation.data, username: documentId, updatedAt: new Date().toISOString() };
@@ -69,6 +76,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   } catch (error: any) {
     if (error?.statusCode === 404 || error?.message === 'NOT_FOUND') {
       return jsonNotFound('Không tìm thấy nhân sự PCN.');
+    }
+    if (error?.statusCode === 403) {
+      return jsonForbidden(error.message);
     }
     if (error?.statusCode === 400) {
       return jsonError(error.message, 400);
@@ -108,6 +118,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       }
 
       const existing = existingResult.rows[0].data || {};
+      const existingUser = sanitizePcnUserRow({ document_id: existingResult.rows[0].document_id, data: existing });
+      if (!canManageSystemUser(actor, existingUser)) {
+        throw Object.assign(new Error('Bạn không có quyền quản lý tài khoản này trong scope hiện tại.'), { statusCode: 403 });
+      }
       const references = await findPcnUserReferences(client, documentId);
       if (references.length > 0) {
         const referenceSummary = references.slice(0, 5).map((r) => `${r.collection}/${r.documentId}`).join(', ');
@@ -130,6 +144,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   } catch (error: any) {
     if (error?.statusCode === 404 || error?.message === 'NOT_FOUND') {
       return jsonNotFound('Không tìm thấy nhân sự PCN.');
+    }
+    if (error?.statusCode === 403) {
+      return jsonForbidden(error.message);
     }
     if (error?.statusCode === 409) {
       return jsonConflict(error.message);

@@ -19,6 +19,33 @@ const nextConfig = {
   serverExternalPackages: ['@resvg/resvg-js'],
   outputFileTracingRoot: __dirname,
   allowedDevOrigins: ['pgdcndev.tvci.id.vn'],
+  async redirects() {
+    return [
+      {
+        source: '/pcn/dossiers',
+        destination: '/pcn',
+        permanent: false,
+      },
+      {
+        source: '/pgd/dossiers',
+        destination: '/pgd',
+        permanent: false,
+      },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+        ],
+      },
+    ];
+  },
   webpack: (config) => {
     config.output.hashFunction = 'xxhash64';
     return config;

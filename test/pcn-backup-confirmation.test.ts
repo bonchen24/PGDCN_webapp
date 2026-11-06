@@ -437,7 +437,7 @@ test('restore preflight feedback accurately informs user that verification requi
   assert.match(panelSource, /ok=true.*status=VALID/i);
 });
 
-test('restoreServerBackup client wrapper contract: posts to restore endpoint with auth header and KHOIPHUC token', async () => {
+test('restoreServerBackup client wrapper contract: posts to restore endpoint with same-origin credentials and KHOIPHUC token', async () => {
   const originalFetch = globalThis.fetch;
   let interceptedUrl = '';
   let interceptedInit: RequestInit | undefined;
@@ -455,9 +455,10 @@ test('restoreServerBackup client wrapper contract: posts to restore endpoint wit
 
     assert.equal(interceptedUrl, '/api/backups/backup-target.zip/restore');
     assert.equal(interceptedInit?.method, 'POST');
+    assert.equal(interceptedInit?.credentials, 'same-origin');
     const headers = interceptedInit?.headers as Record<string, string>;
     assert.equal(headers['content-type'], 'application/json');
-    assert.equal(headers['x-user-name'], 'admin-user');
+    assert.equal(Boolean(headers['x-user-name']), false);
     assert.deepEqual(JSON.parse(interceptedInit?.body as string), { confirm: 'KHOIPHUC' });
   } finally {
     globalThis.fetch = originalFetch;

@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Toaster } from 'sonner';
 
 import { SidebarProvider } from '@/hooks/use-sidebar';
@@ -22,8 +23,12 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
 
   const pcn = usePcnStore();
   const pgd = usePgdStore();
+  const loadPcn = usePcnStore((state) => state.load);
+  const loadPgd = usePgdStore((state) => state.load);
 
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState<'checking' | 'authenticated' | 'expired' | 'error'>('checking');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
   const [quickViewDrawer, setQuickViewDrawer] = useState<{
     open: boolean;
@@ -66,39 +71,42 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
   }, [closeQuickView, pcn.dossiers, pgd.requests, router]);
 
   // Check session on initial workspace load
-  useEffect(() => {
-    let active = true;
+  const loadSession = useCallback(async () => {
+    setSessionStatus('checking');
+    setErrorMessage(null);
 
-    getPcnSession()
-      .then((session) => {
-        if (!active) return;
-        if (session && session.authenticated && session.user) {
-          setCurrentUser(session.user);
-          setSessionChecked(true);
+    try {
+      const session = await getPcnSession();
+      if (session && session.authenticated && session.user) {
+        setCurrentUser(session.user);
+        setSessionChecked(true);
+        setSessionStatus('authenticated');
 
-          // Bootstrap subsystem stores based on user scope
-          const scopes = session.user.departmentScopes || [];
-          if (scopes.length === 0 || scopes.includes('PCN') || session.user.systemRole === 'admin') {
-            void pcn.load().catch(() => {});
-          }
-          if (scopes.length === 0 || scopes.includes('PGD') || session.user.systemRole === 'admin') {
-            void pgd.load().catch(() => {});
-          }
-        } else {
-          clearCurrentUser();
-          router.replace('/login');
+        // Bootstrap subsystem stores based on user scope
+        const scopes = session.user.departmentScopes || [];
+        if (scopes.length === 0 || scopes.includes('PCN') || session.user.systemRole === 'admin') {
+          void loadPcn().catch(() => {});
         }
-      })
-      .catch(() => {
-        if (!active) return;
+        if (scopes.length === 0 || scopes.includes('PGD') || session.user.systemRole === 'admin') {
+          void loadPgd().catch(() => {});
+        }
+      } else {
         clearCurrentUser();
-        router.replace('/login');
-      });
+        setSessionStatus('expired');
+        const currentPath = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : '/';
+        const safeReturn = currentPath.startsWith('/') && !currentPath.startsWith('//') && !currentPath.startsWith('/\\') ? currentPath : '/';
+        router.replace(`/login?reason=session-expired&returnTo=${encodeURIComponent(safeReturn)}`);
+      }
+    } catch (err: any) {
+      clearCurrentUser();
+      setSessionStatus('error');
+      setErrorMessage(err?.message || 'Lỗi kết nối máy chủ khi kiểm tra phiên đăng nhập.');
+    }
+  }, [clearCurrentUser, loadPcn, loadPgd, router, setCurrentUser]);
 
-    return () => {
-      active = false;
-    };
-  }, [clearCurrentUser, pcn.load, pgd.load, router, setCurrentUser]);
+  useEffect(() => {
+    void loadSession();
+  }, [loadSession]);
 
   // Global Ctrl+K / Cmd+K listener
   useEffect(() => {
@@ -116,6 +124,40 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  if (sessionStatus === 'expired') {
+    return (
+      <div className="flex min-h-[100dvh] w-full items-center justify-center bg-slate-50 text-slate-700">
+        <div className="flex flex-col items-center gap-3 p-6 text-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-600 border-t-transparent" />
+          <p className="text-sm font-bold text-slate-800">Phiên đăng nhập đã hết hạn.</p>
+          <p className="text-xs text-slate-500">Đang chuyển hướng đến trang đăng nhập...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (sessionStatus === 'error') {
+    return (
+      <div className="flex min-h-[100dvh] w-full items-center justify-center bg-slate-50 p-4 text-slate-700">
+        <div className="max-w-md w-full rounded-xl border border-rose-200 bg-white p-6 text-center shadow-sm">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+            <AlertTriangle size={20} />
+          </div>
+          <h2 className="text-sm font-bold text-slate-900">Không thể xác thực phiên làm việc</h2>
+          <p className="mt-1 text-xs text-slate-600">{errorMessage || 'Lỗi kết nối máy chủ khi kiểm tra phiên đăng nhập.'}</p>
+          <button
+            type="button"
+            onClick={() => void loadSession()}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-500 active:bg-emerald-700 cursor-pointer"
+          >
+            <RefreshCw size={14} />
+            <span>Thử lại</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Display minimal loading indicator while validating session
   if (!sessionChecked || !currentUser) {

@@ -150,6 +150,7 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
   const [backups, setBackups] = useState<ServerBackupInfo[]>([]);
   const [pgToolAvailable, setPgToolAvailable] = useState<boolean>(true);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<{ status?: number; message: string; isNetwork?: boolean } | null>(null);
   const [runningBackup, setRunningBackup] = useState(false);
   const [verifyingFile, setVerifyingFile] = useState<string | null>(null);
   const [verificationResult, setVerificationResult] = useState<ServerBackupVerification | null>(null);
@@ -170,19 +171,24 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
   const panelRef = useRef<HTMLElement | null>(null);
   const actionInFlightRef = useRef(false);
 
-  const username = currentUser?.username || 'admin';
-  const isAdmin = currentUser?.systemRole === 'admin' || currentUser?.role === 'admin';
+  const isAdmin = currentUser?.active !== false && currentUser?.systemRole === 'admin';
   const isBusy = deleting || restoring || actionInFlightRef.current;
 
   const loadBackups = async () => {
     if (!isAdmin) return;
     setLoading(true);
+    setLoadError(null);
     try {
-      const res = await fetchBackupList(username);
+      const res = await fetchBackupList();
       setBackups(res.items || []);
       setPgToolAvailable(res.pgToolAvailable ?? true);
     } catch (err: any) {
-      toast.error(err?.message || 'Không thể tải danh sách bản sao lưu.');
+      const rawMsg = err?.message || 'Không thể tải danh sách bản sao lưu.';
+      const statusMatch = rawMsg.match(/HTTP\s*(\d+)/i) || (typeof err?.status === 'number' ? [null, err.status] : null);
+      const status = statusMatch ? Number(statusMatch[1]) : undefined;
+      const isNetwork = !status && (rawMsg.includes('Failed to fetch') || rawMsg.includes('network') || rawMsg.includes('Network') || rawMsg.includes('kết nối'));
+      setLoadError({ status, message: rawMsg, isNetwork });
+      toast.error(rawMsg);
     } finally {
       setLoading(false);
     }
@@ -190,7 +196,7 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
 
   useEffect(() => {
     void loadBackups();
-  }, [username, isAdmin]);
+  }, [isAdmin]);
 
   // Reset confirmation input when target changes
   useEffect(() => {
@@ -216,7 +222,7 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
     if (runningBackup || isBusy) return;
     setRunningBackup(true);
     try {
-      const result = await triggerServerBackup(username);
+      const result = await triggerServerBackup();
       toast.success(`Đã tạo bản sao lưu ${result.filename} thành công!`);
       await loadBackups();
     } catch (err: any) {
@@ -230,7 +236,7 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
     if (isBusy) return;
     setVerifyingFile(filename);
     try {
-      const result = await verifyBackupFile(username, filename);
+      const result = await verifyBackupFile(filename);
       setVerificationResult(result);
       setVerifiedFiles((prev) => ({ ...prev, [filename]: result }));
       if (result.ok && result.status === 'VALID') {
@@ -248,7 +254,7 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
   const handleDownload = async (filename: string) => {
     if (isBusy) return;
     try {
-      await downloadBackupFile(username, filename);
+      await downloadBackupFile(filename);
       toast.success(`Đang tải xuống ${filename}...`);
     } catch (err: any) {
       toast.error(err?.message || 'Không thể tải xuống tệp sao lưu.');
@@ -300,7 +306,7 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
       inFlightRef: actionInFlightRef,
       setBusy: setDeleting,
       setDialogError,
-      performApi: () => deleteBackupFile(username, targetFilename),
+      performApi: () => deleteBackupFile(targetFilename),
       onSuccess: async () => {
         await loadBackups();
       },
@@ -321,7 +327,7 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
       inFlightRef: actionInFlightRef,
       setBusy: setRestoring,
       setDialogError,
-      performApi: () => restoreServerBackup(username, targetFilename),
+      performApi: () => restoreServerBackup(targetFilename),
       forceCloseDialog,
       onSuccessToast: () => toast.success(`Đã khôi phục dữ liệu từ ${targetFilename} thành công!`),
       onErrorToast: (msg) => toast.error(msg),
@@ -415,6 +421,45 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
         </div>
       )}
 
+      {loadError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-rose-200 bg-rose-50/70 p-4 text-xs text-rose-800"
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle size={18} className="mt-0.5 shrink-0 text-rose-600" />
+              <div>
+                <p className="font-bold">
+                  {loadError.status === 401
+                    ? 'Phiên làm việc hết hạn hoặc chưa xác thực (HTTP 401).'
+                    : loadError.status === 403
+                    ? 'Tài khoản không có quyền truy cập sao lưu hệ thống (HTTP 403).'
+                    : loadError.status === 404
+                    ? 'Không tìm thấy dịch vụ sao lưu dữ liệu (HTTP 404).'
+                    : loadError.isNetwork
+                    ? 'Lỗi kết nối mạng đến máy chủ sao lưu.'
+                    : `Lỗi tải danh sách bản sao lưu: ${loadError.message}`}
+                </p>
+                <p className="mt-0.5 text-[11px] text-rose-600">
+                  {loadError.status === 404
+                    ? 'Dịch vụ sao lưu chưa được đăng ký hoặc không tìm thấy trên hệ thống.'
+                    : 'Vui lòng kiểm tra lại kết nối mạng hoặc thử tải lại dữ liệu.'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadBackups()}
+              className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-bold text-rose-700 shadow-xs hover:bg-rose-100/50 cursor-pointer"
+            >
+              <RefreshCw size={12} />
+              <span>Thử lại</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Danh sách bản sao lưu */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <div className="overflow-x-auto">
@@ -428,10 +473,29 @@ export function BackupRestoreAdminPanel({ currentUser }: BackupRestoreAdminPanel
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {backups.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-[11px] text-slate-400">
-                    {loading ? 'Đang tải danh sách bản sao lưu…' : 'Chưa có bản sao lưu nào trong kho lưu trữ.'}
+                  <td colSpan={4} className="p-8 text-center text-[11px] text-slate-500">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 size={16} className="animate-spin text-slate-600" />
+                      <span className="font-semibold">Đang tải danh sách bản sao lưu...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : loadError ? (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-[11px] text-rose-600">
+                    <p className="font-semibold">Danh sách hiện chưa khả dụng. Hãy dùng nút thử lại phía trên.</p>
+                  </td>
+                </tr>
+              ) : backups.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-[11px] text-slate-500">
+                    <div className="flex flex-col items-center justify-center gap-1">
+                      <FileArchive size={24} className="text-slate-400 mb-1" />
+                      <span className="font-semibold text-slate-700">Chưa có bản sao lưu nào trong kho lưu trữ</span>
+                      <span className="text-[10px] text-slate-400">Nhấn &quot;Tạo bản sao lưu ngay&quot; để sao lưu dữ liệu.</span>
+                    </div>
                   </td>
                 </tr>
               ) : (

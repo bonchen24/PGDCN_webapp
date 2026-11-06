@@ -25,10 +25,27 @@ export async function establishPcnSession(username: string, password: string): P
   return parseResponse(response) as Promise<PcnSessionResponse>;
 }
 
+let inFlightSessionPromise: Promise<PcnSessionResponse | null> | null = null;
+
 export async function getPcnSession(): Promise<PcnSessionResponse | null> {
-  const response = await fetch('/api/auth/pcn-session', { credentials: 'same-origin' });
-  if (response.status === 401) return null;
-  return parseResponse(response) as Promise<PcnSessionResponse>;
+  if (inFlightSessionPromise) {
+    return inFlightSessionPromise;
+  }
+
+  inFlightSessionPromise = (async () => {
+    try {
+      const response = await fetch('/api/auth/pcn-session', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
+      if (response.status === 401) return null;
+      return (await parseResponse(response)) as PcnSessionResponse;
+    } finally {
+      inFlightSessionPromise = null;
+    }
+  })();
+
+  return inFlightSessionPromise;
 }
 
 export async function clearPcnSession(): Promise<void> {

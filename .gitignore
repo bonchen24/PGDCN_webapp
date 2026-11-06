@@ -19,6 +19,8 @@ dist-ssr
 !.env.example
 service-account.json
 backups/
+!app/api/backups/
+!app/api/backups/**
 .claude/
 
 # Editor directories and files

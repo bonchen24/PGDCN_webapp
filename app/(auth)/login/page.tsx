@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { User, Lock, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 
 import { establishPcnSession } from '@/utils/pcnAuthApi';
@@ -24,8 +24,11 @@ function getCredentialConstructor(): PasswordCredentialConstructor | null {
   return (window as Window & { PasswordCredential?: PasswordCredentialConstructor }).PasswordCredential || null;
 }
 
-export default function LoginPage() {
+function LoginFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const reason = searchParams.get('reason');
+  const returnTo = searchParams.get('returnTo');
   const setCurrentUser = usePcnSessionStore((state) => state.setCurrentUser);
 
   const [username, setUsername] = useState('');
@@ -70,7 +73,15 @@ export default function LoginPage() {
         await storePasswordCredential(getCredentialManager(), getCredentialConstructor(), trimmedUser, password);
       }
       setCurrentUser(response.user);
-      router.replace('/');
+
+      const safeReturnTo =
+        returnTo &&
+        returnTo.startsWith('/') &&
+        !returnTo.startsWith('//') &&
+        !returnTo.startsWith('/\\')
+          ? returnTo
+          : '/';
+      router.replace(safeReturnTo);
     } catch (err: any) {
       setErrorMessage(err?.message || 'Tài khoản hoặc mật khẩu không chính xác.');
     } finally {
@@ -108,6 +119,16 @@ export default function LoginPage() {
 
         {/* Login Form Container */}
         <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
+          {/* Session Expiry Banner */}
+          {reason === 'session-expired' && (
+            <div
+              role="status"
+              className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/40 p-3 text-xs font-medium text-amber-200"
+            >
+              Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại để tiếp tục.
+            </div>
+          )}
+
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Username Input */}
             <div>
@@ -215,5 +236,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+      <LoginFormContent />
+    </Suspense>
   );
 }

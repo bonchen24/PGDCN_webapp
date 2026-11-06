@@ -3,8 +3,8 @@
 // Description: Next.js App Router route handler for PCN user list and creation
 
 import { NextRequest } from 'next/server';
-import { getSessionUser } from '../../../../lib/server/auth.ts';
-import { canManageSystemUsers } from '../../../../utils/systemSettingsPolicy.ts';
+import { getSessionUser, requirePcnSession } from '../../../../lib/server/auth.ts';
+import { canManageSystemUsers, canReadPcnUserDirectory, canSetSystemUserRole } from '../../../../utils/systemSettingsPolicy.ts';
 import {
   fetchPcnUsers,
   validatePcnUserInput,
@@ -20,9 +20,16 @@ import {
   jsonServerError,
 } from '../../../../lib/server/response.ts';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const sessionError = requirePcnSession(request);
+  if (sessionError) return sessionError;
+  const actor = getSessionUser(request);
+  if (!canReadPcnUserDirectory(actor)) {
+    return jsonForbidden('Tài khoản không có phạm vi PCN để đọc danh sách nhân sự.');
+  }
+
   try {
-    const items = await fetchPcnUsers();
+    const items = (await fetchPcnUsers()).filter((user) => user.departmentScopes?.includes('PCN'));
     return jsonOk({ items });
   } catch (error: any) {
     return jsonServerError(error, 'Không thể tải danh sách nhân sự PCN.');
@@ -39,6 +46,9 @@ export async function POST(request: NextRequest) {
   const validation = validatePcnUserInput(body || {});
   if (validation.error || !validation.data) {
     return jsonError(validation.error || 'Dữ liệu nhân sự PCN không hợp lệ.', 400);
+  }
+  if (!canSetSystemUserRole(actor, validation.data)) {
+    return jsonForbidden('Chỉ Admin mới được gán vai trò Admin hoặc chức danh lãnh đạo.');
   }
 
   const documentId = String(validation.data.username || '').trim().toLowerCase();

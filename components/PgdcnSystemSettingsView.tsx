@@ -23,8 +23,29 @@ type PgdcnSystemSettingsViewProps = {
 export default function PgdcnSystemSettingsView({ currentUser, users, roles, fields, onCreate, onUpdate, onDelete, onResetPassword }: PgdcnSystemSettingsViewProps) {
   const canView = canViewSystemSettings(currentUser);
   const canManage = canManageSystemUsers(currentUser);
-  const isAdmin = currentUser?.systemRole === 'admin';
+  const isAdmin = currentUser?.active !== false && currentUser?.systemRole === 'admin';
   const [activeTab, setActiveTab] = useState<'users' | 'backup'>('users');
+  const [backupMounted, setBackupMounted] = useState(false);
+
+  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const nextTab = activeTab === 'users' ? 'backup' : 'users';
+      setActiveTab(nextTab);
+      if (nextTab === 'backup') setBackupMounted(true);
+      const targetId = nextTab === 'users' ? 'tab-personnel' : 'tab-backup';
+      document.getElementById(targetId)?.focus();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setActiveTab('users');
+      document.getElementById('tab-personnel')?.focus();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setActiveTab('backup');
+      setBackupMounted(true);
+      document.getElementById('tab-backup')?.focus();
+    }
+  };
 
   if (!canView) return <div className="pcn-page-surface min-w-0 p-5 text-sm font-bold text-rose-700">Tài khoản hiện tại không có quyền xem Cài đặt hệ thống.</div>;
 
@@ -55,40 +76,75 @@ export default function PgdcnSystemSettingsView({ currentUser, users, roles, fie
       </header>
 
       {isAdmin && (
-        <div className="flex rounded-lg border border-slate-200 bg-white p-1 md:hidden" role="tablist" aria-label="Phân hệ cài đặt">
+        <div
+          role="tablist"
+          aria-label="Phân hệ cài đặt hệ thống"
+          className="flex w-full rounded-xl border border-slate-200 bg-slate-100 p-1"
+        >
           <button
+            id="tab-personnel"
             type="button"
             role="tab"
             aria-selected={activeTab === 'users'}
+            aria-controls="panel-personnel"
+            tabIndex={activeTab === 'users' ? 0 : -1}
             onClick={() => setActiveTab('users')}
-            className={`mobile-touch-target flex-1 rounded-md py-2 text-xs font-bold transition-colors ${
-              activeTab === 'users' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            onKeyDown={handleTabKeyDown}
+            className={`mobile-touch-target flex-1 rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+              activeTab === 'users'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Quản trị nhân sự
+            Nhân sự &amp; phân quyền
           </button>
           <button
+            id="tab-backup"
             type="button"
             role="tab"
             aria-selected={activeTab === 'backup'}
-            onClick={() => setActiveTab('backup')}
-            className={`mobile-touch-target flex-1 rounded-md py-2 text-xs font-bold transition-colors ${
-              activeTab === 'backup' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            aria-controls="panel-backup"
+            tabIndex={activeTab === 'backup' ? 0 : -1}
+            onClick={() => {
+              setActiveTab('backup');
+              setBackupMounted(true);
+            }}
+            onKeyDown={handleTabKeyDown}
+            className={`mobile-touch-target flex-1 rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+              activeTab === 'backup'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Sao lưu & Dữ liệu
+            Sao lưu &amp; dữ liệu
           </button>
         </div>
       )}
 
-      {isAdmin && (
-        <section aria-labelledby="system-backup-heading" className={activeTab === 'backup' ? 'block' : 'hidden md:block'}>
+      {/* Backup Section: Admin only, lazy loaded upon first activation, retained while hidden */}
+      {isAdmin && backupMounted && (
+        <section
+          id="panel-backup"
+          role="tabpanel"
+          aria-labelledby="tab-backup"
+          tabIndex={0}
+          hidden={activeTab !== 'backup'}
+          className={activeTab !== 'backup' ? 'hidden' : 'block'}
+        >
           <h2 id="system-backup-heading" className="sr-only">Sao lưu và phục hồi hệ thống</h2>
           <BackupRestoreAdminPanel currentUser={currentUser as UserAccount} />
         </section>
       )}
 
-      <section aria-labelledby="system-personnel-heading" className={!isAdmin || activeTab === 'users' ? 'block' : 'hidden md:block'}>
+      {/* Personnel Section: Active for managers, or admin when activeTab === 'users' */}
+      <section
+        id="panel-personnel"
+        role={isAdmin ? 'tabpanel' : undefined}
+        aria-labelledby={isAdmin ? 'tab-personnel' : undefined}
+        tabIndex={isAdmin ? 0 : undefined}
+        hidden={isAdmin && activeTab !== 'users'}
+        className={isAdmin && activeTab !== 'users' ? 'hidden' : 'block'}
+      >
         <h2 id="system-personnel-heading" className="sr-only">Nhân sự &amp; tài khoản dùng chung</h2>
         <PcnUserManagementView
           users={users}

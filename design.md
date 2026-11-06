@@ -1085,10 +1085,12 @@ Nhật ký đồng bộ và chẩn đoán PostgreSQL không hiển thị thành 
 - Ứng dụng phải đáp ứng chuẩn PWA để Chrome tự hiển thị biểu tượng cài đặt trên thanh địa chỉ khi đang chạy tại `localhost` hoặc HTTPS.
 - Manifest phải khai báo `id`, `scope`, `start_url`, `display: standalone`, `orientation: portrait`, `theme_color`, `background_color` và các icon PNG hợp lệ ở kích thước `192x192` và `512x512`.
 - Icon dùng cho shortcut/taskbar phải giữ nhận diện logo TVCI và khai báo `purpose: any maskable` để hệ điều hành không cắt sai vùng logo khi tạo biểu tượng.
-- Service worker `/sw.js` phải được đăng ký khi khởi động ứng dụng; không được chủ động unregister service worker hoặc xóa cache từ `index.html`.
+- Service worker `/sw.js` (phiên bản `pgdcn-pwa-v6`) được đăng ký khi khởi động ứng dụng và nhận header `Cache-Control: no-cache, no-store, must-revalidate` từ Next.js config; không được chủ động unregister service worker hoặc xóa cache từ `index.html`. Khi activate, service worker chỉ dọn dẹp các cache cũ thuộc namespace `pgdcn-pwa-`.
 - Khi profile PCN chạy qua Next App Router, `app/layout.tsx` phải khai báo manifest/icon metadata và client shell phải đăng ký cùng `/sw.js`; đăng ký này là tùy chọn về hạ tầng và không được chặn thao tác nghiệp vụ nếu trình duyệt không hỗ trợ hoặc đăng ký thất bại.
 - Global CSS phải được import từ `app/layout.tsx` của Next App Router; không thêm link trực tiếp tới `/index.css` trong HTML vì URL này không phải static asset production.
-- Nhánh fetch tài nguyên của service worker phải bắt lỗi mạng và trả `Response.error()` để không phát sinh unhandled promise rejection khi dev server hoặc production tạm thời không truy cập được.
+- Chính sách bộ nhớ đệm Service Worker: Chỉ lưu trữ các tài nguyên tĩnh công khai thuộc allowlist (`/offline.html`, `/tvci_logo.jpg`, `/manifest.json`, các biểu tượng `/icons/iemm-logo-*`). Tuyệt đối không cache tài nguyên điều hướng HTML, dữ liệu phiên làm việc, private pages, route `/api/*`, Next.js bundles (`/_next/*`), request RSC (`?_rsc`), phản hồi lỗi hoặc phản hồi có header `Set-Cookie`.
+- Điều hướng và tài liệu HTML là network-only; khi mất kết nối mạng, service worker trả về tài liệu ngoại tuyến chung `/offline.html` (HTTP 503) thân thiện và có nút tải lại, không trả `Response.error()` và không trả trang ứng dụng riêng tư đã cache.
+- Xác thực và phân quyền dùng signed HttpOnly session cookie cùng server-side RBAC (`requirePcnAdmin`), không dùng client header `x-user-name`.
 - Không hiển thị nút `Cài webapp` trong Header; trình duyệt vẫn được phép tự hiển thị UI cài đặt native trên thanh địa chỉ hoặc menu hệ thống.
 - Luồng PWA nền (`beforeinstallprompt`, `appinstalled`) và trạng thái standalone vẫn được giữ để không ảnh hưởng khả năng cài đặt native của trình duyệt.
 - Khi chạy ở chế độ standalone, ứng dụng phải yêu cầu khóa hướng màn hình dọc bằng `screen.orientation.lock('portrait')` nếu API được trình duyệt hỗ trợ; lỗi không hỗ trợ phải được bỏ qua an toàn.
@@ -1788,7 +1790,19 @@ Phụ lục này là nguồn chuẩn cho đợt hoàn thiện giao diện PGDCN 
 
 ### 5A.34. Tối ưu hóa UI/UX Cài đặt hệ thống & Quản trị nhân sự PGDCN — 2026-09-28
 
+- Phiên làm việc và điều hướng tương thích:
+  - Workspace xác thực phiên đúng một lần khi khởi tạo bằng `GET /api/auth/pcn-session`, dùng signed HttpOnly cookie cùng origin và `cache: no-store`; không coi `401` của khách chưa đăng nhập là lỗi dữ liệu.
+  - Phiên thiếu/hết hạn phải kết thúc trạng thái chờ, chuyển tới `/login` với thông báo "Phiên đăng nhập hết hạn" và giữ `returnTo` nội bộ an toàn. Lỗi mạng/server phải có thông báo và nút thử lại, không tự retry liên tục.
+  - `/pcn` và `/pgd` là URL danh sách chuẩn. URL legacy `/pcn/dossiers` và `/pgd/dossiers` chuyển hướng HTTP 307 tới URL chuẩn; không tạo trang danh sách giả hoặc che lỗi 404 của route khác.
 - Tinh giản tầng header: loại bỏ sự trùng lặp 2 tầng header giữa `PgdcnSystemSettingsView` và `PcnUserManagementView`. `PgdcnSystemSettingsView` sở hữu header thanh thoát với icon, tiêu đề "Cài đặt hệ thống", tóm tắt quyền quản trị và tổng số nhân sự; `PcnUserManagementView` khi nhúng (`embedded`) tích hợp liền mạch, giải phóng chiều cao hiển thị.
+- Phân hệ Cài đặt hệ thống với tab điều hướng theo vai trò và lazy load sao lưu:
+  - Tài khoản Admin có thanh tab responsive, hỗ trợ bàn phím (WAI-ARIA `tablist`/`tab`) chuyển đổi giữa "Nhân sự & phân quyền" và "Sao lưu & dữ liệu".
+  - Phân hệ sao lưu (`BackupRestoreAdminPanel`) chỉ nạp lười (lazy load) khi Admin lần đầu kích hoạt tab "Sao lưu & dữ liệu" và giữ trạng thái khi ẩn để không gọi lại API; khi mở Cài đặt lần đầu, không phát sinh bất kỳ request `/api/backups` nào.
+  - Quản lý đơn vị (Manager) chỉ xem phần Nhân sự & phân quyền, không hiển thị tab Admin và không bao giờ mount panel sao lưu. Các vai trò không có quyền xem (`staff`, `viewer`) nhận thông báo từ chối truy cập rõ ràng.
+  - Manager phải là tài khoản đang hoạt động, có chức danh quản lý chuẩn và đồng thời có scope `PCN` + `PGD`; chỉ quản lý tài khoản thường trong phạm vi đó. Manager không được gán `systemRole=admin`/chức danh lãnh đạo hoặc sửa, xóa, reset mật khẩu tài khoản Admin/lãnh đạo. Chỉ Admin được cấp hoặc quản lý các vai trò nâng quyền này.
+  - API danh sách nhân sự PCN yêu cầu signed session đang hoạt động cùng scope `PCN` và chỉ trả tài khoản có scope PCN; không dựa vào trạng thái client hoặc username do client gửi.
+  - Danh sách bản sao lưu hiển thị trạng thái loading, empty, lỗi HTTP 401/403/404, lỗi mạng và nút thử lại trực quan thay vì chỉ dùng toast.
+  - Route `/api/backups` chỉ cho phép Admin qua RBAC server-side; thiếu route là lỗi HTTP hiển thị rõ, không được giả thành danh sách rỗng/thành công. Danh tính client chỉ lấy từ session cookie, không suy quyền từ `x-user-name`.
 - Chuẩn hóa danh sách nhân sự sang Data Table trực quan:
   - Cột Nhân sự: Avatar ký tự đầu, Họ và tên nổi bật (`text-xs font-bold text-slate-900`), `@username` mono mờ cùng thông tin liên hệ.
   - Cột Chức danh & Hệ thống: Badge vai trò hệ thống, chức danh quản lý; các mục không phân công hiển thị gạch ngang `—` tinh tế thay cho các câu chữ phủ định lặp lại ("Chưa phân công...").

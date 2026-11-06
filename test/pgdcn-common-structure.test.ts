@@ -56,7 +56,8 @@ test('system-settings policy recognizes admin and managers but not ordinary staf
 
 test('system-settings policy allows only admin or assigned manager to maintain personnel', () => {
   assert.equal(canManageSystemUsers({ role: 'admin', systemRole: 'admin' }), true);
-  assert.equal(canManageSystemUsers({ role: 'staff', systemRole: 'staff', departmentRoleCode: 'LEADERSHIP' }), true);
+  assert.equal(canManageSystemUsers({ role: 'staff', systemRole: 'staff', departmentRoleCode: 'LEADERSHIP', departmentScopes: ['PCN', 'PGD'] }), true);
+  assert.equal(canManageSystemUsers({ role: 'staff', systemRole: 'staff', departmentRoleCode: 'LEADERSHIP', departmentScopes: ['PCN'] }), false);
   assert.equal(canManageSystemUsers({ role: 'staff', systemRole: 'staff', pgdRole: 'PGD_MANAGER' }), false);
   assert.equal(canManageSystemUsers({ role: 'staff', systemRole: 'staff', position: 'Nhân viên' }), false);
 });
