@@ -50,7 +50,7 @@ function isPgdSteelSource(proposal: Record<string, unknown>): boolean {
  * is committed. The function deliberately accepts unknown input so the same
  * policy can protect both the browser form and the server boundary.
  */
-export function validatePcnProposalIntake(input: unknown, options: { requireStandards?: boolean; requireProductGroup?: boolean; requireRegistration?: boolean } = {}): PcnIntakeValidationResult {
+export function validatePcnProposalIntake(input: unknown, options: { requireStandards?: boolean; requireProductGroup?: boolean; requireRegistration?: boolean; requireWarehouseAddress?: boolean } = {}): PcnIntakeValidationResult {
   const proposal = isRecord(input) ? input : {};
   const customer = isRecord(proposal.customerSnapshot) ? proposal.customerSnapshot : {};
   const issues: PcnIntakeValidationIssue[] = [];
@@ -60,7 +60,10 @@ export function validatePcnProposalIntake(input: unknown, options: { requireStan
   if (!text(customer.contactPerson) && !text(customer.taxId)) {
     issues.push({ field: 'customerSnapshot.contactPerson', message: 'Cần người liên hệ hoặc mã số thuế để đối chiếu khách hàng.' });
   }
-  addRequiredIssue(issues, proposal.warehouseAddress, 'warehouseAddress', 'Địa chỉ/kho liên quan là bắt buộc.');
+  if (options.requireWarehouseAddress !== false) {
+    addRequiredIssue(issues, proposal.warehouseAddress, 'warehouseAddress', 'Địa chỉ/kho liên quan là bắt buộc.');
+  }
+  // New B1 intake can add a warehouse or sampling location later in the dossier workflow.
   // Detailed product fields remain optional for minimal intake and legacy records.
   const validGroups = ['ELECTRICAL_ELECTRONIC', 'METAL_MATERIALS', 'CONSTRUCTION_MATERIALS', 'MANAGEMENT_SYSTEM', 'OTHER'];
   if (options.requireProductGroup || proposal.productGroup !== undefined) {

@@ -607,6 +607,8 @@ export interface CertificationDossier {
   workflowSchemaVersion?: 2;
   /** One accountable PCN operator from intake through packaging and archive. */
   ownerUsername?: string;
+  /** User who created the dossier; may attach initial B1 files to the intake step. */
+  intakeCreatedByUsername?: string;
   /** Explicit operator-confirmed reason for an exception-lane status. */
   exceptionReason?: string;
   evaluatorUsername?: string;

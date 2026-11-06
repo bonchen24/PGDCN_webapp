@@ -205,7 +205,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         [PGD_COLLECTIONS.dossierDocuments, request.id, resolvedRequirementCode, assessmentRoundId],
       );
       const current = currentResult.rows[0] ? (mapDocumentRow(currentResult.rows[0]) as PgdDossierDocument) : undefined;
-      if (isSupplementary && requirementCode && (!current || current.supplementaryStageId !== supplementaryStageId)) {
+      const initialB1Requirement = /^PGD_SUPPLEMENTARY_INTAKE_[a-z0-9-]{1,100}$/i.test(requirementCode);
+      if (isSupplementary && requirementCode && (!current || current.supplementaryStageId !== supplementaryStageId) && !initialB1Requirement) {
         throw Object.assign(new Error('Không tìm thấy đầu mục phụ trợ trong giai đoạn PGD đã chọn.'), { statusCode: 404 });
       }
       const resolvedTitle = isSupplementary ? title || current?.title || `Tệp phụ trợ · ${fileName}` : title;
@@ -230,6 +231,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
             documentDate,
             note,
           });
+
+      if (
+        isSupplementary && current && fileBuffer && current.fileAssetId &&
+        current.supplementaryStageId === supplementaryStageId && current.checksum === checksum &&
+        current.fileName === fileName && current.title === resolvedTitle && current.note === (note || undefined)
+      ) {
+        return { dossierDocument: current, idempotent: true as const };
+      }
 
       let fileAssetId: string | undefined;
       let mimeType: string | undefined;
@@ -332,7 +341,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       return { dossierDocument: next, ...(isSupplementary ? {} : { request: nextRequest }) };
     });
 
-    return jsonCreated(persisted);
+    return 'idempotent' in persisted && persisted.idempotent ? jsonOk(persisted) : jsonCreated(persisted);
   } catch (error: any) {
     if (uploadedBucketName && uploadedObjectPath) {
       await getPgdStorageClient().deleteObject({ bucketName: uploadedBucketName, objectPath: uploadedObjectPath }).catch(() => undefined);

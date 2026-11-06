@@ -69,6 +69,9 @@ import { PCN_MOBILE_NAVIGATION, type PcnSection } from '../utils/pcnNavigation';
 import { PgdcnDateInput } from './PgdcnDateInput';
 import { matchPcnPublishedWorkflowTemplates, resolveTemplateSelectionState } from '../utils/pgdcnIntakeTemplateMatching';
 import { PGDCN_INTAKE_CATALOG, PGDCN_PRODUCT_GROUPS, validateIntakeClassification } from '../utils/pgdcnIntakeCatalog';
+import PgdcnB1AttachmentSection from './PgdcnB1AttachmentSection';
+import { uploadPcnDossierSupplementaryAttachment } from '../utils/pcnDossierDocumentApi';
+import { PGDCN_B1_ATTACHMENT_TYPES, uploadPendingPgdcnB1Attachments, type PgdcnB1SelectedAttachment } from '../utils/pgdcnB1Attachments';
 
 const sectionLabels: Record<PcnSection, string> = {
   dashboard: 'Tổng quan',
@@ -574,7 +577,7 @@ type PcnProposalForm = {
   fieldCodes: string[];
 };
 
-function ProposalView({
+export function PcnProposalView({
   fields,
   proposals,
   dossiers,
@@ -590,6 +593,10 @@ function ProposalView({
   initialDossierId,
   initialFieldCode,
   openFormRequest,
+  createOnly = false,
+  onDismiss,
+  onCreated,
+  onAttachmentsUploaded,
   onSave,
   onAttachWorkflowTemplate,
   onUpdateProposal,
@@ -610,6 +617,10 @@ function ProposalView({
   initialDossierId?: string;
   initialFieldCode?: string;
   openFormRequest?: number;
+  createOnly?: boolean;
+  onDismiss?: () => void;
+  onCreated?: (dossierId: string) => void;
+  onAttachmentsUploaded?: () => Promise<void> | void;
   onSave: (proposal: CertificationProposal, workflowTemplateSelection?: { id: string; version: number }, dossierContext?: { method: PcnCertificationMethod; dossierType?: string }) => Promise<void>;
   onAttachWorkflowTemplate: (dossierId: string, selection: { id: string; version: number }) => Promise<void>;
   onUpdateProposal: (proposalId: string, updates: PcnProposalUpdateInput) => Promise<void>;
@@ -627,6 +638,8 @@ function ProposalView({
   const [statusFilter, setStatusFilter] = useState<PcnDossierStatus | ''>('');
   const [fieldFilter, setFieldFilter] = useState(initialFieldCode || '');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [b1Attachments, setB1Attachments] = useState<PgdcnB1SelectedAttachment[]>([]);
+  const [createdDossierId, setCreatedDossierId] = useState<string>();
   const proposalFormRef = useRef<HTMLFormElement>(null);
   // Kept as a named focus anchor for the proposal modal contract; the shared Windows primitive owns the visible close control.
   const proposalCloseButtonRef = useRef<HTMLButtonElement>(null);
@@ -717,7 +730,7 @@ function ProposalView({
   const legacyCustomerOption = customerValue && !customerOptions.some((option) => option.value === customerValue)
     ? { value: customerValue, label: `Giá trị hiện tại cần rà soát: ${form.customerName || customerValue}`, description: 'Giá trị cũ được giữ nguyên để bạn đối chiếu với Danh sách khách hàng.', disabled: true }
     : undefined;
-  const reset = () => { setForm(emptyForm()); setEditingProposal(undefined); setWorkflowTemplateId(''); setValidationErrors({}); };
+  const reset = () => { setForm(emptyForm()); setEditingProposal(undefined); setWorkflowTemplateId(''); setValidationErrors({}); setB1Attachments([]); setCreatedDossierId(undefined); };
   const rememberFormFocus = () => {
     const activeElement = document.activeElement;
     returnFocusRef.current = activeElement instanceof HTMLElement ? activeElement : null;
@@ -737,7 +750,13 @@ function ProposalView({
     reset();
     setOpenForm(false);
     setProposalMinimized(false);
+    if (createOnly) onDismiss?.();
     window.requestAnimationFrame(() => focusTarget?.focus());
+  };
+  const dismissProposalForm = () => {
+    const savedDossierId = createdDossierId;
+    closeProposalForm();
+    if (createOnly && savedDossierId) onCreated?.(savedDossierId);
   };
 
   useEffect(() => {
@@ -834,6 +853,41 @@ function ProposalView({
     event.preventDefault();
     if (saving) return;
     if (!canEdit) return;
+    if (createdDossierId) {
+      setSaving(true);
+      try {
+        const result = await uploadPendingPgdcnB1Attachments(b1Attachments, async (attachment) => {
+          const category = PGDCN_B1_ATTACHMENT_TYPES.find((item) => item.value === attachment.kind)?.label || 'Khác';
+          await uploadPcnDossierSupplementaryAttachment({
+            dossierId: createdDossierId,
+            stageId: 'intake',
+            title: `${category} · ${attachment.file.name}`,
+            description: `B1: ${category}`,
+            file: attachment.file,
+            supplementaryItemId: `pcn-b1-${attachment.id}`,
+          });
+        }, (id, patch) => setB1Attachments((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item)));
+        if (result.failed > 0) {
+          toast.error('Đề nghị đã được tạo. Một số tệp chưa tải lên; hãy thử lại hoặc bổ sung sau trong hồ sơ.');
+          return;
+        }
+        let refreshFailed = false;
+        try {
+          await onAttachmentsUploaded?.();
+        } catch {
+          refreshFailed = true;
+        }
+        if (refreshFailed) toast.error('Tệp đã tải lên hồ sơ. Chưa làm mới được danh sách; bạn có thể mở hồ sơ để kiểm tra.');
+        else toast.success('Đã tải tệp đính kèm lên hồ sơ PCN.');
+        closeProposalForm();
+        onCreated?.(createdDossierId);
+      } catch (error: any) {
+        toast.error(error?.message || 'Đề nghị đã được tạo nhưng chưa hoàn tất tải tệp. Hãy thử lại.');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     const intakeValidation = validatePcnProposalIntake({
       customerSnapshot: {
         name: form.customerName,
@@ -858,6 +912,7 @@ function ProposalView({
       requireStandards: !editingProposal,
       requireProductGroup: !editingProposal,
       requireRegistration: !editingProposal,
+      requireWarehouseAddress: Boolean(editingProposal),
     });
     const receivedAtError = isValidPcnDateInput(form.receivedAt) ? undefined : 'Ngày tiếp nhận phải là ngày hợp lệ.';
     const registrationDateError = form.registrationDate && !isValidPcnDateInput(form.registrationDate) ? 'Ngày đăng ký phải là ngày hợp lệ.' : undefined;
@@ -878,6 +933,7 @@ function ProposalView({
     }
     const customerSnapshot = { name: form.customerName.trim(), address: form.address.trim(), taxId: form.taxId.trim() || undefined, phone: form.phone.trim() || undefined, email: form.email.trim() || undefined, contactPerson: form.contactPerson.trim() || undefined };
     setSaving(true);
+    let createdDossierIdForNavigation: string | undefined;
     try {
       if (editingProposal) {
         await onUpdateProposal(editingProposal.id, {
@@ -908,13 +964,39 @@ function ProposalView({
           receivedAt: form.receivedAt, createdAt: now, updatedAt: now,
         };
         const selectedTemplate = workflowSelection.selectedTemplate || workflowSelection.suggestedTemplate;
+        const dossierId = `dossier-${proposal.id}`;
         await onSave(proposal, selectedTemplate ? { id: selectedTemplate.id, version: selectedTemplate.version } : undefined, {
           method: form.method,
           dossierType: form.dossierType || undefined,
         });
-        toast.success('Đã tạo Đề nghị và bộ hồ sơ.');
+        setCreatedDossierId(dossierId);
+        const result = await uploadPendingPgdcnB1Attachments(b1Attachments, async (attachment) => {
+          const category = PGDCN_B1_ATTACHMENT_TYPES.find((item) => item.value === attachment.kind)?.label || 'Khác';
+          await uploadPcnDossierSupplementaryAttachment({
+            dossierId,
+            stageId: 'intake',
+            title: `${category} · ${attachment.file.name}`,
+            description: `B1: ${category}`,
+            file: attachment.file,
+            supplementaryItemId: `pcn-b1-${attachment.id}`,
+          });
+        }, (id, patch) => setB1Attachments((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item)));
+        if (result.failed > 0) {
+          toast.error('Đề nghị đã được tạo. Một số tệp chưa tải lên; hãy thử lại hoặc bổ sung sau trong hồ sơ.');
+          return;
+        }
+        let refreshFailed = false;
+        try {
+          await onAttachmentsUploaded?.();
+        } catch {
+          refreshFailed = true;
+        }
+        if (refreshFailed) toast.error('Đề nghị và tệp đã lưu; chưa làm mới được danh sách. Bạn có thể mở hồ sơ để kiểm tra.');
+        else toast.success('Đã tạo Đề nghị và bộ hồ sơ.');
+        createdDossierIdForNavigation = dossierId;
       }
       closeProposalForm();
+      if (createdDossierIdForNavigation) onCreated?.(createdDossierIdForNavigation);
     } catch (error: any) {
       if (error instanceof PcnIntakeApiError && error.issues.length > 0) {
         setValidationErrors(indexPcnIntakeValidationIssues(error.issues));
@@ -1009,7 +1091,7 @@ function ProposalView({
   }, [proposals, dossierByProposalId]);
 
   return (
-    <div className="pcn-page-surface min-w-0 p-3 md:p-5 space-y-3.5 mobile-safe-bottom bg-slate-50/60">
+    <div className={`pcn-page-surface min-w-0 p-3 md:p-5 space-y-3.5 mobile-safe-bottom bg-slate-50/60 ${createOnly ? '[&>*:not([data-pcn-create-modal])]:hidden' : ''}`}>
       {/* Title & Top Action */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -1230,12 +1312,12 @@ function ProposalView({
           </select>
         </div>
       </div>
-      {openForm && <>{/* data-testid="pcn-proposal-form-modal" aria-labelledby="pcn-proposal-modal-title" data-testid="pcn-proposal-modal-body" data-testid="pcn-proposal-modal-footer" focus-visible:ring */}<PgdcnWindowsWorkflowModal
+      {openForm && <div data-pcn-create-modal>{/* data-testid="pcn-proposal-form-modal" aria-labelledby="pcn-proposal-modal-title" data-testid="pcn-proposal-modal-body" data-testid="pcn-proposal-modal-footer" focus-visible:ring */}<PgdcnWindowsWorkflowModal
         open={openForm}
         minimized={proposalMinimized}
         title={editingProposal ? 'Sửa thông tin Đề nghị' : 'Thông tin Đề nghị / bộ hồ sơ'}
         eyebrow="PCN · Tiếp nhận hồ sơ"
-        description="Soạn Đề nghị trực tiếp trên app. Tệp kéo thả chỉ tạo bản nháp OCR; dữ liệu phải được kiểm tra trước khi lưu."
+        description="Soạn Đề nghị trực tiếp trên app. Tệp B1 được tải vào hồ sơ sau khi lưu; có thể bỏ qua hoặc bổ sung sau."
         contextLabel="Đề nghị PCN"
         accent="emerald"
         testId="pcn-proposal-form-modal"
@@ -1243,13 +1325,14 @@ function ProposalView({
         footerTestId="pcn-proposal-modal-footer"
         titleId="pcn-proposal-modal-title"
         busy={saving}
-        onClose={closeProposalForm}
+        onClose={dismissProposalForm}
         onMinimize={() => setProposalMinimized(true)}
         onRestore={() => setProposalMinimized(false)}
-        footer={<div className="flex w-full flex-wrap justify-end gap-2"><button type="button" onClick={closeProposalForm} disabled={saving} className="min-h-10 rounded-lg border border-slate-200 px-3 text-[10px] font-bold text-slate-600 disabled:opacity-40">Hủy</button><button type="submit" form="pcn-proposal-form" disabled={saving} aria-busy={saving} className="min-h-10 rounded-lg bg-emerald-600 px-3 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : editingProposal ? 'Lưu thay đổi' : 'Tạo Đề nghị & bộ hồ sơ'}</button></div>}
+        footer={<div className="flex w-full flex-wrap justify-end gap-2"><button type="button" onClick={dismissProposalForm} disabled={saving} className="min-h-10 rounded-lg border border-slate-200 px-3 text-[10px] font-bold text-slate-600 disabled:opacity-40">{createdDossierId ? 'Bổ sung sau' : 'Hủy'}</button><button type="submit" form="pcn-proposal-form" disabled={saving} aria-busy={saving} className="min-h-10 rounded-lg bg-emerald-600 px-3 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : createdDossierId ? 'Thử lại tệp chưa tải' : editingProposal ? 'Lưu thay đổi' : 'Tạo Đề nghị & bộ hồ sơ'}</button></div>}
       >
         <form id="pcn-proposal-form" ref={proposalFormRef} onSubmit={submit} className="space-y-3 p-3 md:p-4">
           <PcnOcrPanel context="proposal" onApply={applyProposalOcr} disabled={saving} />
+          {!editingProposal && <PgdcnB1AttachmentSection idPrefix="pcn-proposal" attachments={b1Attachments} onChange={setB1Attachments} disabled={saving || !canEdit} />}
 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
 <Field label="Mã Đề nghị">
 <div className="rounded-md border border-indigo-100 bg-indigo-50/60 px-2.5 py-2 text-[10px] font-bold text-indigo-700">Hệ thống tự cấp theo dạng PCN-YYMMDD-TT khi lưu</div>
@@ -1295,8 +1378,8 @@ function ProposalView({
 <input id="pcn-proposal-email" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
 </Field>
 </div>
-<Field label="Địa chỉ/kho liên quan *" error={validationErrors.warehouseAddress} errorId="pcn-proposal-error-warehouse-address">
-<input id="pcn-proposal-warehouse-address" required value={form.warehouseAddress} aria-invalid={Boolean(validationErrors.warehouseAddress)} aria-describedby={validationErrors.warehouseAddress ? 'pcn-proposal-error-warehouse-address' : undefined} onChange={(event) => setForm({ ...form, warehouseAddress: event.target.value })} />
+<Field label={editingProposal ? 'Địa chỉ/kho liên quan *' : 'Địa chỉ/kho liên quan (có thể bổ sung sau)'} error={validationErrors.warehouseAddress} errorId="pcn-proposal-error-warehouse-address">
+<input id="pcn-proposal-warehouse-address" required={Boolean(editingProposal)} value={form.warehouseAddress} aria-invalid={Boolean(validationErrors.warehouseAddress)} aria-describedby={validationErrors.warehouseAddress ? 'pcn-proposal-error-warehouse-address' : undefined} onChange={(event) => setForm({ ...form, warehouseAddress: event.target.value })} />
 </Field>
 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
   <Field label="Nhóm sản phẩm *" error={validationErrors.productGroup} errorId="pcn-proposal-error-product-group">
@@ -1349,11 +1432,11 @@ function ProposalView({
 <h3 id="pcn-proposal-domain-boundaries" className="font-black">Dữ liệu bổ sung theo đúng vùng nghiệp vụ</h3>
 <p className="mt-1 leading-4">Đơn vị mẫu sẽ được ghi trong thông tin lô/mẫu sau khi hồ sơ được tiếp nhận; biểu mẫu Đề nghị không yêu cầu nhập đơn vị riêng.</p>
 <p className="mt-1 leading-4">Lĩnh vực và phương thức chứng nhận được xác nhận ngay tại đây để tìm đúng bộ hồ sơ mẫu trước khi lưu.</p>
-<p className="mt-1 leading-4">Tài liệu, chứng cứ và ghi chú vận hành được bổ sung tại danh mục tài liệu hồ sơ sau khi tạo Đề nghị.</p>
+<p className="mt-1 leading-4">Tệp B1 tùy chọn được lưu cùng hồ sơ; có thể tải lên sau khi tạo Đề nghị.</p>
 <p className="mt-1 leading-4">Trạng thái do hệ thống quản lý theo quy trình; biểu mẫu không cho phép tự đổi trạng thái.</p>
 </section>
 </form>
-      </PgdcnWindowsWorkflowModal></>}
+      </PgdcnWindowsWorkflowModal></div>}
 
       {initialDossierId && <div className="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[10px] font-bold text-indigo-800">Đang tập trung hồ sơ: {dossiers.find((dossier) => dossier.id === initialDossierId)?.dossierCode || initialDossierId}</div>}
       {dossiers.filter((dossier) => dossier.workflowTemplatePending === true).map((dossier) => <PcnPendingWorkflowTemplatePanel key={dossier.id} dossier={dossier} workflowTemplates={workflowTemplates} documentRequirements={documentRequirements} onAttach={onAttachWorkflowTemplate} />)}
@@ -1672,7 +1755,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
       onAssignDossier={assignPcnDossier}
     />
   ) : activeSection === 'proposals' ? (
-    <ProposalView
+    <PcnProposalView
       fields={pcn.fields}
       workflowTemplates={pcn.workflowTemplates}
       proposals={pcn.proposals}
@@ -1689,6 +1772,7 @@ export function PcnWorkspace({ embedded = false, initialSection = 'dashboard', i
       initialFieldCode={selectedField}
       openFormRequest={proposalFormRequest}
       onSave={(proposal, selection, context) => pcn.addProposal(proposal, selection, context)}
+      onAttachmentsUploaded={() => pcn.load(true)}
       onAttachWorkflowTemplate={async (dossierId, selection) => {
         const response = await fetch(`/api/pcn/dossiers/${encodeURIComponent(dossierId)}/workflow-template`, {
           method: 'POST',

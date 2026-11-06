@@ -11,6 +11,7 @@ type Document = { document_id: string; data: Record<string, any> };
 // factories, audit construction and notification persistence execute normally.
 export function installDocumentDatabase(t: TestContext) {
   const documents = new Map<string, Document>();
+  const assets = new Map<string, Record<string, any>>();
   const statements: string[] = [];
   let transaction: Map<string, Document> | undefined;
   const current = () => transaction || documents;
@@ -33,13 +34,22 @@ export function installDocumentDatabase(t: TestContext) {
     if (/^SELECT /.test(normalized)) {
       let rows = [...current().entries()].filter(([id]) => id.startsWith(`${collection}:`)).map(([, doc]) => doc);
       if (collection === 'systemUsers' && params.length > 0) rows = rows.filter((doc) => doc.document_id === params[0] || doc.data.username === params[0]);
-      else if (/document_id = \$/.test(normalized)) rows = rows.filter((doc) => doc.document_id === params[literalCollection ? 0 : 1]);
+      else {
+        const documentIdParameter = /(?:WHERE|AND) document_id = \$(\d+)/.exec(normalized);
+        if (documentIdParameter && !normalized.includes('OR document_id =')) rows = rows.filter((doc) => doc.document_id === params[Number(documentIdParameter[1]) - 1]);
+      }
       if (normalized.includes("data->>'domain' = 'pgd'")) rows = rows.filter((doc) => doc.data.domain === 'pgd');
       if (normalized.includes("data->>'status' = 'PUBLISHED'")) rows = rows.filter((doc) => doc.data.status === 'PUBLISHED');
       if (normalized.includes("data->>'dossierId' = $1")) rows = rows.filter((doc) => doc.data.dossierId === params[0]);
       if (normalized.includes("data->>'requestId' = $2")) rows = rows.filter((doc) => doc.data.requestId === params[1]);
       if (normalized.includes("data->>'requestId' = $3")) rows = rows.filter((doc) => doc.data.requestId === params[2]);
       if (normalized.includes("data->>'requestId' = $1")) rows = rows.filter((doc) => doc.data.requestId === params[0]);
+      if (normalized.includes("data->>'nodeId' = $2")) rows = rows.filter((doc) => doc.data.nodeId === params[1]);
+      if (normalized.includes("data->>'supplementaryStageId' = $2")) rows = rows.filter((doc) => doc.data.supplementaryStageId === params[1]);
+      if (normalized.includes("data->>'supplementaryItemId' = $3 OR document_id = $3")) rows = rows.filter((doc) => doc.data.supplementaryItemId === params[2] || doc.document_id === params[2]);
+      if (normalized.includes("data->>'requirementCode' = $3")) rows = rows.filter((doc) => doc.data.requirementCode === params[2]);
+      if (normalized.includes("COALESCE(data->>'assessmentRoundId', '') = $4")) rows = rows.filter((doc) => (doc.data.assessmentRoundId || '') === params[3]);
+      if (normalized.includes("COALESCE(data->>'metadataOnly', 'false') <> 'true'")) rows = rows.filter((doc) => doc.data.metadataOnly !== true);
       if (normalized.includes("data->>'role' = 'TECHNICAL_REVIEW'")) rows = rows.filter((doc) => doc.data.role === 'TECHNICAL_REVIEW');
       if (normalized.includes("data->>'status' = 'APPROVED'")) rows = rows.filter((doc) => doc.data.status === 'APPROVED');
       if (normalized.includes('lower(trim')) rows = rows.filter((doc) => doc.data.requestCode === params[1]);
@@ -60,12 +70,17 @@ export function installDocumentDatabase(t: TestContext) {
       current().set(key(collection, id), { document_id: id, data: JSON.parse(params[1]) });
       return { rows: [] };
     }
+    if (/^INSERT INTO file_assets/.test(normalized)) {
+      const [id, bucket_name, object_path, source_collection, source_document_id, mime_type, byte_size, sha256] = params;
+      assets.set(String(id), { id, bucket_name, object_path, source_collection, source_document_id, mime_type, byte_size, sha256 });
+      return { rows: [] };
+    }
     throw new Error(`Unexpected route SQL: ${normalized}`);
   };
   t.mock.method(pool as any, 'connect', async () => ({ query, release() {} }));
   t.mock.method(pool as any, 'query', query);
   return {
-    documents, statements,
+    documents, assets, statements,
     seed(collection: string, id: string, data: Record<string, any>) { documents.set(key(collection, id), { document_id: id, data }); },
     list(collection: string) { return [...documents.entries()].filter(([id]) => id.startsWith(`${collection}:`)).map(([, doc]) => doc); },
   };
@@ -74,5 +89,11 @@ export function installDocumentDatabase(t: TestContext) {
 export function routeRequest(url: string, method: string, body: unknown, user?: Record<string, any>) {
   const headers = new Headers({ 'content-type': 'application/json' });
   if (user) headers.set('cookie', `pcn_certification_session=${createPcnSessionToken({ active: true, ...user } as any, getSessionSecret())}`);
-  return new NextRequest(`http://localhost${url}`, { method, headers, body: JSON.stringify(body) });
+  return new NextRequest(`http://localhost${url}`, { method, headers, ...(method === 'GET' || method === 'HEAD' ? {} : { body: JSON.stringify(body) }) });
+}
+
+export function multipartRouteRequest(url: string, body: FormData, user?: Record<string, any>) {
+  const headers = new Headers();
+  if (user) headers.set('cookie', `pcn_certification_session=${createPcnSessionToken({ active: true, ...user } as any, getSessionSecret())}`);
+  return new NextRequest(`http://localhost${url}`, { method: 'POST', headers, body });
 }

@@ -15,7 +15,7 @@ import {
   PgdDocumentTemplateKind,
   getPgdDocumentTemplates,
 } from '@/utils/pgdDocumentTemplates';
-import { getPgdAssignmentApprovalDenial, PgdOperationalStationKey, getPgdOperationalStepAccess } from '@/utils/pgdWorkflow';
+import { getPgdAssignmentApprovalDenial, getPgdPostSignatureMutationDenial, PgdOperationalStationKey, getPgdOperationalStepAccess } from '@/utils/pgdWorkflow';
 
 export { getPgdOperationalStepAccess };
 
@@ -130,7 +130,6 @@ export function getPgdDocumentTemplate(
 }
 
 export function assertPgdRequestEvidenceMutationAllowed(request: PgdInspectionRequest): void {
-  const { getPgdPostSignatureMutationDenial } = require('@/utils/pgdWorkflow');
   const denial = getPgdPostSignatureMutationDenial(request.status);
   if (denial) throw Object.assign(new Error(denial), { statusCode: 409 });
 }

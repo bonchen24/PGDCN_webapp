@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
         requireStandards: true,
         requireProductGroup: true,
         requireRegistration: true,
+        requireWarehouseAddress: false,
       });
       if (!intakeValidation.valid) {
         throw Object.assign(new Error(formatPcnIntakeValidationIssues(intakeValidation.issues)), {
@@ -220,6 +221,7 @@ export async function POST(req: NextRequest) {
         id: dossierId,
         dossierCode,
         proposalId,
+        intakeCreatedByUsername: actor.username,
         status: 'INTAKE_REVIEW',
         fieldCodes: storedProposal.fieldCodes,
         workflowSchemaVersion: 2 as const,

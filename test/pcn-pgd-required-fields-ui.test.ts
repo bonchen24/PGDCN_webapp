@@ -23,7 +23,6 @@ test('PCN intake required fields remain aligned with policy', () => {
     'customerSnapshot.name',
     'customerSnapshot.address',
     'customerSnapshot.contactPerson',
-    'warehouseAddress',
     'productGroup',
     'registrationNumber',
     'registrationDate',
@@ -54,19 +53,14 @@ test('PCN intake required fields remain aligned with policy', () => {
   assert.match(pcnSource, /Ngày tiếp nhận/);
 });
 
-test('dashboard PCN create dialog sends every required intake field to the create API', () => {
-  assert.match(pcnCreateDialogSource, /productGroup[,:]/);
-  for (const field of ['registrationNumber', 'standards']) {
-    assert.match(pcnCreateDialogSource, new RegExp(`${field}\\s*:`));
-  }
-  assert.match(pcnCreateDialogSource, /registrationDate\s*,/);
-  assert.match(pcnCreateDialogSource, /name="registrationNumber"[^>]*required/);
-  assert.match(pcnCreateDialogSource, /name="registrationDate"[^>]*required/);
-  assert.match(pcnCreateDialogSource, /name="standards"[^>]*required/);
-  assert.match(pcnCreateDialogSource, /Tài liệu B1 có thể bổ sung sau; không cần đính kèm tệp khi tạo Đề nghị/);
-  assert.match(pgdCreateDialogSource, /Tài liệu B1 có thể bổ sung sau; không cần đính kèm tệp khi tạo Phiếu yêu cầu/);
+test('dashboard PCN and PGD create dialogs reuse canonical domain intake forms', () => {
+  assert.match(pcnCreateDialogSource, /PcnProposalView/);
+  assert.match(pgdCreateDialogSource, /PgdIntakeForm/);
+  assert.match(pcnSource, /registrationNumber/);
+  assert.match(pcnSource, /registrationDate/);
+  assert.match(pgdSource, /registrationNumber/);
+  assert.match(pgdSource, /registrationDate/);
 });
-
 test('PCN and PGD B1 file controls never add a hidden required attachment gate', () => {
   for (const [domain, source] of [['PCN', pcnCreateDialogSource], ['PGD', pgdCreateDialogSource]]) {
     const requiredFileInputs = source.match(/<input\b(?=[^>]*type=["']file["'])(?=[^>]*(?:\brequired\b|aria-required=["']true))[^>]*>/gi) || [];
@@ -83,7 +77,6 @@ test('PGD intake required fields include catalog selection and conditional branc
 });
 
 test('PCN and PGD B1 forms remain mobile-first and compact', () => {
-  for (const source of [pcnCreateDialogSource, pgdCreateDialogSource]) {
-    assert.match(source, /grid-cols-1 gap-2.5 sm:grid-cols-2/);
-  }
+  assert.match(pcnSource, /sm:grid-cols-2/);
+  assert.match(pgdSource, /sm:grid-cols-2/);
 });

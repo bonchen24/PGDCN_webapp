@@ -4,7 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { withPgTransaction } from '@/lib/server/postgres';
 import { getPcnSessionUser, requirePcnMutation } from '@/lib/server/auth';
 import { getDocumentPayload, mapDocumentRow } from '@/lib/server/helpers';
-import { jsonBadRequest, jsonConflict, jsonCreated, jsonError, jsonNotFound } from '@/lib/server/response';
+import { jsonBadRequest, jsonConflict, jsonCreated, jsonError, jsonForbidden, jsonNotFound, jsonOk } from '@/lib/server/response';
 import { getPcnStorageBucket, getPcnStorageClient, PCN_FILE_MAX_BYTES } from '@/lib/server/storage';
 import { CertificationDossier, PcnDossierAttachment, PcnDossierWorkflowTask } from '@/types';
 import { buildPcnSupplementaryDossierAttachment, buildPcnSupplementaryDossierMetadata } from '@/utils/pcnDossierDocuments';
@@ -19,6 +19,10 @@ const SUPPORTED_FILE_EXTENSIONS = new Set(['pdf', 'docx', 'png', 'jpg', 'jpeg', 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ dossierId: string }> }) {
   const mutationError = requirePcnMutation(req);
   if (mutationError) return mutationError;
+  const actor = getPcnSessionUser(req)!;
+  if (!isPcnSystemManager(actor) && !actor.departmentScopes?.includes('PCN')) {
+    return jsonForbidden('Tài khoản chưa được cấp phạm vi PCN.');
+  }
 
   let formData: FormData;
   try {
@@ -50,7 +54,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
   const { dossierId: rawDossierId } = await params;
   const dossierId = String(rawDossierId || '').trim();
   if (!dossierId) return jsonBadRequest('Thiếu mã hồ sơ PCN.');
-  const actor = getPcnSessionUser(req)!;
   let uploadedBucketName: string | undefined;
   let uploadedObjectPath: string | undefined;
 
@@ -84,12 +87,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
       const actorUsername = String(actor.username || '').trim().toLowerCase();
       const ownerUsername = String(dossier.ownerUsername || '').trim().toLowerCase();
       const assignedUsername = String(task.assignedUsername || '').trim().toLowerCase();
-      if (!isPcnSystemManager(actor) && ownerUsername !== actorUsername && assignedUsername !== actorUsername) {
+      const intakeCreatorMayAttachB1 = node.id === 'intake' && String(dossier.intakeCreatedByUsername || '').trim().toLowerCase() === actorUsername;
+      if (!isPcnSystemManager(actor) && ownerUsername !== actorUsername && assignedUsername !== actorUsername && !intakeCreatorMayAttachB1) {
         throw Object.assign(new Error('Bạn chưa được phân công xử lý bước PCN này.'), { statusCode: 403 });
       }
       const fieldCode = dossier.fieldCodes?.[0];
       if (!fieldCode) throw Object.assign(new Error('Hồ sơ PCN chưa có lĩnh vực để gắn tệp phụ trợ.'), { statusCode: 409 });
       const now = new Date().toISOString();
+      const fileBuffer = file ? Buffer.from(await file.arrayBuffer()) : undefined;
+      const sha256 = fileBuffer ? createHash('sha256').update(fileBuffer).digest('hex') : undefined;
       let attachment: ReturnType<typeof buildPcnSupplementaryDossierAttachment> | ReturnType<typeof buildPcnSupplementaryDossierMetadata>;
       let safeFileName = '';
 
@@ -123,7 +129,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
             [dossier.id, node.id, itemId],
           );
           const item = itemResult.rows[0] ? mapDocumentRow(itemResult.rows[0]) as PcnDossierAttachment : undefined;
-          if (!item) throw Object.assign(new Error('Không tìm thấy đầu mục phụ trợ PCN để thêm phiên bản.'), { statusCode: 404 });
+          if (!item && !/^pcn-b1-[a-z0-9-]{1,100}$/i.test(itemId)) {
+            throw Object.assign(new Error('Không tìm thấy đầu mục phụ trợ PCN để thêm phiên bản.'), { statusCode: 404 });
+          }
           const latestFile = await client.query(
             `SELECT document_id, data FROM app_documents
              WHERE collection_name = 'dossierAttachments'
@@ -133,15 +141,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
              ORDER BY updated_at DESC LIMIT 1 FOR UPDATE`,
             [dossier.id, node.id, itemId],
           );
-          supersedesAttachmentId = latestFile.rows[0] ? String(latestFile.rows[0].document_id || '') : undefined;
+          const latest = latestFile.rows[0] ? mapDocumentRow(latestFile.rows[0]) as PcnDossierAttachment : undefined;
+          safeFileName = sanitizePcnPathSegment(originalName);
+          if (latest && latest.sha256 === sha256 && latest.fileName === safeFileName && latest.title === title && latest.description === description) {
+            return { attachment: latest, idempotent: true as const };
+          }
+          supersedesAttachmentId = latest?.id;
         } else {
           itemId = `pcn-supplementary-item-${randomUUID()}`;
         }
 
-        const fileBuffer = Buffer.from(await file.arrayBuffer());
-        const sha256 = createHash('sha256').update(fileBuffer).digest('hex');
+        if (!fileBuffer || !sha256) throw Object.assign(new Error('Không đọc được byte của tệp PCN.'), { statusCode: 400 });
         const assetId = `pcn-file-${sha256.slice(0, 16)}-${randomUUID().slice(0, 8)}`;
-        safeFileName = sanitizePcnPathSegment(originalName);
+        safeFileName = safeFileName || sanitizePcnPathSegment(originalName);
         const attachmentId = `pcn-attachment-supplementary-${assetId}`;
         const bucketName = getPcnStorageBucket();
         const objectPath = `pcnFiles/dossierAttachments/${sanitizePcnPathSegment(dossier.id)}/${sanitizePcnPathSegment(node.id)}/${assetId}-${sha256}-${safeFileName}`;
@@ -208,7 +220,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
       return { attachment, activityLog };
     });
 
-    return jsonCreated(result);
+    return 'idempotent' in result && result.idempotent ? jsonOk(result) : jsonCreated(result);
   } catch (error: any) {
     if (uploadedBucketName && uploadedObjectPath) {
       await getPcnStorageClient().deleteObject({ bucketName: uploadedBucketName, objectPath: uploadedObjectPath }).catch(() => undefined);

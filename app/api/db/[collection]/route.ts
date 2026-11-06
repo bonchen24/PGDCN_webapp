@@ -10,9 +10,11 @@ import {
   mapDocumentRow,
 } from '../../../../lib/server/collections.ts';
 import { sanitizePcnUserRow } from '../../../../lib/server/users.ts';
+import { isPcnSystemManager } from '../../../../utils/pcnRbac.ts';
 import {
   jsonOk,
   jsonNotFound,
+  jsonForbidden,
   jsonUnauthorized,
   jsonServerError,
 } from '../../../../lib/server/response.ts';
@@ -32,6 +34,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   if (!isAllowedCollection(collectionName)) {
     return jsonNotFound(`Collection không hợp lệ: ${collectionName}`);
+  }
+  if (collectionName === 'dossierAttachments' && !isPcnSystemManager(actor) && !actor.departmentScopes?.includes('PCN')) {
+    return jsonForbidden('Tài khoản chưa được cấp phạm vi PCN.');
   }
 
   try {

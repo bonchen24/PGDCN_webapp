@@ -106,8 +106,16 @@ test('newly created PCN Đề nghị with zero attachments creates successfully 
     transitions: [{ id: 'intake-end', fromNodeId: 'intake', toNodeId: 'end', condition: 'ALWAYS' }],
   });
   const zeroAttachProposal = {
-    ...proposal,
     id: 'proposal-zero-attach',
+    fieldCodes: ['QC4'],
+    channel: 'EMAIL',
+    customerSnapshot: { name: 'Customer', address: 'Ha Noi', contactPerson: 'Contact' },
+    productGroup: 'ELECTRICAL_ELECTRONIC',
+    registrationNumber: 'PCN-2026-ZERO',
+    registrationDate: '2026-11-06',
+    receivedAt: '2026-11-06',
+    quantity: 1,
+    standards: ['QCVN 04:2009/BKHCN'],
   };
   const zeroAttachDossier = {
     ...dossier,

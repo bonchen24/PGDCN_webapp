@@ -47,7 +47,7 @@ test('PCN intake accepts minimal proposal omitting model, brand, manufacturer, s
     quantity: 2,
     fieldCodes: ['QC4'],
   };
-  assert.deepEqual(validatePcnProposalIntake(minimalProposal), { valid: true, issues: [] });
+  assert.deepEqual(validatePcnProposalIntake(minimalProposal, { requireWarehouseAddress: false }), { valid: true, issues: [] });
 });
 
 test('PCN intake requires product group and reports missing intake fields', () => {
@@ -62,6 +62,24 @@ test('PCN intake requires product group and reports missing intake fields', () =
     'quantity',
     'fieldCodes',
   ]);
+});
+
+test('PCN B1 intake does not require warehouse or product technical details', () => {
+  const minimal = {
+    customerSnapshot: validProposal.customerSnapshot,
+    productGroup: validProposal.productGroup,
+    registrationNumber: validProposal.registrationNumber,
+    registrationDate: validProposal.registrationDate,
+    quantity: validProposal.quantity,
+    fieldCodes: validProposal.fieldCodes,
+  };
+  assert.deepEqual(validatePcnProposalIntake(minimal, { requireWarehouseAddress: false }), { valid: true, issues: [] });
+});
+
+test('PCN edit validation keeps the legacy warehouse requirement by default', () => {
+  const result = validatePcnProposalIntake({ ...validProposal, warehouseAddress: '' });
+  assert.deepEqual(result.issues.map((issue) => issue.field), ['warehouseAddress']);
+  assert.equal(validatePcnProposalIntake({ ...validProposal, warehouseAddress: '' }, { requireWarehouseAddress: false }).valid, true);
 });
 
 test('PCN intake rejects invalid product groups', () => {
