@@ -10,9 +10,11 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 
 import { startPreview } from '../bin/preview.mjs';
+import { symlinkSkipReason } from './helpers/symlinks.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(here, '..');
+const symlinkSkip = symlinkSkipReason() || false;
 
 function sha256(file) {
   return createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -55,7 +57,7 @@ function rawRequest(url, { method = 'GET', pathname = '/', hostHeader } = {}) {
   });
 }
 
-test('preview: rejects destructive or unsupported startup targets before watching', async () => {
+test('preview: rejects destructive or unsupported startup targets before watching', { skip: symlinkSkip }, async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-preview-startup-'));
   const input = path.join(tmp, 'diagram.json');
   fs.writeFileSync(input, '{}');

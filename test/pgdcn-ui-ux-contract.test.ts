@@ -14,15 +14,25 @@ test('shared PGDCN UI primitives define accessible compact surfaces', () => {
 });
 
 test('PCN and PGD surfaces use the shared presentation rhythm', () => {
-  for (const path of ['../components/PcnOperationsRegisterView.tsx', '../components/PgdWorkspace.tsx', '../components/PcnDossierDetailView.tsx', '../components/PgdDossierOperationsPanel.tsx']) {
+  for (const path of ['../components/PcnOperationsRegisterView.tsx', '../components/PgdWorkspace.tsx', '../components/PgdDossierOperationsPanel.tsx']) {
     const source = read(path);
     assert.match(source, /PgdcnUiPrimitives|PgdcnPageHeader|PgdcnToolbar|PgdcnWorkflowRail|PgdcnStatePanel/);
   }
+
+  const pcnDetail = read('../components/PcnDossierDetailView.tsx');
+  assert.match(pcnDetail, /PcnDossierFlow|PcnDossierWorkflowPanel/);
+  assert.match(pcnDetail, /grid grid-cols-1 gap-4 lg:grid-cols-\[minmax\(0,3fr\)_minmax\(0,2fr\)\]/);
 });
 
-test('dossier detail exposes a horizontally scrollable workflow rail', () => {
-  const source = read('../components/PcnDossierDetailView.tsx');
-  assert.match(source, /PgdcnWorkflowRail|mobile-scroll-x/);
+test('PCN dossier detail exposes the seven-stage accessible workflow rail', () => {
+  const detail = read('../components/PcnDossierDetailView.tsx');
+  const flow = read('../components/PcnDossierFlow.tsx');
+  assert.match(detail, /<PcnDossierFlow/);
+  assert.match(detail, /buildLegacyStageFlowNodes/);
+  assert.match(flow, /PCN_DOSSIER_FLOW_STAGES\s*:\s*readonly PcnStageDefinition\[\]\s*=\s*\[/);
+  assert.match(flow, /role="tablist"/);
+  assert.match(flow, /role="tab"/);
+  assert.match(flow, /aria-setsize=\{PCN_DOSSIER_FLOW_STAGES\.length\}/);
 });
 
 test('Official/Superneat surfaces preserve state tones and restrained elevation', () => {

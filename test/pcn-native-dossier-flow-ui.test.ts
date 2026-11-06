@@ -7,17 +7,30 @@ const workflowSource = fs.readFileSync(new URL('../components/PcnDossierWorkflow
 const nodeWorkSource = fs.readFileSync(new URL('../components/PcnDossierNodeWorkPanel.tsx', import.meta.url), 'utf8');
 const operationsSource = fs.readFileSync(new URL('../components/PcnOperationsRegisterView.tsx', import.meta.url), 'utf8');
 
-test('native flow is a numbered accessible rail with separate type and status cues', () => {
+test('native flow exposes seven accessible stage tabs with keyboard navigation', () => {
+  const stageBlock = flowSource.match(/export const PCN_DOSSIER_FLOW_STAGES:[\s\S]*?= \[([\s\S]*?)\] as const;/)?.[1] || '';
+  const stageIds = [...stageBlock.matchAll(/\bid: '([^']+)'/g)].map((match) => match[1]);
+
+  assert.deepEqual(stageIds, [
+    'intake',
+    'review-assignment',
+    'plan',
+    'execution',
+    'results-evaluation',
+    'reporting-approval',
+    'issuance-archive',
+  ]);
+  assert.match(flowSource, /data-testid="pcn-dossier-flow-scroll"[^>]*role="tablist"/);
   assert.match(flowSource, /role="tablist"/);
   assert.match(flowSource, /role="tab"/);
   assert.match(flowSource, /aria-selected/);
   assert.match(flowSource, /aria-current/);
+  assert.match(flowSource, /aria-posinset=\{index \+ 1\}/);
+  assert.match(flowSource, /aria-setsize=\{PCN_DOSSIER_FLOW_STAGES\.length\}/);
   assert.match(flowSource, /ArrowLeft|ArrowRight/);
-  assert.match(flowSource, /DOCUMENT_TASK/);
-  assert.match(flowSource, /APPROVAL_TASK/);
-  assert.match(flowSource, /PARALLEL_SPLIT|PARALLEL_JOIN/);
-  assert.match(flowSource, /mobile-scroll-x/);
-  assert.match(flowSource, /FILE|ACTION|APPROVAL|DECISION|PARALLEL|END/);
+  assert.match(flowSource, /event\.key === 'Home' \|\| event\.key === 'End'/);
+  assert.match(flowSource, /focus-visible:ring-2/);
+  assert.match(workflowSource, /data-testid="pcn-workflow-step-card"[\s\S]*<PcnDossierFlow[\s\S]*<PcnDossierNodeWorkPanel/);
 });
 
 test('PCN dossier workflow no longer renders the Archify embed', () => {

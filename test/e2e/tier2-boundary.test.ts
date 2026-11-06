@@ -297,7 +297,7 @@ describe('Tier 2: Boundary & Corner Cases (F01 - F15)', () => {
   });
 
   // ==========================================================================
-  // F07: Dossier Main Work Area (65%)
+  // F07: Dossier Work Area (60%)
   // ==========================================================================
   describe('F07: Boundary & Document Stage Gate - Main Work Area', () => {
     it('F07-B1: Submitting stage subtask with empty mandatory form fields triggers validation failure', () => {
@@ -358,7 +358,7 @@ describe('Tier 2: Boundary & Corner Cases (F01 - F15)', () => {
   });
 
   // ==========================================================================
-  // F08: Dossier Auxiliary Side Panel (35%)
+  // F08: Dossier Document Reader (40%)
   // ==========================================================================
   describe('F08: Boundary & AI Context - Auxiliary Side Panel', () => {
     it('F08-B1: Side panel with zero activity logs renders empty history placeholder without crash', () => {

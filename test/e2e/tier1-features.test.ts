@@ -256,16 +256,16 @@ describe('Tier 1: Feature Coverage & Contract Verification (F01 - F15)', () => {
   });
 
   // ==========================================================================
-  // F07: Dossier Main Work Area (65%)
+  // F07: Dossier Work Area (60%)
   // ==========================================================================
-  describe('F07: Dossier Main Work Area (65%)', () => {
-    it('F07-1: Main Work Area 65% desktop width allocation and responsive mobile stack', () => {
-      const getWorkspaceLayout = (isDesktop: boolean) => ({
-        mainWidth: isDesktop ? '65%' : '100%',
-        mobileStacked: !isDesktop,
-      });
-      assert.equal(getWorkspaceLayout(true).mainWidth, '65%');
-      assert.equal(getWorkspaceLayout(false).mobileStacked, true);
+  describe('F07: Dossier Work Area (60%)', () => {
+    it('F07-1: work occupies 60% beside the reader and switches to mobile work/reader tabs', () => {
+      const workspace = read('components/PgdWorkspace.tsx');
+      assert.match(workspace, /grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-\[minmax\(0,3fr\)_minmax\(0,2fr\)\]/);
+      assert.match(workspace, /role="tablist" aria-label="Chuyển vùng hồ sơ PGD"/);
+      assert.match(workspace, /<section role="tabpanel" id="pgd-dossier-work-region"[\s\S]*<PgdDossierFlow/);
+      assert.match(workspace, /<aside role="tabpanel" id="pgd-dossier-reader-region"[\s\S]*<PgdDossierDocumentReader/);
+      assert.doesNotMatch(workspace, /lg:grid-cols-\[65%_35%\]|xl:grid-cols-\[68%_32%\]/);
     });
 
     it('F07-2: Stage subtasks checklist with role-based completion guards', () => {
@@ -311,21 +311,24 @@ describe('Tier 1: Feature Coverage & Contract Verification (F01 - F15)', () => {
   });
 
   // ==========================================================================
-  // F08: Dossier Auxiliary Side Panel (35%)
+  // F08: Dossier Document Reader (40%)
   // ==========================================================================
-  describe('F08: Dossier Auxiliary Side Panel (35%)', () => {
-    it('F08-1: Auxiliary Side Panel 35% desktop width allocation and collapsible mobile view', () => {
-      const getSidePanelLayout = (isDesktop: boolean) => ({
-        sideWidth: isDesktop ? '35%' : '100%',
-        collapsible: !isDesktop,
-      });
-      assert.equal(getSidePanelLayout(true).sideWidth, '35%');
-      assert.equal(getSidePanelLayout(false).collapsible, true);
+  describe('F08: Dossier Document Reader (40%)', () => {
+    it('F08-1: reader is a labeled right-side tab panel with private inline preview and download actions', () => {
+      const workspace = read('components/PgdWorkspace.tsx');
+      const reader = read('components/PgdDossierDocumentReader.tsx');
+      assert.match(workspace, /aria-label="Đọc tài liệu hồ sơ PGD"[\s\S]*<PgdDossierDocumentReader/);
+      assert.match(reader, /data-testid="pgd-dossier-document-reader" aria-label="Đọc tài liệu hồ sơ PGD"/);
+      assert.match(reader, /getPgdDossierDocumentDownloadUrl\(selected\.id, \{ inline: true \}\)/);
+      assert.match(reader, /<iframe title=\{'Xem trước ' \+ selected\.fileName\}/);
+      assert.match(reader, /download=\{selected\.fileName\}/);
     });
 
-    it('F08-2: Side panel related reference data and quick inspection cards', () => {
-      const workspace = read('components/PgdcnDossierBusinessWorkspace.tsx');
-      assert.match(workspace, /Gợi ý|ngữ cảnh|tracker|evidenceTracker|sampleTracker/i);
+    it('F08-2: DOCX files use the read-only inline preview surface', () => {
+      const reader = read('components/PgdDossierDocumentReader.tsx');
+      assert.match(reader, /previewKind === 'DOCX'/);
+      assert.match(reader, /<PgdcnDocxPreview url=\{downloadUrl!\} fileName=\{selected\.fileName\} \/>/);
+      assert.match(reader, /Tải tệp xuống/);
     });
 
     it('F08-3: Missing mandatory document alerts and stage blockers', () => {

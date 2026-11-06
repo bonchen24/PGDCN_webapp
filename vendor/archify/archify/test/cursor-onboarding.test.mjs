@@ -43,7 +43,13 @@ test('the zero-dependency archive works from the canonical Cursor-visible agent 
   const agentSkills = path.join(tmp, '.agents', 'skills');
   try {
     fs.mkdirSync(agentSkills, { recursive: true });
-    execFileSync('unzip', ['-q', path.join(repoRoot, 'archify.zip'), '-d', agentSkills]);
+    const archivePath = path.join(repoRoot, 'archify.zip');
+    try {
+      execFileSync('unzip', ['-q', archivePath, '-d', agentSkills]);
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+      execFileSync('tar', ['-xf', archivePath, '-C', agentSkills]);
+    }
     const installed = path.join(agentSkills, 'archify');
     const cli = path.join(installed, 'bin', 'archify.mjs');
     const doctor = execFileSync(process.execPath, [cli, 'doctor'], { encoding: 'utf8' });

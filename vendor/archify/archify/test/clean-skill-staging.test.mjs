@@ -17,6 +17,7 @@ const canonicalNotices = fs.readFileSync(
 function git(root, args) {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
+  return result.stdout;
 }
 
 function write(root, relative, content, mode = null) {
@@ -94,10 +95,15 @@ test('clean staging preserves index modes and strips repository-only package met
     write(root, 'archify/bin/executable.mjs', '#!/usr/bin/env node\n', 0o755);
     write(root, 'archify/runtime/test/required.dat', 'runtime fixture\n');
     git(root, ['add', 'archify']);
+    git(root, ['update-index', '--chmod=+x', '--', 'archify/bin/executable.mjs']);
 
     stageCleanSkill({ repoRoot: root, destination });
 
-    assert.equal(fs.statSync(path.join(destination, 'bin', 'executable.mjs')).mode & 0o777, 0o755);
+    const stagedMode = git(root, ['ls-files', '--stage', '--', 'archify/bin/executable.mjs']);
+    assert.match(stagedMode, /^100755\s/);
+    if (process.platform !== 'win32') {
+      assert.equal(fs.statSync(path.join(destination, 'bin', 'executable.mjs')).mode & 0o777, 0o755);
+    }
     assert.equal(fs.existsSync(path.join(destination, 'test')), false);
     assert.equal(
       fs.readFileSync(path.join(destination, 'runtime', 'test', 'required.dat'), 'utf8'),

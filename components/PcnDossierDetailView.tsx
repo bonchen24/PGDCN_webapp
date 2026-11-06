@@ -14,7 +14,7 @@ import { getPcnDossierStationGenerationKind, getPcnDossierStationTab, type PcnDo
 import { buildPcnNodeDraftingRoute } from '../utils/draftingNavigation';
 import { buildPcnDossierInspection, getPcnDossierInspectionStatusLabel } from '../utils/pcnDossierInspection';
 import { getPcnDossierRequirementsWithCustom } from '../utils/pcnDossierDocuments';
-import { getPcnWorkflowResultOutcome } from '../utils/pcnWorkflowRuntime';
+import { getPcnWorkflowResultOutcome, type PcnWorkflowRuntimeNode } from '../utils/pcnWorkflowRuntime';
 import { getPcnActorDisplayName, getPcnUserDisplayName, PCN_NEUTRAL_USER_LABEL } from '../utils/pcnUserIdentity';
 import { getPcnAssignableDossierUsers, getPcnOwnerAssignmentAuthorityDenial } from '../utils/pcnDossierAssignment';
 import { getPcnDossierExceptionReasonDenial, getPcnDossierManualNextStatuses, getPcnDossierStatusLabel } from '../utils/pcnWorkflow';
@@ -28,8 +28,8 @@ import { PcnDocumentOutputModal } from './PcnDocumentOutputModal';
 import { PcnProposalDetailModal } from './PcnProposalDetailModal';
 import { PcnSampleHandoverModal } from './PcnSampleHandoverModal';
 import { PCN_OPERATIONAL_FORM_LABELS, PcnOperationalFormModal, type PcnOperationalFormValue } from './PcnOperationalFormModal';
+import PcnDossierFlow, { getPcnStageForNode, PCN_DOSSIER_FLOW_STAGES } from './PcnDossierFlow';
 import { PcnDossierWorkflowPanel } from './PcnDossierWorkflowPanel';
-import { PgdcnWorkflowRail } from './PgdcnUiPrimitives';
 import { PgdcnDateInput } from './PgdcnDateInput';
 import { buildPcnDossierWorkflowMap, type PcnDossierWorkflowMapProjection, type PcnWorkflowNode } from '../utils/pcnWorkflowMap';
 import { getPcnOperationalFormKey, mergePcnOperationalForm } from '../utils/pcnOperationalForms';
@@ -408,26 +408,68 @@ function DossierStationChecklist({ stationChecklist, users }: { stationChecklist
   </details>;
 }
 
+const legacyStageNodeIds: Partial<Record<PcnPipelineStationKey, string>> = {
+  INTAKE: 'intake',
+  DOCUMENTS: 'documents',
+  ASSIGNMENT: 'assignment',
+  EVALUATION: 'evaluation-plan',
+  SAMPLING_LAB: 'sampling_lab',
+  RESULTS: 'receive-test-result',
+  CORRECTION: 'complete-result',
+  TECHNICAL_REVIEW: 'technical_review',
+  APPROVAL: 'certificate',
+  ISSUANCE: 'deliver',
+  DELIVERY_ARCHIVE: 'archive',
+};
+
+function buildLegacyStageFlowNodes(projection: PcnDossierWorkflowMapProjection): Array<{ stationKey: PcnPipelineStationKey; node: PcnWorkflowRuntimeNode }> {
+  return projection.nodes.flatMap((station) => {
+    const id = legacyStageNodeIds[station.key];
+    if (!id || station.key === 'EXCEPTIONS') return [];
+    const status: PcnWorkflowRuntimeNode['status'] = station.state === 'COMPLETED'
+      ? 'COMPLETED'
+      : station.state === 'CURRENT'
+        ? station.returned ? 'RETURNED' : 'IN_PROGRESS'
+        : 'LOCKED';
+    return [{
+      stationKey: station.key,
+      node: {
+        id,
+        kind: 'DOCUMENT_TASK',
+        label: station.title,
+        actionKey: station.key,
+        requirementIds: [],
+        status,
+        cycleNo: 1,
+        isActive: station.state === 'CURRENT',
+      },
+    }];
+  });
+}
+
 function DossierWorkflowSummary({ projection, selectedNodeKey, completeness, ownerLabel, exceptionReason, onSelectNode, onOpenExceptionReason, onOpenStep, onOpenChecklist, onOpenGeneration, onOpenApprovalModule, onOpenProposal, onCompleteStep, completionDisabled, completionTitle, canEdit, users }: { projection: PcnDossierWorkflowMapProjection; selectedNodeKey: PcnPipelineStationKey; completeness: ReturnType<typeof buildPcnDossierCompleteness>; ownerLabel: string; exceptionReason?: string; onSelectNode: (key: PcnPipelineStationKey) => void; onOpenExceptionReason: () => void; onOpenStep: () => void; onOpenChecklist: () => void; onOpenGeneration: () => void; onOpenApprovalModule: () => void; onOpenProposal?: () => void; onCompleteStep: () => void; completionDisabled?: boolean; completionTitle?: string; canEdit: boolean; users: PcnUserAccount[] }) {
   const currentNode = projection.nodes.find((node) => node.key === selectedNodeKey) || projection.currentNode;
-  const workflowSteps = projection.nodes.map((node) => {
-    const isNodeCurrent = node.key === selectedNodeKey;
-    const checklistBadge = isNodeCurrent && completeness?.stationChecklist?.total
-      ? `${completeness.stationChecklist.present}/${completeness.stationChecklist.total} việc`
-      : undefined;
-    return {
-      id: node.key,
-      label: node.title,
-      state: (node.state === 'COMPLETED' ? 'complete' : node.state === 'CURRENT' ? 'current' : node.state === 'EXCEPTION' ? 'blocked' : 'upcoming') as 'complete' | 'current' | 'upcoming' | 'blocked',
-      badge: checklistBadge,
-      onClick: () => onSelectNode(node.key),
-    };
-  });
-  const completedSteps = workflowSteps.filter((step) => step.state === 'complete').length;
+  const stageFlowEntries = buildLegacyStageFlowNodes(projection);
+  const selectedFlowEntry = stageFlowEntries.find((entry) => entry.stationKey === selectedNodeKey)
+    || (selectedNodeKey === 'EXCEPTIONS' ? [...stageFlowEntries].reverse().find((entry) => entry.node.status === 'COMPLETED') : undefined)
+    || stageFlowEntries.find((entry) => entry.stationKey === projection.currentNodeKey)
+    || stageFlowEntries[0];
+  const selectedStage = selectedFlowEntry ? PCN_DOSSIER_FLOW_STAGES.find((stage) => stage.id === getPcnStageForNode(selectedFlowEntry.node)) : undefined;
+  const completedStages = PCN_DOSSIER_FLOW_STAGES.filter((stage) => {
+    const stageNodes = stageFlowEntries.filter((entry) => getPcnStageForNode(entry.node) === stage.id);
+    return stageNodes.length > 0 && stageNodes.every((entry) => entry.node.status === 'COMPLETED');
+  }).length;
   return <section className="min-w-0 space-y-3" data-testid="pcn-legacy-workflow-shell" aria-label="Tiến trình hồ sơ PCN">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[11px] font-black uppercase tracking-[0.12em] text-emerald-600">PCN · Tiến trình hồ sơ</p><h2 className="mt-1 text-base font-black text-slate-950">Xử lý từng việc theo đúng thứ tự</h2></div><p className="text-sm text-slate-600" aria-live="polite">{completedSteps}/{workflowSteps.length} việc đã xong · {currentNode.title}</p></div>
-    <div className="h-1.5 overflow-hidden rounded-full bg-slate-200" aria-hidden="true"><div className="h-full rounded-full bg-emerald-600 transition-[width] duration-200" style={{ width: `${workflowSteps.length ? Math.round((completedSteps / workflowSteps.length) * 100) : 0}%` }} /></div>
-    <PgdcnWorkflowRail steps={workflowSteps} onSelectStep={onSelectNode} />
+    <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xs font-black uppercase tracking-wider text-slate-700">Bước xử lý</h2><p className="text-[11px] font-medium text-slate-500" aria-live="polite">{selectedStage ? <>Đang chọn: <strong className="text-slate-800">{selectedStage.label}</strong> · {completedStages}/7 giai đoạn đã xong</> : currentNode.title}</p></div>
+    <PcnDossierFlow
+      nodes={stageFlowEntries.map((entry) => entry.node)}
+      projections={{}}
+      selectedNodeId={selectedFlowEntry?.node.id || null}
+      onSelectNode={(nodeId) => {
+        const entry = stageFlowEntries.find((candidate) => candidate.node.id === nodeId);
+        if (entry) onSelectNode(entry.stationKey);
+      }}
+    />
     <DossierWorkflowSummaryOverview station={currentNode} completeness={completeness} ownerLabel={ownerLabel} exceptionReason={exceptionReason} canEdit={canEdit} onOpenExceptionReason={onOpenExceptionReason} onOpenStep={onOpenStep} onOpenChecklist={onOpenChecklist} onOpenGeneration={onOpenGeneration} onOpenApprovalModule={onOpenApprovalModule} onOpenProposal={onOpenProposal} onCompleteStep={onCompleteStep} completionDisabled={completionDisabled} completionTitle={completionTitle} />
     <DossierStationChecklist stationChecklist={completeness.stationChecklist} users={users} />
   </section>;
@@ -617,6 +659,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
   const dossierEntityIds = new Set<string>([dossier.id, proposal?.id, ...dossierRequests.map((request) => request.id), ...dossierResults.map((result) => result.id), ...dossierApprovalSteps.map((step) => step.id), issuance?.id].filter((id): id is string => Boolean(id)));
   const dossierActivityLogs = activityLogs.filter((log) => Boolean(log.entityId && dossierEntityIds.has(log.entityId))).sort((left, right) => String(right.createdAt || '').localeCompare(String(left.createdAt || '')));
   const dossierWorkflowProjection = buildPcnDossierWorkflowMap({ dossier, proposal, activityLogs: dossierActivityLogs, requirements, documents: dossierDocumentsForCompleteness, compact: true });
+  const dossierWorkflowDetailProjection = buildPcnDossierWorkflowMap({ dossier, proposal, activityLogs: dossierActivityLogs, requirements, documents: dossierDocumentsForCompleteness });
   const isSystemManager = isPcnSystemManager(currentUser);
   const dossierEditDenial = getPcnDossierEditDenial(dossier, currentUser);
   const canEditDossier = isSystemManager && dossierEditDenial === null;
@@ -1069,7 +1112,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
   </div>
 
   <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-    {/* Left Column (65-70%): Form inputs, step action panel (PcnDossierNodeWorkPanel), and document checklist table */}
+    {/* Left Column (60%): Form inputs, step action panel (PcnDossierNodeWorkPanel), and document checklist table */}
     <div className={`min-w-0 flex flex-col gap-3 ${mobileWorkspaceTab === 'auxiliary' ? 'hidden lg:flex' : 'flex'}`}>
       {dossier.workflowSnapshot ? <PcnDossierWorkflowPanel
           dossier={dossier}
@@ -1118,7 +1161,7 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
         /> : (
         <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
           <DossierWorkflowSummary
-            projection={dossierWorkflowProjection}
+            projection={dossierWorkflowDetailProjection}
             selectedNodeKey={selectedWorkflowNodeKey}
             completeness={completeness}
             ownerLabel={ownerLabel}

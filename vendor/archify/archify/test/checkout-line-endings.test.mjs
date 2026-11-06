@@ -13,15 +13,19 @@ for (const autocrlf of ['true', 'input', 'false']) {
     const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-checkout-eol-'));
     const source = path.join(fixture, 'source');
     const checkout = path.join(fixture, 'checkout');
+    const globalConfig = path.join(fixture, 'empty-gitconfig');
+    const globalAttributes = path.join(fixture, 'empty-gitattributes');
+    fs.writeFileSync(globalConfig, '');
+    fs.writeFileSync(globalAttributes, '');
     // Ignore caller Git configuration, attributes, repository paths, and signing hooks.
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
     Object.assign(env, {
       GIT_CONFIG_NOSYSTEM: '1',
-      GIT_CONFIG_GLOBAL: os.devNull,
+      GIT_CONFIG_GLOBAL: globalConfig,
       GIT_ATTR_NOSYSTEM: '1',
     });
     const runGit = (cwd, args) => {
-      const result = spawnSync('git', ['-c', `core.attributesFile=${os.devNull}`, ...args], {
+      const result = spawnSync('git', ['-c', `core.attributesFile=${globalAttributes}`, ...args], {
         cwd, env, timeout: 30_000,
       });
       assert.equal(result.status, 0, `git ${args.join(' ')}: ${result.error || result.stderr}`);

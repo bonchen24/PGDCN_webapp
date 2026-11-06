@@ -39,7 +39,7 @@ test('read-only users see the selected step, missing requirement, and a permissi
     onCompleteCurrent: () => undefined,
   }));
 
-  assert.match(markup, /data-testid="pgd-step-position"[^>]*>Bước 1\/12/);
+  assert.match(markup, /data-testid="pgd-step-position"[^>]*>Giai đoạn 1\/7 · Giai đoạn đang chọn/);
   assert.match(markup, /data-testid="pgd-step-continuation-guidance"/);
   assert.match(markup, /Tài khoản hiện tại chỉ có quyền xem/);
   assert.match(markup, /nhờ người có quyền PGD bổ sung tài liệu/);

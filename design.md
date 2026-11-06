@@ -148,11 +148,11 @@ Mỗi node là một **vùng thao tác và cổng bắt buộc**: người đư�
   - 7: `SIGNED`, `RESULT_RETURNED`, `ARCHIVED` → Giai đoạn 7 (`issuance-archive`)
 - **Tương thích ngược**:
   Hàm `canonicalizePgdStepId` quy đổi mượt mà các mã định danh legacy (`capability`, `assignment`, `sampling`, `lab-request`, `lab-result`,...) về đúng 7 giai đoạn cha mà không làm gián đoạn bookmark hoặc dữ liệu cũ.
-- **Bố cục màn hình Superneat (Desktop 65/35 split & Mobile touch rail)**:
-  - Phía trên: Thanh rail ngang hiển thị 7 tab (`01 → 07`) với số thứ tự, nhãn, loại và tiến độ xác minh. Tab được chọn có viền `ring-2 ring-blue-500 ring-offset-1`.
-  - Cột chính (65%): Bảng danh mục công việc trong giai đoạn (Stage Tasks Breakdown), kèm các form nghiệp vụ tích hợp và panel thao tác.
-  - Cột phụ (35%): Trợ lý AI TVCI, căn cứ quy chuẩn kỹ thuật (QC20), nhật ký hồ sơ và bằng chứng hiện trường.
-  - Mobile: Rail cuộn ngang cảm ứng mượt mà (`mobile-scroll-x`), tab chuyển đổi linh hoạt giữa Công việc (65%) và Hồ sơ/Trợ lý (35%).
+- **Bố cục màn hình chi tiết PGD (desktop 60/40, mobile ưu tiên công việc)**:
+  - Một card **Bước xử lý** ở cột trái chứa đúng bảy nút giai đoạn `01–07`; nội dung thao tác và checklist chỉ hiển thị cho giai đoạn được chọn. Nút đang chọn có trạng thái nền/viền rõ ràng và vòng focus chỉ xuất hiện khi điều hướng bàn phím.
+  - Cột trái chiếm khoảng 60% cho công việc hồ sơ; cột phải chiếm khoảng 40% và dành riêng cho reader tài liệu.
+  - Trợ lý, căn cứ kỹ thuật, lịch sử và bằng chứng nằm trong phần thông tin liên quan được thu gọn, mặc định đóng.
+  - Mobile chuyển giữa **Công việc** và **Xem tài liệu**; rail cuộn bên trong card khi cần và không làm tràn ngang toàn trang.
 
 #### 0A.2.4. Chuẩn hóa 7 giai đoạn cho PCN & Loại bỏ hoàn toàn giao diện Thẻ (100% Data Table)
 

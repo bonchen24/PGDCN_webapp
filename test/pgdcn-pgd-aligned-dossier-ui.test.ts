@@ -23,34 +23,31 @@ test('PCN dossier management follows the PGD queue and toolbar anatomy', () => {
 test('PCN dossier detail follows the PGD focus surface and work-panel rhythm', () => {
   const detail = read('../components/PcnDossierDetailView.tsx');
   const flow = read('../components/PcnDossierFlow.tsx');
-  const workPanel = read('../components/PcnDossierNodeWorkPanel.tsx');
+  const workflow = read('../components/PcnDossierWorkflowPanel.tsx');
 
-    assert.match(detail, /data-testid="pcn-dossier-focus-shell"/);
-    assert.match(detail, /data-testid="pcn-legacy-workflow-shell"/);
-    assert.match(detail, /data-testid="pcn-legacy-review-summary"/);
-    assert.match(detail, /Việc cần làm ngay/);
-  assert.match(detail, /bg-white px-3 py-3 sm:flex-row/);
-  assert.match(detail, /Xem danh sách tài liệu/);
-  assert.doesNotMatch(detail, /Mở checklist/);
-  assert.doesNotMatch(detail, /PcnWorkflowMap/);
-  assert.match(detail, /PgdcnWorkflowRail/);
-  assert.doesNotMatch(detail, /Mở sơ đồ quy trình/);
-  assert.match(detail, /data-testid="pcn-workflow-step-checklist"[\s\S]*<summary/);
-  assert.match(detail, /data-testid="pcn-operational-forms"[\s\S]*<summary/);
-  assert.match(flow, /PCN · Tiến trình hồ sơ/);
-  assert.match(flow, /min-h-\[106px\]\s+w-\[218px\]/);
-  assert.match(workPanel, /data-testid="pcn-dossier-review-summary"/);
-  assert.match(workPanel, /bg-emerald-50\/50/);
-  assert.match(workPanel, /min-h-0 space-y-4 p-4/);
+  assert.match(detail, /lg:grid-cols-\[minmax\(0,3fr\)_minmax\(0,2fr\)\]/);
+  assert.match(detail, /data-testid="pcn-dossier-mobile-switcher"[\s\S]*Công việc[\s\S]*Xem tài liệu/);
+  assert.match(detail, /<PcnDossierWorkflowPanel[\s\S]*onSelectFile=\{\(file\) =>/);
+  assert.match(detail, /setSelectedReaderFileId\(file\.id\); setMobileWorkspaceTab\('auxiliary'\);/);
+  assert.match(detail, /<PcnDossierDocumentReader[\s\S]*documents=\{dossierDocuments\}[\s\S]*attachments=\{dossierAttachments\}/);
+  assert.match(detail, /<details data-testid="pcn-dossier-support"/);
+  assert.match(flow, /export const PCN_DOSSIER_FLOW_STAGES/);
+  assert.match(workflow, /<h2[^>]*id="pcn-workflow-step-title"[^>]*>Bước xử lý<\/h2>/);
+  assert.match(workflow, /<PcnDossierFlow[\s\S]*<PcnDossierNodeWorkPanel/);
+  assert.doesNotMatch(flow, /w-\[218px\]|min-h-\[106px\]/);
 });
 
 test('workflow presentation stays aligned with current work on PCN and PGD dossier surfaces', () => {
   const pcnWorkflow = read('../components/PcnDossierWorkflowPanel.tsx');
+  const pcnFlow = read('../components/PcnDossierFlow.tsx');
+  const pcnDetail = read('../components/PcnDossierDetailView.tsx');
   const pgdWorkspace = read('../components/PgdWorkspace.tsx');
-  assert.match(pcnWorkflow, /Việc cần làm:/);
-  assert.match(pcnWorkflow, /data-testid="pcn-workflow-map-disclosure"/);
+  assert.match(pcnWorkflow, /data-testid="pcn-workflow-step-card"[\s\S]*<PcnDossierFlow[\s\S]*<PcnDossierNodeWorkPanel/);
+  assert.match(pcnFlow, /aria-label="Các bước xử lý hồ sơ"/);
+  assert.match(pcnDetail, /<PcnDossierDocumentReader/);
   assert.match(pgdWorkspace, /<PgdDossierFlow/);
   assert.match(pgdWorkspace, /<PgdDossierStepWorkPanel request=/);
+  assert.match(pgdWorkspace, /<PgdDossierDocumentReader/);
 });
 test('contextual assistant opens with the current dossier in both domains', () => {
   const appShell = read('../components/PgdcnAppShell.tsx');

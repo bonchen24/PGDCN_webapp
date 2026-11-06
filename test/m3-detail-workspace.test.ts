@@ -6,7 +6,7 @@ import test, { describe, it } from 'node:test';
 const rootDir = path.resolve(import.meta.dirname, '..');
 const read = (relPath: string) => fs.readFileSync(path.join(rootDir, relPath), 'utf8');
 
-describe('Milestone 3: Detail Workspace 65/35 & Horizontal Workflow Rail (F09-F12)', () => {
+describe('Milestone 3: Detail Workspace 60/40 & Seven-Stage Workflow (F09-F12)', () => {
   it('F09: Completely removes PcnWorkflowMap and legacy graphics from PCN Detail Workspace', () => {
     const detailSource = read('components/PcnDossierDetailView.tsx');
 
@@ -16,72 +16,58 @@ describe('Milestone 3: Detail Workspace 65/35 & Horizontal Workflow Rail (F09-F1
     assert.doesNotMatch(detailSource, /showLegacyGraphic/);
     assert.doesNotMatch(detailSource, /data-testid="pcn-legacy-process-map"/);
 
-    // Operational UI renders workflow rail and workflow panel instead
-    assert.match(detailSource, /<PgdcnWorkflowRail/);
+    // Both snapshot-backed and adapted legacy dossiers use the seven-stage flow.
+    assert.match(detailSource, /<PcnDossierFlow/);
+    assert.match(detailSource, /buildLegacyStageFlowNodes/);
+    assert.match(detailSource, /dossierWorkflowDetailProjection/);
     assert.match(detailSource, /PcnDossierWorkflowPanel/);
   });
 
-  it('F10: Enhances PgdcnWorkflowRail with accent ring, checklist badge, and smooth horizontal touch scroll', () => {
-    const primitivesSource = read('components/PgdcnUiPrimitives.tsx');
+  it('F10: PCN workflow renders seven accessible stage tabs with keyboard selection', () => {
+    const flowSource = read('components/PcnDossierFlow.tsx');
 
-    // Current step accent ring and highlight
-    assert.match(primitivesSource, /ring-2 ring-indigo-500 ring-offset-1/);
-    assert.match(primitivesSource, /border-indigo-400 bg-indigo-50\/90 text-indigo-950 font-black/);
-
-    // Checklist badge count formatting
-    assert.match(primitivesSource, /checklistCount\?:\s*\{\s*completed:\s*number;\s*total:\s*number\s*\}/);
-    assert.match(primitivesSource, /step\.checklistCount\s*\?\s*`\$\{step\.checklistCount\.completed\}\/\$\{step\.checklistCount\.total\}\s*việc`/);
-
-    // Smooth horizontal touch scrolling
-    assert.match(primitivesSource, /mobile-scroll-x/);
-    assert.match(primitivesSource, /overflow-x-auto/);
-    assert.match(primitivesSource, /scroll-smooth/);
-    assert.match(primitivesSource, /touch-pan-x/);
-
-    // Semantic list accessibility
-    assert.match(primitivesSource, /role="list"/);
-    assert.match(primitivesSource, /role="listitem"/);
-    assert.match(primitivesSource, /aria-current=\{step\.state === 'current' \? 'step' : undefined\}/);
+    assert.match(flowSource, /PCN_DOSSIER_FLOW_STAGES\s*:\s*readonly PcnStageDefinition\[\]\s*=\s*\[/);
+    assert.match(flowSource, /role="tablist"/);
+    assert.match(flowSource, /role="tab"/);
+    assert.match(flowSource, /aria-posinset=\{index \+ 1\}/);
+    assert.match(flowSource, /aria-setsize=\{PCN_DOSSIER_FLOW_STAGES\.length\}/);
+    assert.match(flowSource, /event\.key === 'ArrowRight'/);
+    assert.match(flowSource, /event\.key === 'Home' \|\| event\.key === 'End'/);
+    assert.match(flowSource, /aria-selected=\{isSelected\}/);
   });
 
-  it('F11: Implements PCN Detail Workspace 65/35 desktop split and mobile tab switcher', () => {
+  it('F11: Implements PCN Detail Workspace 60/40 desktop split and mobile work/reader switcher', () => {
     const detailSource = read('components/PcnDossierDetailView.tsx');
 
-    // Desktop 65/35 layout tokens
-    assert.match(detailSource, /grid grid-cols-1 lg:grid-cols-\[65%_35%\] xl:grid-cols-\[68%_32%\] gap-4/);
+    assert.match(detailSource, /grid grid-cols-1 gap-4 lg:grid-cols-\[minmax\(0,3fr\)_minmax\(0,2fr\)\]/);
 
-    // Mobile adaptive workspace mode switcher
-    assert.match(detailSource, /mobileWorkspaceTab/);
-    assert.match(detailSource, /Công việc & Checklist \(Chính 65%\)/);
-    assert.match(detailSource, /Xem trước & Trợ lý \(Phụ 35%\)/);
+    assert.match(detailSource, /data-testid="pcn-dossier-mobile-switcher"/);
+    assert.match(detailSource, /Công việc\s*<\/button>/);
+    assert.match(detailSource, /Xem tài liệu\s*<\/button>/);
+    assert.match(detailSource, /useState<'main' \| 'auxiliary'>\('main'\)/);
 
-    // Left Column (65%): Form inputs, PcnDossierNodeWorkPanel, and checklist
     assert.match(detailSource, /dossier\.workflowSnapshot \? <PcnDossierWorkflowPanel/);
     assert.match(detailSource, /tabContent/);
-
-    // Right Column (35%): Live preview, legal standards, AI assistant, activity logs
-    assert.match(detailSource, /Xem trước & Hồ sơ/);
-    assert.match(detailSource, /Căn cứ pháp lý & Quy chuẩn/);
-    assert.match(detailSource, /Trợ lý AI TVCI/);
-    assert.match(detailSource, /Lịch sử hoạt động/);
+    assert.match(detailSource, /<PcnDossierDocumentReader/);
+    assert.match(detailSource, /<details data-testid="pcn-dossier-support"/);
   });
 
   it('F12: PGD Dossier Flow uses compact horizontal rail matching PgdcnWorkflowRail', () => {
     const flowSource = read('components/PgdDossierFlow.tsx');
 
-    // Replaces 218px wide cumbrous cards with compact horizontal rail
+    // Replaces 218px wide cards with a compact, locally scrollable stage rail
     assert.doesNotMatch(flowSource, /w-\[218px\]/);
-    assert.match(flowSource, /mobile-scroll-x/);
-    assert.match(flowSource, /scroll-smooth/);
+    assert.match(flowSource, /overflow-x-auto overscroll-x-contain/);
     assert.match(flowSource, /touch-pan-x/);
     assert.match(flowSource, /role="tablist"/);
     assert.match(flowSource, /role="tab"/);
 
-    // Prominent highlight on active step
-    assert.match(flowSource, /ring-2 ring-blue-500 ring-offset-1/);
+    assert.match(flowSource, /aria-selected=\{selected\}/);
+    assert.match(flowSource, /focus-visible:ring-2 focus-visible:ring-blue-500/);
+    assert.match(flowSource, /'border-blue-600 bg-blue-50 text-blue-950 shadow-xs'/);
   });
 
-  it('F12: PGD Request Detail activates unhidden 65/35 desktop workspace without stacked disclosures', () => {
+  it('F12: PGD Request Detail activates a 60/40 workspace without duplicate disclosures', () => {
     const workspaceSource = read('components/PgdWorkspace.tsx');
 
     // Unhidden workflow rail at top of detail view
@@ -92,21 +78,20 @@ describe('Milestone 3: Detail Workspace 65/35 & Horizontal Workflow Rail (F09-F1
     assert.doesNotMatch(workspaceSource, /<details[^>]*pgd-dossier-workflow-disclosure/);
     assert.doesNotMatch(workspaceSource, /<details[^>]*pgd-dossier-business-disclosure/);
 
-    // Desktop 65/35 layout active
-    assert.match(workspaceSource, /grid-cols-1 lg:grid-cols-\[65%_35%\] xl:grid-cols-\[68%_32%\] gap-4/);
+    assert.match(workspaceSource, /grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-\[minmax\(0,3fr\)_minmax\(0,2fr\)\] lg:gap-4/);
 
-    // Mobile adaptive tab switcher
+    // Mobile work and reader tabs
     assert.match(workspaceSource, /mobileSection/);
-    assert.match(workspaceSource, /Checklist & Thao tác \(Chính 65%\)/);
-    assert.match(workspaceSource, /Hồ sơ & Trợ lý \(Phụ 35%\)/);
+    assert.match(workspaceSource, /id="pgd-dossier-mobile-tab-work"/);
+    assert.match(workspaceSource, /id="pgd-dossier-mobile-tab-reader"/);
+    assert.match(workspaceSource, /aria-selected=\{mobileSection === 'work'\}/);
+    assert.match(workspaceSource, /aria-selected=\{mobileSection === 'reader'\}/);
 
-    // Left Column (65%): Quick customer info (4 cards) and PgdDossierStepWorkPanel
+    // Work card contains the seven-stage selector, current work and the reader is a sibling region.
     assert.match(workspaceSource, /data-testid="pgd-dossier-step-work-panel"/);
-    assert.match(workspaceSource, /lg:grid-cols-4/);
-
-    // Right Column (35%): AI Assistant, Standards/Scope (QC20), Business workspace
-    assert.match(workspaceSource, /Trợ lý hồ sơ PGD/);
-    assert.match(workspaceSource, /Tiêu chuẩn & Căn cứ kỹ thuật \(QC20\)/);
-    assert.match(workspaceSource, /<PgdDossierBusinessWorkspace/);
+    assert.match(workspaceSource, /<PgdDossierFlow/);
+    assert.match(workspaceSource, /<PgdDossierStepWorkPanel/);
+    assert.match(workspaceSource, /<aside role="tabpanel"[^>]*aria-label="Đọc tài liệu hồ sơ PGD"[^>]*>\s*<PgdDossierDocumentReader/);
+    assert.match(workspaceSource, /<details data-testid="pgd-dossier-secondary-disclosure"/);
   });
 });

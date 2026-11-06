@@ -25,7 +25,7 @@ test('PGD workspace selects WorkspaceRoot section with accessible label for embe
   );
 
   assert.ok(
-    /className=\{embedded\s*\?\s*['"]min-w-0['"]\s*:\s*['"]mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto['"]\}/.test(workspaceRootAttributes),
+    /className=\{embedded\s*\?\s*standaloneRequest\s*\?\s*['"]flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden['"]\s*:\s*['"]min-w-0['"]\s*:\s*['"]mobile-scroll-y min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto['"]\}/.test(workspaceRootAttributes),
     'Opening <WorkspaceRoot> tag must preserve root className expression',
   );
 
@@ -51,34 +51,14 @@ test('PGD drafting workspace uses section with accessible label for drafting-and
   );
 });
 
-test('PGD hidden dossier detail wrapper uses labeled section and contains no main landmark before sibling aside', () => {
-  const hiddenWrapperMatch = pgdWorkspace.match(
-    /<div\b[^>]*?className=['"][^'"]*hidden mt-3 grid min-w-0 gap-3 lg:grid-cols-\[minmax\(0,1\.3fr\)_minmax\(18rem,0\.7fr\)\][^'"]*['"]>([\s\S]*?<\/aside>)\s*<\/div>/,
-  );
-  assert.ok(
-    Boolean(hiddenWrapperMatch),
-    'PGD workspace must contain uniquely identified hidden dossier detail wrapper',
-  );
+test('PGD dossier detail exposes seven-stage work and reader panels without nested main landmarks', () => {
+  const detailStart = pgdWorkspace.indexOf('function PgdRequestDetail');
+  const detailEnd = pgdWorkspace.indexOf('export type PgdWorkspaceProps', detailStart);
+  const detail = detailStart >= 0 && detailEnd > detailStart ? pgdWorkspace.slice(detailStart, detailEnd) : '';
 
-  const hiddenWrapperContent = hiddenWrapperMatch ? hiddenWrapperMatch[1] : '';
-
-  assert.ok(
-    /<section\b[^>]*?\baria-label=['"]Thông tin và xử lý hồ sơ PGD['"][^>]*?\bclassName=['"]min-w-0 space-y-3['"]|<section\b[^>]*?\bclassName=['"]min-w-0 space-y-3['"][^>]*?\baria-label=['"]Thông tin và xử lý hồ sơ PGD['"]/.test(hiddenWrapperContent),
-    "Hidden dossier detail wrapper must use a <section> with aria-label='Thông tin và xử lý hồ sơ PGD' and className='min-w-0 space-y-3'",
-  );
-
-  assert.ok(
-    !/<main\b/.test(hiddenWrapperContent),
-    'Hidden dossier detail wrapper must not contain opening <main> tag',
-  );
-
-  assert.ok(
-    !/<\/main>/.test(hiddenWrapperContent),
-    'Hidden dossier detail wrapper must not contain closing </main> tag',
-  );
-
-  assert.ok(
-    /<\/section>\s*<aside\b/.test(hiddenWrapperContent),
-    'Hidden dossier detail wrapper must close that section before its sibling aside',
-  );
+  assert.match(detail, /data-testid="pgd-dossier-focus-shell" aria-label=\{`Không gian làm việc hồ sơ PGD/);
+  assert.match(detail, /lg:grid-cols-\[minmax\(0,3fr\)_minmax\(0,2fr\)\]/);
+  assert.match(detail, /data-testid="pgd-dossier-step-work-panel"[\s\S]*<PgdDossierFlow/);
+  assert.match(detail, /<aside role="tabpanel" id="pgd-dossier-reader-region"[\s\S]*<PgdDossierDocumentReader/);
+  assert.doesNotMatch(detail, /<main\b|<\/main>/, 'The detail shell must not add a second main landmark');
 });

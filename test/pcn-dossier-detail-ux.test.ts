@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const detailSource = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const workflowSource = fs.readFileSync(new URL('../components/PcnDossierWorkflowPanel.tsx', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const ownerControlSource = fs.readFileSync(new URL('../components/PcnDossierAssignmentControl.tsx', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 test('dossier detail exposes a compact context summary before secondary content', () => {
   assert.match(detailSource, /data-testid="pcn-dossier-context-summary"/);
@@ -16,12 +17,12 @@ test('dossier checklist displays the template stage for custom requirements', ()
   assert.match(detailSource, /workflowStageLabel \? ` · Nhóm mẫu:/);
 });
 
-test('workflow-first detail keeps the current work ahead of the collapsed step flow', () => {
-  assert.match(workflowSource, /data-testid="pcn-current-step-summary"/);
-  assert.match(workflowSource, /Bước cần xử lý/);
-  assert.match(workflowSource, /data-testid="pcn-workflow-map"/);
-  assert.match(workflowSource, /PcnDossierFlow/);
-  assert.match(workflowSource, /data-testid="pcn-workflow-map-disclosure"/);
+test('workflow-first detail keeps the selected seven-stage work panel in the primary column', () => {
+  assert.match(workflowSource, /data-testid="pcn-dossier-workflow-first"/);
+  assert.match(workflowSource, /data-testid="pcn-workflow-step-card"[\s\S]*>Bước xử lý<\/h2>[\s\S]*<PcnDossierFlow[\s\S]*<PcnDossierNodeWorkPanel/);
+  assert.match(workflowSource, /Đang chọn: <strong/);
+  assert.match(detailSource, /lg:grid-cols-\[minmax\(0,3fr\)_minmax\(0,2fr\)\]/);
+  assert.match(detailSource, /<details data-testid="pcn-dossier-support"/);
 });
 
 test('detail primary work region uses action-first language', () => {
@@ -40,7 +41,8 @@ test('owner assignment status and action render at the top of detail before eith
   assert.ok(ownerPanel > contentStart, 'owner status must appear inside detail content');
   assert.ok(snapshotWorkflow < 0 || ownerPanel < snapshotWorkflow, 'owner status must precede the snapshot workflow rail');
   assert.ok(legacyWorkflow < 0 || ownerPanel < legacyWorkflow, 'owner status must precede the legacy workflow rail');
-  assert.match(detailSource, /Chưa giao người phụ trách/);
+  assert.match(detailSource, /data-testid="pcn-dossier-owner-assignment"/);
+  assert.match(ownerControlSource, /unassignedLabel="Chưa phân công"/);
   assert.equal((detailSource.match(/<DossierOwnerPanel\s/g) || []).length, 1, 'assignment panel must be rendered once');
   const overviewTab = detailSource.match(/const overviewTab =([\s\S]*?)\n  const dossierOverviewTab/)?.[1] || '';
   assert.doesNotMatch(overviewTab, /DossierOwnerPanel/, 'overview must not repeat the assignment panel');

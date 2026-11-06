@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-const stylesheet = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+const stylesheet = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 test('global UI scale is 100% and stays within the viewport', () => {
   assert.match(
@@ -17,7 +17,7 @@ test('global UI scale is 100% and stays within the viewport', () => {
 });
 
 test('defines a scoped compact density without overriding report forms or touch targets', () => {
-  assert.match(stylesheet, /\.app-compact\s*\{/);
+  assert.match(stylesheet, /\.app-compact\s*,\s*\.pcn-compact\s*\{/);
   assert.match(stylesheet, /\.app-compact[\s\S]*\.text-sm/);
   assert.match(stylesheet, /\.app-compact[\s\S]*class~="gap-3"/);
   assert.match(stylesheet, /\.app-compact[\s\S]*class~="gap-6"/);

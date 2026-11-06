@@ -11,9 +11,8 @@
  *    - Touch scrolling and responsive styling (touch-pan-x, mobile-scroll-x, overflow-x-auto)
  *    - Interactive click handlers and cursor-pointer states
  * 2. PgdDossierFlow empirical component rendering & stress harness
- *    - Elimination of heavy 218px cards
- *    - Active step ring highlight (ring-blue-500)
- *    - First step (intake) vs Last step (return) boundary checks & ChevronRight count
+ *    - Compact seven-stage card and accessible selected/focus states
+ *    - First stage (intake) vs last stage (issuance/archive) boundary checks
  *    - Lifecycle progression & step locking (DRAFT, FIELD_INSPECTION, LEADERSHIP_APPROVAL, ARCHIVED)
  *    - Fallback behavior on invalid step IDs, unknown statuses, and missing evidence
  *    - Verified step completion styling with evidence
@@ -294,7 +293,7 @@ describe('Empirical Suite 1: PgdcnWorkflowRail Rendering & Boundary Stress Testi
 
 describe('Empirical Suite 2: PgdDossierFlow Compact Rail & State Stress Testing', () => {
 
-  it('2.1: Completely eliminates legacy heavy cards in favor of compact horizontal rail', () => {
+  it('2.1: Renders a compact seven-button stage rail inside its own scroll container', () => {
     const html = renderToStaticMarkup(React.createElement(PgdDossierFlow, {
       status: 'DRAFT',
       selectedStepId: 'intake',
@@ -311,9 +310,8 @@ describe('Empirical Suite 2: PgdDossierFlow Compact Rail & State Stress Testing'
     const scrollContainer = $('[data-testid="pgd-dossier-flow-scroll"]');
     assert.equal(scrollContainer.length, 1, 'Scroll container must be present');
     const scrollClass = scrollContainer.attr('class') || '';
-    assert.ok(scrollClass.includes('mobile-scroll-x'), 'Must contain mobile-scroll-x');
     assert.ok(scrollClass.includes('overflow-x-auto'), 'Must contain overflow-x-auto');
-    assert.ok(scrollClass.includes('scroll-smooth'), 'Must contain scroll-smooth');
+    assert.ok(scrollClass.includes('overscroll-x-contain'), 'Must contain overscroll-x-contain');
     assert.ok(scrollClass.includes('touch-pan-x'), 'Must contain touch-pan-x');
 
     // Assert tablist with exactly 7 stage tabs
@@ -323,7 +321,7 @@ describe('Empirical Suite 2: PgdDossierFlow Compact Rail & State Stress Testing'
     assert.equal(tabs.length, 7, 'Must render exactly 7 compact stage tabs');
   });
 
-  it('2.2: Selected step in PGD rail receives prominent blue ring (ring-2 ring-blue-500 ring-offset-1)', () => {
+  it('2.2: Selected step has a distinct selected state and every tab has visible keyboard focus styling', () => {
     const html = renderToStaticMarkup(React.createElement(PgdDossierFlow, {
       status: 'PREPARING',
       selectedStepId: 'plan', // Stage 3
@@ -335,12 +333,10 @@ describe('Empirical Suite 2: PgdDossierFlow Compact Rail & State Stress Testing'
     assert.equal(step3Tab.length, 1, 'Tab 3 (plan) must exist');
 
     const step3Class = step3Tab.attr('class') || '';
-    assert.ok(step3Class.includes('ring-2'), 'Selected tab must have ring-2');
-    assert.ok(step3Class.includes('ring-blue-500'), 'Selected tab must have ring-blue-500');
-    assert.ok(step3Class.includes('ring-offset-1'), 'Selected tab must have ring-offset-1');
-    assert.ok(step3Class.includes('border-blue-500'), 'Selected tab must have border-blue-500');
-    assert.ok(step3Class.includes('bg-blue-50/90'), 'Selected tab must have bg-blue-50/90');
+    assert.ok(step3Class.includes('border-blue-600'), 'Selected tab must have selected border color');
+    assert.ok(step3Class.includes('bg-blue-50'), 'Selected tab must have selected background');
     assert.ok(step3Class.includes('text-blue-950'), 'Selected tab must have text-blue-950');
+    assert.ok(step3Class.includes('focus-visible:ring-2 focus-visible:ring-blue-500'), 'Tab must expose a keyboard focus ring');
     assert.equal(step3Tab.attr('aria-selected'), 'true', 'Selected tab must have aria-selected="true"');
     assert.equal(step3Tab.attr('tabindex'), '0', 'Selected tab must have tabindex="0"');
 
@@ -348,14 +344,13 @@ describe('Empirical Suite 2: PgdDossierFlow Compact Rail & State Stress Testing'
     for (const otherId of ['intake', 'review-assignment', 'execution']) {
       const otherTab = $(`#pgd-dossier-step-tab-${otherId}`);
       const otherClass = otherTab.attr('class') || '';
-      assert.ok(!otherClass.includes('ring-offset-1'), `Tab ${otherId} must NOT have active ring-offset-1`);
-      assert.doesNotMatch(otherClass, /(?<!focus-visible:)ring-2\s+ring-blue-500/, `Tab ${otherId} must NOT have persistent ring-2 ring-blue-500`);
+      assert.ok(!otherClass.includes('bg-blue-50 '), `Tab ${otherId} must not look selected`);
       assert.equal(otherTab.attr('aria-selected'), 'false', `Tab ${otherId} must have aria-selected="false"`);
       assert.equal(otherTab.attr('tabindex'), '-1', `Tab ${otherId} must have tabindex="-1"`);
     }
   });
 
-  it('2.3: Boundary testing: Stage 1 (Intake) vs Stage 7 (Issuance & Archive) & Chevron separator count', () => {
+  it('2.3: First and final stage buttons expose correct positions and numbering', () => {
     const html = renderToStaticMarkup(React.createElement(PgdDossierFlow, {
       status: 'ARCHIVED',
       selectedStepId: 'issuance-archive',
@@ -375,11 +370,9 @@ describe('Empirical Suite 2: PgdDossierFlow Compact Rail & State Stress Testing'
     assert.equal(step7.attr('aria-setsize'), '7', 'Stage 7 must have aria-setsize="7"');
     assert.equal(step7.attr('aria-selected'), 'true', 'Stage 7 must be selected');
 
-    // Boundary check on ChevronRight separators:
-    // With 7 stages, there should be EXACTLY 6 ChevronRight separators between items!
-    // The 7th item must NOT have a trailing ChevronRight.
-    const chevrons = $('[role="tablist"] svg.text-slate-300');
-    assert.equal(chevrons.length, 6, 'Must have exactly 6 ChevronRight separators for 7 stages');
+    assert.equal(step1.find('span').first().text().trim(), '01');
+    assert.equal(step7.find('span').first().text().trim(), '07');
+    assert.equal($('[role="tablist"] button[role="tab"]').length, 7);
   });
 
   it('2.4: Lifecycle progression & Step locking behavior (DRAFT vs FIELD vs LEADERSHIP vs ARCHIVED)', () => {
@@ -448,10 +441,11 @@ describe('Empirical Suite 2: PgdDossierFlow Compact Rail & State Stress Testing'
       onSelectStep: () => {},
     }));
     const $invalid = cheerio.load(htmlInvalidStep);
-    // Context container falls back gracefully to step 3 (PREPARING)
-    const contextBox = $invalid('[data-testid="pgd-dossier-flow-context"]');
-    assert.equal(contextBox.length, 1);
-    assert.ok(contextBox.text().includes('Giai đoạn 3: Lập kế hoạch'));
+    // An invalid requested stage falls back to the current stage and remains selected.
+    const tabs = $invalid('[role="tab"]');
+    assert.equal(tabs.length, 7);
+    assert.equal($invalid('#pgd-dossier-step-tab-plan').attr('aria-selected'), 'true');
+    assert.equal($invalid('[role="tab"][aria-selected="true"]').length, 1);
 
     // Unknown status fallback
     const unknownStepNum = getPgdDossierCurrentStepNumber('NON_STANDARD_STATUS' as any);
@@ -464,6 +458,7 @@ describe('Empirical Suite 2: PgdDossierFlow Compact Rail & State Stress Testing'
       evidence: undefined,
       onSelectStep: () => {},
     }));
+    assert.equal($invalid('[role="tab"][aria-selected="true"]').length, 1);
     assert.ok(htmlNoEvidence.includes('Chưa có dữ liệu xác minh'), 'Must handle undefined evidence gracefully');
   });
 
@@ -495,7 +490,7 @@ describe('Empirical Suite 2: PgdDossierFlow Compact Rail & State Stress Testing'
 
     // Verified completed review-assignment step
     const assignmentTab = $('#pgd-dossier-step-tab-review-assignment');
-    assert.ok((assignmentTab.attr('class') || '').includes('border-emerald-200 bg-emerald-50 text-emerald-800'));
+    assert.ok((assignmentTab.attr('class') || '').includes('border-emerald-200 bg-emerald-50/70 text-emerald-900'));
     assert.ok(assignmentTab.text().includes('Đã phân công'));
 
     // Results evaluation step shows completed count
@@ -503,8 +498,8 @@ describe('Empirical Suite 2: PgdDossierFlow Compact Rail & State Stress Testing'
     assert.ok(labResultTab.text().includes('2/2 KQTN'));
 
     // Issuance & Archive step shows archived
-    const returnTab = $('#pgd-dossier-step-tab-issuance-archive');
-    assert.ok(returnTab.text().includes('Đã lưu trữ'));
+    const archiveTab = $('#pgd-dossier-step-tab-issuance-archive');
+    assert.ok(archiveTab.text().includes('Đã lưu trữ'));
   });
 
   it('2.7: Mobile gesture helper text is present', () => {
@@ -516,8 +511,7 @@ describe('Empirical Suite 2: PgdDossierFlow Compact Rail & State Stress Testing'
     const $ = cheerio.load(html);
 
     const mobileHint = $('p.md\\:hidden');
-    assert.equal(mobileHint.length, 1);
-    assert.ok(mobileHint.text().includes('Vuốt ngang để xem đủ 7 giai đoạn quy trình'));
+    assert.equal(mobileHint.length, 0, 'The current card layout does not render legacy swipe helper copy');
   });
 });
 

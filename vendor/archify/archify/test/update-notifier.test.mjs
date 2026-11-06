@@ -13,6 +13,7 @@ import {
   checkForUpdate,
 } from '../scripts/check-update.mjs';
 import { DEFAULT_MANIFEST_URL, compareSemver, parseSemver } from '../scripts/update-contract.mjs';
+import { symlinkSkipReason } from './helpers/symlinks.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(here, '..');
@@ -20,6 +21,7 @@ const checkerPath = path.join(skillRoot, 'scripts', 'check-update.mjs');
 const contractPath = path.join(skillRoot, 'scripts', 'update-contract.mjs');
 const expectedRepository = 'https://github.com/tt-a1i/archify';
 const expectedManifestUrl = 'https://tt-a1i.github.io/archify/skill-updates/archify/stable.json';
+const symlinkSkip = symlinkSkipReason() || false;
 const baseTime = Date.parse('2026-08-28T08:00:00Z');
 const childCheckTimeoutMs = 2_000;
 const parentCheckTimeoutMs = 5_000;
@@ -1036,6 +1038,10 @@ test('a committed cache FIFO is ignored without blocking the update check', (t) 
 });
 
 test('a committed cache state symlink is ignored without following its target', (t) => {
+  if (symlinkSkip) {
+    t.skip(symlinkSkip);
+    return;
+  }
   const testFixture = fixture();
   t.after(() => fs.rmSync(testFixture.root, { recursive: true, force: true }));
   const cacheStatePath = statePath(testFixture);
@@ -2586,8 +2592,12 @@ test('a stale corrupt operation is fenced without exposing a failure', async (t)
   assert.equal(fs.existsSync(operationPath(testFixture, 'fenced', 1n)), true);
 });
 
-test('malformed active-claim shapes recover after the hard lease', async () => {
+test('malformed active-claim shapes recover after the hard lease', async (t) => {
   for (const shape of ['file', 'symlink', 'owner-directory']) {
+    if (shape === 'symlink' && symlinkSkip) {
+      await t.test('symlink shape', { skip: symlinkSkip }, () => {});
+      continue;
+    }
     const testFixture = fixture();
     try {
       const directory = stateDirectory(testFixture);
@@ -2764,6 +2774,10 @@ test('corrupt claim retirement preserves distinct 64-bit inode identities', asyn
 });
 
 test('a forged retirement symlink cannot move an active claim outside its cache partition', async (t) => {
+  if (symlinkSkip) {
+    t.skip(symlinkSkip);
+    return;
+  }
   const testFixture = fixture();
   t.after(() => fs.rmSync(testFixture.root, { recursive: true, force: true }));
   let requests = 0;

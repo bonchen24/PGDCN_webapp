@@ -381,28 +381,16 @@ describe('Tier 1: Feature Coverage & Contract Verification', () => {
     assert.match(primitivesSource, /state: 'complete' \| 'current' \| 'upcoming' \| 'blocked'/);
   });
 
-  it('F11 & F12: Detail Workspace 65/35 Desktop Split & Mobile Stack layout', () => {
-    // Workspace layout calculation helper
-    const getWorkspaceLayoutClasses = (isDesktop: boolean) => {
-      if (isDesktop) {
-        return {
-          containerClass: 'grid grid-cols-1 lg:grid-cols-[65%_35%] xl:grid-cols-[68%_32%] gap-4',
-          primaryRegionClass: 'min-w-0 flex flex-col gap-3',
-          secondaryRegionClass: 'min-w-0 flex flex-col gap-3 border-l border-slate-200 pl-4',
-        };
-      }
-      return {
-        containerClass: 'flex flex-col gap-3',
-        primaryRegionClass: 'w-full',
-        secondaryRegionClass: 'w-full mt-3',
-      };
-    };
-
-    const desktopLayout = getWorkspaceLayoutClasses(true);
-    assert.match(desktopLayout.containerClass, /lg:grid-cols-\[65%_35%\]/);
-
-    const mobileLayout = getWorkspaceLayoutClasses(false);
-    assert.match(mobileLayout.containerClass, /flex flex-col/);
+  it('F11 & F12: PCN detail uses a 60/40 work-reader split and mobile work/reader switcher', () => {
+    const detail = read('components/PcnDossierDetailView.tsx');
+    const workflow = read('components/PcnDossierWorkflowPanel.tsx');
+    const flow = read('components/PcnDossierFlow.tsx');
+    assert.match(detail, /lg:grid-cols-\[minmax\(0,3fr\)_minmax\(0,2fr\)\]/);
+    assert.match(detail, /data-testid="pcn-dossier-mobile-switcher"[\s\S]*Công việc[\s\S]*Xem tài liệu/);
+    assert.match(detail, /<PcnDossierDocumentReader/);
+    assert.match(workflow, /data-testid="pcn-workflow-step-card"[\s\S]*<PcnDossierFlow[\s\S]*<PcnDossierNodeWorkPanel/);
+    assert.match(flow, /data-testid="pcn-dossier-flow-scroll"[^>]*role="tablist"/);
+    assert.doesNotMatch(detail, /lg:grid-cols-\[65%_35%\]|xl:grid-cols-\[68%_32%\]/);
   });
 
   it('F13: 8-State Document Checklist & Stage Gate state machine', () => {

@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { chromium } from 'playwright';
 
-const baseUrl = process.env.PGDCN_LOGIN_TEST_BASE_URL || 'http://localhost:1357';
+const baseUrl = process.env.PGDCN_UX_BASE_URL || process.env.PGDCN_LOGIN_TEST_BASE_URL;
 
-test('TVCI login logo loads as a visible landscape wordmark', async () => {
+test('TVCI login logo loads as a visible landscape wordmark', {
+  skip: baseUrl ? false : 'Set PGDCN_UX_BASE_URL or PGDCN_LOGIN_TEST_BASE_URL to a running PGDCN app',
+}, async () => {
   const browser = await chromium.launch({ headless: true });
 
   try {

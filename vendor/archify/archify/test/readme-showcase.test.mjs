@@ -12,6 +12,15 @@ const skillRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(skillRoot, '..');
 const assetPath = path.join(repoRoot, 'docs', 'assets', 'archify-live-proof.gif');
 const receiptPath = path.join(repoRoot, 'docs', 'assets', 'archify-live-proof.json');
+const bashCommand = process.platform === 'win32'
+  ? [process.env.ProgramW6432, process.env.ProgramFiles, process.env['ProgramFiles(x86)']]
+    .filter(Boolean)
+    .flatMap((programFiles) => [
+      path.join(programFiles, 'Git', 'bin', 'bash.exe'),
+      path.join(programFiles, 'Git', 'usr', 'bin', 'bash.exe'),
+    ])
+    .find((candidate) => fs.existsSync(candidate))
+  : 'bash';
 
 function sha256(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -261,7 +270,11 @@ test('all README languages end with the self-hosted star history chart', () => {
   assert.doesNotMatch(workflow, /xpzouying\/star-history/);
 });
 
-test('Star History publishing advances the data branch without a force push', () => {
+test('Star History publishing advances the data branch without a force push', (t) => {
+  if (!bashCommand) {
+    t.skip('Git Bash is required on Windows to run the shell-backed publishing integration test');
+    return;
+  }
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-star-history-'));
   const remote = path.join(fixture, 'remote.git');
   const firstCheckout = path.join(fixture, 'first');
@@ -286,7 +299,7 @@ test('Star History publishing advances the data branch without a force push', ()
     const firstTemp = path.join(fixture, 'run-1');
     fs.mkdirSync(firstTemp);
     writeStarHistoryCharts(firstCheckout, 'v1');
-    execFileSync('bash', [publisher, 'star-history'], {
+    execFileSync(bashCommand, [publisher, 'star-history'], {
       cwd: firstCheckout,
       env: { ...process.env, RUNNER_TEMP: firstTemp },
     });
@@ -296,7 +309,7 @@ test('Star History publishing advances the data branch without a force push', ()
     const secondTemp = path.join(fixture, 'run-2');
     fs.mkdirSync(secondTemp);
     writeStarHistoryCharts(secondCheckout, 'v2');
-    execFileSync('bash', [publisher, 'star-history'], {
+    execFileSync(bashCommand, [publisher, 'star-history'], {
       cwd: secondCheckout,
       env: { ...process.env, RUNNER_TEMP: secondTemp },
     });

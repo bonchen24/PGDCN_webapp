@@ -487,12 +487,22 @@ test('cli: preview runs from an installed skill without node_modules and exits c
   assert.equal(state.revision, 1);
   assert.equal(fs.existsSync(output), true);
 
-  child.kill('SIGTERM');
+  const stopSignal = process.platform === 'win32' ? 'SIGINT' : 'SIGTERM';
+  child.kill(stopSignal);
   const exit = await new Promise((resolve) => child.once('close', (code, signal) => resolve({ code, signal })));
-  assert.deepEqual(exit, { code: 0, signal: null });
-  assert.match(stdout, /stopping preview/);
+  if (process.platform === 'win32') {
+    // Windows child.kill() terminates the process directly instead of delivering
+    // a catchable SIGTERM/SIGINT. The preview lifecycle itself is covered via
+    // startPreview().stop() in preview.test.mjs.
+    assert.deepEqual(exit, { code: null, signal: stopSignal });
+  } else {
+    assert.deepEqual(exit, { code: 0, signal: null });
+    assert.match(stdout, /stopping preview/);
+  }
   await assert.rejects(fetch(previewUrl));
-  assert.deepEqual(fs.readdirSync(path.dirname(output)).filter((name) => name.startsWith('.archify-preview-')), []);
+  if (process.platform !== 'win32') {
+    assert.deepEqual(fs.readdirSync(path.dirname(output)).filter((name) => name.startsWith('.archify-preview-')), []);
+  }
 });
 
 test('cli: deliver preserves the previous artifact when the final check fails', () => {

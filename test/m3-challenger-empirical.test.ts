@@ -22,66 +22,58 @@ import type { PgdInspectionStatus, PgdTransitionContext } from '../utils/pgdDoma
 const rootDir = path.resolve(import.meta.dirname, '..');
 const read = (relPath: string) => fs.readFileSync(path.join(rootDir, relPath), 'utf8');
 
-describe('Challenger M3-1 Empirical Probing: 65/35 Split & Responsive Adaptation', () => {
+describe('PGD/PCN dossier workspace: 60/40 split & responsive adaptation', () => {
 
   // -------------------------------------------------------------------------
-  // 1. PCN Detail Workspace 65/35 Split & Structural Integrity
+  // 1. PCN Detail Workspace 60/40 Split & Structural Integrity
   // -------------------------------------------------------------------------
   describe('1. PCN Detail Workspace (components/PcnDossierDetailView.tsx)', () => {
     const pcnSource = read('components/PcnDossierDetailView.tsx');
 
-    it('1.1: Desktop 65/35 split grid tokens and breakpoint progression', () => {
-      // Must feature single column on mobile, 65/35 on desktop (lg), and 68/32 on wide screens (xl)
+    it('1.1: Desktop 60/40 split keeps one column on mobile', () => {
       assert.match(
         pcnSource,
-        /grid grid-cols-1 lg:grid-cols-\[65%_35%\] xl:grid-cols-\[68%_32%\] gap-4/,
-        'PCN detail workspace must define responsive grid: 1-col mobile, 65/35 on lg, 68/32 on xl'
+        /grid grid-cols-1 gap-4 lg:grid-cols-\[minmax\(0,3fr\)_minmax\(0,2fr\)\]/,
+        'PCN detail workspace must use a 3:2 work-to-reader ratio and stack on mobile'
       );
     });
 
-    it('1.2: Left (65%) and Right (35%) columns preserve container min-w-0 to prevent flex blowout', () => {
-      // Left column min-w-0 prevents wide content (like tables or long text) from expanding the column past 65%
+    it('1.2: Work and reader columns preserve min-width boundaries and mobile switching', () => {
       assert.match(
         pcnSource,
         /<div className=\{`min-w-0 flex flex-col gap-3 \$\{mobileWorkspaceTab === 'auxiliary' \? 'hidden lg:flex' : 'flex'\}`\}>/,
-        'Left column must use min-w-0 and lg:flex to maintain strict width adherence'
+        'Work column must remain min-w-0 and stay visible on desktop'
       );
-
-      // Right column min-w-0 with border separator on desktop
       assert.match(
         pcnSource,
-        /<div className=\{`min-w-0 flex flex-col gap-3 border-l-0 lg:border-l lg:border-slate-200 lg:pl-4 \$\{mobileWorkspaceTab === 'main' \? 'hidden lg:flex' : 'flex'\}`\}>/,
-        'Right column must use min-w-0, border separation on desktop, and lg:flex'
+        /<div className=\{`min-w-0 border-l-0 lg:border-l lg:border-slate-200 lg:pl-4 \$\{mobileWorkspaceTab === 'main' \? 'hidden lg:block' : 'block'\}`\}>\s*<PcnDossierDocumentReader/,
+        'Reader column must remain min-w-0 and show the document reader'
       );
     });
 
-    it('1.3: Content distribution aligns with 65/35 operational split specification', () => {
-      // Left column contains operational workflow panel, forms, and document checklist
+    it('1.3: Work stays left and reader stays right while support information is collapsed', () => {
       assert.match(pcnSource, /PcnDossierWorkflowPanel/, 'Left column must host PcnDossierWorkflowPanel');
       assert.match(pcnSource, /DossierWorkflowSummary/, 'Left column must host DossierWorkflowSummary fallback');
       assert.match(pcnSource, /\{!workflowFirst && tabContent\}/, 'Left column must host tabContent for non-workflowFirst');
-
-      // Right column contains auxiliary panels: Live preview, legal standards QC20, AI assistant, activity log
-      assert.match(pcnSource, /Xem trước & Hồ sơ/, 'Right column must host Live Preview & Package Summary');
-      assert.match(pcnSource, /Căn cứ pháp lý & Quy chuẩn/, 'Right column must host Standards & Legal Basis');
-      assert.match(pcnSource, /Trợ lý AI TVCI/, 'Right column must host AI Assistant panel');
-      assert.match(pcnSource, /Lịch sử hoạt động/, 'Right column must host Activity History');
+      assert.match(pcnSource, /<PcnDossierDocumentReader/);
+      assert.match(pcnSource, /<details data-testid="pcn-dossier-support"/);
+      assert.match(pcnSource, /Thông tin hỗ trợ \(Căn cứ pháp lý, AI, Lịch sử\)/);
+      const support = pcnSource.match(/<details data-testid="pcn-dossier-support"[^]*?<\/details>/)?.[0] || '';
+      assert.notEqual(support, '', 'support details must exist');
+      assert.doesNotMatch(support, /<details[^>]*open/);
     });
 
     it('1.4: Mobile adaptive tab switcher toggle mechanism', () => {
-      // Mobile switcher is hidden on desktop (flex lg:hidden)
-      assert.match(pcnSource, /className="flex lg:hidden items-center gap-1\.5 mb-3 p-1 rounded-lg bg-slate-100 border border-slate-200"/);
-
-      // Tab 1: Main (65%)
+      assert.match(pcnSource, /data-testid="pcn-dossier-mobile-switcher"/);
+      assert.match(pcnSource, /aria-label="Chuyển chế độ xem hồ sơ"/);
       assert.match(pcnSource, /onClick=\{\(\) => setMobileWorkspaceTab\('main'\)\}/);
-      assert.match(pcnSource, /Công việc & Checklist \(Chính 65%\)/);
-
-      // Tab 2: Auxiliary (35%)
+      assert.match(pcnSource, /Công việc\s*<\/button>/);
       assert.match(pcnSource, /onClick=\{\(\) => setMobileWorkspaceTab\('auxiliary'\)\}/);
-      assert.match(pcnSource, /Xem trước & Trợ lý \(Phụ 35%\)/);
-
-      // State default is 'main'
+      assert.match(pcnSource, /Xem tài liệu\s*<\/button>/);
+      assert.match(pcnSource, /aria-pressed=\{mobileWorkspaceTab === 'main'\}/);
+      assert.match(pcnSource, /aria-pressed=\{mobileWorkspaceTab === 'auxiliary'\}/);
       assert.match(pcnSource, /const \[mobileWorkspaceTab, setMobileWorkspaceTab\] = useState<'main' \| 'auxiliary'>\('main'\);/);
+      assert.match(pcnSource, /setSelectedReaderFileId\(file\.id\); setMobileWorkspaceTab\('auxiliary'\)/);
     });
 
     it('1.5: Total eradication of PcnWorkflowMap and legacy node graphics', () => {
@@ -100,16 +92,16 @@ describe('Challenger M3-1 Empirical Probing: 65/35 Split & Responsive Adaptation
   });
 
   // -------------------------------------------------------------------------
-  // 2. PGD Detail Workspace 65/35 Split & Removal of Stacked Details
+  // 2. PGD Detail Workspace 60/40 Split & Removal of Stacked Details
   // -------------------------------------------------------------------------
   describe('2. PGD Detail Workspace (components/PgdWorkspace.tsx)', () => {
     const pgdSource = read('components/PgdWorkspace.tsx');
 
-    it('2.1: Desktop 65/35 split grid tokens and breakpoint progression', () => {
+    it('2.1: Desktop 60/40 split stacks on mobile', () => {
       assert.match(
         pgdSource,
-        /grid grid-cols-1 lg:grid-cols-\[65%_35%\] xl:grid-cols-\[68%_32%\] gap-4/,
-        'PGD detail workspace must define responsive grid: 1-col mobile, 65/35 on lg, 68/32 on xl'
+        /grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-\[minmax\(0,3fr\)_minmax\(0,2fr\)\] lg:gap-4/,
+        'PGD detail workspace must use a 3:2 work-to-reader ratio and stack on mobile'
       );
     });
 
@@ -119,15 +111,16 @@ describe('Challenger M3-1 Empirical Probing: 65/35 Split & Responsive Adaptation
       assert.doesNotMatch(pgdSource, /<details[^>]*pgd-dossier-business-disclosure/);
     });
 
-    it('2.3: Unhidden compact horizontal flow rail mounted at the top of detail view', () => {
+    it('2.3: Seven-stage rail and current work panel are mounted inside the left work card', () => {
       assert.match(
         pgdSource,
-        /<div className="mt-3">\s*<PgdDossierFlow status=\{request\.status\} evidence=\{context\} selectedStepId=\{selectedStepId\} onSelectStep=\{setSelectedStepId\} \/>\s*<\/div>/,
-        'PgdDossierFlow must be unhidden and mounted at the top above the 65/35 split'
+        /data-testid="pgd-dossier-step-work-panel"[^]*?<PgdDossierFlow status=\{request\.status\} evidence=\{context\} selectedStepId=\{selectedStepId\} onSelectStep=\{setSelectedStepId\} \/>[^]*?<PgdDossierStepWorkPanel/,
+        'The stage rail and selected stage actions must share the left work card'
       );
+      assert.match(pgdSource, /<PgdDossierDocumentReader/);
     });
 
-    it('2.4: Left (65%) and Right (35%) column content layout and responsive toggling', () => {
+    it('2.4: Work content stays left and support details remain collapsed', () => {
       // Left column: customer summary cards (4 cols on lg), PgdDossierStepWorkPanel
       assert.match(pgdSource, /grid gap-2 sm:grid-cols-2 lg:grid-cols-4/, 'Summary cards must preserve 4-column layout on desktop');
       assert.match(pgdSource, /data-testid="pgd-dossier-step-work-panel"/);
@@ -135,29 +128,22 @@ describe('Challenger M3-1 Empirical Probing: 65/35 Split & Responsive Adaptation
       assert.match(pgdSource, /Hiện trường, lấy mẫu và bàn giao PTN/);
       assert.match(pgdSource, /Kết quả PTN và báo cáo \/ chứng thư linh hoạt/);
 
-      // Right column: AI assistant, QC20 guidelines, business workspace, evidence, forms
-      assert.match(pgdSource, /Trợ lý hồ sơ PGD/);
-      assert.match(pgdSource, /Tiêu chuẩn & Căn cứ kỹ thuật \(QC20\)/);
-      assert.match(pgdSource, /<PgdDossierBusinessWorkspace/);
-      assert.match(pgdSource, /<PgdCaseEvidencePanel/);
-      assert.match(pgdSource, /<PgdSourceFormsPanel/);
-      assert.match(pgdSource, /Cổng tiếp theo/);
+      assert.match(pgdSource, /<details data-testid="pgd-dossier-secondary-disclosure"/);
+      assert.match(pgdSource, /Thông tin liên quan · trợ lý, căn cứ và lịch sử/);
+      const support = pgdSource.match(/<details data-testid="pgd-dossier-secondary-disclosure"[^]*?<\/details>/)?.[0] || '';
+      assert.notEqual(support, '', 'support details must exist');
+      assert.doesNotMatch(support, /<details[^>]*open/);
+      assert.match(pgdSource, /<aside role="tabpanel"[^>]*aria-label="Đọc tài liệu hồ sơ PGD"[^>]*>\s*<PgdDossierDocumentReader/);
     });
 
     it('2.5: Mobile adaptive tab switcher toggle mechanism for PGD', () => {
-      // Mobile switcher is hidden on desktop (flex lg:hidden)
-      assert.match(pgdSource, /className="flex lg:hidden items-center gap-1\.5 mt-3 p-1 rounded-lg bg-slate-100 border border-slate-200"/);
-
-      // Tab 1: Work (65%)
+      assert.match(pgdSource, /role="tablist" aria-label="Chuyển vùng hồ sơ PGD"/);
       assert.match(pgdSource, /onClick=\{\(\) => setMobileSection\('work'\)\}/);
-      assert.match(pgdSource, /Checklist & Thao tác \(Chính 65%\)/);
-
-      // Tab 2: Auxiliary (35%)
-      assert.match(pgdSource, /onClick=\{\(\) => setMobileSection\('auxiliary'\)\}/);
-      assert.match(pgdSource, /Hồ sơ & Trợ lý \(Phụ 35%\)/);
-
-      // State default is 'work'
-      assert.match(pgdSource, /const \[mobileSection, setMobileSection\] = useState<'work' \| 'auxiliary'>\('work'\);/);
+      assert.match(pgdSource, /id="pgd-dossier-mobile-tab-reader"[\s\S]*?onClick=\{\(\) => setMobileSection\('reader'\)\}[\s\S]*?Xem tài liệu/);
+      assert.match(pgdSource, /aria-selected=\{mobileSection === 'work'\}/);
+      assert.match(pgdSource, /aria-selected=\{mobileSection === 'reader'\}/);
+      assert.match(pgdSource, /const \[mobileSection, setMobileSection\] = useState<'work' \| 'reader'>\('work'\);/);
+      assert.match(pgdSource, /setSelectedReaderDocId\(docId\); setMobileSection\('reader'\)/);
     });
   });
 
@@ -221,7 +207,7 @@ describe('Challenger M3-1 Empirical Probing: 65/35 Split & Responsive Adaptation
 
   describe('4. Empirical Component Rendering: PgdDossierFlow', () => {
 
-    it('4.1: Compact horizontal flow rail renders 7 stages matching PgdcnWorkflowRail ergonomics', () => {
+    it('4.1: Compact flow renders seven numbered, keyboard-accessible stage tabs', () => {
       const dummyEvidence: PgdTransitionContext = {
         hasApprovedAssignment: true,
         hasFieldInspection: true,
@@ -244,8 +230,9 @@ describe('Challenger M3-1 Empirical Probing: 65/35 Split & Responsive Adaptation
       // Verify removal of legacy 218px width
       assert.ok(!html.includes('w-[218px]'), 'Must not contain legacy w-[218px] card classes');
 
-      // Verify active step highlight: ring-2 ring-blue-500
-      assert.ok(html.includes('ring-2 ring-blue-500 ring-offset-1'), 'Active step must have blue highlight ring');
+      // Selected styling and keyboard focus styling remain distinct.
+      assert.ok(html.includes('border-blue-600 bg-blue-50 text-blue-950'), 'Active step must have selected styling');
+      assert.ok(html.includes('focus-visible:ring-2 focus-visible:ring-blue-500'), 'Active step must have visible keyboard focus styling');
 
       // Verify all 7 stages are rendered in tablist
       for (const step of PGD_DOSSIER_FLOW_STEPS) {
@@ -253,10 +240,13 @@ describe('Challenger M3-1 Empirical Probing: 65/35 Split & Responsive Adaptation
         assert.ok(html.includes(expectedLabel), `Must render step: ${step.label}`);
       }
 
-      // Verify touch scrolling classes
-      assert.ok(html.includes('mobile-scroll-x min-w-0 overflow-x-auto scroll-smooth touch-pan-x'));
+      // The scroller stays inside the card; focus styling is separate from selection styling.
+      assert.ok(html.includes('overflow-x-auto overscroll-x-contain touch-pan-x'));
       assert.ok(html.includes('role="tablist"'));
       assert.ok(html.includes('role="tab"'));
+      assert.ok(html.includes('focus-visible:ring-2 focus-visible:ring-blue-500'));
+      assert.equal((html.match(/aria-selected="true"/g) || []).length, 1, 'exactly one stage tab is selected');
+      assert.equal((html.match(/role="tab"/g) || []).length, 7, 'all seven stage tabs are rendered');
     });
 
     it('4.2: Step status computation across lifecycle stages', () => {
@@ -283,29 +273,19 @@ describe('Challenger M3-1 Empirical Probing: 65/35 Split & Responsive Adaptation
   // -------------------------------------------------------------------------
   describe('5. Adversarial Edge Cases & Boundary Probing', () => {
 
-    it('5.1: Missing Customer Snapshot fallback resilience', () => {
+    it('5.1: Customer and product header fallbacks remain explicit', () => {
       const pcnSource = read('components/PcnDossierDetailView.tsx');
-      // Verify fallback string when customerSnapshot?.name is missing
-      assert.match(pcnSource, /customerSnapshot\?\.name \|\| 'Chưa gắn khách hàng'/);
-      assert.match(pcnSource, /proposal\?\.productName \|\| 'Hồ sơ chứng nhận'/);
-      assert.match(pcnSource, /proposal\?\.proposalCode \|\| 'Chưa có mã Đề nghị'/);
+      assert.match(pcnSource, /proposal\?\.productName \|\| 'Hồ sơ chứng nhận'\} · \{customerSnapshot\?\.name \|\| 'Chưa gắn khách hàng'/);
     });
 
     it('5.2: Extra-long text boundary protection (truncate and break-words)', () => {
       const pcnSource = read('components/PcnDossierDetailView.tsx');
       const pgdSource = read('components/PgdWorkspace.tsx');
 
-      // PCN header title has break-words to prevent layout blowout from 500+ character customer/product names
-      assert.match(pcnSource, /break-words text-base font-black text-slate-800/);
-
-      // PCN context summary badges truncate long strings
-      assert.match(pcnSource, /max-w-full truncate rounded-full border border-slate-200/);
-
-      // PGD header title has break-words
-      assert.match(pgdSource, /break-words text-base font-black text-slate-800/);
-
-      // PGD context summary badges truncate long strings
-      assert.match(pgdSource, /max-w-full truncate rounded-full border border-slate-200/);
+      assert.match(pcnSource, /className="break-words text-sm font-black text-slate-800"/);
+      assert.match(pcnSource, /min-w-0[\s\S]*?overflow-x-hidden/);
+      assert.match(pgdSource, /className="break-words text-sm font-black text-slate-800"/);
+      assert.match(pgdSource, /min-w-0 grid-cols-1 gap-3 lg:grid-cols-/);
     });
 
     it('5.3: Zero / Missing checklist badge formatting in PgdcnWorkflowRail', () => {
@@ -326,15 +306,14 @@ describe('Challenger M3-1 Empirical Probing: 65/35 Split & Responsive Adaptation
 
     it('5.4: Missing Required Count tone indicator (Amber for missing, Emerald for complete)', () => {
       const pcnSource = read('components/PcnDossierDetailView.tsx');
-      const pgdSource = read('components/PgdWorkspace.tsx');
+      const pgdSource = read('components/PgdDossierStepWorkPanel.tsx');
 
-      // PCN: missingRequiredCount > 0 triggers amber border/bg
       assert.match(pcnSource, /missingRequiredCount > 0 \? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'/);
-      assert.match(pcnSource, /missingRequiredCount > 0 \? `Còn \$\{missingRequiredCount\} tài liệu bắt buộc` : 'Đủ tài liệu bắt buộc'/);
-
-      // PGD: missingRequiredCount > 0 triggers amber border/bg
-      assert.match(pgdSource, /missingRequiredCount > 0 \? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'/);
-      assert.match(pgdSource, /missingRequiredCount > 0 \? `Còn \$\{missingRequiredCount\} đầu mục bắt buộc` : 'Đủ đầu mục bắt buộc'/);
+      assert.match(pcnSource, /missingRequiredCount > 0 \? `Toàn bộ hồ sơ còn thiếu \$\{missingRequiredCount\} tài liệu bắt buộc` : 'Toàn bộ hồ sơ đã đủ tài liệu bắt buộc hoặc đã có đánh dấu bỏ qua'/);
+      assert.match(pgdSource, /const missingStepRequirements = requiredStepRequirements\.filter\(\(item\) => !currentDocumentsByCode\.has\(item\.code\) && !waivedRequirementCodes\.has\(item\.code\)\)/);
+      assert.match(pgdSource, /data-testid="pgd-step-missing-requirements" className="mt-1 text-xs leading-5 text-amber-900"/);
+      assert.match(pgdSource, /Còn thiếu \{missingRequiredCount\} tài liệu bắt buộc ở giai đoạn này/);
+      assert.match(pgdSource, /Đã có hoặc được miễn toàn bộ tài liệu bắt buộc ở giai đoạn này/);
     });
 
     it('5.5: Adversarial probe: Out-of-order forward step navigation clamping in reconcilePgdDossierStepSelection', async () => {
@@ -364,8 +343,8 @@ describe('Challenger M3-1 Empirical Probing: 65/35 Split & Responsive Adaptation
     it('5.6: Typography strictness: PCN Detail auxiliary panels adhere to >= 11px standard', () => {
       const pcnSource = read('components/PcnDossierDetailView.tsx');
 
-      // Right column auxiliary panels must not contain illegible tiny fonts (text-[9px] or text-[10px])
-      const auxiliarySection = pcnSource.slice(pcnSource.indexOf('Right Column (30-35%)'));
+      const auxiliarySection = pcnSource.match(/<details data-testid="pcn-dossier-support"[^]*?<\/details>/)?.[0] || '';
+      assert.notEqual(auxiliarySection, '', 'support information must stay in its disclosure');
       assert.doesNotMatch(auxiliarySection, /text-\[9px\]/, 'Auxiliary panels must not use text-[9px]');
       assert.doesNotMatch(auxiliarySection, /text-\[10px\]/, 'Auxiliary panels must not use text-[10px]');
       assert.match(auxiliarySection, /text-\[11px\]/, 'Auxiliary panels must strictly use text-[11px] or text-xs for readability');
@@ -376,12 +355,14 @@ describe('Challenger M3-1 Empirical Probing: 65/35 Split & Responsive Adaptation
       const pgdSource = read('components/PgdWorkspace.tsx');
 
       // Check switcher visibility: flex on mobile, hidden on lg desktop
-      assert.match(pcnSource, /flex lg:hidden/);
-      assert.match(pgdSource, /flex lg:hidden/);
+      assert.match(pcnSource, /data-testid="pcn-dossier-mobile-switcher"[^>]*lg:hidden/);
+      assert.match(pgdSource, /role="tablist" aria-label="Chuyển vùng hồ sơ PGD"[^>]*flex lg:hidden/);
 
-      // Check column visibility on lg desktop: always flex (lg:flex) regardless of mobile tab state
+      // Work and reader regions remain visible at desktop breakpoints.
       assert.match(pcnSource, /hidden lg:flex/);
+      assert.match(pcnSource, /hidden lg:block/);
       assert.match(pgdSource, /hidden lg:flex/);
+      assert.match(pgdSource, /hidden lg:block/);
     });
   });
 

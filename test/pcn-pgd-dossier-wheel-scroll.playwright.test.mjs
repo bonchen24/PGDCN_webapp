@@ -9,7 +9,8 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import PizZip from 'pizzip';
 import mammoth from 'mammoth';
 
-const baseUrl = process.env.PGDCN_UX_BASE_URL || 'http://localhost:1357';
+const baseUrl = process.env.PGDCN_UX_BASE_URL;
+const baseUrlSkip = baseUrl ? false : 'Set PGDCN_UX_BASE_URL to a running PGDCN app to run browser QA';
 const viewports = [
   { width: 1366, height: 768 },
   { width: 1440, height: 900 },
@@ -54,14 +55,52 @@ const pcnDocuments = [{
   fieldCode: 'QC4',
   status: 'PRESENT',
   currentVersionId: 'qa-wheel-pcn-asset',
-  versions: [{
-    assetId: 'qa-wheel-pcn-asset',
-    fileName: 'synthetic-wheel-pcn.pdf',
-    mimeType: 'application/pdf',
-    uploadedAt: '2026-11-05T08:00:00.000Z',
-    uploadedBy: 'synthetic_admin',
-  }],
+  versions: [
+    {
+      assetId: 'qa-wheel-pcn-asset-v1',
+      fileName: 'synthetic-wheel-pcn-v1.pdf',
+      mimeType: 'application/pdf',
+      uploadedAt: '2026-11-04T08:00:00.000Z',
+      uploadedBy: 'synthetic_admin',
+    },
+    {
+      assetId: 'qa-wheel-pcn-asset',
+      fileName: 'synthetic-wheel-pcn.pdf',
+      mimeType: 'application/pdf',
+      uploadedAt: '2026-11-05T08:00:00.000Z',
+      uploadedBy: 'synthetic_admin',
+    },
+  ],
 }];
+
+const pcnWorkflowSnapshot = {
+  templateCode: 'QA-PCN-SEVEN-STAGES',
+  templateVersion: 1,
+  nodes: [
+    { id: 'intake', kind: 'DOCUMENT_TASK', label: 'Tiếp nhận hồ sơ', actionKey: 'INTAKE', requirementIds: [], active: true, sortOrder: 0 },
+    { id: 'assignment', kind: 'APPROVAL_TASK', label: 'Xem xét và phân công', actionKey: 'ASSIGNMENT', requirementIds: [], active: true, sortOrder: 1 },
+    { id: 'evaluation-plan', kind: 'DOCUMENT_TASK', label: 'Lập kế hoạch', actionKey: 'EVALUATION', requirementIds: [], active: true, sortOrder: 2 },
+    { id: 'field-inspection', kind: 'DOCUMENT_TASK', label: 'Thực hiện đánh giá và lấy mẫu', actionKey: 'SAMPLING_LAB', requirementIds: [], active: true, sortOrder: 3 },
+    { id: 'receive-test-result', kind: 'DOCUMENT_TASK', label: 'Xử lý kết quả thử nghiệm', actionKey: 'TEST_REPORT', requirementIds: [], active: true, sortOrder: 4 },
+    { id: 'certificate', kind: 'APPROVAL_TASK', label: 'Báo cáo và phê duyệt', actionKey: 'APPROVAL', requirementIds: [], active: true, sortOrder: 5 },
+    { id: 'archive', kind: 'END', label: 'Phát hành và lưu trữ', actionKey: 'ARCHIVE', requirementIds: [], active: true, sortOrder: 6 },
+  ],
+  transitions: [
+    ['intake', 'assignment'],
+    ['assignment', 'evaluation-plan'],
+    ['evaluation-plan', 'field-inspection'],
+    ['field-inspection', 'receive-test-result'],
+    ['receive-test-result', 'certificate'],
+    ['certificate', 'archive'],
+  ].map(([fromNodeId, toNodeId], index) => ({ id: `qa-pcn-edge-${index + 1}`, fromNodeId, toNodeId, condition: 'ALWAYS' })),
+  capturedAt: '2026-11-05T08:00:00.000Z',
+  capturedBy: 'synthetic_admin',
+};
+
+const pcnWorkflowTasks = [
+  { id: 'qa-pcn-task-intake', dossierId: 'qa-wheel-pcn', nodeId: 'intake', status: 'COMPLETED', cycleNo: 1, updatedAt: '2026-11-05T08:00:00.000Z', updatedBy: 'synthetic_admin' },
+  { id: 'qa-pcn-task-assignment', dossierId: 'qa-wheel-pcn', nodeId: 'assignment', status: 'READY', cycleNo: 1, updatedAt: '2026-11-05T08:00:00.000Z', updatedBy: 'synthetic_admin' },
+];
 
 const pgdRequest = {
   domain: 'pgd',
@@ -166,6 +205,7 @@ async function installSyntheticRoutes(page, base, department, pdfBytes, audit, o
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   } : pgdDocument;
   const pgdDocuments = department === 'PGD' ? [activePgdDocument] : [];
+  let dossierDocumentFailuresRemaining = options.dossierLoadErrorOnce ? 1 : 0;
   await page.route('**/*', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -251,11 +291,14 @@ async function installSyntheticRoutes(page, base, department, pdfBytes, audit, o
 
     if (department === 'PCN') {
       if (url.pathname === '/api/db/certificationDossiers') {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [pcnDossier] }) });
+        const dossier = options.modernPcnWorkflow ? { ...pcnDossier, workflowSnapshot: pcnWorkflowSnapshot } : pcnDossier;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [dossier] }) });
       } else if (url.pathname === '/api/db/certificationProposals') {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [pcnProposal] }) });
       } else if (url.pathname === '/api/db/dossierDocuments') {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: pcnDocuments }) });
+      } else if (url.pathname === '/api/db/pcnDossierWorkflowTasks') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: pcnWorkflowTasks }) });
       } else if (url.pathname.startsWith('/api/pcn/files/')) {
         await route.fulfill({ status: 200, contentType: 'application/pdf', body: pdfBytes });
       } else {
@@ -265,6 +308,18 @@ async function installSyntheticRoutes(page, base, department, pdfBytes, audit, o
     }
 
     if (url.pathname === '/api/pgd/requests/qa-wheel-pgd/dossier-documents') {
+      if (options.dossierLoadErrorUntilRetry && !audit.allowDossierLoadRetry) {
+        audit.dossierDocumentLoadStatuses = [...(audit.dossierDocumentLoadStatuses || []), 503];
+        await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Synthetic dossier document load failed.' }) });
+        return;
+      }
+      if (dossierDocumentFailuresRemaining > 0) {
+        dossierDocumentFailuresRemaining -= 1;
+        audit.dossierDocumentLoadStatuses = [...(audit.dossierDocumentLoadStatuses || []), 503];
+        await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Synthetic dossier document load failed.' }) });
+        return;
+      }
+      audit.dossierDocumentLoadStatuses = [...(audit.dossierDocumentLoadStatuses || []), 200];
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -335,6 +390,96 @@ async function openDossier(page, base, department, pdfBytes, audit, options) {
   }
   await page.waitForTimeout(150);
 }
+
+test('synthetic PCN seven-stage tabs support keyboard selection and versioned reader selection', { skip: baseUrlSkip }, async () => {
+  const base = new URL(baseUrl);
+  const pdfBytes = await createPdf();
+  const audit = { apiRequests: [], apiResponses: [], browserApiRequests: [], failedRequests: [], pageErrors: [], hydrationWarnings: [], apiMutations: [], externalRequests: [], consoleErrors: [], cases: [] };
+  const browser = await chromium.launch({ headless: true });
+  const pageErrors = [];
+
+  try {
+    const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    await openDossier(page, base, 'PCN', pdfBytes, audit, { modernPcnWorkflow: true });
+
+    const tablist = page.getByTestId('pcn-dossier-native-flow').getByRole('tablist', { name: 'Các bước xử lý hồ sơ' });
+    const stageTabs = tablist.getByRole('tab');
+    assert.equal(await stageTabs.count(), 7, 'PCN dossier exposes exactly seven stage tabs');
+    assert.equal(await stageTabs.nth(0).getAttribute('aria-selected'), 'true');
+    await stageTabs.nth(0).focus();
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await stageTabs.nth(1).getAttribute('aria-selected'), 'true', 'ArrowRight selects the next available stage');
+    assert.equal(await stageTabs.nth(1).evaluate((element) => document.activeElement === element), true, 'Keyboard navigation moves focus with selection');
+
+    const reader = page.getByTestId('pcn-dossier-document-reader');
+    const versionPicker = reader.getByLabel('Chọn tệp để xem');
+    await versionPicker.selectOption({ label: 'synthetic-wheel-pcn-v1.pdf' });
+    assert.equal(await versionPicker.inputValue(), 'document:qa-wheel-pcn-document:qa-wheel-pcn-asset-v1');
+    assert.match(await reader.locator('iframe').getAttribute('src'), /qa-wheel-pcn-asset-v1/);
+    assert.equal(await reader.getByRole('heading', { name: 'synthetic-wheel-pcn-v1.pdf' }).count(), 1);
+    assert.deepEqual(audit.apiMutations, [], 'Stage navigation and version selection are read-only');
+    assert.deepEqual(audit.externalRequests, [], 'Synthetic QA does not call external services');
+    assert.deepEqual(pageErrors, [], 'Keyboard and reader interactions produce no browser errors');
+  } finally {
+    await browser.close();
+  }
+});
+
+test('synthetic legacy PCN dossiers use the same seven-stage rail without changing their status', { skip: baseUrlSkip }, async () => {
+  const base = new URL(baseUrl);
+  const pdfBytes = await createPdf();
+  const audit = { apiRequests: [], apiResponses: [], browserApiRequests: [], failedRequests: [], pageErrors: [], hydrationWarnings: [], apiMutations: [], externalRequests: [], consoleErrors: [], cases: [] };
+  const browser = await chromium.launch({ headless: true });
+  const pageErrors = [];
+
+  try {
+    const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    await openDossier(page, base, 'PCN', pdfBytes, audit, {});
+
+    const tablist = page.getByTestId('pcn-dossier-native-flow').getByRole('tablist', { name: 'Các bước xử lý hồ sơ' });
+    const stageTabs = tablist.getByRole('tab');
+    assert.equal(await stageTabs.count(), 7, 'Legacy PCN records also expose the seven design stages');
+    assert.equal(await stageTabs.nth(0).getAttribute('aria-selected'), 'true');
+    assert.deepEqual(audit.apiMutations, [], 'Opening and viewing a legacy dossier is read-only');
+    assert.deepEqual(audit.externalRequests, [], 'Synthetic QA does not call external services');
+    assert.deepEqual(pageErrors, [], 'Legacy stage projection produces no browser errors');
+  } finally {
+    await browser.close();
+  }
+});
+
+test('synthetic PGD document reader recovers after a failed load using its refresh action', { skip: baseUrlSkip }, async () => {
+  const base = new URL(baseUrl);
+  const pdfBytes = await createPdf();
+  const audit = { apiRequests: [], apiResponses: [], browserApiRequests: [], failedRequests: [], pageErrors: [], hydrationWarnings: [], apiMutations: [], externalRequests: [], consoleErrors: [], cases: [] };
+  const browser = await chromium.launch({ headless: true });
+  const pageErrors = [];
+
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    await openDossier(page, base, 'PGD', pdfBytes, audit, { dossierLoadErrorUntilRetry: true });
+
+    const reader = page.getByTestId('pgd-dossier-document-reader');
+    await reader.getByRole('alert').waitFor({ state: 'visible' });
+    const loadsBeforeRetry = audit.dossierDocumentLoadStatuses?.length || 0;
+    assert.ok(loadsBeforeRetry >= 1, 'The initial dossier document request failed in the synthetic route');
+    audit.allowDossierLoadRetry = true;
+    const retry = reader.getByRole('button', { name: 'Tải lại' });
+    await retry.click();
+    await reader.locator('iframe').waitFor({ state: 'visible', timeout: 10000 });
+    const dossierLoads = audit.apiRequests.filter(({ pathname }) => pathname === '/api/pgd/requests/qa-wheel-pgd/dossier-documents');
+    assert.equal(dossierLoads.length, loadsBeforeRetry + 1, 'Retry performs exactly one additional read');
+    assert.equal(audit.dossierDocumentLoadStatuses.at(-1), 200, 'The retry succeeds after the injected failure');
+    assert.deepEqual(audit.apiMutations, [], 'Reader refresh is read-only');
+    assert.deepEqual(audit.externalRequests, [], 'Synthetic QA does not call external services');
+    assert.deepEqual(pageErrors, [], 'Retry recovery produces no browser errors');
+  } finally {
+    await browser.close();
+  }
+});
 
 function scrollerSelector(department) {
   return department === 'PCN' ? '.pcn-dossier-focus-scroll' : '[data-testid="pgd-dossier-scroll-area"]';
@@ -517,7 +662,7 @@ function compactPoint(point) {
   };
 }
 
-test('synthetic PCN/PGD dossiers scroll with the mouse wheel without moving the page at a scroll boundary', async () => {
+test('synthetic PCN/PGD dossiers scroll with the mouse wheel without moving the page at a scroll boundary', { skip: baseUrlSkip }, async () => {
   const base = new URL(baseUrl);
   const appResponse = await fetch(base);
   assert.equal(appResponse.status, 200, `Expected PGDCN app at ${base.origin}`);
@@ -712,7 +857,7 @@ test('synthetic PCN/PGD dossiers scroll with the mouse wheel without moving the 
   }
 });
 
-test('synthetic PGD document actions separate reader, new tab, download, and supplementary modal states', async () => {
+test('synthetic PGD document actions separate reader, new tab, download, and supplementary modal states', { skip: baseUrlSkip }, async () => {
   const base = new URL(baseUrl);
   const pdfBytes = await createPdf();
   const audit = { apiRequests: [], apiResponses: [], browserApiRequests: [], failedRequests: [], pageErrors: [], hydrationWarnings: [], apiMutations: [], syntheticWrites: [], externalRequests: [], consoleErrors: [], cases: [] };
@@ -786,7 +931,7 @@ test('synthetic PGD document actions separate reader, new tab, download, and sup
     await successPage.getByLabel('Mô tả tài liệu phụ trợ').fill('No file is required for a metadata-only item');
     await successPage.getByTestId('pgd-supplementary-submit').click();
     await successPage.getByRole('row', { name: /Synthetic metadata saved/ }).waitFor({ state: 'visible' });
-    assert.equal(await successPage.getByRole('dialog', { name: /Thêm đầu mục tài liệu phụ trợ/ }).count(), 0, 'Successful save closes the modal');
+    await successPage.getByRole('dialog', { name: /Thêm đầu mục tài liệu phụ trợ/ }).waitFor({ state: 'hidden' });
 
     assert.deepEqual(audit.apiMutations, [], 'Every API write was intercepted by the synthetic mock');
     assert.deepEqual(audit.externalRequests, [], 'Synthetic UI QA does not call external services');
@@ -801,7 +946,7 @@ test('synthetic PGD document actions separate reader, new tab, download, and sup
   }
 });
 
-test('synthetic DOCX preview renders private file text inside the dossier reader', async () => {
+test('synthetic DOCX preview renders private file text inside the dossier reader', { skip: baseUrlSkip }, async () => {
   const base = new URL(baseUrl);
   const docxBytes = await createDocx();
   const audit = { apiRequests: [], apiResponses: [], browserApiRequests: [], failedRequests: [], pageErrors: [], hydrationWarnings: [], apiMutations: [], externalRequests: [], consoleErrors: [], cases: [] };
@@ -826,7 +971,7 @@ test('synthetic DOCX preview renders private file text inside the dossier reader
 });
 
 test('native PDF readers consume focused wheel input in PCN and PGD', {
-  skip: process.env.PGDCN_NATIVE_PDF_QA !== '1' ? 'Set PGDCN_NATIVE_PDF_QA=1 to run the headful native PDF viewer check' : false,
+  skip: baseUrlSkip || (process.env.PGDCN_NATIVE_PDF_QA !== '1' ? 'Set PGDCN_NATIVE_PDF_QA=1 to run the headful native PDF viewer check' : false),
 }, async () => {
   const base = new URL(baseUrl);
   const pdfBytes = await createPdf();
