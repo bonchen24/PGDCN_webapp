@@ -86,3 +86,16 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
    - Cấm migration đồng thời lên database production.
    - Không dùng prisma db push trên production.
    - Quét phát hiện destructive SQL (DROP TABLE, DROP COLUMN) trước khi tích hợp.
+
+## KNOWLEDGE GRAPH (GRAPHIFY) — TRUY NGUYÊN CODE BẮT BUỘC TRƯỚC KHI GREP
+1. **`design.md` luôn là SSOT**: Graphify chỉ hỗ trợ phân tích cấu trúc mã nguồn, luồng gọi và phạm vi ảnh hưởng; không thay thế đặc tả `design.md`.
+2. **Ưu Tiên Truy Vấn Graphify Trước Khi Tìm Kiếm Diện Rộng**:
+   - Khi `graphify-out/graph.json` tồn tại, trước khi dùng `rg`/`Select-String` diện rộng để truy nguyên bug hoặc khảo sát luồng, **bắt buộc** chạy:
+     - `graphify query "<question_or_symbol>"`
+     - `graphify explain "<symbol>"`
+     - `graphify path "<A>" "<B>"`
+   - Chỉ đọc các file/dòng cụ thể đã được Graphify xác định.
+3. **Cập Nhật Đồ Thị Offline**:
+   - Sau khi sửa đổi code đáng kể, chạy `graphify update .` (AST cục bộ, không tốn API token) để giữ đồ thị luôn mới.
+   - Không commit thư mục `graphify-out/`.
+
