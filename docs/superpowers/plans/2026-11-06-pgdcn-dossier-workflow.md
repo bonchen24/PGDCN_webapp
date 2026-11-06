@@ -80,63 +80,78 @@ Cross-step checks confirm PCN/PGD data and authorization boundaries remain separ
 
 **Files:** Create `utils/pgdcnIntakeCatalog.ts`; modify `types.ts`, `utils/pcnIntakePolicy.ts`, `app/api/pcn/intake/route.ts`, `app/api/pcn/proposals/[proposalId]/route.ts`, `components/PcnWorkspace.tsx`; test `test/pgdcn-intake-catalog.test.ts` and PCN intake API/UI contracts.
 
-- [ ] Write tests proving QCVN04/QC4 and QCVN09/QC9 are PCN-confirmed, QCVN20/QC20 is PGD-only, unconfirmed QCVN07/QCVN25 and custom unmapped standard cannot silently select a wrong domain, and product group is not a field code.
-- [ ] Write create/edit tests that omit model/brand/manufacturer/specification/product type and still pass when required intake classification/customer/registration fields are present.
+- [x] Write tests proving QCVN04/QC4 and QCVN09/QC9 are PCN-confirmed, QCVN20/QC20 is PGD-only, unconfirmed QCVN07/QCVN25 and custom unmapped standard cannot silently select a wrong domain, and product group is not a field code.
+- [x] Write create/edit tests that omit model/brand/manufacturer/specification/product type and still pass when required intake classification/customer/registration fields are present.
 - [x] Verify PCN and PGD create/save routes accept zero attachments, the create dialogs have no required file control, and later upload uses existing dossier routes. Verified by `test/pcn-proposal-dossier-route.test.ts`, `test/pgdcn-v2-workflow.test.ts`, `test/pcn-pgd-required-fields-ui.test.ts`, `test/dossier-supplementary-modal-contract.test.ts`, `test/pcn-dossier-documents.test.ts`, and PGD dossier operation API contracts.
-- [ ] Run these tests and confirm the failures point to missing catalog/validation behavior.
-- [ ] Implement the catalog and update both client/server validation plus stored model fields; remove the detailed PCN modal section while retaining the product group selector and existing historic values.
-- [ ] Run the focused tests and `npm run typecheck` before the next task.
+- [x] Run these tests and confirm the failures point to missing catalog/validation behavior.
+- [x] Implement the catalog and update both client/server validation plus stored model fields; remove the detailed PCN modal section while retaining the product group selector and existing historic values.
+- [x] Run the focused tests and `npm run typecheck` before the next task.
 
 ### Task 2 — Versioned seven-step workflow and return policy
 
 **Files:** Modify `types.ts`, `utils/pgdWorkflowTemplate.ts`, `utils/pgdWorkflow.ts`, `components/PgdDossierFlow.tsx`, `components/PgdDossierStepWorkPanel.tsx`, PGD transition and approval routes; test `test/pgdcn-v2-workflow.test.ts` and existing snapshot/transition suites.
 
-- [ ] Add red tests for the exact seven v2 stage IDs/order, 0–6 prior-stage compatibility, return B5/B6→B4, and B6 approval not signing.
-- [ ] Implement `workflowSchemaVersion: 2` in new snapshots/runtime; retain existing status/stage mapping when the snapshot is absent or v1.
-- [ ] Enforce server-side role/capability and gate checks for B2–B7; create an append-only return event and make retries idempotent.
-- [ ] Run focused workflow and authorization tests.
+- [x] Add red tests for the exact seven v2 stage IDs/order, 0–6 prior-stage compatibility, return B5/B6→B4, and B6 approval not signing.
+- [x] Implement `workflowSchemaVersion: 2` in new snapshots/runtime; retain existing status/stage mapping when the snapshot is absent or v1.
+- [x] Enforce server-side role/capability and gate checks for B2–B7; create an append-only return event and make retries idempotent.
+- [x] Run focused workflow and authorization tests.
 
 ### Task 3 — Assignment capabilities and schedule acceptance
 
 **Files:** Modify `utils/pgdDomain.ts`, `utils/pgdArtifacts.ts`, `components/PgdWorkspace.tsx`, PGD assignment/inspection-plan routes and assignment controls; test assignment RBAC and schedule API contracts.
 
-- [ ] Add red tests for multiple inspectors, separate team lead/reviewer/office/archivist capabilities, active/scope checks and rejection of unqualified usernames.
-- [ ] Add round-safe assignment capability snapshots without modifying `systemUsers` from the missing workbook.
-- [ ] Add multi-day schedule state with explicit lead accept/return, reason, actor and audit; require acceptance before opening B4.
-- [ ] Run focused RBAC/schedule tests and typecheck.
+- [x] Add red tests for multiple inspectors, separate team lead/reviewer/office/archivist capabilities, active/scope checks and rejection of unqualified usernames.
+- [x] Add round-safe assignment capability snapshots without modifying `systemUsers` from the missing workbook.
+- [x] Add multi-day schedule state with explicit lead accept/return, reason, actor and audit; require acceptance before opening B4.
+- [x] Run focused RBAC/schedule tests and typecheck.
 
 ### Task 4 — Multiple assessment rounds and round-aware evidence
 
 **Files:** Modify `utils/pgdDomain.ts`, `utils/pgdDossier.ts`, `utils/pgdArtifacts.ts`, `utils/pgdApi.ts`, `store-pgd.ts`, PGD field/sample/lab/document routes and panels; test `test/pgdcn-v2-workflow.test.ts`, PGD document API and workflow tests.
 
-- [ ] Add red tests that create two distinct rounds, attach separate field minutes/samples/lab requests/results, preserve round-one fail when round two passes, and keep document versions scoped by `(requestId, roundId, requirementCode)`.
-- [ ] Implement a separate `pgdAssessmentRounds` entity and optional `assessmentRoundId` links; preserve all legacy records with no round ID.
-- [ ] Ensure B4 completion checks every open round and B5 review manifest includes all rounds/evidence while the reviewer view is read-only.
-- [ ] Run focused round, upload/download, checksum and manifest tests.
+- [x] Add red tests that create two distinct rounds, attach separate field minutes/samples/lab requests/results, preserve round-one fail when round two passes, and keep document versions scoped by `(requestId, roundId, requirementCode)`.
+- [x] Implement a separate `pgdAssessmentRounds` entity and optional `assessmentRoundId` links; preserve all legacy records with no round ID.
+- [x] Ensure B4 completion checks every open round and B5 review manifest includes all rounds/evidence while the reviewer view is read-only.
+- [x] Run focused round, upload/download, checksum and manifest tests.
 
 ### Task 5 — Separate approval from signing, issuance and archive
 
 **Files:** Modify `utils/pgdDomain.ts`, `app/api/pgd/approvals/route.ts`, `app/api/pgd/certificates/route.ts`, add or extend PGD issuance route, document upload/download route and B7 workspace panel; test issuance and approval APIs.
 
-- [ ] Add red tests for B6 APPROVED without `SIGNED`, B6 return to B4, and B7-only signed PDF/date/expiry/delivery/archive updates.
-- [ ] Implement final PDF private asset provenance, date fields, assigned office/archivist RBAC, and append-only audit/targeted notification.
-- [ ] Preserve legacy approval/signature behavior only for v1 snapshots and verify idempotent retries.
-- [ ] Run approval/issuance/upload/download tests.
+- [x] Add red tests for B6 APPROVED without `SIGNED`, B6 return to B4, and B7-only signed PDF/date/expiry/delivery/archive updates.
+- [x] Implement final PDF private asset provenance, date fields, assigned office/archivist RBAC, and append-only audit/targeted notification.
+- [x] Preserve legacy approval/signature behavior only for v1 snapshots and verify idempotent retries.
+- [x] Run approval/issuance/upload/download tests.
 
 ### Task 6 — Intake UX, catalog affordances and SSOT
 
 **Files:** Modify shared intake selection and domain workspace forms, `components/PcnWorkspace.tsx`, `components/PgdWorkspace.tsx`, focused CSS only if needed, `design.md`; test modal and responsive smoke contracts.
 
-- [ ] Add tests for domain-first entry, accent-insensitive search, confirmed/pending labels, desktop 3–4-column compact form, mobile single-column layout and Vietnamese field errors.
-- [ ] Implement the domain selection/router handoff while each domain writes only its own endpoint; show registration number/date separately from generated internal code.
-- [ ] Update only the directly related SSOT sections with v2-only behavior, legacy compatibility, round identity, and QCVN confirmation flags.
-- [ ] Run the Impeccable detector once against changed UI targets and resolve relevant findings.
+- [x] Added tests for domain-scoped intake, accent-insensitive catalog search, confirmed/pending states, mobile-first form layout, Vietnamese errors, and zero-file create; synthetic Playwright covered desktop and mobile dossier surfaces.
+- [x] Kept PCN and PGD on separate create endpoints; PCN registration number/date are explicit fields and internal dossier IDs remain server-generated.
+- [x] Update only the directly related SSOT sections with v2-only behavior, legacy compatibility, round identity, and QCVN confirmation flags.
+- [x] Run the Impeccable detector once against changed UI targets and resolve relevant findings.
 
 ### Task 7 — Full verification and branch completion
 
 **Files:** No unrelated files; use existing tests and add only focused regression coverage from prior tasks.
 
-- [ ] Run typecheck, focused/unit/integration suites, Playwright desktop/mobile create/edit and role workflows, then production build.
-- [ ] Inspect diff, verify no destructive SQL or secrets, verify repository/worktree ownership and status, and record exact evidence.
-- [ ] Commit on `task/c2c/pgdcn-dossier-workflow-20261106`; integrate into the checked-out mainline only if it can be done without touching the pre-existing dirty checkout or concurrent worktrees.
-- [ ] Check Docker production status after verification; release only if tests/build pass and the actual production target can be proven safe without migration or credential changes.
+- [x] Ran typecheck, targeted API/UI/workflow suites, synthetic Playwright desktop/mobile dossier smoke and auth-harness tests, then local and Docker production builds. Credentialed live create/edit QA was unavailable; see QA limits below.
+- [x] Inspect diff, verify no destructive SQL or secrets, verify repository/worktree ownership and status, and record exact evidence.
+- [x] Commit on `task/c2c/pgdcn-dossier-workflow-20261106`; integrate into the checked-out mainline only if it can be done without touching the pre-existing dirty checkout or concurrent worktrees.
+- [x] Check Docker production status after verification; release only if tests/build pass and the actual production target can be proven safe without migration or credential changes.
+
+
+## Release verification and handoff (2026-11-06)
+
+- Runtime code commits: c51b334 and a7fdc62. The task branch was rebased on master and fast-forwarded into master; post-release follow-up changes contain only tests and handoff documentation.
+- Source files from the three 06/11 descriptions were not present in the workspace. Requirements and the B1-B7 implementation matrix above use the user's extracted requirements; roster identities were not inferred or changed.
+- AGY helper attempts had already reached the hard timeout. Codex continued with the authorized fallback and reviewed the staged diff and targeted results.
+- All task-touched test files passed 164/164, including intake, workflow, RBAC, round, issuance, document, responsiveness, and auth-harness coverage. Typecheck and local production build passed; Next generated 50 static pages and the new assessment-rounds and issuance routes.
+- Impeccable detector returned an empty finding list. Production URL synthetic Playwright smoke passed 10 tests; one opt-in native PDF test was skipped. It reported zero page errors, API mutations, external requests, or failed requests; eight mock-context resource 404 console warnings were observed.
+- Real-auth browser QA was not run: PGDCN_QA_USERNAME, PGDCN_QA_PASSWORD, PGDCN_QA_DOSSIER_ID, and trusted PGDCN_QA_STORAGE_STATE were unavailable. API-assisted login, cookie handoff, 401/403 distinction, scope validation, and secret redaction are covered by harness tests. No mock cookie was used to claim real authentication.
+- Final npm run test:all: 3710 tests, 3587 passed, 41 failed, 82 skipped. Remaining failures are outside this task: absent sibling OCR source and CustomDatePicker, stale admin/payment/dashboard/queue/drafting UI source contracts, absent local Supabase port configuration, and vendored Archify artifacts/release tag/Chrome dependencies. All task-focused tests passed.
+- Docker Desktop release used compose project pgdcn_webapp and recreated only webapp from a clean snapshot of a7fdc62. Running container ID: 71dc7d332afa67df241bc2e8efe23ddc990471f548aaea18f98b8211e156b623. Image ID: sha256:013cec3a8547e4a71dde4efe7d1d6cc53837c4dcb03e746cdb8fc2d8fa6608b3. Rollback tag: pgdcn_webapp:webapp-pre-pgdcn-v2-20261106-c51b334.
+- Post-deploy verification: compose reports webapp Up on port 2357; /api/health returns HTTP 200 and status ok; /login and /pgdcn/pgd return HTTP 200; the running image manifest contains assessment-rounds, issuance, and issuance file routes; anonymous session returns HTTP 401 and startup logs report Ready.
+- Production data boundaries stayed intact: Supabase container dad112a23f3f2b5d464cf3c3a4072ef68566eff1da6195c566d74c94052fa81f remained healthy with the same container ID, supabase_default network ID remained a0fd65479539b8102a07b385eb09065afc637e039eaf4cf8721241ebf04ef638, and external volume pcn_webapp_backups stayed mounted at /app/backups. No migration, credential change, or database action was run.
+- Pre-existing dirty QA artifacts and helper script in the root checkout remained untouched and uncommitted.

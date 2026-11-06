@@ -90,3 +90,10 @@ test('productGroup is independent of PCN fieldCode', () => {
   assert.ok(!groupCodes.includes('QC4' as any));
   assert.ok(!groupCodes.includes('QC9' as any));
 });
+
+test('catalog matching ignores accents and letter case', () => {
+  const accented = matchCatalogItems({ standard: 'TH\u00C9P KH\u00D4NG G\u1EC8' });
+  const unaccented = matchCatalogItems({ standard: 'thep khong gi' });
+  assert.deepEqual(unaccented.map((item) => item.id), accented.map((item) => item.id));
+  assert.ok(accented.some((item) => item.id === 'PGD_QC20_QCVN20'));
+});

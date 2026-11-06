@@ -82,3 +82,8 @@ test('PGD intake required fields include catalog selection and conditional branc
   assert.match(groupSource, /Tên mẫu|ProductField/);
 });
 
+test('PCN and PGD B1 forms remain mobile-first and compact', () => {
+  for (const source of [pcnCreateDialogSource, pgdCreateDialogSource]) {
+    assert.match(source, /grid-cols-1 gap-2.5 sm:grid-cols-2/);
+  }
+});
