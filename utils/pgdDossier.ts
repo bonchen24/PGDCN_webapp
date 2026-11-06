@@ -166,6 +166,7 @@ export interface PgdDossierDocument {
   id: string;
   domain: typeof PGD_DOMAIN;
   requestId: string;
+  assessmentRoundId?: string;
   requirementCode: string;
   title: string;
   fileName: string;
@@ -204,7 +205,8 @@ export function getCurrentPgdDossierDocuments(documents: readonly PgdDossierDocu
     || right.id.localeCompare(left.id)
   ));
   for (const document of ordered) {
-    if (!currentByRequirement.has(document.requirementCode)) currentByRequirement.set(document.requirementCode, clone(document));
+    const key = `${document.assessmentRoundId || 'dossier'}:${document.requirementCode}`;
+    if (!currentByRequirement.has(key)) currentByRequirement.set(key, clone(document));
   }
   return Array.from(currentByRequirement.values());
 }
@@ -402,6 +404,7 @@ export function buildPgdDossierDocument(input: Partial<PgdDossierDocument>, now 
     id,
     domain: PGD_DOMAIN,
     requestId,
+    ...(clean((input as PgdDossierDocument).assessmentRoundId) ? { assessmentRoundId: clean((input as PgdDossierDocument).assessmentRoundId) } : {}),
     requirementCode,
     title,
     fileName,

@@ -112,6 +112,10 @@ Mỗi node là một **vùng thao tác và cổng bắt buộc**: người đư�
 - Nút giai đoạn giữ keyboard semantics, focus ring và touch target; không dùng animation trang trí, tôn trọng `prefers-reduced-motion`.
 - Query `node`/`tab` chỉ chọn điểm mở ban đầu; dashboard/queue chỉ là projection đọc nhanh. Không thay đổi schema, API, persistence, RBAC hay lifecycle trong đợt UI này.
 
+#### B1: tiếp nhận PCN và tệp đính kèm
+
+- Khi tạo `CertificationProposal` và dossier PCN liên kết, mọi tệp đầu vào B1 đều tùy chọn. Thiếu tệp không được chặn modal, client validation, API create/save hoặc bước gắn template; checklist khởi tạo `MISSING` theo requirement và người dùng có thể tải tệp lên sau. Requirement bắt buộc chỉ có thể chặn tại workflow gate áp dụng về sau. Quy tắc này áp dụng cho hồ sơ PCN mới; không thay đổi dữ liệu hoặc lifecycle legacy.
+
 #### 0.2.4. Nguồn Đề nghị, soạn thảo theo Node và soát xét PCN
 
 - Hồ sơ PCN phải bắt đầu từ một `CertificationProposal`/**Đề nghị** hợp lệ; `PcnDraftWorkspace` không phải điểm nhập liệu thay thế cho Đề nghị và không được tự tạo hồ sơ thật từ file PDF. Khi người dùng mở soạn thảo từ Node, workspace phải hydrate đúng `dossierId`, `proposalId`, `requirementId`, `nodeId`, loại biểu mẫu và snapshot dữ liệu liên quan.
@@ -418,6 +422,24 @@ Mã PCN, checklist, tài liệu, mẫu theo lô, PYC, KQTN, phê duyệt và ph�
 
 ### 0A.3. Luồng hồ sơ PGD
 
+#### Workflow PGD v2 cho hồ sơ tạo mới (quyết định 06/11/2026)
+
+Contract dưới đây áp dụng cho hồ sơ mới có `workflowSchemaVersion: 2`. Bảng stage 7 bước ở 0A.2.3 tiếp tục là mapping v1/legacy; không đổi snapshot, status hay tài liệu của hồ sơ đang chạy. Hồ sơ không có version tiếp tục theo lifecycle cũ.
+
+| Bước | Trách nhiệm và thao tác | Gate / quyền |
+|---|---|---|
+| B1. Tiếp nhận | Thành viên tạo hồ sơ đúng domain, chọn nhóm sản phẩm, phương thức, quy chuẩn/tiêu chuẩn, số và ngày đăng ký; có thể đính kèm tài liệu đầu vào nếu đã có. Mã kỹ thuật do hệ thống cấp riêng. | Tệp đính kèm luôn tùy chọn khi tạo/lưu PYC, kể cả requirement `REQUIRED` trong template; checklist giữ `MISSING` và người dùng có thể bổ sung sau. Chỉ gate workflow về sau mới được chặn theo template/điều kiện áp dụng. |
+| B2. Xem xét đầu vào | Trưởng/Phó phòng chấp nhận, trả lại đúng người upload, từ chối/tạm dừng và yêu cầu bổ sung có lý do. | Capability `INPUT_REVIEW`; waiver có actor, lý do, thời gian và audit. |
+| B3. Phân công và kế hoạch | Gán trưởng đoàn, nhiều chuyên gia, thẩm xét, lãnh đạo, văn phòng và lưu trữ; lập lịch nhiều ngày. | Picker chỉ gồm tài khoản active, scope PGD và đủ capability. Trưởng đoàn accept/return lịch; cần accept trước B4. |
+| B4. Đánh giá và thử nghiệm | Ghi hiện trường, mẫu, PYC/KQTN và đánh giá KQTN. Mỗi đợt là entity riêng; giữ các đợt fail/pass, tài liệu và bổ sung. | Chỉ người được giao `TEAM_LEAD`/`ASSESSOR`; không chuyển B5 khi còn round mở hoặc gate cuối chưa đạt. |
+| B5. Thẩm xét | Đọc tập trung toàn bộ B1–B4, ghi kết quả/ý kiến; không sửa trực tiếp evidence đánh giá. | Capability `TECHNICAL_REVIEW`; chấp nhận B6 hoặc trả B4 với lý do và round công việc mới. |
+| B6. Phê duyệt | Lãnh đạo duyệt dự thảo GCN/QĐ đã thẩm xét. | Capability `LEADERSHIP_APPROVAL`; trả B4 phải có lý do. Phê duyệt chỉ đưa hồ sơ sang `APPROVED_FOR_ISSUANCE`, chưa là chữ ký/phát hành. |
+| B7. Ký, phát hành, bàn giao và lưu trữ | Văn phòng tải PDF ký/in/đóng dấu cuối, ghi ngày cấp/hết hạn, người nhận và mốc bàn giao; người lưu trữ hoàn tất lưu trữ. | `OFFICE_ISSUANCE` cho ký/bàn giao, `ARCHIVE` cho lưu trữ. Trạng thái `APPROVED_FOR_ISSUANCE` → `SIGNED` → `RESULT_RETURNED` → `ARCHIVED`, audit và idempotency ở server. |
+
+Round, phê duyệt, PDF cuối và thời điểm bàn giao/lưu trữ dùng document contract JSONB hiện có, không cần schema migration. File ký cuối dùng private Storage, checksum và provenance asset. B5/B6 trả B4 bằng event/round mới, giữ nguyên bằng chứng cũ. Requirement `REQUIRED`/`OPTIONAL`/`CONDITIONAL`, trạng thái `UPLOADED`/`CONFIRMED` và waiver theo lý do lấy từ template/điều kiện đã xác nhận; KPI không phải gate.
+
+Catalog khóa theo `domain + productGroup + standard + method + template`. PCN chỉ xác nhận QC4/QC9; PGD giữ QC20/QCVN20 và TT58 theo cấu hình hiện hữu. QCVN07:2019, QCVN25:2025 và quan hệ chưa có căn cứ phải mang `PENDING_CONFIRMATION`; không tự route sang PCN hay PGD.
+
 Trạng thái chính: `DRAFT` → `CAPABILITY_REVIEW` → `READY_TO_EXECUTE` → `PREPARING` → `FIELD_INSPECTION` → `WAITING_LAB_RESULTS` → `RESULTS_REVIEW` → `TECHNICAL_REVIEW` → `LEADERSHIP_APPROVAL` → `SIGNED` → `RESULT_RETURNED` → `ARCHIVED`, cùng các nhánh `REJECTED`, `CANCELLED` và `ON_HOLD`. `TECHNICAL_REVIEW` là cấp soát xét/ký kỹ thuật của PGD; `LEADERSHIP_APPROVAL` là cấp lãnh đạo Trung tâm/Viện. Dữ liệu phê duyệt phải tạo chain hai bước theo thứ tự, cho phép cấu hình người được ủy quyền khi người ký chính vắng mặt; mã trạng thái cũ được giữ để tương thích dữ liệu.
 
 - Tiếp nhận kiểm tra phạm vi đăng ký/được công nhận, tính đầy đủ của PYC và hồ sơ; thiếu hoặc không phù hợp phải trả yêu cầu bổ sung, không tự coi là đủ năng lực.
@@ -557,6 +579,8 @@ Template kết quả PGD là schema dẫn xuất cho form nhập liệu: mọi t
 ### 0.10. Bộ hồ sơ mẫu quản trị (2026-11-02)
 
 Đây là workspace quản trị mẫu PCN/PGD theo hướng **tài liệu và checklist trước**. Mẫu lưu định nghĩa tài liệu, nhóm stage và topology nghiệp vụ; không chứa tệp hồ sơ khách hàng. Tệp thực tế chỉ được tạo hoặc tải lên trong phiên xử lý dossier.
+
+Quyết định 06/11/2026 bổ sung contract runtime PGD riêng cho hồ sơ mới: bảy bước B1–B7 tại `0A.3` thay thế cách ánh xạ 12 tác vụ thành nhóm stage bên dưới đối với snapshot v2. Quy tắc 12 tác vụ, ID, lifecycle và snapshot cũ chỉ áp dụng cho hồ sơ/template legacy; không migrate hoặc viết lại hồ sơ đang chạy. Template mới giữ gate tài liệu theo required/optional/conditional, nhiều round evidence và tách phê duyệt B6 khỏi ký phát hành B7.
 
 - Workspace hiển thị một màn hình **Hồ sơ mẫu** với tab domain `PCN`/`PGD`, bộ lọc `DRAFT`/`PUBLISHED`/`RETIRED`, tìm kiếm theo mã/tên và thống kê số lượng. Admin hệ thống quản lý cả hai domain; quản lý chỉ quản lý domain mình có scope và quyền hợp lệ. Nhân viên đang hoạt động trong domain, không phải viewer, được xem mẫu `COMMON` đã công bố và DRAFT `PERSONAL` của mình, tạo/sửa DRAFT cá nhân hoặc nhân bản mẫu dùng chung thành đề xuất riêng. Nhân viên không được sửa, tạo revision, công bố hoặc ngừng mẫu dùng chung. Quản lý có thể nhân bản đề xuất cá nhân thành DRAFT `COMMON` rồi dùng quy trình validation/công bố hiện có. Bản cá nhân chỉ hiện với người tạo và quản lý domain; API kiểm tra domain, người tạo và scope. Mẫu `PERSONAL` không được chọn hoặc snapshot vào dossier. Tài khoản không có quyền xem/đề xuất nhận surface từ chối rõ ràng.
 - Card mẫu hiển thị **Phạm vi áp dụng** bằng badge chữ (PCN: QC4/QC9; PGD: nhóm sản phẩm và phương pháp nếu có), phiên bản và trạng thái để nhận biết mẫu trước khi mở editor.
@@ -865,8 +889,8 @@ Hiển thị trong Màn hình Nhật Ký Hoạt Động & Sổ Tổng Hợp (`Su
 
 - Modal **Tạo Đề nghị** và **Tạo PYC** dùng chung anatomy `PgdcnWindowsWorkflowModal`: scrim cố định, panel `min-h-0`/`max-h` theo viewport, title bar kiểu Windows có accent theo miền, tiêu đề/ngữ cảnh, nút Thu nhỏ và Đóng, body cuộn độc lập, footer cố định và launcher khi thu nhỏ. Thu nhỏ chỉ đổi trạng thái hiển thị, không unmount form hoặc làm mất dữ liệu đang nhập; khôi phục từ launcher phải trả lại đúng vị trí làm việc.
 - Modal phải có `role=dialog`, `aria-modal=true`, tiêu đề được liên kết bằng `aria-labelledby`, focus ban đầu vào nút Đóng hoặc control đầu tiên, `Escape` đóng khi không bận, focus trả về nút mở khi đóng, icon-only control có accessible name, target thao tác tối thiểu khoảng 44px và có focus-visible rõ. Desktop là cửa sổ gọn trong viewport; mobile là panel gần toàn màn hình với body/footer vẫn thao tác được.
-- Dropzone nhập nhanh đặt ở đầu modal, hỗ trợ kéo thả, chọn file, camera và dán ảnh; nhận `.pdf`, `.docx`, `.png`, `.jpg`, `.jpeg`, `image/*`. OCR chỉ tạo bản nháp; người dùng phải xem và **Xác nhận điền bản nháp** trước khi giá trị được áp dụng. File lỗi/không đọc được giữ modal mở, thông báo bằng chữ và không tự tạo hồ sơ.
-- Mọi trường không có giá trị mặc định hợp lệ mà bắt buộc để lưu phải hiển thị dấu `*` màu đỏ trên nhãn, đặt `required`/`aria-required` đúng control và hiển thị lỗi ngay tại trường. PCN bắt buộc ngày tiếp nhận, khách hàng/địa chỉ, người liên hệ hoặc mã số thuế, địa chỉ/kho, tên/kiểu/model/nhãn hiệu/thông số/nhà sản xuất, số lượng nguyên dương và ít nhất một Lĩnh vực. PGD bắt buộc bên yêu cầu, khách hàng/địa chỉ, nhóm và loại hình catalog, tên hàng hóa, số lượng, phạm vi, địa điểm, tiêu chuẩn và phương thức ĐGSPH; trường thép, máy/dây chuyền, than và lý do ưu tiên hiển thị sao động theo điều kiện.
+- Dropzone nhập nhanh đặt ở đầu modal, hỗ trợ kéo thả, chọn file, camera và dán ảnh; nhận `.pdf`, `.docx`, `.png`, `.jpg`, `.jpeg`, `image/*`. Tệp B1 là tùy chọn: có thể tạo/lưu Đề nghị PCN hoặc PYC PGD khi chưa chọn tệp, rồi bổ sung qua hồ sơ sau. OCR chỉ tạo bản nháp; người dùng phải xem và **Xác nhận điền bản nháp** trước khi giá trị được áp dụng. File lỗi/không đọc được giữ modal mở, thông báo bằng chữ và không tự tạo hồ sơ.
+- Mọi trường không có giá trị mặc định hợp lệ mà bắt buộc để lưu phải hiển thị dấu `*` màu đỏ trên nhãn, đặt `required`/`aria-required` đúng control và hiển thị lỗi ngay tại trường. PCN yêu cầu tối thiểu ngày đăng ký, khách hàng/địa chỉ, người liên hệ hoặc mã số thuế, địa chỉ/kho, nhóm sản phẩm, số đăng ký, tiêu chuẩn, số lượng nguyên dương và ít nhất một lĩnh vực; tên sản phẩm/model/nhãn hiệu/thông số/nhà sản xuất không phải điều kiện ẩn để tạo Đề nghị và có thể hoàn thiện ở bước sau. PGD bắt buộc bên yêu cầu, khách hàng/địa chỉ, nhóm và loại hình catalog, tên hàng hóa, số lượng, phạm vi, địa điểm, tiêu chuẩn và phương thức ĐGSPH; trường thép, máy/dây chuyền, than và lý do ưu tiên hiển thị sao động theo điều kiện.
 - Modal **Tạo PYC PGD** có vùng **Bảng tổng hợp mẫu** gọn ngay trong form. Bảng hiển thị số dòng, tổng số lượng, số mẫu PTN/mẫu lưu và các dòng mẫu; nút **Thêm mẫu** mở editor inline/collapsible, không tạo modal lồng. Mỗi dòng có mã mẫu, tên/mô tả mẫu, số lượng, đơn vị, phân loại `LAB`/`RETAINED`, số niêm phong và các trường tùy chọn về kích thước, lô, ngày/địa điểm/người lấy, PTN và ghi chú; lỗi gắn đúng dòng, mã mẫu không trùng và số lượng phải dương.
 - Trường tên/mô tả mẫu dùng combobox có thể gõ sửa: gợi ý theo catalog mẫu thử của nhóm PGD hiện tại, lưu `catalogOptionId` và label snapshot khi chọn mẫu chuẩn; lựa chọn **Mẫu khác / Nhập loại mẫu mới** lưu custom label nguyên văn và không bị catalog cập nhật ghi đè. Mẫu chuẩn và mẫu tùy chọn đều được phép dùng nếu dòng hợp lệ.
 - Tạo PYC phải gửi danh sách sample drafts qua boundary PGD chuyên biệt; server validate lại, tạo request và các mẫu trong cùng transaction/idempotent boundary, backlink `sampleIds`, giữ provenance của catalog/custom label và không làm thay đổi luồng tách/hủy mẫu về sau. Không dùng generic `/api/db` hoặc collection PCN cho mẫu PGD.

@@ -14,7 +14,7 @@ const pcnOperationalModal = read('components/PcnOperationalFormModal.tsx');
 test('PGD drafts in its dossier only when a matching template exists', () => {
   assert.match(pgdPanel, /getPgdDocumentTemplateForRequirement/);
   assert.match(pgdPanel, /hasMatchingDraftTemplate/);
-  assert.match(pgdPanel, /const canDraftInPlace = Boolean\(canMutate && templateKind && requirement && hasMatchingDraftTemplate && onDraftInPlace\)/);
+  assert.match(pgdPanel, /const canDraftInPlace = Boolean\(stageEditable && templateKind && requirement && hasMatchingDraftTemplate && onDraftInPlace\)/);
   assert.match(pgdWorkspace, /onDraftInPlace=\{\(input\) => setDraftingModalContext\(input\)\}/);
   assert.match(pgdWorkspace, /initialRequestId=\{request\.id\}[\s\S]*?initialRequirementCode=\{draftingModalContext\.requirementCode\}[\s\S]*?initialTemplateKind=\{draftingModalContext\.templateKind\}/);
   assert.match(pgdWorkspace, /window\.confirm\('Đóng phần soạn thảo\?/);

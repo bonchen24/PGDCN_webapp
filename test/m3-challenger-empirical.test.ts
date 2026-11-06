@@ -114,7 +114,7 @@ describe('PGD/PCN dossier workspace: 60/40 split & responsive adaptation', () =>
     it('2.3: Seven-stage rail and current work panel are mounted inside the left work card', () => {
       assert.match(
         pgdSource,
-        /data-testid="pgd-dossier-step-work-panel"[^]*?<PgdDossierFlow status=\{request\.status\} evidence=\{context\} selectedStepId=\{selectedStepId\} onSelectStep=\{setSelectedStepId\} \/>[^]*?<PgdDossierStepWorkPanel/,
+        /data-testid="pgd-dossier-step-work-panel"[^]*?<PgdDossierFlow status=\{request\.status\} workflowSchemaVersion=\{workflowSchemaVersion\} evidence=\{context\} selectedStepId=\{selectedStepId\} onSelectStep=\{setSelectedStepId\} \/>[^]*?<PgdDossierStepWorkPanel/,
         'The stage rail and selected stage actions must share the left work card'
       );
       assert.match(pgdSource, /<PgdDossierDocumentReader/);
@@ -124,7 +124,8 @@ describe('PGD/PCN dossier workspace: 60/40 split & responsive adaptation', () =>
       // Left column: customer summary cards (4 cols on lg), PgdDossierStepWorkPanel
       assert.match(pgdSource, /grid gap-2 sm:grid-cols-2 lg:grid-cols-4/, 'Summary cards must preserve 4-column layout on desktop');
       assert.match(pgdSource, /data-testid="pgd-dossier-step-work-panel"/);
-      assert.match(pgdSource, /Phân công theo năng lực/);
+      assert.match(pgdSource, /data-testid="pgd-workspace-assignment-forms"[\s\S]*?Phân công đã ghi nhận/);
+      assert.match(pgdSource, /Trưởng đoàn:[\s\S]*?Chuyên gia đánh giá:[\s\S]*?Thẩm xét:[\s\S]*?Văn phòng:[\s\S]*?Lưu trữ:/);
       assert.match(pgdSource, /Hiện trường, lấy mẫu và bàn giao PTN/);
       assert.match(pgdSource, /Kết quả PTN và báo cáo \/ chứng thư linh hoạt/);
 

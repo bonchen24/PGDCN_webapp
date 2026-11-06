@@ -243,12 +243,17 @@ export interface CertificationProposal {
   dossierId?: string;
   /** Explicit value from the national one-door registration; never inferred from proposalCode. */
   registrationNumber?: string;
+  /** Registration date entered by the responsible office, separate from system receivedAt. */
+  registrationDate?: string;
   /** Standards explicitly supplied on the intake proposal; not inferred from template text. */
   standards?: string[];
+  productGroup?: 'ELECTRICAL_ELECTRONIC' | 'METAL_MATERIALS' | 'CONSTRUCTION_MATERIALS' | 'MANAGEMENT_SYSTEM' | 'OTHER';
+  catalogConfirmationStatus?: 'CONFIRMED' | 'PENDING_CONFIRMATION';
+  catalogItemId?: string;
   customerId?: string;
   customerSnapshot: Pick<CustomerRef, 'name' | 'address' | 'taxId' | 'phone' | 'email' | 'contactPerson'>;
   warehouseAddress?: string;
-  productName: string;
+  productName?: string;
   model?: string;
   brand?: string;
   productType?: string;
@@ -556,6 +561,7 @@ export interface PcnWorkflowTemplate {
 export interface PcnWorkflowSnapshot {
   templateCode: string;
   templateVersion: number;
+  workflowSchemaVersion?: 2;
   stages?: DossierTemplateStageDefinition[];
   requirementDefinitions?: DossierTemplateRequirementDefinition[];
   nodes: PcnWorkflowNodeDefinition[];
@@ -597,6 +603,8 @@ export interface CertificationDossier {
   workflowSnapshot?: PcnWorkflowSnapshot;
   /** True only for new intake records saved before a matching published workflow template existed. */
   workflowTemplatePending?: boolean;
+  /** Set only for dossiers created under the seven-step v2 workflow; absent means legacy. */
+  workflowSchemaVersion?: 2;
   /** One accountable PCN operator from intake through packaging and archive. */
   ownerUsername?: string;
   /** Explicit operator-confirmed reason for an exception-lane status. */

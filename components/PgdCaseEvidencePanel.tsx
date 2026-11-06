@@ -119,6 +119,7 @@ export type PgdCaseEvidencePanelProps = {
   samples: PgdSample[];
   canMutate: boolean;
   editable: boolean;
+  assessmentRoundId?: string;
   initialRequirementCode?: string;
   lockedReason?: string | null;
   loadError?: string | null;
@@ -131,6 +132,7 @@ export default ({
   samples,
   canMutate,
   editable,
+  assessmentRoundId,
   initialRequirementCode,
   lockedReason,
   loadError,
@@ -249,6 +251,7 @@ export default ({
     setBusy(true);
     try {
       await saveDossierDocument(request.id, {
+        ...(assessmentRoundId ? { assessmentRoundId } : {}),
         requirementCode: form.requirementCode.trim(),
         title: form.title.trim(),
         documentNumber: form.documentNumber.trim() || undefined,

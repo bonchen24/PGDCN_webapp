@@ -91,12 +91,34 @@ test('requires an explicit trusted storage state or a complete credential pair',
   assert.deepEqual(resolveAuthentication({ PGDCN_QA_STORAGE_STATE: 'C:/Temp/qa-state.json' }), {
     kind: 'storageState',
     path: 'C:/Temp/qa-state.json',
+    mode: 'api',
+  });
+
+  assert.deepEqual(resolveAuthentication({
+    PGDCN_QA_STORAGE_STATE: 'C:/Temp/qa-state.json',
+    PGDCN_QA_USERNAME: 'qa-user',
+    PGDCN_QA_PASSWORD: 'qa-test-secret',
+  }), {
+    kind: 'storageState',
+    path: 'C:/Temp/qa-state.json',
+    credentials: { username: 'qa-user', password: 'qa-test-secret' },
+    mode: 'api',
   });
 
   const credentials = resolveAuthentication({ PGDCN_QA_USERNAME: ' qa-user ', PGDCN_QA_PASSWORD: '  qa-test-secret  ' });
   assert.equal(credentials.kind, 'credentials');
   assert.equal(credentials.username, 'qa-user');
   assert.equal(credentials.password, '  qa-test-secret  ');
+  assert.equal(credentials.mode, 'api');
+
+  const uiSmoke = resolveAuthentication({
+    PGDCN_QA_AUTH_MODE: 'ui',
+    PGDCN_QA_USERNAME: 'qa-user',
+    PGDCN_QA_PASSWORD: 'qa-test-secret',
+  });
+  assert.equal(uiSmoke.mode, 'ui');
+  assert.throws(() => resolveAuthentication({ PGDCN_QA_AUTH_MODE: 'unknown' }), /PGDCN_QA_AUTH_MODE/i);
+  assert.throws(() => resolveAuthentication({ PGDCN_QA_AUTH_MODE: 'ui', PGDCN_QA_STORAGE_STATE: 'C:/Temp/state.json' }), /UI smoke/i);
 });
 
 test('requires an authenticated session with a role and matching department scope', () => {

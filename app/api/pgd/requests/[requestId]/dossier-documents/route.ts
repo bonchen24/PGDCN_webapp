@@ -20,6 +20,8 @@ import {
 } from '@/lib/server/pgd-operations';
 import { sanitizePcnPathSegment } from '@/lib/server/pcn-files';
 import type { PgdOperationalStationKey } from '@/utils/pgdWorkflow';
+import { getPgdAssignmentApprovalDenial } from '@/utils/pgdWorkflow';
+import { hasPgdDossierCapability } from '@/utils/pgdDossierCapabilities';
 
 const PGD_SUPPLEMENTARY_STAGE_STATIONS: Record<string, PgdOperationalStationKey> = {
   intake: 'INTAKE_CAPABILITY',
@@ -107,6 +109,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
 
   const file = formData.get('file') as File | null;
   const requirementCode = String(formData.get('requirementCode') || '').trim();
+  const assessmentRoundId = String(formData.get('assessmentRoundId') || '').trim();
   const title = String(formData.get('title') || '').trim();
   const supplementaryStageId = String(formData.get('supplementaryStageId') || '').trim();
   const documentNumber = String(formData.get('documentNumber') || '').trim();
@@ -149,6 +152,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       if (!requestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy hồ sơ PGD để lưu chứng từ.'), { statusCode: 404 });
       const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
       assertPgdRequestEvidenceMutationAllowed(request);
+      const workflowV2 = request.workflowSchemaVersion === 2 || request.workflowSnapshot?.workflowSchemaVersion === 2;
+      const isB4 = ['FIELD_INSPECTION', 'WAITING_LAB_RESULTS', 'RESULTS_REVIEW'].includes(request.status);
+      if (workflowV2 && isB4 && !assessmentRoundId) {
+        throw Object.assign(new Error('Cần gắn chứng từ B4 với đợt đánh giá đang mở.'), { statusCode: 400 });
+      }
+      if (assessmentRoundId) {
+        if (!workflowV2) throw Object.assign(new Error('Đợt đánh giá chỉ áp dụng cho hồ sơ workflow v2.'), { statusCode: 409 });
+        if (request.currentAssessmentRoundId && request.currentAssessmentRoundId !== assessmentRoundId) throw Object.assign(new Error('Chỉ có thể bổ sung chứng từ cho đợt đánh giá hiện hành.'), { statusCode: 409 });
+        const roundResult = await client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'requestId' = $3 AND data->>'status' = 'OPEN' AND data->>'domain' = 'pgd' LIMIT 1 FOR UPDATE`, [PGD_COLLECTIONS.assessmentRounds, assessmentRoundId, request.id]);
+        if (!roundResult.rows[0]) throw Object.assign(new Error('Đợt đánh giá đã đóng hoặc không thuộc hồ sơ này.'), { statusCode: 409 });
+        const assignmentResult = await client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC LIMIT 1`, [PGD_COLLECTIONS.assignments, request.id]);
+        const assignment = assignmentResult.rows[0]?.data || {};
+        const manager = !getPgdAssignmentApprovalDenial('APPROVED', actor);
+        if (!manager && !hasPgdDossierCapability(assignment, actor.username, 'ASSESSOR') && !hasPgdDossierCapability(assignment, actor.username, 'TEAM_LEAD')) throw Object.assign(new Error('Tài khoản chưa được phân công thao tác đợt đánh giá này.'), { statusCode: 403 });
+      }
 
       const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || []);
       const requirement = isSupplementary ? undefined : requirements.find((item) => item.code === requirementCode);
@@ -179,11 +197,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
           WHERE collection_name = $1
             AND data->>'requestId' = $2
             AND data->>'requirementCode' = $3
+            AND COALESCE(data->>'assessmentRoundId', '') = $4
             AND data->>'domain' = 'pgd'
           ORDER BY COALESCE((data->>'version')::int, 0) DESC, updated_at DESC, document_id DESC
           LIMIT 1
           FOR UPDATE`,
-        [PGD_COLLECTIONS.dossierDocuments, request.id, resolvedRequirementCode],
+        [PGD_COLLECTIONS.dossierDocuments, request.id, resolvedRequirementCode, assessmentRoundId],
       );
       const current = currentResult.rows[0] ? (mapDocumentRow(currentResult.rows[0]) as PgdDossierDocument) : undefined;
       if (isSupplementary && requirementCode && (!current || current.supplementaryStageId !== supplementaryStageId)) {
@@ -251,6 +270,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         {
           id: documentId,
           requestId: request.id,
+          ...(assessmentRoundId ? { assessmentRoundId } : {}),
           requirementCode: resolvedRequirementCode,
           title: resolvedTitle,
           fileName,

@@ -4,6 +4,7 @@ import { useMemo, useRef, type ReactNode } from 'react';
 
 import type { PgdInspectionStatus, PgdTransitionContext } from '../utils/pgdDomain';
 import { getPgdStatusLabel } from '../utils/pgdDomain';
+import { getPgdV2CurrentStepNumber } from '../utils/pgdWorkflow';
 
 /**
  * 7 Chuẩn hóa giai đoạn chính của quy trình hồ sơ Giám định PGD:
@@ -46,6 +47,7 @@ export type PgdDossierFlowStepStatus = 'LOCKED' | 'READY' | 'IN_PROGRESS' | 'WAI
 
 export interface PgdDossierFlowProps {
   status: PgdInspectionStatus;
+  workflowSchemaVersion?: 2;
   evidence?: PgdTransitionContext;
   selectedStepId: PgdDossierFlowStepId;
   onSelectStep: (stepId: PgdDossierFlowStepId) => void;
@@ -273,7 +275,8 @@ const STATUS_META: Record<PgdDossierFlowStepStatus, StatusMeta> = {
 /**
  * Tính số thứ tự giai đoạn hiện tại (1 -> 7) theo trạng thái PGD
  */
-export function getPgdDossierCurrentStepNumber(status: PgdInspectionStatus): number {
+export function getPgdDossierCurrentStepNumber(status: PgdInspectionStatus, workflowSchemaVersion?: 2): number {
+  if (workflowSchemaVersion === 2) return getPgdV2CurrentStepNumber(status);
   if (status === 'DRAFT') return 1; // 1. Tiếp nhận hồ sơ
   if (status === 'REJECTED' || status === 'ON_HOLD') return 2; // 2. Xem xét & phân công
   if (status === 'CAPABILITY_REVIEW') return 2; // 2. Xem xét & phân công
@@ -287,7 +290,13 @@ export function getPgdDossierCurrentStepNumber(status: PgdInspectionStatus): num
   return 7; // 7. Trả kết quả & lưu trữ (SIGNED, RESULT_RETURNED, ARCHIVED)
 }
 
-function hasStepCompletionEvidence(step: FlowStep, evidence: PgdTransitionContext | undefined, status: PgdInspectionStatus): boolean {
+function hasStepCompletionEvidence(step: FlowStep, evidence: PgdTransitionContext | undefined, status: PgdInspectionStatus, workflowSchemaVersion?: 2): boolean {
+  if (workflowSchemaVersion === 2) {
+    if (step.id === 'execution') return evidence?.labResultReview?.status === 'FINAL' && evidence.labResultReview.retestRequired !== true && evidence.labResultReview.conformity !== 'NON_CONFORMING';
+    if (step.id === 'results-evaluation') return evidence?.hasTechnicalApproval === true || ['LEADERSHIP_APPROVAL', 'APPROVED_FOR_ISSUANCE', 'SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status);
+    if (step.id === 'reporting-approval') return evidence?.hasLeadershipApproval === true || ['APPROVED_FOR_ISSUANCE', 'SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status);
+    if (step.id === 'issuance-archive') return status === 'ARCHIVED';
+  }
   if (step.id === 'intake') {
     return status !== 'DRAFT';
   }
@@ -314,13 +323,17 @@ function hasStepCompletionEvidence(step: FlowStep, evidence: PgdTransitionContex
   return false;
 }
 
-function currentStatusForStep(stepNumber: number, status: PgdInspectionStatus, evidence: PgdTransitionContext | undefined): PgdDossierFlowStepStatus {
-  const current = getPgdDossierCurrentStepNumber(status);
+function currentStatusForStep(stepNumber: number, status: PgdInspectionStatus, evidence: PgdTransitionContext | undefined, workflowSchemaVersion?: 2): PgdDossierFlowStepStatus {
+  const current = getPgdDossierCurrentStepNumber(status, workflowSchemaVersion);
   const step = PGD_DOSSIER_FLOW_STEPS[stepNumber - 1];
-  const verifiedComplete = step ? hasStepCompletionEvidence(step, evidence, status) : false;
+  const verifiedComplete = step ? hasStepCompletionEvidence(step, evidence, status, workflowSchemaVersion) : false;
   if (stepNumber > current) return 'LOCKED';
   if (stepNumber < current) return verifiedComplete ? 'COMPLETED' : 'READY';
-  if (stepNumber === 7 && ['SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status)) {
+  if (workflowSchemaVersion === 2 && stepNumber === 7 && ['SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status)) {
+    if (status !== 'ARCHIVED') return 'IN_PROGRESS';
+    return 'COMPLETED';
+  }
+  if (workflowSchemaVersion !== 2 && stepNumber === 7 && ['SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status)) {
     if (status === 'SIGNED' && evidence?.signed === true) return 'WAITING';
     return verifiedComplete ? 'COMPLETED' : 'READY';
   }
@@ -329,16 +342,22 @@ function currentStatusForStep(stepNumber: number, status: PgdInspectionStatus, e
   return 'IN_PROGRESS';
 }
 
-function stepStatusLabel(stepNumber: number, stepStatus: PgdDossierFlowStepStatus, status: PgdInspectionStatus): string {
-  const current = getPgdDossierCurrentStepNumber(status);
+function stepStatusLabel(stepNumber: number, stepStatus: PgdDossierFlowStepStatus, status: PgdInspectionStatus, workflowSchemaVersion?: 2): string {
+  const current = getPgdDossierCurrentStepNumber(status, workflowSchemaVersion);
   if (stepStatus === 'READY' && stepNumber < current) return 'Đã qua · chưa xác minh';
   if (stepStatus === 'READY' && stepNumber === current && ['SIGNED', 'RESULT_RETURNED', 'ARCHIVED'].includes(status)) return 'Chưa xác minh';
   return STATUS_META[stepStatus].label;
 }
 
-function stepProgress(step: FlowStep, evidence: PgdTransitionContext | undefined, status: PgdInspectionStatus): string {
+function stepProgress(step: FlowStep, evidence: PgdTransitionContext | undefined, status: PgdInspectionStatus, workflowSchemaVersion?: 2): string {
   if (!evidence) {
     return 'Chưa có dữ liệu xác minh';
+  }
+  if (workflowSchemaVersion === 2) {
+    if (step.id === 'execution') return evidence.labResultReview?.status === 'FINAL' ? 'Đã đánh giá KQTN' : 'Đang đánh giá hiện trường / thử nghiệm';
+    if (step.id === 'results-evaluation') return evidence.hasTechnicalApproval ? 'Đã thẩm xét' : 'Chờ thẩm xét';
+    if (step.id === 'reporting-approval') return evidence.hasLeadershipApproval ? 'Đã phê duyệt' : 'Chờ lãnh đạo duyệt';
+    if (step.id === 'issuance-archive') return status === 'ARCHIVED' ? 'Đã lưu trữ' : evidence.signed ? 'Đã ký · chờ bàn giao / lưu trữ' : 'Chờ ký phát hành';
   }
   if (step.id === 'intake') {
     return status === 'DRAFT' ? 'Chờ xác nhận' : 'Đã tiếp nhận';
@@ -347,7 +366,7 @@ function stepProgress(step: FlowStep, evidence: PgdTransitionContext | undefined
     return evidence?.hasApprovedAssignment === true ? 'Đã phân công' : evidence?.hasApprovedAssignment === false ? 'Chưa phân công' : 'Chưa duyệt';
   }
   if (step.id === 'plan') {
-    return getPgdDossierCurrentStepNumber(status) > 3 ? 'Đã lập kế hoạch' : 'Đang lập';
+    return getPgdDossierCurrentStepNumber(status, workflowSchemaVersion) > 3 ? 'Đã lập kế hoạch' : 'Đang lập';
   }
   if (step.id === 'execution') {
     if (evidence?.hasFieldInspection === true) {
@@ -379,8 +398,8 @@ function stepProgress(step: FlowStep, evidence: PgdTransitionContext | undefined
   return 'Chưa có dữ liệu xác minh';
 }
 
-export function getPgdDossierFlowStepIdForStatus(status: PgdInspectionStatus): PgdDossierFlowStageId {
-  const step = PGD_DOSSIER_FLOW_STEPS[getPgdDossierCurrentStepNumber(status) - 1];
+export function getPgdDossierFlowStepIdForStatus(status: PgdInspectionStatus, workflowSchemaVersion?: 2): PgdDossierFlowStageId {
+  const step = PGD_DOSSIER_FLOW_STEPS[getPgdDossierCurrentStepNumber(status, workflowSchemaVersion) - 1];
   return step?.id || 'intake';
 }
 
@@ -396,20 +415,34 @@ export function PgdDossierStageGate({
   return canonicalizePgdStepId(selectedStepId) === stageId ? <>{children}</> : null;
 }
 
-export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep }: PgdDossierFlowProps) {
+export function PgdDossierFlow({ status, workflowSchemaVersion, evidence, selectedStepId, onSelectStep }: PgdDossierFlowProps) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const currentNumber = getPgdDossierCurrentStepNumber(status);
+  const currentNumber = getPgdDossierCurrentStepNumber(status, workflowSchemaVersion);
+  const flowSteps = useMemo(() => {
+    if (workflowSchemaVersion !== 2) return PGD_DOSSIER_FLOW_STEPS;
+    const labels = ['Tiếp nhận', 'Xem xét đầu vào', 'Phân công & kế hoạch', 'Đánh giá & thử nghiệm', 'Thẩm xét', 'Phê duyệt', 'Ký, phát hành & lưu trữ'];
+    const descriptions = [
+      'Tạo hồ sơ và ghi nhận chứng từ đầu vào.',
+      'Lãnh đạo xem xét, chấp nhận hoặc trả hồ sơ cho người nộp.',
+      'Phân công đoàn và thống nhất lịch nhiều ngày.',
+      'Đánh giá hiện trường, lấy mẫu, thử nghiệm và xử lý bổ sung.',
+      'Thẩm xét tập trung toàn bộ hồ sơ B1–B4; có thể trả về B4.',
+      'Lãnh đạo phê duyệt dự thảo; có thể trả về B4.',
+      'Ký, cấp, bàn giao kết quả và lưu trữ hồ sơ.',
+    ];
+    return PGD_DOSSIER_FLOW_STEPS.map((step, index) => ({ ...step, label: labels[index], description: descriptions[index] }));
+  }, [workflowSchemaVersion]);
   
   // Canonicalize selectedStepId if passed legacy ID (e.g., 'capability' -> 'review-assignment')
   const canonicalSelectedId = canonicalizePgdStepId(selectedStepId);
-  const selectedStep = PGD_DOSSIER_FLOW_STEPS.find((step) => step.id === canonicalSelectedId) || PGD_DOSSIER_FLOW_STEPS[Math.min(currentNumber - 1, PGD_DOSSIER_FLOW_STEPS.length - 1)];
-  const selectableIndexes = useMemo(() => PGD_DOSSIER_FLOW_STEPS.map((_, index) => index).filter((index) => index + 1 <= currentNumber), [currentNumber]);
+  const selectedStep = flowSteps.find((step) => step.id === canonicalSelectedId) || flowSteps[Math.min(currentNumber - 1, flowSteps.length - 1)];
+  const selectableIndexes = useMemo(() => flowSteps.map((_, index) => index).filter((index) => index + 1 <= currentNumber), [currentNumber, flowSteps]);
 
   const focusRelative = (index: number, direction: 1 | -1) => {
     const position = selectableIndexes.indexOf(index);
     if (position < 0 || selectableIndexes.length === 0) return;
     const nextIndex = selectableIndexes[(position + direction + selectableIndexes.length) % selectableIndexes.length];
-    onSelectStep(PGD_DOSSIER_FLOW_STEPS[nextIndex].id);
+    onSelectStep(flowSteps[nextIndex].id);
     tabRefs.current[nextIndex]?.focus();
   };
 
@@ -424,7 +457,7 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
       event.preventDefault();
       const nextIndex = event.key === 'Home' ? selectableIndexes[0] : selectableIndexes[selectableIndexes.length - 1];
       if (nextIndex === undefined) return;
-      onSelectStep(PGD_DOSSIER_FLOW_STEPS[nextIndex].id);
+      onSelectStep(flowSteps[nextIndex].id);
       tabRefs.current[nextIndex]?.focus();
     }
   };
@@ -438,6 +471,15 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
     'reporting-approval': 'Phê duyệt',
     'issuance-archive': 'Lưu trữ',
   };
+  const visibleShortLabels: Record<PgdDossierFlowStageId, string> = workflowSchemaVersion === 2 ? {
+    intake: 'Tiếp nhận',
+    'review-assignment': 'Xem xét',
+    plan: 'Phân công · lịch',
+    execution: 'Đánh giá',
+    'results-evaluation': 'Thẩm xét',
+    'reporting-approval': 'Phê duyệt',
+    'issuance-archive': 'Phát hành',
+  } : shortLabels;
 
   return (
     <section className="w-full min-w-0 max-w-full space-y-1.5" data-testid="pgd-dossier-native-flow" aria-label="Bước xử lý">
@@ -450,10 +492,10 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
 
       <div className="w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain touch-pan-x pb-0.5 md:overflow-x-hidden" data-testid="pgd-dossier-flow-scroll">
         <div className="grid min-w-max grid-cols-7 gap-1 md:w-full md:min-w-0" role="tablist" aria-label="Các giai đoạn xử lý hồ sơ PGD">
-          {PGD_DOSSIER_FLOW_STEPS.map((step, index) => {
-            const stepStatus = currentStatusForStep(index + 1, status, evidence);
-            const displayedStatusLabel = stepStatusLabel(index + 1, stepStatus, status);
-            const progressLabel = stepProgress(step, evidence, status);
+          {flowSteps.map((step, index) => {
+            const stepStatus = currentStatusForStep(index + 1, status, evidence, workflowSchemaVersion);
+            const displayedStatusLabel = stepStatusLabel(index + 1, stepStatus, status, workflowSchemaVersion);
+            const progressLabel = stepProgress(step, evidence, status, workflowSchemaVersion);
             const selected = selectedStep?.id === step.id;
             const disabled = index + 1 > currentNumber;
             const stepClassName = disabled
@@ -481,8 +523,9 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
                 aria-controls={'pgd-dossier-step-panel-' + step.id}
                 aria-describedby={'pgd-step-status-' + step.id}
                 aria-posinset={index + 1}
-                aria-setsize={PGD_DOSSIER_FLOW_STEPS.length}
+                aria-setsize={flowSteps.length}
                 aria-label={step.label + ' · ' + displayedStatusLabel}
+                data-workflow-stage-id={workflowSchemaVersion === 2 ? ['intake', 'input-review', 'assignment-plan', 'assessment-testing', 'technical-review', 'leadership-approval', 'issuance-archive'][index] : undefined}
                 disabled={disabled}
                 title={disabled ? step.label + ' · Chưa đến giai đoạn' : step.description}
                 onClick={() => onSelectStep(step.id)}
@@ -492,7 +535,7 @@ export function PgdDossierFlow({ status, evidence, selectedStepId, onSelectStep 
                 <span className={'flex h-5 w-7 items-center justify-center rounded text-[11px] font-black tabular-nums ' + numberClassName}>
                   0{index + 1}
                 </span>
-                <span className="hidden w-full truncate text-[11px] font-semibold leading-tight text-slate-600 xl:block">{shortLabels[step.id]}</span>
+                <span className="hidden w-full truncate text-[11px] font-semibold leading-tight text-slate-600 xl:block">{visibleShortLabels[step.id]}</span>
                 <span id={'pgd-step-status-' + step.id} className="sr-only">{progressLabel}</span>
               </button>
             );

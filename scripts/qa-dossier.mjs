@@ -105,6 +105,35 @@ function sessionFromPage(page) {
   });
 }
 
+async function sessionFromContext(context, baseUrl) {
+  const response = await context.request.get(new URL('/api/auth/pcn-session', `${baseUrl}/`).toString(), {
+    timeout: 15000,
+  });
+  let payload = {};
+  try {
+    payload = await response.json();
+  } catch {
+    // Keep the status code for actionable 401/403 reporting.
+  }
+  return { status: response.status(), payload };
+}
+
+async function signInThroughApi(context, baseUrl, credentials) {
+  const response = await context.request.post(new URL('/api/auth/pcn-session', `${baseUrl}/`).toString(), {
+    data: { username: credentials.username, password: credentials.password },
+    timeout: 15000,
+  });
+  if (response.status() === 401) {
+    throw new Error('POST /api/auth/pcn-session trả HTTP 401; thông tin đăng nhập QA không hợp lệ.');
+  }
+  if (response.status() === 403) {
+    throw new Error('POST /api/auth/pcn-session trả HTTP 403; tài khoản QA bị từ chối quyền truy cập.');
+  }
+  if (!response.ok()) {
+    throw new Error(`POST /api/auth/pcn-session trả HTTP ${response.status()}; không thể đăng nhập QA.`);
+  }
+}
+
 async function signInThroughUi(page, baseUrl, credentials) {
   const loginUrl = new URL('/login', `${baseUrl}/`).toString();
   await page.goto(loginUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
@@ -138,8 +167,9 @@ async function signInThroughUi(page, baseUrl, credentials) {
 
 function redactSecrets(message, authentication) {
   let safeMessage = String(message || '');
-  if (authentication.kind === 'credentials') {
-    for (const secret of [authentication.password, authentication.username]) {
+  const credentials = authentication?.kind === 'credentials' ? authentication : authentication?.credentials;
+  if (credentials) {
+    for (const secret of [credentials.password, credentials.username]) {
       if (secret) safeMessage = safeMessage.split(secret).join('[đã ẩn]');
     }
   }
@@ -218,6 +248,7 @@ async function assertDossierPageIsAuthenticated(page, baseUrl, department) {
 async function main() {
   const baseUrl = selectBaseUrl();
   const authentication = resolveAuthentication();
+  activeAuthentication = authentication;
   const targets = collectDossierTargets();
   let storageStatePath;
   if (authentication.kind === 'storageState') {
@@ -260,18 +291,32 @@ async function main() {
     page.on('pageerror', (error) => consoleErrors.push(redactSecrets(error.message, authentication)));
 
     if (authentication.kind === 'credentials') {
-      await signInThroughUi(page, baseUrl, authentication);
+      if (authentication.mode === 'ui') {
+        await signInThroughUi(page, baseUrl, authentication);
+      } else {
+        await signInThroughApi(context, baseUrl, authentication);
+        await page.goto(new URL('/', `${baseUrl}/`).toString(), { waitUntil: 'domcontentloaded', timeout: 20000 });
+      }
     } else {
       await page.goto(new URL('/', `${baseUrl}/`).toString(), { waitUntil: 'domcontentloaded', timeout: 20000 });
     }
 
-    const session = await sessionFromPage(page);
+    let session = authentication.kind === 'storageState'
+      ? await sessionFromContext(context, baseUrl)
+      : await sessionFromPage(page);
+    let refreshedStorageState = false;
+    if (session.status === 401 && authentication.kind === 'storageState' && authentication.credentials) {
+      await signInThroughApi(context, baseUrl, authentication.credentials);
+      session = await sessionFromPage(page);
+      refreshedStorageState = session.status === 200;
+    }
     const roleResults = new Map();
     for (const target of targets) {
       if (!roleResults.has(target.department)) {
         roleResults.set(target.department, assertAuthenticatedSession(session, target.department));
       }
     }
+    if (refreshedStorageState) await context.storageState({ path: storageStatePath });
     console.log(`[REAL QA] session=authenticated departments=${[...roleResults.keys()].join(',')} roles=${[...roleResults.values()].join(',')}`);
 
     const overflows = [];
@@ -293,7 +338,8 @@ async function main() {
   }
 }
 
+let activeAuthentication;
 main().catch((error) => {
-  console.error(`[REAL QA] BLOCKED/FAILED: ${error.message}`);
+  console.error(`[REAL QA] BLOCKED/FAILED: ${redactSecrets(error.message, activeAuthentication)}`);
   process.exitCode = 1;
 });

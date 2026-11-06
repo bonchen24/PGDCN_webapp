@@ -4,6 +4,9 @@ import test from 'node:test';
 
 import { buildPcnIntakeApiError } from '../utils/pcnIntakeApi.ts';
 
+const appIntakeRoute = fs.readFileSync(new URL('../app/api/pcn/intake/route.ts', import.meta.url), 'utf8');
+const appProposalUpdateRoute = fs.readFileSync(new URL('../app/api/pcn/proposals/[proposalId]/route.ts', import.meta.url), 'utf8');
+const pcnWorkspace = fs.readFileSync(new URL('../components/PcnWorkspace.tsx', import.meta.url), 'utf8');
 const server = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
 const store = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
 const detail = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
@@ -94,6 +97,17 @@ test('PCN intake API preserves structured server validation issues for field-lev
     { field: 'customerSnapshot.name', message: 'Tên khách hàng là bắt buộc.' },
     { field: 'fieldCodes', message: 'Cần chọn ít nhất một Lĩnh vực.' },
   ]);
+});
+
+test('new PCN intake validates group and registration on the server without requiring hidden product details', () => {
+  assert.match(appIntakeRoute, /requireProductGroup:\s*true/);
+  assert.match(appIntakeRoute, /requireRegistration:\s*true/);
+  assert.match(appIntakeRoute, /catalogClassification\.confirmationStatus\s*===\s*'CONFIRMED'/);
+  assert.match(pcnWorkspace, /id="pcn-proposal-product-group"/);
+  assert.match(pcnWorkspace, /id="pcn-proposal-registration-date"/);
+  assert.doesNotMatch(pcnWorkspace, /id="pcn-proposal-(product-name|product-type|model|brand|manufacturer|specifications)"/);
+  assert.match(appProposalUpdateRoute, /updates\.standards\s*=\s*rawUpdates\.standards\.map/);
+  assert.match(appProposalUpdateRoute, /'registrationDate'/);
 });
 
 // --- End of pcn-intake-contract.test.ts ---

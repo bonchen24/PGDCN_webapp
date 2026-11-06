@@ -9,12 +9,13 @@ import {
 import { buildActivityLog } from '@/utils/activityLog';
 import { getDocumentPayload } from './collections';
 import { PGD_COLLECTIONS, PgdInspectionRequest } from '@/utils/pgdDomain';
+import { hasPgdDossierCapability, type PgdDossierCapability } from '@/utils/pgdDossierCapabilities';
 import {
   PgdDocumentTemplate,
   PgdDocumentTemplateKind,
   getPgdDocumentTemplates,
 } from '@/utils/pgdDocumentTemplates';
-import { PgdOperationalStationKey, getPgdOperationalStepAccess } from '@/utils/pgdWorkflow';
+import { getPgdAssignmentApprovalDenial, PgdOperationalStationKey, getPgdOperationalStepAccess } from '@/utils/pgdWorkflow';
 
 export { getPgdOperationalStepAccess };
 
@@ -134,23 +135,57 @@ export function assertPgdRequestEvidenceMutationAllowed(request: PgdInspectionRe
   if (denial) throw Object.assign(new Error(denial), { statusCode: 409 });
 }
 
-export async function readPgdTransitionContext(client: any, requestId: string): Promise<any> {
-  const [assignmentResult, fieldResult, sampleResult, labResult, reportResult, certificateResult, labReviewResult] = await Promise.all([
+export async function assertPgdAssessmentRoundAllowed(
+  client: any,
+  request: PgdInspectionRequest,
+  assessmentRoundId: string | undefined,
+  actor: PcnUserAccount,
+  capability: PgdDossierCapability = 'ASSESSOR',
+): Promise<any | undefined> {
+  const isV2 = request.workflowSchemaVersion === 2 || request.workflowSnapshot?.workflowSchemaVersion === 2;
+  const roundId = String(assessmentRoundId || '').trim();
+  if (!isV2 && !roundId) return undefined;
+  if (!roundId) throw Object.assign(new Error('Cần chọn đợt đánh giá đang mở cho hồ sơ workflow v2.'), { statusCode: 400 });
+  const roundResult = await client.query(
+    `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'requestId' = $3 AND data->>'status' = 'OPEN' AND data->>'domain' = 'pgd' LIMIT 1 FOR UPDATE`,
+    [PGD_COLLECTIONS.assessmentRounds, roundId, request.id],
+  );
+  if (!roundResult.rows[0]) throw Object.assign(new Error('Đợt đánh giá đã đóng hoặc không thuộc hồ sơ này.'), { statusCode: 409 });
+  if (request.currentAssessmentRoundId && request.currentAssessmentRoundId !== roundId) throw Object.assign(new Error('Chỉ có thể cập nhật bằng chứng của đợt đánh giá hiện hành.'), { statusCode: 409 });
+  const manager = !getPgdAssignmentApprovalDenial('APPROVED', actor);
+  if (!manager) {
+    const assignmentResult = await client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC LIMIT 1`, [PGD_COLLECTIONS.assignments, request.id]);
+    const assignment = assignmentResult.rows[0]?.data;
+    if (!hasPgdDossierCapability(assignment, actor.username, capability) && !hasPgdDossierCapability(assignment, actor.username, 'TEAM_LEAD')) {
+      throw Object.assign(new Error('Tài khoản chưa được phân công capability thao tác đợt đánh giá này.'), { statusCode: 403 });
+    }
+  }
+  return roundResult.rows[0].data;
+}
+
+export async function readPgdTransitionContext(client: any, requestId: string, assessmentRoundId?: string): Promise<any> {
+  const [assignmentResult, fieldResult, sampleResult, labResult, reportResult, certificateResult, labReviewResult, planResult, roundResult] = await Promise.all([
     client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC LIMIT 1`, [PGD_COLLECTIONS.assignments, requestId]),
     client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC LIMIT 1`, [PGD_COLLECTIONS.fieldInspections, requestId]),
     client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY document_id`, [PGD_COLLECTIONS.samples, requestId]),
     client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY document_id`, [PGD_COLLECTIONS.labRequests, requestId]),
     client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC LIMIT 1`, [PGD_COLLECTIONS.reports, requestId]),
     client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC LIMIT 1`, [PGD_COLLECTIONS.certificates, requestId]),
-    client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC LIMIT 1`, [PGD_COLLECTIONS.labResultReviews, requestId]),
+    client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC`, [PGD_COLLECTIONS.labResultReviews, requestId]),
+    client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY updated_at DESC LIMIT 1`, [PGD_COLLECTIONS.inspectionPlans, requestId]),
+    client.query(`SELECT data FROM app_documents WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd' ORDER BY document_id`, [PGD_COLLECTIONS.assessmentRounds, requestId]),
   ]);
   const assignments = assignmentResult.rows.map((row: any) => row.data || {});
-  const fields = fieldResult.rows.map((row: any) => row.data || {});
-  const samples = sampleResult.rows.map((row: any) => row.data || {});
-  const labRequests = labResult.rows.map((row: any) => row.data || {});
+  const allFields = fieldResult.rows.map((row: any) => row.data || {});
+  const allSamples = sampleResult.rows.map((row: any) => row.data || {});
+  const allLabRequests = labResult.rows.map((row: any) => row.data || {});
   const reports = reportResult.rows.map((row: any) => row.data || {});
   const certificates = certificateResult.rows.map((row: any) => row.data || {});
+  const fields = assessmentRoundId ? allFields.filter((field: any) => field.assessmentRoundId === assessmentRoundId) : allFields;
+  const samples = assessmentRoundId ? allSamples.filter((sample: any) => sample.assessmentRoundId === assessmentRoundId) : allSamples;
+  const labRequests = assessmentRoundId ? allLabRequests.filter((item: any) => item.assessmentRoundId === assessmentRoundId) : allLabRequests;
   const labSamples = samples.filter((sample: any) => sample.disposition === 'LAB');
+  const labReview = labReviewResult.rows.map((row: any) => row.data || {}).find((review: any) => !assessmentRoundId || review.assessmentRoundId === assessmentRoundId);
   return {
     hasApprovedAssignment: assignments.some((assignment: any) => assignment.status === 'APPROVED'),
     hasFieldInspection: fields.some((inspection: any) => inspection.completed === true),
@@ -159,11 +194,13 @@ export async function readPgdTransitionContext(client: any, requestId: string): 
     reportReady: reports.some((report: any) => Boolean(String(report.conclusion || '').trim()) && ['DRAFT', 'APPROVED'].includes(report.status)),
     hasCertificate: certificates.length > 0,
     signed: certificates.some((certificate: any) => certificate.status === 'SIGNED' && Boolean(certificate.signedAt)),
-    labResultReview: labReviewResult.rows[0]?.data
+    hasAcceptedPlan: planResult.rows.some((row: any) => row.data?.acceptance?.status === 'ACCEPTED'),
+    hasOpenAssessmentRounds: roundResult.rows.some((row: any) => row.data?.status === 'OPEN'),
+    labResultReview: labReview
       ? {
-          status: labReviewResult.rows[0].data.status,
-          conformity: labReviewResult.rows[0].data.conformity,
-          retestRequired: labReviewResult.rows[0].data.retestRequired === true,
+          status: labReview.status,
+          conformity: labReview.conformity,
+          retestRequired: labReview.retestRequired === true,
         }
       : undefined,
   };
@@ -217,14 +254,14 @@ export async function buildPgdDossierPackageSnapshot(
        FROM (
          SELECT document_id, data,
                 ROW_NUMBER() OVER (
-                  PARTITION BY data->>'requirementCode'
+                  PARTITION BY data->>'requirementCode', COALESCE(data->>'assessmentRoundId', '')
                   ORDER BY COALESCE((data->>'version')::int, 0) DESC, updated_at DESC, document_id DESC
                 ) AS current_row
            FROM app_documents
           WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd'
        ) current_documents
       WHERE current_row = 1
-      ORDER BY data->>'requirementCode', document_id`,
+      ORDER BY data->>'requirementCode', COALESCE(data->>'assessmentRoundId', ''), document_id`,
     [PGD_COLLECTIONS.dossierDocuments, request.id],
   );
   const dossierDocuments = dossierResult.rows.map((row: any) => mapDocumentRow(row));
@@ -267,6 +304,7 @@ export async function buildPgdDossierPackageSnapshot(
       id: document.id,
       domain: 'pgd',
       requestId: request.id,
+      ...(document.assessmentRoundId ? { assessmentRoundId: document.assessmentRoundId } : {}),
       fileName: document.fileName,
       sourceCollection: document.originCollection || PGD_COLLECTIONS.dossierDocuments,
       sourceDocumentId: document.originDocumentId || document.id,

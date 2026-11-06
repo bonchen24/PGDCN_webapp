@@ -1,43 +1,27 @@
-# Playwright QA hồ sơ PCN/PGD
+﻿# Playwright QA hồ sơ PCN/PGĐCN
 
-`npm run qa:dossier` chạy xác minh UI thật bằng Chromium trong một Playwright context riêng. Lệnh luôn kiểm tra `GET /` và fingerprint PGDCN trước khi mở browser, sau đó kiểm tra phiên thật qua `GET /api/auth/pcn-session`, scope phòng ban, trang chi tiết hồ sơ, 7 giai đoạn, vùng thao tác tài liệu, kích thước 1440 × 1000 và 390 × 844, lỗi console và tràn ngang.
+`npm run qa:dossier` xác minh ứng dụng PGĐCN đang chạy bằng Chromium thật. Harness kiểm tra origin và fingerprint ứng dụng trước khi đăng nhập, sau đó xác minh session, vai trò, phạm vi phòng ban, trang chi tiết hồ sơ, 7 bước, vùng tài liệu, kích thước desktop 1440×1000 và mobile 390×844, lỗi console và tràn ngang.
 
-## Chọn server và hồ sơ QA
+## Server và hồ sơ QA
 
-Mặc định harness dùng `http://127.0.0.1:1357`. Có thể chỉ định origin chính xác:
+Mặc định dùng `http://127.0.0.1:1357`. Chỉ định origin và mã hồ sơ QA an toàn bằng biến môi trường:
 
 ```powershell
 $env:PGDCN_UX_BASE_URL = 'http://127.0.0.1:1357'
 $env:PGDCN_QA_PCN_DOSSIER_ID = '<id hồ sơ PCN QA>'
-$env:PGDCN_QA_PGD_DOSSIER_ID = '<id hồ sơ PGD QA>'
+$env:PGDCN_QA_PGD_DOSSIER_ID = '<id hồ sơ PGĐCN QA>'
 ```
 
-Chỉ đặt ID của dữ liệu QA an toàn. Có thể chạy một phòng ban hoặc cả hai; phiên phải có scope tương ứng với từng ID.
+Có thể chỉ kiểm tra một phòng ban. Session phải có scope tương ứng. Harness chỉ đọc hồ sơ; không tạo hoặc sửa dữ liệu.
 
-Nếu cổng 1357 đang chạy đúng PGDCN, dùng server đó. Nếu cần server QA riêng, mở terminal thứ nhất và truyền cổng qua biến `PORT`:
+## Đăng nhập thật
 
-```powershell
-$env:PORT = '1358'
-npm run dev
-```
+Mặc định, khi có credential, harness đăng nhập qua API bằng `POST /api/auth/pcn-session` trong `BrowserContext.request`. Cookie `Set-Cookie` được chia sẻ với browser context; harness dùng trang để gọi `GET /api/auth/pcn-session`, xác nhận role và scope, rồi mở thẳng URL hồ sơ. Mã HTTP 401 (chưa đăng nhập hoặc session hết hạn) và 403 (bị từ chối quyền) được báo riêng. Mật khẩu, token và cookie không được ghi vào log.
 
-Ở terminal QA thứ hai, đặt `$env:PGDCN_UX_BASE_URL = 'http://127.0.0.1:1358'`. Không truyền `--port` cho `npm run dev`. Harness sẽ kiểm tra fingerprint ứng dụng và process đang nghe đúng cổng; nếu sai, lệnh dừng mà không tắt process nào.
-
-## Phiên đăng nhập thật
-
-Dùng một trong hai chế độ sau. Tài khoản QA đã xác nhận là `luongxuanhung`; script chỉ nhận credential từ environment của tiến trình hoặc storage state được cung cấp an toàn trên máy host.
-
-**Storage state Playwright đáng tin cậy:** chỉ định file đã được tạo bằng quy trình đăng nhập được tin cậy. File phải nằm ngoài repo và không được commit. Harness chỉ đọc file, không tạo hoặc ghi lại cookie:
+Cung cấp credential qua environment của tiến trình, không đặt mật khẩu trong lệnh hoặc file repo:
 
 ```powershell
-$env:PGDCN_QA_STORAGE_STATE = Join-Path $env:TEMP 'pgdcn-qa-storage-state.json'
-npm run qa:dossier
-```
-
-**Đăng nhập qua UI thật:** cung cấp tài khoản QA qua environment của tiến trình. Có thể nhập mật khẩu ẩn trong PowerShell như sau:
-
-```powershell
-$env:PGDCN_QA_USERNAME = 'luongxuanhung'
+$env:PGDCN_QA_USERNAME = '<tài khoản QA>'
 $qaPassword = Read-Host 'Mật khẩu QA' -AsSecureString
 $env:PGDCN_QA_PASSWORD = [System.Net.NetworkCredential]::new('', $qaPassword).Password
 Remove-Variable qaPassword
@@ -45,25 +29,28 @@ npm run qa:dossier
 Remove-Item Env:PGDCN_QA_USERNAME, Env:PGDCN_QA_PASSWORD -ErrorAction SilentlyContinue
 ```
 
-Lệnh nhập mật khẩu không ghi giá trị vào command history. Harness mở `/login`, điền theo nhãn chính xác `Tên đăng nhập` và `Mật khẩu` (fallback lần lượt là `#login-username` và `#login-password`), rồi chờ đúng callback `POST /api/auth/pcn-session`. Checkbox `Lưu mật khẩu` không được dùng làm locator cho password. Sau POST thành công, script mở `/` và xác minh `GET /api/auth/pcn-session`, role cùng scope PCN/PGD; thiếu scope được báo riêng với lỗi đăng nhập. Mật khẩu không được in ra, ghi vào file, chụp screenshot ở màn hình đăng nhập hoặc lưu thành storage state.
+`PGDCN_QA_AUTH_MODE=ui` chạy smoke riêng qua form đăng nhập thật. Chế độ mặc định `api` không mở form đăng nhập.
 
-Khi không có credential thật, chạy kiểm tra hồi quy form bằng Playwright:
+Storage state Playwright đáng tin cậy có thể được dùng thay cho đăng nhập ban đầu. File phải nằm ngoài repo. Nếu session trả 401 và cặp credential QA cũng được cung cấp, harness đăng nhập API đúng một lần, xác minh lại session trên trang rồi cập nhật storage state. Không thử đăng nhập lại khi nhận 403.
 
 ```powershell
-npm run test:qa:dossier-harness
+$env:PGDCN_QA_STORAGE_STATE = Join-Path $env:TEMP 'pgdcn-qa-storage-state.json'
+$env:PGDCN_QA_USERNAME = '<tài khoản QA>'
+# Gán PGDCN_QA_PASSWORD an toàn như ví dụ phía trên để cho phép làm mới session hết hạn.
+npm run qa:dossier
 ```
 
-Bài mock dùng DOM login có nhãn và checkbox như form thật, xác nhận browser gửi POST đến callback, rồi nhận HTTP 401 để chứng minh lỗi được phát hiện và không chuyển tiếp sau đăng nhập thất bại. Đây chỉ là kiểm tra selector/callback, không xác thực thành công và không thay thế `npm run qa:dossier`. QA REAL AUTH chỉ chạy khi có cặp `PGDCN_QA_USERNAME`/`PGDCN_QA_PASSWORD` hoặc storage state đáng tin cậy.
+Nếu thiếu cả storage state lẫn cặp credential, QA REAL AUTH sẽ dừng với thông báo cấu hình cần thiết; không giả lập cookie hoặc xác nhận đăng nhập thành công.
 
-## Screenshot và bài test mock
+## Screenshot và kiểm thử mock
 
-Screenshot không được tạo mặc định. Chỉ bật khi dùng dữ liệu QA an toàn và lưu ngoài repo:
+Mặc định không tạo screenshot. Khi dùng dữ liệu QA an toàn, có thể lưu ảnh ngoài repo:
 
 ```powershell
 $env:PGDCN_QA_SCREENSHOT_DIR = Join-Path $env:TEMP 'pgdcn-qa-artifacts'
 npm run qa:dossier
 ```
 
-Ảnh có thể chứa nội dung hồ sơ; không chia sẻ ảnh chứa dữ liệu thật. Harness chỉ ghi hai tên ảnh theo phòng ban và viewport, không đưa ID hồ sơ vào tên file.
+`npm run test:qa:dossier-harness` kiểm thử cấu hình, phân loại auth, cookie handoff, điều hướng hồ sơ trực tiếp, redaction và luồng refresh session bằng fixture cục bộ; đây không phải đăng nhập production.
 
-`npm run qa:dossier:mock` chạy các bài Playwright có route/API được stub. Chúng là **synthetic/mock**, không xác thực tài khoản, không kiểm tra RBAC thật và không được dùng làm kết quả QA UI đã đăng nhập. Bài `test/pcn-pgd-dossier-wheel-scroll.playwright.test.mjs` kiểm tra PCN/PGD tại 1366, 1440 và 390 px: cuộn wheel trên nội dung/bảng, PageDown, vùng không tràn, PDF iframe và overlay xem nhanh. Có thể ghi ảnh mock ra ngoài repo bằng `PGDCN_SCROLL_SCREENSHOT_DIR`. Chromium headless giữ PDF iframe ở `about:blank`, nên bài wheel chỉ xác nhận hit-test và cuộn vùng hồ sơ khi PDF viewer không nhận wheel; cần QA tài khoản thật để xác nhận viewer PDF native. Test thuần cho URL, fingerprint, phiên và ID chạy bằng `npm run test:qa:dossier-harness`.
+`npm run qa:dossier:mock` là kiểm tra giao diện tổng hợp có route/API stub. Nó chỉ phục vụ visual/layout, không xác minh tài khoản, dữ liệu thật hoặc RBAC. Kết quả mock không được báo cáo là REAL AUTH.

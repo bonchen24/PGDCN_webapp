@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { CheckCircle2, ChevronRight, Download, Eye, ExternalLink, FileText, Pencil, Upload } from 'lucide-react';
 
 import type { PcnUserAccount } from '../types';
-import type { PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
+import type { PgdAssessmentRound, PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
 import type { PgdDossierDocument, PgdDossierRequirement } from '../utils/pgdDossier';
 import { getCurrentPgdDossierDocuments, getPgdDossierRequirementForTemplate } from '../utils/pgdDossier';
 import { getPgdDocumentTemplateForRequirement } from '../utils/pgdDrafting';
@@ -25,17 +25,24 @@ import {
   type PgdStationPanelProps,
 } from './PgdStationFormsPanel';
 import PgdcnDossierDocumentActionTable from './PgdcnDossierDocumentActionTable';
+import PgdIssuancePanel from './PgdIssuancePanel';
 
 type Props = {
   request: PgdInspectionRequest;
   currentUser: PcnUserAccount;
+  workflowSchemaVersion?: 2;
   selectedStepId: PgdDossierFlowStepId;
   dossierRequirements: PgdDossierRequirement[];
   dossierDocuments: PgdDossierDocument[];
   dossierLoadStatus?: 'loading' | 'error' | 'loaded';
   samples: PgdSample[];
+  assessmentRoundId?: string;
+  assessmentRounds?: PgdAssessmentRound[];
+  onSelectAssessmentRound?: (roundId: string) => void;
+  onAssessmentRoundAction?: (input: { requestId: string; action: 'CREATE' | 'CLOSE'; id?: string; reason?: string }) => Promise<PgdAssessmentRound>;
   canMutate: boolean;
   onCompleteCurrent?: () => void;
+  onReturnCurrent?: () => void;
   completeDisabled?: boolean;
   isProcessing?: boolean;
   completeLabel?: string;
@@ -155,13 +162,19 @@ function ExistingStationPanel({ request, currentUser, canMutate }: Pick<Props, '
 export default function PgdDossierStepWorkPanel({
   request,
   currentUser,
+  workflowSchemaVersion,
   selectedStepId,
   dossierRequirements,
   dossierDocuments,
   dossierLoadStatus = 'loaded',
   samples,
+  assessmentRoundId,
+  assessmentRounds = [],
+  onSelectAssessmentRound,
+  onAssessmentRoundAction,
   canMutate,
   onCompleteCurrent,
+  onReturnCurrent,
   completeDisabled = false,
   isProcessing = false,
   completeLabel,
@@ -177,14 +190,32 @@ export default function PgdDossierStepWorkPanel({
   onSelectDocument,
 }: Props) {
   const canonicalStageId = canonicalizePgdStepId(selectedStepId);
-  const meta = STAGE_META[canonicalStageId];
-  const stationProps: PgdStationPanelProps = { request, currentUser, editable: canMutate };
+  const legacyMeta = STAGE_META[canonicalStageId];
+  const v2Meta: Partial<Record<PgdDossierFlowStageId, typeof legacyMeta>> = {
+    intake: { number: 1, title: 'Tiếp nhận hồ sơ', description: 'Tạo hồ sơ và ghi nhận chứng từ đầu vào.' },
+    'review-assignment': { number: 2, title: 'Xem xét đầu vào', description: 'Lãnh đạo xem xét, chấp nhận, trả bổ sung, từ chối hoặc tạm dừng.' },
+    plan: { number: 3, title: 'Phân công & kế hoạch', description: 'Phân công đoàn và xác nhận lịch nhiều ngày.' },
+    execution: { number: 4, title: 'Đánh giá & thử nghiệm', description: 'Thực hiện hiện trường, mẫu, PTN và bổ sung hồ sơ.' },
+    'results-evaluation': { number: 5, title: 'Thẩm xét', description: 'Xem toàn bộ hồ sơ B1–B4, ghi ý kiến hoặc trả về B4.' },
+    'reporting-approval': { number: 6, title: 'Phê duyệt lãnh đạo', description: 'Duyệt dự thảo hoặc trả về B4.' },
+    'issuance-archive': { number: 7, title: 'Ký, phát hành & lưu trữ', description: 'Tải PDF cuối, nhập ngày cấp/hết hạn, bàn giao và lưu trữ.' },
+  };
+  const meta = workflowSchemaVersion === 2 ? v2Meta[canonicalStageId] || legacyMeta : legacyMeta;
+  const approvalOnlyStage = workflowSchemaVersion === 2 && ['results-evaluation', 'reporting-approval'].includes(canonicalStageId);
+  const stageEditable = canMutate && !approvalOnlyStage;
+  const selectedRoundIsOpen = assessmentRounds.some((round) => round.id === assessmentRoundId && round.status === 'OPEN');
+  const stationProps: PgdStationPanelProps = { request, currentUser, workflowSchemaVersion, editable: stageEditable && (workflowSchemaVersion !== 2 || canonicalStageId !== 'execution' || selectedRoundIsOpen), assessmentRoundId };
+  const orderedAssessmentRounds = [...assessmentRounds].sort((left, right) => left.sequence - right.sequence);
+  const activeAssessmentRound = orderedAssessmentRounds.find((round) => round.id === assessmentRoundId);
+  const latestAssessmentRound = orderedAssessmentRounds[orderedAssessmentRounds.length - 1];
   const templateKind = STAGE_DRAFTING[canonicalStageId];
   const requirement = templateKind ? getPgdDossierRequirementForTemplate(templateKind, request.productGroup) : undefined;
   
   const currentDocumentsByCode = useMemo(
-    () => new Map(getCurrentPgdDossierDocuments(dossierDocuments).map((document) => [document.requirementCode, document])),
-    [dossierDocuments]
+    () => new Map(getCurrentPgdDossierDocuments(dossierDocuments)
+      .filter((document) => canonicalStageId !== 'execution' || workflowSchemaVersion !== 2 || document.assessmentRoundId === assessmentRoundId)
+      .map((document) => [document.requirementCode, document])),
+    [dossierDocuments, canonicalStageId, workflowSchemaVersion, assessmentRoundId]
   );
   const waivedRequirementCodes = useMemo(
     () => new Set((request.dossierChecklist || []).filter((item) => item.status === 'WAIVED' && Boolean(item.waiverReason?.trim())).map((item) => item.requirementCode)),
@@ -203,15 +234,32 @@ export default function PgdDossierStepWorkPanel({
   const [suppDesc, setSuppDesc] = useState('');
   const [suppFile, setSuppFile] = useState<File | null>(null);
   const [supplementaryRequirementCode, setSupplementaryRequirementCode] = useState<string>();
+  const [roundActionBusy, setRoundActionBusy] = useState(false);
+  const [roundActionError, setRoundActionError] = useState('');
 
-  const exceptionAllowed = Boolean(onRequestException && canMutate && !['SIGNED', 'RESULT_RETURNED', 'ARCHIVED', 'CANCELLED'].includes(request.status));
+  const runAssessmentRoundAction = async (input: { requestId: string; action: 'CREATE' | 'CLOSE'; id?: string; reason?: string }) => {
+    if (!onAssessmentRoundAction) return;
+    setRoundActionBusy(true);
+    setRoundActionError('');
+    try {
+      const round = await onAssessmentRoundAction(input);
+      if (round.status === 'OPEN') onSelectAssessmentRound?.(round.id);
+    } catch (error: any) {
+      setRoundActionError(error?.message || 'Không thể cập nhật đợt đánh giá.');
+    } finally {
+      setRoundActionBusy(false);
+    }
+  };
+
+  const exceptionAllowed = Boolean(onRequestException && stageEditable && !['SIGNED', 'RESULT_RETURNED', 'ARCHIVED', 'CANCELLED'].includes(request.status));
   
   const stepRequirements = useMemo(() => {
+    if (workflowSchemaVersion === 2 && canonicalStageId === 'results-evaluation') return dossierRequirements;
     const groups = new Set(STAGE_REQUIREMENT_GROUPS[canonicalStageId] || []);
     const matches = dossierRequirements.filter((item) => groups.has(item.group));
     if (requirement && !matches.some((item) => item.code === requirement.code)) matches.unshift(requirement);
     return matches;
-  }, [dossierRequirements, requirement, canonicalStageId]);
+  }, [dossierRequirements, requirement, canonicalStageId, workflowSchemaVersion]);
 
   const requiredStepRequirements = stepRequirements.filter((item) => item.required);
   const presentRequiredCount = requiredStepRequirements.filter((item) => currentDocumentsByCode.has(item.code)).length;
@@ -260,8 +308,8 @@ export default function PgdDossierStepWorkPanel({
 
   const continuationReasonId = `pgd-step-continuation-reasons-${selectedStepId}`;
   const hasMatchingDraftTemplate = Boolean(requirement && getPgdDocumentTemplateForRequirement(requirement, draftingTemplates, request.productGroup));
-  const canDraftInPlace = Boolean(canMutate && templateKind && requirement && hasMatchingDraftTemplate && onDraftInPlace);
-  const draftingHref = canMutate && templateKind && requirement && onOpenDrafting && !canDraftInPlace
+  const canDraftInPlace = Boolean(stageEditable && templateKind && requirement && hasMatchingDraftTemplate && onDraftInPlace);
+  const draftingHref = stageEditable && templateKind && requirement && onOpenDrafting && !canDraftInPlace
     ? onOpenDrafting({ templateKind, requirementCode: requirement.code })
     : undefined;
   const openDrafting = () => {
@@ -325,7 +373,7 @@ export default function PgdDossierStepWorkPanel({
           <Download size={14} aria-hidden="true" />
         </a>
       </div>
-    ) : !document && !isWaived && !canMutate ? (
+    ) : !document && !isWaived && !stageEditable ? (
       <span className="text-xs font-semibold text-slate-500">Nhờ người có quyền bổ sung</span>
     ) : !document && !isWaived && canDraftInPlace && requirement?.code === item.code ? (
       <button type="button" onClick={openDrafting} title="Soạn thảo tài liệu trong hồ sơ này" aria-label="Soạn thảo tài liệu" className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8">
@@ -377,8 +425,8 @@ export default function PgdDossierStepWorkPanel({
             requirements={dossierRequirements}
             dossierDocuments={dossierDocuments}
             samples={samples}
-            canMutate={canMutate}
-            editable={canMutate}
+            canMutate={stageEditable}
+            editable={stageEditable}
             initialRequirementCode={selectedSupplementRequirementCode || initialRequirementCode}
           />
         );
@@ -393,7 +441,7 @@ export default function PgdDossierStepWorkPanel({
                 <h4 className="text-xs font-black text-slate-900 mb-2 flex items-center gap-1.5">
                   <CheckCircle2 size={14} className="text-blue-600" /> 1. Đánh giá phạm vi & năng lực giám định
                 </h4>
-                <PgdDossierOperationsPanel request={request} requirements={dossierRequirements} dossierDocuments={dossierDocuments} canMutate={canMutate} editable={canMutate} />
+                <PgdDossierOperationsPanel request={request} requirements={dossierRequirements} dossierDocuments={dossierDocuments} canMutate={stageEditable} editable={stageEditable} />
               </div>
               <div className="rounded-xl border border-slate-200 bg-white p-3">
                 <h4 className="text-xs font-black text-slate-900 mb-2 flex items-center gap-1.5">
@@ -409,6 +457,20 @@ export default function PgdDossierStepWorkPanel({
       case 'execution':
         return (
           <div className="space-y-4">
+            {workflowSchemaVersion === 2 && <section className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-3" data-testid="pgd-assessment-round-manager">
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="min-w-56 flex-1 text-[11px] font-black text-indigo-950">Đợt đánh giá
+                  <select className="mobile-touch-target mt-1 min-h-11 w-full rounded-lg border border-indigo-200 bg-white px-2 text-xs font-bold" value={assessmentRoundId || ''} onChange={(event) => onSelectAssessmentRound?.(event.target.value)}>
+                    {orderedAssessmentRounds.map((round) => <option key={round.id} value={round.id}>{round.label} · {round.status === 'OPEN' ? 'Đang mở' : round.outcome === 'CONFORMING' ? 'Phù hợp' : 'Không phù hợp'}</option>)}
+                  </select>
+                </label>
+                <span className="text-xs text-indigo-900">{activeAssessmentRound?.reason || 'Biên bản, mẫu và kết quả được lưu riêng theo từng đợt.'}</span>
+                {activeAssessmentRound?.status === 'OPEN' && onAssessmentRoundAction && <button type="button" disabled={roundActionBusy} onClick={() => void runAssessmentRoundAction({ requestId: request.id, action: 'CLOSE', id: activeAssessmentRound.id })} className="mobile-touch-target min-h-11 rounded-lg border border-indigo-300 bg-white px-3 text-xs font-black text-indigo-900 disabled:opacity-50">Đóng đợt sau khi đánh giá KQTN</button>}
+                {latestAssessmentRound?.status === 'CLOSED' && latestAssessmentRound.outcome === 'NON_CONFORMING' && onAssessmentRoundAction && <button type="button" disabled={roundActionBusy} onClick={() => void runAssessmentRoundAction({ requestId: request.id, action: 'CREATE', reason: 'Đánh giá/thử nghiệm bổ sung sau kết quả không phù hợp' })} className="mobile-touch-target min-h-11 rounded-lg bg-indigo-700 px-3 text-xs font-black text-white disabled:opacity-50">Mở đợt đánh giá tiếp theo</button>}
+              </div>
+              {roundActionError && <p role="alert" className="mt-2 text-xs font-semibold text-rose-700">{roundActionError}</p>}
+              {!activeAssessmentRound && <p className="mt-2 text-xs text-rose-700">Chưa có đợt B4 đang mở. Tải lại hồ sơ hoặc nhờ quản lý kiểm tra workflow.</p>}
+            </section>}
             <StepIntro>
               <b>Giai đoạn 4: Thực hiện giám định.</b> Gồm 3 công việc: (1) Kiểm tra hiện trường, (2) Lấy mẫu & niêm phong, (3) Bàn giao mẫu PTN.
             </StepIntro>
@@ -425,10 +487,20 @@ export default function PgdDossierStepWorkPanel({
                 <h4 className="text-xs font-black text-slate-900 mb-2">3. Giao mẫu & Lập PYC thử nghiệm (PTN)</h4>
                 <PgdLabRequestStepPanel {...stationProps} />
               </div>
+              {workflowSchemaVersion === 2 && <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <h4 className="text-xs font-black text-slate-900 mb-2">4. Đánh giá KQTN và chuẩn bị dự thảo</h4>
+                <PgdResultsStepPanel {...stationProps} />
+              </div>}
             </div>
           </div>
         );
       case 'results-evaluation':
+        if (workflowSchemaVersion === 2) return (
+          <div className="space-y-3" data-testid="pgd-technical-review-readonly">
+            <StepIntro><b>Giai đoạn 5: Thẩm xét.</b> Tập trung xem toàn bộ hồ sơ và tài liệu B1–B4 ở bảng bên dưới. Người thẩm xét không sửa hồ sơ đánh giá; nếu cần chỉnh, trả về B4 kèm lý do.</StepIntro>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-700">Tài liệu đang ở chế độ chỉ xem. Ghi nhận kết quả thẩm xét bằng nút phê duyệt hoặc trả về B4 ở đầu bước.</div>
+          </div>
+        );
         return (
           <div className="space-y-4">
             <StepIntro>
@@ -447,6 +519,12 @@ export default function PgdDossierStepWorkPanel({
           </div>
         );
       case 'reporting-approval':
+        if (workflowSchemaVersion === 2) return (
+          <div className="space-y-3" data-testid="pgd-leadership-approval-panel">
+            <StepIntro><b>Giai đoạn 6: Phê duyệt lãnh đạo.</b> Xem dự thảo báo cáo và chứng thư đã qua thẩm xét. Phê duyệt chỉ chuyển sang B7; chữ ký và phát hành được ghi riêng.</StepIntro>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-700">Dự thảo được hiển thị qua tài liệu hồ sơ. Dùng “Phê duyệt” hoặc “Trả về B4” ở đầu bước.</div>
+          </div>
+        );
         return (
           <div className="space-y-4">
             <StepIntro>
@@ -456,6 +534,12 @@ export default function PgdDossierStepWorkPanel({
           </div>
         );
       case 'issuance-archive':
+        if (workflowSchemaVersion === 2) return (
+          <div className="space-y-3" data-testid="pgd-issuance-archive-panel">
+            <StepIntro><b>Giai đoạn 7: Ký, phát hành & lưu trữ.</b> Chỉ văn phòng được phân công ký/in/đóng dấu, nhập ngày cấp và hết hạn, bàn giao PDF cuối cho khách hàng; người lưu trữ được phân công hoàn tất lưu trữ.</StepIntro>
+            <PgdIssuancePanel request={request} currentUser={currentUser} />
+          </div>
+        );
         return (
           <div className="space-y-4">
             <StepIntro>
@@ -503,7 +587,7 @@ export default function PgdDossierStepWorkPanel({
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          {onCompleteCurrent ? (
+          {onCompleteCurrent && !(workflowSchemaVersion === 2 && canonicalStageId === 'issuance-archive') ? (
             <button
               type="button"
               onClick={onCompleteCurrent}
@@ -514,6 +598,9 @@ export default function PgdDossierStepWorkPanel({
             >
               {completionPending ? 'Đang xử lý…' : (completeLabel || 'Hoàn tất việc')}
             </button>
+          ) : null}
+          {onReturnCurrent && !completionUnavailable ? (
+            <button type="button" onClick={onReturnCurrent} disabled={isProcessing} className="mobile-touch-target inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-300 bg-amber-50 px-3 text-xs font-black text-amber-900 hover:bg-amber-100 disabled:opacity-50 sm:min-h-8">Trả về B4</button>
           ) : null}
           {canDraftInPlace ? (
             <button type="button" onClick={openDrafting} className="mobile-touch-target dossier-action-compact inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-2.5 text-xs font-black text-white hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8">
@@ -560,7 +647,7 @@ export default function PgdDossierStepWorkPanel({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold text-slate-600">{stepRequirements.length} mục ở giai đoạn này</span>
-            {canMutate && onUploadSupplementary && !dossierStatusUnknown ? (
+            {stageEditable && onUploadSupplementary && !dossierStatusUnknown ? (
               <button
                 type="button"
                 data-testid="pgd-supplementary-trigger"
@@ -619,7 +706,7 @@ export default function PgdDossierStepWorkPanel({
                     className="mobile-touch-target dossier-action-compact inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:min-h-8 sm:min-w-8"
                   ><Download size={14} aria-hidden="true" /></a>
                 </> : null}
-                {canMutate && onUploadSupplementary ? <button
+                {stageEditable && onUploadSupplementary ? <button
                   type="button"
                   onClick={() => {
                     setSupplementaryRequirementCode(doc.requirementCode);
@@ -734,7 +821,7 @@ export default function PgdDossierStepWorkPanel({
       {/* Soát xét giai đoạn */}
       <section className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-blue-100 bg-blue-50/40 px-3 py-1.5 text-xs" aria-label="Soát xét tài liệu bắt buộc ở bước PGD hiện tại">
         <div className="min-w-0 break-words">
-          <span className="mr-2 text-xs font-black uppercase tracking-wide text-blue-700">Soát xét giai đoạn</span>
+          <span className="mr-2 text-xs font-black uppercase tracking-wide text-blue-700">Soát xét bước này</span>
           <strong aria-live="polite" className="break-words text-slate-800">
             {dossierStatusUnknown
               ? dossierLoadPending

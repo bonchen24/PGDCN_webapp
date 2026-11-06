@@ -26,12 +26,23 @@ function addRequiredIssue(issues: PcnIntakeValidationIssue[], value: unknown, fi
   if (!text(value)) issues.push({ field, message });
 }
 
+function isValidRegistrationDate(value: unknown): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text(value));
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
 function isPgdSteelSource(proposal: Record<string, unknown>): boolean {
-  const sourceText = [proposal.productName, proposal.productType, proposal.specifications, proposal.model]
+  const stds = Array.isArray(proposal.standards) ? proposal.standards.map(text).join(' ') : text(proposal.standards);
+  const sourceText = [proposal.productName, proposal.productType, proposal.specifications, proposal.model, stds]
     .map(text)
     .join(' ')
     .toLocaleLowerCase('vi-VN');
-  return /qcvn\s*20(?:\s*:\s*2019)?|th[eế]p\s+kh[oô]ng\s+g[iỉ]|stainless\s+steel|\binox\b/.test(sourceText);
+  return /qcvn\s*20(?:\s*:\s*2019)?|\bqc20\b|th[eế]p\s+kh[oô]ng\s+g[iỉ]|stainless\s+steel|\binox\b/.test(sourceText);
 }
 
 /**
@@ -39,7 +50,7 @@ function isPgdSteelSource(proposal: Record<string, unknown>): boolean {
  * is committed. The function deliberately accepts unknown input so the same
  * policy can protect both the browser form and the server boundary.
  */
-export function validatePcnProposalIntake(input: unknown, options: { requireStandards?: boolean } = {}): PcnIntakeValidationResult {
+export function validatePcnProposalIntake(input: unknown, options: { requireStandards?: boolean; requireProductGroup?: boolean; requireRegistration?: boolean } = {}): PcnIntakeValidationResult {
   const proposal = isRecord(input) ? input : {};
   const customer = isRecord(proposal.customerSnapshot) ? proposal.customerSnapshot : {};
   const issues: PcnIntakeValidationIssue[] = [];
@@ -50,12 +61,21 @@ export function validatePcnProposalIntake(input: unknown, options: { requireStan
     issues.push({ field: 'customerSnapshot.contactPerson', message: 'Cần người liên hệ hoặc mã số thuế để đối chiếu khách hàng.' });
   }
   addRequiredIssue(issues, proposal.warehouseAddress, 'warehouseAddress', 'Địa chỉ/kho liên quan là bắt buộc.');
-  addRequiredIssue(issues, proposal.productName, 'productName', 'Tên sản phẩm là bắt buộc.');
-  addRequiredIssue(issues, proposal.productType, 'productType', 'Kiểu/loại sản phẩm là bắt buộc.');
-  addRequiredIssue(issues, proposal.model, 'model', 'Kiểu loại là bắt buộc.');
-  addRequiredIssue(issues, proposal.brand, 'brand', 'Nhãn hiệu là bắt buộc.');
-  addRequiredIssue(issues, proposal.specifications, 'specifications', 'Thông số kỹ thuật là bắt buộc.');
-  addRequiredIssue(issues, proposal.manufacturer, 'manufacturer', 'Nhà sản xuất là bắt buộc.');
+  // Detailed product fields remain optional for minimal intake and legacy records.
+  const validGroups = ['ELECTRICAL_ELECTRONIC', 'METAL_MATERIALS', 'CONSTRUCTION_MATERIALS', 'MANAGEMENT_SYSTEM', 'OTHER'];
+  if (options.requireProductGroup || proposal.productGroup !== undefined) {
+    if (!validGroups.includes(String(proposal.productGroup || ''))) {
+      issues.push({ field: 'productGroup', message: proposal.productGroup ? 'Nhóm sản phẩm không hợp lệ.' : 'Cần chọn nhóm sản phẩm.' });
+    }
+  }
+  if (options.requireRegistration) {
+    addRequiredIssue(issues, proposal.registrationNumber, 'registrationNumber', 'Số đăng ký là bắt buộc.');
+    addRequiredIssue(issues, proposal.registrationDate, 'registrationDate', 'Ngày đăng ký là bắt buộc.');
+  }
+  if (text(proposal.registrationDate) && !isValidRegistrationDate(proposal.registrationDate)) {
+    issues.push({ field: 'registrationDate', message: 'Ngày đăng ký không hợp lệ.' });
+  }
+
   if (options.requireStandards) {
     const standards = Array.isArray(proposal.standards) ? proposal.standards.map(text).filter(Boolean) : [text(proposal.standards)].filter(Boolean);
     if (standards.length === 0) issues.push({ field: 'standards', message: 'Tiêu chuẩn / quy chuẩn là bắt buộc theo biểu mẫu Đề nghị chứng nhận.' });

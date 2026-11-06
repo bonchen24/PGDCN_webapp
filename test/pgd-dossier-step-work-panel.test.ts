@@ -69,7 +69,7 @@ test('step summary counts only required items for the selected step', () => {
     canMutate: false,
   }));
 
-  assert.match(markup, /Soát xét giai đoạn[\s\S]*?1 đã có · 1 được miễn · 2 còn thiếu/);
+  assert.match(markup, /Soát xét bước này[\s\S]*?1 đã có · 1 được miễn · 2 còn thiếu/);
   assert.match(markup, /min-w-0 break-words/);
   // Before: requiring a bare <tbody> skipped the rendered body because it has a class attribute.
   const tableBody = markup.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/)?.[1] || '';
@@ -224,6 +224,55 @@ test('document actions respect read-only access while preserving available evide
     assert.match(loadError.uploadRow, /Chưa thể xác định/);
     assert.doesNotMatch(loadError.draftRow + loadError.uploadRow, /<a\b|<button\b/);
   }
+});
+
+test('v2 B5 shows dossier evidence without exposing document mutation actions to the reviewer stage', () => {
+  const requirement = getPgdDossierRequirements('OTHER').find((item) => item.required)!;
+  const request = {
+    id: 'pgd-v2-review-read-only',
+    domain: PGD_DOMAIN,
+    requestCode: 'PGD-V2-REVIEW-READONLY',
+    productGroup: 'OTHER',
+    customerName: 'Khách hàng thử nghiệm',
+    customerSnapshot: { name: 'Khách hàng thử nghiệm', address: '' },
+    productName: 'Sản phẩm thử nghiệm',
+    standards: [],
+    status: 'TECHNICAL_REVIEW',
+    workflowSchemaVersion: 2,
+    dossierChecklist: [],
+  } as unknown as PgdInspectionRequest;
+  const evidence: PgdDossierDocument = {
+    id: 'pgd-v2-review-evidence',
+    domain: PGD_DOMAIN,
+    requestId: request.id,
+    requirementCode: requirement.code,
+    title: requirement.title,
+    fileName: 'bien-ban-hien-truong.pdf',
+    fileAssetId: 'asset-review-evidence',
+    sourceCollection: PGD_COLLECTIONS.dossierDocuments,
+    sourceDocumentId: 'pgd-v2-review-evidence',
+    version: 1,
+    checksum: 'review-checksum',
+    uploadedByUsername: 'team-lead',
+    uploadedAt: '2026-11-06T00:00:00.000Z',
+  };
+  const markup = renderToStaticMarkup(createElement(PgdDossierStepWorkPanel, {
+    request,
+    currentUser: { username: 'technical-reviewer', pgdRole: 'PGD_TECHNICAL' } as PcnUserAccount,
+    workflowSchemaVersion: 2,
+    selectedStepId: 'results-evaluation',
+    dossierRequirements: [requirement],
+    dossierDocuments: [evidence],
+    dossierLoadStatus: 'loaded',
+    samples: [],
+    canMutate: true,
+    onOpenChecklist: () => undefined,
+    onOpenDrafting: () => '/pgd/drafting?requestId=pgd-v2-review-read-only',
+    onCompleteCurrent: async () => undefined,
+  }));
+
+  assert.match(markup, /bien-ban-hien-truong\.pdf/);
+  assert.doesNotMatch(markup, /aria-label="Bổ sung tệp"|aria-label="Soạn thảo tài liệu"|Bổ sung chứng từ/);
 });
 
 test('an in-progress dossier update is distinct from a step without an available transition', () => {

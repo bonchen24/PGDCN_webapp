@@ -2,6 +2,7 @@ import type { CustomerRef, OrganizationManagementRoleCode, ProfessionalRoleCode 
 import type { PgdDocumentTemplateSnapshot } from './pgdDocumentTemplates.ts';
 import type { PgdWorkflowSnapshot } from './pgdWorkflowTemplate.ts';
 import { isOrganizationLeader } from './pcnRbac.ts';
+import { getPgdUserCapabilities, type PgdDossierCapability, type PgdCapabilityUser } from './pgdDossierCapabilities.ts';
 
 export const PGD_DOMAIN = 'pgd' as const;
 
@@ -26,6 +27,7 @@ export const PGD_COLLECTIONS = {
   caseEvents: 'pgdCaseEvents',
   fieldActivityLogs: 'pgdFieldActivityLogs',
   labResultReviews: 'pgdLabResultReviews',
+  assessmentRounds: 'pgdAssessmentRounds',
   dossierIndexes: 'pgdDossierIndexes',
   calibrationInstruments: 'pgdCalibrationInstruments',
   workflowTemplates: 'pgdWorkflowTemplates',
@@ -41,6 +43,7 @@ export type PgdInspectionStatus =
   | 'RESULTS_REVIEW'
   | 'TECHNICAL_REVIEW'
   | 'LEADERSHIP_APPROVAL'
+  | 'APPROVED_FOR_ISSUANCE'
   | 'SIGNED'
   | 'RESULT_RETURNED'
   | 'ARCHIVED'
@@ -159,6 +162,7 @@ export const PGD_WORKFLOW_STATES: readonly PgdWorkflowState[] = [
   ['RESULTS_REVIEW', 'Xem xét kết quả'],
   ['TECHNICAL_REVIEW', 'Soát xét kỹ thuật'],
   ['LEADERSHIP_APPROVAL', 'Phê duyệt lãnh đạo'],
+  ['APPROVED_FOR_ISSUANCE', 'Đã duyệt · chờ phát hành'],
   ['SIGNED', 'Đã ký'],
   ['RESULT_RETURNED', 'Đã trả kết quả'],
   ['ARCHIVED', 'Đã lưu trữ'],
@@ -622,6 +626,7 @@ export interface PgdRegistryDocument {
 /** Source-derived registry metadata for a new request; never a historical workbook import. */
 export interface PgdRequestRegistryMetadata {
   registrationNumber?: string;
+  registrationDate?: string;
   receivedAt?: string;
   documents?: PgdRegistryDocument[];
   technicalDossierNote?: string;
@@ -758,6 +763,8 @@ export interface PgdInspectionRequestInput {
   workflowTemplateId?: string;
   workflowTemplateVersion?: number;
   workflowSnapshot?: PgdWorkflowSnapshot;
+  /** Set only for dossiers created under the seven-step v2 workflow; absent means legacy. */
+  workflowSchemaVersion?: 2;
   /** True only when a new request was saved before a matching published workflow template existed. */
   workflowTemplatePending?: boolean;
   status?: PgdInspectionStatus;
@@ -805,6 +812,8 @@ export interface PgdInspectionRequest extends Omit<PgdInspectionRequestInput, 's
   fieldActivityLogIds?: string[];
   labResultReviewId?: string;
   dossierIndexId?: string;
+  assessmentRoundIds?: string[];
+  currentAssessmentRoundId?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -814,6 +823,21 @@ export interface PgdInspectionRequest extends Omit<PgdInspectionRequestInput, 's
   exceptionReason?: string;
   exceptionAt?: string;
   exceptionByUsername?: string;
+}
+
+export interface PgdAssessmentRound {
+  id: string;
+  domain: typeof PGD_DOMAIN;
+  requestId: string;
+  sequence: number;
+  label: string;
+  status: 'OPEN' | 'CLOSED';
+  openedAt: string;
+  openedByUsername: string;
+  reason?: string;
+  closedAt?: string;
+  closedByUsername?: string;
+  outcome?: 'CONFORMING' | 'NON_CONFORMING' | 'NOT_APPLICABLE';
 }
 
 export type PgdInspectionRequestEditPatch = Partial<Pick<PgdInspectionRequestInput,
@@ -916,6 +940,10 @@ export interface PgdInspectionAssignment {
   leadInspectorUsername?: string;
   inspectorUsernames: string[];
   technicalReviewerUsername?: string;
+  leadershipUsername?: string;
+  officeIssuanceUsername?: string;
+  archivistUsername?: string;
+  roleAssignments?: Array<{ username: string; capability: PgdDossierCapability; assignedByUsername?: string; assignedAt?: string }>;
   method?: string;
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'RETURNED';
   approvedByUsername?: string;
@@ -931,6 +959,7 @@ export interface PgdFieldInspection {
   id: string;
   domain: typeof PGD_DOMAIN;
   requestId: string;
+  assessmentRoundId?: string;
   performedAt: string;
   startedAt?: string;
   endedAt?: string;
@@ -961,6 +990,7 @@ export interface PgdSample {
   id: string;
   domain: typeof PGD_DOMAIN;
   requestId: string;
+  assessmentRoundId?: string;
   sampleCode: string;
   catalogOptionId?: string;
   sampleTypeLabel?: string;
@@ -1054,6 +1084,7 @@ export interface PgdLabRequest {
   id: string;
   domain: typeof PGD_DOMAIN;
   requestId: string;
+  assessmentRoundId?: string;
   sampleId: string;
   status: PgdLabRequestStatus;
   laboratoryName: string;
@@ -1083,6 +1114,7 @@ export interface PgdLabResult {
   id: string;
   domain: typeof PGD_DOMAIN;
   requestId: string;
+  assessmentRoundId?: string;
   labRequestId: string;
   reportNumber?: string;
   receivedAt: string;
@@ -1142,6 +1174,9 @@ export interface PgdApprovalStep {
   comment?: string;
   packageManifestHash?: string;
   packageManifestSnapshot?: Record<string, unknown>;
+  returnReason?: string;
+  returnedAt?: string;
+  returnToStageId?: 'assessment-testing';
 }
 
 export type PgdApprovalRole = PgdApprovalStep['role'];
@@ -1163,9 +1198,21 @@ export interface PgdInspectionCertificate {
   standardSnapshot?: string[];
   conclusion: string;
   templateSnapshot?: PgdResultTemplateSnapshot;
-  status: 'DRAFT' | 'SIGNED' | 'RETURNED';
+  status: 'DRAFT' | 'APPROVED' | 'SIGNED' | 'RETURNED';
+  approvedByUsername?: string;
+  approvedAt?: string;
   signedByUsername?: string;
   signedAt?: string;
+  issuanceDocumentId?: string;
+  issuanceFileAssetId?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  deliveredAt?: string;
+  deliveredTo?: string;
+  deliveredByUsername?: string;
+  archivistUsername?: string;
+  archivedAt?: string;
+  issuanceOperationIds?: string[];
   returnedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -1184,6 +1231,12 @@ export interface PgdTransitionContext {
   reportReady?: boolean;
   hasCertificate?: boolean;
   signed?: boolean;
+  hasTechnicalApproval?: boolean;
+  hasLeadershipApproval?: boolean;
+  hasAcceptedPlan?: boolean;
+  requiresPlanAcceptance?: boolean;
+  hasOpenAssessmentRounds?: boolean;
+  requiresSampleTesting?: boolean;
   labResultReview?: {
     status?: 'DRAFT' | 'FINAL';
     conformity?: 'CONFORMING' | 'NON_CONFORMING' | 'NOT_REVIEWED';
@@ -1196,7 +1249,13 @@ function clone<T>(value: T): T {
 }
 
 function isValidIsoDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/.test(value)) return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const calendarDate = new Date(Date.UTC(year, month - 1, day));
+  if (calendarDate.getUTCFullYear() !== year || calendarDate.getUTCMonth() !== month - 1 || calendarDate.getUTCDate() !== day) return false;
   const parsed = new Date(value.length === 10 ? `${value}T00:00:00.000Z` : value);
   return !Number.isNaN(parsed.getTime());
 }
@@ -1210,6 +1269,9 @@ export function validatePgdRegistryMetadata(input: unknown): PgdValidationIssue[
   const metadata = input as Partial<PgdRequestRegistryMetadata>;
   if (metadata.registrationNumber !== undefined && (typeof metadata.registrationNumber !== 'string' || metadata.registrationNumber.trim().length > 120)) {
     issues.push({ field: 'registryMetadata.registrationNumber', message: 'Số đăng ký PGD không hợp lệ hoặc quá dài.' });
+  }
+  if (metadata.registrationDate !== undefined && (typeof metadata.registrationDate !== 'string' || !isValidIsoDate(metadata.registrationDate.trim()))) {
+    issues.push({ field: 'registryMetadata.registrationDate', message: 'Ngày đăng ký PGD phải là ngày hợp lệ.' });
   }
   if (metadata.receivedAt !== undefined && (typeof metadata.receivedAt !== 'string' || !isValidIsoDate(metadata.receivedAt.trim()))) {
     issues.push({ field: 'registryMetadata.receivedAt', message: 'Ngày tiếp nhận PGD phải là ngày hợp lệ.' });
@@ -1258,6 +1320,7 @@ export function normalizePgdRegistryMetadata(input: unknown): PgdRequestRegistry
     : [];
   const normalized: PgdRequestRegistryMetadata = {
     ...(String(metadata.registrationNumber || '').trim() ? { registrationNumber: String(metadata.registrationNumber).trim() } : {}),
+    ...(String(metadata.registrationDate || '').trim() ? { registrationDate: String(metadata.registrationDate).trim() } : {}),
     ...(String(metadata.receivedAt || '').trim() ? { receivedAt: String(metadata.receivedAt).trim() } : {}),
     ...(documents.length > 0 ? { documents } : {}),
     ...(String(metadata.technicalDossierNote || '').trim() ? { technicalDossierNote: String(metadata.technicalDossierNote).trim() } : {}),
@@ -1391,16 +1454,12 @@ export function validatePgdIntake(input: Partial<PgdInspectionRequestInput>, cat
   return issues;
 }
 
-export interface PgdAssignmentUserSnapshot {
-  username: string;
-  active?: boolean;
+export interface PgdAssignmentUserSnapshot extends PgdCapabilityUser {
   managementRoleCode?: OrganizationManagementRoleCode;
-  departmentScopes?: string[];
-  pgdRole?: string;
 }
 
 export function validatePgdAssignment(
-  input: { inspectorUsernames?: string[]; technicalReviewerUsername?: string },
+  input: { inspectorUsernames?: string[]; leadInspectorUsername?: string; technicalReviewerUsername?: string; leadershipUsername?: string; officeIssuanceUsername?: string; archivistUsername?: string },
   users: PgdAssignmentUserSnapshot[],
 ): PgdValidationIssue[] {
   const issues: PgdValidationIssue[] = [];
@@ -1410,19 +1469,32 @@ export function validatePgdAssignment(
   for (const username of inspectorUsernames) {
     const user = byUsername.get(username);
     const scopes = new Set((user?.departmentScopes || []).map((scope) => String(scope).trim().toUpperCase()));
-    if (!user || user.active === false || !scopes.has('PGD') || String(user.pgdRole || '').toUpperCase() === 'PGD_VIEWER') {
-      issues.push({ field: 'inspectorUsernames', message: `Nhân sự ${username} không có tài khoản hoạt động thuộc phạm vi PGD.` });
+    if (!user || user.active === false || !scopes.has('PGD') || !getPgdUserCapabilities(user).includes('ASSESSOR')) {
+      issues.push({ field: 'inspectorUsernames', message: `Nhân sự ${username} không có năng lực giám định hoặc tài khoản hoạt động thuộc phạm vi PGD.` });
     }
   }
+  const leadUsername = String(input.leadInspectorUsername || '').trim().toLowerCase();
+  if (leadUsername && !inspectorUsernames.includes(leadUsername)) issues.push({ field: 'leadInspectorUsername', message: 'Trưởng đoàn phải nằm trong danh sách giám định viên được phân công.' });
   const reviewerUsername = String(input.technicalReviewerUsername || '').trim().toLowerCase();
   if (!reviewerUsername) {
     issues.push({ field: 'technicalReviewerUsername', message: 'Cần chọn người soát xét kỹ thuật PGD.' });
   } else {
     const user = byUsername.get(reviewerUsername);
     const scopes = new Set((user?.departmentScopes || []).map((scope) => String(scope).trim().toUpperCase()));
-    const role = String(user?.pgdRole || '').toUpperCase();
-    if (!user || user.active === false || !scopes.has('PGD') || (!isOrganizationLeader(user) && !['PGD_ADMIN', 'PGD_MANAGER', 'PGD_TECHNICAL'].includes(role))) {
+    if (!user || user.active === false || !scopes.has('PGD') || !getPgdUserCapabilities(user).includes('TECHNICAL_REVIEW')) {
       issues.push({ field: 'technicalReviewerUsername', message: `Nhân sự ${reviewerUsername} không phù hợp để soát xét kỹ thuật PGD.` });
+    }
+  }
+  for (const [field, capability] of [
+    ['leadershipUsername', 'LEADERSHIP_APPROVAL'],
+    ['officeIssuanceUsername', 'OFFICE_ISSUANCE'],
+    ['archivistUsername', 'ARCHIVE'],
+  ] as const) {
+    const username = String(input[field] || '').trim().toLowerCase();
+    if (!username) continue;
+    const user = byUsername.get(username);
+    if (!user || !getPgdUserCapabilities(user).includes(capability)) {
+      issues.push({ field, message: `Nhân sự ${username} chưa được cấu hình năng lực PGD phù hợp.` });
     }
   }
   return issues;
@@ -1442,8 +1514,8 @@ export function validatePgdInspectors(
   for (const username of normalizedUsernames) {
     const user = byUsername.get(username);
     const scopes = new Set((user?.departmentScopes || []).map((scope) => String(scope).trim().toUpperCase()));
-    if (!user || user.active === false || !scopes.has('PGD') || String(user.pgdRole || '').toUpperCase() === 'PGD_VIEWER') {
-      issues.push({ field: 'inspectorUsernames', message: `Nhân sự ${username} không có tài khoản hoạt động thuộc phạm vi PGD.` });
+    if (!user || user.active === false || !scopes.has('PGD') || !getPgdUserCapabilities(user).includes('ASSESSOR')) {
+      issues.push({ field: 'inspectorUsernames', message: `Nhân sự ${username} không có năng lực giám định hoặc tài khoản hoạt động thuộc phạm vi PGD.` });
     }
   }
   return issues;
@@ -1499,6 +1571,7 @@ const PGD_TRANSITIONS: Record<PgdInspectionStatus, PgdInspectionStatus> = {
   RESULTS_REVIEW: 'TECHNICAL_REVIEW',
   TECHNICAL_REVIEW: 'LEADERSHIP_APPROVAL',
   LEADERSHIP_APPROVAL: 'SIGNED',
+  APPROVED_FOR_ISSUANCE: 'SIGNED',
   SIGNED: 'RESULT_RETURNED',
   RESULT_RETURNED: 'ARCHIVED',
   ARCHIVED: 'ARCHIVED',
@@ -1519,6 +1592,7 @@ export function getPgdTransitionDenial(
   if (current === 'DRAFT' && next === 'READY_TO_EXECUTE') return 'Hồ sơ PGD phải đi qua bước xem xét năng lực.';
   if (PGD_TRANSITIONS[current] !== next) return 'Hồ sơ PGD phải đi theo đúng thứ tự lifecycle.';
   if (current === 'CAPABILITY_REVIEW' && !context.hasApprovedAssignment) return 'Hồ sơ PGD phải được xem xét năng lực và phê duyệt phân công.';
+  if (current === 'PREPARING' && next === 'FIELD_INSPECTION' && context.requiresPlanAcceptance && !context.hasAcceptedPlan) return 'Cần trưởng đoàn chấp nhận lịch đánh giá trước khi mở B4.';
   if (current === 'FIELD_INSPECTION') {
     if (!context.hasFieldInspection) return 'Chưa hoàn tất biên bản giám định hiện trường.';
     if (!context.hasSampleHandover) return 'Cần hoàn tất bàn giao mẫu cho PTN trước khi chờ kết quả.';
@@ -1528,6 +1602,7 @@ export function getPgdTransitionDenial(
     if (labRequests.some((request) => !['RESULT_RECEIVED', 'CLOSED'].includes(request.status))) return 'Chưa nhận đủ kết quả PTN của các yêu cầu đang mở.';
   }
   if (current === 'RESULTS_REVIEW' && next === 'TECHNICAL_REVIEW') {
+    if (context.hasOpenAssessmentRounds) return 'Cần hoàn tất hoặc đóng các đợt đánh giá đang mở trước khi chuyển sang thẩm xét.';
     if (!context.labResultReview || context.labResultReview.status !== 'FINAL') return 'Cần hoàn tất bản đánh giá KQTN trước khi soát xét kỹ thuật.';
     if (context.labResultReview.retestRequired === true || context.labResultReview.conformity === 'NON_CONFORMING') return 'Kết quả KQTN đang yêu cầu kiểm tra/thử lại mẫu trước khi soát xét kỹ thuật.';
   }
@@ -1560,6 +1635,7 @@ export function getPgdApprovalRoleForStatus(status: PgdInspectionStatus): PgdApp
 export function splitPgdSample(
   input: {
     requestId: string;
+    assessmentRoundId?: string;
     sampleCodePrefix: string;
     description: string;
     quantity: number;
@@ -1584,6 +1660,7 @@ export function splitPgdSample(
   const common = {
     domain: PGD_DOMAIN,
     requestId: input.requestId,
+    ...(input.assessmentRoundId ? { assessmentRoundId: input.assessmentRoundId } : {}),
     description: input.description,
     unit: input.unit,
     sampleSize: input.sampleSize || input.description,

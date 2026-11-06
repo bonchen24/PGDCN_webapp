@@ -13,6 +13,7 @@ import {
 import {
   assertPgdRequestEvidenceMutationAllowed,
   assertPgdRequestStationMutationAllowed,
+  assertPgdAssessmentRoundAllowed,
   writePgdActivity,
 } from '@/lib/server/pgd-operations';
 import { buildPgdNotificationDraft } from '@/utils/pgdcnNotification';
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
       const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
       assertPgdRequestEvidenceMutationAllowed(request);
       assertPgdRequestStationMutationAllowed(request, 'FIELD_SAMPLING');
+      await assertPgdAssessmentRoundAllowed(client, request, labRequest.assessmentRoundId, actor);
 
       const sampleResult = await client.query(
         `SELECT data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`,
@@ -47,6 +49,9 @@ export async function POST(req: NextRequest) {
       const sample = sampleResult.rows[0]?.data as PgdSample | undefined;
       if (!sample || sample.requestId !== labRequest.requestId || sample.disposition !== 'LAB') {
         throw Object.assign(new Error('Mẫu PTN không thuộc hồ sơ PGD hoặc không phải phần mẫu gửi PTN.'), { statusCode: 409 });
+      }
+      if (sample.assessmentRoundId !== labRequest.assessmentRoundId) {
+        throw Object.assign(new Error('Mẫu PTN và yêu cầu PTN phải thuộc cùng một đợt đánh giá.'), { statusCode: 409 });
       }
 
       const existingResult = await client.query(

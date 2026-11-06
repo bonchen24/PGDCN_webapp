@@ -34,14 +34,16 @@ test('PCN proposal modal has an accessible fixed anatomy and domain CTA', () => 
 test('PCN proposal form exposes structured customer, product, scope and OCR groups', () => {
   assert.match(pcnSource, /Kênh tiếp nhận/);
   assert.match(pcnSource, /Khách hàng/);
-  assert.match(pcnSource, /Nhà sản xuất/);
+  assert.match(pcnSource, /Nhóm sản phẩm/);
+  assert.match(pcnSource, /Phương thức chứng nhận/);
+  assert.match(pcnSource, /QCVN \/ TCVN/);
   assert.match(pcnSource, /Lĩnh vực/);
   assert.match(pcnSource, /PcnOcrPanel/);
   assert.match(
     pcnSource,
     /<Field label="Mã Đề nghị">\s*<div[^>]*>Hệ thống tự cấp theo dạng PCN-YYMMDD-TT khi lưu<\/div>/
   );
-  assert.match(pcnSource, /Tên sản phẩm/);
-  assert.match(pcnSource, /xác nhận phạm vi/);
+  assert.match(pcnSource, /productGroup/);
+  assert.doesNotMatch(pcnSource, /id="pcn-proposal-(?:model|brand|manufacturer|specifications)"[^>]*required/);
   assert.match(pcnSource, /if \(!canEdit\) return;/);
 });

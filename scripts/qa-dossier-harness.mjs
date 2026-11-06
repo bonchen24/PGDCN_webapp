@@ -66,12 +66,30 @@ export function assertPcnAppFingerprint({ baseUrl, responseUrl, status, contentT
 }
 
 export function resolveAuthentication(env = process.env) {
+  const mode = String(env.PGDCN_QA_AUTH_MODE || 'api').trim().toLowerCase();
+  if (!['api', 'ui'].includes(mode)) {
+    throw new Error('PGDCN_QA_AUTH_MODE chỉ nhận giá trị api hoặc ui.');
+  }
+
   const storageStatePath = String(env.PGDCN_QA_STORAGE_STATE || '').trim();
-  if (storageStatePath) return { kind: 'storageState', path: storageStatePath };
+  if (storageStatePath) {
+    const username = String(env.PGDCN_QA_USERNAME || '').trim();
+    const password = String(env.PGDCN_QA_PASSWORD || '');
+    if (mode === 'ui') throw new Error('Chế độ UI smoke dùng credential QA, không dùng storage state.');
+    if ((username && !password) || (!username && password)) {
+      throw new Error('Làm mới storage state cần cả PGDCN_QA_USERNAME và PGDCN_QA_PASSWORD.');
+    }
+    return {
+      kind: 'storageState',
+      path: storageStatePath,
+      ...(username && password ? { credentials: { username, password } } : {}),
+      mode,
+    };
+  }
 
   const username = String(env.PGDCN_QA_USERNAME || '').trim();
   const password = String(env.PGDCN_QA_PASSWORD || '');
-  if (username && password) return { kind: 'credentials', username, password };
+  if (username && password) return { kind: 'credentials', username, password, mode };
   if (username || password) {
     throw new Error('Đăng nhập UI cần cả PGDCN_QA_USERNAME và PGDCN_QA_PASSWORD.');
   }

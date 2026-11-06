@@ -17,6 +17,7 @@ import type {
   PgdGeneratedDocument,
   PgdDraftWorkspace,
   PgdCalibrationInstrument,
+  PgdAssessmentRound,
 } from './pgdDomain.ts';
 import type { CustomerRef, PcnUserAccount } from '../types.ts';
 import type { PgdCaseEvent, PgdDossierIndex, PgdFieldActivityLog, PgdInspectionPlan, PgdLabResultReview } from './pgdArtifacts.ts';
@@ -52,6 +53,7 @@ export interface PgdBootstrapSnapshot {
   labResultReviews: PgdLabResultReview[];
   dossierIndexes: PgdDossierIndex[];
   calibrationInstruments: PgdCalibrationInstrument[];
+  assessmentRounds: PgdAssessmentRound[];
   workflowTemplates: PgdWorkflowTemplate[];
 }
 
@@ -67,6 +69,7 @@ export interface PgdRequestDossierDocumentsResponse {
 
 export interface SavePgdDossierDocumentInput {
   requirementCode?: string;
+  assessmentRoundId?: string;
   title?: string;
   file?: File;
   supplementaryStageId?: string;
@@ -162,6 +165,7 @@ export async function fetchPgdBootstrap(): Promise<PgdBootstrapSnapshot> {
     dossierIndexes: Array.isArray(payload?.dossierIndexes) ? payload.dossierIndexes as PgdDossierIndex[] : [],
     calibrationInstruments: Array.isArray(payload?.calibrationInstruments) ? payload.calibrationInstruments as PgdCalibrationInstrument[] : [],
     workflowTemplates: Array.isArray(payload?.workflowTemplates) ? payload.workflowTemplates as PgdWorkflowTemplate[] : [],
+    assessmentRounds: Array.isArray(payload?.assessmentRounds) ? payload.assessmentRounds as PgdAssessmentRound[] : [],
   };
 }
 
@@ -219,6 +223,7 @@ export async function getPgdDossierDocuments(requestId: string): Promise<PgdRequ
 export async function savePgdDossierDocument(requestId: string, input: SavePgdDossierDocumentInput): Promise<{ dossierDocument: PgdDossierDocument; request?: PgdInspectionRequest }> {
   const form = new FormData();
   if (input.requirementCode) form.set('requirementCode', input.requirementCode);
+  if (input.assessmentRoundId) form.set('assessmentRoundId', input.assessmentRoundId);
   if (input.title) form.set('title', input.title);
   if (input.file) form.set('file', input.file);
   if (input.supplementaryStageId) form.set('supplementaryStageId', input.supplementaryStageId);
@@ -306,6 +311,16 @@ export async function savePgdInspectionPlan(plan: PgdInspectionPlan): Promise<Pg
   return payload.plan as PgdInspectionPlan;
 }
 
+export async function respondPgdInspectionPlan(input: { id: string; requestId: string; action: 'ACCEPT' | 'RETURN'; reason?: string }): Promise<PgdInspectionPlan> {
+  const payload = await request('/api/pgd/inspection-plans', json(input));
+  return payload.plan as PgdInspectionPlan;
+}
+
+export async function savePgdAssessmentRound(input: { requestId: string; action: 'CREATE' | 'CLOSE'; id?: string; reason?: string }): Promise<PgdAssessmentRound> {
+  const payload = await request('/api/pgd/assessment-rounds', json(input));
+  return payload.round as PgdAssessmentRound;
+}
+
 export async function savePgdCaseEvent(event: PgdCaseEvent): Promise<PgdCaseEvent> {
   const payload = await request('/api/pgd/case-events', json(event));
   return payload.event as PgdCaseEvent;
@@ -326,7 +341,7 @@ export async function savePgdDossierIndex(index: PgdDossierIndex): Promise<PgdDo
   return payload.index as PgdDossierIndex;
 }
 
-export async function splitPgdSample(input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string; sampledAt?: string; samplingLocation?: string; sampledByUsername?: string; sampleSize?: string; lotQuantity?: number; lotUnit?: string }): Promise<PgdSample[]> {
+export async function splitPgdSample(input: { requestId: string; assessmentRoundId?: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string; sampledAt?: string; samplingLocation?: string; sampledByUsername?: string; sampleSize?: string; lotQuantity?: number; lotUnit?: string }): Promise<PgdSample[]> {
   const payload = await request('/api/pgd/samples/split', json(input));
   return Array.isArray(payload.samples) ? payload.samples as PgdSample[] : [];
 }
@@ -349,6 +364,28 @@ export async function savePgdLabResult(result: PgdLabResult): Promise<PgdLabResu
 export async function savePgdCertificate(certificate: PgdInspectionCertificate): Promise<PgdInspectionCertificate> {
   const payload = await request('/api/pgd/certificates', json(certificate));
   return payload.certificate as PgdInspectionCertificate;
+}
+
+export async function savePgdIssuance(input:
+  | { requestId: string; action: 'SIGN'; operationId: string; issueDate: string; expiryDate: string; file: File }
+  | { requestId: string; action: 'DELIVER'; operationId: string; deliveredTo: string }
+  | { requestId: string; action: 'ARCHIVE'; operationId: string },
+): Promise<{ certificate: PgdInspectionCertificate; request: PgdInspectionRequest }> {
+  let init: RequestInit;
+  if (input.action === 'SIGN') {
+    const form = new FormData();
+    form.set('requestId', input.requestId);
+    form.set('action', input.action);
+    form.set('operationId', input.operationId);
+    form.set('issueDate', input.issueDate);
+    form.set('expiryDate', input.expiryDate);
+    form.set('file', input.file);
+    init = { method: 'POST', body: form };
+  } else {
+    init = { method: 'POST', body: JSON.stringify(input), headers: { 'Content-Type': 'application/json' } };
+  }
+  const payload = await request('/api/pgd/issuance', init);
+  return { certificate: payload.certificate as PgdInspectionCertificate, request: payload.request as PgdInspectionRequest };
 }
 
 export async function savePgdReport(report: PgdInspectionReport): Promise<PgdInspectionReport> {

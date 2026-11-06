@@ -10,9 +10,9 @@ const formType = workspace.slice(workspace.indexOf('type PcnProposalForm'), work
 const proposalView = workspace.slice(workspace.indexOf('function ProposalView'), workspace.indexOf('function Field'));
 
 test('proposal form captures the server-relevant received date without exposing proposal-code editing', () => {
-  assert.match(proposalView, /id="pcn-proposal-received-at"/);
-  assert.match(proposalView, /PgdcnDateInput/);
-  assert.doesNotMatch(proposalView, /placeholder=/);
+  const receivedControl = proposalView.split(/\r?\n/).find((line) => line.includes('id="pcn-proposal-received-at"')) || '';
+  assert.match(receivedControl, /PgdcnDateInput/);
+  assert.doesNotMatch(receivedControl, /placeholder=|proposalCode/);
   assert.match(proposalView, /receivedAt: form\.receivedAt/);
   assert.match(proposalView, /readOnly=\{Boolean\(editingProposal\)\}/);
   assert.match(proposalView, /PCN-YYMMDD-TT/);

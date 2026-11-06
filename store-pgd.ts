@@ -18,6 +18,7 @@ import type {
   PgdCatalogItem,
   PgdGeneratedDocument,
   PgdCalibrationInstrument,
+  PgdAssessmentRound,
 } from './utils/pgdDomain.ts';
 import type { PgdCaseEvent, PgdDossierIndex, PgdFieldActivityLog, PgdInspectionPlan, PgdLabResultReview } from './utils/pgdArtifacts.ts';
 import type { PgdDocumentTemplate } from './utils/pgdDocumentTemplates.ts';
@@ -37,9 +38,12 @@ import {
   getPgdDossierDocuments,
   savePgdAssignment,
   savePgdCertificate,
+  savePgdIssuance,
   savePgdDossierDocument as savePgdDossierDocumentApi,
   savePgdFieldInspection,
   savePgdInspectionPlan,
+  respondPgdInspectionPlan,
+  savePgdAssessmentRound,
   savePgdCaseEvent,
   savePgdFieldActivityLog,
   savePgdLabResultReview,
@@ -86,6 +90,7 @@ interface PgdStoreState {
   labResultReviews: PgdLabResultReview[];
   dossierIndexes: PgdDossierIndex[];
   calibrationInstruments: PgdCalibrationInstrument[];
+  assessmentRounds: PgdAssessmentRound[];
   isLoading: boolean;
   isLoaded: boolean;
   error?: string;
@@ -98,6 +103,8 @@ interface PgdStoreState {
   saveAssignment: (assignment: PgdInspectionAssignment) => Promise<PgdInspectionAssignment>;
   saveFieldInspection: (inspection: PgdFieldInspection) => Promise<PgdFieldInspection>;
   saveInspectionPlan: (plan: PgdInspectionPlan) => Promise<PgdInspectionPlan>;
+  respondInspectionPlan: (input: { id: string; requestId: string; action: 'ACCEPT' | 'RETURN'; reason?: string }) => Promise<PgdInspectionPlan>;
+  saveAssessmentRound: (input: { requestId: string; action: 'CREATE' | 'CLOSE'; id?: string; reason?: string }) => Promise<PgdAssessmentRound>;
   saveCaseEvent: (event: PgdCaseEvent) => Promise<PgdCaseEvent>;
   saveFieldActivityLog: (log: PgdFieldActivityLog) => Promise<PgdFieldActivityLog>;
   saveLabResultReview: (review: PgdLabResultReview) => Promise<PgdLabResultReview>;
@@ -107,12 +114,13 @@ interface PgdStoreState {
   assignOwner: (requestId: string, ownerUsername: string) => Promise<PgdInspectionRequest>;
   attachGeneratedDocument: (requestId: string, input: { documentId: string; requirementCode: string; title?: string }) => Promise<PgdDossierDocument>;
   confirmDossierDocument: (requestId: string, requirementCode: string) => Promise<void>;
-  splitSample: (input: { requestId: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string; sampledAt?: string; samplingLocation?: string; sampledByUsername?: string; sampleSize?: string; lotQuantity?: number; lotUnit?: string }) => Promise<PgdSample[]>;
+  splitSample: (input: { requestId: string; assessmentRoundId?: string; sampleCodePrefix: string; description: string; quantity: number; unit?: string; sampledAt?: string; samplingLocation?: string; sampledByUsername?: string; sampleSize?: string; lotQuantity?: number; lotUnit?: string }) => Promise<PgdSample[]>;
   destroySample: (sampleId: string, note: string) => Promise<PgdSample>;
   saveLabRequest: (labRequest: PgdLabRequest) => Promise<PgdLabRequest>;
   saveLabResult: (result: PgdLabResult) => Promise<PgdLabResult>;
   saveReport: (report: PgdInspectionReport) => Promise<PgdInspectionReport>;
   saveCertificate: (certificate: PgdInspectionCertificate) => Promise<PgdInspectionCertificate>;
+  saveIssuance: (input: Parameters<typeof savePgdIssuance>[0]) => Promise<void>;
   saveCalibrationInstrument: (instrument: PgdCalibrationInstrument) => Promise<PgdCalibrationInstrument>;
   approveStep: (step: PgdApprovalStep) => Promise<void>;
   saveDocumentTemplate: (template: PgdDocumentTemplate) => Promise<PgdDocumentTemplate>;
@@ -132,6 +140,7 @@ const emptyState = {
   workflowTemplates: [],
   inspectionPlans: [], caseEvents: [], fieldActivityLogs: [], labResultReviews: [], dossierIndexes: [],
   calibrationInstruments: [],
+  assessmentRounds: [],
 };
 
 function replaceOne<T extends { id: string }>(items: T[], next: T): T[] {
@@ -190,6 +199,7 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
       fieldActivityLogs: removeRelated(state.fieldActivityLogs),
       labResultReviews: removeRelated(state.labResultReviews),
       dossierIndexes: removeRelated(state.dossierIndexes),
+      assessmentRounds: removeRelated(state.assessmentRounds),
     }));
     return deleted;
   },
@@ -217,6 +227,23 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
   saveInspectionPlan: async (plan) => {
     const next = await savePgdInspectionPlan(plan);
     set((state) => ({ inspectionPlans: replaceOne(state.inspectionPlans, next), requests: state.requests.map((request) => request.id === next.requestId ? { ...request, inspectionPlanId: next.id } : request) }));
+    return next;
+  },
+  respondInspectionPlan: async (input) => {
+    const next = await respondPgdInspectionPlan(input);
+    set((state) => ({ inspectionPlans: replaceOne(state.inspectionPlans, next) }));
+    return next;
+  },
+  saveAssessmentRound: async (input) => {
+    const next = await savePgdAssessmentRound(input);
+    set((state) => ({
+      assessmentRounds: replaceOne(state.assessmentRounds, next),
+      requests: state.requests.map((request) => request.id === next.requestId ? {
+        ...request,
+        assessmentRoundIds: Array.from(new Set([...(request.assessmentRoundIds || []), next.id])),
+        ...(next.status === 'OPEN' ? { currentAssessmentRoundId: next.id } : {}),
+      } : request),
+    }));
     return next;
   },
   saveCaseEvent: async (event) => {
@@ -323,6 +350,13 @@ export const usePgdStore = create<PgdStoreState>((set, get) => ({
     const next = await savePgdCertificate(certificate);
     set((state) => ({ certificates: replaceOne(state.certificates, next) }));
     return next;
+  },
+  saveIssuance: async (input) => {
+    const result = await savePgdIssuance(input);
+    set((state) => ({
+      certificates: replaceOne(state.certificates, result.certificate),
+      requests: replaceOne(state.requests, result.request),
+    }));
   },
   approveStep: async (step) => {
     const result = await approvePgdStep(step);

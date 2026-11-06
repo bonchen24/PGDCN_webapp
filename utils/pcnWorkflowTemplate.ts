@@ -206,6 +206,7 @@ export function snapshotPcnWorkflowTemplate(
   return JSON.parse(JSON.stringify({
     templateCode: template.code,
     templateVersion: template.version,
+    workflowSchemaVersion: 2,
     ...(template.stages ? { stages: template.stages } : {}),
     ...(template.requirementDefinitions ? { requirementDefinitions: template.requirementDefinitions } : {}),
     nodes,

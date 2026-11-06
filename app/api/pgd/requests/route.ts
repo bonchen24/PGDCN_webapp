@@ -121,6 +121,7 @@ export async function POST(req: NextRequest) {
 
       const request = {
         ...createdRequest,
+        workflowSchemaVersion: 2 as const,
         sampleIds: samples.map((sample) => sample.id),
         ...(selectedWorkflowTemplate && workflowSnapshot ? {
           workflowTemplateId: selectedWorkflowTemplate.id,

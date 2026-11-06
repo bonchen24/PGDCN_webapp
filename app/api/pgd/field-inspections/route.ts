@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { withPgTransaction } from '@/lib/server/db';
 import { getPgdSessionUser, requirePgdCollectionMutation } from '@/lib/server/pgd';
 import { getDocumentPayload, mapDocumentRow } from '@/lib/server/collections';
-import { jsonBadRequest, jsonNotFound, jsonOk, jsonServerError } from '@/lib/server/response';
+import { jsonBadRequest, jsonConflict, jsonForbidden, jsonNotFound, jsonOk, jsonServerError } from '@/lib/server/response';
 import {
   PGD_COLLECTIONS,
   PgdFieldInspection,
@@ -12,6 +12,7 @@ import {
 import {
   assertPgdRequestEvidenceMutationAllowed,
   assertPgdRequestStationMutationAllowed,
+  assertPgdAssessmentRoundAllowed,
   writePgdActivity,
 } from '@/lib/server/pgd-operations';
 import { toPcnUserAccount } from '@/utils/pcnAuth';
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
       const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
       assertPgdRequestEvidenceMutationAllowed(request);
       assertPgdRequestStationMutationAllowed(request, 'FIELD_SAMPLING');
+      await assertPgdAssessmentRoundAllowed(client, request, inspection.assessmentRoundId, actor);
 
       const usersResult = await client.query(`SELECT document_id, data FROM app_documents WHERE collection_name = 'systemUsers' ORDER BY document_id`);
       const users = usersResult.rows.map((row: any) => toPcnUserAccount({ documentId: row.document_id, data: row.data || {} }));
@@ -78,6 +80,8 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     const status = Number(error?.statusCode) || 400;
     if (status === 404) return jsonNotFound(error.message);
+    if (status === 403) return jsonForbidden(error.message);
+    if (status === 409) return jsonConflict(error.message);
     return jsonBadRequest(error?.message || String(error));
   }
 }

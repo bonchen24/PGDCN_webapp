@@ -22,7 +22,8 @@ import {
   toPgdLocalDateTimeFields,
   type PgdOperationalStationKey,
 } from '../utils/pgdWorkflow';
-import { isOrganizationLeader, isPcnSystemManager } from '../utils/pcnRbac';
+import { isPcnSystemManager } from '../utils/pcnRbac';
+import { getPgdUserCapabilities } from '../utils/pgdDossierCapabilities';
 import {
   createPgdInspectionPlan,
   createPgdLabResultReview,
@@ -40,6 +41,8 @@ export type PgdStationPanelProps = {
   request: PgdInspectionRequest;
   currentUser: PcnUserAccount;
   editable: boolean;
+  workflowSchemaVersion?: 2;
+  assessmentRoundId?: string;
 };
 
 const inputClass = 'mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] outline-none focus:border-blue-400 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2';
@@ -119,45 +122,106 @@ function PgdAssignmentForm({ request, currentUser, editable }: PgdStationPanelPr
   const pgd = usePgdStore();
   const assignment = pgd.assignments.find((item) => item.requestId === request.id);
   const access = getPgdOperationalStepAccess({ status: request.status, targetStationKey: request.status === 'CAPABILITY_REVIEW' ? 'INTAKE_CAPABILITY' : 'PREPARATION' });
-  const [inspectors, setInspectors] = useState(assignment?.inspectorUsernames.join(', ') || currentUser.username);
+  const [inspectors, setInspectors] = useState<string[]>(assignment?.inspectorUsernames || []);
+  const [leadInspector, setLeadInspector] = useState(assignment?.leadInspectorUsername || '');
   const [reviewer, setReviewer] = useState(assignment?.technicalReviewerUsername || '');
+  const [leadership, setLeadership] = useState(assignment?.leadershipUsername || '');
+  const [office, setOffice] = useState(assignment?.officeIssuanceUsername || '');
+  const [archivist, setArchivist] = useState(assignment?.archivistUsername || '');
   const [busy, setBusy] = useState(false);
   const managers = canManagePgd(currentUser);
-  const candidates = pgd.users.filter((user) => user.active !== false && user.departmentScopes?.includes('PGD') && (isOrganizationLeader(user) || user.pgdRole !== 'PGD_VIEWER'));
-  useEffect(() => { setInspectors(assignment?.inspectorUsernames.join(', ') || currentUser.username); setReviewer(assignment?.technicalReviewerUsername || ''); }, [assignment?.id, currentUser.username]);
+  const candidates = pgd.users.filter((user) => user.active !== false && user.departmentScopes?.includes('PGD'));
+  const assessorCandidates = candidates.filter((user) => getPgdUserCapabilities(user).includes('ASSESSOR'));
+  const reviewerCandidates = candidates.filter((user) => getPgdUserCapabilities(user).includes('TECHNICAL_REVIEW'));
+  const leaderCandidates = candidates.filter((user) => getPgdUserCapabilities(user).includes('LEADERSHIP_APPROVAL'));
+  const officeCandidates = candidates.filter((user) => getPgdUserCapabilities(user).includes('OFFICE_ISSUANCE'));
+  const archivistCandidates = candidates.filter((user) => getPgdUserCapabilities(user).includes('ARCHIVE'));
+  useEffect(() => {
+    setInspectors(assignment?.inspectorUsernames || []);
+    setLeadInspector(assignment?.leadInspectorUsername || '');
+    setReviewer(assignment?.technicalReviewerUsername || '');
+    setLeadership(assignment?.leadershipUsername || '');
+    setOffice(assignment?.officeIssuanceUsername || '');
+    setArchivist(assignment?.archivistUsername || '');
+  }, [assignment?.id, assignment?.updatedAt]);
   const save = async () => {
-    const inspectorUsernames = inspectors.split(',').map((value) => value.trim()).filter(Boolean);
-    const technicalReviewerUsername = reviewer.trim() || candidates.find((user) => isOrganizationLeader(user) || ['PGD_ADMIN', 'PGD_MANAGER', 'PGD_TECHNICAL'].includes(user.pgdRole || ''))?.username || '';
-    if (inspectorUsernames.length === 0 || !technicalReviewerUsername) { toast.error('Cần chọn giám định viên và người soát xét kỹ thuật PGD.'); return; }
+    const inspectorUsernames = inspectors;
+    if (inspectorUsernames.length === 0 || !leadInspector || !reviewer) { toast.error('Cần chọn trưởng đoàn, ít nhất một giám định viên và người thẩm xét PGD.'); return; }
     setBusy(true);
     try {
       const now = new Date().toISOString();
-      await pgd.saveAssignment({ id: assignment?.id || newId('pgd-assignment'), domain: PGD_DOMAIN, requestId: request.id, leadInspectorUsername: inspectorUsernames[0], inspectorUsernames, technicalReviewerUsername, method: request.method, status: managers ? 'APPROVED' : 'PENDING_APPROVAL', approvedByUsername: managers ? currentUser.username : undefined, approvedAt: managers ? now : undefined, createdAt: assignment?.createdAt || now, updatedAt: now });
+      await pgd.saveAssignment({ id: assignment?.id || newId('pgd-assignment'), domain: PGD_DOMAIN, requestId: request.id, leadInspectorUsername: leadInspector, inspectorUsernames, technicalReviewerUsername: reviewer, ...(leadership ? { leadershipUsername: leadership } : {}), ...(office ? { officeIssuanceUsername: office } : {}), ...(archivist ? { archivistUsername: archivist } : {}), method: request.method, status: managers ? 'APPROVED' : 'PENDING_APPROVAL', approvedByUsername: managers ? currentUser.username : undefined, approvedAt: managers ? now : undefined, createdAt: assignment?.createdAt || now, updatedAt: now });
       toast.success(managers ? 'Đã lưu và phê duyệt phân công PGD.' : 'Đã lưu phân công chờ phê duyệt.');
     } catch (error: any) { toast.error(error?.message || 'Không thể lưu phân công PGD.'); } finally { setBusy(false); }
   };
   const canEdit = editable && access.editable;
-  return <StationSection title="Phiếu phân công và xem xét năng lực" icon={<ClipboardList size={15} className="text-blue-600" />}><p className="mt-1 text-[11px] leading-4 text-slate-500">Phân công đoàn giám định theo ma trận chuyên môn; quản lý hoặc Quản trị viên có thể phê duyệt/điều chỉnh thủ công.</p><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-2"><Field label="Giám định viên (phân tách bằng dấu phẩy)"><input className={inputClass} disabled={!canEdit || busy} value={inspectors} onChange={(event) => setInspectors(event.target.value)} /></Field><Field label="Người soát xét kỹ thuật"><select className={inputClass} disabled={!canEdit || busy} value={reviewer} onChange={(event) => setReviewer(event.target.value)}><option value="">Tự chọn theo ma trận...</option>{candidates.map((user) => <option key={user.username} value={user.username}>{user.username} · {user.name} · {user.pgdRole || 'PGD'}</option>)}</select></Field></div><div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="text-[9px] text-slate-400">Trạng thái: <b className="text-slate-600">{assignment?.status || 'Chưa lập phiếu'}</b>{!canEdit && ' · Trạm đang khóa theo quy trình'}</span><button type="button" disabled={!canEdit || busy} onClick={() => void save()} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[11px] font-black text-white disabled:opacity-50"><Save size={13} />{busy ? 'Đang lưu...' : managers ? 'Lưu & phê duyệt' : 'Lưu chờ phê duyệt'}</button></div></StationSection>;
+  const roleSelect = (label: string, value: string, candidatesForRole: PcnUserAccount[], onChange: (username: string) => void) => <Field label={label}><select className={inputClass} disabled={!canEdit || busy} value={value} onChange={(event) => onChange(event.target.value)}><option value="">Chưa phân công</option>{candidatesForRole.map((user) => <option key={user.username} value={user.username}>{user.name} · {user.username}</option>)}</select></Field>;
+  return <StationSection title="Phiếu phân công theo năng lực" icon={<ClipboardList size={15} className="text-blue-600" />}>
+    <p className="mt-1 text-[11px] leading-4 text-slate-500">Danh sách chỉ gồm tài khoản hoạt động trong phạm vi PGD có capability tương ứng. Một người có thể kiêm nhiều vai trò.</p>
+    <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      {roleSelect('Trưởng đoàn *', leadInspector, assessorCandidates, setLeadInspector)}
+      {roleSelect('Chuyên gia thẩm xét *', reviewer, reviewerCandidates, setReviewer)}
+      {roleSelect('Lãnh đạo phê duyệt', leadership, leaderCandidates, setLeadership)}
+      {roleSelect('Văn phòng phát hành', office, officeCandidates, setOffice)}
+      {roleSelect('Người lưu trữ', archivist, archivistCandidates, setArchivist)}
+    </div>
+    <fieldset className="mt-2 rounded-lg border border-slate-200 p-2">
+      <legend className="px-1 text-[10px] font-black text-slate-600">Chuyên gia đánh giá *</legend>
+      {assessorCandidates.length ? <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">{assessorCandidates.map((user) => <label key={user.username} className="flex min-h-10 items-center gap-2 rounded-md px-2 text-[11px] text-slate-700 hover:bg-slate-50"><input type="checkbox" disabled={!canEdit || busy} checked={inspectors.includes(user.username)} onChange={(event) => setInspectors((current) => event.target.checked ? Array.from(new Set([...current, user.username])) : current.filter((username) => username !== user.username))} /><span className="min-w-0 truncate">{user.name} · {user.username}</span></label>)}</div> : <p className="text-[10px] text-amber-800">Chưa có nhân sự PGD được cấu hình capability đánh giá.</p>}
+    </fieldset>
+    <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="text-[10px] text-slate-500">Trạng thái: <b className="text-slate-700">{assignment?.status || 'Chưa lập phiếu'}</b>{!canEdit && ' · Trạm đang khóa theo quy trình'}</span><button type="button" disabled={!canEdit || busy || !leadInspector || inspectors.length === 0 || !reviewer} onClick={() => void save()} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[11px] font-black text-white disabled:opacity-50"><Save size={13} />{busy ? 'Đang lưu...' : managers ? 'Lưu & phê duyệt' : 'Lưu chờ phê duyệt'}</button></div>
+  </StationSection>;
 }
 
 function PgdPlanForm({ request, currentUser, editable }: PgdStationPanelProps) {
   const pgd = usePgdStore();
   const plan = pgd.inspectionPlans.find((item) => item.requestId === request.id);
+  const assignment = pgd.assignments.find((item) => item.requestId === request.id);
+  const workflowV2 = request.workflowSchemaVersion === 2 || request.workflowSnapshot?.workflowSchemaVersion === 2;
   const access = getPgdOperationalStepAccess({ status: request.status, targetStationKey: 'PREPARATION' });
-  const [date, setDate] = useState(plan?.inspectionDate || request.inspectionScheduledAt?.slice(0, 10) || new Date().toISOString().slice(0, 10));
+  const [dates, setDates] = useState<string[]>(plan?.inspectionDates?.length ? plan.inspectionDates : [plan?.inspectionDate || request.inspectionScheduledAt?.slice(0, 10) || new Date().toISOString().slice(0, 10)]);
+  const [additionalDate, setAdditionalDate] = useState('');
   const [activity, setActivity] = useState('Kiểm tra hồ sơ, ngoại quan, kích thước và lấy mẫu');
+  const [returnReason, setReturnReason] = useState('');
   const [busy, setBusy] = useState(false);
-  useEffect(() => { setDate(plan?.inspectionDate || request.inspectionScheduledAt?.slice(0, 10) || new Date().toISOString().slice(0, 10)); }, [plan?.id, request.id]);
+  useEffect(() => { setDates(plan?.inspectionDates?.length ? plan.inspectionDates : [plan?.inspectionDate || request.inspectionScheduledAt?.slice(0, 10) || new Date().toISOString().slice(0, 10)]); }, [plan?.id, plan?.updatedAt, request.id]);
   const save = async () => {
     setBusy(true);
     try {
-      const inspectors = pgd.assignments.find((item) => item.requestId === request.id)?.inspectorUsernames || [currentUser.username];
-      await pgd.saveInspectionPlan(createPgdInspectionPlan({ id: plan?.id || newId('pgd-plan'), requestId: request.id, inspectionDate: date, team: inspectors.map((username, index) => ({ username, role: index === 0 ? 'LEAD' : 'INSPECTOR' })), productLines: [{ productName: request.productName, grade: request.productDetails?.grade, dimensions: request.productDetails?.dimensions, standard: request.productDetails?.productStandard || request.standards.join(', '), origin: request.productDetails?.countryOfOrigin || request.productDetails?.origin, manufacturer: request.productDetails?.manufacturer, quantity: request.quantity, unit: request.unit }], schedule: [{ startTime: '08:30', endTime: '09:00', activity: 'Họp khai mạc và thống nhất nội dung' }, { startTime: '09:00', endTime: '11:00', activity: activity.trim() || 'Kiểm tra hồ sơ, ngoại quan và lấy mẫu' }, { startTime: '11:00', endTime: '11:30', activity: 'Hoàn thiện biên bản và kết thúc' }], criteria: request.inspectionScope, assessmentMethod: request.assessmentMethod, inspectionType: 'Giám định theo lô', status: 'CONFIRMED' }));
-      toast.success('Đã lưu kế hoạch giám định PGD.');
+      const inspectors = assignment?.inspectorUsernames || [currentUser.username];
+      const schedule = dates.flatMap((date) => [
+        { date, startTime: '08:30', endTime: '09:00', activity: 'Họp khai mạc và thống nhất nội dung' },
+        { date, startTime: '09:00', endTime: '11:00', activity: activity.trim() || 'Kiểm tra hồ sơ, ngoại quan và lấy mẫu' },
+        { date, startTime: '11:00', endTime: '11:30', activity: 'Hoàn thiện biên bản và kết thúc' },
+      ]);
+      await pgd.saveInspectionPlan(createPgdInspectionPlan({ id: plan?.id || newId('pgd-plan'), requestId: request.id, inspectionDate: dates[0], inspectionDates: dates, team: inspectors.map((username, index) => ({ username, role: index === 0 ? 'LEAD' : 'INSPECTOR' })), productLines: [{ productName: request.productName, grade: request.productDetails?.grade, dimensions: request.productDetails?.dimensions, standard: request.productDetails?.productStandard || request.standards.join(', '), origin: request.productDetails?.countryOfOrigin || request.productDetails?.origin, manufacturer: request.productDetails?.manufacturer, quantity: request.quantity, unit: request.unit }], schedule, criteria: request.inspectionScope, assessmentMethod: request.assessmentMethod, inspectionType: 'Giám định theo lô', status: 'CONFIRMED', ...(workflowV2 ? { acceptance: { status: 'PENDING' as const } } : {}) }));
+      toast.success(workflowV2 ? 'Đã lưu lịch nhiều ngày, đang chờ trưởng đoàn xác nhận.' : 'Đã lưu kế hoạch giám định PGD.');
     } catch (error: any) { toast.error(error?.message || 'Không thể lưu kế hoạch giám định.'); } finally { setBusy(false); }
   };
+  const respond = async (action: 'ACCEPT' | 'RETURN') => {
+    if (!plan) return;
+    if (action === 'RETURN' && !returnReason.trim()) { toast.error('Cần ghi lý do trả lịch.'); return; }
+    setBusy(true);
+    try {
+      await pgd.respondInspectionPlan({ id: plan.id, requestId: request.id, action, ...(action === 'RETURN' ? { reason: returnReason.trim() } : {}) });
+      setReturnReason('');
+      toast.success(action === 'ACCEPT' ? 'Đã chấp nhận lịch đánh giá.' : 'Đã trả lịch cho phòng để điều chỉnh.');
+    } catch (error: any) { toast.error(error?.message || 'Không thể xác nhận lịch PGD.'); } finally { setBusy(false); }
+  };
   const canEdit = editable && access.editable;
-  return <StationSection title="Kế hoạch & phân công" icon={<ClipboardList size={15} className="text-blue-600" />}><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 lg:items-end"><Field label="Ngày hiện trường" required><PgdcnDateInput className={inputClass} required disabled={!canEdit || busy} value={date} onChange={setDate} /></Field><Field label="Nội dung trọng tâm" required className="lg:col-span-2"><input required className={inputClass} disabled={!canEdit || busy} value={activity} onChange={(event) => setActivity(event.target.value)} /></Field><button type="button" disabled={!canEdit || busy || !date || !activity.trim()} onClick={() => void save()} className="mobile-touch-target inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[11px] font-black text-white disabled:opacity-50"><Save size={13} /> Lưu kế hoạch</button></div>{plan && <div className="mt-2 rounded-lg border border-slate-100 bg-slate-50 p-2 text-[9px] text-slate-600">{plan.inspectionDate} · {plan.team.map((member) => member.username).join(', ')} · {plan.schedule.map((row) => row.activity).join(' · ')}</div>}</StationSection>;
+  const canRespondPlan = workflowV2 && Boolean(plan) && String(assignment?.leadInspectorUsername || '').toLowerCase() === currentUser.username.toLowerCase();
+  return <StationSection title="Kế hoạch & phân công" icon={<ClipboardList size={15} className="text-blue-600" />}>
+    <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+      <Field label="Ngày đánh giá đầu tiên" required><PgdcnDateInput className={inputClass} required disabled={!canEdit || busy} value={dates[0] || ''} onChange={(value) => setDates((previous) => previous.length ? [value, ...previous.slice(1)] : [value])} /></Field>
+      <Field label="Thêm ngày đánh giá"><input type="date" className={inputClass} disabled={!canEdit || busy} value={additionalDate} onChange={(event) => setAdditionalDate(event.target.value)} /></Field>
+      <button type="button" disabled={!canEdit || busy || !additionalDate || dates.includes(additionalDate)} onClick={() => { setDates((previous) => [...previous, additionalDate].sort()); setAdditionalDate(''); }} className="mobile-touch-target min-h-11 rounded-lg border border-blue-200 bg-blue-50 px-3 text-[11px] font-black text-blue-800 disabled:opacity-50">Thêm ngày</button>
+      <Field label="Nội dung trọng tâm" required><input required className={inputClass} disabled={!canEdit || busy} value={activity} onChange={(event) => setActivity(event.target.value)} /></Field>
+      <button type="button" disabled={!canEdit || busy || dates.length === 0 || !activity.trim()} onClick={() => void save()} className="mobile-touch-target inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[11px] font-black text-white disabled:opacity-50"><Save size={13} /> Lưu lịch</button>
+    </div>
+    <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Các ngày đánh giá đã chọn">{dates.map((item, index) => <span key={`${item}-${index}`} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-700">{item}{dates.length > 1 && <button type="button" disabled={!canEdit || busy} aria-label={`Bỏ ngày ${item}`} onClick={() => setDates((previous) => previous.filter((_, currentIndex) => currentIndex !== index))} className="text-slate-500 hover:text-rose-700">×</button>}</span>)}</div>
+    {plan && <div className="mt-2 rounded-lg border border-slate-100 bg-slate-50 p-2 text-[10px] leading-5 text-slate-600"><b>{plan.inspectionDates?.join(', ') || plan.inspectionDate}</b> · {plan.team.map((member) => member.username).join(', ')} · {plan.schedule.map((row) => `${row.date || plan.inspectionDate} ${row.startTime} ${row.activity}`).join(' · ')}{workflowV2 && <span className="block font-bold text-blue-800">Trạng thái lịch: {plan.acceptance?.status === 'ACCEPTED' ? `Đã chấp nhận bởi ${plan.acceptance.actedByUsername || 'trưởng đoàn'}` : plan.acceptance?.status === 'RETURNED' ? `Đã trả: ${plan.acceptance.reason || 'cần điều chỉnh'}` : 'Chờ trưởng đoàn chấp nhận'}</span>}</div>}
+    {canRespondPlan && plan && plan.acceptance?.status !== 'ACCEPTED' && <div className="mt-2 flex flex-wrap items-end gap-2 rounded-lg border border-blue-100 bg-blue-50/60 p-2"><button type="button" disabled={busy} onClick={() => void respond('ACCEPT')} className="mobile-touch-target min-h-11 rounded-lg bg-blue-600 px-3 text-[11px] font-black text-white disabled:opacity-50">Chấp nhận lịch</button><Field label="Lý do trả lịch"><input className={inputClass} value={returnReason} onChange={(event) => setReturnReason(event.target.value)} /></Field><button type="button" disabled={busy || !returnReason.trim()} onClick={() => void respond('RETURN')} className="mobile-touch-target min-h-11 rounded-lg border border-amber-300 bg-white px-3 text-[11px] font-black text-amber-900 disabled:opacity-50">Trả lịch</button></div>}
+  </StationSection>;
 }
 
 export function PgdPreparationPanel(props: PgdStationPanelProps) {
@@ -172,10 +236,10 @@ export function PgdPlanStepPanel(props: PgdStationPanelProps) {
   return <PgdPlanForm {...props} />;
 }
 
-function PgdFieldInspectionForm({ request, currentUser, editable }: PgdStationPanelProps) {
+function PgdFieldInspectionForm({ request, currentUser, editable, assessmentRoundId }: PgdStationPanelProps) {
   const pgd = usePgdStore();
-  const inspections = pgd.fieldInspections.filter((item) => item.requestId === request.id).sort((left, right) => String(right.startedAt || right.performedAt || '').localeCompare(String(left.startedAt || left.performedAt || '')));
-  const samples = pgd.samples.filter((item) => item.requestId === request.id);
+  const inspections = pgd.fieldInspections.filter((item) => item.requestId === request.id && (!assessmentRoundId || item.assessmentRoundId === assessmentRoundId)).sort((left, right) => String(right.startedAt || right.performedAt || '').localeCompare(String(left.startedAt || left.performedAt || '')));
+  const samples = pgd.samples.filter((item) => item.requestId === request.id && (!assessmentRoundId || item.assessmentRoundId === assessmentRoundId));
   const access = getPgdOperationalStepAccess({ status: request.status, targetStationKey: 'FIELD_SAMPLING' });
   const defaultForm = {
     sessionCode: '',
@@ -208,7 +272,13 @@ function PgdFieldInspectionForm({ request, currentUser, editable }: PgdStationPa
   const sessionSamples = samples.filter((sample) => sessionSampleIds.includes(sample.id));
 
   useEffect(() => {
-    if (!activeInspection) return;
+    if (!activeInspection) {
+      setForm(defaultForm);
+      setCompleted(false);
+      setMeasurementRows([]);
+      setSampleRows([{ description: request.productName, lotQuantity: request.quantity, quantity: 2, sampleSize: '', sampleCode: '', destination: 'LAB + Mẫu lưu', sealNumber: '', note: '' }]);
+      return;
+    }
     const started = toPgdLocalDateTimeFields(activeInspection.startedAt || activeInspection.performedAt);
     const ended = toPgdLocalDateTimeFields(activeInspection.endedAt);
     setForm({
@@ -233,7 +303,7 @@ function PgdFieldInspectionForm({ request, currentUser, editable }: PgdStationPa
     setCompleted(activeInspection.completed !== false && activeInspection.status !== 'DRAFT');
     setMeasurementRows(Object.entries(activeInspection.measurements || {}).map(([item, value]) => ({ item, value: String(value), unit: '' })));
     setSampleRows([]);
-  }, [activeInspection?.id, request.id]);
+  }, [activeInspection?.id, request.id, assessmentRoundId]);
 
   const update = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -292,6 +362,7 @@ function PgdFieldInspectionForm({ request, currentUser, editable }: PgdStationPa
       const saved = buildPgdFieldInspection({
         id,
         requestId: request.id,
+        ...(assessmentRoundId ? { assessmentRoundId } : {}),
         sessionCode: form.sessionCode || 'PGD-' + (inspections.length + 1),
         activityType: form.activityType,
         performedAt: startedAt,
@@ -322,6 +393,7 @@ function PgdFieldInspectionForm({ request, currentUser, editable }: PgdStationPa
         if (!Number.isFinite(quantity) || quantity < 2) throw new Error('Số lượng mỗi dòng mẫu phải từ 2 để tách PTN và mẫu lưu.');
         const created = await pgd.splitSample({
           requestId: request.id,
+          ...(assessmentRoundId ? { assessmentRoundId } : {}),
           sampleCodePrefix: String(row.sampleCode || '').trim() || request.requestCode,
           description: String(row.description || '').trim() || request.productName,
           quantity,
@@ -400,19 +472,22 @@ function PgdFieldInspectionForm({ request, currentUser, editable }: PgdStationPa
 }export function PgdFieldSamplingPanel(props: PgdStationPanelProps) {
   const { request } = props;
   const evidence = useDossierEvidence(request);
-  return <div className="space-y-3"><PgdFieldInspectionForm {...props} /><PgdLabRequestForm {...props} /><PgdCaseEvidencePanel request={request} requirements={evidence.requirements} dossierDocuments={evidence.documents} samples={evidence.pgd.samples.filter((item) => item.requestId === request.id)} canMutate={props.editable} editable={props.editable} /><PgdSourceFormsPanel request={request} currentUser={props.currentUser} editable={props.editable} /></div>;
+  const documents = props.assessmentRoundId ? evidence.documents.filter((item) => item.assessmentRoundId === props.assessmentRoundId) : evidence.documents;
+  const samples = evidence.pgd.samples.filter((item) => item.requestId === request.id && (!props.assessmentRoundId || item.assessmentRoundId === props.assessmentRoundId));
+  return <div className="space-y-3"><PgdFieldInspectionForm {...props} /><PgdLabRequestForm {...props} /><PgdCaseEvidencePanel key={props.assessmentRoundId || 'dossier'} request={request} requirements={evidence.requirements} dossierDocuments={documents} samples={samples} assessmentRoundId={props.assessmentRoundId} canMutate={props.editable} editable={props.editable} /><PgdSourceFormsPanel request={request} currentUser={props.currentUser} editable={props.editable} /></div>;
 }
 
 export function PgdFieldInspectionStepPanel(props: PgdStationPanelProps) {
   return <div className="space-y-3"><PgdFieldInspectionForm {...props} /><PgdLabRequestForm {...props} handoverOnly /></div>;
 }
 
-function PgdLabRequestForm({ request, currentUser, editable, handoverOnly = false }: PgdStationPanelProps & { handoverOnly?: boolean }) {
+function PgdLabRequestForm({ request, currentUser, editable, assessmentRoundId, handoverOnly = false }: PgdStationPanelProps & { handoverOnly?: boolean }) {
   const pgd = usePgdStore();
-  const samples = pgd.samples.filter((item) => item.requestId === request.id && item.disposition === 'LAB');
-  const labRequests = pgd.labRequests.filter((item) => item.requestId === request.id);
-  const labResults = pgd.labResults.filter((item) => item.requestId === request.id);
-  const review = pgd.labResultReviews.find((item) => item.requestId === request.id);
+  const belongsToRound = (item: { assessmentRoundId?: string }) => !assessmentRoundId || item.assessmentRoundId === assessmentRoundId;
+  const samples = pgd.samples.filter((item) => item.requestId === request.id && item.disposition === 'LAB' && belongsToRound(item));
+  const labRequests = pgd.labRequests.filter((item) => item.requestId === request.id && belongsToRound(item));
+  const labResults = pgd.labResults.filter((item) => item.requestId === request.id && belongsToRound(item));
+  const review = pgd.labResultReviews.find((item) => item.requestId === request.id && belongsToRound(item));
   const access = getPgdOperationalStepAccess({ status: request.status, targetStationKey: handoverOnly ? 'FIELD_SAMPLING' : 'LAB_RESULTS' });
   const [sampleId, setSampleId] = useState(samples[0]?.id || '');
   const [labName, setLabName] = useState('PTN nội bộ TVCI');
@@ -433,8 +508,8 @@ function PgdLabRequestForm({ request, currentUser, editable, handoverOnly = fals
   useEffect(() => { setResultRows(selectedLabResult?.values.length ? selectedLabResult.values.map((item) => ({ item: item.label, value: item.value, unit: item.unit || '', method: '' })) : [{ item: '', value: '', unit: '', method: '' }]); }, [selectedLabRequest?.id, selectedLabResult?.id]);
   useEffect(() => { setReviewConclusion(review?.conclusion || ''); setReviewCompleteness(review?.completeness || ''); setReviewConformity(review?.conformity || ''); setReviewRetestReason(review?.retestReason || ''); }, [request.id, review?.id, review?.conclusion, review?.completeness, review?.conformity, review?.retestReason]);
   const run = async (action: () => Promise<void>, message: string) => { setBusy(true); try { await action(); toast.success(message); } catch (error: any) { toast.error(error?.message || 'Không thể cập nhật dữ liệu PTN PGD.'); } finally { setBusy(false); } };
-    const saveRequest = () => run(async () => { const sample = samples.find((item) => item.id === sampleId); if (!sample) throw new Error('Cần chọn mẫu gửi PTN.'); const rows = testRows.filter((row) => String(row.item || '').trim()); if (rows.length === 0) throw new Error('Cần nhập ít nhất một hạng mục thử nghiệm.'); const next = buildPgdLabRequest({ id: newId('pgd-lab-request'), domain: PGD_DOMAIN, requestId: request.id, sampleId: sample.id, status: 'SENT', laboratoryName: labName, laboratoryCode: labCode, senderUnit: 'Phòng Giám định, Chứng nhận, Phát triển thị trường', testItems: rows.map((row) => String(row.item).trim()), testMethods: rows.map((row) => String(row.method || '').trim()).filter(Boolean), handover: { sentAt: new Date().toISOString(), quantity: sample.quantity, note: `Bàn giao theo PYC ${request.requestCode}` } }, currentUser.username); await pgd.saveLabRequest(next); setSelectedLabRequestId(next.id); }, 'Đã lập phiếu giao nhận và yêu cầu PTN.');
-  const saveResult = () => run(async () => { const labRequest = labRequests.find((item) => item.id === selectedLabRequestId) || labRequests[0]; if (!labRequest) throw new Error('Chưa có yêu cầu PTN để nhận kết quả.'); const values = resultRows.filter((row) => String(row.value || '').trim()).map((row) => ({ key: String(row.item || 'SUMMARY').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_'), label: String(row.item || 'Kết quả tổng hợp').trim(), value: String(row.value || '').trim(), unit: String(row.unit || '').trim() || undefined })); if (values.length === 0) throw new Error('Cần nhập giá trị cho ít nhất một dòng kết quả PTN.'); const result = buildPgdLabResult({ id: newId('pgd-lab-result'), domain: PGD_DOMAIN, requestId: request.id, labRequestId: labRequest.id, reportNumber: reportNumber.trim() || undefined, receivedAt: new Date().toISOString(), values, issue: undefined }, currentUser.username); await pgd.saveLabResult(result); setSelectedLabRequestId(labRequest.id); }, 'Đã tiếp nhận kết quả PTN.');
+    const saveRequest = () => run(async () => { const sample = samples.find((item) => item.id === sampleId); if (!sample) throw new Error('Cần chọn mẫu gửi PTN.'); const rows = testRows.filter((row) => String(row.item || '').trim()); if (rows.length === 0) throw new Error('Cần nhập ít nhất một hạng mục thử nghiệm.'); const next = buildPgdLabRequest({ id: newId('pgd-lab-request'), domain: PGD_DOMAIN, requestId: request.id, ...(assessmentRoundId ? { assessmentRoundId } : {}), sampleId: sample.id, status: 'SENT', laboratoryName: labName, laboratoryCode: labCode, senderUnit: 'Phòng Giám định, Chứng nhận, Phát triển thị trường', testItems: rows.map((row) => String(row.item).trim()), testMethods: rows.map((row) => String(row.method || '').trim()).filter(Boolean), handover: { sentAt: new Date().toISOString(), quantity: sample.quantity, note: `Bàn giao theo PYC ${request.requestCode}` } }, currentUser.username); await pgd.saveLabRequest(next); setSelectedLabRequestId(next.id); }, 'Đã lập phiếu giao nhận và yêu cầu PTN.');
+  const saveResult = () => run(async () => { const labRequest = labRequests.find((item) => item.id === selectedLabRequestId) || labRequests[0]; if (!labRequest) throw new Error('Chưa có yêu cầu PTN để nhận kết quả.'); const values = resultRows.filter((row) => String(row.value || '').trim()).map((row) => ({ key: String(row.item || 'SUMMARY').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_'), label: String(row.item || 'Kết quả tổng hợp').trim(), value: String(row.value || '').trim(), unit: String(row.unit || '').trim() || undefined })); if (values.length === 0) throw new Error('Cần nhập giá trị cho ít nhất một dòng kết quả PTN.'); const result = buildPgdLabResult({ id: newId('pgd-lab-result'), domain: PGD_DOMAIN, requestId: request.id, ...(assessmentRoundId ? { assessmentRoundId } : {}), labRequestId: labRequest.id, reportNumber: reportNumber.trim() || undefined, receivedAt: new Date().toISOString(), values, issue: undefined }, currentUser.username); await pgd.saveLabResult(result); setSelectedLabRequestId(labRequest.id); }, 'Đã tiếp nhận kết quả PTN.');
   const saveReview = () => run(async () => {
     if (labResults.length === 0) throw new Error('Chưa có kết quả PTN để đánh giá.');
     if (!reviewCompleteness) throw new Error('Cần chọn độ đầy đủ kết quả PTN.');
@@ -445,6 +520,7 @@ function PgdLabRequestForm({ request, currentUser, editable, handoverOnly = fals
     await pgd.saveLabResultReview(createPgdLabResultReview({
       id: review?.id || newId('pgd-lab-review'),
       requestId: request.id,
+      ...(assessmentRoundId ? { assessmentRoundId } : {}),
       labResultIds: labResults.map((item) => item.id),
       completeness: reviewCompleteness,
       conformity: reviewConformity,
@@ -532,14 +608,17 @@ function PgdLabRequestForm({ request, currentUser, editable, handoverOnly = fals
 export function PgdLabResultsPanel(props: PgdStationPanelProps) {
   const { request } = props;
   const evidence = useDossierEvidence(request);
-  return <div className="space-y-3"><PgdLabRequestForm {...props} /><PgdCaseEvidencePanel request={request} requirements={evidence.requirements} dossierDocuments={evidence.documents} samples={evidence.pgd.samples.filter((item) => item.requestId === request.id)} canMutate={props.editable} editable={props.editable} /></div>;
+  const documents = props.assessmentRoundId ? evidence.documents.filter((item) => item.assessmentRoundId === props.assessmentRoundId) : evidence.documents;
+  const samples = evidence.pgd.samples.filter((item) => item.requestId === request.id && (!props.assessmentRoundId || item.assessmentRoundId === props.assessmentRoundId));
+  return <div className="space-y-3"><PgdLabRequestForm {...props} /><PgdCaseEvidencePanel request={request} requirements={evidence.requirements} dossierDocuments={documents} samples={samples} assessmentRoundId={props.assessmentRoundId} canMutate={props.editable} editable={props.editable} /></div>;
 }
 
 export function PgdLabRequestStepPanel(props: PgdStationPanelProps) {
   return <PgdLabRequestForm {...props} />;
 }
 
-function PgdReportApprovalForm({ request, currentUser, editable }: PgdStationPanelProps) {
+function PgdReportApprovalForm(props: PgdStationPanelProps) {
+  const { request, currentUser, editable } = props;
   const pgd = usePgdStore();
   const report = pgd.reports.find((item) => item.requestId === request.id);
   const certificate = pgd.certificates.find((item) => item.requestId === request.id);
@@ -577,7 +656,7 @@ function PgdReportApprovalForm({ request, currentUser, editable }: PgdStationPan
   };
   const technicalApproved = approvals.some((item) => item.role === 'TECHNICAL_REVIEW' && item.status === 'APPROVED');
   const leadershipApproved = approvals.some((item) => item.role === 'LEADERSHIP_APPROVAL' && item.status === 'APPROVED');
-  return <div className="space-y-3"><StationSection title="Báo cáo giám định" icon={<FileCheck2 size={15} className="text-blue-600" />}><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Field label="Số báo cáo"><input className={inputClass} disabled={!canEdit || busy} value={reportNumber} onChange={(event) => setReportNumber(event.target.value)} /></Field><Field label="Tiêu đề báo cáo"><input className={inputClass} disabled={!canEdit || busy} value={title} onChange={(event) => setTitle(event.target.value)} /></Field><Field label="Kết luận *" wide><textarea rows={3} required aria-required="true" className={inputClass} disabled={!canEdit || busy} value={conclusion} onChange={(event) => setConclusion(event.target.value)} />{!conclusion.trim() && <span role="alert" className="mt-1 block text-[10px] text-rose-700">Cần nhập kết luận báo cáo giám định.</span>}</Field></div><div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="text-[9px] text-slate-400">Bản chụp tiêu chuẩn: {request.standards.join(' · ') || 'Chưa có'}</span><button type="button" disabled={!canEdit || busy || !title.trim() || !conclusion.trim()} onClick={() => void saveReport()} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[11px] font-black text-white disabled:opacity-50"><Save size={13} /> Lưu báo cáo</button></div></StationSection><StationSection title="Chứng thư giám định" icon={<FileCheck2 size={15} className="text-emerald-600" />}><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 lg:items-end"><Field label="Số chứng thư"><input className={inputClass} disabled={!canEdit || busy} value={certificateNumber} onChange={(event) => setCertificateNumber(event.target.value)} /></Field><div className="flex items-end"><button type="button" disabled={!canEdit || busy || !conclusion.trim()} onClick={() => void saveCertificate()} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-[11px] font-black text-white disabled:opacity-50"><Save size={13} /> Lưu chứng thư</button></div></div><p className="mt-2 text-[9px] text-slate-500">{certificate ? `Trạng thái: ${certificate.status} · ${certificate.documentNumber || 'Chưa có số'}` : 'Chưa có dự thảo chứng thư.'}{!conclusion.trim() && <span role="alert" className="ml-2 text-rose-700">Nhập kết luận trước khi lưu chứng thư.</span>}</p></StationSection><StationSection title="Phê duyệt hai cấp" icon={<ShieldCheck size={15} className="text-indigo-600" />}><div className="grid gap-2"><p className="text-[11px] leading-4 text-slate-500">Kết quả đi qua phê duyệt chuyên môn PGD trước, sau đó mới trình lãnh đạo Trung tâm / Viện.</p><div className="flex flex-wrap gap-2"><button type="button" disabled={!canEdit || busy || !report || !certificate || request.status !== 'TECHNICAL_REVIEW' || technicalApproved} onClick={() => void approve('TECHNICAL_REVIEW')} className="inline-flex mobile-touch-target min-h-11 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-[11px] font-black text-blue-700 disabled:opacity-50">Phê duyệt chuyên môn {technicalApproved ? '✓' : ''}</button><button type="button" disabled={!canEdit || busy || !report || !certificate || request.status !== 'LEADERSHIP_APPROVAL' || !technicalApproved || leadershipApproved} onClick={() => void approve('LEADERSHIP_APPROVAL')} className="inline-flex mobile-touch-target min-h-11 items-center justify-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 text-[10px] font-black text-violet-700 disabled:opacity-50">Phê duyệt lãnh đạo / ký {leadershipApproved ? '✓' : ''}</button></div></div></StationSection><PgdSourceFormsPanel request={request} currentUser={currentUser} editable={editable} /><PgdDossierOperationsPanel request={request} requirements={evidence.requirements} dossierDocuments={evidence.documents} canMutate={editable} editable={editable} /></div>;
+  return <div className="space-y-3"><StationSection title="Báo cáo giám định" icon={<FileCheck2 size={15} className="text-blue-600" />}><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Field label="Số báo cáo"><input className={inputClass} disabled={!canEdit || busy} value={reportNumber} onChange={(event) => setReportNumber(event.target.value)} /></Field><Field label="Tiêu đề báo cáo"><input className={inputClass} disabled={!canEdit || busy} value={title} onChange={(event) => setTitle(event.target.value)} /></Field><Field label="Kết luận *" wide><textarea rows={3} required aria-required="true" className={inputClass} disabled={!canEdit || busy} value={conclusion} onChange={(event) => setConclusion(event.target.value)} />{!conclusion.trim() && <span role="alert" className="mt-1 block text-[10px] text-rose-700">Cần nhập kết luận báo cáo giám định.</span>}</Field></div><div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="text-[9px] text-slate-400">Bản chụp tiêu chuẩn: {request.standards.join(' · ') || 'Chưa có'}</span><button type="button" disabled={!canEdit || busy || !title.trim() || !conclusion.trim()} onClick={() => void saveReport()} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[11px] font-black text-white disabled:opacity-50"><Save size={13} /> Lưu báo cáo</button></div></StationSection><StationSection title="Chứng thư giám định" icon={<FileCheck2 size={15} className="text-emerald-600" />}><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 lg:items-end"><Field label="Số chứng thư"><input className={inputClass} disabled={!canEdit || busy} value={certificateNumber} onChange={(event) => setCertificateNumber(event.target.value)} /></Field><div className="flex items-end"><button type="button" disabled={!canEdit || busy || !conclusion.trim()} onClick={() => void saveCertificate()} className="mobile-touch-target inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-[11px] font-black text-white disabled:opacity-50"><Save size={13} /> Lưu chứng thư</button></div></div><p className="mt-2 text-[9px] text-slate-500">{certificate ? `Trạng thái: ${certificate.status} · ${certificate.documentNumber || 'Chưa có số'}` : 'Chưa có dự thảo chứng thư.'}{!conclusion.trim() && <span role="alert" className="ml-2 text-rose-700">Nhập kết luận trước khi lưu chứng thư.</span>}</p></StationSection><StationSection title="Phê duyệt hai cấp" icon={<ShieldCheck size={15} className="text-indigo-600" />}><div className="grid gap-2"><p className="text-[11px] leading-4 text-slate-500">Kết quả đi qua phê duyệt chuyên môn PGD trước, sau đó mới trình lãnh đạo Trung tâm / Viện.</p><div className="flex flex-wrap gap-2"><button type="button" disabled={!canEdit || busy || !report || !certificate || request.status !== 'TECHNICAL_REVIEW' || technicalApproved} onClick={() => void approve('TECHNICAL_REVIEW')} className="inline-flex mobile-touch-target min-h-11 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-[11px] font-black text-blue-700 disabled:opacity-50">Phê duyệt chuyên môn {technicalApproved ? '✓' : ''}</button><button type="button" disabled={!canEdit || busy || !report || !certificate || request.status !== 'LEADERSHIP_APPROVAL' || !technicalApproved || leadershipApproved} onClick={() => void approve('LEADERSHIP_APPROVAL')} className="inline-flex mobile-touch-target min-h-11 items-center justify-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 text-[10px] font-black text-violet-700 disabled:opacity-50">{props.workflowSchemaVersion === 2 ? 'Phê duyệt lãnh đạo' : 'Phê duyệt lãnh đạo / ký'} {leadershipApproved ? '✓' : ''}</button></div></div></StationSection><PgdSourceFormsPanel request={request} currentUser={currentUser} editable={editable} /><PgdDossierOperationsPanel request={request} requirements={evidence.requirements} dossierDocuments={evidence.documents} canMutate={editable} editable={editable} /></div>;
 }
 
 export function PgdReportApprovalPanel(props: PgdStationPanelProps) {

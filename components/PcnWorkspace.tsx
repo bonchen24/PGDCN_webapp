@@ -68,6 +68,7 @@ import { getPcnNotificationDossierTab } from '../utils/pcnDossierNavigation';
 import { PCN_MOBILE_NAVIGATION, type PcnSection } from '../utils/pcnNavigation';
 import { PgdcnDateInput } from './PgdcnDateInput';
 import { matchPcnPublishedWorkflowTemplates, resolveTemplateSelectionState } from '../utils/pgdcnIntakeTemplateMatching';
+import { PGDCN_INTAKE_CATALOG, PGDCN_PRODUCT_GROUPS, validateIntakeClassification } from '../utils/pgdcnIntakeCatalog';
 
 const sectionLabels: Record<PcnSection, string> = {
   dashboard: 'Tổng quan',
@@ -564,7 +565,10 @@ type PcnProposalForm = {
   quantity: string;
   receivedAt: string;
   registrationNumber: string;
+  registrationDate: string;
+  productGroup: string;
   standards: string;
+  customStandard: boolean;
   method: PcnCertificationMethod;
   dossierType: string;
   fieldCodes: string[];
@@ -630,7 +634,7 @@ function ProposalView({
   const emptyForm = () => ({
     channel: 'DIRECT' as CertificationProposal['channel'], customerName: '', customerId: '', address: '', warehouseAddress: '',
     contactPerson: '', taxId: '', phone: '', email: '', productName: '', model: '', brand: '', productType: '', specifications: '',
-    manufacturer: '', manufacturerAddress: '', quantity: '1', receivedAt: todayPcnDateInputValue(), registrationNumber: '', standards: '', method: 'METHOD_1' as PcnCertificationMethod, dossierType: '', fieldCodes: [],
+    manufacturer: '', manufacturerAddress: '', quantity: '1', receivedAt: todayPcnDateInputValue(), registrationNumber: '', registrationDate: todayPcnDateInputValue(), productGroup: '', standards: '', customStandard: false, method: 'METHOD_1' as PcnCertificationMethod, dossierType: '', fieldCodes: [],
   });
   const [form, setForm] = useState<PcnProposalForm>(emptyForm());
   const customerOptions = useMemo<PcnCatalogOption[]>(() => customers.flatMap((customer) => {
@@ -642,11 +646,33 @@ function ProposalView({
       }] : [];
     }), [customers]);
   const customerValue = form.customerId || form.customerName;
-  const workflowCandidates = useMemo(() => matchPcnPublishedWorkflowTemplates(workflowTemplates, {
+  const productGroupOptions = useMemo<PcnCatalogOption[]>(() => PGDCN_PRODUCT_GROUPS.map((group) => ({
+    value: group.code,
+    label: group.name,
+    searchText: `${group.code} ${group.name} ${group.description || ''}`,
+  })), []);
+  const standardOptions = useMemo<PcnCatalogOption[]>(() => [
+    ...PGDCN_INTAKE_CATALOG.filter((item) => item.domain === 'PCN' || item.domain === undefined).map((item) => ({
+      value: item.standardCode,
+      label: item.confirmationStatus === 'CONFIRMED' ? item.standardCode : `${item.standardCode} · Chờ xác nhận`,
+      searchText: `${item.standardCode} ${item.standardName}`,
+      description: item.confirmationStatus === 'CONFIRMED' ? item.standardName : item.note,
+    })),
+    { value: '__OTHER__', label: 'Quy chuẩn / tiêu chuẩn khác', searchText: 'khác custom tcvn qcvn' },
+  ], []);
+  const intakeClassification = useMemo(() => validateIntakeClassification({
+    domain: 'PCN',
+    productGroup: form.productGroup as any,
+    standard: form.standards,
+    method: form.method,
+    fieldCode: form.fieldCodes.length === 1 ? form.fieldCodes[0] : undefined,
+  }), [form.fieldCodes, form.method, form.productGroup, form.standards]);
+  const workflowCandidates = useMemo(() => intakeClassification.confirmationStatus === 'CONFIRMED'
+    ? matchPcnPublishedWorkflowTemplates(workflowTemplates, {
     fieldCodes: form.fieldCodes,
     method: form.method,
     dossierType: form.dossierType || undefined,
-  }), [form.dossierType, form.fieldCodes, form.method, workflowTemplates]);
+  }) : [], [form.dossierType, form.fieldCodes, form.method, intakeClassification.confirmationStatus, workflowTemplates]);
   const workflowSelection = useMemo(() => resolveTemplateSelectionState({
     candidates: workflowCandidates,
     selectedId: workflowTemplateId,
@@ -755,7 +781,10 @@ function ProposalView({
       quantity: String(proposal.quantity || 1),
       receivedAt: proposalDateInputValue(proposal.receivedAt),
       registrationNumber: proposal.registrationNumber || '',
+      registrationDate: proposal.registrationDate ? proposalDateInputValue(proposal.registrationDate) : '',
+      productGroup: proposal.productGroup || '',
       standards: (proposal.standards || []).join(', '),
+      customStandard: Boolean((proposal.standards || []).length) && !(proposal.standards || []).some((standard) => standardOptions.some((option) => option.value === standard)),
       method: linkedDossier?.method || 'METHOD_1',
       dossierType: linkedDossier?.dossierType || '',
       fieldCodes: proposal.fieldCodes,
@@ -813,6 +842,9 @@ function ProposalView({
         taxId: form.taxId,
       },
       warehouseAddress: form.warehouseAddress,
+      productGroup: form.productGroup,
+      registrationNumber: form.registrationNumber,
+      registrationDate: form.registrationDate,
       productName: form.productName,
       productType: form.productType,
       model: form.model,
@@ -822,14 +854,20 @@ function ProposalView({
       quantity: form.quantity,
       fieldCodes: form.fieldCodes,
       standards: form.standards.split(',').map((value) => value.trim()).filter(Boolean),
-    }, { requireStandards: !editingProposal });
+    }, {
+      requireStandards: !editingProposal,
+      requireProductGroup: !editingProposal,
+      requireRegistration: !editingProposal,
+    });
     const receivedAtError = isValidPcnDateInput(form.receivedAt) ? undefined : 'Ngày tiếp nhận phải là ngày hợp lệ.';
-    if (!intakeValidation.valid || receivedAtError) {
+    const registrationDateError = form.registrationDate && !isValidPcnDateInput(form.registrationDate) ? 'Ngày đăng ký phải là ngày hợp lệ.' : undefined;
+    if (!intakeValidation.valid || receivedAtError || registrationDateError) {
       const nextValidationErrors = indexPcnIntakeValidationIssues(intakeValidation.issues);
       if (receivedAtError) nextValidationErrors.receivedAt = receivedAtError;
+      if (registrationDateError) nextValidationErrors.registrationDate = registrationDateError;
       setValidationErrors(nextValidationErrors);
       focusFirstInvalidProposalField();
-      toast.error([formatPcnIntakeValidationIssues(intakeValidation.issues), receivedAtError].filter(Boolean).join(' '));
+      toast.error([formatPcnIntakeValidationIssues(intakeValidation.issues), receivedAtError, registrationDateError].filter(Boolean).join(' '));
       return;
     }
     if (!editingProposal && workflowSelection.isAmbiguous) {
@@ -846,16 +884,11 @@ function ProposalView({
           channel: form.channel,
           customerId: form.customerId.trim() || undefined,
           registrationNumber: form.registrationNumber.trim() || undefined,
+          registrationDate: form.registrationDate || undefined,
+          productGroup: (form.productGroup || undefined) as CertificationProposal['productGroup'],
           standards: form.standards.split(',').map((value) => value.trim()).filter(Boolean),
           customerSnapshot,
           warehouseAddress: form.warehouseAddress.trim(),
-          productName: form.productName.trim(),
-          model: form.model.trim() || undefined,
-          brand: form.brand.trim() || undefined,
-          productType: form.productType.trim() || undefined,
-          specifications: form.specifications.trim() || undefined,
-          manufacturer: form.manufacturer.trim() || undefined,
-          manufacturerAddress: form.manufacturerAddress.trim() || undefined,
           quantity: Number(form.quantity),
         });
         toast.success('Đã lưu thay đổi Đề nghị.');
@@ -867,11 +900,11 @@ function ProposalView({
           channel: form.channel, status: 'RECEIVED', customerId: form.customerId || undefined,
           customerSnapshot,
           registrationNumber: form.registrationNumber.trim() || undefined,
+          registrationDate: form.registrationDate,
+          productGroup: form.productGroup as CertificationProposal['productGroup'],
           standards: form.standards.split(',').map((value) => value.trim()).filter(Boolean),
           warehouseAddress: form.warehouseAddress.trim() || undefined,
-          productName: form.productName.trim(), model: form.model.trim() || undefined, brand: form.brand.trim() || undefined,
-          productType: form.productType.trim() || undefined, specifications: form.specifications.trim() || undefined,
-          manufacturer: form.manufacturer.trim() || undefined, manufacturerAddress: form.manufacturerAddress.trim() || undefined, quantity: Math.max(1, Number(form.quantity) || 1), fieldCodes: form.fieldCodes,
+          quantity: Math.max(1, Number(form.quantity) || 1), fieldCodes: form.fieldCodes,
           receivedAt: form.receivedAt, createdAt: now, updatedAt: now,
         };
         const selectedTemplate = workflowSelection.selectedTemplate || workflowSelection.suggestedTemplate;
@@ -1233,8 +1266,11 @@ function ProposalView({
 <Field label="Ngày tiếp nhận *" error={validationErrors.receivedAt} errorId="pcn-proposal-error-received-at">
 <PgdcnDateInput id="pcn-proposal-received-at" value={form.receivedAt} readOnly={Boolean(editingProposal)} required aria-required="true" aria-invalid={Boolean(validationErrors.receivedAt)} aria-describedby={validationErrors.receivedAt ? 'pcn-proposal-error-received-at' : undefined} onChange={(value) => setForm({ ...form, receivedAt: value })} />
 </Field>
-<Field label="Số đăng ký Một cửa quốc gia">
-<input id="pcn-proposal-registration-number" value={form.registrationNumber} onChange={(event) => setForm({ ...form, registrationNumber: event.target.value })} />
+<Field label={editingProposal ? 'Số đăng ký' : 'Số đăng ký *'} error={validationErrors.registrationNumber} errorId="pcn-proposal-error-registration-number">
+<input id="pcn-proposal-registration-number" required={!editingProposal} value={form.registrationNumber} aria-invalid={Boolean(validationErrors.registrationNumber)} aria-describedby={validationErrors.registrationNumber ? 'pcn-proposal-error-registration-number' : undefined} onChange={(event) => setForm({ ...form, registrationNumber: event.target.value })} />
+</Field>
+<Field label={editingProposal ? 'Ngày đăng ký' : 'Ngày đăng ký *'} error={validationErrors.registrationDate} errorId="pcn-proposal-error-registration-date">
+<PgdcnDateInput id="pcn-proposal-registration-date" value={form.registrationDate} required={!editingProposal} aria-invalid={Boolean(validationErrors.registrationDate)} aria-describedby={validationErrors.registrationDate ? 'pcn-proposal-error-registration-date' : undefined} onChange={(value) => setForm({ ...form, registrationDate: value })} />
 </Field>
 </div>
 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-2">
@@ -1263,39 +1299,23 @@ function ProposalView({
 <input id="pcn-proposal-warehouse-address" required value={form.warehouseAddress} aria-invalid={Boolean(validationErrors.warehouseAddress)} aria-describedby={validationErrors.warehouseAddress ? 'pcn-proposal-error-warehouse-address' : undefined} onChange={(event) => setForm({ ...form, warehouseAddress: event.target.value })} />
 </Field>
 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-<Field label="Tên sản phẩm *" error={validationErrors.productName} errorId="pcn-proposal-error-product-name">
-<input id="pcn-proposal-product-name" required value={form.productName} aria-invalid={Boolean(validationErrors.productName)} aria-describedby={validationErrors.productName ? 'pcn-proposal-error-product-name' : undefined} onChange={(event) => setForm({ ...form, productName: event.target.value })} />
-</Field>
-<Field label="Kiểu/loại sản phẩm *" error={validationErrors.productType} errorId="pcn-proposal-error-product-type">
-<input id="pcn-proposal-product-type" required value={form.productType} aria-invalid={Boolean(validationErrors.productType)} aria-describedby={validationErrors.productType ? 'pcn-proposal-error-product-type' : undefined} onChange={(event) => setForm({ ...form, productType: event.target.value })} />
-</Field>
-<Field label="Kiểu loại *" error={validationErrors.model} errorId="pcn-proposal-error-model">
-<input id="pcn-proposal-model" required value={form.model} aria-invalid={Boolean(validationErrors.model)} aria-describedby={validationErrors.model ? 'pcn-proposal-error-model' : undefined} onChange={(event) => setForm({ ...form, model: event.target.value })} />
-</Field>
-<Field label="Nhãn hiệu *" error={validationErrors.brand} errorId="pcn-proposal-error-brand">
-<input id="pcn-proposal-brand" required value={form.brand} aria-invalid={Boolean(validationErrors.brand)} aria-describedby={validationErrors.brand ? 'pcn-proposal-error-brand' : undefined} onChange={(event) => setForm({ ...form, brand: event.target.value })} />
-</Field>
-</div>
-<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-<Field label="Nhà sản xuất *" error={validationErrors.manufacturer} errorId="pcn-proposal-error-manufacturer">
-<input id="pcn-proposal-manufacturer" required value={form.manufacturer} aria-invalid={Boolean(validationErrors.manufacturer)} aria-describedby={validationErrors.manufacturer ? 'pcn-proposal-error-manufacturer' : undefined} onChange={(event) => setForm({ ...form, manufacturer: event.target.value })} />
-</Field>
-<Field label="Địa chỉ nhà sản xuất">
-<input id="pcn-proposal-manufacturer-address" value={form.manufacturerAddress} onChange={(event) => setForm({ ...form, manufacturerAddress: event.target.value })} />
-</Field>
-<Field label="Thông số kỹ thuật / mô tả *" error={validationErrors.specifications} errorId="pcn-proposal-error-specifications">
-<textarea id="pcn-proposal-specifications" rows={2} required value={form.specifications} aria-invalid={Boolean(validationErrors.specifications)} aria-describedby={validationErrors.specifications ? 'pcn-proposal-error-specifications' : undefined} onChange={(event) => setForm({ ...form, specifications: event.target.value })} />
-</Field>
-</div>
-<Field label="Tiêu chuẩn / quy chuẩn *" error={validationErrors.standards} errorId="pcn-proposal-error-standards">
-<input id="pcn-proposal-standards" required value={form.standards} aria-invalid={Boolean(validationErrors.standards)} aria-describedby={validationErrors.standards ? 'pcn-proposal-error-standards' : undefined} onChange={(event) => setForm({ ...form, standards: event.target.value })} />
-</Field>
-<div>
-<div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Lĩnh vực <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></div>
-<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+  <Field label="Nhóm sản phẩm *" error={validationErrors.productGroup} errorId="pcn-proposal-error-product-group">
+    <PcnCatalogCombobox id="pcn-proposal-product-group" label="Nhóm sản phẩm" hideLabel value={form.productGroup} options={productGroupOptions} onChange={(value) => setForm({ ...form, productGroup: value })} required={!editingProposal} invalid={Boolean(validationErrors.productGroup)} aria-invalid={Boolean(validationErrors.productGroup)} disabled={saving} />
+  </Field>
   <Field label="Phương thức chứng nhận *">
     <PcnCatalogCombobox id="pcn-proposal-method" label="Phương thức chứng nhận" hideLabel value={form.method} options={methodOptions} onChange={(value) => setForm({ ...form, method: value as PcnCertificationMethod })} disabled={saving || Boolean(editingProposal)} />
   </Field>
+  <Field label="QCVN / TCVN *" error={validationErrors.standards} errorId="pcn-proposal-error-standards">
+    <PcnCatalogCombobox id="pcn-proposal-standard" label="QCVN / TCVN" hideLabel value={form.customStandard ? '__OTHER__' : form.standards} options={standardOptions} onChange={(value) => setForm({ ...form, standards: value === '__OTHER__' ? '' : value, customStandard: value === '__OTHER__' })} required={!editingProposal} invalid={Boolean(validationErrors.standards)} aria-invalid={Boolean(validationErrors.standards)} disabled={saving} />
+  </Field>
+  {form.customStandard && <Field label="Tên quy chuẩn / tiêu chuẩn *" error={validationErrors.standards} errorId="pcn-proposal-error-custom-standard">
+    <input id="pcn-proposal-custom-standard" required={!editingProposal} value={form.standards} aria-invalid={Boolean(validationErrors.standards)} aria-describedby={validationErrors.standards ? 'pcn-proposal-error-custom-standard' : undefined} onChange={(event) => setForm({ ...form, standards: event.target.value })} />
+  </Field>}
+</div>
+{form.standards && intakeClassification.confirmationStatus === 'PENDING_CONFIRMATION' && <p role="status" className="rounded-md bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">Danh mục chưa xác nhận mối liên hệ giữa nhóm sản phẩm, quy chuẩn và phương thức. Hồ sơ được lưu chờ rà soát; chưa tự gắn bộ hồ sơ mẫu.</p>}
+<div>
+<div className="mb-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500">Lĩnh vực PCN <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></div>
+<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
   <Field label="Loại hồ sơ theo mẫu">
     <PcnCatalogCombobox id="pcn-proposal-dossier-type" label="Loại hồ sơ theo mẫu" hideLabel value={form.dossierType} options={dossierTypeOptions} onChange={(value) => setForm({ ...form, dossierType: value })} disabled={saving || Boolean(editingProposal)} />
   </Field>

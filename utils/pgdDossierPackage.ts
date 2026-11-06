@@ -13,6 +13,7 @@ export interface PgdDossierPackagePointer {
   id: string;
   domain: typeof PGD_DOMAIN;
   requestId: string;
+  assessmentRoundId?: string;
   fileName?: string;
   sourceCollection: PgdDossierPackageSourceCollection;
   sourceDocumentId: string;
@@ -29,6 +30,7 @@ export interface PgdDossierPackageManifestEntry {
   assetId: string;
   archivePath: string;
   fileName: string;
+  assessmentRoundId?: string;
   sourceCollection: PgdDossierPackageSourceCollection;
   sourceDocumentId: string;
   version: number;
@@ -104,8 +106,9 @@ export function buildPgdDossierPackageManifest(input: {
     if (!assetId) missingAssetIds.push(clean(pointer.id));
     entries.push({
       assetId,
-      archivePath: `${String(entries.length + 1).padStart(2, '0')}-${fileName}`,
+      archivePath: `${clean(pointer.assessmentRoundId) ? `${safeSegment(pointer.assessmentRoundId, 'round')}/` : ''}${String(entries.length + 1).padStart(2, '0')}-${fileName}`,
       fileName,
+      ...(clean(pointer.assessmentRoundId) ? { assessmentRoundId: clean(pointer.assessmentRoundId) } : {}),
       sourceCollection: pointer.sourceCollection,
       sourceDocumentId: clean(pointer.sourceDocumentId),
       version: pointer.version,

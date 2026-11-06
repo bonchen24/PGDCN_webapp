@@ -102,6 +102,8 @@ export function filterPgdWorkflowTemplatesByScope(
 }
 
 export interface PgdWorkflowSnapshot {
+  /** Version 2 is written only for newly created dossiers; absent means legacy schema v1. */
+  workflowSchemaVersion?: 2;
   /** Absent on snapshots written before immutable template IDs were recorded. */
   templateId?: string;
   templateCode: string;
@@ -267,6 +269,7 @@ export function snapshotPgdWorkflowTemplate(
   const validation = validatePgdWorkflowTemplate(template, { allowLegacyDefinitions: true });
   if (!validation.valid) throw new Error(`Template PGD không hợp lệ: ${validation.errors.join(' ')}`);
   return JSON.parse(JSON.stringify({
+    workflowSchemaVersion: 2,
     templateId: template.id,
     templateCode: template.code,
     templateVersion: template.version,

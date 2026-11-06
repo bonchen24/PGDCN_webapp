@@ -48,14 +48,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ requ
          FROM (
            SELECT document_id, data,
                   ROW_NUMBER() OVER (
-                    PARTITION BY data->>'requirementCode'
+                    PARTITION BY data->>'requirementCode', COALESCE(data->>'assessmentRoundId', '')
                     ORDER BY COALESCE((data->>'version')::int, 0) DESC, updated_at DESC, document_id DESC
                   ) AS current_row
              FROM app_documents
             WHERE collection_name = $1 AND data->>'requestId' = $2 AND data->>'domain' = 'pgd'
          ) current_documents
         WHERE current_row = 1
-        ORDER BY data->>'requirementCode', document_id`,
+        ORDER BY data->>'requirementCode', COALESCE(data->>'assessmentRoundId', ''), document_id`,
       [PGD_COLLECTIONS.dossierDocuments, request.id],
     );
     const dossierDocuments = dossierResult.rows.map((row: any) => mapDocumentRow(row)) as PgdDossierDocument[];
@@ -99,6 +99,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ requ
         id: document.id,
         domain: 'pgd',
         requestId: request.id,
+        ...(document.assessmentRoundId ? { assessmentRoundId: document.assessmentRoundId } : {}),
         fileName: document.fileName,
         sourceCollection: document.originCollection || PGD_COLLECTIONS.dossierDocuments,
         sourceDocumentId: document.originDocumentId || document.id,

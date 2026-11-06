@@ -8,6 +8,7 @@ import { formatPcnIntakeValidationIssues, validatePcnProposalIntake } from '@/ut
 import { formatPcnDossierCode, formatPcnProposalCode, getPcnVietnamDateKey } from '@/utils/pcnIdentifier';
 import { snapshotPcnWorkflowTemplate } from '@/utils/pcnWorkflowTemplate';
 import { matchPcnPublishedWorkflowTemplates, resolveWorkflowTemplateForCreate } from '@/utils/pgdcnIntakeTemplateMatching';
+import { validateIntakeClassification } from '@/utils/pgdcnIntakeCatalog';
 import { buildPcnDossierChecklist, getPcnDossierRequirementsWithCustom } from '@/utils/pcnDossierDocuments';
 import { buildPcnWorkflowTaskSeed } from '@/utils/pcnWorkflowRuntime';
 import {
@@ -54,13 +55,6 @@ export async function POST(req: NextRequest) {
     return jsonError('Lĩnh vực của Đề nghị và hồ sơ phải giống nhau.', 400);
   }
   const intakeProposal = proposal;
-  const intakeValidation = validatePcnProposalIntake(intakeProposal, { requireStandards: true });
-  if (!intakeValidation.valid) {
-    return jsonError(formatPcnIntakeValidationIssues(intakeValidation.issues), 400, {
-      code: 'PCN_INTAKE_VALIDATION_FAILED',
-      issues: intakeValidation.issues,
-    });
-  }
 
   try {
     const result = await withPgTransaction(async (client) => {
@@ -107,6 +101,39 @@ export async function POST(req: NextRequest) {
         };
       }
 
+      const intakeValidation = validatePcnProposalIntake(intakeProposal, {
+        requireStandards: true,
+        requireProductGroup: true,
+        requireRegistration: true,
+      });
+      if (!intakeValidation.valid) {
+        throw Object.assign(new Error(formatPcnIntakeValidationIssues(intakeValidation.issues)), {
+          statusCode: 400,
+          code: 'PCN_INTAKE_VALIDATION_FAILED',
+          issues: intakeValidation.issues,
+          extra: {
+            code: 'PCN_INTAKE_VALIDATION_FAILED',
+            issues: intakeValidation.issues,
+          },
+        });
+      }
+      const catalogClassification = validateIntakeClassification({
+        domain: 'PCN',
+        productGroup: String(proposal.productGroup || '') as any,
+        standard: Array.isArray(proposal.standards) ? proposal.standards.join(' ') : String(proposal.standards || ''),
+        method: String(dossier.method || ''),
+        fieldCode: Array.isArray(proposal.fieldCodes) ? String(proposal.fieldCodes[0] || '') : undefined,
+      });
+      if (!catalogClassification.valid) {
+        throw Object.assign(new Error(catalogClassification.message), {
+          statusCode: 400,
+          code: 'PCN_INTAKE_CATALOG_DOMAIN_MISMATCH',
+          extra: {
+            code: 'PCN_INTAKE_CATALOG_DOMAIN_MISMATCH',
+          },
+        });
+      }
+
       const now = new Date().toISOString();
       const proposalReceivedAt = String(intakeProposal.receivedAt || now).trim();
       const proposalDateKey = getPcnVietnamDateKey(proposalReceivedAt);
@@ -138,13 +165,15 @@ export async function POST(req: NextRequest) {
       const workflowTemplates = workflowTemplateResult.rows.map(
         (row: any) => mapDocumentRow(row) as PcnWorkflowTemplate
       );
-      const workflowCandidates = matchPcnPublishedWorkflowTemplates(workflowTemplates, {
+      const workflowCandidates = catalogClassification.confirmationStatus === 'CONFIRMED'
+        ? matchPcnPublishedWorkflowTemplates(workflowTemplates, {
         fieldCodes: Array.from(
           new Set(proposal.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean))
         ),
         method: dossier.method,
         dossierType: String(dossier.dossierType || '').trim() || undefined,
-      });
+      })
+        : [];
       const workflowResolution = resolveWorkflowTemplateForCreate(workflowCandidates, workflowTemplateSelection);
       if (workflowResolution.status === 'invalid-selection') {
         throw Object.assign(new Error('Bộ hồ sơ mẫu đã chọn không còn được publish hoặc không còn phù hợp với thông tin Đề nghị.'), { statusCode: 409 });
@@ -180,6 +209,8 @@ export async function POST(req: NextRequest) {
         fieldCodes: Array.from(
           new Set(proposal.fieldCodes.map((code: unknown) => String(code).trim().toUpperCase()).filter(Boolean))
         ),
+        catalogConfirmationStatus: catalogClassification.confirmationStatus,
+        ...(catalogClassification.matchedItem?.id ? { catalogItemId: catalogClassification.matchedItem.id } : {}),
         receivedAt: proposalReceivedAt,
         createdAt: proposal.createdAt || now,
         updatedAt: now,
@@ -191,6 +222,7 @@ export async function POST(req: NextRequest) {
         proposalId,
         status: 'INTAKE_REVIEW',
         fieldCodes: storedProposal.fieldCodes,
+        workflowSchemaVersion: 2 as const,
         ...(workflowTemplate && workflowSnapshot ? {
           workflowTemplateId: workflowTemplate.id,
           workflowTemplateVersion: workflowTemplate.version,
@@ -308,6 +340,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('PCN intake error:', error);
     const status = Number(error?.statusCode) || 500;
-    return jsonError(error?.message || String(error), status);
+    const extra = error?.extra || (error?.code ? { code: error.code, ...(error.issues ? { issues: error.issues } : {}) } : undefined);
+    return jsonError(error?.message || String(error), status, extra);
   }
 }

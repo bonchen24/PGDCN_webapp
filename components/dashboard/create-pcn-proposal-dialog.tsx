@@ -10,6 +10,16 @@ import { usePcnStore } from '@/store-pcn';
 import { usePcnSessionStore } from '@/utils/pcnSessionState';
 import { formatPcnProposalCode, formatPcnDossierCode } from '@/utils/pcnIdentifier';
 import type { CertificationProposal, PcnCertificationFieldCode } from '@/types';
+import { validateIntakeClassification } from '@/utils/pgdcnIntakeCatalog';
+import { matchPcnPublishedWorkflowTemplates } from '@/utils/pgdcnIntakeTemplateMatching';
+
+const PRODUCT_GROUP_OPTIONS: { value: NonNullable<CertificationProposal['productGroup']>; label: string }[] = [
+  { value: 'ELECTRICAL_ELECTRONIC', label: 'Điện - Điện tử' },
+  { value: 'METAL_MATERIALS', label: 'Kim loại - Vật liệu' },
+  { value: 'CONSTRUCTION_MATERIALS', label: 'Vật liệu xây dựng' },
+  { value: 'MANAGEMENT_SYSTEM', label: 'Hệ thống quản lý' },
+  { value: 'OTHER', label: 'Khác' },
+];
 
 interface CreatePcnProposalDialogProps {
   open: boolean;
@@ -37,8 +47,22 @@ export function CreatePcnProposalDialog({ open, onOpenChange }: CreatePcnProposa
   const [specifications, setSpecifications] = useState('');
   const [manufacturer, setManufacturer] = useState('');
   const [quantity, setQuantity] = useState<number>(1);
+  const [productGroup, setProductGroup] = useState<NonNullable<CertificationProposal['productGroup']>>('ELECTRICAL_ELECTRONIC');
+  const [registrationNumber, setRegistrationNumber] = useState('');
+  const [registrationDate, setRegistrationDate] = useState('');
+  const [standards, setStandards] = useState('QCVN 04:2009/BKHCN');
+  const [workflowTemplateId, setWorkflowTemplateId] = useState('');
   const [selectedField, setSelectedField] = useState<PcnCertificationFieldCode>('QC4');
   const [channel, setChannel] = useState<'DIRECT' | 'EMAIL' | 'ONLINE_ZALO' | 'OTHER'>('DIRECT');
+
+  const intakeClassification = validateIntakeClassification({
+    domain: 'PCN', productGroup, standard: standards, method: 'METHOD_1', fieldCode: selectedField,
+  });
+  const workflowCandidates = intakeClassification.confirmationStatus === 'CONFIRMED'
+    ? matchPcnPublishedWorkflowTemplates(pcn.workflowTemplates, { fieldCodes: [selectedField], method: 'METHOD_1' })
+    : [];
+  const selectedWorkflowTemplate = workflowCandidates.find((template) => template.id === workflowTemplateId)
+    || (workflowCandidates.length === 1 ? workflowCandidates[0] : undefined);
 
   // Quick fill from existing customer
   const handleSelectExistingCustomer = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -72,6 +96,10 @@ export function CreatePcnProposalDialog({ open, onOpenChange }: CreatePcnProposa
       setError('Vui lòng nhập địa chỉ kho hoặc vị trí lấy mẫu.');
       return;
     }
+    if (workflowCandidates.length > 1 && !selectedWorkflowTemplate) {
+      setError('Có nhiều bộ hồ sơ mẫu phù hợp. Hãy chọn một mẫu trước khi tạo Đề nghị.');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -88,6 +116,10 @@ export function CreatePcnProposalDialog({ open, onOpenChange }: CreatePcnProposa
         status: 'RECEIVED',
         fieldCodes: [selectedField],
         receivedAt: now,
+        registrationNumber: registrationNumber.trim(),
+        registrationDate,
+        productGroup,
+        standards: standards.split(',').map((standard) => standard.trim()).filter(Boolean),
         customerSnapshot: {
           name: customerName.trim(),
           address: customerAddress.trim(),
@@ -104,7 +136,7 @@ export function CreatePcnProposalDialog({ open, onOpenChange }: CreatePcnProposa
         quantity: Math.max(1, Number(quantity) || 1),
       };
 
-      await pcn.addProposal(proposal);
+      await pcn.addProposal(proposal, selectedWorkflowTemplate ? { id: selectedWorkflowTemplate.id, version: selectedWorkflowTemplate.version } : undefined);
       onOpenChange(false);
       
       // Navigate to PCN queue or detail
@@ -138,6 +170,7 @@ export function CreatePcnProposalDialog({ open, onOpenChange }: CreatePcnProposa
               </DialogDescription>
             </div>
           </div>
+          <p className="mt-2 text-xs text-slate-500">Tài liệu B1 có thể bổ sung sau; không cần đính kèm tệp khi tạo Đề nghị.</p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
@@ -173,6 +206,16 @@ export function CreatePcnProposalDialog({ open, onOpenChange }: CreatePcnProposa
 
           {/* Section: Customer info */}
           <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 space-y-3">
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold text-slate-600" htmlFor="pcn-create-registration-number">Số đăng ký *</label>
+                <input id="pcn-create-registration-number" name="registrationNumber" required value={registrationNumber} onChange={(e) => setRegistrationNumber(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs focus:border-emerald-500 focus:outline-none" />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold text-slate-600" htmlFor="pcn-create-registration-date">Ngày đăng ký *</label>
+                <input id="pcn-create-registration-date" name="registrationDate" type="date" required value={registrationDate} onChange={(e) => setRegistrationDate(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs focus:border-emerald-500 focus:outline-none" />
+              </div>
+            </div>
             <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
               <span>Thông tin Khách hàng / Đơn vị đề nghị</span>
               <span className="text-rose-500">*</span>
@@ -231,6 +274,18 @@ export function CreatePcnProposalDialog({ open, onOpenChange }: CreatePcnProposa
 
           {/* Section: Product info */}
           <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 space-y-3">
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold text-slate-600" htmlFor="pcn-create-product-group">Nhóm sản phẩm *</label>
+                <select id="pcn-create-product-group" name="productGroup" required value={productGroup} onChange={(e) => setProductGroup(e.target.value as NonNullable<CertificationProposal['productGroup']>)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs focus:border-emerald-500 focus:outline-none">
+                  {PRODUCT_GROUP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold text-slate-600" htmlFor="pcn-create-standards">Tiêu chuẩn / quy chuẩn *</label>
+                <input id="pcn-create-standards" name="standards" required value={standards} onChange={(e) => setStandards(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs focus:border-emerald-500 focus:outline-none" />
+              </div>
+            </div>
             <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
               <span>Thông tin Sản phẩm & Lĩnh vực chứng nhận</span>
               <span className="text-rose-500">*</span>
@@ -316,7 +371,7 @@ export function CreatePcnProposalDialog({ open, onOpenChange }: CreatePcnProposa
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedField('QC4')}
+                    onClick={() => { setSelectedField('QC4'); setStandards('QCVN 04:2009/BKHCN'); }}
                     className={`flex-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-all ${
                       selectedField === 'QC4'
                         ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500'
@@ -327,7 +382,7 @@ export function CreatePcnProposalDialog({ open, onOpenChange }: CreatePcnProposa
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedField('QC9')}
+                    onClick={() => { setSelectedField('QC9'); setStandards('QCVN 09:2012/BKHCN'); }}
                     className={`flex-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-all ${
                       selectedField === 'QC9'
                         ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500'
@@ -339,6 +394,15 @@ export function CreatePcnProposalDialog({ open, onOpenChange }: CreatePcnProposa
                 </div>
               </div>
             </div>
+            {workflowCandidates.length > 1 && (
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold text-slate-600" htmlFor="pcn-create-workflow-template">Bộ hồ sơ quy trình *</label>
+                <select id="pcn-create-workflow-template" required value={workflowTemplateId} onChange={(e) => setWorkflowTemplateId(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs focus:border-emerald-500 focus:outline-none">
+                  <option value="">Chọn bộ hồ sơ phù hợp</option>
+                  {workflowCandidates.map((template) => <option key={template.id} value={template.id}>{template.name} · v{template.version}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Dialog footer */}

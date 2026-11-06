@@ -37,6 +37,11 @@ export function installDocumentDatabase(t: TestContext) {
       if (normalized.includes("data->>'domain' = 'pgd'")) rows = rows.filter((doc) => doc.data.domain === 'pgd');
       if (normalized.includes("data->>'status' = 'PUBLISHED'")) rows = rows.filter((doc) => doc.data.status === 'PUBLISHED');
       if (normalized.includes("data->>'dossierId' = $1")) rows = rows.filter((doc) => doc.data.dossierId === params[0]);
+      if (normalized.includes("data->>'requestId' = $2")) rows = rows.filter((doc) => doc.data.requestId === params[1]);
+      if (normalized.includes("data->>'requestId' = $3")) rows = rows.filter((doc) => doc.data.requestId === params[2]);
+      if (normalized.includes("data->>'requestId' = $1")) rows = rows.filter((doc) => doc.data.requestId === params[0]);
+      if (normalized.includes("data->>'role' = 'TECHNICAL_REVIEW'")) rows = rows.filter((doc) => doc.data.role === 'TECHNICAL_REVIEW');
+      if (normalized.includes("data->>'status' = 'APPROVED'")) rows = rows.filter((doc) => doc.data.status === 'APPROVED');
       if (normalized.includes('lower(trim')) rows = rows.filter((doc) => doc.data.requestCode === params[1]);
       return { rows: structuredClone(rows) };
     }

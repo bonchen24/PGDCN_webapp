@@ -12,6 +12,8 @@ import { buildPgdDossierDocument, type PgdDossierDocument } from '../utils/pgdDo
 const read = (relativePath: string) => fs.readFileSync(new URL(relativePath, import.meta.url), 'utf8');
 const workspace = read('../components/PgdWorkspace.tsx');
 const detail = workspace.slice(workspace.indexOf('function PgdRequestDetail'), workspace.indexOf('export type PgdWorkspaceProps'));
+const stepWorkPanel = read('../components/PgdDossierStepWorkPanel.tsx');
+const stationForms = read('../components/PgdStationFormsPanel.tsx');
 
 test('the PGD detail flow presents seven compact numbered stage controls', () => {
   const markup = renderToStaticMarkup(createElement(PgdDossierFlow, {
@@ -82,10 +84,20 @@ test('PGD work card gates operation forms by stage and reserves the right column
   assert.match(detail, /data-testid="pgd-workspace-results-forms"[\s\S]*?stageId="results-evaluation"[\s\S]*?stageId="reporting-approval"/);
   assert.match(detail, /data-testid="pgd-dossier-step-work-panel"[\s\S]*?<PgdDossierFlow[\s\S]*?<PgdDossierStepWorkPanel/);
   assert.doesNotMatch(detail, /Lô \/ số lượng|Ngày tiếp nhận/);
-  assert.match(detail, /<PgdDossierStageGate[\s\S]*?stageId="review-assignment"[\s\S]*?Phân công theo năng lực/);
-  assert.match(detail, /<PgdDossierStageGate[\s\S]*?stageId="execution"[\s\S]*?Hiện trường, lấy mẫu và bàn giao PTN/);
-  assert.match(detail, /<PgdDossierStageGate[\s\S]*?stageId="results-evaluation"[\s\S]*?Tiếp nhận KQTN/);
-  assert.match(detail, /<PgdDossierStageGate[\s\S]*?stageId="reporting-approval"[\s\S]*?Báo cáo \/ chứng thư/);
+  assert.match(detail, /<PgdDossierStageGate[^>]*stageId="review-assignment"/);
+  assert.match(detail, /<PgdDossierStageGate[^>]*stageId="execution"/);
+  assert.match(detail, /<PgdDossierStageGate[^>]*stageId="results-evaluation"/);
+  assert.match(detail, /<PgdDossierStageGate[^>]*stageId="reporting-approval"/);
+  assert.match(stepWorkPanel, /const stageEditable = canMutate && !approvalOnlyStage/);
+  assert.match(stepWorkPanel, /const approvalOnlyStage = workflowSchemaVersion === 2 && \['results-evaluation', 'reporting-approval'\]/);
+  assert.match(stepWorkPanel, /PgdAssignmentStepPanel/);
+  assert.match(stepWorkPanel, /PgdFieldInspectionStepPanel/);
+  assert.match(stepWorkPanel, /PgdResultsStepPanel/);
+  assert.match(detail, /data-testid="pgd-workspace-assignment-forms"[\s\S]*?Phân công đã ghi nhận/);
+  assert.match(detail, /data-testid="pgd-workspace-execution-forms"[\s\S]*?Hiện trường, lấy mẫu và bàn giao PTN/);
+  assert.match(detail, /Kết quả PTN và báo cáo \/ chứng thư linh hoạt/);
+  assert.match(stationForms, /getPgdUserCapabilities\(user\)\.includes\('OFFICE_ISSUANCE'\)/);
+  assert.match(stationForms, /getPgdUserCapabilities\(user\)\.includes\('ARCHIVE'\)/);
 
   const readerLabel = detail.indexOf('aria-label="Đọc tài liệu hồ sơ PGD"');
   const readerStart = detail.lastIndexOf('<aside', readerLabel);

@@ -75,10 +75,9 @@ test('PCN proposal intake keeps visible Vietnamese labels beside the editable fi
     { label: 'Khách hàng *', controlId: 'pcn-customer' },
     { label: 'Địa chỉ khách hàng *', controlId: 'pcn-proposal-customer-address' },
     { label: 'Địa chỉ/kho liên quan *', controlId: 'pcn-proposal-warehouse-address' },
-    { label: 'Tên sản phẩm *', controlId: 'pcn-proposal-product-name' },
-    { label: 'Kiểu loại *', controlId: 'pcn-proposal-model' },
-    { label: 'Nhãn hiệu *', controlId: 'pcn-proposal-brand' },
-    { label: 'Thông số kỹ thuật / mô tả *', controlId: 'pcn-proposal-specifications' },
+    { label: 'Nhóm sản phẩm *', controlId: 'pcn-proposal-product-group' },
+    { label: 'Phương thức chứng nhận *', controlId: 'pcn-proposal-method' },
+    { label: 'QCVN / TCVN *', controlId: 'pcn-proposal-standard' },
   ];
 
   for (const { label, controlId } of boundFields) {
@@ -95,4 +94,5 @@ test('PCN proposal intake keeps visible Vietnamese labels beside the editable fi
 
   assert.match(source, /function Field/);
   assert.doesNotMatch(source, /placeholder=/);
+  assert.doesNotMatch(source, /id="pcn-proposal-(?:model|brand|manufacturer|specifications)"[^>]*required/);
 });

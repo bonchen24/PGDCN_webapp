@@ -45,7 +45,7 @@ export default function PgdcnDossierDocumentActionTable({ rows, testId, emptyLab
             tabIndex={renderRow ? 0 : undefined}
           >
             <table className={renderRow
-              ? 'w-full min-w-0 border-collapse text-left text-xs'
+              ? 'w-full min-w-[760px] border-collapse text-left text-xs'
               : 'block w-full min-w-0 border-collapse text-left text-xs md:table'}>
               <caption className="sr-only">Danh sách tài liệu cần hoàn thiện</caption>
               <thead className={renderRow

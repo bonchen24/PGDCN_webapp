@@ -22,6 +22,36 @@ export type PgdOperationalStationKey =
   | 'LAB_RESULTS'
   | 'REPORT_APPROVAL_RETURN';
 
+export const PGD_V2_WORKFLOW_STAGE_IDS = [
+  'intake',
+  'input-review',
+  'assignment-plan',
+  'assessment-testing',
+  'technical-review',
+  'leadership-approval',
+  'issuance-archive',
+] as const;
+
+export type PgdV2WorkflowStageId = typeof PGD_V2_WORKFLOW_STAGE_IDS[number];
+
+export function getPgdV2CurrentStepNumber(status: PgdInspectionStatus): number {
+  if (status === 'DRAFT') return 1;
+  if (['CAPABILITY_REVIEW', 'REJECTED', 'ON_HOLD', 'CANCELLED'].includes(status)) return 2;
+  if (status === 'READY_TO_EXECUTE' || status === 'PREPARING') return 3;
+  if (['FIELD_INSPECTION', 'WAITING_LAB_RESULTS', 'RESULTS_REVIEW'].includes(status)) return 4;
+  if (status === 'TECHNICAL_REVIEW') return 5;
+  if (status === 'LEADERSHIP_APPROVAL') return 6;
+  return 7;
+}
+
+export function getPgdV2ReturnTarget(role: 'TECHNICAL_REVIEW' | 'LEADERSHIP_APPROVAL') {
+  return {
+    stageId: 'assessment-testing' as const,
+    status: 'FIELD_INSPECTION' as const,
+    requiresReason: true as const,
+  };
+}
+
 export interface PgdOperationalStation {
   key: PgdOperationalStationKey;
   number: number;
@@ -64,7 +94,7 @@ export const PGD_OPERATIONAL_STATIONS: readonly PgdOperationalStation[] = [
     number: 5,
     title: 'Báo cáo, phê duyệt & trả kết quả',
     description: 'Lập báo cáo, phê duyệt chuyên môn, phê duyệt lãnh đạo, ký và trả chứng thư.',
-    statuses: ['TECHNICAL_REVIEW', 'LEADERSHIP_APPROVAL', 'SIGNED', 'RESULT_RETURNED', 'ARCHIVED'],
+      statuses: ['TECHNICAL_REVIEW', 'LEADERSHIP_APPROVAL', 'APPROVED_FOR_ISSUANCE', 'SIGNED', 'RESULT_RETURNED', 'ARCHIVED'],
   },
 ] as const;
 

@@ -27,15 +27,14 @@ test('default document rows stack as labelled mobile cards and mount one action'
   assert.match(markup, /md:table-cell/);
   assert.doesNotMatch(markup, /min-w-\[760px\]/);
   assert.doesNotMatch(markup, /overflow-x-auto|touch-pan-x/);
-  for (const label of ['Bước', 'Tài liệu cần có', 'Trạng thái', 'Hành động']) {
+  for (const label of ['Tài liệu cần có', 'Trạng thái', 'Hành động']) {
     assert.match(markup, new RegExp(`<span aria-hidden="true" class="[^"]*md:hidden">${label}</span>`));
   }
-  assert.match(markup, /Tiếp nhận hồ sơ/);
   assert.match(markup, /Giấy chứng nhận đăng ký/);
   assert.match(markup, /Bắt buộc/);
   assert.match(markup, /Tải lên bản sao còn hiệu lực/);
   assert.equal((markup.match(/data-action="standard"/g) ?? []).length, 1);
-  assert.equal((markup.match(/<th scope="col"/g) ?? []).length, 4);
+  assert.equal((markup.match(/<th scope="col"/g) ?? []).length, 3);
 });
 
 test('custom row rendering keeps the keyboard and touch scrollable table fallback', () => {

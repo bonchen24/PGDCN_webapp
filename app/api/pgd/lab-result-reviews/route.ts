@@ -10,6 +10,7 @@ import {
   createPgdLabResultReview,
 } from '@/utils/pgdArtifacts';
 import {
+  assertPgdAssessmentRoundAllowed,
   getPgdArtifactRequest,
   persistPgdArtifact,
   writePgdActivity,
@@ -30,10 +31,11 @@ export async function POST(req: NextRequest) {
   try {
     const review = await withPgTransaction(async (client) => {
       const request = await getPgdArtifactRequest(client, input.requestId, 'LAB_RESULTS');
+      await assertPgdAssessmentRoundAllowed(client, request, input.assessmentRoundId, actor);
       const resultIds = Array.from(new Set((input.labResultIds || []).map((id) => String(id).trim()).filter(Boolean)));
       const resultRows = resultIds.length === 0 ? [] : await client.query(
-        `SELECT document_id FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd' AND data->>'requestId' = $3 AND document_id = ANY($2::text[])`,
-        [PGD_COLLECTIONS.labResults, resultIds, request.id],
+        `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd' AND data->>'requestId' = $3 AND COALESCE(data->>'assessmentRoundId', '') = $4 AND document_id = ANY($2::text[])`,
+        [PGD_COLLECTIONS.labResults, resultIds, request.id, String(input.assessmentRoundId || '')],
       );
       if (resultRows.rows.length !== resultIds.length) {
         throw Object.assign(new Error('Bản đánh giá KQTN có kết quả PTN không tồn tại trong miền PGD.'), { statusCode: 409 });

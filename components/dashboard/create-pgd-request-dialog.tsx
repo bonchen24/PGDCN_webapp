@@ -154,6 +154,7 @@ export function CreatePgdRequestDialog({ open, onOpenChange }: CreatePgdRequestD
               </DialogDescription>
             </div>
           </div>
+          <p className="mt-2 text-xs text-slate-500">Tài liệu B1 có thể bổ sung sau; không cần đính kèm tệp khi tạo Phiếu yêu cầu.</p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">

@@ -11,6 +11,7 @@ import {
 import {
   assertPgdRequestEvidenceMutationAllowed,
   assertPgdRequestStationMutationAllowed,
+  assertPgdAssessmentRoundAllowed,
   writePgdActivity,
 } from '@/lib/server/pgd-operations';
 import { buildPgdNotificationDraft } from '@/utils/pgdcnNotification';
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
       sampledAt: input.sampledAt ? String(input.sampledAt) : undefined,
       samplingLocation: input.samplingLocation ? String(input.samplingLocation) : undefined,
       sampledByUsername: input.sampledByUsername ? String(input.sampledByUsername) : undefined,
+      assessmentRoundId: input.assessmentRoundId ? String(input.assessmentRoundId) : undefined,
       sampleSize: input.sampleSize ? String(input.sampleSize) : undefined,
       lotQuantity: input.lotQuantity === undefined ? undefined : Number(input.lotQuantity),
       lotUnit: input.lotUnit ? String(input.lotUnit) : undefined,
@@ -48,6 +50,7 @@ export async function POST(req: NextRequest) {
       const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
       assertPgdRequestEvidenceMutationAllowed(request);
       assertPgdRequestStationMutationAllowed(request, 'FIELD_SAMPLING');
+      await assertPgdAssessmentRoundAllowed(client, request, base.lab.assessmentRoundId, actor);
 
       for (const sample of samples) {
         await client.query(

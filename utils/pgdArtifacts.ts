@@ -28,6 +28,7 @@ export interface PgdProductLine {
 }
 
 export interface PgdInspectionScheduleRow {
+  date?: string;
   startTime: string;
   endTime?: string;
   activity: string;
@@ -48,6 +49,7 @@ export interface PgdInspectionPlanInput {
   id: string;
   requestId: string;
   inspectionDate: string;
+  inspectionDates?: string[];
   team: PgdInspectionTeamMember[];
   productLines: PgdProductLine[];
   schedule: PgdInspectionScheduleRow[];
@@ -57,6 +59,7 @@ export interface PgdInspectionPlanInput {
   inspectionType?: string;
   note?: string;
   status?: PgdPlanStatus;
+  acceptance?: { status: 'PENDING' | 'ACCEPTED' | 'RETURNED'; actedByUsername?: string; actedAt?: string; reason?: string };
 }
 
 export interface PgdInspectionPlan extends PgdInspectionPlanInput {
@@ -110,6 +113,7 @@ export interface PgdFieldActivityLog extends PgdFieldActivityLogInput {
 export interface PgdLabResultReviewInput {
   id: string;
   requestId: string;
+  assessmentRoundId?: string;
   labResultIds: string[];
   completeness: PgdLabReviewCompleteness;
   conformity: PgdLabReviewConformity;
@@ -209,9 +213,13 @@ export function validatePgdInspectionPlan(input: Partial<PgdInspectionPlanInput>
     if (!clean(product?.standard)) issues.push(issue(`productLines[${index}].standard`, 'Dòng sản phẩm cần có tiêu chuẩn áp dụng.'));
   }
   for (const [index, row] of (input.schedule || []).entries()) {
+    if (row?.date && !isIsoDate(clean(row.date))) issues.push(issue(`schedule[${index}].date`, 'Ngày của lịch đánh giá không hợp lệ.'));
     if (!isTime(clean(row?.startTime))) issues.push(issue(`schedule[${index}].startTime`, 'Giờ bắt đầu không hợp lệ.'));
     if (row?.endTime && !isTime(clean(row.endTime))) issues.push(issue(`schedule[${index}].endTime`, 'Giờ kết thúc không hợp lệ.'));
     if (!clean(row?.activity)) issues.push(issue(`schedule[${index}].activity`, 'Mốc thời gian cần có nội dung.'));
+  }
+  for (const [index, date] of (input.inspectionDates || []).entries()) {
+    if (!isIsoDate(clean(date))) issues.push(issue(`inspectionDates[${index}]`, 'Ngày đánh giá không hợp lệ.'));
   }
   if (input.samplingLines !== undefined && !Array.isArray(input.samplingLines)) issues.push(issue('samplingLines', 'Dòng lấy mẫu dự kiến phải là danh sách.'));
   for (const [index, line] of (input.samplingLines || []).entries()) {
@@ -228,6 +236,7 @@ export function createPgdInspectionPlan(input: PgdInspectionPlanInput, now = new
     id: clean(input.id),
     requestId: clean(input.requestId),
     inspectionDate: clean(input.inspectionDate),
+    ...(input.inspectionDates ? { inspectionDates: Array.from(new Set(input.inspectionDates.map(clean).filter(Boolean))) } : {}),
     team: (input.team || []).map((member) => ({
       ...member,
       username: clean(member.username),
@@ -250,6 +259,7 @@ export function createPgdInspectionPlan(input: PgdInspectionPlanInput, now = new
     })),
     schedule: (input.schedule || []).map((row) => ({
       ...row,
+      ...(row.date ? { date: clean(row.date) } : {}),
       startTime: clean(row.startTime),
       ...(row.endTime ? { endTime: clean(row.endTime) } : {}),
       activity: clean(row.activity),

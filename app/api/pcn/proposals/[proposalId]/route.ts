@@ -9,6 +9,7 @@ import { diffActivityFields } from '@/utils/activityLog';
 import { isSafePcnSampleKey, stablePcnMutationId } from '@/lib/server/pcn-signer-delegations';
 import { assertPcnDossierOperator } from '@/lib/server/pcn-dossiers';
 import { formatPcnIntakeValidationIssues, validatePcnProposalIntake } from '@/utils/pcnIntakePolicy';
+import { validateIntakeClassification } from '@/utils/pgdcnIntakeCatalog';
 import { CertificationDossier, CertificationProposal } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,9 @@ export async function POST(
     'customerId',
     'customerSnapshot',
     'registrationNumber',
+    'registrationDate',
     'standards',
+    'productGroup',
     'warehouseAddress',
     'productName',
     'productType',
@@ -183,10 +186,17 @@ export async function POST(
         }
         updates.customerSnapshot = customer;
       }
+      if (rawUpdates.standards !== undefined) {
+        if (!Array.isArray(rawUpdates.standards) || rawUpdates.standards.some((value: unknown) => typeof value !== 'string')) {
+          throw Object.assign(new Error('Trường standards phải là danh sách chuỗi.'), { statusCode: 400 });
+        }
+        updates.standards = rawUpdates.standards.map((value: string) => value.trim()).filter(Boolean);
+      }
       for (const field of [
         'customerId',
         'registrationNumber',
-        'standards',
+        'registrationDate',
+        'productGroup',
         'warehouseAddress',
         'productName',
         'productType',
@@ -216,6 +226,14 @@ export async function POST(
         proposalCode: proposal.proposalCode,
         fieldCodes: proposal.fieldCodes,
       } as CertificationProposal;
+      const classificationChanged = rawUpdates.productGroup !== undefined || rawUpdates.standards !== undefined;
+      if (classificationChanged && dossier.workflowSnapshot) {
+        const groupChanged = rawUpdates.productGroup !== undefined && rawUpdates.productGroup !== proposal.productGroup;
+        const standardsChanged = rawUpdates.standards !== undefined && JSON.stringify(rawUpdates.standards) !== JSON.stringify(proposal.standards || []);
+        if (groupChanged || standardsChanged) {
+          throw Object.assign(new Error('Nhóm sản phẩm và quy chuẩn đã được chụp cùng bộ hồ sơ mẫu; cần tạo hồ sơ mới để thay đổi phân loại.'), { statusCode: 409 });
+        }
+      }
       const intakeValidation = validatePcnProposalIntake(candidate);
       if (!intakeValidation.valid) {
         throw Object.assign(
@@ -224,8 +242,26 @@ export async function POST(
         );
       }
 
+      const catalogClassification = classificationChanged ? validateIntakeClassification({
+        domain: 'PCN',
+        productGroup: candidate.productGroup as any,
+        standard: Array.isArray(candidate.standards) ? candidate.standards.join(' ') : '',
+        method: String(dossier.method || ''),
+        fieldCode: candidate.fieldCodes.length === 1 ? candidate.fieldCodes[0] : undefined,
+      }) : undefined;
+      if (catalogClassification && !catalogClassification.valid) {
+        throw Object.assign(new Error(catalogClassification.message), { statusCode: 400 });
+      }
+
       const now = new Date().toISOString();
-      const nextProposal: CertificationProposal = { ...candidate, updatedAt: now };
+      const nextProposal: CertificationProposal = {
+        ...candidate,
+        ...(catalogClassification ? {
+          catalogConfirmationStatus: catalogClassification.confirmationStatus,
+          ...(catalogClassification.matchedItem?.id ? { catalogItemId: catalogClassification.matchedItem.id } : { catalogItemId: undefined }),
+        } : {}),
+        updatedAt: now,
+      };
       const nextDossier: CertificationDossier = {
         ...dossier,
         customerSnapshot: { ...nextProposal.customerSnapshot },
@@ -236,7 +272,9 @@ export async function POST(
         'customerId',
         'customerSnapshot',
         'registrationNumber',
+        'registrationDate',
         'standards',
+        'productGroup',
         'warehouseAddress',
         'productName',
         'productType',

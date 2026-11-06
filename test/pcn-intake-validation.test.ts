@@ -10,6 +10,9 @@ const validProposal = {
     contactPerson: 'Nguyễn Văn A',
   },
   warehouseAddress: 'Kho Hà Nội',
+  productGroup: 'ELECTRICAL_ELECTRONIC',
+  registrationNumber: 'PCN-2026-001',
+  registrationDate: '2026-11-06',
   productName: 'Nồi chiên không dầu',
   productType: 'Thiết bị gia dụng',
   model: 'AD-01',
@@ -30,23 +33,56 @@ test('new PCN proposal intake requires the standard named by the effective propo
   assert.equal(validatePcnProposalIntake({ ...validProposal, standards: ['QCVN 01'] }, { requireStandards: true }).valid, true);
 });
 
-test('PCN intake reports every missing required field before writing', () => {
-  const result = validatePcnProposalIntake({ customerSnapshot: {}, fieldCodes: [] });
+test('PCN intake accepts minimal proposal omitting model, brand, manufacturer, specifications, and productType', () => {
+  const minimalProposal = {
+    customerSnapshot: {
+      name: 'Công ty Ánh Dương',
+      address: 'Hà Nội',
+      contactPerson: 'Nguyễn Văn A',
+    },
+    warehouseAddress: 'Kho Hà Nội',
+    productGroup: 'ELECTRICAL_ELECTRONIC',
+    registrationNumber: 'PCN-2026-002',
+    registrationDate: '2026-11-06',
+    quantity: 2,
+    fieldCodes: ['QC4'],
+  };
+  assert.deepEqual(validatePcnProposalIntake(minimalProposal), { valid: true, issues: [] });
+});
+
+test('PCN intake requires product group and reports missing intake fields', () => {
+  const result = validatePcnProposalIntake({ customerSnapshot: {}, fieldCodes: [] }, { requireProductGroup: true });
   assert.equal(result.valid, false);
   assert.deepEqual(result.issues.map((issue) => issue.field), [
     'customerSnapshot.name',
     'customerSnapshot.address',
     'customerSnapshot.contactPerson',
     'warehouseAddress',
-    'productName',
-    'productType',
-    'model',
-    'brand',
-    'specifications',
-    'manufacturer',
+    'productGroup',
     'quantity',
     'fieldCodes',
   ]);
+});
+
+test('PCN intake rejects invalid product groups', () => {
+  const result = validatePcnProposalIntake({ ...validProposal, productGroup: 'QC20' });
+  assert.equal(result.valid, false);
+  assert.equal(result.issues.some((issue) => issue.field === 'productGroup'), true);
+});
+
+test('new PCN intake requires registration number and date when that gate is enabled', () => {
+  const result = validatePcnProposalIntake({ ...validProposal, registrationNumber: '', registrationDate: '' }, { requireRegistration: true });
+  assert.deepEqual(result.issues.map((issue) => issue.field), ['registrationNumber', 'registrationDate']);
+});
+
+test('new PCN intake rejects a malformed registration date', () => {
+  const result = validatePcnProposalIntake({ ...validProposal, registrationDate: '2026-02-31' }, { requireRegistration: true });
+  assert.equal(result.issues.some((issue) => issue.field === 'registrationDate'), true);
+});
+
+test('PCN edit validates a supplied registration date without requiring legacy registration fields', () => {
+  const result = validatePcnProposalIntake({ ...validProposal, registrationNumber: '', registrationDate: '2026-02-31' });
+  assert.deepEqual(result.issues.map((issue) => issue.field), ['registrationDate']);
 });
 
 test('tax id can satisfy the customer contact/identity requirement', () => {

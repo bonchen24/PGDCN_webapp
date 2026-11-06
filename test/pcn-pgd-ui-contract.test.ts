@@ -19,6 +19,7 @@ test('PGDCN routes expose separate PCN and PGD workspaces', () => {
 
 test('PGD workspace has its own shell/sidebar and does not import PCN catalog state', () => {
   const workspace = read('components/PgdWorkspace.tsx');
+  const stationForms = read('components/PgdStationFormsPanel.tsx');
   assert.match(read('components/PgdAppShell.tsx'), /PgdWorkspace/);
   assert.match(read('components/PgdSidebar.tsx'), /PGD/);
   assert.match(workspace, /usePgdStore/);
@@ -32,7 +33,7 @@ test('PGD workspace has its own shell/sidebar and does not import PCN catalog st
   assert.match(workspace, /validatePgdResultValues/);
   assert.match(workspace, /buildPgdFieldInspection/);
   assert.match(workspace, /nonconformities/);
-  assert.match(workspace, /id: assignment\?\.id \|\| makeId\('pgd-assignment'\)/);
+  assert.match(stationForms, /id: assignment\?\.id \|\| newId\('pgd-assignment'\)/);
 });
 
 test('PGD and PCN navigation are visible as distinct department workspaces', () => {
@@ -45,7 +46,7 @@ test('PGD and PCN navigation are visible as distinct department workspaces', () 
 
 test('PGD keeps the shared reader read-only while preserving native evidence and document regions', () => {
   const workspace = read('components/PgdWorkspace.tsx');
-  assert.match(workspace, /<PgdDossierFlow status=\{request\.status\} evidence=\{context\}/);
+  assert.match(workspace, /<PgdDossierFlow status=\{request\.status\} workflowSchemaVersion=\{workflowSchemaVersion\} evidence=\{context\}/);
   assert.match(workspace, /<PgdDossierStepWorkPanel/);
   assert.doesNotMatch(workspace, /onStartTask|onCompleteTask|onReturnTask/);
   assert.match(workspace, /PgdCaseEvidencePanel/);

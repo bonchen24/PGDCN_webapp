@@ -12,6 +12,7 @@ import {
 import {
   assertPgdRequestEvidenceMutationAllowed,
   assertPgdRequestStationMutationAllowed,
+  assertPgdAssessmentRoundAllowed,
   writePgdActivity,
 } from '@/lib/server/pgd-operations';
 import { buildPgdNotificationDraft } from '@/utils/pgdcnNotification';
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
       const request = mapDocumentRow(requestResult.rows[0]) as PgdInspectionRequest;
       assertPgdRequestEvidenceMutationAllowed(request);
       assertPgdRequestStationMutationAllowed(request, 'LAB_RESULTS');
+      await assertPgdAssessmentRoundAllowed(client, request, result.assessmentRoundId, actor);
 
       const labRequestResult = await client.query(
         `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND document_id = $2 AND data->>'domain' = 'pgd' LIMIT 1`,
@@ -46,6 +48,9 @@ export async function POST(req: NextRequest) {
       if (!labRequestResult.rows[0]) throw Object.assign(new Error('Không tìm thấy yêu cầu PTN PGD.'), { statusCode: 404 });
       if (String(labRequestResult.rows[0].data?.requestId || '') !== result.requestId) {
         throw Object.assign(new Error('Kết quả PTN không khớp hồ sơ PGD.'), { statusCode: 409 });
+      }
+      if (String(labRequestResult.rows[0].data?.assessmentRoundId || '') !== String(result.assessmentRoundId || '')) {
+        throw Object.assign(new Error('Kết quả PTN và yêu cầu PTN phải thuộc cùng một đợt đánh giá.'), { statusCode: 409 });
       }
 
       const persistedResult = buildPgdLabResult(result, actor.username, new Date().toISOString());

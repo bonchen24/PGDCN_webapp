@@ -191,6 +191,20 @@ test('PGD registry metadata captures source-derived request and dossier referenc
   assert.deepEqual(validatePgdRegistryMetadata({ documents: [{ kind: 'QC20' }] }), [{ field: 'registryMetadata.documents[0].kind', message: 'Loại chứng từ sổ đăng ký PGD không hợp lệ.' }]);
 });
 
+test('PGD registration date is stored separately from request received date', () => {
+  const request = createPgdInspectionRequest({
+    ...intake,
+    registryMetadata: {
+      registrationNumber: 'PGD-REG-2026-01',
+      registrationDate: '2026-11-06',
+      receivedAt: '2026-11-05',
+    },
+  }, '2026-11-06T01:00:00.000Z');
+  assert.equal(request.registryMetadata?.registrationDate, '2026-11-06');
+  assert.equal(request.registryMetadata?.receivedAt, '2026-11-05');
+  assert.ok(validatePgdRegistryMetadata({ registrationDate: '2026-02-30' }).some((issue) => issue.field === 'registryMetadata.registrationDate'));
+});
+
 test('PGD intake validates the request identity and rejects cross-domain document pointers', () => {
   const issues = validatePgdIntake({
     ...intake,

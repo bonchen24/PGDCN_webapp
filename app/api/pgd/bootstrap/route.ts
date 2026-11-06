@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
       PGD_COLLECTIONS.dossierIndexes,
       PGD_COLLECTIONS.calibrationInstruments,
       PGD_COLLECTIONS.workflowTemplates,
+      PGD_COLLECTIONS.assessmentRounds,
     ];
 
     const results = await Promise.all(
@@ -117,6 +118,7 @@ export async function GET(req: NextRequest) {
       dossierIndexes: items[18],
       calibrationInstruments: items[19],
       workflowTemplates,
+      assessmentRounds: items[21],
     });
   } catch (error: any) {
     console.error('PGD bootstrap error:', error);
