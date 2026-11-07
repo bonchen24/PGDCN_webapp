@@ -22,7 +22,7 @@ test('PGD request detail exposes the dossier evidence and sample register module
   assert.match(panel, /requirementCode/);
   assert.match(panel, /getPgdOperationalStepAccess/);
   assert.match(panel, /fileInputRef/);
-  assert.doesNotMatch(panel, /QC20|\/api\/db|Desktop|UNC/i);
+  assert.doesNotMatch(panel, /QC20|\/api\/db|Desktop|\bUNC\b/i);
   assert.doesNotMatch(workspace, /PgdCaseEvidencePanel[^\n]*reportAccess\.editable/);
   assert.match(workspace, /getPgdDossierRequirementsWithCustom\(request\.productGroup/);
   assert.match(workspace, /dossierError/);

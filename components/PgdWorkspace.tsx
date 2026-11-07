@@ -114,7 +114,12 @@ import { PgdcnDateInput, PgdcnDateTimeInput } from './PgdcnDateInput';
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, parseDdMmYyyy, parseDdMmYyyyTime } from '../utils/formatter';
 import { runPgdOcr } from '../utils/pgdOcrApi';
 import PgdcnB1AttachmentSection from './PgdcnB1AttachmentSection';
-import { createPgdcnB1SelectedAttachment, PGDCN_B1_ATTACHMENT_TYPES, uploadPendingPgdcnB1Attachments, type PgdcnB1SelectedAttachment } from '../utils/pgdcnB1Attachments';
+import {
+  createPgdcnB1SelectedAttachment,
+  resolveB1AttachmentRequirements,
+  uploadPendingPgdcnB1Attachments,
+  type PgdcnB1SelectedAttachment,
+} from '../utils/pgdcnB1Attachments';
 import { getPgdcnNextAction } from '../utils/pgdcnDashboard';
 import { buildPgdDossierReturnRoute, buildPgdDraftingRoute } from '../utils/draftingNavigation';
 
@@ -420,6 +425,11 @@ export function PgdIntakeForm({
       unknown: rows.filter((row) => !row.definition),
     };
   }, [form.productGroup, recommendedWorkflowTemplate]);
+  const b1Requirements = useMemo(() => resolveB1AttachmentRequirements({
+    domain: 'PGD',
+    productGroup: form.productGroup,
+    template: recommendedWorkflowTemplate,
+  }), [form.productGroup, recommendedWorkflowTemplate]);
   const activeProductGroups = useMemo(() => [...new Set(activeCatalog.map((item) => item.productGroup))], [activeCatalog]);
   const customerOptions = useMemo<PcnCatalogOption[]>(() => customers.flatMap((customer) => {
     const value = customer.customerCode || customer.name;
@@ -536,12 +546,17 @@ export function PgdIntakeForm({
   const uploadB1Attachments = async (requestId: string) => uploadPendingPgdcnB1Attachments(
     b1Attachments,
     async (attachment) => {
-      const category = PGDCN_B1_ATTACHMENT_TYPES.find((item) => item.value === attachment.kind)?.label || 'Khác';
+      const category = attachment.displayName || 'Tài liệu bổ sung khác';
+      const isPending = attachment.mappingStatus === 'PENDING_MAPPING' || !attachment.requirementCode;
       const saved = await saveDossierDocument(requestId, {
+        requirementId: isPending ? 'PENDING_MAPPING' : attachment.requirementId,
+        requirementCode: isPending ? 'PENDING_MAPPING' : attachment.requirementCode,
         supplementaryStageId: 'intake',
-        requirementCode: `PGD_SUPPLEMENTARY_INTAKE_${attachment.id}`,
-        title: `${category} · ${attachment.file.name}`,
-        note: `B1: ${category}`,
+        supplementaryItemId: `pgd-b1-${attachment.id}`,
+        stageId: 'B1',
+        documentKind: attachment.documentKind,
+        title: attachment.displayName || category,
+        note: `B1: ${attachment.displayName || category}`,
         file: attachment.file,
       });
       if (!saved.fileAssetId) throw new Error('Máy chủ chưa xác nhận lưu byte tệp vào kho riêng.');
@@ -696,7 +711,7 @@ export function PgdIntakeForm({
         </>}
       </section>
       <PgdcnIntakeDropzone disabled={saving || !canMutate} onExtract={runPgdOcr} onDraftApply={applyPgdOcr} onFileAccepted={(file) => setB1Attachments((current) => [...current, createPgdcnB1SelectedAttachment(file)])} />
-      <PgdcnB1AttachmentSection idPrefix={formId} accent="blue" attachments={b1Attachments} onChange={setB1Attachments} disabled={saving || !canMutate} />
+      <PgdcnB1AttachmentSection idPrefix={formId} accent="blue" requirements={b1Requirements} attachments={b1Attachments} onChange={setB1Attachments} disabled={saving || !canMutate} />
       <section className="rounded-xl border border-blue-100 bg-blue-50/40 p-3"><h2 className="mb-2 text-xs font-black text-slate-800">Thông tin bên yêu cầu</h2><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Field label="Người / đơn vị yêu cầu *"><TextInput required value={form.requesterName} onChange={(event) => update('requesterName', event.target.value)} /></Field><Field label="Địa chỉ bên yêu cầu *"><TextInput required value={form.requesterAddress} onChange={(event) => update('requesterAddress', event.target.value)} /></Field><Field label="Người liên hệ *"><TextInput required value={form.requesterContact} onChange={(event) => update('requesterContact', event.target.value)} /></Field><Field label="Điện thoại *"><TextInput required value={form.requesterPhone} onChange={(event) => update('requesterPhone', event.target.value)} /></Field><Field label="Email"><TextInput type="email" value={form.requesterEmail} onChange={(event) => update('requesterEmail', event.target.value)} /></Field><Field label="Mức ưu tiên"><SelectInput value={form.priority} onChange={(event) => update('priority', event.target.value as IntakeForm['priority'])}><option value="NORMAL">Bình thường</option><option value="URGENT">Gấp / ưu tiên</option></SelectInput></Field><Field label="Lý do ưu tiên" wide><TextInput required={form.priority === 'URGENT'} value={form.urgentReason} onChange={(event) => update('urgentReason', event.target.value)} /></Field></div></section>
       <section><h2 className="mb-2 flex items-center gap-2 text-xs font-black text-slate-800"><Building2 size={15} className="text-blue-600" /> Đơn vị yêu cầu / khách hàng</h2><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-lg border border-blue-100 bg-blue-50/60 px-2.5 py-2 text-[11px] text-blue-800"><span className="block font-black">Số hồ sơ / PYC</span><span className="mt-1 block">Hệ thống tự cấp theo ngày: <b className="font-mono">PGD-YYMMDD-TT</b></span></div><Field label="Kênh tiếp nhận"><SelectInput value={form.intakeChannel} onChange={(event) => update('intakeChannel', event.target.value as IntakeForm['intakeChannel'])}><option value="DIRECT">Trực tiếp</option><option value="PHONE">Điện thoại</option><option value="ONLINE_ZALO">Zalo / Online</option><option value="EMAIL">Email</option><option value="OTHER">Khác</option></SelectInput></Field><Field label="Tìm khách hàng dùng chung"><PcnCatalogCombobox id="pgd-customer-catalog" label="Tìm khách hàng dùng chung" hideLabel value={selectedCustomerValue} options={customerOptions} onChange={chooseCustomer} disabled={saving} /></Field><Field label="Tên đơn vị *"><TextInput required value={form.customerName} onChange={(event) => update('customerName', event.target.value)} /></Field><Field label="Địa chỉ *"><TextInput required value={form.customerAddress} onChange={(event) => update('customerAddress', event.target.value)} /></Field><Field label="Mã số thuế"><TextInput value={form.customerTaxId} onChange={(event) => update('customerTaxId', event.target.value)} /></Field><Field label="Người liên hệ"><TextInput value={form.customerContact} onChange={(event) => update('customerContact', event.target.value)} /></Field><Field label="Điện thoại"><TextInput value={form.customerPhone} onChange={(event) => update('customerPhone', event.target.value)} /></Field><Field label="Email"><TextInput type="email" value={form.customerEmail} onChange={(event) => update('customerEmail', event.target.value)} /></Field></div></section>
       <section className="border-t border-slate-100 pt-4"><h2 className="mb-2 flex items-center gap-2 text-xs font-black text-slate-800"><PackageCheck size={15} className="text-blue-600" /> Hàng hóa / phạm vi giám định</h2><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Field label="Tên hàng hóa / thiết bị *"><TextInput required value={form.productName} onChange={(event) => update('productName', event.target.value)} /></Field><Field label="Mã hàng / kiểu loại"><TextInput value={form.productCode} onChange={(event) => update('productCode', event.target.value)} /></Field><Field label="Mác / nhãn hiệu"><TextInput value={form.brand} onChange={(event) => update('brand', event.target.value)} /></Field><Field label="Số lô / số nhận dạng"><TextInput required={form.productGroup === 'STEEL_METAL'} value={form.lotCode} onChange={(event) => update('lotCode', event.target.value)} /></Field><Field label="Số lượng *"><TextInput required type="number" min="0.01" step="0.01" value={form.quantity} onChange={(event) => update('quantity', event.target.value)} /></Field><Field label="Đơn vị"><TextInput value={form.unit} onChange={(event) => update('unit', event.target.value)} /></Field><Field label="Khối lượng"><TextInput type="number" min="0" step="0.001" value={form.weight} onChange={(event) => update('weight', event.target.value)} /></Field><Field label="Phạm vi yêu cầu *" wide><textarea required rows={2} value={form.inspectionScope} onChange={(event) => update('inspectionScope', event.target.value)} className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" /></Field><Field label="Lịch dự kiến"><PgdcnDateTimeInput value={form.inspectionScheduledAt} onChange={(value) => update('inspectionScheduledAt', value)} /></Field><Field label="Địa điểm giám định *" wide><TextInput required value={form.inspectionLocation} onChange={(event) => update('inspectionLocation', event.target.value)} /></Field><Field label="Ghi chú tiếp nhận" wide><textarea rows={2} value={form.note} onChange={(event) => update('note', event.target.value)} className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" /></Field></div></section>

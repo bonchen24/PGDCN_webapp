@@ -14,6 +14,7 @@ import { getPcnDossierStationGenerationKind, getPcnDossierStationTab, type PcnDo
 import { buildPcnNodeDraftingRoute } from '../utils/draftingNavigation';
 import { buildPcnDossierInspection, getPcnDossierInspectionStatusLabel } from '../utils/pcnDossierInspection';
 import { getPcnDossierRequirementsWithCustom } from '../utils/pcnDossierDocuments';
+import { resolveB1AttachmentRequirements } from '../utils/pgdcnB1Attachments';
 import { getPcnWorkflowResultOutcome, type PcnWorkflowRuntimeNode } from '../utils/pcnWorkflowRuntime';
 import { getPcnActorDisplayName, getPcnUserDisplayName, PCN_NEUTRAL_USER_LABEL } from '../utils/pcnUserIdentity';
 import { getPcnAssignableDossierUsers, getPcnOwnerAssignmentAuthorityDenial } from '../utils/pcnDossierAssignment';
@@ -89,10 +90,10 @@ function PcnDossierDocumentReader({
         }));
       }),
     ...attachments
-      .filter((attachment) => attachment.dossierId === dossierId && !attachment.metadataOnly && Boolean(attachment.assetId))
+      .filter((attachment) => attachment.dossierId === dossierId && !attachment.metadataOnly && Boolean(attachment.assetId || attachment.fileAssetId))
       .map((attachment) => ({
         id: `attachment:${attachment.id}`,
-        assetId: attachment.assetId,
+        assetId: attachment.fileAssetId || attachment.assetId,
         fileName: attachment.fileName,
         mimeType: attachment.mimeType,
         uploadedAt: attachment.importedAt,
@@ -608,6 +609,8 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
   const [isUpdating, setIsUpdating] = useState(false);
   const [dossierEditOpen, setDossierEditOpen] = useState(false);
   const [uploadingRequirementId, setUploadingRequirementId] = useState<string | null>(null);
+  const [mappingAttachmentId, setMappingAttachmentId] = useState('');
+  const [attachmentMappingSelections, setAttachmentMappingSelections] = useState<Record<string, string>>({});
   const [waiverRequirementId, setWaiverRequirementId] = useState<string | null>(null);
   const [waiverReason, setWaiverReason] = useState('');
   const [method, setMethod] = useState<PcnCertificationMethod>(dossier.method);
@@ -632,6 +635,13 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
   const dossierApprovalSteps = approvalSteps.filter((step) => step.dossierId === dossier.id).sort((left, right) => left.sequence - right.sequence);
   const issuance = issuancePackages.find((item) => item.dossierId === dossier.id);
   const requirements = getPcnDossierRequirementsWithCustom(dossier, documentRequirements, { resultOutcome: getPcnWorkflowResultOutcome(dossierResults) });
+  const b1AttachmentRequirements = resolveB1AttachmentRequirements({
+    domain: 'PCN',
+    fieldCode: dossier.fieldCodes[0],
+    templateId: dossier.workflowTemplateId,
+    templateVersion: dossier.workflowTemplateVersion,
+    workflowSnapshot: dossier.workflowSnapshot,
+  });
   const documentsByRequirement = new Map(dossierDocuments.filter((item) => item.dossierId === dossier.id).map((item) => [item.requirementId, item]));
   const dossierDocumentsForCompleteness = dossierDocuments.filter((item) => item.dossierId === dossier.id);
   const baseCompleteness = buildPcnDossierCompleteness({ dossier, proposal, requirements, documents: dossierDocumentsForCompleteness });
@@ -653,7 +663,15 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
   const dossierInspection = buildPcnDossierInspection({ dossierId: dossier.id, fieldCodes: dossier.fieldCodes, requirements, documents: dossierDocumentsForCompleteness, documentWaivers: dossier.documentWaivers, compact: true });
   const missingRequiredCount = dossierInspection.summary.requiredMissing;
   const attachmentIds = [...dossierResults.flatMap((result) => result.fileAssetId ? [result.fileAssetId] : []), ...(issuance?.fileAssetIds || [])];
-  const dossierAttachmentsForPackage = dossierAttachments.filter((attachment) => attachment.dossierId === dossier.id && !attachment.metadataOnly && Boolean(attachment.assetId)).sort((left, right) => left.fileName.localeCompare(right.fileName, 'vi'));
+  const dossierAttachmentsForPackage = dossierAttachments.filter((attachment) => attachment.dossierId === dossier.id && !attachment.metadataOnly && Boolean(attachment.assetId || attachment.fileAssetId)).sort((left, right) => left.fileName.localeCompare(right.fileName, 'vi'));
+  const attachmentsByRequirement = new Map<string, PcnDossierAttachment[]>();
+  for (const attachment of dossierAttachments.filter((item) => item.dossierId === dossier.id && item.requirementId && !item.metadataOnly)) {
+    const rows = attachmentsByRequirement.get(attachment.requirementId!) || [];
+    rows.push(attachment);
+    attachmentsByRequirement.set(attachment.requirementId!, rows);
+  }
+  for (const rows of attachmentsByRequirement.values()) rows.sort((left, right) => (right.version || 1) - (left.version || 1) || String(right.uploadedAt || '').localeCompare(String(left.uploadedAt || '')));
+  const pendingMappingAttachments = dossierAttachments.filter((item) => item.dossierId === dossier.id && (item.mappingStatus === 'PENDING_MAPPING' || item.mappingStatus === 'UNMAPPED' || item.status === 'PENDING_MAPPING') && !item.metadataOnly);
   const exceptionReasonLabel = dossier.exceptionReason?.trim();
   const generationKind = getPcnDossierStationGenerationKind(station.key, dossier.status);
   const dossierEntityIds = new Set<string>([dossier.id, proposal?.id, ...dossierRequests.map((request) => request.id), ...dossierResults.map((result) => result.id), ...dossierApprovalSteps.map((step) => step.id), issuance?.id].filter((id): id is string => Boolean(id)));
@@ -963,12 +981,84 @@ export function PcnDossierDetailView({ dossier, proposal, fields, templates, lab
     else await onUpdateDossier({ documentWaivers: { [requirementId]: null } });
   };
   const removeCurrentDocumentFromNode = onRemoveCurrentDocument || ((requirementId: string) => usePcnStore.getState().removeCurrentDossierDocument(dossier.id, requirementId));
+  const mapPendingAttachment = async (attachment: PcnDossierAttachment) => {
+    const requirementId = attachmentMappingSelections[attachment.id];
+    if (!requirementId) {
+      toast.error('Hãy chọn đầu mục hồ sơ trước khi gắn tệp.');
+      return;
+    }
+    setMappingAttachmentId(attachment.id);
+    try {
+      const response = await fetch(`/api/pcn/dossiers/${encodeURIComponent(dossier.id)}/attachment-mapping`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ attachmentId: attachment.id, requirementId }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || payload?.message || 'Không thể gắn đầu mục hồ sơ.');
+      await usePcnStore.getState().load(true);
+      toast.success('Đã gắn tệp vào đầu mục hồ sơ đã chọn.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể gắn đầu mục hồ sơ.');
+    } finally {
+      setMappingAttachmentId('');
+    }
+  };
 
   const documentTab = <div className="space-y-3"><DossierVisualChecklist dossierId={dossier.id} activeWorkflowNodeKey={station.key} fieldCodes={dossier.fieldCodes} fields={fields} requirements={requirements} documents={dossierDocumentsForCompleteness} documentWaivers={dossier.documentWaivers} users={users} /><div className={`rounded-lg border p-3 text-[11px] ${missingRequiredCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}><b>{missingRequiredCount > 0 ? `Toàn bộ hồ sơ còn thiếu ${missingRequiredCount} tài liệu bắt buộc` : 'Toàn bộ hồ sơ đã đủ tài liệu bắt buộc hoặc đã có đánh dấu bỏ qua'}</b><span className="ml-1">Điều kiện chuyển bước được kiểm tra theo tài liệu thuộc bước tương ứng.</span>{!canEditDossierSteps && <span className="ml-1 font-bold">Chỉ xem.</span>}</div>{requirements.length === 0 ? <EmptyTab text="Hồ sơ chưa có cấu hình tài liệu theo Lĩnh vực." /> : <details data-testid="pcn-document-history" data-disclosure="advanced" className="rounded-lg border border-slate-200 bg-white"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[11px] font-black text-slate-700"><span>Chi tiết phiên và tải tài liệu</span><span className="text-[11px] font-bold text-slate-400">Lịch sử phiên bản và nút tải · mở khi cần</span></summary><div className="space-y-2 border-t border-slate-100 p-2">{requirements.map((requirement) => { const canProcessRequirement = canProcessPcnDossierRequirement(dossier, requirement); const document = documentsByRequirement.get(requirement.id); const waiver = dossier.documentWaivers?.[requirement.id]; const versions = document?.versions || []; const current = versions.find((version) => version.assetId === document?.currentVersionId); return <article id={`pcn-dossier-requirement-${requirement.id}`} data-document-requirement={requirement.id} tabIndex={-1} key={requirement.id} className="rounded-lg border border-slate-200 bg-white p-3"><div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-1.5"><span className="text-xs font-black text-slate-800">{requirement.name}</span><span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${current && ['UPLOADED', 'GENERATED'].includes(document?.lifecycleStatus || '') ? 'border-amber-200 bg-amber-50 text-amber-700' : current ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : waiver?.reason ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>{current ? getPcnDossierInspectionStatusLabel(document?.lifecycleStatus || 'PRESENT') : waiver?.reason ? getPcnDossierInspectionStatusLabel('WAIVED') : getPcnDossierInspectionStatusLabel('MISSING')}</span><span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-500">{requirement.required ? 'Bắt buộc' : 'Điều kiện'}</span>{!canProcessRequirement && <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">Chưa đến bước</span>}</div><p className="mt-1 text-[11px] text-slate-500">{fieldName(fields, requirement.fieldCode)} • Giai đoạn: {requirement.stages.join(', ')}</p>{current && <p className="mt-1 text-[11px] text-slate-600">Hiện tại: <a href={getPcnFileUrl(current.assetId)} target="_blank" rel="noreferrer" className="font-bold text-indigo-600 underline">{current.fileName}</a> • {formatDateTime(current.uploadedAt)}{current.uploadedBy ? ` • Người tải: ${getPcnUserDisplayName(current.uploadedBy, users)}` : ''}</p>}{waiver?.reason && !current && <p className="mt-1 text-[11px] text-indigo-700"><b>Lý do bỏ qua:</b> {waiver.reason} • {formatDateTime(waiver.decidedAt)} • {getPcnUserDisplayName(waiver.decidedBy || waiver.decidedByUsername, users)}</p>}{versions.length > 1 && <details className="mt-2 text-[11px] text-slate-500"><summary className="min-h-11 cursor-pointer font-bold">Lịch sử {versions.length} phiên</summary><div className="mt-1 space-y-1">{versions.map((version, index) => <div key={`${version.assetId}-${index}`} className="flex flex-wrap justify-between gap-2 border-t border-slate-100 pt-1"><span>V{index + 1} • {version.fileName}</span><a href={getPcnFileUrl(version.assetId)} target="_blank" rel="noreferrer" className="text-indigo-600 underline">Mở</a></div>)}</div></details>}{!current && canManageWaiver && canProcessRequirement && <div className="mt-2 flex flex-wrap gap-1.5"><button type="button" onClick={() => { setWaiverRequirementId(requirement.id); setWaiverReason(waiver?.reason || ''); }} className="mobile-touch-target min-h-11 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1.5 text-[11px] font-black text-indigo-700 hover:bg-indigo-100">{waiver ? 'Sửa đánh dấu bỏ qua' : 'Đánh dấu bỏ qua'}</button>{waiver && <button type="button" onClick={() => void clearDocumentWaiver(requirement.id)} disabled={isUpdating} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Bỏ đánh dấu</button>}</div>}{waiverRequirementId === requirement.id && canManageWaiver && <div className="mt-2 rounded-md border border-indigo-200 bg-indigo-50/60 p-2"><label className="block"><span className="mb-1 block text-[11px] font-black text-indigo-800">Lý do bỏ qua tài liệu (bắt buộc)</span><textarea value={waiverReason} onChange={(event) => setWaiverReason(event.target.value)} rows={2} maxLength={1000} className="min-h-11 w-full rounded-md border border-indigo-200 bg-white px-2 py-1.5 text-[11px] outline-none focus:border-indigo-400" /></label><div className="mt-1.5 flex justify-end gap-1.5"><button type="button" onClick={() => { setWaiverRequirementId(null); setWaiverReason(''); }} className="mobile-touch-target min-h-11 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-600">Hủy</button><button type="button" onClick={() => void saveDocumentWaiver(requirement.id)} disabled={isUpdating || !waiverReason.trim()} className="mobile-touch-target min-h-11 rounded-md bg-indigo-600 px-2 py-1.5 text-[11px] font-black text-white disabled:opacity-50">Lưu đánh dấu</button></div></div>}</div>{canEditDossierSteps && (canProcessRequirement ? <label className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1.5 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"><Upload size={12} /> {uploadingRequirementId === requirement.id ? 'Đang tải…' : current ? 'Thay phiên bản' : 'Bổ sung file'}<input type="file" className="hidden" disabled={!canEditDossierSteps || uploadingRequirementId !== null} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void uploadRequirement(requirement, file); }} /></label> : <span className="inline-flex shrink-0 items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-1.5 text-[11px] font-bold text-slate-500">Chưa đến bước hiện tại</span>)}</div></article>; })}</div></details>}</div>;
 
-  const attachmentContent = dossierAttachmentsForPackage.length === 0 && attachmentIds.length === 0 ? <EmptyTab text="Chưa có tệp liên kết từ hồ sơ, KQTN hoặc phát hành." /> : <div className="space-y-2">{dossierAttachmentsForPackage.map((attachment) => <div key={attachment.id} className="rounded-lg border border-slate-200 bg-white p-3 text-[11px]"><div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-wrap items-center gap-2"><span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700">{attachment.kind}</span>{attachment.requirementId && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[11px] text-slate-500">{attachment.requirementId}</span>}<span className="truncate font-bold text-slate-700">{attachment.fileName}</span></div><a href={getPcnFileUrl(attachment.assetId)} target="_blank" rel="noreferrer" className="shrink-0 font-bold text-indigo-600 underline underline-offset-2">Mở tệp</a></div></div>)}{attachmentIds.map((assetId) => <div key={assetId} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 text-[11px]"><span className="font-bold text-slate-700">Tệp lưu trữ liên kết</span><a href={getPcnFileUrl(assetId)} target="_blank" rel="noreferrer" className="font-mono text-indigo-600 underline underline-offset-2">{assetId} · Mở tệp</a></div>)}</div>;
+  const attachmentContent = dossierAttachmentsForPackage.length === 0 && attachmentIds.length === 0 ? <EmptyTab text="Chưa có tệp liên kết từ hồ sơ, KQTN hoặc phát hành." /> : <div className="space-y-2">{dossierAttachmentsForPackage.map((attachment) => <div key={attachment.id} className="rounded-lg border border-slate-200 bg-white p-3 text-[11px]"><div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-wrap items-center gap-2"><span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700">{attachment.kind}</span>{attachment.requirementId && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[11px] text-slate-500">{attachment.requirementId}</span>}<span className="truncate font-bold text-slate-700">{attachment.fileName}</span></div><a href={getPcnFileUrl(attachment.fileAssetId || attachment.assetId)} target="_blank" rel="noreferrer" className="shrink-0 font-bold text-indigo-600 underline underline-offset-2">Mở tệp</a></div></div>)}{attachmentIds.map((assetId) => <div key={assetId} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 text-[11px]"><span className="font-bold text-slate-700">Tệp lưu trữ liên kết</span><a href={getPcnFileUrl(assetId)} target="_blank" rel="noreferrer" className="font-mono text-indigo-600 underline underline-offset-2">{assetId} · Mở tệp</a></div>)}</div>;
   const operationalFormsSection = <details className="rounded-xl border border-emerald-200 bg-emerald-50/40" data-testid="pcn-operational-forms" data-disclosure="advanced"><summary className="mobile-touch-target flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-black text-slate-900"><span>Mở biểu mẫu nghiệp vụ</span><span className="text-[11px] font-bold text-emerald-700">{Object.keys(dossier.operationalForms || {}).length}/7 đã nhập</span></summary><div className="border-t border-emerald-100 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="text-xs font-black text-slate-900">Biểu mẫu theo bước</h3><p className="mt-1 text-[11px] leading-4 text-slate-600">Mỗi bước nhập dữ liệu ngay trong card hồ sơ. Lưu xong có thể sinh DOCX/PDF từ dữ liệu đã xác nhận; KQTN vẫn chỉ nhận bản scan và OCR từ phòng thử nghiệm.</p></div><span className="rounded-full border border-emerald-200 bg-white px-2 py-1 text-[11px] font-black text-emerald-700">{Object.keys(dossier.operationalForms || {}).length}/7 đã nhập</span></div><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{OPERATIONAL_FORM_ACTIONS.map(({ kind, documentKind }) => { const canProcessForm = canProcessPcnOperationalForm(dossier, kind); const formKey = getPcnOperationalFormKey(kind); const isSaved = Boolean(dossier.operationalForms?.[formKey]); return <article key={kind} className="rounded-lg border border-white bg-white p-2.5 shadow-sm"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="text-[11px] font-black leading-4 text-slate-700">{PCN_OPERATIONAL_FORM_LABELS[kind]}</p><p className={`mt-1 text-[11px] font-bold ${!canProcessForm ? 'text-slate-500' : isSaved ? 'text-emerald-700' : 'text-amber-700'}`}>{!canProcessForm ? 'Chưa đến bước hiện tại' : isSaved ? 'Đã lưu dữ liệu' : 'Chưa nhập dữ liệu'}</p></div><span className={`rounded-full px-1.5 py-0.5 text-[11px] font-black ${!canProcessForm ? 'bg-slate-100 text-slate-500' : isSaved ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{!canProcessForm ? 'KHÓA' : isSaved ? 'ĐẠT' : 'MỞ'}</span></div><div className="mt-2 flex flex-wrap gap-1.5"><button type="button" onClick={() => setOperationalFormOpen(kind)} disabled={!canEditDossierSteps || !canProcessForm} title={!canProcessForm ? 'Chưa đến bước xử lý của biểu mẫu này.' : undefined} className="mobile-touch-target min-h-11 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] font-black text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50">{isSaved ? 'Sửa biểu mẫu' : 'Nhập biểu mẫu'}</button>{documentKind && isSaved && (canProcessForm ? <button type="button" onClick={() => openDocumentOutput(documentKind)} className="mobile-touch-target min-h-11 rounded-md border border-blue-200 bg-blue-50 px-2 py-1.5 text-[11px] font-bold text-blue-700 hover:bg-blue-100">Sinh DOCX/PDF</button> : <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-1.5 text-[11px] font-bold text-slate-500">Chờ bước tương ứng</span>)}</div></article>; })}</div></div></details>;
-  const documentWorkspaceTab = <div className="space-y-3"><details className="rounded-lg border border-slate-200 bg-white" data-testid="pcn-dossier-attachments"><summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 py-2 text-[11px] font-black text-slate-700"><span>Tệp liên kết trong bộ hồ sơ</span><span className="text-[11px] font-bold text-slate-400">{dossierAttachmentsForPackage.length + attachmentIds.length} tệp</span></summary><div className="border-t border-slate-100 p-2">{attachmentContent}</div></details></div>;
+  const mappedAttachmentContent = (
+    <section data-testid="pcn-dossier-attachments-by-requirement" className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+      <h3 className="text-[11px] font-black text-slate-800">Tệp đính kèm theo đầu mục hồ sơ</h3>
+      <div className="mt-2 space-y-2">
+        {requirements.map((requirement) => {
+          const files = attachmentsByRequirement.get(requirement.id) || [];
+          const currentFiles = files.filter((file) => file.status !== 'SUPERSEDED' && !files.some((other) => other.supersedesAttachmentId === file.id));
+          const historyFiles = files.filter((file) => !currentFiles.some((item) => item.id === file.id));
+          const multiple = requirement.multiplicity === 'MULTIPLE' || files.some((file) => file.multiplicity === 'MULTIPLE');
+          return (
+            <article key={requirement.id} data-document-requirement={requirement.id} className="rounded-md border border-slate-100 bg-slate-50/70 p-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[10px] font-black text-slate-800">{requirement.name}<span className="ml-2 rounded bg-white px-1.5 py-0.5 font-mono text-[9px] text-slate-500">{requirement.id}</span></div>
+                <span className="text-[9px] font-bold text-slate-500">{multiple ? 'Nhiều tệp' : 'Một phiên bản hiện hành'}</span>
+              </div>
+              {currentFiles.length ? currentFiles.map((file) => (
+                <div key={file.id} className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded border border-white bg-white px-2 py-1.5 text-[10px]">
+                  <span className="min-w-0 truncate" title={file.originalFileName || file.fileName}>{file.displayName || requirement.name} · {file.originalFileName || file.fileName} · v{file.version || 1}</span>
+                  <a href={getPcnFileUrl(file.fileAssetId || file.assetId, { download: true })} download={file.originalFileName || file.fileName} target="_blank" rel="noreferrer" className="shrink-0 font-bold text-indigo-700 underline">Tải tệp</a>
+                </div>
+              )) : <p className="mt-1 text-[9px] text-slate-500">Chưa có tệp đính kèm được gắn vào đầu mục này.</p>}
+              {historyFiles.length ? <details className="mt-1 text-[9px] text-slate-600"><summary className="mobile-touch-target min-h-8 cursor-pointer font-bold">Lịch sử {historyFiles.length} phiên bản</summary>{historyFiles.map((file) => <div key={file.id} className="flex flex-wrap justify-between gap-2 border-t border-white py-1"><span>{file.originalFileName || file.fileName} · v{file.version || 1}</span><a href={getPcnFileUrl(file.fileAssetId || file.assetId, { download: true })} download={file.originalFileName || file.fileName} className="font-bold text-indigo-700 underline">Mở</a></div>)}</details> : null}
+            </article>
+          );
+        })}
+      </div>
+      {pendingMappingAttachments.length ? (
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50/70 p-2">
+          <h4 className="text-[10px] font-black text-amber-900">Tệp chưa gắn đầu mục</h4>
+          <div className="mt-2 space-y-2">
+            {pendingMappingAttachments.map((attachment) => (
+              <div key={attachment.id} className="grid gap-2 rounded border border-amber-100 bg-white p-2 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,1fr)_auto] sm:items-center">
+                <div className="min-w-0 truncate text-[10px] font-bold" title={attachment.originalFileName || attachment.fileName}>{attachment.originalFileName || attachment.fileName}</div>
+                <a href={getPcnFileUrl(attachment.fileAssetId || attachment.assetId, { download: true })} download={attachment.originalFileName || attachment.fileName} className="text-[10px] font-bold text-indigo-700 underline">Mở / tải tệp</a>
+                <div className="flex flex-wrap gap-1.5">
+                  <select aria-label="Chọn đầu mục cho tệp chưa gắn" value={attachmentMappingSelections[attachment.id] || ''} onChange={(event) => setAttachmentMappingSelections((current) => ({ ...current, [attachment.id]: event.target.value }))} disabled={!canEditDossierSteps || Boolean(mappingAttachmentId)} className="mobile-touch-target min-h-10 min-w-48 rounded-md border border-slate-200 bg-white px-2 text-[10px]">
+                    <option value="">Chọn đầu mục hồ sơ...</option>
+                    {b1AttachmentRequirements.map((item) => <option key={item.requirementId} value={item.requirementId}>{item.displayName} · {item.requirementId}</option>)}
+                  </select>
+                  <button type="button" onClick={() => void mapPendingAttachment(attachment)} disabled={!canEditDossierSteps || !attachmentMappingSelections[attachment.id] || Boolean(mappingAttachmentId)} className="mobile-touch-target min-h-10 rounded-md bg-emerald-700 px-2 text-[10px] font-black text-white disabled:opacity-50">{mappingAttachmentId === attachment.id ? 'Đang gắn...' : 'Gắn đầu mục'}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+  const documentWorkspaceTab = <div className="space-y-3"><details className="rounded-lg border border-slate-200 bg-white" data-testid="pcn-dossier-attachments"><summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 py-2 text-[11px] font-black text-slate-700"><span>Tệp liên kết trong bộ hồ sơ</span><span className="text-[11px] font-bold text-slate-400">{dossierAttachmentsForPackage.length + attachmentIds.length} tệp</span></summary><div className="border-t border-slate-100 p-2">{attachmentContent}{mappedAttachmentContent}</div></details></div>;
   const saveMilestones = async () => {
     if (isUpdating) return;
     if (!canEditDossierSteps) return;

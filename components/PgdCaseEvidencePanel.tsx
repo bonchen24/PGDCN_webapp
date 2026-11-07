@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 
 import { usePgdStore } from '../store-pgd';
 import type { PgdInspectionRequest, PgdSample } from '../utils/pgdDomain';
-import { buildPgdSampleRegister, getPgdDossierRequirementStationKey } from '../utils/pgdDossier';
+import { buildPgdSampleRegister, getCurrentPgdDossierDocuments, getPgdDossierRequirementStationKey } from '../utils/pgdDossier';
 import type { PgdDossierDocument, PgdDossierRequirement, PgdDossierRequirementGroup } from '../utils/pgdDossier';
 import { getPgdDossierDocumentDownloadUrl } from '../utils/pgdApi';
+import { resolveB1AttachmentRequirements } from '../utils/pgdcnB1Attachments';
 import { getPgdOperationalStepAccess } from '../utils/pgdWorkflow';
 import PgdDossierOperationsPanel from './PgdDossierOperationsPanel';
 import { PgdcnDateInput } from './PgdcnDateInput';
@@ -154,6 +155,8 @@ export default ({
   requestIdRef.current = request.id;
   const [busy, setBusy] = useState(false);
   const [confirmingCode, setConfirmingCode] = useState('');
+  const [mappingSelections, setMappingSelections] = useState<Record<string, string>>({});
+  const [mappingDocumentId, setMappingDocumentId] = useState('');
   const [formResetVersion, setFormResetVersion] = useState(0);
   const register = useMemo(() => buildPgdSampleRegister(samples), [samples]);
   const requirementAccess = useMemo(() => new Map(requirements.map((requirement) => [
@@ -188,6 +191,26 @@ export default ({
     }
     return map;
   }, [dossierDocuments]);
+  const currentDocumentsByRequirement = useMemo(() => {
+    const map = new Map<string, PgdDossierDocument[]>();
+    const currentDocuments = getCurrentPgdDossierDocuments(dossierDocuments, requirements);
+    for (const document of currentDocuments) {
+      const items = map.get(document.requirementCode) || [];
+      items.push(document);
+      map.set(document.requirementCode, items);
+    }
+    return map;
+  }, [dossierDocuments, requirements]);
+  const b1MappingRequirements = useMemo(() => resolveB1AttachmentRequirements({
+    domain: 'PGD',
+    productGroup: request.productGroup,
+    templateId: request.workflowTemplateId,
+    templateVersion: request.workflowTemplateVersion,
+    workflowSnapshot: request.workflowSnapshot,
+  }), [request.productGroup, request.workflowSnapshot, request.workflowTemplateId, request.workflowTemplateVersion]);
+  const pendingMappingDocuments = useMemo(() => dossierDocuments.filter((document) =>
+    document.mappingStatus === 'PENDING_MAPPING' || document.mappingStatus === 'UNMAPPED' || document.status === 'PENDING_MAPPING'
+  ), [dossierDocuments]);
 
   const updateForm = <K extends keyof DocumentFormState>(key: K, value: DocumentFormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -298,6 +321,31 @@ export default ({
     }
   };
 
+  const mapPendingDocument = async (document: PgdDossierDocument) => {
+    const requirementCode = mappingSelections[document.id];
+    if (!requirementCode) {
+      toast.error('Hãy chọn đầu mục hồ sơ trước khi gắn tệp.');
+      return;
+    }
+    setMappingDocumentId(document.id);
+    try {
+      const response = await fetch(`/api/pgd/requests/${encodeURIComponent(request.id)}/attachment-mapping`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ documentId: document.id, requirementCode }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || payload?.message || 'Không thể gắn đầu mục hồ sơ.');
+      await usePgdStore.getState().load(true);
+      toast.success('Đã gắn tệp vào đầu mục hồ sơ đã chọn.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể gắn đầu mục hồ sơ.');
+    } finally {
+      setMappingDocumentId('');
+    }
+  };
+
   return (
     <section className="min-w-0 space-y-3 [&_*:focus-visible]:outline-none [&_*:focus-visible]:ring-2 [&_*:focus-visible]:ring-offset-2 [&_*:focus-visible]:ring-blue-500">
       <PgdDossierOperationsPanel request={request} requirements={requirements} dossierDocuments={dossierDocuments} canMutate={canMutate} editable={editable} />
@@ -318,13 +366,49 @@ export default ({
         </div>
 
         <div className="mt-3 space-y-3">
+          {pendingMappingDocuments.length > 0 ? (
+            <section aria-label="Tệp PGD đang chờ gắn đầu mục" className="rounded-lg border border-amber-200 bg-amber-50/60 p-2.5">
+              <h4 className="text-[11px] font-black text-amber-900">Tệp chưa gắn đầu mục</h4>
+              <div className="mt-2 space-y-2">
+                {pendingMappingDocuments.map((document) => (
+                  <div key={document.id} className="grid gap-2 rounded-md border border-amber-100 bg-white p-2 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,1fr)_auto] sm:items-center">
+                    <div className="min-w-0">
+                      <div className="truncate text-[10px] font-bold text-slate-800" title={document.originalFileName || document.fileName}>{document.originalFileName || document.fileName}</div>
+                      <div className="text-[9px] text-slate-500">{document.displayName || 'Tài liệu bổ sung khác'} · {formatBytes(document.byteSize)}</div>
+                    </div>
+                    {document.fileAssetId ? <a className="text-[10px] font-bold text-blue-700 underline" href={getPgdDossierDocumentDownloadUrl(document.id)} download={document.originalFileName || document.fileName} target="_blank" rel="noreferrer">Mở / tải tệp</a> : <span className="text-[9px] text-slate-500">Chỉ có metadata</span>}
+                    <div className="flex flex-wrap gap-1.5">
+                      <select
+                        aria-label={`Chọn đầu mục cho ${document.originalFileName || document.fileName}`}
+                        value={mappingSelections[document.id] || ''}
+                        onChange={(event) => setMappingSelections((current) => ({ ...current, [document.id]: event.target.value }))}
+                        disabled={!canMutate || !editable || Boolean(mappingDocumentId)}
+                        className="mobile-touch-target min-h-10 min-w-48 rounded-md border border-slate-200 bg-white px-2 text-[10px]"
+                      >
+                        <option value="">Chọn đầu mục hồ sơ...</option>
+                        {b1MappingRequirements.map((item) => <option key={item.requirementId} value={item.requirementId}>{item.displayName} · {item.requirementId}</option>)}
+                      </select>
+                      <button type="button" onClick={() => void mapPendingDocument(document)} disabled={!canMutate || !editable || !mappingSelections[document.id] || Boolean(mappingDocumentId)} className="mobile-touch-target min-h-10 rounded-md bg-blue-700 px-2 text-[10px] font-black text-white disabled:opacity-50">
+                        {mappingDocumentId === document.id ? 'Đang gắn...' : 'Gắn đầu mục'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
           {groupedRequirements.map(([group, items]) => (
             <div key={group} className="rounded-lg border border-slate-100 bg-slate-50/80 p-2.5">
               <div className="mb-2 text-[11px] font-black uppercase tracking-wide text-slate-500">{REQUIREMENT_GROUP_LABELS[group]}</div>
               <div className="space-y-2">
                 {items.map((requirement) => {
                   const documents = documentsByRequirement.get(requirement.code) || [];
-                  const current = documents[0];
+                  const currentDocuments = currentDocumentsByRequirement.get(requirement.code) || [];
+                  const current = currentDocuments[0];
+                  const historicalDocuments = documents.filter((document) =>
+                    !currentDocuments.some((item) => item.id === document.id)
+                    && (document.status === 'SUPERSEDED' || documents.some((item) => item.supersedesDocumentId === document.id))
+                  );
                   const checklistItem = request.dossierChecklist?.find((item) => item.requirementCode === requirement.code);
                   const customRequirement = Boolean(requirement.customDefinition);
                   const requirementRequired = checklistItem?.required ?? requirement.required;
@@ -361,9 +445,9 @@ export default ({
                       {current ? (
                         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-100 bg-emerald-50/60 px-2 py-1.5 text-[9px] text-slate-600">
                           <div className="min-w-0">
-                            <div className="overflow-hidden text-ellipsis whitespace-nowrap font-bold text-slate-700" title={current.fileName}>{current.title} · v{current.version}</div>
+                            <div className="overflow-hidden text-ellipsis whitespace-nowrap font-bold text-slate-700" title={current.originalFileName || current.fileName}>{current.displayName || current.title} · v{current.version}</div>
                             <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
-                              <span title={current.fileName}>{current.fileName}</span>
+                              <span title={current.originalFileName || current.fileName}>{current.originalFileName || current.fileName}</span>
                               <span>{formatBytes(current.byteSize)}</span>
                               <span>Tải lên {formatDate(current.uploadedAt)}</span>
                               {current.documentNumber ? <span>Số: {current.documentNumber}</span> : null}
@@ -376,10 +460,10 @@ export default ({
                               {canConfirm ? <button type="button" onClick={() => void confirmDocument(requirement.code)} disabled={Boolean(confirmingCode)} aria-busy={confirmingCode === requirement.code} className="mobile-touch-target inline-flex min-h-11 items-center gap-1 rounded-lg border border-blue-200 bg-white px-2 text-[11px] font-black text-blue-700 hover:bg-blue-50 disabled:opacity-50">{confirmingCode === requirement.code ? 'Đang xác nhận…' : <><CheckCircle2 size={12} />Xác nhận tệp</>}</button> : null}
                               <a
                                 href={getPgdDossierDocumentDownloadUrl(current.id)}
-                                download={current.fileName}
+                                download={current.originalFileName || current.fileName}
                                 target="_blank"
                                 rel="noreferrer"
-                                title={`Tải ${current.fileName}`}
+                                title={`Tải ${current.originalFileName || current.fileName}`}
                                 className="mobile-touch-target inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2 text-[11px] font-black text-emerald-700 hover:bg-emerald-50"
                               >
                                 <Download size={12} />
@@ -393,6 +477,20 @@ export default ({
                       ) : (
                         <p className="mt-2 text-[11px] font-bold text-amber-700">Chưa có tài liệu hiện hành cho mục này.</p>
                       )}
+                      {currentDocuments.slice(1).map((document) => (
+                        <div key={document.id} className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-100 bg-emerald-50/60 px-2 py-1.5 text-[9px]">
+                          <span className="min-w-0 truncate font-bold text-slate-700" title={document.originalFileName || document.fileName}>{document.displayName || document.title} · {document.originalFileName || document.fileName} · v{document.version}</span>
+                          {document.fileAssetId ? <a href={getPgdDossierDocumentDownloadUrl(document.id)} download={document.originalFileName || document.fileName} target="_blank" rel="noreferrer" className="font-black text-emerald-700 underline">Tải tệp</a> : null}
+                        </div>
+                      ))}
+                      {historicalDocuments.length > 0 ? (
+                        <details className="mt-2 rounded-md border border-slate-200 px-2 py-1.5 text-[9px] text-slate-600">
+                          <summary className="mobile-touch-target min-h-9 cursor-pointer font-bold">Lịch sử {historicalDocuments.length} phiên bản</summary>
+                          <div className="mt-1 space-y-1">
+                            {historicalDocuments.map((document) => <div key={document.id} className="flex flex-wrap justify-between gap-2 border-t border-slate-100 pt-1"><span>{document.displayName || document.title} · {document.originalFileName || document.fileName} · v{document.version}</span>{document.fileAssetId ? <a href={getPgdDossierDocumentDownloadUrl(document.id)} download={document.originalFileName || document.fileName} target="_blank" rel="noreferrer" className="font-bold text-blue-700 underline">Mở</a> : null}</div>)}
+                          </div>
+                        </details>
+                      ) : null}
                     </article>
                   );
                 })}

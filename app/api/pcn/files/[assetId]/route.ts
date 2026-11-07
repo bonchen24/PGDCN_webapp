@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pool } from '@/lib/server/postgres';
-import { requirePcnSession } from '@/lib/server/auth';
+import { getPcnSessionUser, requirePcnSession } from '@/lib/server/auth';
+import { isPcnSystemManager } from '@/utils/pcnRbac';
 import { getPcnStorageClient } from '@/lib/server/storage';
-import { jsonBadRequest, jsonError, jsonNotFound } from '@/lib/server/response';
+import { jsonBadRequest, jsonError, jsonForbidden, jsonNotFound } from '@/lib/server/response';
 import { DATABASE_PROFILE } from '@/lib/server/env';
 import {
   buildPcnFileContentDisposition,
@@ -21,6 +22,12 @@ export async function GET(
   const sessionError = requirePcnSession(req);
   if (sessionError) return sessionError;
 
+  const actor = getPcnSessionUser(req);
+  const isAllowed = isPcnSystemManager(actor) || actor?.departmentScopes?.includes('PCN');
+  if (!isAllowed) {
+    return jsonForbidden('Tài khoản chưa được cấp phạm vi PCN.');
+  }
+
   const { assetId: rawAssetId } = await params;
   const assetId = String(rawAssetId || '').trim();
 
@@ -38,9 +45,14 @@ export async function GET(
       return jsonNotFound('Không tìm thấy file asset PCN.');
     }
 
+    const sourceResult = await pool.query(
+      'SELECT data FROM app_documents WHERE collection_name = $1 AND document_id = $2 LIMIT 1',
+      [asset.source_collection, asset.source_document_id],
+    );
+    const sourceData = sourceResult.rows[0]?.data || {};
     const storage = getPcnStorageClient();
     const downloaded = await storage.downloadObject({ bucketName: asset.bucket_name, objectPath: asset.object_path });
-    const fileName = String(asset.object_path).split('/').pop() || 'pcn-file';
+    const fileName = String(sourceData.originalFileName || sourceData.fileName || String(asset.object_path).split('/').pop() || 'pcn-file');
 
     const { searchParams } = new URL(req.url);
     const isAttachment = String(searchParams.get('download') || '') === '1';

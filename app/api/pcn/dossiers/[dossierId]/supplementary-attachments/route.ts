@@ -12,6 +12,7 @@ import { isPcnDossierPostApprovalLocked } from '@/utils/pcnDossierStepAccess';
 import { isPcnSystemManager } from '@/utils/pcnRbac';
 import { buildActivityLog, validateActivityLogPayload } from '@/utils/activityLog';
 import { sanitizePcnPathSegment } from '@/lib/server/pcn-files';
+import { resolveB1AttachmentRequirements } from '@/utils/pgdcnB1Attachments';
 
 const EDITABLE_NODE_TASK_STATUSES = new Set(['READY', 'IN_PROGRESS', 'WAITING', 'RETURNED', 'COMPLETED']);
 const SUPPORTED_FILE_EXTENSIONS = new Set(['pdf', 'docx', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif']);
@@ -36,6 +37,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
   const title = String(formData.get('title') || '').trim();
   const description = String(formData.get('description') || '').trim();
   const supplementaryItemId = String(formData.get('supplementaryItemId') || '').trim();
+  const rawRequirementId = String(formData.get('requirementId') || '').trim();
+  const rawRequirementCode = String(formData.get('requirementCode') || '').trim();
+  const rawMappingStatus = String(formData.get('mappingStatus') || '').trim();
+  const requestedDocumentKind = String(formData.get('documentKind') || '').trim();
+  const reqId = rawRequirementId || rawRequirementCode;
+  const isPendingToken = (value: string) => ['PENDING_MAPPING', 'UNMAPPED'].includes(value.toUpperCase());
+  const hasPendingInput = isPendingToken(rawRequirementId) || isPendingToken(rawRequirementCode)
+    || ['PENDING_MAPPING', 'UNMAPPED'].includes(rawMappingStatus.toUpperCase());
+  const hasConcreteRequirementInput = Boolean(
+    (rawRequirementId && !isPendingToken(rawRequirementId))
+    || (rawRequirementCode && !isPendingToken(rawRequirementCode))
+  );
+  if (hasPendingInput && hasConcreteRequirementInput) {
+    return jsonBadRequest('Không thể đồng thời chọn requirement cụ thể và trạng thái chờ ánh xạ.');
+  }
+  if (/^(PGD_|pgd-|REQUEST_|COMMERCIAL_|CUSTOMS_|PACKING_|BILL_)/i.test(reqId)) {
+    return jsonBadRequest('Yêu cầu không thuộc phạm vi hồ sơ PCN.');
+  }
   const originalName = String(file?.name || '').trim();
   const extension = originalName.toLowerCase().split('.').pop() || '';
   if (!stageId || stageId.length > 200 || title.length > 255 || description.length > 2000 || supplementaryItemId.length > 200) {
@@ -96,6 +115,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
       const now = new Date().toISOString();
       const fileBuffer = file ? Buffer.from(await file.arrayBuffer()) : undefined;
       const sha256 = fileBuffer ? createHash('sha256').update(fileBuffer).digest('hex') : undefined;
+
+      const isPendingMapping = !reqId || isPendingToken(reqId) || ['PENDING_MAPPING', 'UNMAPPED'].includes(rawMappingStatus.toUpperCase());
+      let resolvedRequirementId: string | undefined;
+      let resolvedRequirementCode: string | undefined;
+      let resolvedDisplayName: string | undefined;
+      let resolvedDocumentKind: string | undefined;
+      let isMultiple = false;
+
+      if (!isPendingMapping && reqId) {
+        const b1Requirements = resolveB1AttachmentRequirements({
+          domain: 'PCN',
+          fieldCode,
+          templateId: dossier.workflowTemplateId,
+          templateVersion: dossier.workflowTemplateVersion,
+          workflowSnapshot: dossier.workflowSnapshot as any,
+        });
+        const matchedReq = b1Requirements.find(
+          (r) => (r.requirementId === reqId || r.requirementCode === reqId)
+            && (!rawRequirementId || r.requirementId === rawRequirementId)
+            && (!rawRequirementCode || r.requirementCode === rawRequirementCode)
+        );
+        if (!matchedReq) {
+          throw Object.assign(new Error('Yêu cầu B1 không thuộc template/lưu trình PCN của hồ sơ.'), { statusCode: 400 });
+        }
+        resolvedRequirementId = matchedReq.requirementId;
+        resolvedRequirementCode = matchedReq.requirementCode;
+        resolvedDisplayName = matchedReq.displayName;
+        resolvedDocumentKind = matchedReq.documentKind;
+        isMultiple = matchedReq.multiplicity === 'MULTIPLE';
+      }
+
       let attachment: ReturnType<typeof buildPcnSupplementaryDossierAttachment> | ReturnType<typeof buildPcnSupplementaryDossierMetadata>;
       let safeFileName = '';
 
@@ -117,8 +167,54 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
           [attachment.id, JSON.stringify(getDocumentPayload(attachment))],
         );
       } else {
+        safeFileName = sanitizePcnPathSegment(originalName);
+        if (supplementaryItemId && fileBuffer && sha256) {
+          const priorItemResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'dossierAttachments'
+               AND data->>'dossierId' = $1
+               AND data->>'supplementaryItemId' = $2
+               AND COALESCE(data->>'metadataOnly', 'false') <> 'true'
+             ORDER BY COALESCE((data->>'version')::int, 1) DESC, updated_at DESC LIMIT 1 FOR UPDATE`,
+            [dossier.id, supplementaryItemId],
+          );
+          const priorItem = priorItemResult.rows[0] ? mapDocumentRow(priorItemResult.rows[0]) as PcnDossierAttachment : undefined;
+          if (
+            priorItem && priorItem.sha256 === sha256 && priorItem.fileName === safeFileName
+            && priorItem.title === title && priorItem.description === description
+            && (priorItem.requirementId === resolvedRequirementId || (!priorItem.requirementId && !resolvedRequirementId))
+          ) return { attachment: priorItem, idempotent: true as const };
+        }
+
         let itemId = supplementaryItemId;
         let supersedesAttachmentId: string | undefined;
+        let version = 1;
+
+        if (!isMultiple && resolvedRequirementId) {
+          const priorReqResult = await client.query(
+            `SELECT document_id, data FROM app_documents
+             WHERE collection_name = 'dossierAttachments'
+               AND data->>'dossierId' = $1
+               AND (data->>'requirementId' = $2 OR data->>'requirementCode' = $2)
+               AND COALESCE(data->>'status', 'ACTIVE') = 'ACTIVE'
+               AND COALESCE(data->>'metadataOnly', 'false') <> 'true'
+             ORDER BY COALESCE((data->>'version')::int, 1) DESC LIMIT 1 FOR UPDATE`,
+            [dossier.id, resolvedRequirementId],
+          );
+          const priorForReq = priorReqResult.rows[0] ? (mapDocumentRow(priorReqResult.rows[0]) as PcnDossierAttachment) : undefined;
+          if (priorForReq) {
+            version = (priorForReq.version || 1) + 1;
+            supersedesAttachmentId = priorForReq.id;
+            const updatedPrior = { ...priorForReq, status: 'SUPERSEDED' };
+            await client.query(
+              `UPDATE app_documents
+               SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+               WHERE collection_name = 'dossierAttachments' AND document_id = $1`,
+              [priorForReq.id, JSON.stringify(getDocumentPayload(updatedPrior))],
+            );
+          }
+        }
+
         if (itemId) {
           const itemResult = await client.query(
             `SELECT document_id, data FROM app_documents
@@ -143,10 +239,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
           );
           const latest = latestFile.rows[0] ? mapDocumentRow(latestFile.rows[0]) as PcnDossierAttachment : undefined;
           safeFileName = sanitizePcnPathSegment(originalName);
-          if (latest && latest.sha256 === sha256 && latest.fileName === safeFileName && latest.title === title && latest.description === description) {
+          if (
+            latest &&
+            latest.sha256 === sha256 &&
+            latest.fileName === safeFileName &&
+            latest.title === title &&
+            latest.description === description &&
+            (latest.requirementId === resolvedRequirementId || (!latest.requirementId && !resolvedRequirementId))
+          ) {
             return { attachment: latest, idempotent: true as const };
           }
-          supersedesAttachmentId = latest?.id;
+          if (!supersedesAttachmentId) {
+            supersedesAttachmentId = latest?.id;
+          }
         } else {
           itemId = `pcn-supplementary-item-${randomUUID()}`;
         }
@@ -185,6 +290,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dos
           description,
           supplementaryItemId: itemId,
           supersedesAttachmentId,
+          requirementId: resolvedRequirementId,
+          requirementCode: resolvedRequirementCode,
+          displayName: resolvedDisplayName || (isPendingMapping ? 'Tài liệu bổ sung khác' : undefined),
+          documentKind: resolvedDocumentKind || requestedDocumentKind,
+          ...(isMultiple ? { multiplicity: 'MULTIPLE' as const } : { multiplicity: 'SINGLE' as const }),
+          originalFileName: originalName,
+          canonicalStageId: resolvedRequirementId || isPendingMapping ? 'B1' : stageId,
+          mappingStatus: isPendingMapping ? 'PENDING_MAPPING' : resolvedRequirementId ? 'MAPPED' : 'PENDING_MAPPING',
+          templateId: dossier.workflowTemplateId,
+          templateVersion: dossier.workflowTemplateVersion,
+          version,
+          status: isPendingMapping ? 'PENDING_MAPPING' : 'ACTIVE',
+          uploadedByUsername: actor.username,
         });
         await client.query(
           `INSERT INTO app_documents (collection_name, document_id, data, updated_at)

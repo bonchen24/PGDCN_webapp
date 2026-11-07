@@ -130,6 +130,10 @@ export async function uploadPcnDossierSupplementaryAttachment(input: {
   description?: string;
   file?: File;
   supplementaryItemId?: string;
+  requirementId?: string;
+  requirementCode?: string;
+  mappingStatus?: string;
+  documentKind?: string;
 }): Promise<{ attachment: PcnDossierAttachment; activityLog?: ActivityLog }> {
   const form = new FormData();
   form.set('stageId', input.stageId);
@@ -137,6 +141,10 @@ export async function uploadPcnDossierSupplementaryAttachment(input: {
   if (input.description) form.set('description', input.description);
   if (input.file) form.set('file', input.file);
   if (input.supplementaryItemId) form.set('supplementaryItemId', input.supplementaryItemId);
+  if (input.requirementId) form.set('requirementId', input.requirementId);
+  if (input.requirementCode) form.set('requirementCode', input.requirementCode);
+  if (input.mappingStatus) form.set('mappingStatus', input.mappingStatus);
+  if (input.documentKind) form.set('documentKind', input.documentKind);
   const response = await fetch(`/api/pcn/dossiers/${encodeURIComponent(input.dossierId)}/supplementary-attachments`, {
     method: 'POST',
     credentials: 'same-origin',

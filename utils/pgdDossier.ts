@@ -58,7 +58,7 @@ export function getPgdDossierRequirementsWithCustom(
     requirementSource: definition.source,
     ...(definition.condition ? { condition: definition.condition } : {}),
     ownerRole: definition.ownerRole,
-    multiplicity: 'SINGLE' as const,
+    multiplicity: definition.multiplicity || 'SINGLE',
     ...(stage ? { stageId: stage.id, stageLabel: stage.label } : {}),
     customDefinition: definition,
     };
@@ -165,6 +165,7 @@ export function markPgdDossierChecklistPresent(
 export interface PgdDossierDocument {
   id: string;
   domain: typeof PGD_DOMAIN;
+  dossierId?: string;
   requestId: string;
   assessmentRoundId?: string;
   requirementCode: string;
@@ -184,8 +185,21 @@ export interface PgdDossierDocument {
   byteSize?: number;
   supersedesDocumentId?: string;
   supplementaryStageId?: string;
+  supplementaryItemId?: string;
   originCollection?: typeof PGD_COLLECTIONS.documents;
   originDocumentId?: string;
+  templateId?: string;
+  templateVersion?: number;
+  requirementId?: string;
+  stageId?: string;
+  documentKind?: string;
+  originalFileName?: string;
+  displayName?: string;
+  multiplicity?: 'SINGLE' | 'MULTIPLE';
+  status?: string;
+  mappingStatus?: 'MAPPED' | 'PENDING_MAPPING' | 'UNMAPPED';
+  mappedByUsername?: string;
+  mappedAt?: string;
 }
 
 /**
@@ -196,19 +210,40 @@ export interface PgdDossierDocument {
  * must project one deterministic current row per requirement before counting
  * or attaching generated output.
  */
-export function getCurrentPgdDossierDocuments(documents: readonly PgdDossierDocument[]): PgdDossierDocument[] {
-  const currentByRequirement = new Map<string, PgdDossierDocument>();
+export function getCurrentPgdDossierDocuments(
+  documents: readonly PgdDossierDocument[],
+  requirements: readonly { code: string; multiplicity?: string }[] = [],
+): PgdDossierDocument[] {
+  const multSet = new Set(
+    requirements.filter((r) => r.multiplicity === 'MULTIPLE').map((r) => r.code)
+  );
+  const supersededIds = new Set(
+    documents.map((d) => d.supersedesDocumentId).filter(Boolean)
+  );
+  const result: PgdDossierDocument[] = [];
+  const singleKeysSeen = new Set<string>();
+
   const ordered = [...documents].sort((left, right) => (
     left.requirementCode.localeCompare(right.requirementCode)
     || right.version - left.version
     || right.uploadedAt.localeCompare(left.uploadedAt)
     || right.id.localeCompare(left.id)
   ));
-  for (const document of ordered) {
-    const key = `${document.assessmentRoundId || 'dossier'}:${document.requirementCode}`;
-    if (!currentByRequirement.has(key)) currentByRequirement.set(key, clone(document));
+
+  for (const doc of ordered) {
+    if (doc.status === 'SUPERSEDED' || supersededIds.has(doc.id)) continue;
+    const isMultiple = multSet.has(doc.requirementCode) || (doc as any).multiplicity === 'MULTIPLE';
+    const key = `${doc.assessmentRoundId || 'dossier'}:${doc.requirementCode}`;
+    if (isMultiple) {
+      result.push(clone(doc));
+    } else {
+      if (!singleKeysSeen.has(key)) {
+        singleKeysSeen.add(key);
+        result.push(clone(doc));
+      }
+    }
   }
-  return Array.from(currentByRequirement.values());
+  return result;
 }
 
 function clone<T>(value: T): T {
@@ -403,6 +438,7 @@ export function buildPgdDossierDocument(input: Partial<PgdDossierDocument>, now 
   return {
     id,
     domain: PGD_DOMAIN,
+    dossierId: clean((input as PgdDossierDocument).dossierId) || requestId,
     requestId,
     ...(clean((input as PgdDossierDocument).assessmentRoundId) ? { assessmentRoundId: clean((input as PgdDossierDocument).assessmentRoundId) } : {}),
     requirementCode,
@@ -422,6 +458,19 @@ export function buildPgdDossierDocument(input: Partial<PgdDossierDocument>, now 
     ...(Number.isFinite((input as PgdDossierDocument).byteSize) ? { byteSize: (input as PgdDossierDocument).byteSize } : {}),
     ...(clean((input as PgdDossierDocument).supersedesDocumentId) ? { supersedesDocumentId: clean((input as PgdDossierDocument).supersedesDocumentId) } : {}),
     ...(clean((input as PgdDossierDocument).supplementaryStageId) ? { supplementaryStageId: clean((input as PgdDossierDocument).supplementaryStageId) } : {}),
+    ...(clean((input as PgdDossierDocument).supplementaryItemId) ? { supplementaryItemId: clean((input as PgdDossierDocument).supplementaryItemId) } : {}),
+    ...(clean((input as PgdDossierDocument).templateId) ? { templateId: clean((input as PgdDossierDocument).templateId) } : {}),
+    ...(Number.isFinite((input as PgdDossierDocument).templateVersion) ? { templateVersion: (input as PgdDossierDocument).templateVersion } : {}),
+    ...(clean((input as PgdDossierDocument).requirementId) ? { requirementId: clean((input as PgdDossierDocument).requirementId) } : {}),
+    ...(clean((input as PgdDossierDocument).stageId) ? { stageId: clean((input as PgdDossierDocument).stageId) } : {}),
+    ...(clean((input as PgdDossierDocument).documentKind) ? { documentKind: clean((input as PgdDossierDocument).documentKind) } : {}),
+    ...(clean((input as PgdDossierDocument).originalFileName) ? { originalFileName: clean((input as PgdDossierDocument).originalFileName) } : {}),
+    ...(clean((input as PgdDossierDocument).displayName) ? { displayName: clean((input as PgdDossierDocument).displayName) } : {}),
+    ...(clean((input as PgdDossierDocument).multiplicity) ? { multiplicity: (input as PgdDossierDocument).multiplicity } : {}),
+    ...(clean((input as PgdDossierDocument).status) ? { status: clean((input as PgdDossierDocument).status) } : {}),
+    ...(clean((input as PgdDossierDocument).mappingStatus) ? { mappingStatus: (input as PgdDossierDocument).mappingStatus } : {}),
+    ...(clean((input as PgdDossierDocument).mappedByUsername) ? { mappedByUsername: clean((input as PgdDossierDocument).mappedByUsername) } : {}),
+    ...(clean((input as PgdDossierDocument).mappedAt) ? { mappedAt: clean((input as PgdDossierDocument).mappedAt) } : {}),
     ...(originCollection ? { originCollection: PGD_COLLECTIONS.documents, originDocumentId } : {}),
   };
 }

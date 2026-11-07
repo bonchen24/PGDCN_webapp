@@ -50,14 +50,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ docu
     }
 
     const downloaded = await getPgdStorageClient().downloadObject({ bucketName: asset.bucket_name, objectPath: asset.object_path });
-    const fileName = String(metadata.fileName || 'pgd-dossier-document').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120) || 'pgd-dossier-document';
+    const originalFileName = String(metadata.originalFileName || metadata.fileName || 'pgd-dossier-document')
+      .replace(/[\u0000-\u001f\u007f/\\"]+/g, '_')
+      .slice(0, 200) || 'pgd-dossier-document';
+    const fallbackFileName = originalFileName.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120) || 'pgd-dossier-document';
     const disposition = req.nextUrl.searchParams.get('inline') === '1' ? 'inline' : 'attachment';
 
     return new NextResponse(downloaded.body, {
       status: 200,
       headers: {
         'Content-Type': downloaded.contentType || asset.mime_type || metadata.mimeType || 'application/octet-stream',
-        'Content-Disposition': `${disposition}; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+        'Content-Disposition': `${disposition}; filename="${fallbackFileName}"; filename*=UTF-8''${encodeURIComponent(originalFileName)}`,
       },
     });
   } catch (error: any) {

@@ -71,7 +71,11 @@ import { matchPcnPublishedWorkflowTemplates, resolveTemplateSelectionState } fro
 import { PGDCN_INTAKE_CATALOG, PGDCN_PRODUCT_GROUPS, validateIntakeClassification } from '../utils/pgdcnIntakeCatalog';
 import PgdcnB1AttachmentSection from './PgdcnB1AttachmentSection';
 import { uploadPcnDossierSupplementaryAttachment } from '../utils/pcnDossierDocumentApi';
-import { PGDCN_B1_ATTACHMENT_TYPES, uploadPendingPgdcnB1Attachments, type PgdcnB1SelectedAttachment } from '../utils/pgdcnB1Attachments';
+import {
+  resolveB1AttachmentRequirements,
+  uploadPendingPgdcnB1Attachments,
+  type PgdcnB1SelectedAttachment,
+} from '../utils/pgdcnB1Attachments';
 
 const sectionLabels: Record<PcnSection, string> = {
   dashboard: 'Tổng quan',
@@ -577,7 +581,7 @@ type PcnProposalForm = {
   fieldCodes: string[];
 };
 
-export function PcnProposalView({
+export function ProposalView({
   fields,
   proposals,
   dossiers,
@@ -727,6 +731,11 @@ export function PcnProposalView({
       unknown: rows.filter((row) => !row.definition),
     };
   }, [documentRequirements, recommendedWorkflowTemplate]);
+  const b1Requirements = useMemo(() => resolveB1AttachmentRequirements({
+    domain: 'PCN',
+    fieldCode: form.fieldCodes[0],
+    template: recommendedWorkflowTemplate,
+  }), [form.fieldCodes, recommendedWorkflowTemplate]);
   const legacyCustomerOption = customerValue && !customerOptions.some((option) => option.value === customerValue)
     ? { value: customerValue, label: `Giá trị hiện tại cần rà soát: ${form.customerName || customerValue}`, description: 'Giá trị cũ được giữ nguyên để bạn đối chiếu với Danh sách khách hàng.', disabled: true }
     : undefined;
@@ -857,12 +866,16 @@ export function PcnProposalView({
       setSaving(true);
       try {
         const result = await uploadPendingPgdcnB1Attachments(b1Attachments, async (attachment) => {
-          const category = PGDCN_B1_ATTACHMENT_TYPES.find((item) => item.value === attachment.kind)?.label || 'Khác';
+          const category = attachment.displayName || 'Tài liệu bổ sung khác';
           await uploadPcnDossierSupplementaryAttachment({
             dossierId: createdDossierId,
             stageId: 'intake',
-            title: `${category} · ${attachment.file.name}`,
-            description: `B1: ${category}`,
+            requirementId: attachment.requirementId || (attachment.mappingStatus === 'PENDING_MAPPING' ? 'PENDING_MAPPING' : undefined),
+            requirementCode: attachment.requirementCode,
+            mappingStatus: attachment.mappingStatus,
+            documentKind: attachment.documentKind,
+            title: attachment.displayName || category,
+            description: `B1: ${attachment.displayName || category}`,
             file: attachment.file,
             supplementaryItemId: `pcn-b1-${attachment.id}`,
           });
@@ -971,12 +984,16 @@ export function PcnProposalView({
         });
         setCreatedDossierId(dossierId);
         const result = await uploadPendingPgdcnB1Attachments(b1Attachments, async (attachment) => {
-          const category = PGDCN_B1_ATTACHMENT_TYPES.find((item) => item.value === attachment.kind)?.label || 'Khác';
+          const category = attachment.displayName || 'Tài liệu bổ sung khác';
           await uploadPcnDossierSupplementaryAttachment({
             dossierId,
             stageId: 'intake',
-            title: `${category} · ${attachment.file.name}`,
-            description: `B1: ${category}`,
+            requirementId: attachment.requirementId || (attachment.mappingStatus === 'PENDING_MAPPING' ? 'PENDING_MAPPING' : undefined),
+            requirementCode: attachment.requirementCode,
+            mappingStatus: attachment.mappingStatus,
+            documentKind: attachment.documentKind,
+            title: attachment.displayName || category,
+            description: `B1: ${attachment.displayName || category}`,
             file: attachment.file,
             supplementaryItemId: `pcn-b1-${attachment.id}`,
           });
@@ -1332,7 +1349,8 @@ export function PcnProposalView({
       >
         <form id="pcn-proposal-form" ref={proposalFormRef} onSubmit={submit} className="space-y-3 p-3 md:p-4">
           <PcnOcrPanel context="proposal" onApply={applyProposalOcr} disabled={saving} />
-          {!editingProposal && <PgdcnB1AttachmentSection idPrefix="pcn-proposal" attachments={b1Attachments} onChange={setB1Attachments} disabled={saving || !canEdit} />}
+          {!editingProposal && <PgdcnB1AttachmentSection idPrefix="pcn-proposal" requirements={b1Requirements} attachments={b1Attachments} onChange={setB1Attachments} disabled={saving || !canEdit} />}
+          {!editingProposal && <p className="text-[10px] text-slate-500">Tài liệu, chứng cứ tiếp nhận B1 và checklist tài liệu hồ sơ được đồng bộ tự động.</p>}
 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
 <Field label="Mã Đề nghị">
 <div className="rounded-md border border-indigo-100 bg-indigo-50/60 px-2.5 py-2 text-[10px] font-bold text-indigo-700">Hệ thống tự cấp theo dạng PCN-YYMMDD-TT khi lưu</div>
@@ -1512,6 +1530,10 @@ export function PcnProposalView({
       )}
     </div>
   );
+}
+
+export function PcnProposalView(props: Parameters<typeof ProposalView>[0]) {
+  return <ProposalView {...props} />;
 }
 
 function Field({ label, required, error, errorId, hideLabel = false, children }: { label: string; required?: boolean; error?: string; errorId?: string; hideLabel?: boolean; children: React.ReactNode }) {

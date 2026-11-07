@@ -665,7 +665,7 @@ export type PcnHistoricalFileKind =
   | 'PHOTO'
   | 'OTHER';
 
-export type PcnAttachmentMappingStatus = 'AUTO_MAPPED' | 'UNMAPPED' | 'MANUAL_MAPPED';
+export type PcnAttachmentMappingStatus = 'AUTO_MAPPED' | 'UNMAPPED' | 'MANUAL_MAPPED' | 'PENDING_MAPPING' | 'MAPPED';
 
 export interface PcnDossierAttachment {
   id: string;
@@ -689,6 +689,23 @@ export interface PcnDossierAttachment {
   metadataOnly?: boolean;
   supplementaryItemId?: string;
   supersedesAttachmentId?: string;
+  domain?: 'PCN';
+  templateId?: string;
+  templateVersion?: number;
+  requirementCode?: string;
+  stageId?: string;
+  documentKind?: string;
+  multiplicity?: 'SINGLE' | 'MULTIPLE';
+  originalFileName?: string;
+  displayName?: string;
+  version?: number;
+  status?: string;
+  uploadedByUsername?: string;
+  uploadedAt?: string;
+  fileAssetId?: string;
+  checksum?: string;
+  mappedByUsername?: string;
+  mappedAt?: string;
 }
 
 export type PcnGeneratedDocumentKind = 'DOSSIER_COVER' | 'PROPOSAL_SUMMARY' | 'PROPOSAL_FORM' | 'ASSIGNMENT_FORM' | 'EVALUATION_PLAN' | 'FIELD_INSPECTION' | 'SAMPLE_TAKING' | 'SAMPLE_CODING' | 'EVALUATION_REPORT' | 'SAMPLE_HANDOVER' | 'SAMPLE_RETURN' | 'LAB_REQUEST';

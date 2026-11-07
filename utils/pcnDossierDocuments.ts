@@ -1,5 +1,6 @@
 import type {
   PcnDossierAttachment,
+  PcnAttachmentMappingStatus,
   PcnCertificationFieldCode,
   PcnDocumentRequirement,
   PcnDossierDocument,
@@ -43,7 +44,7 @@ function requirement(
 }
 
 /** Initial business baseline for the active PCN QC4/QC9 field catalog. */
-const BASE_PCN_DOCUMENT_REQUIREMENTS: PcnDocumentRequirement[] = [
+export const BASE_PCN_DOCUMENT_REQUIREMENTS: PcnDocumentRequirement[] = [
   requirement('QC4', 'PROPOSAL', 'Đề nghị / đơn đăng ký', [...INTAKE], 10),
   requirement('QC4', 'COMMERCIAL', 'Báo giá / hợp đồng', [...INTAKE], 20),
   requirement('QC4', 'ASSIGNMENT_FORM', 'Phiếu phân công chứng nhận', [...INTAKE], 25),
@@ -187,7 +188,7 @@ export function getPcnDossierRequirementsWithCustom(
         requirementSource: definition.source === 'DRAFT_FROM_DOCX_TEMPLATE' ? 'UPLOAD_EXTERNAL' : definition.source,
         ...(definition.condition ? { condition: definition.condition } : {}),
         ownerRole: definition.ownerRole,
-        multiplicity: 'SINGLE',
+        multiplicity: definition.multiplicity || 'SINGLE',
         ...(workflowStage ? { workflowStageId: workflowStage.id, workflowStageLabel: workflowStage.label } : {}),
       };
     });
@@ -371,28 +372,56 @@ export function buildPcnSupplementaryDossierAttachment(input: {
   description?: string;
   supplementaryItemId?: string;
   supersedesAttachmentId?: string;
+  requirementId?: string;
+  requirementCode?: string;
+  mappingStatus?: PcnAttachmentMappingStatus;
+  templateId?: string;
+  templateVersion?: number;
+  displayName?: string;
+  multiplicity?: 'SINGLE' | 'MULTIPLE';
+  version?: number;
+  status?: string;
+  uploadedByUsername?: string;
+  documentKind?: string;
+  originalFileName?: string;
+  canonicalStageId?: string;
 }): PcnDossierAttachment {
   const fileName = input.fileName.trim().slice(0, 255);
   const id = `pcn-attachment-supplementary-${input.assetId}`;
   return {
     id,
+    domain: 'PCN',
     dossierId: input.dossierId,
     fieldCode: input.fieldCode,
     kind: 'OTHER',
     supplementaryStageId: input.stageId,
+    stageId: input.canonicalStageId || input.stageId,
     supplementaryItemId: input.supplementaryItemId || id,
     ...(input.supersedesAttachmentId ? { supersedesAttachmentId: input.supersedesAttachmentId } : {}),
-    mappingStatus: 'MANUAL_MAPPED',
+    mappingStatus: input.mappingStatus || 'MANUAL_MAPPED',
     mappingReason: `Tệp phụ trợ của bước ${input.stageLabel}.`,
     fileName,
+    originalFileName: input.originalFileName || fileName,
     ...(input.title ? { title: input.title.trim().slice(0, 255) } : {}),
     ...(input.description ? { description: input.description.trim().slice(0, 2000) } : {}),
+    ...(input.displayName ? { displayName: input.displayName } : {}),
+    ...(input.multiplicity ? { multiplicity: input.multiplicity } : {}),
+    ...(input.requirementId ? { requirementId: input.requirementId } : {}),
+    ...(input.requirementCode ? { requirementCode: input.requirementCode } : {}),
+    ...(input.templateId ? { templateId: input.templateId } : {}),
+    ...(input.templateVersion !== undefined ? { templateVersion: input.templateVersion } : {}),
+    ...(input.version !== undefined ? { version: input.version } : {}),
+    status: input.status || 'ACTIVE',
     sourceRelativePath: `PCN_SUPPLEMENTARY/${input.stageId}/${fileName}`,
     assetId: input.assetId,
+    fileAssetId: input.assetId,
     mimeType: input.mimeType,
     byteSize: input.byteSize,
     sha256: input.sha256,
+    checksum: input.sha256,
     importedAt: input.uploadedAt,
+    uploadedAt: input.uploadedAt,
+    ...(input.uploadedByUsername ? { uploadedByUsername: input.uploadedByUsername } : {}),
   };
 }
 

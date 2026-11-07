@@ -139,7 +139,7 @@ test('binds a stage-only PCN requirement to an existing matching work node in th
   assert.equal(runtimeRequirement?.workflowStageLabel, 'Tiếp nhận');
 });
 
-test('published legacy PCN MULTIPLE metadata remains snapshot-compatible but projects one current attachment', () => {
+test('published PCN MULTIPLE metadata remains snapshot-compatible and available to attachment mapping', () => {
   const requirement: DossierTemplateRequirementDefinition = {
     domain: 'PCN',
     id: 'pcn-custom-legacy-multi',
@@ -164,7 +164,7 @@ test('published legacy PCN MULTIPLE metadata remains snapshot-compatible but pro
   assert.equal(snapshot.requirementDefinitions?.[0].multiplicity, 'MULTIPLE');
   assert.deepEqual(snapshot.nodes[0].requirementIds, [requirement.id]);
   const runtime = getPcnDossierRequirementsWithCustom(dossier({ workflowSnapshot: snapshot }));
-  assert.equal(runtime.find((item) => item.id === requirement.id)?.multiplicity, 'SINGLE');
+  assert.equal(runtime.find((item) => item.id === requirement.id)?.multiplicity, 'MULTIPLE');
 });
 
 test('rejects stage-only requirements without a matching active work node and unresolved custom references', () => {

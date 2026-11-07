@@ -23,6 +23,8 @@ import type { PgdOperationalStationKey } from '@/utils/pgdWorkflow';
 import { getPgdAssignmentApprovalDenial } from '@/utils/pgdWorkflow';
 import { hasPgdDossierCapability } from '@/utils/pgdDossierCapabilities';
 
+import { resolveB1AttachmentRequirements } from '@/utils/pgdcnB1Attachments';
+
 const PGD_SUPPLEMENTARY_STAGE_STATIONS: Record<string, PgdOperationalStationKey> = {
   intake: 'INTAKE_CAPABILITY',
   'review-assignment': 'PREPARATION',
@@ -108,7 +110,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
   }
 
   const file = formData.get('file') as File | null;
-  const requirementCode = String(formData.get('requirementCode') || '').trim();
+  const rawRequirementCode = String(formData.get('requirementCode') || '').trim();
+  const rawRequirementId = String(formData.get('requirementId') || '').trim();
+  const rawMappingStatus = String(formData.get('mappingStatus') || '').trim();
+  const requestedDocumentKind = String(formData.get('documentKind') || '').trim();
+  const requestedStageId = String(formData.get('stageId') || '').trim();
+  const supplementaryItemId = String(formData.get('supplementaryItemId') || '').trim();
+  const reqId = rawRequirementId || rawRequirementCode;
+  const isPendingToken = (value: string) => ['PENDING_MAPPING', 'UNMAPPED'].includes(value.toUpperCase());
+  const hasPendingInput = isPendingToken(rawRequirementId) || isPendingToken(rawRequirementCode)
+    || ['PENDING_MAPPING', 'UNMAPPED'].includes(rawMappingStatus.toUpperCase());
+  const hasConcreteRequirementInput = Boolean(
+    (rawRequirementId && !isPendingToken(rawRequirementId))
+    || (rawRequirementCode && !isPendingToken(rawRequirementCode))
+  );
+  if (hasPendingInput && hasConcreteRequirementInput) {
+    return jsonBadRequest('Không thể đồng thời chọn requirement cụ thể và trạng thái chờ ánh xạ.');
+  }
+
+  if (reqId && !isPendingToken(reqId)) {
+    if (
+      reqId.startsWith('QC4-') ||
+      reqId.startsWith('QC9-') ||
+      reqId.startsWith('pcn-') ||
+      ['QC4-PROPOSAL', 'QC9-PROPOSAL', 'QC4-COMMERCIAL', 'QC9-COMMERCIAL'].includes(reqId)
+    ) {
+      return jsonBadRequest('Yêu cầu không thuộc phạm vi hồ sơ PGD.');
+    }
+  }
+
+  const requirementCode = rawRequirementCode || reqId;
   const assessmentRoundId = String(formData.get('assessmentRoundId') || '').trim();
   const title = String(formData.get('title') || '').trim();
   const supplementaryStageId = String(formData.get('supplementaryStageId') || '').trim();
@@ -116,9 +147,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
   const documentDate = String(formData.get('documentDate') || '').trim();
   const note = String(formData.get('note') || '').trim();
   const requestedFileName = String(formData.get('fileName') || '').trim();
-  const fileName = file?.name
-    ? sanitizePcnPathSegment(file.name)
-    : sanitizePcnPathSegment(requestedFileName || `${requirementCode || 'pgd-dossier'}.meta`);
+  const originalFileName = String(file?.name || requestedFileName || `${requirementCode || 'pgd-dossier'}.meta`);
+  const fileName = sanitizePcnPathSegment(originalFileName);
 
   const isSupplementary = Boolean(supplementaryStageId);
   const allowedSupplementaryExtensions = /\.(?:pdf|docx|png|jpe?g|gif|webp|avif)$/i;
@@ -126,9 +156,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
     return jsonBadRequest('Thiếu mã hồ sơ PGD.');
   }
   if (isSupplementary && !file && !title) return jsonBadRequest('Cần có tiêu đề cho đầu mục phụ trợ PGD.');
-  if (isSupplementary && requirementCode && !requirementCode.startsWith(`PGD_SUPPLEMENTARY_${supplementaryStageId.toUpperCase().replace(/-/g, '_')}_`)) {
-    return jsonBadRequest('Đầu mục phụ trợ không thuộc giai đoạn PGD đã chọn.');
-  }
   if (!isSupplementary && (!requirementCode || !title)) {
     return jsonBadRequest('Cần có requestId, requirementCode và tiêu đề chứng từ PGD.');
   }
@@ -168,20 +195,42 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         if (!manager && !hasPgdDossierCapability(assignment, actor.username, 'ASSESSOR') && !hasPgdDossierCapability(assignment, actor.username, 'TEAM_LEAD')) throw Object.assign(new Error('Tài khoản chưa được phân công thao tác đợt đánh giá này.'), { statusCode: 403 });
       }
 
+      const isPendingMapping = !reqId || isPendingToken(reqId) || ['PENDING_MAPPING', 'UNMAPPED'].includes(rawMappingStatus.toUpperCase());
       const requirements = getPgdDossierRequirementsWithCustom(request.productGroup, request.workflowSnapshot?.requirementDefinitions || [], request.workflowSnapshot?.stages || []);
-      const requirement = isSupplementary ? undefined : requirements.find((item) => item.code === requirementCode);
-      if (!isSupplementary && !requirement) {
+      const b1Requirements = resolveB1AttachmentRequirements({
+        domain: 'PGD',
+        productGroup: request.productGroup,
+        templateId: request.workflowTemplateId,
+        templateVersion: request.workflowTemplateVersion,
+        workflowSnapshot: request.workflowSnapshot,
+      });
+      const mappedB1Requirement = isPendingMapping ? undefined : b1Requirements.find((item) =>
+        (item.requirementId === reqId || item.requirementCode === reqId)
+        && (!rawRequirementId || item.requirementId === rawRequirementId)
+        && (!rawRequirementCode || item.requirementCode === rawRequirementCode)
+      );
+      const isB1IntakeUpload = supplementaryStageId === 'intake';
+      if (isB1IntakeUpload && !isPendingMapping && !mappedB1Requirement) {
+        throw Object.assign(new Error('Yêu cầu B1 không thuộc bộ hồ sơ mẫu PGD đã gắn với hồ sơ.'), { statusCode: 400 });
+      }
+      const requirement = isPendingMapping ? undefined : requirements.find((item) => item.code === (mappedB1Requirement?.requirementCode || requirementCode) || item.customDefinition?.id === reqId);
+      if (!isSupplementary && !isPendingMapping && !requirement) {
         throw Object.assign(new Error('Mã yêu cầu checklist PGD không thuộc nhóm sản phẩm của hồ sơ.'), { statusCode: 400 });
       }
-      const resolvedRequirementCode = isSupplementary
+      const itemId = supplementaryItemId || `pgd-upload-${randomUUID()}`;
+      const resolvedRequirementCode = isPendingMapping
+        ? `PGD_PENDING_MAPPING_${createHash('sha256').update(itemId).digest('hex').slice(0, 16)}`
+        : mappedB1Requirement
+        ? mappedB1Requirement.requirementCode
+        : isSupplementary
         ? requirementCode || `PGD_SUPPLEMENTARY_${supplementaryStageId.toUpperCase().replace(/-/g, '_')}_${randomUUID()}`
         : requirementCode;
       const requirementStageLabel = requirement && requirement.stageLabel;
       const effectiveRequired = requirement
         ? request.dossierChecklist?.find((item) => item.requirementCode === requirementCode)?.required ?? requirement.required
         : false;
-      const targetStationKey = isSupplementary
-        ? PGD_SUPPLEMENTARY_STAGE_STATIONS[supplementaryStageId]
+      const targetStationKey = isSupplementary || isPendingMapping
+        ? (PGD_SUPPLEMENTARY_STAGE_STATIONS[supplementaryStageId] || 'INTAKE_CAPABILITY')
         : getPgdDossierRequirementStationKeyForSnapshot(requirement!.code, requirement!.customDefinition?.businessModuleKey, request.workflowSnapshot?.stages);
       const requirementAccess = getPgdOperationalStepAccess({
         status: request.status,
@@ -189,6 +238,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       });
       if (!requirementAccess.editable) {
         throw Object.assign(new Error(requirementAccess.reason || 'Checklist PGD đang bị khóa theo trạm hồ sơ.'), { statusCode: 409 });
+      }
+
+      const isMultiple = mappedB1Requirement?.multiplicity === 'MULTIPLE' || requirement?.multiplicity === 'MULTIPLE' || requirement?.customDefinition?.multiplicity === 'MULTIPLE';
+      let fileBuffer: Buffer | undefined;
+      if (file) fileBuffer = Buffer.from(await file.arrayBuffer());
+      const fileChecksum = fileBuffer ? createHash('sha256').update(fileBuffer).digest('hex') : undefined;
+      if (supplementaryItemId && fileChecksum) {
+        const priorItemResult = await client.query(
+          `SELECT document_id, data FROM app_documents
+           WHERE collection_name = $1 AND data->>'requestId' = $2
+             AND data->>'supplementaryItemId' = $3 AND data->>'domain' = 'pgd'
+           ORDER BY COALESCE((data->>'version')::int, 0) DESC, updated_at DESC LIMIT 1 FOR UPDATE`,
+          [PGD_COLLECTIONS.dossierDocuments, request.id, supplementaryItemId],
+        );
+        const priorItem = priorItemResult.rows[0] ? mapDocumentRow(priorItemResult.rows[0]) as PgdDossierDocument : undefined;
+        if (priorItem && priorItem.checksum === fileChecksum && priorItem.originalFileName === originalFileName && priorItem.title === (mappedB1Requirement?.displayName || title || priorItem.title)) {
+          return { dossierDocument: priorItem, idempotent: true as const };
+        }
       }
 
       const currentResult = await client.query(
@@ -199,28 +266,38 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
             AND data->>'requirementCode' = $3
             AND COALESCE(data->>'assessmentRoundId', '') = $4
             AND data->>'domain' = 'pgd'
+            AND (NOT $5::boolean OR data->>'supplementaryItemId' = $6)
           ORDER BY COALESCE((data->>'version')::int, 0) DESC, updated_at DESC, document_id DESC
           LIMIT 1
           FOR UPDATE`,
-        [PGD_COLLECTIONS.dossierDocuments, request.id, resolvedRequirementCode, assessmentRoundId],
+        [PGD_COLLECTIONS.dossierDocuments, request.id, resolvedRequirementCode, assessmentRoundId, isMultiple, itemId],
       );
       const current = currentResult.rows[0] ? (mapDocumentRow(currentResult.rows[0]) as PgdDossierDocument) : undefined;
-      const initialB1Requirement = /^PGD_SUPPLEMENTARY_INTAKE_[a-z0-9-]{1,100}$/i.test(requirementCode);
+      const initialB1Requirement = Boolean(mappedB1Requirement) || isPendingMapping || requirementCode === 'PENDING_MAPPING' || requirementCode === 'UNMAPPED';
       if (isSupplementary && requirementCode && (!current || current.supplementaryStageId !== supplementaryStageId) && !initialB1Requirement) {
         throw Object.assign(new Error('Không tìm thấy đầu mục phụ trợ trong giai đoạn PGD đã chọn.'), { statusCode: 404 });
       }
-      const resolvedTitle = isSupplementary ? title || current?.title || `Tệp phụ trợ · ${fileName}` : title;
+      const resolvedDisplayName = mappedB1Requirement?.displayName || requirement?.title || (isPendingMapping ? title || 'Tài liệu bổ sung khác' : title);
+      const resolvedTitle = mappedB1Requirement
+        ? mappedB1Requirement.displayName
+        : isPendingMapping
+        ? title || 'Tài liệu bổ sung khác'
+        : isSupplementary ? title || current?.title || `Tệp phụ trợ · ${fileName}` : title;
       const version = (Number(current?.version) || 0) + 1;
+      const supersedesDocumentId = current?.id;
+      if (current && supersedesDocumentId) {
+        const superseded = { ...current, status: 'SUPERSEDED' };
+        await client.query(
+          `UPDATE app_documents SET data = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+           WHERE collection_name = $1 AND document_id = $3`,
+          [PGD_COLLECTIONS.dossierDocuments, JSON.stringify(getDocumentPayload(superseded)), current.id],
+        );
+      }
       const documentId = `pgd-dossier-document-${randomUUID()}`;
       const now = new Date().toISOString();
 
-      let fileBuffer: Buffer | undefined;
-      if (file) {
-        fileBuffer = Buffer.from(await file.arrayBuffer());
-      }
-
-      const checksum = fileBuffer
-        ? createHash('sha256').update(fileBuffer).digest('hex')
+      const checksum = fileChecksum
+        ? fileChecksum
         : buildPgdDossierMetadataChecksum({
             requestId: request.id,
             requirementCode: resolvedRequirementCode,
@@ -235,7 +312,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       if (
         isSupplementary && current && fileBuffer && current.fileAssetId &&
         current.supplementaryStageId === supplementaryStageId && current.checksum === checksum &&
-        current.fileName === fileName && current.title === resolvedTitle && current.note === (note || undefined)
+        current.fileName === fileName && current.originalFileName === originalFileName
+        && current.title === resolvedTitle && current.note === (note || undefined)
+        && current.supplementaryItemId === itemId
       ) {
         return { dossierDocument: current, idempotent: true as const };
       }
@@ -292,8 +371,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
           ...(fileAssetId ? { fileAssetId } : {}),
           ...(mimeType ? { mimeType } : {}),
           ...(byteSize !== undefined ? { byteSize } : {}),
-          ...(current?.id ? { supersedesDocumentId: current.id } : {}),
+          ...(supersedesDocumentId ? { supersedesDocumentId } : {}),
           ...(isSupplementary ? { supplementaryStageId } : {}),
+          ...(isSupplementary ? { supplementaryItemId: itemId } : {}),
+          templateId: request.workflowTemplateId || request.workflowSnapshot?.templateId,
+          templateVersion: request.workflowTemplateVersion || request.workflowSnapshot?.templateVersion,
+          ...(!isPendingMapping ? { requirementId: mappedB1Requirement?.requirementId || requirement?.customDefinition?.id || resolvedRequirementCode } : {}),
+          stageId: isB1IntakeUpload ? 'B1' : requestedStageId || requirement?.stageId || 'intake',
+          documentKind: mappedB1Requirement?.documentKind || requestedDocumentKind || (isSupplementary ? 'SUPPLEMENTARY' : 'CHECKLIST_DOCUMENT'),
+          ...(isMultiple ? { multiplicity: 'MULTIPLE' as const } : { multiplicity: 'SINGLE' as const }),
+          originalFileName,
+          displayName: resolvedDisplayName,
+          status: isPendingMapping ? 'PENDING_MAPPING' : 'PRESENT',
+          mappingStatus: isPendingMapping ? 'PENDING_MAPPING' : 'MAPPED',
         } as Partial<PgdDossierDocument>,
         now,
       );
@@ -304,7 +394,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       );
 
       let nextRequest = request;
-      if (!isSupplementary) {
+      if ((!isSupplementary || mappedB1Requirement) && !isPendingMapping && requirement) {
         const nextChecklist = markPgdDossierChecklistPresent(
           request.productGroup,
           request.dossierChecklist,
@@ -338,7 +428,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         idSuffix: `dossier-doc-${next.id}`,
       });
 
-      return { dossierDocument: next, ...(isSupplementary ? {} : { request: nextRequest }) };
+      return { dossierDocument: next, ...((isSupplementary && !mappedB1Requirement) ? {} : { request: nextRequest }) };
     });
 
     return 'idempotent' in persisted && persisted.idempotent ? jsonOk(persisted) : jsonCreated(persisted);
@@ -346,9 +436,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
     if (uploadedBucketName && uploadedObjectPath) {
       await getPgdStorageClient().deleteObject({ bucketName: uploadedBucketName, objectPath: uploadedObjectPath }).catch(() => undefined);
     }
-    const status = Number(error?.statusCode) || 400;
+    const status = Number(error?.statusCode) || 500;
     if (status === 404) return jsonNotFound(error.message);
     if (status === 409) return jsonConflict(error.message);
-    return jsonBadRequest(error?.message || String(error));
+    return status === 400 ? jsonBadRequest(error?.message || String(error)) : jsonServerError(error?.message || String(error));
   }
 }

@@ -31,24 +31,36 @@ export function installDocumentDatabase(t: TestContext) {
     if (/^SELECT COALESCE\(MAX/.test(normalized)) return { rows: [{ last_serial: 0 }] };
     const literalCollection = normalized.match(/collection_name = '([^']+)'/)?.[1];
     const collection = literalCollection || params[0];
+    if (/^SELECT .* FROM file_assets/.test(normalized)) {
+      const asset = assets.get(String(params[0]));
+      return { rows: asset ? [structuredClone(asset)] : [] };
+    }
     if (/^SELECT /.test(normalized)) {
       let rows = [...current().entries()].filter(([id]) => id.startsWith(`${collection}:`)).map(([, doc]) => doc);
       if (collection === 'systemUsers' && params.length > 0) rows = rows.filter((doc) => doc.document_id === params[0] || doc.data.username === params[0]);
       else {
         const documentIdParameter = /(?:WHERE|AND) document_id = \$(\d+)/.exec(normalized);
-        if (documentIdParameter && !normalized.includes('OR document_id =')) rows = rows.filter((doc) => doc.document_id === params[Number(documentIdParameter[1]) - 1]);
+        if (documentIdParameter && !normalized.includes('OR document_id =') && !normalized.includes('document_id <>')) rows = rows.filter((doc) => doc.document_id === params[Number(documentIdParameter[1]) - 1]);
       }
+      if (normalized.includes("document_id <> $3")) rows = rows.filter((doc) => doc.document_id !== params[2]);
+      if (normalized.includes("document_id <> $4")) rows = rows.filter((doc) => doc.document_id !== params[3]);
       if (normalized.includes("data->>'domain' = 'pgd'")) rows = rows.filter((doc) => doc.data.domain === 'pgd');
+      if (normalized.includes("COALESCE(data->>'status', 'PRESENT') NOT IN ('SUPERSEDED', 'PENDING_MAPPING')")) rows = rows.filter((doc) => !['SUPERSEDED', 'PENDING_MAPPING'].includes(doc.data.status || 'PRESENT'));
+      if (normalized.includes("COALESCE(data->>'metadataOnly', 'false') <> 'true'")) rows = rows.filter((doc) => doc.data.metadataOnly !== true);
       if (normalized.includes("data->>'status' = 'PUBLISHED'")) rows = rows.filter((doc) => doc.data.status === 'PUBLISHED');
       if (normalized.includes("data->>'dossierId' = $1")) rows = rows.filter((doc) => doc.data.dossierId === params[0]);
+      if (normalized.includes("data->>'requirementId' = $2 OR data->>'requirementCode' = $2")) rows = rows.filter((doc) => doc.data.requirementId === params[1] || doc.data.requirementCode === params[1]);
+      if (normalized.includes("COALESCE(data->>'status', 'ACTIVE') = 'ACTIVE'")) rows = rows.filter((doc) => (doc.data.status || 'ACTIVE') === 'ACTIVE');
       if (normalized.includes("data->>'requestId' = $2")) rows = rows.filter((doc) => doc.data.requestId === params[1]);
       if (normalized.includes("data->>'requestId' = $3")) rows = rows.filter((doc) => doc.data.requestId === params[2]);
       if (normalized.includes("data->>'requestId' = $1")) rows = rows.filter((doc) => doc.data.requestId === params[0]);
       if (normalized.includes("data->>'nodeId' = $2")) rows = rows.filter((doc) => doc.data.nodeId === params[1]);
       if (normalized.includes("data->>'supplementaryStageId' = $2")) rows = rows.filter((doc) => doc.data.supplementaryStageId === params[1]);
       if (normalized.includes("data->>'supplementaryItemId' = $3 OR document_id = $3")) rows = rows.filter((doc) => doc.data.supplementaryItemId === params[2] || doc.document_id === params[2]);
-      if (normalized.includes("data->>'requirementCode' = $3")) rows = rows.filter((doc) => doc.data.requirementCode === params[2]);
+      if (normalized.includes("data->>'requirementCode' = $3")) rows = rows.filter((doc) => doc.data.requirementCode === params[2] || doc.data.requirementId === params[2]);
       if (normalized.includes("COALESCE(data->>'assessmentRoundId', '') = $4")) rows = rows.filter((doc) => (doc.data.assessmentRoundId || '') === params[3]);
+      if (normalized.includes("COALESCE(data->>'assessmentRoundId', '') = $5")) rows = rows.filter((doc) => (doc.data.assessmentRoundId || '') === params[4]);
+      if (normalized.includes("NOT $5::boolean OR data->>'supplementaryItemId' = $6") && params[4]) rows = rows.filter((doc) => doc.data.supplementaryItemId === params[5]);
       if (normalized.includes("COALESCE(data->>'metadataOnly', 'false') <> 'true'")) rows = rows.filter((doc) => doc.data.metadataOnly !== true);
       if (normalized.includes("data->>'role' = 'TECHNICAL_REVIEW'")) rows = rows.filter((doc) => doc.data.role === 'TECHNICAL_REVIEW');
       if (normalized.includes("data->>'status' = 'APPROVED'")) rows = rows.filter((doc) => doc.data.status === 'APPROVED');
@@ -71,8 +83,22 @@ export function installDocumentDatabase(t: TestContext) {
       return { rows: [] };
     }
     if (/^INSERT INTO file_assets/.test(normalized)) {
-      const [id, bucket_name, object_path, source_collection, source_document_id, mime_type, byte_size, sha256] = params;
-      assets.set(String(id), { id, bucket_name, object_path, source_collection, source_document_id, mime_type, byte_size, sha256 });
+      const literalSourceCollection = normalized.match(/VALUES \(\$1, \$2, \$3, '([^']+)'/)?.[1];
+      const valueLiterals = [...normalized.slice(normalized.indexOf('VALUES')).matchAll(/'([^']*)'/g)].map((match) => match[1]);
+      const literalSourceJsonPath = literalSourceCollection ? valueLiterals[1] : valueLiterals[0];
+      if (literalSourceCollection) {
+        const [id, bucket_name, object_path, source_document_id, mime_type, byte_size, sha256] = params;
+        assets.set(String(id), {
+          id, bucket_name, object_path, source_collection: literalSourceCollection, source_document_id,
+          source_json_path: literalSourceJsonPath || 'assetId', mime_type, byte_size, sha256,
+        });
+      } else {
+        const [id, bucket_name, object_path, source_collection, source_document_id, mime_type, byte_size, sha256] = params;
+        assets.set(String(id), {
+          id, bucket_name, object_path, source_collection,
+          source_json_path: literalSourceJsonPath || 'fileAssetId', source_document_id, mime_type, byte_size, sha256,
+        });
+      }
       return { rows: [] };
     }
     throw new Error(`Unexpected route SQL: ${normalized}`);

@@ -38,8 +38,11 @@ export function isSafePcnSourceJsonPath(value: string): boolean {
 }
 
 export function buildPcnFileContentDisposition(originalName: string, disposition: 'inline' | 'attachment' = 'inline'): string {
-  const fallback = sanitizePcnPathSegment(originalName || 'pcn-file');
-  return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fallback)}`;
+  const safeOriginalName = String(originalName || 'pcn-file')
+    .replace(/[\u0000-\u001f\u007f/\\"]+/g, '_')
+    .slice(0, 200) || 'pcn-file';
+  const fallback = sanitizePcnPathSegment(safeOriginalName);
+  return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(safeOriginalName)}`;
 }
 
 export function stablePcnMutationId(prefix: string, value: string): string {
