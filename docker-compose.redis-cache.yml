@@ -1,7 +1,7 @@
 services:
   webapp:
     environment:
-      REDIS_ENABLED: "true"
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
       REDIS_URL: ${REDIS_URL:?Set the server-side Redis URL}
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set the server-side Redis password}
     networks:

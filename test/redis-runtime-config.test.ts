@@ -9,6 +9,7 @@ function readIfPresent(path: string): string {
 
 const healthSource = readIfPresent('../app/api/health/route.ts');
 const composeSource = readIfPresent('../docker-compose.pcn.yml');
+const redisOverlay = readIfPresent('../docker-compose.redis-cache.yml');
 const envExample = readIfPresent('../.env.example');
 const guide = readIfPresent('../docs/redis-cache.md');
 
@@ -38,4 +39,11 @@ test('environment example and guide show opt-in setup and rollback without crede
   assert.match(guide, /REDIS_ENABLED=false/);
   assert.match(guide, /không tạo Redis container|không publish.*6379/i);
   assert.doesNotMatch(envExample, /redis:\/\/[^\s]*@/i);
+});
+
+test('Redis overlay lets operators disable cache while keeping the private endpoint settings separate', () => {
+  assert.match(redisOverlay, /REDIS_ENABLED:\s*\$\{REDIS_ENABLED:-true\}/);
+  assert.match(redisOverlay, /REDIS_URL:\s*\$\{REDIS_URL:\?Set the server-side Redis URL\}/);
+  assert.match(redisOverlay, /REDIS_PASSWORD:\s*\$\{REDIS_PASSWORD:\?Set the server-side Redis password\}/);
+  assert.match(redisOverlay, /name:\s*tvci_app_redis_private/);
 });
