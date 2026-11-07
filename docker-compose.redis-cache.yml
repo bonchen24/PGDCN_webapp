@@ -1,0 +1,13 @@
+services:
+  webapp:
+    environment:
+      REDIS_ENABLED: "true"
+      REDIS_URL: ${REDIS_URL:?Set the server-side Redis URL}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set the server-side Redis password}
+    networks:
+      - redis_private
+
+networks:
+  redis_private:
+    external: true
+    name: tvci_app_redis_private

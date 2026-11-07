@@ -229,8 +229,10 @@ function getProductionStoreProvider(): () => Promise<RedisCacheStore> {
     const redisUrl = process.env.REDIS_URL;
     if (!redisUrl) throw new Error('REDIS_URL is not configured');
 
+    const redisPassword = process.env.REDIS_PASSWORD;
     const client = createClient({
       url: redisUrl,
+      password: redisPassword || undefined,
       socket: {
         connectTimeout: 150,
         reconnectStrategy: false,
