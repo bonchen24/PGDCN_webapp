@@ -11,6 +11,7 @@ import {
 } from '@/lib/server/workflow-templates';
 import { validatePcnWorkflowTemplate } from '@/utils/pcnWorkflowTemplate';
 import { PcnUserAccount, PcnWorkflowTemplate } from '@/types';
+import { invalidateRedisCache } from '@/lib/server/redis-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +85,7 @@ export async function POST(
       });
       return { template: next, activityLog };
     });
+    await invalidateRedisCache('pcn', 'workflow-templates');
     return jsonOk(result);
   } catch (error: any) {
     const status = Number(error?.statusCode) || 500;

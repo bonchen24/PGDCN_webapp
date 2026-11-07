@@ -13,6 +13,7 @@ import {
 } from '@/lib/server/workflow-templates';
 import { validatePgdWorkflowTemplate, PgdWorkflowTemplate } from '@/utils/pgdWorkflowTemplate';
 import { PcnUserAccount } from '@/types';
+import { invalidateRedisCache } from '@/lib/server/redis-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,6 +93,7 @@ export async function POST(
       });
       return { template: mapDocumentRow(write.rows[0]) as PgdWorkflowTemplate, activityLog };
     });
+    await invalidateRedisCache('pgd', 'workflow-templates');
     return jsonCreated(result);
   } catch (error: any) {
     const status = Number(error?.statusCode) || 500;

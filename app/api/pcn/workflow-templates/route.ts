@@ -13,6 +13,7 @@ import {
 } from '@/lib/server/workflow-templates';
 import { validatePcnWorkflowTemplate } from '@/utils/pcnWorkflowTemplate';
 import { PcnUserAccount, PcnWorkflowTemplate } from '@/types';
+import { invalidateRedisCache, readThroughRedisCache } from '@/lib/server/redis-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,18 +28,39 @@ export async function GET(req: NextRequest) {
     const canPropose = canProposePcnWorkflow(actor);
     const canViewPcn = (actor.departmentScopes || []).includes('PCN');
     if (!manager && !canViewPcn) return jsonForbidden('Tài khoản chưa được cấp phạm vi PCN để xem bộ hồ sơ mẫu.');
-    const result = await pool.query(manager
-      ? `SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnWorkflowTemplates' ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`
-      : canPropose
-        ? `SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnWorkflowTemplates'
-          AND ((COALESCE(data->>'scope', 'COMMON') = 'COMMON' AND data->>'status' = 'PUBLISHED')
-            OR (data->>'scope' = 'PERSONAL' AND data->>'status' = 'DRAFT' AND data->>'createdBy' = $1))
-          ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`
-        : `SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnWorkflowTemplates'
-          AND COALESCE(data->>'scope', 'COMMON') = 'COMMON' AND data->>'status' = 'PUBLISHED'
-          ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`,
-      !manager && canPropose ? [actor.username] : []);
-    return jsonOk({ items: result.rows.map(mapDocumentRow) });
+
+    const items = await readThroughRedisCache({
+      app: 'pcn',
+      resource: 'workflow-templates',
+      ttlSeconds: 15,
+      scope: {
+        username: actor.username,
+        systemRole: actor.systemRole ?? null,
+        managementRoleCode: actor.managementRoleCode ?? null,
+        professionalRoleCodes: [...(actor.professionalRoleCodes || [])].sort(),
+        fieldCodes: [...(actor.fieldCodes || [])].sort(),
+        departmentScopes: [...(actor.departmentScopes || [])].sort(),
+        manager: manager,
+        canPropose: canPropose,
+        canViewPcn: canViewPcn,
+      },
+      loader: async () => {
+        const result = await pool.query(manager
+          ? `SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnWorkflowTemplates' ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`
+          : canPropose
+            ? `SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnWorkflowTemplates'
+              AND ((COALESCE(data->>'scope', 'COMMON') = 'COMMON' AND data->>'status' = 'PUBLISHED')
+                OR (data->>'scope' = 'PERSONAL' AND data->>'status' = 'DRAFT' AND data->>'createdBy' = $1))
+              ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`
+            : `SELECT document_id, data FROM app_documents WHERE collection_name = 'pcnWorkflowTemplates'
+              AND COALESCE(data->>'scope', 'COMMON') = 'COMMON' AND data->>'status' = 'PUBLISHED'
+              ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`,
+          !manager && canPropose ? [actor.username] : []);
+        return { items: result.rows.map(mapDocumentRow) };
+      },
+    });
+
+    return jsonOk({ items: items.items });
   } catch (error: any) {
     return jsonServerError(error?.message || String(error));
   }
@@ -94,6 +116,7 @@ export async function POST(req: NextRequest) {
       });
       return { template: mapDocumentRow(write.rows[0]) as PcnWorkflowTemplate, activityLog };
     });
+    await invalidateRedisCache('pcn', 'workflow-templates');
     return jsonCreated(result);
   } catch (error: any) {
     const status = Number(error?.statusCode) || 500;

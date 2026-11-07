@@ -14,6 +14,7 @@ import {
 } from '@/lib/server/workflow-templates';
 import { validatePgdWorkflowTemplate, PgdWorkflowTemplate } from '@/utils/pgdWorkflowTemplate';
 import { PcnUserAccount } from '@/types';
+import { invalidateRedisCache, readThroughRedisCache } from '@/lib/server/redis-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,14 +27,33 @@ export async function GET(req: NextRequest) {
   try {
     if (!isPgdWorkflowManager(actor) && !canProposePgdWorkflow(actor)) return jsonForbidden('Tài khoản chưa được cấp quyền PGD để gửi đề xuất mẫu.');
     const manager = isPgdWorkflowManager(actor);
-    const result = await pool.query(manager
-      ? `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd' ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`
-      : `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd'
-          AND ((COALESCE(data->>'scope', 'COMMON') = 'COMMON' AND data->>'status' = 'PUBLISHED')
-            OR (data->>'scope' = 'PERSONAL' AND data->>'status' = 'DRAFT' AND data->>'createdBy' = $2))
-          ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`,
-      manager ? [PGD_COLLECTIONS.workflowTemplates] : [PGD_COLLECTIONS.workflowTemplates, actor.username]);
-    return jsonOk({ items: result.rows.map(mapDocumentRow) });
+    const canPropose = canProposePgdWorkflow(actor);
+    const items = await readThroughRedisCache({
+      app: 'pgd',
+      resource: 'workflow-templates',
+      ttlSeconds: 15,
+      scope: {
+        username: actor.username,
+        systemRole: actor.systemRole ?? null,
+        managementRoleCode: actor.managementRoleCode ?? null,
+        professionalRoleCodes: [...(actor.professionalRoleCodes || [])].sort(),
+        departmentScopes: [...(actor.departmentScopes || [])].sort(),
+        pgdRole: actor.pgdRole ?? null,
+        manager: manager,
+        canPropose: canPropose,
+      },
+      loader: async () => {
+        const result = await pool.query(manager
+          ? `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd' ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`
+          : `SELECT document_id, data FROM app_documents WHERE collection_name = $1 AND data->>'domain' = 'pgd'
+              AND ((COALESCE(data->>'scope', 'COMMON') = 'COMMON' AND data->>'status' = 'PUBLISHED')
+                OR (data->>'scope' = 'PERSONAL' AND data->>'status' = 'DRAFT' AND data->>'createdBy' = $2))
+              ORDER BY COALESCE(data->>'code', ''), COALESCE((data->>'version')::int, 0) DESC, document_id`,
+          manager ? [PGD_COLLECTIONS.workflowTemplates] : [PGD_COLLECTIONS.workflowTemplates, actor.username]);
+        return result.rows.map(mapDocumentRow);
+      },
+    });
+    return jsonOk({ items });
   } catch (error: any) {
     return jsonServerError(error?.message || String(error));
   }
@@ -88,6 +108,7 @@ export async function POST(req: NextRequest) {
       });
       return { template: mapDocumentRow(write.rows[0]) as PgdWorkflowTemplate, activityLog };
     });
+    await invalidateRedisCache('pgd', 'workflow-templates');
     return jsonCreated(result);
   } catch (error: any) {
     const status = Number(error?.statusCode) || 500;

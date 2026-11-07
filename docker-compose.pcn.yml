@@ -5,6 +5,8 @@ services:
     environment:
       NODE_ENV: production
       APP_PROFILE: pcn
+      REDIS_ENABLED: ${REDIS_ENABLED:-false}
+      REDIS_URL: ${REDIS_URL:-}
       PORT: 2357
       PCN_LAB_INTEGRATIONS_JSON: ${PCN_LAB_INTEGRATIONS_JSON:-}
       PCN_LAB_PERFORMANCE_SECRET: ${PCN_LAB_PERFORMANCE_SECRET:-}
