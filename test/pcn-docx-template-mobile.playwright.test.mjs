@@ -184,7 +184,7 @@ test(
         await menuBtn.click();
       }
 
-      const draftingNavBtn = page.getByRole('button', { name: 'Soạn thảo văn bản' });
+      const draftingNavBtn = page.getByRole('button', { name: 'Soạn thảo tài liệu' });
       await draftingNavBtn.waitFor({ state: 'visible', timeout: 10000 });
       await draftingNavBtn.click();
 

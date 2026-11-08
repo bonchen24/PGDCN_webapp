@@ -17,7 +17,7 @@ test('navigation includes shared drafting entry Hỗ trợ soạn thảo văn b�
 
   const sidebar = read('components/PgdcnSidebar.tsx');
   assert.match(sidebar, /section:\s*'document-drafting'/);
-  assert.match(sidebar, /Soạn thảo văn bản/);
+  assert.match(sidebar, /Soạn thảo tài liệu/);
 });
 
 test('shared drafting route page forwards domain, tabs and context to PgdcnAppShell', () => {

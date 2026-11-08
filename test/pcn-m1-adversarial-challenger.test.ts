@@ -249,13 +249,13 @@ test('CHALLENGE 8: PgdcnSidebar - Role-based permissions matrix', () => {
     })
   );
 
-  // Staff should NOT see Cài đặt hệ thống or Phân quyền RBAC or Hồ sơ mẫu
+  // Scoped staff can propose personal templates, but do not receive admin controls.
   assert.strictEqual(staffMarkup.includes('Cài đặt hệ thống'), false, 'Staff must NOT see Cài đặt hệ thống');
   assert.strictEqual(staffMarkup.includes('Phân quyền RBAC'), false, 'Staff must NOT see Phân quyền RBAC');
-  assert.strictEqual(staffMarkup.includes('Hồ sơ mẫu'), false, 'Staff must NOT see Hồ sơ mẫu');
-  // Staff MUST see Nhật ký hệ thống and Soạn thảo văn bản
-  assert.ok(staffMarkup.includes('Nhật ký hệ thống'), 'Staff must see Nhật ký hệ thống');
-  assert.ok(staffMarkup.includes('Soạn thảo văn bản'), 'Staff must see Soạn thảo văn bản');
+  assert.ok(staffMarkup.includes('Hồ sơ mẫu'), 'Scoped staff must be able to propose personal templates');
+  // Shared navigation uses the labels defined by the PGDCN design contract.
+  assert.ok(staffMarkup.includes('Nhật ký hoạt động'), 'Staff must see Nhật ký hoạt động');
+  assert.ok(staffMarkup.includes('Soạn thảo tài liệu'), 'Staff must see Soạn thảo tài liệu');
 
   // Case B: System Admin
   const adminUser: PcnUserAccount = {
@@ -303,6 +303,20 @@ test('CHALLENGE 8: PgdcnSidebar - Role-based permissions matrix', () => {
   );
 
   assert.ok(pgdManagerMarkup.includes('Hồ sơ mẫu'), 'PGD Manager MUST see Hồ sơ mẫu');
+
+  const viewerMarkup = renderToStaticMarkup(
+    createElement(PgdcnSidebar, {
+      currentUser: { ...baseMockUser, role: 'viewer', systemRole: 'viewer' },
+      activeTarget: { domain: 'department', section: 'department-dashboard' },
+      collapsed: false,
+      mobileOpen: false,
+      onToggle: () => undefined,
+      onNavigate: () => undefined,
+      onCloseMobile: () => undefined,
+      onLogout: () => undefined,
+    })
+  );
+  assert.strictEqual(viewerMarkup.includes('Hồ sơ mẫu'), false, 'Viewers cannot propose dossier templates');
 });
 
 test('CHALLENGE 9: PgdcnSidebar - Department scopes isolation matrix', () => {

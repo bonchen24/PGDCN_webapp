@@ -180,7 +180,7 @@ describe('Tier 1: Feature Coverage & Contract Verification', () => {
     // Sidebar navigation taxonomy must cover the 4 standardized functional groups
     // 1. Công việc / Dùng chung (Dashboard, Khách hàng, Trợ lý AI)
     // 2. Nghiệp vụ (PCN and PGD separated)
-    // 3. Tài liệu (Soạn thảo văn bản, Hồ sơ mẫu)
+    // 3. Tài liệu (Soạn thảo tài liệu, Hồ sơ mẫu)
     // 4. Quản trị (Cài đặt hệ thống, Phân quyền)
     assert.match(sidebarSource, /department-dashboard/);
     assert.match(sidebarSource, /customers/);

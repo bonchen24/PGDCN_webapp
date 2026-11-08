@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 import test from 'node:test';
 import { chromium } from 'playwright';
@@ -346,6 +346,7 @@ async function captureScenario(browser, base, scenario, viewport, audit) {
       await page.getByRole('dialog').waitFor({ state: 'visible', timeout: 3000 });
     }
     if (scenario.invalidModal) scenario.intakeModal = await captureIntakeModal(page, scenario, viewport, audit);
+    if (scenario.pcnIntakeModal) scenario.intakeModal = await capturePcnIntakeModal(page, viewport);
     else await page.waitForTimeout(scenario.loadingPath ? 160 : 260);
 
     if (scenario.waitForPgdDossier) {
@@ -406,6 +407,13 @@ async function captureScenario(browser, base, scenario, viewport, audit) {
     if (scenario.id === 'pgd-register-long') assert.ok(metrics.tableRowCount >= 18, 'PGD summary register must render all 18 synthetic long-fixture rows');
     if (scenario.id === 'pgd-samples-long') assert.ok(metrics.tableRowCount >= 28, 'PGD sample register must render all 28 synthetic sample rows');
     if (scenario.id === 'pcn-samples-long') assert.ok(metrics.tableRowCount >= 24, 'PCN sample register must render all 24 synthetic sample rows');
+    if (scenario.id === 'pcn-intake-modal') {
+      assert.equal(scenario.intakeModal.fileInputRequired, false, 'PCN B1 file input must stay optional');
+      assert.equal(scenario.intakeModal.fileInputMultiple, true, 'PCN B1 file input must accept multiple files');
+      assert.deepEqual(scenario.intakeModal.selectedFileNames, ['pcn-intake-test.pdf', 'pcn-intake-test.docx']);
+      assert.equal(scenario.intakeModal.horizontalOverflow, false, 'PCN intake modal must not overflow either viewport');
+      assert.equal(scenario.intakeModal.footerVisible, true, 'PCN create action must remain visible in the modal footer');
+    }
     if (scenario.id === 'assistant-long') assert.ok(metrics.assistantCandidateCount >= 12, 'Read-only AI assistant must render all 12 synthetic candidates');
     if (scenario.id === 'notifications-long') assert.ok(metrics.notificationItemCount >= 32, 'Notifications panel must render all 32 synthetic notification items');
     metrics.mode = 'QA_MOCKED';
@@ -424,6 +432,48 @@ async function captureScenario(browser, base, scenario, viewport, audit) {
   } finally {
     await page.close();
   }
+}
+
+async function capturePcnIntakeModal(page, viewport) {
+  await page.getByRole('button', { name: 'Tạo Đề nghị', exact: true }).click();
+  const modal = page.getByTestId('pcn-proposal-form-modal');
+  await modal.waitFor({ state: 'visible', timeout: 10000 });
+  const form = modal.locator('form');
+  await form.waitFor({ state: 'visible', timeout: 5000 });
+  const fileInput = form.locator('#pcn-proposal-attachment-input');
+  const pdfBytes = await readFile(new URL('../revised_templates/_qa_reconciled/pcn-pyc/PCN_PYC_gui_PTN.pdf', import.meta.url));
+  const docxBytes = await readFile(new URL('../revised_templates/pcn/PCN_PYC_gui_PTN.docx', import.meta.url));
+  await fileInput.setInputFiles([
+    { name: 'pcn-intake-test.pdf', mimeType: 'application/pdf', buffer: pdfBytes },
+    { name: 'pcn-intake-test.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: docxBytes },
+  ]);
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="pcn-proposal-form-modal"] ul[aria-label*="B1"] li').length === 2);
+
+  const metrics = await modal.evaluate((dialog) => {
+    const rect = (element) => {
+      if (!element) return null;
+      const bounds = element.getBoundingClientRect();
+      return { left: Math.round(bounds.left), right: Math.round(bounds.right), top: Math.round(bounds.top), bottom: Math.round(bounds.bottom), width: Math.round(bounds.width), height: Math.round(bounds.height) };
+    };
+    const input = dialog.querySelector('#pcn-proposal-attachment-input');
+    const footerBounds = rect(dialog.querySelector('footer'));
+    const selectedFileNames = Array.from(dialog.querySelectorAll('ul[aria-label*="B1"] li .truncate[title]')).map((item) => item.title);
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      dialogBounds: rect(dialog),
+      footerVisible: Boolean(footerBounds && footerBounds.top < innerHeight && footerBounds.bottom > 0),
+      fileInputRequired: Boolean(input?.required),
+      fileInputMultiple: Boolean(input?.multiple),
+      fileInputAccept: input?.getAttribute('accept') || '',
+      selectedFileNames,
+      horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      formValidityWithoutRequiredFields: dialog.querySelector('form')?.checkValidity() ?? null,
+    };
+  });
+  const dir = resolve(artifactRoot, 'pcn-intake-modal');
+  await mkdir(dir, { recursive: true });
+  await page.screenshot({ path: resolve(dir, `${viewport.width}x${viewport.height}.png`), animations: 'disabled', fullPage: false });
+  return metrics;
 }
 
 async function captureIntakeModal(page, scenario, viewport, audit) {
@@ -485,11 +535,13 @@ async function captureIntakeModal(page, scenario, viewport, audit) {
   const priority = modal.getByRole('combobox', { name: /Mức ưu tiên/ });
   let urgentMetrics = null;
   if (await priority.count()) {
-    await priority.selectOption('URGENT');
+    await priority.click();
+    await page.getByRole('option', { name: /Gấp \/ ưu tiên/ }).click();
     await page.waitForTimeout(80);
     urgentMetrics = await measure('urgent-conditional-required');
     await page.screenshot({ path: resolve(dir, `admin-${viewport.width}x${viewport.height}-urgent-conditional.png`), animations: 'disabled', fullPage: false });
-    await priority.selectOption('NORMAL');
+    await priority.click();
+    await page.getByRole('option', { name: /Bình thường/ }).click();
     await page.waitForTimeout(80);
   }
 
@@ -552,7 +604,7 @@ function scenarios() {
   const base = [
     { id: 'staff-pcn-register', role: ROLES.staff, path: '/pgdcn/pcn?section=operations', menu: 'Sổ dữ liệu PCN', pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL], fixtureMarkers: [PCN_DOSSIER.dossierCode] },
     { id: 'staff-pcn-samples', role: ROLES.staff, path: '/pgdcn/pcn', menu: 'Sổ quản lý mẫu PCN', pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL], pcnSampleLots, pcnSampleItems, pcnSampleRoutes },
-    { id: 'staff-pcn-drafting', role: ROLES.staff, path: '/pgdcn', menu: 'Soạn thảo văn bản', draftingDomain: 'PCN', pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL], pcnTemplates: [PCN_TEMPLATE] },
+    { id: 'staff-pcn-drafting', role: ROLES.staff, path: '/pgdcn', menu: 'Soạn thảo tài liệu', draftingDomain: 'PCN', pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL], pcnTemplates: [PCN_TEMPLATE] },
     { id: 'staff-customers', role: ROLES.staff, path: '/pgdcn', menu: 'Khách hàng', customers: [] },
     { id: 'customers-long', role: ROLES.admin, path: '/pgdcn', menu: 'Khách hàng', customers: CUSTOMER_FIXTURES, fixtureMarkers: [CUSTOMER_FIXTURES[0].customerCode, CUSTOMER_FIXTURES.at(-1).customerCode] },
     { id: 'viewer-pcn-register', role: ROLES.viewer, path: '/pgdcn/pcn', menu: 'Sổ dữ liệu', viewerMenu: true, pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL] },
@@ -565,22 +617,23 @@ function scenarios() {
     { id: 'pcn-samples-empty', role: ROLES.staff, path: '/pgdcn/pcn', menu: 'Sổ quản lý mẫu PCN', pcnDossiers: [], pcnProposals: [], pcnSampleLots: [], pcnSampleItems: [], pcnSampleRoutes: [] },
     { id: 'pgd-samples-empty', role: ROLES.staff, path: '/pgdcn/pgd', menu: 'Sổ quản lý mẫu PGD', pgdBootstrap: EMPTY_PGD_BOOTSTRAP },
     { id: 'pgd-intake-modal', role: ROLES.admin, path: '/pgdcn/pgd', invalidModal: true },
+    { id: 'pcn-intake-modal', role: ROLES.admin, path: '/pgdcn/pcn', pcnIntakeModal: true },
   ];
   const stress = [
     { id: 'pgd-register-empty', role: ROLES.admin, path: '/pgdcn/pgd', menu: 'Sổ dữ liệu PGD', pgdBootstrap: EMPTY_PGD_BOOTSTRAP, pgdLoadState: 'empty' },
     { id: 'pgd-register-long', role: ROLES.admin, path: '/pgdcn/pgd', menu: 'Sổ dữ liệu PGD', dataTable: true, pgdBootstrap: longPgd },
     { id: 'pgd-samples-long', role: ROLES.admin, path: '/pgdcn/pgd', menu: 'Sổ quản lý mẫu PGD', pgdBootstrap: longPgd, fixtureMarkers: ['MẪU-QA-001-MÃ-THỬ-NGHIỆM-RẤT-DÀI', 'MẪU-QA-028-MÃ-THỬ-NGHIỆM-RẤT-DÀI'] },
     { id: 'pcn-samples-long', role: ROLES.admin, path: '/pgdcn/pcn', menu: 'Sổ quản lý mẫu PCN', pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL], pcnSampleLots, pcnSampleItems, pcnSampleRoutes, fixtureMarkers: [pcnSampleItems[0].sampleCode, pcnSampleItems.at(-1).sampleCode] },
-    { id: 'drafting-pcn-long', role: ROLES.admin, path: '/pgdcn', menu: 'Soạn thảo văn bản', draftingDomain: 'PCN', selectDraftSource: { label: 'Chọn hồ sơ / Đề nghị', query: PCN_DOSSIER.dossierCode }, pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL], pcnTemplates: [PCN_TEMPLATE], fixtureMarkers: [PCN_DOSSIER.dossierCode] },
-    { id: 'drafting-pcn-docx-settings-long', role: ROLES.admin, path: '/pgdcn', menu: 'Soạn thảo văn bản', draftingDomain: 'PCN', openDocxSettings: true, pcnTemplates: Array.from({ length: 12 }, (_, i) => ({ ...PCN_TEMPLATE, id: `${PCN_TEMPLATE.id}-${i + 1}`, displayName: `${PCN_TEMPLATE.displayName} · mẫu ${i + 1}` })), fixtureMarkers: ['mẫu 12'] },
-    { id: 'drafting-pgd-long', role: ROLES.admin, path: '/pgdcn', menu: 'Soạn thảo văn bản', draftingDomain: 'PGD', selectDraftSource: { label: 'Chọn hồ sơ PGD', query: 'PGD-DENSITY-001-LONG-SYNTHETIC-CODE' }, pgdBootstrap: longPgd, fixtureMarkers: ['PGD-DENSITY-001-LONG-SYNTHETIC-CODE'] },
+    { id: 'drafting-pcn-long', role: ROLES.admin, path: '/pgdcn', menu: 'Soạn thảo tài liệu', draftingDomain: 'PCN', selectDraftSource: { label: 'Chọn hồ sơ / Đề nghị', query: PCN_DOSSIER.dossierCode }, pcnDossiers: [PCN_DOSSIER], pcnProposals: [PCN_PROPOSAL], pcnTemplates: [PCN_TEMPLATE], fixtureMarkers: [PCN_DOSSIER.dossierCode] },
+    { id: 'drafting-pcn-docx-settings-long', role: ROLES.admin, path: '/pgdcn', menu: 'Soạn thảo tài liệu', draftingDomain: 'PCN', openDocxSettings: true, pcnTemplates: Array.from({ length: 12 }, (_, i) => ({ ...PCN_TEMPLATE, id: `${PCN_TEMPLATE.id}-${i + 1}`, displayName: `${PCN_TEMPLATE.displayName} · mẫu ${i + 1}` })), fixtureMarkers: ['mẫu 12'] },
+    { id: 'drafting-pgd-long', role: ROLES.admin, path: '/pgdcn', menu: 'Soạn thảo tài liệu', draftingDomain: 'PGD', selectDraftSource: { label: 'Chọn hồ sơ PGD', query: 'PGD-DENSITY-001-LONG-SYNTHETIC-CODE' }, pgdBootstrap: longPgd, fixtureMarkers: ['PGD-DENSITY-001-LONG-SYNTHETIC-CODE'] },
     { id: 'assistant-long', role: ROLES.admin, path: '/pgdcn', menu: 'Trợ lý AI', pcnDossiers: longPcnDossiers, fixtureMarkers: [longPcnDossiers[0].dossierCode, longPcnDossiers.at(-1).dossierCode] },
     { id: 'notifications-long', role: ROLES.admin, path: '/pgdcn', openNotifications: true, notifications: NOTIFICATION_FIXTURES, fixtureMarkers: ['Thông báo synthetic 1:', 'Thông báo synthetic 32:'] },
     { id: 'pgd-register-loading', role: ROLES.admin, path: '/pgdcn/pgd', menu: 'Sổ dữ liệu PGD', loadingPath: '/api/pgd/bootstrap', pgdBootstrap: longPgd, pgdLoadState: 'loading' },
     { id: 'pgd-register-error', role: ROLES.admin, path: '/pgdcn/pgd', menu: 'Sổ dữ liệu PGD', errorPath: '/api/pgd/bootstrap', pgdLoadState: 'error', keyboardRetry: true },
     { id: 'staff-pgd-register-error', role: ROLES.staff, path: '/pgdcn/pgd', menu: 'Sổ dữ liệu PGD', errorPath: '/api/pgd/bootstrap', pgdLoadState: 'error', keyboardRetry: true },
-    { id: 'drafting-loading', role: ROLES.admin, path: '/pgdcn', menu: 'Soạn thảo văn bản', draftingDomain: 'PCN', loadingPath: '/api/pcn/drafts' },
-    { id: 'drafting-error', role: ROLES.admin, path: '/pgdcn', menu: 'Soạn thảo văn bản', draftingDomain: 'PCN', errorPath: '/api/pcn/drafts' },
+    { id: 'drafting-loading', role: ROLES.admin, path: '/pgdcn', menu: 'Soạn thảo tài liệu', draftingDomain: 'PCN', loadingPath: '/api/pcn/drafts' },
+    { id: 'drafting-error', role: ROLES.admin, path: '/pgdcn', menu: 'Soạn thảo tài liệu', draftingDomain: 'PCN', errorPath: '/api/pcn/drafts' },
     { id: 'assistant-loading', role: ROLES.admin, path: '/pgdcn', menu: 'Trợ lý AI', draftingDomain: 'PGD', loadingPath: '/api/pcn/approval-assistant/candidates', pcnDossiers: [PCN_DOSSIER] },
     { id: 'assistant-error', role: ROLES.admin, path: '/pgdcn', menu: 'Trợ lý AI', errorPath: '/api/pcn/approval-assistant/candidates' },
     { id: 'notifications-loading', role: ROLES.admin, path: '/pgdcn', openNotifications: true, loadingPath: '/api/pgdcn/notifications', notifications: NOTIFICATION_FIXTURES },

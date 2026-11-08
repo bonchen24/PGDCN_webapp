@@ -42,13 +42,13 @@ test('PgdcnSidebar organizes navigation into 4 standard functional groups', () =
   assert.match(source, /aria-label="Giám định PGD"/);
 
   // Group 3: Tài liệu
-  assert.match(source, /'Soạn thảo văn bản'/);
+  assert.match(source, /'Soạn thảo tài liệu'/);
   assert.match(source, /'Hồ sơ mẫu'/);
 
   // Group 4: Quản trị
   assert.match(source, /'Cài đặt hệ thống'/);
   assert.match(source, /'Phân quyền RBAC'/);
-  assert.match(source, /'Nhật ký hệ thống'/);
+  assert.match(source, /'Nhật ký hoạt động'/);
 
   // Render check
   const markup = renderToStaticMarkup(createElement(PgdcnSidebar, {

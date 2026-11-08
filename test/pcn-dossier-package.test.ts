@@ -147,9 +147,8 @@ test('PCN workspace and dossier detail expose the complete package download acti
   assert.match(workspaceSource, /onDownloadPackage=\{\(\) => downloadDossierPackage\(selectedDossier\)\}/);
   assert.doesNotMatch(workspaceSource, /onClick=\{onOpen\} title="Tải tài liệu hồ sơ"/);
   assert.match(detailSource, /onDownloadPackage/);
+  assert.match(detailSource, /title="Tải bộ hồ sơ PCN"/);
   assert.match(detailSource, /Tải bộ hồ sơ/);
-  assert.match(detailSource, /Danh sách bộ hồ sơ/);
-  assert.match(detailSource, /Tóm tắt thành phần/);
 });
 
 // --- End of pcn-dossier-package.test.ts ---

@@ -241,7 +241,7 @@ describe('Empirical Challenge 2: Breadcrumb Resolution Across All Routes', () =>
         crumbs.push({ label: 'Trợ lý AI' });
       } else if (activeTarget.section === 'document-drafting') {
         crumbs.push({ label: 'Tài liệu' });
-        crumbs.push({ label: 'Soạn thảo văn bản' });
+        crumbs.push({ label: 'Soạn thảo tài liệu' });
       } else if (activeTarget.section === 'dossier-templates') {
         crumbs.push({ label: 'Tài liệu' });
         crumbs.push({ label: 'Hồ sơ mẫu' });
@@ -324,7 +324,7 @@ describe('Empirical Challenge 2: Breadcrumb Resolution Across All Routes', () =>
     {
       name: 'Document Drafting',
       target: { domain: 'department', section: 'document-drafting' },
-      expectedLabels: ['Tài liệu', 'Soạn thảo văn bản'],
+      expectedLabels: ['Tài liệu', 'Soạn thảo tài liệu'],
     },
     {
       name: 'Dossier Templates',

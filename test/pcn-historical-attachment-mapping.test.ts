@@ -12,9 +12,7 @@ const reconcileScript = fs.readFileSync(new URL('../scripts/reconcilePcnHistoric
 const importScript = fs.readFileSync(new URL('../scripts/importPcnHistoricalPilot.ts', import.meta.url), 'utf8');
 const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { scripts?: Record<string, string> };
 const detailSource = fs.readFileSync(new URL('../components/PcnDossierDetailView.tsx', import.meta.url), 'utf8');
-const serverSource = fs.readFileSync(new URL('../server.legacy.ts', import.meta.url), 'utf8');
-const mappingApiSource = fs.readFileSync(new URL('../utils/pcnHistoricalAttachmentMappingApi.ts', import.meta.url), 'utf8');
-const storeSource = fs.readFileSync(new URL('../store-pcn.ts', import.meta.url), 'utf8');
+const mappingRouteSource = fs.readFileSync(new URL('../app/api/pcn/dossiers/[dossierId]/attachment-mapping/route.ts', import.meta.url), 'utf8');
 
 function attachment(input: Partial<PcnDossierAttachment> & Pick<PcnDossierAttachment, 'id' | 'kind' | 'fileName' | 'sourceRelativePath' | 'assetId'>): PcnDossierAttachment {
   return {
@@ -170,10 +168,14 @@ test('historical attachment reconcile CLI is PCN-only, dry-run first, and update
   assert.doesNotMatch(reconcileScript, /storage\.(upload|delete)|uploadObject|deleteObject/);
 });
 
-test('dossier attachment UI exposes mapping state and reason beside the read-only source path', () => {
-  assert.match(detailSource, /mappingStatus/);
-  assert.match(detailSource, /mappingReason/);
-  assert.match(detailSource, /Chưa nối checklist/);
+test('dossier attachment UI exposes pending mapping against the captured B1 checklist and reloads after mapping', () => {
+  assert.match(detailSource, /pendingMappingAttachments/);
+  assert.match(detailSource, /resolveB1AttachmentRequirements/);
+  assert.match(detailSource, /templateVersion: dossier\.workflowTemplateVersion/);
+  assert.match(detailSource, /Chọn đầu mục cho tệp chưa gắn/);
+  assert.match(detailSource, /\/api\/pcn\/dossiers\/\$\{encodeURIComponent\(dossier\.id\)\}\/attachment-mapping/);
+  assert.match(detailSource, /JSON\.stringify\(\{ attachmentId: attachment\.id, requirementId \}\)/);
+  assert.match(detailSource, /usePcnStore\.getState\(\)\.load\(true\)/);
 });
 
 test('historical import dry-run reports mapping counts for operator review', () => {
@@ -207,23 +209,27 @@ test('manual mapping marks an attachment without changing its immutable file met
   assert.equal(result.sourceRelativePath, input.sourceRelativePath);
 });
 
-test('manual attachment mapping has a PCN endpoint, audit source, and no file byte mutation path', () => {
-  const mappingRoute = serverSource.slice(serverSource.indexOf("app.post('/api/pcn/historical-attachment-mapping'"), serverSource.indexOf("app.post('/api/pcn/documents/generate'"));
-  assert.match(mappingRoute, /app\.post\('\/api\/pcn\/historical-attachment-mapping'/);
-  assert.match(serverSource, /attachmentId/);
-  assert.match(serverSource, /requirementId/);
-  assert.match(mappingRoute, /source: 'USER_REVIEW'/);
-  assert.match(mappingRoute, /certificationDossiers/);
-  assert.match(mappingRoute, /source_json_path/);
-  assert.match(mappingRoute, /attachments\.\$\{attachment\.kind\}/);
-  assert.match(mappingRoute, /updatedAt/);
-  assert.doesNotMatch(mappingRoute, /file_assets\s+SET|uploadObject|deleteObject/);
+test('manual PCN mapping enforces domain, assignment, B1 snapshot version, audit, and leaves stored bytes untouched', () => {
+  assert.match(mappingRouteSource, /requirePcnMutation/);
+  assert.match(mappingRouteSource, /departmentScopes\?\.includes\('PCN'\)/);
+  assert.match(mappingRouteSource, /withPgTransaction/);
+  assert.match(mappingRouteSource, /certificationDossiers/);
+  assert.match(mappingRouteSource, /pcnDossierWorkflowTasks/);
+  assert.match(mappingRouteSource, /assignedUsername/);
+  assert.match(mappingRouteSource, /intakeCreatedByUsername/);
+  assert.match(mappingRouteSource, /resolveB1AttachmentRequirements/);
+  assert.match(mappingRouteSource, /matched\.requirementId/);
+  assert.match(mappingRouteSource, /matched\.requirementCode/);
+  assert.match(mappingRouteSource, /templateVersion: dossier\.workflowTemplateVersion/);
+  assert.match(mappingRouteSource, /mappingStatus: 'MAPPED'/);
+  assert.match(mappingRouteSource, /buildActivityLog/);
+  assert.match(mappingRouteSource, /INSERT INTO app_documents \(collection_name, document_id, data, updated_at\)/);
+  assert.doesNotMatch(mappingRouteSource, /uploadObject|deleteObject|file_assets\s+SET/);
 });
 
-test('manual mapping API and PCN store expose an atomic attachment action', () => {
-  assert.match(mappingApiSource, /\/api\/pcn\/historical-attachment-mapping/);
-  assert.match(mappingApiSource, /credentials: 'same-origin'/);
-  assert.match(storeSource, /mapHistoricalAttachment/);
-  assert.match(detailSource, /onMapHistoricalAttachment/);
-  assert.match(detailSource, /Nối/);
+test('manual PCN mapping is scoped to a dossier and requirement and persists the refreshed attachment state', () => {
+  assert.match(detailSource, /\/api\/pcn\/dossiers\/\$\{encodeURIComponent\(dossier\.id\)\}\/attachment-mapping/);
+  assert.match(detailSource, /credentials: 'same-origin'/);
+  assert.match(detailSource, /attachmentId: attachment\.id, requirementId/);
+  assert.match(detailSource, /load\(true\)/);
 });

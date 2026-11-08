@@ -28,6 +28,7 @@
     "verify:pcn-standard-flow": "node ./scripts/run-pcn-tsx.cjs scripts/verifyPcnStandardDossierFlow.ts",
     "seed:pcn-standard-flow": "node ./scripts/run-pcn-tsx.cjs scripts/seedPcnStandardDossiers.ts",
     "reconcile:pcn-legacy": "node ./scripts/run-pcn-tsx.cjs scripts/reconcilePcnLegacyCollections.ts",
+    "reconcile:pcn-history-attachments": "node ./scripts/run-pcn-tsx.cjs scripts/reconcilePcnHistoricalAttachments.ts",
     "migrate:pcn-identifiers": "node ./scripts/run-pcn-tsx.cjs scripts/migratePcnIdentifiers.ts",
     "reconcile:pcn-orphan-results": "node ./scripts/run-pcn-tsx.cjs scripts/reconcilePcnOrphanResults.ts",
     "backup:daily": "node ./scripts/run-pcn-tsx.cjs scripts/run-pcn-daily-backup.ts",

@@ -242,7 +242,7 @@ export default function PgdcnSidebar({
         {/* Nhóm 3: Tài liệu */}
         <section className="space-y-0.5" aria-label="Tài liệu">
           {expanded && <p className="mb-1 px-2 pt-1 text-[11px] font-semibold text-slate-400">Tài liệu</p>}
-          {renderSharedButton('Soạn thảo văn bản', FileEdit, { domain: 'department', section: 'document-drafting' })}
+          {renderSharedButton('Soạn thảo tài liệu', FileEdit, { domain: 'department', section: 'document-drafting' })}
           {canAccessDossierTemplates && renderSharedButton('Hồ sơ mẫu', GitBranch, { domain: 'department', section: 'dossier-templates' })}
         </section>
 
@@ -251,7 +251,7 @@ export default function PgdcnSidebar({
           {expanded && <p className="mb-1 px-2 pt-1 text-[11px] font-semibold text-slate-400">Quản trị</p>}
           {canManageSettings && renderSharedButton('Cài đặt hệ thống', Settings, { domain: 'department', section: 'system-settings' })}
           {canManageSettings && renderSharedButton('Phân quyền RBAC', ShieldCheck, { domain: 'department', section: 'rbac' })}
-          {renderSharedButton('Nhật ký hệ thống', Activity, { domain: 'department', section: 'activityLogs' })}
+          {renderSharedButton('Nhật ký hoạt động', Activity, { domain: 'department', section: 'activityLogs' })}
         </section>
       </nav>
 

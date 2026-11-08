@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { File } from 'node:buffer';
+import fs from 'node:fs';
 import test from 'node:test';
 import { installDocumentDatabase, multipartRouteRequest, routeRequest } from './helpers/document-route-database.ts';
 import * as pgdDossierRequirements from '../utils/pgdDossier.ts';
@@ -59,17 +60,17 @@ function usePrivateStorageMock(t: import('node:test').TestContext, options: { fa
   return uploads;
 }
 
-function makePcnFileForm(id: string, name: string, bytes: Buffer, category: string) {
+function makePcnFileForm(id: string, name: string, bytes: Buffer, category: string, mimeType = 'application/pdf') {
   const form = new FormData();
   form.set('stageId', 'intake');
   form.set('title', `${category} · ${name}`);
   form.set('description', `B1: ${category}`);
   form.set('supplementaryItemId', `pcn-b1-${id}`);
-  form.set('file', new File([bytes], name, { type: 'application/pdf' }));
+  form.set('file', new File([bytes], name, { type: mimeType }));
   return form;
 }
 
-function makePgdFileForm(id: string, name: string, bytes: Buffer, category: string) {
+function makePgdFileForm(id: string, name: string, bytes: Buffer, category: string, mimeType = 'application/pdf') {
   const form = new FormData();
   form.set('supplementaryStageId', 'intake');
   form.set('stageId', 'B1');
@@ -78,11 +79,11 @@ function makePgdFileForm(id: string, name: string, bytes: Buffer, category: stri
   form.set('requirementCode', 'PENDING_MAPPING');
   form.set('title', `${category} · ${name}`);
   form.set('note', `B1: ${category}`);
-  form.set('file', new File([bytes], name, { type: 'application/pdf' }));
+  form.set('file', new File([bytes], name, { type: mimeType }));
   return form;
 }
 
-test('PCN intake accepts actual file bytes, persists attachments, and makes retries idempotent', async (t) => {
+test('PCN B1 intake accepts PDF and DOCX bytes, persists attachments, and makes retries idempotent', async (t) => {
   const uploads = usePrivateStorageMock(t);
   const db = installDocumentDatabase(t);
   const dossierId = 'dossier-pcn-b1-byte-test';
@@ -97,18 +98,20 @@ test('PCN intake accepts actual file bytes, persists attachments, and makes retr
   });
   db.seed('pcnDossierWorkflowTasks', 'pcn-task-b1-intake', { id: 'pcn-task-b1-intake', dossierId, nodeId: 'intake', status: 'READY' });
 
-  const requestFor = (id: string, name: string, bytes: Buffer, category: string) => multipartRouteRequest(
+  const requestFor = (id: string, name: string, bytes: Buffer, category: string, mimeType?: string) => multipartRouteRequest(
     `/api/pcn/dossiers/${dossierId}/supplementary-attachments`,
-    makePcnFileForm(id, name, bytes, category),
+    makePcnFileForm(id, name, bytes, category, mimeType),
     pcnCreator,
   );
   const contractBytes = Buffer.from('%PDF-1.7 contract bytes');
   const invoiceBytes = Buffer.from('%PDF-1.7 invoice bytes');
-  for (const [id, name, bytes, category] of [
-    ['contract-1', 'contract.pdf', contractBytes, 'Hợp đồng'],
-    ['invoice-1', 'invoice.pdf', invoiceBytes, 'Hóa đơn'],
+  const docxBytes = fs.readFileSync(new URL('../revised_templates/pcn/PCN_PYC_gui_PTN.docx', import.meta.url));
+  for (const [id, name, bytes, category, mimeType] of [
+    ['contract-1', 'contract.pdf', contractBytes, 'Hợp đồng', 'application/pdf'],
+    ['invoice-1', 'invoice.pdf', invoiceBytes, 'Hóa đơn', 'application/pdf'],
+    ['proposal-1', 'proposal.docx', docxBytes, 'Đề nghị', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
   ] as const) {
-    const response = await pcnSupplementary.POST(requestFor(id, name, bytes, category), { params: Promise.resolve({ dossierId }) });
+    const response = await pcnSupplementary.POST(requestFor(id, name, bytes, category, mimeType), { params: Promise.resolve({ dossierId }) });
     assert.equal(response.status, 201);
     assert.equal((await response.json()).attachment.byteSize, bytes.byteLength);
   }
@@ -117,11 +120,11 @@ test('PCN intake accepts actual file bytes, persists attachments, and makes retr
   assert.equal(retry.status, 200);
   assert.equal((await retry.json()).idempotent, true);
   const persisted = db.list('dossierAttachments').map((row) => row.data);
-  assert.equal(persisted.length, 2);
-  assert.deepEqual(new Set(persisted.map((item) => item.description)), new Set(['B1: Hợp đồng', 'B1: Hóa đơn']));
-  assert.equal(db.assets.size, 2);
-  assert.equal(uploads.length, 2);
-  assert.deepEqual(new Set(uploads.map((item) => item.bytes.toString())), new Set([contractBytes.toString(), invoiceBytes.toString()]));
+  assert.equal(persisted.length, 3);
+  assert.deepEqual(new Set(persisted.map((item) => item.description)), new Set(['B1: Hợp đồng', 'B1: Hóa đơn', 'B1: Đề nghị']));
+  assert.equal(db.assets.size, 3);
+  assert.equal(uploads.length, 3);
+  assert.ok([contractBytes, invoiceBytes, docxBytes].every((bytes) => uploads.some((item) => item.bytes.equals(bytes))));
 
   const persistedContract = db.list('dossierAttachments').find((row) => row.data.originalFileName === 'contract.pdf');
   assert.ok(persistedContract?.data.fileAssetId);
@@ -133,10 +136,19 @@ test('PCN intake accepts actual file bytes, persists attachments, and makes retr
   assert.match(downloadedContract.headers.get('content-disposition') || '', /filename\*=UTF-8''contract\.pdf/);
   assert.deepEqual(Buffer.from(await downloadedContract.arrayBuffer()), contractBytes);
 
+  const persistedDocx = db.list('dossierAttachments').find((row) => row.data.originalFileName === 'proposal.docx');
+  assert.ok(persistedDocx?.data.fileAssetId);
+  const downloadedDocx = await pcnFileDownload.GET(
+    routeRequest(`/api/pcn/files/${persistedDocx.data.fileAssetId}`, 'GET', undefined, pcnCreator),
+    { params: Promise.resolve({ assetId: persistedDocx.data.fileAssetId }) },
+  );
+  assert.equal(downloadedDocx.status, 200);
+  assert.deepEqual(Buffer.from(await downloadedDocx.arrayBuffer()), docxBytes);
+
   const reload = await pcnCollection.GET(routeRequest('/api/db/dossierAttachments', 'GET', {}, pcnCreator), { params: Promise.resolve({ collection: 'dossierAttachments' }) });
   assert.equal(reload.status, 200);
   const reloadedItems = (await reload.json()).items;
-  assert.equal(reloadedItems.filter((item: any) => item.dossierId === dossierId).length, 2);
+  assert.equal(reloadedItems.filter((item: any) => item.dossierId === dossierId).length, 3);
 });
 
 test('PGD template B1 upload persists canonical links, multiple files, SINGLE history, and exact display metadata', async (t) => {
@@ -294,17 +306,19 @@ test('PGD intake uploads real bytes, reloads only PGD documents, and retries wit
     dossierChecklist: [],
   });
 
-  const send = (id: string, name: string, bytes: Buffer, category: string) => pgdDossierDocuments.POST(
-    multipartRouteRequest(`/api/pgd/requests/${requestId}/dossier-documents`, makePgdFileForm(id, name, bytes, category), pgdCreator),
+  const send = (id: string, name: string, bytes: Buffer, category: string, mimeType = 'application/pdf') => pgdDossierDocuments.POST(
+    multipartRouteRequest(`/api/pgd/requests/${requestId}/dossier-documents`, makePgdFileForm(id, name, bytes, category, mimeType), pgdCreator),
     { params: Promise.resolve({ requestId }) },
   );
   const requestBytes = Buffer.from('%PDF-1.7 PYC bytes');
   const technicalBytes = Buffer.from('%PDF-1.7 technical bytes');
-  for (const [id, name, bytes, category] of [
-    ['request-1', 'pyc.pdf', requestBytes, 'Phiếu / đề nghị'],
-    ['technical-1', 'technical.pdf', technicalBytes, 'Tài liệu kỹ thuật'],
+  const docxBytes = fs.readFileSync(new URL('../revised_templates/pgd/PGD-BM-01.docx', import.meta.url));
+  for (const [id, name, bytes, category, mimeType] of [
+    ['request-1', 'pyc.pdf', requestBytes, 'Phiếu / đề nghị', 'application/pdf'],
+    ['technical-1', 'technical.pdf', technicalBytes, 'Tài liệu kỹ thuật', 'application/pdf'],
+    ['report-1', 'inspection.docx', docxBytes, 'Biên bản', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
   ] as const) {
-    const response = await send(id, name, bytes, category);
+    const response = await send(id, name, bytes, category, mimeType);
     assert.equal(response.status, 201, JSON.stringify(await response.clone().json()));
     assert.equal((await response.json()).dossierDocument.byteSize, bytes.byteLength);
   }
@@ -321,11 +335,11 @@ test('PGD intake uploads real bytes, reloads only PGD documents, and retries wit
   );
   assert.equal(reload.status, 200);
   const reloaded = (await reload.json()).dossierDocuments;
-  assert.equal(reloaded.length, 2);
+  assert.equal(reloaded.length, 3);
   assert.ok(reloaded.every((document: any) => document.domain === 'pgd'));
-  assert.equal(db.assets.size, 2);
-  assert.equal(uploads.length, 2);
-  assert.deepEqual(new Set(uploads.map((item) => item.bytes.toString())), new Set([requestBytes.toString(), technicalBytes.toString()]));
+  assert.equal(db.assets.size, 3);
+  assert.equal(uploads.length, 3);
+  assert.ok([requestBytes, technicalBytes, docxBytes].every((bytes) => uploads.some((item) => item.bytes.equals(bytes))));
 
   const persistedPyc = db.list('pgdDossierDocuments').find((row) => row.data.originalFileName === 'pyc.pdf');
   assert.ok(persistedPyc);
@@ -336,6 +350,15 @@ test('PGD intake uploads real bytes, reloads only PGD documents, and retries wit
   assert.equal(downloadedPyc.status, 200);
   assert.match(downloadedPyc.headers.get('content-disposition') || '', /filename\*=UTF-8''pyc\.pdf/);
   assert.deepEqual(Buffer.from(await downloadedPyc.arrayBuffer()), requestBytes);
+
+  const persistedDocx = db.list('pgdDossierDocuments').find((row) => row.data.originalFileName === 'inspection.docx');
+  assert.ok(persistedDocx);
+  const downloadedDocx = await pgdFileDownload.GET(
+    routeRequest(`/api/pgd/dossier-documents/${persistedDocx.document_id}/download`, 'GET', undefined, pgdCreator),
+    { params: Promise.resolve({ documentId: persistedDocx.document_id }) },
+  );
+  assert.equal(downloadedDocx.status, 200);
+  assert.deepEqual(Buffer.from(await downloadedDocx.arrayBuffer()), docxBytes);
 });
 
 test('PCN and PGD upload boundaries deny accounts that only have access to the other domain', async (t) => {
@@ -674,7 +697,9 @@ test('pending mapping followed by authorized explicit map', async (t) => {
   assert.equal(uploads.length, 0);
 
   // 1. PCN upload pending mapping
-  const pcnPendingForm = makePcnFileForm('other-pcn', 'other.pdf', Buffer.from('pcn bytes'), 'Khác');
+  const pcnDocxBytes = fs.readFileSync(new URL('../revised_templates/pcn/PCN_PYC_gui_PTN.docx', import.meta.url));
+  const pgdDocxBytes = fs.readFileSync(new URL('../revised_templates/pgd/PGD-BM-01.docx', import.meta.url));
+  const pcnPendingForm = makePcnFileForm('other-pcn', 'other.docx', pcnDocxBytes, 'Khác', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   pcnPendingForm.set('requirementId', 'PENDING_MAPPING');
   const pcnUploadRes = await pcnSupplementary.POST(
     multipartRouteRequest(`/api/pcn/dossiers/${dossierId}/supplementary-attachments`, pcnPendingForm, pcnCreator),
@@ -716,10 +741,29 @@ test('pending mapping followed by authorized explicit map', async (t) => {
   const mappedPcn = (await pcnMapSuccess.json()).attachment;
   assert.equal(mappedPcn.mappingStatus, 'MAPPED');
   assert.equal(mappedPcn.requirementId, 'QC4-PROPOSAL');
+  assert.equal(mappedPcn.requirementCode, 'PROPOSAL');
+  assert.equal(mappedPcn.displayName, 'Đề nghị / đơn đăng ký');
+  assert.equal(mappedPcn.stageId, 'B1');
+  assert.equal(mappedPcn.templateId, 'pcn-qc4-pending-v1');
+  assert.equal(mappedPcn.templateVersion, 1);
   assert.equal(mappedPcn.status, 'ACTIVE');
+  const downloadedMappedPcn = await pcnFileDownload.GET(
+    routeRequest(`/api/pcn/files/${mappedPcn.fileAssetId}`, 'GET', undefined, pcnCreator),
+    { params: Promise.resolve({ assetId: mappedPcn.fileAssetId }) },
+  );
+  assert.equal(downloadedMappedPcn.status, 200);
+  assert.deepEqual(Buffer.from(await downloadedMappedPcn.arrayBuffer()), pcnDocxBytes);
+  const reloadedPcnAttachments = await pcnCollection.GET(
+    routeRequest('/api/db/dossierAttachments', 'GET', {}, pcnCreator),
+    { params: Promise.resolve({ collection: 'dossierAttachments' }) },
+  );
+  const reloadedMappedPcn = (await reloadedPcnAttachments.json()).items.find((item: any) => item.id === mappedPcn.id);
+  assert.equal(reloadedMappedPcn.requirementId, 'QC4-PROPOSAL');
+  assert.equal(reloadedMappedPcn.requirementCode, 'PROPOSAL');
+  assert.equal(reloadedMappedPcn.templateVersion, 1);
 
   // 2. PGD upload pending mapping
-  const pgdPendingForm = makePgdFileForm('other-pgd', 'other.pdf', Buffer.from('pgd bytes'), 'Khác');
+  const pgdPendingForm = makePgdFileForm('other-pgd', 'other.docx', pgdDocxBytes, 'Khác', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   pgdPendingForm.set('requirementCode', 'PENDING_MAPPING');
   const pgdUploadRes = await pgdDossierDocuments.POST(
     multipartRouteRequest(`/api/pgd/requests/${requestId}/dossier-documents`, pgdPendingForm, pgdCreator),
@@ -773,8 +817,26 @@ test('pending mapping followed by authorized explicit map', async (t) => {
   const mappedPgd = (await pgdMapSuccess.json()).dossierDocument;
   assert.equal(mappedPgd.mappingStatus, 'MAPPED');
   assert.equal(mappedPgd.requirementCode, 'REQUEST_PYC');
+  assert.equal(mappedPgd.requirementId, 'REQUEST_PYC');
+  assert.equal(mappedPgd.displayName, 'Phiếu yêu cầu giám định');
+  assert.equal(mappedPgd.stageId, 'B1');
+  assert.equal(mappedPgd.templateId, 'pgd-request-pending-v1');
+  assert.equal(mappedPgd.templateVersion, 1);
   assert.equal(mappedPgd.status, 'PRESENT');
   assert.equal(db.list('pgdDossierDocuments').find((row) => row.document_id === 'pgd-existing-other-round')?.data.status, 'PRESENT');
+  const downloadedMappedPgd = await pgdFileDownload.GET(
+    routeRequest(`/api/pgd/dossier-documents/${mappedPgd.id}/download`, 'GET', undefined, pgdCreator),
+    { params: Promise.resolve({ documentId: mappedPgd.id }) },
+  );
+  assert.equal(downloadedMappedPgd.status, 200);
+  assert.deepEqual(Buffer.from(await downloadedMappedPgd.arrayBuffer()), pgdDocxBytes);
+  const reloadedMappedPgdResponse = await pgdDossierDocuments.GET(
+    routeRequest(`/api/pgd/requests/${requestId}/dossier-documents`, 'GET', {}, pgdCreator),
+    { params: Promise.resolve({ requestId }) },
+  );
+  const reloadedMappedPgd = (await reloadedMappedPgdResponse.json()).dossierDocuments.find((item: any) => item.id === mappedPgd.id);
+  assert.equal(reloadedMappedPgd.requirementCode, 'REQUEST_PYC');
+  assert.equal(reloadedMappedPgd.templateVersion, 1);
 
   // 3. RBAC denies unauthorized private-file reads/downloads
   const pcnDownloadDenied = await pcnFileDownload.GET(

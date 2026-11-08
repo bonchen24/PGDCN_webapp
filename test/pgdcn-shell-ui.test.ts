@@ -13,7 +13,7 @@ test('shared shell owns department dashboard, assistant and activity surfaces', 
 
 test('shared sidebar renders both domain groups from department scopes', () => {
   const source = read('../components/PgdcnSidebar.tsx');
-  for (const marker of ['Tổng quan', 'Trợ lý AI', 'Nhật ký hệ thống', "section: 'activityLogs'", 'aria-label="Chứng nhận PCN"', 'aria-label="Giám định PGD"', 'departmentScopes', 'aria-current', 'mobile-touch-target']) {
+  for (const marker of ['Tổng quan', 'Trợ lý AI', 'Nhật ký hoạt động', "section: 'activityLogs'", 'aria-label="Chứng nhận PCN"', 'aria-label="Giám định PGD"', 'departmentScopes', 'aria-current', 'mobile-touch-target']) {
     assert.ok(source.includes(marker), `Missing shared sidebar marker: ${marker}`);
   }
   assert.doesNotMatch(source, /Cài đặt PCN|Cài đặt PGD/);

@@ -84,7 +84,7 @@ test('stage-only PGD requirements map to the existing operational station for up
   assert.equal(getPgdDossierRequirementStationKeyForSnapshot('FIELD_INSPECTION_MINUTES', undefined, stages), getPgdDossierRequirementStationKey('FIELD_INSPECTION_MINUTES'));
 });
 
-test('published legacy MULTIPLE templates remain selectable but dossier runtime projects one current attachment', () => {
+test('published legacy MULTIPLE templates remain selectable and preserve multiple current checklist documents', () => {
   const legacy = {
     ...template,
     requirementDefinitions: [{ ...requiredDefinition, multiplicity: 'MULTIPLE' as const }, conditionalDefinition],
@@ -95,7 +95,7 @@ test('published legacy MULTIPLE templates remain selectable but dossier runtime 
   assert.equal(snapshot.requirementDefinitions?.[0].multiplicity, 'MULTIPLE');
   const checklist = buildPgdDossierChecklist('OTHER', '2026-11-02T00:00:00.000Z', snapshot.requirementDefinitions, snapshot.stages);
   const projected = checklist.find((item) => item.requirementCode === requiredDefinition.id)!;
-  assert.equal(projected.multiplicity, 'SINGLE');
+  assert.equal(projected.multiplicity, 'MULTIPLE');
   assert.equal(projected.stageLabel, 'Đánh giá tại chỗ');
   const manifest = buildPgdDossierPackageManifest({ dossierCode: 'PGD-LEGACY', pointers: [], checklist });
   assert.equal(manifest.checklist.find((item) => item.requirementCode === requiredDefinition.id)?.stageId, 'onsite-assessment');
