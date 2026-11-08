@@ -1,4 +1,4 @@
-# AGENT INSTRUCTIONS & COMPLIANCE RULES
+﻿# AGENT INSTRUCTIONS & COMPLIANCE RULES
 
 ## 1. NGUYÊN TẮC CỐT LÕI (SSOT & PHẠM VI)
 - **`design.md`** là SSOT ở cấp thiết kế kiến trúc, nhưng **không phải dependency bắt buộc** của mọi Atomic Task.
@@ -63,10 +63,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 
 ## 6. QUY ĐỊNH GỌI AGY CLI TỪ CODEX (HEADLESS EXECUTION)
-- Khi Codex đóng vai trò điều phối (coordinator) gọi gy (Antigravity CLI):
-  1. **Cho phép sử dụng cờ --dangerously-skip-permissions**: Môi trường daemon/headless PTY không có TTY tương tác để duyệt lệnh, cờ này được phép sử dụng để công cụ file/command của AGY hoạt động bình thường.
-  2. **Fallback tự động**: Nếu lệnh gy thất bại, timeout, hoặc gặp lỗi môi trường, Codex được phép fallback tự sinh mã theo spec thay vì dừng lại ở trạng thái BLOCKER.
-
+1. **Bắt buộc gọi qua Script Helper**: Mọi lượt gọi AGY CLI bắt buộc thực hiện qua `scripts/c2c-invoke-agy.ps1` (ví dụ: `& .\scripts\c2c-invoke-agy.ps1 -Workspace (Get-Location).Path -Prompt $prompt`). Tuyệt đối **không** gọi trực tiếp lệnh `agy.exe --print` hoặc truyền `--effort high` làm nghẽn tiến trình và mất giám sát streaming tiến độ.
+2. **Model & Cờ thực thi mặc định**: Script đã tự động cấu hình `gemini-3.8-flash-medium`, `--dangerously-skip-permissions`, `--disable-slash-commands`, kèm hợp đồng đường dẫn tuyệt đối cho tool schemas.
+3. **Timeout & Zero Automatic Retries**: Helper mặc định chạy 1 lần (`MaxRetries = 0`), sàn timeout tối thiểu 600 giây (10 phút); không truyền `-TimeoutSeconds` dưới 600.
+4. **Fallback tự động**: Nếu lệnh AGY thất bại, timeout, hoặc gặp lỗi môi trường, Codex được phép fallback tự sinh mã theo spec thay vì dừng lại ở trạng thái BLOCKER.
 
 ## MULTI-AGENT GIT WORKFLOW & AUTOMATIC COMMIT
 1. **Hai Luồng Độc Lập**:
