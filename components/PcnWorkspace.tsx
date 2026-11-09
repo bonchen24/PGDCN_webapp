@@ -11,7 +11,10 @@ import {
   Bell,
   ChevronRight,
   ClipboardCheck,
+  Building2,
   ClipboardList,
+  FileText,
+  Paperclip,
   FileWarning,
   FilePlus2,
   FolderOpen,
@@ -1348,9 +1351,9 @@ export function ProposalView({
         onRestore={() => setProposalMinimized(false)}
         footer={<div className="flex w-full flex-wrap justify-end gap-2"><button type="button" onClick={dismissProposalForm} disabled={saving} className="min-h-10 rounded-lg border border-slate-200 px-3 text-[10px] font-bold text-slate-600 disabled:opacity-40">{createdDossierId ? 'Bổ sung sau' : 'Hủy'}</button><button type="submit" form="pcn-proposal-form" disabled={saving} aria-busy={saving} className="min-h-10 rounded-lg bg-emerald-600 px-3 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : createdDossierId ? 'Thử lại tệp chưa tải' : editingProposal ? 'Lưu thay đổi' : 'Tạo Đề nghị & bộ hồ sơ'}</button></div>}
       >
-        <form id="pcn-proposal-form" ref={proposalFormRef} onSubmit={submit} className="space-y-3 p-3 md:p-4">
-          {/* 2-TAB HEADER */}
-          <div className="flex border-b border-slate-200 bg-slate-50/80 p-1.5 rounded-xl gap-2 text-xs font-bold" role="tablist" aria-label="Các phần của Đề nghị">
+        <form id="pcn-proposal-form" ref={proposalFormRef} onSubmit={submit} className="space-y-4 p-3 md:p-4">
+          {/* 2-TAB HEADER (Segmented Control) */}
+          <div className="flex border border-slate-200/90 bg-slate-100/90 p-1 rounded-xl gap-1.5 text-xs font-semibold" role="tablist" aria-label="Các phần của Đề nghị">
             <button
               type="button"
               role="tab"
@@ -1358,11 +1361,11 @@ export function ProposalView({
               onClick={() => setProposalTab('info')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
                 proposalTab === 'info'
-                  ? 'bg-white text-emerald-700 shadow-xs border border-slate-200 font-black'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-emerald-800 shadow-xs border border-slate-200 font-bold'
+                  : 'text-slate-600 hover:text-slate-900 font-medium'
               }`}
             >
-              <span>📋</span>
+              <FileText size={15} className={proposalTab === 'info' ? 'text-emerald-600' : 'text-slate-400'} />
               <span>Thông tin Đề nghị</span>
             </button>
             <button
@@ -1372,14 +1375,14 @@ export function ProposalView({
               onClick={() => setProposalTab('attachments')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
                 proposalTab === 'attachments'
-                  ? 'bg-white text-emerald-700 shadow-xs border border-slate-200 font-black'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-emerald-800 shadow-xs border border-slate-200 font-bold'
+                  : 'text-slate-600 hover:text-slate-900 font-medium'
               }`}
             >
-              <span>📎</span>
+              <Paperclip size={15} className={proposalTab === 'attachments' ? 'text-emerald-600' : 'text-slate-400'} />
               <span>Tệp đính kèm (tùy chọn)</span>
               {b1Attachments.length > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                   {b1Attachments.length}
                 </span>
               )}
@@ -1387,111 +1390,187 @@ export function ProposalView({
           </div>
 
           {/* TAB 1: THÔNG TIN NGHIỆP VỤ ĐỀ NGHỊ */}
-          <div className={proposalTab === 'info' ? 'space-y-3' : 'hidden'}>
-          <PcnOcrPanel context="proposal" onApply={applyProposalOcr} disabled={saving} />
+          <div className={proposalTab === 'info' ? 'space-y-4' : 'hidden'}>
+            <PcnOcrPanel context="proposal" onApply={applyProposalOcr} disabled={saving} />
 
-<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-<Field label="Mã Đề nghị">
-<div className="rounded-md border border-indigo-100 bg-indigo-50/60 px-2.5 py-2 text-[10px] font-bold text-indigo-700">Hệ thống tự cấp theo dạng PCN-YYMMDD-TT khi lưu</div>
-</Field>
-<Field label="Trạng thái Đề nghị">
-<div className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10px] font-bold text-slate-700" aria-live="polite">{editingProposal ? proposalStatusLabels[editingProposal.status] : 'Đã tiếp nhận · chờ hệ thống chuyển hồ sơ'}</div>
-</Field>
-        <Field label="Kênh tiếp nhận">
-<PcnCatalogCombobox id="pcn-proposal-channel" label="Kênh tiếp nhận" hideLabel value={form.channel} options={channelOptions} onChange={(value) => setForm({ ...form, channel: value as CertificationProposal['channel'] })} disabled={saving} />
-</Field>
-<Field label="Số lượng mẫu *" error={validationErrors.quantity} errorId="pcn-proposal-error-quantity">
-<input id="pcn-proposal-quantity" type="number" min="1" step="1" inputMode="numeric" required value={form.quantity} aria-invalid={Boolean(validationErrors.quantity)} aria-describedby={validationErrors.quantity ? 'pcn-proposal-error-quantity' : undefined} onChange={(event) => setForm({ ...form, quantity: event.target.value })} />
-</Field>
-<Field label="Ngày tiếp nhận *" error={validationErrors.receivedAt} errorId="pcn-proposal-error-received-at">
-<PgdcnDateInput id="pcn-proposal-received-at" value={form.receivedAt} readOnly={Boolean(editingProposal)} required aria-required="true" aria-invalid={Boolean(validationErrors.receivedAt)} aria-describedby={validationErrors.receivedAt ? 'pcn-proposal-error-received-at' : undefined} onChange={(value) => setForm({ ...form, receivedAt: value })} />
-</Field>
-<Field label={editingProposal ? 'Số đăng ký' : 'Số đăng ký *'} error={validationErrors.registrationNumber} errorId="pcn-proposal-error-registration-number">
-<input id="pcn-proposal-registration-number" required={!editingProposal} value={form.registrationNumber} aria-invalid={Boolean(validationErrors.registrationNumber)} aria-describedby={validationErrors.registrationNumber ? 'pcn-proposal-error-registration-number' : undefined} onChange={(event) => setForm({ ...form, registrationNumber: event.target.value })} />
-</Field>
-<Field label={editingProposal ? 'Ngày đăng ký' : 'Ngày đăng ký *'} error={validationErrors.registrationDate} errorId="pcn-proposal-error-registration-date">
-<PgdcnDateInput id="pcn-proposal-registration-date" value={form.registrationDate} required={!editingProposal} aria-invalid={Boolean(validationErrors.registrationDate)} aria-describedby={validationErrors.registrationDate ? 'pcn-proposal-error-registration-date' : undefined} onChange={(value) => setForm({ ...form, registrationDate: value })} />
-</Field>
-</div>
-<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-2">
-<Field label="Khách hàng *" error={validationErrors['customerSnapshot.name']} errorId="pcn-proposal-error-customer-name">
-<PcnCatalogCombobox id="pcn-customer" label="Khách hàng *" hideLabel value={customerValue} options={customerOptions} unmatchedOption={legacyCustomerOption} onChange={handleCustomerSelection} required invalid={Boolean(validationErrors['customerSnapshot.name'])} aria-invalid={Boolean(validationErrors['customerSnapshot.name'])} disabled={saving} />
-</Field>
-<Field label="Địa chỉ khách hàng *" error={validationErrors['customerSnapshot.address']} errorId="pcn-proposal-error-customer-address">
-<input id="pcn-proposal-customer-address" required value={form.address} aria-invalid={Boolean(validationErrors['customerSnapshot.address'])} aria-describedby={validationErrors['customerSnapshot.address'] ? 'pcn-proposal-error-customer-address' : undefined} onChange={(event) => setForm({ ...form, address: event.target.value })} />
-</Field>
-</div>
-<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-<Field label="Người liên hệ hoặc Mã số thuế *" error={validationErrors['customerSnapshot.contactPerson']} errorId="pcn-proposal-error-customer-contact">
-<input id="pcn-proposal-contact" required={!form.taxId.trim()} value={form.contactPerson} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} aria-describedby={validationErrors['customerSnapshot.contactPerson'] ? 'pcn-proposal-error-customer-contact' : undefined} onChange={(event) => setForm({ ...form, contactPerson: event.target.value })} />
-</Field>
-<Field label="Mã số thuế" error={validationErrors['customerSnapshot.contactPerson']} errorId="pcn-proposal-error-customer-tax-id">
-<input id="pcn-proposal-tax-id" required={!form.contactPerson.trim()} value={form.taxId} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} aria-describedby={validationErrors['customerSnapshot.contactPerson'] ? 'pcn-proposal-error-customer-contact' : undefined} onChange={(event) => setForm({ ...form, taxId: event.target.value })} />
-</Field>
-<Field label="Điện thoại">
-<input id="pcn-proposal-phone" type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
-</Field>
-<Field label="Email">
-<input id="pcn-proposal-email" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
-</Field>
-</div>
-<Field label={editingProposal ? 'Địa chỉ/kho liên quan *' : 'Địa chỉ/kho liên quan (có thể bổ sung sau)'} error={validationErrors.warehouseAddress} errorId="pcn-proposal-error-warehouse-address">
-<input id="pcn-proposal-warehouse-address" required={Boolean(editingProposal)} value={form.warehouseAddress} aria-invalid={Boolean(validationErrors.warehouseAddress)} aria-describedby={validationErrors.warehouseAddress ? 'pcn-proposal-error-warehouse-address' : undefined} onChange={(event) => setForm({ ...form, warehouseAddress: event.target.value })} />
-</Field>
-<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-  <Field label="Nhóm sản phẩm *" error={validationErrors.productGroup} errorId="pcn-proposal-error-product-group">
-    <PcnCatalogCombobox id="pcn-proposal-product-group" label="Nhóm sản phẩm" hideLabel value={form.productGroup} options={productGroupOptions} onChange={(value) => setForm({ ...form, productGroup: value })} required={!editingProposal} invalid={Boolean(validationErrors.productGroup)} aria-invalid={Boolean(validationErrors.productGroup)} disabled={saving} />
-  </Field>
-  <Field label="Phương thức chứng nhận *">
-    <PcnCatalogCombobox id="pcn-proposal-method" label="Phương thức chứng nhận" hideLabel value={form.method} options={methodOptions} onChange={(value) => setForm({ ...form, method: value as PcnCertificationMethod })} disabled={saving || Boolean(editingProposal)} />
-  </Field>
-  <Field label="QCVN / TCVN *" error={validationErrors.standards} errorId="pcn-proposal-error-standards">
-    <PcnCatalogCombobox id="pcn-proposal-standard" label="QCVN / TCVN" hideLabel value={form.customStandard ? '__OTHER__' : form.standards} options={standardOptions} onChange={(value) => setForm({ ...form, standards: value === '__OTHER__' ? '' : value, customStandard: value === '__OTHER__' })} required={!editingProposal} invalid={Boolean(validationErrors.standards)} aria-invalid={Boolean(validationErrors.standards)} disabled={saving} />
-  </Field>
-  {form.customStandard && <Field label="Tên quy chuẩn / tiêu chuẩn *" error={validationErrors.standards} errorId="pcn-proposal-error-custom-standard">
-    <input id="pcn-proposal-custom-standard" required={!editingProposal} value={form.standards} aria-invalid={Boolean(validationErrors.standards)} aria-describedby={validationErrors.standards ? 'pcn-proposal-error-custom-standard' : undefined} onChange={(event) => setForm({ ...form, standards: event.target.value })} />
-  </Field>}
-</div>
-{form.standards && intakeClassification.confirmationStatus === 'PENDING_CONFIRMATION' && <p role="status" className="rounded-md bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">Danh mục chưa xác nhận mối liên hệ giữa nhóm sản phẩm, quy chuẩn và phương thức. Hồ sơ được lưu chờ rà soát; chưa tự gắn bộ hồ sơ mẫu.</p>}
-<div>
-<div className="mb-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500">Lĩnh vực PCN <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span></div>
-<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-  <Field label="Loại hồ sơ theo mẫu">
-    <PcnCatalogCombobox id="pcn-proposal-dossier-type" label="Loại hồ sơ theo mẫu" hideLabel value={form.dossierType} options={dossierTypeOptions} onChange={(value) => setForm({ ...form, dossierType: value })} disabled={saving || Boolean(editingProposal)} />
-  </Field>
-</div>
-<div className="space-y-2">
-  <PcnCatalogCombobox id="pcn-proposal-field-picker" label="Thêm lĩnh vực" value="" options={fieldOptions.filter((option) => !form.fieldCodes.includes(option.value))} onChange={(value) => { if (value) setForm((current) => ({ ...current, fieldCodes: [...current.fieldCodes, value] })); }} disabled={saving || Boolean(editingProposal)} aria-invalid={Boolean(validationErrors.fieldCodes)} />
-  <div className="flex flex-wrap gap-1.5" aria-label="Lĩnh vực đã chọn">{form.fieldCodes.map((code) => {
-    const field = fields.find((item) => item.code === code);
-    return <button key={code} type="button" disabled={Boolean(editingProposal)} onClick={() => setForm((current) => ({ ...current, fieldCodes: current.fieldCodes.filter((item) => item !== code) }))} className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-800 disabled:cursor-default">{code} · {field?.name || code}{field?.scopeStatus === 'NEEDS_PCN_CONFIRMATION' ? ' · cần xác nhận phạm vi' : ''}</button>;
-  })}</div>
-  {validationErrors.fieldCodes && <p id="pcn-proposal-error-field-codes" role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{validationErrors.fieldCodes}</p>}
-</div>
-<section hidden={Boolean(editingProposal)} aria-live="polite" aria-label="Bộ hồ sơ mẫu phù hợp" className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 text-[10px] text-indigo-950">
-  <h3 className="font-black">Bộ hồ sơ mẫu</h3>
-  {workflowCandidates.length === 0 ? <p className="mt-1 font-bold text-amber-800">Chưa xác định bộ hồ sơ mẫu. Có thể lưu Đề nghị và gắn mẫu sau.</p> : <>
-    {workflowCandidates.length > 1 && <div className="mt-2"><PcnCatalogCombobox id="pcn-proposal-workflow-template" label="Chọn bộ hồ sơ mẫu" value={workflowSelection.selectedId || ''} options={workflowTemplateOptions} onChange={setWorkflowTemplateId} invalid={workflowSelection.isAmbiguous || Boolean(validationErrors.workflowTemplate)} aria-invalid={workflowSelection.isAmbiguous || Boolean(validationErrors.workflowTemplate)} disabled={saving} /><p className="mt-1 text-slate-600">Có {workflowCandidates.length} bộ mẫu phù hợp. Chọn đúng bộ hồ sơ để liên kết khi tạo.</p></div>}
-    {recommendedWorkflowTemplate && <div className="mt-2 rounded-lg border border-indigo-200 bg-white p-2.5">
-      <p className="font-black">{workflowCandidates.length === 1 ? 'Đề xuất phù hợp' : 'Mẫu đã chọn'}: {recommendedWorkflowTemplate.name}</p>
-      <p className="mt-0.5 font-mono text-slate-600">{recommendedWorkflowTemplate.code} · phiên bản {recommendedWorkflowTemplate.version}</p>
-      {templateRequirementRows && <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        <div><b>Bắt buộc</b><p className="mt-0.5 leading-4">{templateRequirementRows.required.map((row) => row.definition?.name || row.id).join(' · ') || 'Không có mục bắt buộc được khai báo trong catalog.'}</p></div>
-        <div><b>Tùy chọn</b><p className="mt-0.5 leading-4">{templateRequirementRows.optional.map((row) => row.definition?.name || row.id).join(' · ') || 'Không có mục tùy chọn được khai báo trong catalog.'}</p></div>
-        {templateRequirementRows.unknown.length > 0 && <div className="sm:col-span-2"><b>Mã tài liệu chưa có nhãn trong catalog</b><p className="mt-0.5 leading-4">{templateRequirementRows.unknown.map((row) => row.id).join(' · ')}</p></div>}
-      </div>}
-    </div>}
-    {workflowSelection.isAmbiguous && validationErrors.workflowTemplate && <p role="alert" className="mt-1 font-bold text-rose-700">{validationErrors.workflowTemplate}</p>}
-  </>}
-</section>
-</div>
-<section aria-labelledby="pcn-proposal-domain-boundaries" className="rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 text-[10px] text-indigo-900">
-<h3 id="pcn-proposal-domain-boundaries" className="font-black">Dữ liệu bổ sung theo đúng vùng nghiệp vụ</h3>
-<p className="mt-1 leading-4">Đơn vị mẫu sẽ được ghi trong thông tin lô/mẫu sau khi hồ sơ được tiếp nhận; biểu mẫu Đề nghị không yêu cầu nhập đơn vị riêng.</p>
-<p className="mt-1 leading-4">Lĩnh vực và phương thức chứng nhận được xác nhận ngay tại đây để tìm đúng bộ hồ sơ mẫu trước khi lưu.</p>
-<p className="mt-1 leading-4">Tệp B1 tùy chọn được lưu cùng hồ sơ; có thể tải lên sau khi tạo Đề nghị.</p>
-<p className="mt-1 leading-4">Trạng thái do hệ thống quản lý theo quy trình; biểu mẫu không cho phép tự đổi trạng thái.</p>
-</section>
+            {/* CARD 1: THÔNG TIN TIẾP NHẬN HỒ SƠ */}
+            <section className="rounded-xl border border-slate-200/90 bg-slate-50/40 p-4 space-y-3.5 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                  <ClipboardList size={15} className="text-emerald-600" />
+                  Thông tin tiếp nhận hồ sơ
+                </h3>
+                <span className="text-[11px] text-slate-400 font-medium">Bắt buộc các trường (*)</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Field label="Mã Đề nghị">
+                  <div className="flex items-center h-10 rounded-lg border border-slate-200 bg-slate-100/70 px-3 text-xs font-medium text-slate-500 font-mono">Hệ thống tự cấp theo dạng PCN-YYMMDD-TT khi lưu</div>
+                </Field>
+                <Field label="Trạng thái Đề nghị">
+                  <div className="flex items-center h-10 rounded-lg border border-emerald-100 bg-emerald-50/70 px-3 text-xs font-semibold text-emerald-800" aria-live="polite">
+                    {editingProposal ? proposalStatusLabels[editingProposal.status] : 'Đã tiếp nhận · chờ hệ thống chuyển hồ sơ'}
+                  </div>
+                </Field>
+                <Field label="Kênh tiếp nhận">
+                  <PcnCatalogCombobox id="pcn-proposal-channel" label="Kênh tiếp nhận" hideLabel value={form.channel} options={channelOptions} onChange={(value) => setForm({ ...form, channel: value as CertificationProposal['channel'] })} disabled={saving} />
+                </Field>
+                <Field label="Số lượng mẫu *" error={validationErrors.quantity} errorId="pcn-proposal-error-quantity">
+                  <input id="pcn-proposal-quantity" type="number" min="1" step="1" inputMode="numeric" required value={form.quantity} aria-invalid={Boolean(validationErrors.quantity)} aria-describedby={validationErrors.quantity ? 'pcn-proposal-error-quantity' : undefined} onChange={(event) => setForm({ ...form, quantity: event.target.value })} />
+                </Field>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label="Ngày tiếp nhận *" error={validationErrors.receivedAt} errorId="pcn-proposal-error-received-at">
+                  <PgdcnDateInput id="pcn-proposal-received-at" value={form.receivedAt} readOnly={Boolean(editingProposal)} required aria-required="true" aria-invalid={Boolean(validationErrors.receivedAt)} aria-describedby={validationErrors.receivedAt ? 'pcn-proposal-error-received-at' : undefined} onChange={(value) => setForm({ ...form, receivedAt: value })} />
+                </Field>
+                <Field label={editingProposal ? 'Số đăng ký' : 'Số đăng ký *'} error={validationErrors.registrationNumber} errorId="pcn-proposal-error-registration-number">
+                  <input id="pcn-proposal-registration-number" required={!editingProposal} value={form.registrationNumber} aria-invalid={Boolean(validationErrors.registrationNumber)} aria-describedby={validationErrors.registrationNumber ? 'pcn-proposal-error-registration-number' : undefined} onChange={(event) => setForm({ ...form, registrationNumber: event.target.value })} />
+                </Field>
+                <Field label={editingProposal ? 'Ngày đăng ký' : 'Ngày đăng ký *'} error={validationErrors.registrationDate} errorId="pcn-proposal-error-registration-date">
+                  <PgdcnDateInput id="pcn-proposal-registration-date" value={form.registrationDate} required={!editingProposal} aria-invalid={Boolean(validationErrors.registrationDate)} aria-describedby={validationErrors.registrationDate ? 'pcn-proposal-error-registration-date' : undefined} onChange={(value) => setForm({ ...form, registrationDate: value })} />
+                </Field>
+              </div>
+            </section>
+
+            {/* CARD 2: KHÁCH HÀNG & PHÁP LÝ */}
+            <section className="rounded-xl border border-slate-200/90 bg-slate-50/40 p-4 space-y-3.5 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                  <Building2 size={15} className="text-emerald-600" />
+                  Thông tin khách hàng & Pháp lý
+                </h3>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Khách hàng *" error={validationErrors['customerSnapshot.name']} errorId="pcn-proposal-error-customer-name">
+                  <PcnCatalogCombobox id="pcn-customer" label="Khách hàng *" hideLabel value={customerValue} options={customerOptions} unmatchedOption={legacyCustomerOption} onChange={handleCustomerSelection} required invalid={Boolean(validationErrors['customerSnapshot.name'])} aria-invalid={Boolean(validationErrors['customerSnapshot.name'])} disabled={saving} />
+                </Field>
+                <Field label="Địa chỉ khách hàng *" error={validationErrors['customerSnapshot.address']} errorId="pcn-proposal-error-customer-address">
+                  <input id="pcn-proposal-customer-address" required value={form.address} aria-invalid={Boolean(validationErrors['customerSnapshot.address'])} aria-describedby={validationErrors['customerSnapshot.address'] ? 'pcn-proposal-error-customer-address' : undefined} onChange={(event) => setForm({ ...form, address: event.target.value })} />
+                </Field>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Field label="Người liên hệ hoặc Mã số thuế *" error={validationErrors['customerSnapshot.contactPerson']} errorId="pcn-proposal-error-customer-contact">
+                  <input id="pcn-proposal-contact" required={!form.taxId.trim()} value={form.contactPerson} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} aria-describedby={validationErrors['customerSnapshot.contactPerson'] ? 'pcn-proposal-error-customer-contact' : undefined} onChange={(event) => setForm({ ...form, contactPerson: event.target.value })} />
+                </Field>
+                <Field label="Mã số thuế" error={validationErrors['customerSnapshot.contactPerson']} errorId="pcn-proposal-error-customer-tax-id">
+                  <input id="pcn-proposal-tax-id" required={!form.contactPerson.trim()} value={form.taxId} aria-invalid={Boolean(validationErrors['customerSnapshot.contactPerson'])} aria-describedby={validationErrors['customerSnapshot.contactPerson'] ? 'pcn-proposal-error-customer-contact' : undefined} onChange={(event) => setForm({ ...form, taxId: event.target.value })} />
+                </Field>
+                <Field label="Điện thoại">
+                  <input id="pcn-proposal-phone" type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
+                </Field>
+                <Field label="Email">
+                  <input id="pcn-proposal-email" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+                </Field>
+              </div>
+              <Field label={editingProposal ? 'Địa chỉ/kho liên quan *' : 'Địa chỉ/kho liên quan (có thể bổ sung sau)'} error={validationErrors.warehouseAddress} errorId="pcn-proposal-error-warehouse">
+                <input id="pcn-proposal-warehouse" required={Boolean(editingProposal)} value={form.warehouseAddress} aria-invalid={Boolean(validationErrors.warehouseAddress)} aria-describedby={validationErrors.warehouseAddress ? 'pcn-proposal-error-warehouse' : undefined} onChange={(event) => setForm({ ...form, warehouseAddress: event.target.value })} />
+              </Field>
+            </section>
+
+            {/* CARD 3: PHẠM VI CHỨNG NHẬN & TIÊU CHUẨN */}
+            <section className="rounded-xl border border-slate-200/90 bg-slate-50/40 p-4 space-y-3.5 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                  <ShieldCheck size={15} className="text-emerald-600" />
+                  Phạm vi chứng nhận & Tiêu chuẩn
+                </h3>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label="Nhóm sản phẩm *" error={validationErrors.productGroup} errorId="pcn-proposal-error-product-group">
+                  <PcnCatalogCombobox id="pcn-proposal-product-group" label="Nhóm sản phẩm *" hideLabel value={form.productGroup} options={productGroupOptions} onChange={(value) => setForm({ ...form, productGroup: value })} required={!editingProposal} invalid={Boolean(validationErrors.productGroup)} aria-invalid={Boolean(validationErrors.productGroup)} disabled={saving} />
+                </Field>
+                <Field label="Phương thức chứng nhận *" error={validationErrors.method} errorId="pcn-proposal-error-method">
+                  <PcnCatalogCombobox id="pcn-proposal-method" label="Phương thức chứng nhận *" hideLabel value={form.method} options={methodOptions} onChange={(value) => setForm({ ...form, method: value as PcnCertificationMethod })} required={!editingProposal} invalid={Boolean(validationErrors.method)} aria-invalid={Boolean(validationErrors.method)} disabled={saving} />
+                </Field>
+                <Field label="QCVN / TCVN *" error={validationErrors.standards} errorId="pcn-proposal-error-standards">
+                  <PcnCatalogCombobox id="pcn-proposal-standards" label="QCVN / TCVN *" hideLabel value={form.customStandard ? '__OTHER__' : form.standards} options={standardOptions} onChange={(value) => setForm({ ...form, standards: value === '__OTHER__' ? '' : value, customStandard: value === '__OTHER__' })} required={!editingProposal} invalid={Boolean(validationErrors.standards)} aria-invalid={Boolean(validationErrors.standards)} disabled={saving} />
+                </Field>
+              </div>
+              {form.customStandard && (
+                <Field label="Tên quy chuẩn / tiêu chuẩn *" error={validationErrors.standards} errorId="pcn-proposal-error-custom-standard">
+                  <input id="pcn-proposal-custom-standard" required={!editingProposal} value={form.standards} aria-invalid={Boolean(validationErrors.standards)} aria-describedby={validationErrors.standards ? 'pcn-proposal-error-custom-standard' : undefined} onChange={(event) => setForm({ ...form, standards: event.target.value })} />
+                </Field>
+              )}
+              {form.standards && intakeClassification.confirmationStatus === 'PENDING_CONFIRMATION' && (
+                <p role="status" className="rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs leading-5 text-amber-900">
+                  Danh mục chưa xác nhận mối liên hệ giữa nhóm sản phẩm, quy chuẩn và phương thức. Hồ sơ được lưu chờ rà soát; chưa tự gắn bộ hồ sơ mẫu.
+                </p>
+              )}
+              <div className="space-y-2 pt-2 border-t border-slate-200/60">
+                <div className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                  Lĩnh vực PCN <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <Field label="Loại hồ sơ theo mẫu">
+                    <PcnCatalogCombobox id="pcn-proposal-dossier-type" label="Loại hồ sơ theo mẫu" hideLabel value={form.dossierType} options={dossierTypeOptions} onChange={(value) => setForm({ ...form, dossierType: value })} disabled={saving || Boolean(editingProposal)} />
+                  </Field>
+                </div>
+                <div className="space-y-2">
+                  <PcnCatalogCombobox id="pcn-proposal-field-picker" label="Thêm lĩnh vực" value="" options={fieldOptions.filter((option) => !form.fieldCodes.includes(option.value))} onChange={(value) => { if (value) setForm((current) => ({ ...current, fieldCodes: [...current.fieldCodes, value] })); }} disabled={saving || Boolean(editingProposal)} aria-invalid={Boolean(validationErrors.fieldCodes)} />
+                  <div className="flex flex-wrap gap-1.5" aria-label="Lĩnh vực đã chọn">
+                    {form.fieldCodes.map((code) => {
+                      const field = fields.find((item) => item.code === code);
+                      return (
+                        <button key={code} type="button" disabled={Boolean(editingProposal)} onClick={() => setForm((current) => ({ ...current, fieldCodes: current.fieldCodes.filter((item) => item !== code) }))} className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors disabled:cursor-default">
+                          {code} · {field?.name || code}{field?.scopeStatus === 'NEEDS_PCN_CONFIRMATION' ? ' · cần xác nhận phạm vi' : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {validationErrors.fieldCodes && <p id="pcn-proposal-error-field-codes" role="alert" className="mt-1 text-xs font-medium leading-4 text-rose-700">{validationErrors.fieldCodes}</p>}
+                </div>
+              </div>
+
+              <section hidden={Boolean(editingProposal)} aria-live="polite" aria-label="Bộ hồ sơ mẫu phù hợp" className="rounded-xl border border-slate-200/90 bg-slate-50/80 p-3.5 text-xs text-slate-800">
+                <h4 className="font-bold text-slate-900">Bộ hồ sơ mẫu</h4>
+                {workflowCandidates.length === 0 ? (
+                  <p className="mt-1 font-semibold text-amber-800">Chưa xác định bộ hồ sơ mẫu. Có thể lưu Đề nghị và gắn mẫu sau.</p>
+                ) : (
+                  <>
+                    {workflowCandidates.length > 1 && (
+                      <div className="mt-2">
+                        <PcnCatalogCombobox id="pcn-proposal-workflow-template" label="Chọn bộ hồ sơ mẫu" value={workflowSelection.selectedId || ''} options={workflowTemplateOptions} onChange={setWorkflowTemplateId} invalid={workflowSelection.isAmbiguous || Boolean(validationErrors.workflowTemplate)} aria-invalid={workflowSelection.isAmbiguous || Boolean(validationErrors.workflowTemplate)} disabled={saving} />
+                        <p className="mt-1 text-slate-500 text-[11px]">Có {workflowCandidates.length} bộ mẫu phù hợp. Chọn đúng bộ hồ sơ để liên kết khi tạo.</p>
+                      </div>
+                    )}
+                    {recommendedWorkflowTemplate && (
+                      <div className="mt-2.5 rounded-lg border border-slate-200 bg-white p-3 shadow-2xs">
+                        <p className="font-bold text-slate-900">{workflowCandidates.length === 1 ? 'Đề xuất phù hợp' : 'Mẫu đã chọn'}: {recommendedWorkflowTemplate.name}</p>
+                        <p className="mt-0.5 font-mono text-[11px] text-slate-500">{recommendedWorkflowTemplate.code} · phiên bản {recommendedWorkflowTemplate.version}</p>
+                        {templateRequirementRows && (
+                          <div className="mt-2 grid gap-2 sm:grid-cols-2 text-xs">
+                            <div>
+                              <span className="font-semibold text-slate-700">Bắt buộc:</span>
+                              <p className="mt-0.5 leading-relaxed text-slate-600">{templateRequirementRows.required.map((row) => row.definition?.name || row.id).join(' · ') || 'Không có mục bắt buộc được khai báo trong catalog.'}</p>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-slate-700">Tùy chọn:</span>
+                              <p className="mt-0.5 leading-relaxed text-slate-600">{templateRequirementRows.optional.map((row) => row.definition?.name || row.id).join(' · ') || 'Không có mục tùy chọn được khai báo trong catalog.'}</p>
+                            </div>
+                            {templateRequirementRows.unknown.length > 0 && (
+                              <div className="sm:col-span-2">
+                                <span className="font-semibold text-slate-700">Mã tài liệu chưa có nhãn trong catalog:</span>
+                                <p className="mt-0.5 leading-relaxed text-slate-600">{templateRequirementRows.unknown.map((row) => row.id).join(' · ')}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {workflowSelection.isAmbiguous && validationErrors.workflowTemplate && (
+                      <p role="alert" className="mt-1.5 font-semibold text-rose-700 text-xs">{validationErrors.workflowTemplate}</p>
+                    )}
+                  </>
+                )}
+              </section>
+            </section>
+
+            <section aria-labelledby="pcn-proposal-domain-boundaries" className="rounded-xl border border-slate-200/70 bg-slate-50/60 p-3.5 text-xs text-slate-600 space-y-1">
+              <h4 id="pcn-proposal-domain-boundaries" className="font-bold text-slate-700">Dữ liệu bổ sung theo đúng vùng nghiệp vụ</h4>
+              <p className="leading-relaxed">Đơn vị mẫu sẽ được ghi trong thông tin lô/mẫu sau khi hồ sơ được tiếp nhận; biểu mẫu Đề nghị không yêu cầu nhập đơn vị riêng.</p>
+              <p className="leading-relaxed">Lĩnh vực và phương thức chứng nhận được xác nhận ngay tại đây để tìm đúng bộ hồ sơ mẫu trước khi lưu.</p>
+              <p className="leading-relaxed">Tệp B1 tùy chọn được lưu cùng hồ sơ; có thể tải lên sau khi tạo Đề nghị.</p>
+              <p className="leading-relaxed">Trạng thái do hệ thống quản lý theo quy trình; biểu mẫu không cho phép tự đổi trạng thái.</p>
+            </section>
           </div>
 
           {/* TAB 2: TỆP ĐÍNH KÈM (TÙY CHỌN) */}
@@ -1586,7 +1665,24 @@ function Field({ label, required, error, errorId, hideLabel = false, children }:
   const normalizedLabel = label.replace(/\s*\*\s*$/, '');
   const childProps = React.isValidElement(children) ? children.props as { required?: boolean } : undefined;
   const isRequired = required ?? (Boolean(childProps?.required) || normalizedLabel !== label);
-  return <label className="block">{!hideLabel && <span className="block text-[10px] font-black text-slate-500 mb-1">{normalizedLabel}{isRequired && <span aria-hidden="true" className="ml-0.5 text-rose-600">*</span>}</span>}<div className={`[&_input]:w-full [&_input]:rounded-md [&_input]:border [&_input]:px-2.5 [&_input]:py-1.5 [&_input]:text-[11px] [&_input]:outline-none [&_input]:focus:border-emerald-400 [&_select]:w-full [&_select]:rounded-md [&_select]:border [&_select]:bg-white [&_select]:px-2.5 [&_select]:py-1.5 [&_select]:text-[11px] [&_textarea]:w-full [&_textarea]:rounded-md [&_textarea]:border [&_textarea]:px-2.5 [&_textarea]:py-1.5 [&_textarea]:text-[11px] [&_textarea]:outline-none ${error ? '[&_input]:border-rose-300 [&_select]:border-rose-300 [&_textarea]:border-rose-300 [&_input]:bg-rose-50/40 [&_select]:bg-rose-50/40 [&_textarea]:bg-rose-50/40' : '[&_input]:border-slate-200 [&_select]:border-slate-200 [&_textarea]:border-slate-200'}`}>{children}</div>{error && <p id={errorId} role="alert" className="mt-1 text-[9px] font-bold leading-4 text-rose-700">{error}</p>}</label>;
+  return (
+    <label className="block">
+      {!hideLabel && (
+        <span className="block text-xs font-semibold text-slate-700 mb-1.5">
+          {normalizedLabel}
+          {isRequired && <span aria-hidden="true" className="ml-1 font-bold text-rose-500">*</span>}
+        </span>
+      )}
+      <div className={`[&_input]:w-full [&_input]:h-10 [&_input]:rounded-lg [&_input]:border [&_input]:px-3 [&_input]:py-2 [&_input]:text-xs [&_input]:outline-none [&_input]:transition-all [&_input]:focus:border-emerald-500 [&_input]:focus:ring-2 [&_input]:focus:ring-emerald-500/20 [&_select]:w-full [&_select]:h-10 [&_select]:rounded-lg [&_select]:border [&_select]:bg-white [&_select]:px-3 [&_select]:py-2 [&_select]:text-xs [&_select]:focus:border-emerald-500 [&_select]:focus:ring-2 [&_select]:focus:ring-emerald-500/20 [&_textarea]:w-full [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:px-3 [&_textarea]:py-2 [&_textarea]:text-xs [&_textarea]:outline-none [&_textarea]:focus:border-emerald-500 [&_textarea]:focus:ring-2 [&_textarea]:focus:ring-emerald-500/20 ${
+        error
+          ? '[&_input]:border-rose-300 [&_select]:border-rose-300 [&_textarea]:border-rose-300 [&_input]:bg-rose-50/40 [&_select]:bg-rose-50/40 [&_textarea]:bg-rose-50/40'
+          : '[&_input]:border-slate-200 [&_input]:hover:border-slate-300 [&_input]:bg-white [&_select]:border-slate-200 [&_select]:bg-white [&_textarea]:border-slate-200 [&_textarea]:hover:border-slate-300 [&_textarea]:bg-white'
+      }`}>
+        {children}
+      </div>
+      {error && <p id={errorId} role="alert" className="mt-1 text-[11px] font-medium text-rose-600">{error}</p>}
+    </label>
+  );
 }
 
 export type PcnWorkspaceProps = {

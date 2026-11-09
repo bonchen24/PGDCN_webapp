@@ -19,6 +19,7 @@ import {
   FileCheck2,
   FilePlus2,
   FileText,
+  Paperclip,
   FlaskConical,
   Folder,
   FolderOpen,
@@ -694,8 +695,8 @@ export function PgdIntakeForm({
 
   return <div className="space-y-3 p-3 md:p-5">
     <form id={formId} onSubmit={submit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:p-5">
-      {/* 2-TAB HEADER */}
-      <div className="flex border-b border-slate-200 bg-slate-50/80 p-1.5 rounded-xl gap-2 text-xs font-bold" role="tablist" aria-label="Các phần của Phiếu yêu cầu">
+      {/* 2-TAB HEADER (Segmented Control) */}
+      <div className="flex border border-slate-200/90 bg-slate-100/90 p-1 rounded-xl gap-1.5 text-xs font-semibold" role="tablist" aria-label="Các phần của Phiếu yêu cầu">
         <button
           type="button"
           role="tab"
@@ -703,11 +704,11 @@ export function PgdIntakeForm({
           onClick={() => setActiveTab('info')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
             activeTab === 'info'
-              ? 'bg-white text-blue-700 shadow-xs border border-slate-200 font-black'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-white text-blue-800 shadow-xs border border-slate-200 font-bold'
+              : 'text-slate-600 hover:text-slate-900 font-medium'
           }`}
         >
-          <span>📋</span>
+          <FileText size={15} className={activeTab === 'info' ? 'text-blue-600' : 'text-slate-400'} />
           <span>Thông tin Phiếu yêu cầu</span>
         </button>
         <button
@@ -717,14 +718,14 @@ export function PgdIntakeForm({
           onClick={() => setActiveTab('attachments')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
             activeTab === 'attachments'
-              ? 'bg-white text-blue-700 shadow-xs border border-slate-200 font-black'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-white text-blue-800 shadow-xs border border-slate-200 font-bold'
+              : 'text-slate-600 hover:text-slate-900 font-medium'
           }`}
         >
-          <span>📎</span>
+          <Paperclip size={15} className={activeTab === 'attachments' ? 'text-blue-600' : 'text-slate-400'} />
           <span>Tệp đính kèm (tùy chọn)</span>
           {b1Attachments.length > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
               {b1Attachments.length}
             </span>
           )}

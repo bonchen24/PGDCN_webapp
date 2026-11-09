@@ -170,7 +170,7 @@ export function PcnCatalogCombobox({
             setIsOpen(true);
           }}
           onKeyDown={handleKeyDown}
-          className="min-h-11 w-full rounded-md border border-slate-200 bg-white py-2 pl-8 pr-20 text-[11px] outline-none transition-colors focus:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:bg-slate-50"
+          className="h-10 w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-20 text-xs outline-none transition-all hover:border-slate-300 focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-50"
         />
         <div className="absolute inset-y-0 right-0 flex items-center">
           {value && !disabled && <button type="button" aria-label={`Xóa ${label}`} onClick={() => { onChange(''); setInputValue(''); setIsOpen(false); inputRef.current?.focus(); }} className="mobile-touch-target text-slate-400 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1">
@@ -181,7 +181,7 @@ export function PcnCatalogCombobox({
           </button>
         </div>
       </div>
-      {isOpen && !disabled && <div id={listboxId} role="listbox" aria-label={label} className="absolute inset-x-0 top-full z-50 mt-1 max-h-64 overflow-y-auto mobile-scroll-y rounded-md border border-slate-200 bg-white p-1 shadow-md">
+      {isOpen && !disabled && <div id={listboxId} role="listbox" aria-label={label} className="absolute inset-x-0 top-full z-50 mt-1 max-h-64 overflow-y-auto mobile-scroll-y rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
         {filteredOptions.length === 0 ? <div className="px-2.5 py-3 text-[10px] text-slate-500">Không có giá trị phù hợp.</div> : filteredOptions.map((option, index) => {
           const isSelected = option.value === value;
           const isActive = index === activeIndex;
@@ -195,7 +195,7 @@ export function PcnCatalogCombobox({
             disabled={option.disabled}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => selectOption(option)}
-            className={`block min-h-11 w-full rounded px-2.5 py-2 text-left text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-inset ${isActive ? 'bg-emerald-50 text-emerald-800' : 'text-slate-700 hover:bg-slate-50'} ${option.disabled ? 'cursor-not-allowed opacity-60' : ''}`}
+            className={`block min-h-10 w-full rounded-lg px-3 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-inset ${isActive ? 'bg-emerald-50 text-emerald-800' : 'text-slate-700 hover:bg-slate-50'} ${option.disabled ? 'cursor-not-allowed opacity-60' : ''}`}
           >
             <span className="block font-bold">{option.label}</span>
             {option.description && <span className="mt-0.5 block text-[10px] text-slate-500">{option.description}</span>}
