@@ -31,6 +31,9 @@ test('PCN proposal modal features a dedicated 2-Tab layout separating form field
 
   // Verifies validation errors return focus / switch to Tab 1
   assert.match(pcnWorkspace, /setProposalTab\('info'\)/);
+
+  // Verifies redundant product fields are eliminated from intake modal keeping it minimalist
+  assert.doesNotMatch(pcnWorkspace, /id="pcn-proposal-(product-name|product-type|model|brand|manufacturer|specifications)"/);
 });
 
 test('PgdcnB1AttachmentSection supports direct per-item uploads alongside common screening checklist', () => {
@@ -45,6 +48,11 @@ test('PgdcnB1AttachmentSection supports direct per-item uploads alongside common
   assert.match(attachmentSection, /Tải tệp lên/);
   assert.match(attachmentSection, /Thay thế/);
   assert.match(attachmentSection, /Thêm tệp/);
+
+  // Verifies File mẫu template preview action and Xem action
+  assert.match(attachmentSection, /File mẫu/);
+  assert.match(attachmentSection, /DOCX_TEMPLATE_PRESETS/);
+  assert.match(attachmentSection, /Xem/);
 
   // Verifies each checklist item displays its own file list and count
   assert.match(attachmentSection, /itemFiles/);

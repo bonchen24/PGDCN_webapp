@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import {
   FileText,
+  FileDown,
+  Eye,
   Image as ImageIcon,
   Upload,
   X,
@@ -39,6 +42,16 @@ function isSupportedFile(file: File): boolean {
   const extension = file.name.split('.').pop()?.toLowerCase() || '';
   return ACCEPTED_FILE_EXTENSIONS.has(extension);
 }
+
+// Presets for items that have a standard DOCX template
+const DOCX_TEMPLATE_PRESETS: Record<string, { filename: string; label: string }> = {
+  'QC4-PROPOSAL': { filename: 'PCN_De_nghi_chung_nhan.docx', label: 'Mẫu Đề nghị PCN (DOCX)' },
+  'QC9-PROPOSAL': { filename: 'PCN_De_nghi_chung_nhan.docx', label: 'Mẫu Đề nghị PCN (DOCX)' },
+  'REQUEST_PYC': { filename: 'PGD-BM-01.docx', label: 'Mẫu Phiếu yêu cầu PGD (DOCX)' },
+  'COMMERCIAL_CONTRACT': { filename: 'PCN_Hop_dong_dich_vu_chung_nhan.docx', label: 'Mẫu Hợp đồng dịch vụ (DOCX)' },
+  'QC4-COMMERCIAL': { filename: 'PCN_Hop_dong_dich_vu_chung_nhan.docx', label: 'Mẫu Hợp đồng dịch vụ (DOCX)' },
+  'QC9-COMMERCIAL': { filename: 'PCN_Hop_dong_dich_vu_chung_nhan.docx', label: 'Mẫu Hợp đồng dịch vụ (DOCX)' },
+};
 
 // Common screening document requirements for customer review and proposal eligibility
 const COMMON_SCREENING_ITEMS = [
@@ -369,6 +382,7 @@ export function PgdcnB1AttachmentSection({
             const itemFiles = attachmentsByRequirement.get(item.id) || [];
             const hasFiles = itemFiles.length > 0;
             const singleFileInputId = `${idPrefix}-item-file-${item.id}`;
+            const docxPreset = DOCX_TEMPLATE_PRESETS[item.code] || DOCX_TEMPLATE_PRESETS[item.id];
 
             return (
               <div
@@ -431,6 +445,21 @@ export function PgdcnB1AttachmentSection({
 
                               <button
                                 type="button"
+                                onClick={() => {
+                                  try {
+                                    const url = URL.createObjectURL(fileAtt.file);
+                                    window.open(url, '_blank', 'noopener,noreferrer');
+                                  } catch {
+                                    toast.info(`Tệp: ${fileAtt.file.name}`);
+                                  }
+                                }}
+                                aria-label={`Xem tệp ${fileAtt.file.name}`}
+                                className="px-2 py-1 rounded text-[11px] font-bold text-slate-600 hover:bg-slate-200/70 transition-colors"
+                              >
+                                Xem
+                              </button>
+                              <button
+                                type="button"
                                 disabled={unavailable || fileAtt.status === 'UPLOADED'}
                                 onClick={() => removeFile(fileAtt.id)}
                                 aria-label={`Xóa tệp ${fileAtt.file.name}`}
@@ -448,6 +477,19 @@ export function PgdcnB1AttachmentSection({
 
                 {/* Upload action for this requirement */}
                 <div className="flex items-center gap-2 shrink-0 self-end md:self-start">
+                  {docxPreset && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toast.info(`Biểu mẫu DOCX: ${docxPreset.label}. Có thể tải hoặc mở soạn thảo.`);
+                      }}
+                      className="mobile-touch-target inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+                      title={`Xem thông tin biểu mẫu ${docxPreset.label}`}
+                    >
+                      <FileDown size={13} className="text-slate-500" />
+                      <span>File mẫu</span>
+                    </button>
+                  )}
                   <input
                     id={singleFileInputId}
                     type="file"
