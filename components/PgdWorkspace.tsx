@@ -385,6 +385,7 @@ export function PgdIntakeForm({
   const [form, setForm] = useState<IntakeForm>(() => ({ ...initialIntake, standards: activeCatalog[0]?.defaultStandards.join(', ') || '' }));
   const [sampleDrafts, setSampleDrafts] = useState<PgdIntakeSampleDraft[]>([]);
   const [workflowTemplateId, setWorkflowTemplateId] = useState('');
+  const [activeTab, setActiveTab] = useState<'info' | 'attachments'>('info');
   const [saving, setSaving] = useState(false);
   const [b1Attachments, setB1Attachments] = useState<PgdcnB1SelectedAttachment[]>([]);
   const [createdRequestId, setCreatedRequestId] = useState<string>();
@@ -693,6 +694,45 @@ export function PgdIntakeForm({
 
   return <div className="space-y-3 p-3 md:p-5">
     <form id={formId} onSubmit={submit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:p-5">
+      {/* 2-TAB HEADER */}
+      <div className="flex border-b border-slate-200 bg-slate-50/80 p-1.5 rounded-xl gap-2 text-xs font-bold" role="tablist" aria-label="Các phần của Phiếu yêu cầu">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'info'}
+          onClick={() => setActiveTab('info')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+            activeTab === 'info'
+              ? 'bg-white text-blue-700 shadow-xs border border-slate-200 font-black'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <span>📋</span>
+          <span>Thông tin Phiếu yêu cầu</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'attachments'}
+          onClick={() => setActiveTab('attachments')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+            activeTab === 'attachments'
+              ? 'bg-white text-blue-700 shadow-xs border border-slate-200 font-black'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <span>📎</span>
+          <span>Tệp đính kèm (tùy chọn)</span>
+          {b1Attachments.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800">
+              {b1Attachments.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* TAB 1: THÔNG TIN PHIẾU YÊU CẦU */}
+      <div className={activeTab === 'info' ? 'space-y-4' : 'hidden'}>
       <div data-testid="pgd-selected-group-code" className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-100 bg-blue-50/50 px-2.5 py-2 text-[11px] text-blue-800"><span className="font-black">Nhóm nghiệp vụ PGD:</span><span className="rounded-full border border-blue-200 bg-white px-2 py-1 font-black">{selectedCatalog.groupCode ? PGD_GROUP_LABELS[selectedCatalog.groupCode] : 'Chưa gắn nhóm nghiệp vụ'}</span><span className="text-blue-600">Mã phân tuyến: {selectedCatalog.code}</span></div>
       <section data-testid="pgd-intake-classification" className="rounded-xl border border-blue-200 bg-blue-50/50 p-3"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h2 className="text-xs font-black text-blue-950">Phân loại hồ sơ giám định</h2><span className="rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[10px] font-black text-blue-800">Giám định · PGD · dữ liệu riêng</span></div><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Field label="Nhóm sản phẩm"><SelectInput aria-label="Nhóm sản phẩm PGD" value={form.productGroup} onChange={(event) => chooseProductGroup(event.target.value as IntakeForm['productGroup'])}>{activeProductGroups.map((group) => <option key={group} value={group}>{PGD_PRODUCT_GROUP_LABELS[group]}</option>)}</SelectInput></Field><Field label="Loại hình giám định"><SelectInput value={form.catalogItemId} onChange={(event) => { const item = activeCatalog.find((candidate) => candidate.id === event.target.value); setForm((current) => ({ ...current, catalogItemId: event.target.value, productGroup: item?.productGroup || current.productGroup, standards: item?.defaultStandards.join(', ') || current.standards })); }}><option value="">Chọn loại hình...</option>{activeCatalog.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name}</option>)}</SelectInput></Field><Field label="Tiêu chuẩn / phương pháp đối chiếu *" wide><TextInput required value={form.standards} onChange={(event) => update('standards', event.target.value)} /></Field><Field label="Mã phương thức / quy trình"><SelectInput aria-label="Mã phương thức PGD" value={form.method} onChange={(event) => update('method', event.target.value)}><option value="">Chọn mã phương thức...</option>{selectedCatalog.methodOptions.map((method) => <option key={method.code} value={method.code}>{method.code} · {method.name}</option>)}</SelectInput></Field><Field label="Phương thức ĐGSPH"><SelectInput aria-label="Phương thức ĐGSPH" required value={form.assessmentMethod} onChange={(event) => update('assessmentMethod', event.target.value)}><option value="">Chọn phương thức 7...</option>{PGD_ASSESSMENT_METHOD_OPTIONS.map((option) => <option key={option.code} value={option.code}>{option.name}</option>)}</SelectInput></Field><Field label="Số đăng ký (phòng nhập)"><TextInput value={form.registrationNumber} onChange={(event) => update('registrationNumber', event.target.value)} /></Field><Field label="Ngày đăng ký"><PgdcnDateInput aria-label="Ngày đăng ký PGD" value={form.registrationDate} onChange={(value) => update('registrationDate', value)} /></Field></div></section><section aria-live="polite" aria-label="Bộ hồ sơ mẫu phù hợp" className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-[10px] text-blue-950">
         <h2 className="font-black">Bộ hồ sơ mẫu PGD</h2>
@@ -711,7 +751,7 @@ export function PgdIntakeForm({
         </>}
       </section>
       <PgdcnIntakeDropzone disabled={saving || !canMutate} onExtract={runPgdOcr} onDraftApply={applyPgdOcr} onFileAccepted={(file) => setB1Attachments((current) => [...current, createPgdcnB1SelectedAttachment(file)])} />
-      <PgdcnB1AttachmentSection idPrefix={formId} accent="blue" requirements={b1Requirements} attachments={b1Attachments} onChange={setB1Attachments} disabled={saving || !canMutate} />
+
       <section className="rounded-xl border border-blue-100 bg-blue-50/40 p-3"><h2 className="mb-2 text-xs font-black text-slate-800">Thông tin bên yêu cầu</h2><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Field label="Người / đơn vị yêu cầu *"><TextInput required value={form.requesterName} onChange={(event) => update('requesterName', event.target.value)} /></Field><Field label="Địa chỉ bên yêu cầu *"><TextInput required value={form.requesterAddress} onChange={(event) => update('requesterAddress', event.target.value)} /></Field><Field label="Người liên hệ *"><TextInput required value={form.requesterContact} onChange={(event) => update('requesterContact', event.target.value)} /></Field><Field label="Điện thoại *"><TextInput required value={form.requesterPhone} onChange={(event) => update('requesterPhone', event.target.value)} /></Field><Field label="Email"><TextInput type="email" value={form.requesterEmail} onChange={(event) => update('requesterEmail', event.target.value)} /></Field><Field label="Mức ưu tiên"><SelectInput value={form.priority} onChange={(event) => update('priority', event.target.value as IntakeForm['priority'])}><option value="NORMAL">Bình thường</option><option value="URGENT">Gấp / ưu tiên</option></SelectInput></Field><Field label="Lý do ưu tiên" wide><TextInput required={form.priority === 'URGENT'} value={form.urgentReason} onChange={(event) => update('urgentReason', event.target.value)} /></Field></div></section>
       <section><h2 className="mb-2 flex items-center gap-2 text-xs font-black text-slate-800"><Building2 size={15} className="text-blue-600" /> Đơn vị yêu cầu / khách hàng</h2><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-lg border border-blue-100 bg-blue-50/60 px-2.5 py-2 text-[11px] text-blue-800"><span className="block font-black">Số hồ sơ / PYC</span><span className="mt-1 block">Hệ thống tự cấp theo ngày: <b className="font-mono">PGD-YYMMDD-TT</b></span></div><Field label="Kênh tiếp nhận"><SelectInput value={form.intakeChannel} onChange={(event) => update('intakeChannel', event.target.value as IntakeForm['intakeChannel'])}><option value="DIRECT">Trực tiếp</option><option value="PHONE">Điện thoại</option><option value="ONLINE_ZALO">Zalo / Online</option><option value="EMAIL">Email</option><option value="OTHER">Khác</option></SelectInput></Field><Field label="Tìm khách hàng dùng chung"><PcnCatalogCombobox id="pgd-customer-catalog" label="Tìm khách hàng dùng chung" hideLabel value={selectedCustomerValue} options={customerOptions} onChange={chooseCustomer} disabled={saving} /></Field><Field label="Tên đơn vị *"><TextInput required value={form.customerName} onChange={(event) => update('customerName', event.target.value)} /></Field><Field label="Địa chỉ *"><TextInput required value={form.customerAddress} onChange={(event) => update('customerAddress', event.target.value)} /></Field><Field label="Mã số thuế"><TextInput value={form.customerTaxId} onChange={(event) => update('customerTaxId', event.target.value)} /></Field><Field label="Người liên hệ"><TextInput value={form.customerContact} onChange={(event) => update('customerContact', event.target.value)} /></Field><Field label="Điện thoại"><TextInput value={form.customerPhone} onChange={(event) => update('customerPhone', event.target.value)} /></Field><Field label="Email"><TextInput type="email" value={form.customerEmail} onChange={(event) => update('customerEmail', event.target.value)} /></Field></div></section>
       <section className="border-t border-slate-100 pt-4"><h2 className="mb-2 flex items-center gap-2 text-xs font-black text-slate-800"><PackageCheck size={15} className="text-blue-600" /> Hàng hóa / phạm vi giám định</h2><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Field label="Tên hàng hóa / thiết bị *"><TextInput required value={form.productName} onChange={(event) => update('productName', event.target.value)} /></Field><Field label="Mã hàng / kiểu loại"><TextInput value={form.productCode} onChange={(event) => update('productCode', event.target.value)} /></Field><Field label="Mác / nhãn hiệu"><TextInput value={form.brand} onChange={(event) => update('brand', event.target.value)} /></Field><Field label="Số lô / số nhận dạng"><TextInput required={form.productGroup === 'STEEL_METAL'} value={form.lotCode} onChange={(event) => update('lotCode', event.target.value)} /></Field><Field label="Số lượng *"><TextInput required type="number" min="0.01" step="0.01" value={form.quantity} onChange={(event) => update('quantity', event.target.value)} /></Field><Field label="Đơn vị"><TextInput value={form.unit} onChange={(event) => update('unit', event.target.value)} /></Field><Field label="Khối lượng"><TextInput type="number" min="0" step="0.001" value={form.weight} onChange={(event) => update('weight', event.target.value)} /></Field><Field label="Phạm vi yêu cầu *" wide><textarea required rows={2} value={form.inspectionScope} onChange={(event) => update('inspectionScope', event.target.value)} className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" /></Field><Field label="Lịch dự kiến"><PgdcnDateTimeInput value={form.inspectionScheduledAt} onChange={(value) => update('inspectionScheduledAt', value)} /></Field><Field label="Địa điểm giám định *" wide><TextInput required value={form.inspectionLocation} onChange={(event) => update('inspectionLocation', event.target.value)} /></Field><Field label="Ghi chú tiếp nhận" wide><textarea rows={2} value={form.note} onChange={(event) => update('note', event.target.value)} className="mobile-touch-target min-h-11 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" /></Field></div></section>
@@ -738,6 +778,12 @@ export function PgdIntakeForm({
           </div>
         </div>
       </details>
+      </div>
+
+      {/* TAB 2: TỆP ĐÍNH KÈM (TÙY CHỌN) */}
+      <div className={activeTab === 'attachments' ? 'space-y-4' : 'hidden'}>
+        <PgdcnB1AttachmentSection idPrefix={formId} accent="blue" requirements={b1Requirements} attachments={b1Attachments} onChange={setB1Attachments} disabled={saving || !canMutate} domain="PGD" />
+      </div>
     </form>
   </div>;
 }
