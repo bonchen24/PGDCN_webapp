@@ -642,6 +642,7 @@ export function ProposalView({
   const [statusFilter, setStatusFilter] = useState<PcnDossierStatus | ''>('');
   const [fieldFilter, setFieldFilter] = useState(initialFieldCode || '');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [proposalTab, setProposalTab] = useState<'info' | 'attachments'>('info');
   const [b1Attachments, setB1Attachments] = useState<PgdcnB1SelectedAttachment[]>([]);
   const [createdDossierId, setCreatedDossierId] = useState<string>();
   const proposalFormRef = useRef<HTMLFormElement>(null);
@@ -1348,9 +1349,47 @@ export function ProposalView({
         footer={<div className="flex w-full flex-wrap justify-end gap-2"><button type="button" onClick={dismissProposalForm} disabled={saving} className="min-h-10 rounded-lg border border-slate-200 px-3 text-[10px] font-bold text-slate-600 disabled:opacity-40">{createdDossierId ? 'Bổ sung sau' : 'Hủy'}</button><button type="submit" form="pcn-proposal-form" disabled={saving} aria-busy={saving} className="min-h-10 rounded-lg bg-emerald-600 px-3 text-[10px] font-black text-white disabled:cursor-wait disabled:opacity-50">{saving ? 'Đang lưu...' : createdDossierId ? 'Thử lại tệp chưa tải' : editingProposal ? 'Lưu thay đổi' : 'Tạo Đề nghị & bộ hồ sơ'}</button></div>}
       >
         <form id="pcn-proposal-form" ref={proposalFormRef} onSubmit={submit} className="space-y-3 p-3 md:p-4">
+          {/* 2-TAB HEADER */}
+          <div className="flex border-b border-slate-200 bg-slate-50/80 p-1.5 rounded-xl gap-2 text-xs font-bold" role="tablist" aria-label="Các phần của Đề nghị">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={proposalTab === 'info'}
+              onClick={() => setProposalTab('info')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                proposalTab === 'info'
+                  ? 'bg-white text-emerald-700 shadow-xs border border-slate-200 font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>📋</span>
+              <span>Thông tin Đề nghị</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={proposalTab === 'attachments'}
+              onClick={() => setProposalTab('attachments')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                proposalTab === 'attachments'
+                  ? 'bg-white text-emerald-700 shadow-xs border border-slate-200 font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>📎</span>
+              <span>Tệp đính kèm (tùy chọn)</span>
+              {b1Attachments.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
+                  {b1Attachments.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* TAB 1: THÔNG TIN NGHIỆP VỤ ĐỀ NGHỊ */}
+          <div className={proposalTab === 'info' ? 'space-y-3' : 'hidden'}>
           <PcnOcrPanel context="proposal" onApply={applyProposalOcr} disabled={saving} />
-          {!editingProposal && <PgdcnB1AttachmentSection idPrefix="pcn-proposal" requirements={b1Requirements} attachments={b1Attachments} onChange={setB1Attachments} disabled={saving || !canEdit} />}
-          {!editingProposal && <p className="text-[10px] text-slate-500">Tài liệu, chứng cứ tiếp nhận B1 và checklist tài liệu hồ sơ được đồng bộ tự động.</p>}
+
 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
 <Field label="Mã Đề nghị">
 <div className="rounded-md border border-indigo-100 bg-indigo-50/60 px-2.5 py-2 text-[10px] font-bold text-indigo-700">Hệ thống tự cấp theo dạng PCN-YYMMDD-TT khi lưu</div>
@@ -1453,6 +1492,13 @@ export function ProposalView({
 <p className="mt-1 leading-4">Tệp B1 tùy chọn được lưu cùng hồ sơ; có thể tải lên sau khi tạo Đề nghị.</p>
 <p className="mt-1 leading-4">Trạng thái do hệ thống quản lý theo quy trình; biểu mẫu không cho phép tự đổi trạng thái.</p>
 </section>
+          </div>
+
+          {/* TAB 2: TỆP ĐÍNH KÈM (TÙY CHỌN) */}
+          <div className={proposalTab === 'attachments' ? 'space-y-3' : 'hidden'}>
+            {!editingProposal && <PgdcnB1AttachmentSection idPrefix="pcn-proposal" requirements={b1Requirements} attachments={b1Attachments} onChange={setB1Attachments} disabled={saving || !canEdit} domain="PCN" />}
+            {!editingProposal && <p className="text-[10px] text-slate-500">Tài liệu, chứng cứ tiếp nhận B1 và checklist tài liệu hồ sơ được đồng bộ tự động.</p>}
+          </div>
 </form>
       </PgdcnWindowsWorkflowModal></div>}
 
