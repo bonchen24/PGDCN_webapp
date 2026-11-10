@@ -1,6 +1,10 @@
 services:
   webapp:
-    build: .
+    build:
+      context: .
+      args:
+        BUILD_REVISION: ${BUILD_REVISION:-unknown}
+        BUILD_CREATED_AT: ${BUILD_CREATED_AT:-unknown}
     environment:
       NODE_ENV: production
       APP_PROFILE: pcn

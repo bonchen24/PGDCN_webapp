@@ -9,7 +9,10 @@ function readIfPresent(path: string): string {
 
 const healthSource = readIfPresent('../app/api/health/route.ts');
 const composeSource = readIfPresent('../docker-compose.pcn.yml');
+const productionCompose = readIfPresent('../docker-compose.yml');
+const supabaseCompose = readIfPresent('../docker-compose.supabase.yml');
 const redisOverlay = readIfPresent('../docker-compose.redis-cache.yml');
+const dockerfile = readIfPresent('../Dockerfile');
 const envExample = readIfPresent('../.env.example');
 const guide = readIfPresent('../docs/redis-cache.md');
 
@@ -46,4 +49,18 @@ test('Redis overlay lets operators disable cache while keeping the private endpo
   assert.match(redisOverlay, /REDIS_URL:\s*\$\{REDIS_URL:\?Set the server-side Redis URL\}/);
   assert.match(redisOverlay, /REDIS_PASSWORD:\s*\$\{REDIS_PASSWORD:\?Set the server-side Redis password\}/);
   assert.match(redisOverlay, /name:\s*tvci_app_redis_private/);
+});
+
+test('production Compose build carries revision and timestamp and the documented Redis overlay', () => {
+  for (const compose of [composeSource, productionCompose, supabaseCompose]) {
+    assert.match(compose, /BUILD_REVISION:\s*\$\{BUILD_REVISION:-unknown\}/);
+    assert.match(compose, /BUILD_CREATED_AT:\s*\$\{BUILD_CREATED_AT:-unknown\}/);
+  }
+  assert.match(dockerfile, /ARG BUILD_REVISION=unknown/);
+  assert.match(dockerfile, /ARG BUILD_CREATED_AT=unknown/);
+  assert.match(dockerfile, /org\.opencontainers\.image\.revision=.*BUILD_REVISION/);
+  assert.match(dockerfile, /org\.opencontainers\.image\.created=.*BUILD_CREATED_AT/);
+  assert.match(dockerfile, /ENV BUILD_REVISION=.*BUILD_CREATED_AT=/);
+  assert.match(guide, /docker-compose\.yml/);
+  assert.match(guide, /docker-compose\.redis-cache\.yml/);
 });

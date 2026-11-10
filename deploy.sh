@@ -7,6 +7,9 @@ set -euo pipefail
 
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.pcn.yml}"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-}"
+BUILD_REVISION="$(git rev-parse --verify HEAD)"
+BUILD_CREATED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+export BUILD_REVISION BUILD_CREATED_AT
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "Docker CLI không khả dụng. Hãy mở Docker Desktop trước khi deploy."

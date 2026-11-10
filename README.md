@@ -27,6 +27,8 @@ PCN dùng PostgreSQL service hiện hữu `supabase-db` trên Docker network `su
 
    ```powershell
    $env:SUPABASE_ENV_FILE = 'C:\path\to\supabase\.env'
+   $env:BUILD_REVISION = (git rev-parse --verify HEAD).Trim()
+   $env:BUILD_CREATED_AT = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
    docker compose --env-file $env:SUPABASE_ENV_FILE -f docker-compose.pcn.yml up --build -d
    ```
 
